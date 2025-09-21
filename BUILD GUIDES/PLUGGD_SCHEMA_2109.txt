@@ -1,0 +1,2186 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.activity_feed (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  actor_id uuid NOT NULL,
+  type text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id uuid NOT NULL,
+  data jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT activity_feed_pkey PRIMARY KEY (id),
+  CONSTRAINT activity_feed_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.analytics_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  event_name text NOT NULL,
+  properties jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT analytics_events_pkey PRIMARY KEY (id),
+  CONSTRAINT analytics_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.announcements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  text text NOT NULL,
+  starts_at timestamp with time zone,
+  ends_at timestamp with time zone,
+  is_live boolean DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT announcements_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.api_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token_hash text NOT NULL UNIQUE,
+  label text NOT NULL,
+  last_used_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  scopes ARRAY DEFAULT '{read_releases,read_beats,read_stats}'::text[],
+  rate_limit_per_min integer DEFAULT 60,
+  revoked boolean DEFAULT false,
+  CONSTRAINT api_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.approved_directory_profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  submission_id uuid NOT NULL,
+  title text NOT NULL,
+  bio text NOT NULL,
+  location text,
+  experience text,
+  genres ARRAY DEFAULT '{}'::text[],
+  hourly_rate text,
+  credits ARRAY DEFAULT '{}'::text[],
+  website_url text,
+  social_links jsonb DEFAULT '{}'::jsonb,
+  rating numeric DEFAULT 0,
+  reviews_count integer DEFAULT 0,
+  verified boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT approved_directory_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT approved_directory_profiles_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.directory_submissions(id),
+  CONSTRAINT approved_directory_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT approved_directory_profiles_user_id_profiles_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.artist_analytics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  platform text NOT NULL,
+  artist_id text NOT NULL,
+  artist_name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT artist_analytics_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.artist_tips (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  fan_id uuid,
+  artist_id uuid,
+  release_id uuid,
+  amount numeric NOT NULL,
+  message text,
+  stripe_payment_intent_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT artist_tips_pkey PRIMARY KEY (id),
+  CONSTRAINT artist_tips_artist_id_fkey FOREIGN KEY (artist_id) REFERENCES auth.users(id),
+  CONSTRAINT artist_tips_fan_id_fkey FOREIGN KEY (fan_id) REFERENCES auth.users(id),
+  CONSTRAINT artist_tips_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id)
+);
+CREATE TABLE public.artists (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  bio text,
+  image_url text,
+  instagram_url text,
+  twitter_url text,
+  spotify_url text,
+  apple_music_url text,
+  youtube_url text,
+  soundcloud_url text,
+  is_featured boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  website_url text,
+  CONSTRAINT artists_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.audience_analytics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  artist_analytics_id uuid NOT NULL,
+  platform text NOT NULL,
+  age_range text,
+  gender text,
+  country text,
+  city text,
+  percentage numeric,
+  listener_count integer DEFAULT 0,
+  date_recorded date NOT NULL DEFAULT CURRENT_DATE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT audience_analytics_pkey PRIMARY KEY (id),
+  CONSTRAINT audience_analytics_artist_analytics_id_fkey FOREIGN KEY (artist_analytics_id) REFERENCES public.artist_analytics(id)
+);
+CREATE TABLE public.audio_files (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  file_name text NOT NULL,
+  file_size integer NOT NULL,
+  file_type text NOT NULL,
+  storage_path text NOT NULL,
+  stream_url text,
+  duration_seconds integer,
+  sample_rate integer,
+  bit_rate integer,
+  waveform_data jsonb,
+  processing_status text DEFAULT 'pending'::text CHECK (processing_status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])),
+  upload_session_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT audio_files_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.automations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  title text NOT NULL,
+  automation_type text NOT NULL CHECK (automation_type = ANY (ARRAY['scheduled_post'::text, 'auto_reply'::text, 'smart_drop'::text])),
+  config_json jsonb DEFAULT '{}'::jsonb,
+  is_enabled boolean DEFAULT true,
+  next_run_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT automations_pkey PRIMARY KEY (id),
+  CONSTRAINT automations_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.badge_definitions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  badge_type text NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text NOT NULL,
+  icon_url text,
+  required_points integer DEFAULT 0,
+  required_count integer DEFAULT 0,
+  required_action text,
+  tier text DEFAULT 'bronze'::text,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT badge_definitions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.battle_entries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  audio_path text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT battle_entries_pkey PRIMARY KEY (id),
+  CONSTRAINT battle_entries_battle_id_fkey FOREIGN KEY (battle_id) REFERENCES public.battles(id)
+);
+CREATE TABLE public.battle_matchups (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL,
+  round_number integer NOT NULL,
+  entry_a_id uuid NOT NULL,
+  entry_b_id uuid NOT NULL,
+  winner_entry_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT battle_matchups_pkey PRIMARY KEY (id),
+  CONSTRAINT battle_matchups_battle_id_fkey FOREIGN KEY (battle_id) REFERENCES public.battles(id),
+  CONSTRAINT battle_matchups_entry_a_id_fkey FOREIGN KEY (entry_a_id) REFERENCES public.battle_entries(id),
+  CONSTRAINT battle_matchups_entry_b_id_fkey FOREIGN KEY (entry_b_id) REFERENCES public.battle_entries(id),
+  CONSTRAINT battle_matchups_winner_entry_id_fkey FOREIGN KEY (winner_entry_id) REFERENCES public.battle_entries(id)
+);
+CREATE TABLE public.battle_rounds (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL,
+  round_number integer NOT NULL,
+  starts_at timestamp with time zone NOT NULL,
+  ends_at timestamp with time zone NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT battle_rounds_pkey PRIMARY KEY (id),
+  CONSTRAINT battle_rounds_battle_id_fkey FOREIGN KEY (battle_id) REFERENCES public.battles(id)
+);
+CREATE TABLE public.battle_transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  amount_cents integer NOT NULL,
+  type USER-DEFINED NOT NULL,
+  stripe_payment_intent_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT battle_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT battle_transactions_battle_id_fkey FOREIGN KEY (battle_id) REFERENCES public.battles(id),
+  CONSTRAINT battle_transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.battle_votes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL,
+  matchup_id uuid NOT NULL,
+  voter_user_id uuid NOT NULL,
+  entry_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT battle_votes_pkey PRIMARY KEY (id),
+  CONSTRAINT battle_votes_battle_id_fkey FOREIGN KEY (battle_id) REFERENCES public.battles(id),
+  CONSTRAINT battle_votes_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.battle_entries(id),
+  CONSTRAINT battle_votes_matchup_id_fkey FOREIGN KEY (matchup_id) REFERENCES public.battle_matchups(id)
+);
+CREATE TABLE public.battles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  starts_at timestamp with time zone NOT NULL,
+  ends_at timestamp with time zone NOT NULL,
+  status text NOT NULL DEFAULT 'upcoming'::text CHECK (status = ANY (ARRAY['upcoming'::text, 'live'::text, 'finished'::text])),
+  created_by uuid NOT NULL,
+  is_featured boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  entry_fee_cents integer,
+  prize_pool_cents integer DEFAULT 0,
+  CONSTRAINT battles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.beat_collaborators (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beat_id uuid NOT NULL,
+  collaborator_user_id uuid,
+  collaborator_name text NOT NULL,
+  collaborator_email text,
+  role text NOT NULL DEFAULT 'collaborator'::text,
+  profit_share_percentage numeric NOT NULL DEFAULT 0 CHECK (profit_share_percentage >= 0::numeric AND profit_share_percentage <= 100::numeric),
+  publishing_share_percentage numeric NOT NULL DEFAULT 0 CHECK (publishing_share_percentage >= 0::numeric AND publishing_share_percentage <= 100::numeric),
+  content_id_percentage numeric NOT NULL DEFAULT 0 CHECK (content_id_percentage >= 0::numeric AND content_id_percentage <= 100::numeric),
+  is_confirmed boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT beat_collaborators_pkey PRIMARY KEY (id),
+  CONSTRAINT beat_collaborators_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id)
+);
+CREATE TABLE public.beat_licenses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beat_id uuid NOT NULL,
+  license_template_id uuid NOT NULL,
+  price_override numeric,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT beat_licenses_pkey PRIMARY KEY (id),
+  CONSTRAINT beat_licenses_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT beat_licenses_license_template_id_fkey FOREIGN KEY (license_template_id) REFERENCES public.license_templates(id)
+);
+CREATE TABLE public.beat_sales (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beat_id uuid,
+  buyer_id uuid,
+  producer_id uuid NOT NULL,
+  license_type text NOT NULL DEFAULT 'basic'::text,
+  sale_price numeric NOT NULL,
+  commission_rate numeric NOT NULL DEFAULT 15.00,
+  producer_earnings numeric NOT NULL,
+  platform_fee numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'GBP'::text,
+  payout_status text NOT NULL DEFAULT 'pending'::text,
+  payout_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT beat_sales_pkey PRIMARY KEY (id),
+  CONSTRAINT beat_sales_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT beat_sales_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES auth.users(id),
+  CONSTRAINT beat_sales_payout_id_fkey FOREIGN KEY (payout_id) REFERENCES public.payout_records(id)
+);
+CREATE TABLE public.beats (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  genre text,
+  bpm integer,
+  key text,
+  price numeric NOT NULL DEFAULT 0.00,
+  audio_url text,
+  image_url text,
+  tags ARRAY,
+  is_published boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  moods ARRAY DEFAULT '{}'::text[],
+  instruments ARRAY DEFAULT '{}'::text[],
+  stems_url text,
+  tagged_url text,
+  license_types jsonb DEFAULT '{}'::jsonb,
+  uploaded_by_admin boolean NOT NULL DEFAULT false,
+  producer_name text,
+  available_licenses jsonb DEFAULT '[]'::jsonb,
+  license_prices jsonb DEFAULT '{}'::jsonb,
+  stems_required boolean DEFAULT false,
+  is_featured boolean NOT NULL DEFAULT false,
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT beats_pkey PRIMARY KEY (id),
+  CONSTRAINT beats_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.blog_posts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  content text,
+  html_content text,
+  excerpt text,
+  featured_image_url text,
+  tags ARRAY DEFAULT '{}'::text[],
+  is_published boolean NOT NULL DEFAULT false,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT blog_posts_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.bookings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  client_user_id uuid NOT NULL,
+  professional_user_id uuid NOT NULL,
+  service_type text NOT NULL,
+  project_title text NOT NULL,
+  project_description text NOT NULL,
+  budget_range text,
+  deadline date,
+  preferred_contact text NOT NULL CHECK (preferred_contact = ANY (ARRAY['email'::text, 'phone'::text, 'message'::text])),
+  client_name text NOT NULL,
+  client_email text NOT NULL,
+  client_phone text,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'completed'::text, 'cancelled'::text])),
+  message text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_client_user_id_fkey FOREIGN KEY (client_user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT bookings_professional_user_id_fkey FOREIGN KEY (professional_user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.campaign_pledges (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  campaign_id uuid NOT NULL,
+  backer_id uuid NOT NULL,
+  amount numeric NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT campaign_pledges_pkey PRIMARY KEY (id),
+  CONSTRAINT campaign_pledges_backer_id_fkey FOREIGN KEY (backer_id) REFERENCES auth.users(id),
+  CONSTRAINT campaign_pledges_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES public.campaigns(id)
+);
+CREATE TABLE public.campaigns (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  owner_id uuid NOT NULL,
+  title text NOT NULL,
+  cover_url text,
+  goal numeric NOT NULL,
+  raised numeric NOT NULL DEFAULT 0,
+  ends_at timestamp with time zone,
+  slug text UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT campaigns_pkey PRIMARY KEY (id),
+  CONSTRAINT campaigns_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.challenge_submissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  challenge_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  beat_id uuid,
+  submission_url text,
+  submission_title text NOT NULL,
+  submission_description text,
+  votes_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT challenge_submissions_pkey PRIMARY KEY (id),
+  CONSTRAINT challenge_submissions_challenge_id_fkey FOREIGN KEY (challenge_id) REFERENCES public.monthly_challenges(id)
+);
+CREATE TABLE public.challenge_votes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  challenge_id uuid NOT NULL,
+  submission_id uuid NOT NULL,
+  voter_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT challenge_votes_pkey PRIMARY KEY (id),
+  CONSTRAINT challenge_votes_challenge_id_fkey FOREIGN KEY (challenge_id) REFERENCES public.monthly_challenges(id),
+  CONSTRAINT challenge_votes_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.challenge_submissions(id)
+);
+CREATE TABLE public.collaboration_projects (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL,
+  genre text NOT NULL,
+  skills_needed ARRAY NOT NULL DEFAULT '{}'::text[],
+  budget_range text,
+  deadline date,
+  status text NOT NULL DEFAULT 'open'::text,
+  votes integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  requirements text,
+  project_type text DEFAULT 'collaboration'::text,
+  is_featured boolean DEFAULT false,
+  CONSTRAINT collaboration_projects_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.collaborators (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid,
+  track_id uuid,
+  user_id uuid,
+  name text NOT NULL,
+  email text,
+  role text NOT NULL CHECK (role = ANY (ARRAY['featured_artist'::text, 'vocalist'::text, 'producer'::text, 'songwriter'::text, 'composer'::text, 'label'::text, 'manager'::text, 'other'::text])),
+  role_description text,
+  is_external boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT collaborators_pkey PRIMARY KEY (id),
+  CONSTRAINT collaborators_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT collaborators_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id),
+  CONSTRAINT collaborators_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT comments_pkey PRIMARY KEY (id),
+  CONSTRAINT comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id),
+  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.commission_bids (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  commission_request_id uuid,
+  producer_id uuid NOT NULL,
+  bid_amount_cents integer NOT NULL,
+  estimated_delivery_days integer,
+  proposal_message text,
+  portfolio_samples ARRAY,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, 'withdrawn'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT commission_bids_pkey PRIMARY KEY (id),
+  CONSTRAINT commission_bids_commission_request_id_fkey FOREIGN KEY (commission_request_id) REFERENCES public.commission_requests(id)
+);
+CREATE TABLE public.commission_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  commission_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT commission_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT commission_messages_commission_id_fkey FOREIGN KEY (commission_id) REFERENCES public.commission_requests(id)
+);
+CREATE TABLE public.commission_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  requester_id uuid NOT NULL,
+  producer_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  genre text,
+  reference_links ARRAY DEFAULT '{}'::text[],
+  budget_cents integer NOT NULL,
+  application_fee_percent numeric,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'accepted'::text, 'funded'::text, 'in_progress'::text, 'delivered'::text, 'completed'::text, 'cancelled'::text, 'refunded'::text])),
+  stripe_payment_intent_id text,
+  deadline date,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT commission_requests_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.community_comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  body text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT community_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT community_comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.community_posts(id),
+  CONSTRAINT community_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.community_likes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT community_likes_pkey PRIMARY KEY (id),
+  CONSTRAINT community_likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.community_posts(id),
+  CONSTRAINT community_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.community_posts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  body text NOT NULL,
+  media_path text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT community_posts_pkey PRIMARY KEY (id),
+  CONSTRAINT community_posts_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.contact_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  email text NOT NULL,
+  subject text,
+  message text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT contact_messages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.contact_rate_limits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ip_address inet NOT NULL,
+  email text NOT NULL,
+  submission_count integer NOT NULL DEFAULT 1,
+  first_submission_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_submission_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT contact_rate_limits_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.content_reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reporter_id uuid NOT NULL,
+  target_type text NOT NULL CHECK (target_type = ANY (ARRAY['release'::text, 'comment'::text, 'profile'::text, 'beat'::text])),
+  target_id uuid NOT NULL,
+  reason text NOT NULL,
+  description text,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'investigating'::text, 'resolved'::text, 'dismissed'::text])),
+  resolved_by uuid,
+  resolution_notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  resolved_at timestamp with time zone,
+  CONSTRAINT content_reports_pkey PRIMARY KEY (id),
+  CONSTRAINT content_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES auth.users(id),
+  CONSTRAINT content_reports_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.content_splits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  content_type text NOT NULL CHECK (content_type = ANY (ARRAY['beat'::text, 'pack'::text, 'release'::text])),
+  content_id uuid NOT NULL,
+  payee_user_id uuid NOT NULL,
+  percent numeric NOT NULL CHECK (percent >= 0::numeric AND percent <= 100::numeric),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT content_splits_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.contest_files (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contest_id uuid NOT NULL,
+  file_name text NOT NULL,
+  file_url text NOT NULL,
+  file_type text NOT NULL,
+  file_size bigint,
+  description text,
+  is_downloadable boolean DEFAULT true,
+  display_order integer DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT contest_files_pkey PRIMARY KEY (id),
+  CONSTRAINT contest_files_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id)
+);
+CREATE TABLE public.contest_reminders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contest_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  reminded_at timestamp with time zone,
+  CONSTRAINT contest_reminders_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.contest_submissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contest_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  beat_id uuid NOT NULL,
+  submission_title text,
+  submission_description text,
+  votes_count integer DEFAULT 0,
+  rank integer,
+  submitted_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT contest_submissions_pkey PRIMARY KEY (id),
+  CONSTRAINT contest_submissions_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT contest_submissions_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id),
+  CONSTRAINT contest_submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.contest_votes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contest_id uuid NOT NULL,
+  submission_id uuid NOT NULL,
+  voter_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT contest_votes_pkey PRIMARY KEY (id),
+  CONSTRAINT contest_votes_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id),
+  CONSTRAINT contest_votes_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.contest_submissions(id),
+  CONSTRAINT contest_votes_voter_id_fkey FOREIGN KEY (voter_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.contests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  contest_type text NOT NULL CHECK (contest_type = ANY (ARRAY['weekly_challenge'::text, 'monthly_contest'::text, 'community_vote'::text])),
+  genre text,
+  theme text,
+  rules text,
+  prize_description text,
+  start_date timestamp with time zone NOT NULL,
+  end_date timestamp with time zone NOT NULL,
+  voting_end_date timestamp with time zone,
+  status text DEFAULT 'upcoming'::text CHECK (status = ANY (ARRAY['upcoming'::text, 'active'::text, 'voting'::text, 'completed'::text])),
+  max_submissions integer DEFAULT 1,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  cover_image_url text,
+  resource_files jsonb DEFAULT '[]'::jsonb,
+  additional_images jsonb DEFAULT '[]'::jsonb,
+  CONSTRAINT contests_pkey PRIMARY KEY (id),
+  CONSTRAINT contests_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.contract_signatures (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contract_id uuid NOT NULL,
+  signer_id uuid NOT NULL,
+  signer_type text NOT NULL CHECK (signer_type = ANY (ARRAY['producer'::text, 'artist'::text])),
+  signature_data text NOT NULL,
+  signed_at timestamp with time zone DEFAULT now(),
+  ip_address text,
+  user_agent text,
+  CONSTRAINT contract_signatures_pkey PRIMARY KEY (id),
+  CONSTRAINT contract_signatures_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES public.licensing_contracts(id)
+);
+CREATE TABLE public.contract_templates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  template_type text NOT NULL UNIQUE CHECK (template_type = ANY (ARRAY['basic_lease'::text, 'premium_lease'::text, 'unlimited_lease'::text, 'exclusive_rights'::text])),
+  title text NOT NULL,
+  description text,
+  legal_text text NOT NULL,
+  price_range_min integer NOT NULL,
+  price_range_max integer NOT NULL,
+  features jsonb DEFAULT '[]'::jsonb,
+  restrictions jsonb DEFAULT '[]'::jsonb,
+  deliverables jsonb DEFAULT '[]'::jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT contract_templates_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.conversations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  project_id uuid,
+  participant_1 uuid NOT NULL,
+  participant_2 uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT conversations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.course_certificates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  certificate_url text,
+  issued_at timestamp with time zone NOT NULL DEFAULT now(),
+  certificate_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  CONSTRAINT course_certificates_pkey PRIMARY KEY (id),
+  CONSTRAINT course_certificates_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.course_materials (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL,
+  lesson_id text NOT NULL,
+  title text NOT NULL,
+  content_type text NOT NULL CHECK (content_type = ANY (ARRAY['markdown'::text, 'html'::text, 'video'::text, 'pdf'::text, 'quiz'::text])),
+  content_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  file_url text,
+  order_index integer NOT NULL DEFAULT 0,
+  is_free boolean NOT NULL DEFAULT false,
+  duration_minutes integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT course_materials_pkey PRIMARY KEY (id),
+  CONSTRAINT course_materials_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.course_pricing (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL UNIQUE,
+  is_pro_only boolean DEFAULT false,
+  one_time_price numeric,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT course_pricing_pkey PRIMARY KEY (id),
+  CONSTRAINT course_pricing_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.course_purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  course_id uuid NOT NULL,
+  amount_paid numeric NOT NULL,
+  stripe_payment_intent_id text,
+  purchased_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT course_purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT course_purchases_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
+  CONSTRAINT course_purchases_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.course_reviews (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  review_text text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT course_reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT course_reviews_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.courses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  instructor_id uuid NOT NULL,
+  content jsonb NOT NULL DEFAULT '[]'::jsonb,
+  thumbnail_url text,
+  price numeric DEFAULT 0,
+  difficulty_level text DEFAULT 'beginner'::text,
+  duration_hours integer DEFAULT 0,
+  tags ARRAY DEFAULT '{}'::text[],
+  is_published boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT courses_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.creator_bundles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  bundle_type text NOT NULL DEFAULT 'fixed'::text,
+  bundle_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  individual_total numeric NOT NULL DEFAULT 0,
+  bundle_price numeric NOT NULL DEFAULT 0,
+  discount_percentage numeric,
+  min_items integer DEFAULT 1,
+  max_items integer,
+  allow_customization boolean DEFAULT false,
+  image_url text,
+  gallery_images ARRAY DEFAULT '{}'::text[],
+  is_limited_time boolean DEFAULT false,
+  available_from timestamp with time zone,
+  available_until timestamp with time zone,
+  stock_quantity integer,
+  status text NOT NULL DEFAULT 'draft'::text,
+  is_main_store_approved boolean DEFAULT false,
+  main_store_submitted_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  approved_by uuid,
+  view_count integer DEFAULT 0,
+  sales_count integer DEFAULT 0,
+  revenue_total numeric DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT creator_bundles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.creator_collectibles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  price numeric NOT NULL DEFAULT 0,
+  collectible_type text NOT NULL,
+  rarity_level text DEFAULT 'common'::text,
+  edition_type text DEFAULT 'open'::text,
+  total_supply integer,
+  current_supply integer DEFAULT 0,
+  digital_assets jsonb DEFAULT '{}'::jsonb,
+  unlockable_content text,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  has_physical_item boolean DEFAULT false,
+  physical_description text,
+  requires_shipping boolean DEFAULT false,
+  provides_access text,
+  expiry_date timestamp with time zone,
+  is_transferable boolean DEFAULT true,
+  is_minted boolean DEFAULT false,
+  blockchain_data jsonb DEFAULT '{}'::jsonb,
+  token_id text,
+  contract_address text,
+  status text NOT NULL DEFAULT 'draft'::text,
+  is_main_store_approved boolean DEFAULT false,
+  main_store_submitted_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  approved_by uuid,
+  view_count integer DEFAULT 0,
+  sales_count integer DEFAULT 0,
+  revenue_total numeric DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT creator_collectibles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.creator_email_list (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  subscriber_email text NOT NULL,
+  subscriber_id uuid,
+  source text,
+  tags ARRAY DEFAULT '{}'::text[],
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT creator_email_list_pkey PRIMARY KEY (id),
+  CONSTRAINT creator_email_list_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT creator_email_list_subscriber_id_fkey FOREIGN KEY (subscriber_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.creator_merchandise (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  price numeric NOT NULL DEFAULT 0,
+  category text NOT NULL,
+  product_type text NOT NULL,
+  has_variants boolean DEFAULT false,
+  sizes ARRAY,
+  colors ARRAY,
+  materials ARRAY,
+  variant_pricing jsonb DEFAULT '{}'::jsonb,
+  stock_quantity integer DEFAULT 0,
+  track_inventory boolean DEFAULT true,
+  image_url text,
+  gallery_images ARRAY DEFAULT '{}'::text[],
+  cost_price numeric,
+  profit_margin numeric,
+  weight_grams integer,
+  dimensions jsonb,
+  requires_shipping boolean DEFAULT true,
+  shipping_class text DEFAULT 'standard'::text,
+  tags ARRAY DEFAULT '{}'::text[],
+  sku text,
+  barcode text,
+  brand text,
+  status text NOT NULL DEFAULT 'draft'::text,
+  is_main_store_approved boolean DEFAULT false,
+  main_store_submitted_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  approved_by uuid,
+  view_count integer DEFAULT 0,
+  sales_count integer DEFAULT 0,
+  revenue_total numeric DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT creator_merchandise_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.creator_metrics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  metric_date date NOT NULL DEFAULT CURRENT_DATE,
+  subs_count integer NOT NULL DEFAULT 0,
+  revenue_cents integer NOT NULL DEFAULT 0,
+  likes_count integer NOT NULL DEFAULT 0,
+  comments_count integer NOT NULL DEFAULT 0,
+  battles_entries_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  battle_revenue_cents integer DEFAULT 0,
+  event_revenue_cents integer DEFAULT 0,
+  sales_count integer DEFAULT 0,
+  sales_revenue_cents integer DEFAULT 0,
+  subs_active integer DEFAULT 0,
+  subs_mrr_cents integer DEFAULT 0,
+  post_likes integer DEFAULT 0,
+  post_comments integer DEFAULT 0,
+  plays_count integer DEFAULT 0,
+  audience_geo jsonb DEFAULT '{}'::jsonb,
+  retention_30d integer DEFAULT 0,
+  new_fans_30d integer DEFAULT 0,
+  churn_30d integer DEFAULT 0,
+  CONSTRAINT creator_metrics_pkey PRIMARY KEY (id),
+  CONSTRAINT creator_metrics_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.creator_page_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  visitor_id uuid,
+  page_type text NOT NULL,
+  referrer text,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT creator_page_views_pkey PRIMARY KEY (id),
+  CONSTRAINT creator_page_views_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT creator_page_views_visitor_id_fkey FOREIGN KEY (visitor_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.creator_subscription_tiers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  price_cents integer NOT NULL,
+  perks ARRAY DEFAULT '{}'::text[],
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT creator_subscription_tiers_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.daily_prompts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  text text NOT NULL,
+  tag text,
+  cta_text text,
+  cta_href text,
+  starts_at timestamp with time zone,
+  ends_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT daily_prompts_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.deletion_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label_id uuid NOT NULL,
+  requested_by uuid NOT NULL,
+  type USER-DEFINED NOT NULL,
+  payload_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  confirmed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT deletion_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT deletion_requests_label_id_fkey FOREIGN KEY (label_id) REFERENCES public.labels(id),
+  CONSTRAINT deletion_requests_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.directory_submissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  bio text NOT NULL,
+  location text,
+  experience text,
+  genres ARRAY DEFAULT '{}'::text[],
+  hourly_rate text,
+  credits ARRAY DEFAULT '{}'::text[],
+  website_url text,
+  social_links jsonb DEFAULT '{}'::jsonb,
+  status USER-DEFINED DEFAULT 'pending'::submission_status,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  approved_at timestamp with time zone,
+  approved_by uuid,
+  CONSTRAINT directory_submissions_pkey PRIMARY KEY (id),
+  CONSTRAINT directory_submissions_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES auth.users(id),
+  CONSTRAINT directory_submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.download_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  purchase_id uuid NOT NULL,
+  purchase_type text NOT NULL CHECK (purchase_type = ANY (ARRAY['beat'::text, 'release'::text, 'sample_pack'::text])),
+  file_path text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT download_events_pkey PRIMARY KEY (id),
+  CONSTRAINT download_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.event_rsvps (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  event_id uuid,
+  user_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'going'::text CHECK (status = ANY (ARRAY['going'::text, 'maybe'::text, 'declined'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT event_rsvps_pkey PRIMARY KEY (id),
+  CONSTRAINT event_rsvps_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+);
+CREATE TABLE public.event_tickets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  event_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  payment_status text NOT NULL DEFAULT 'pending'::text,
+  stripe_payment_intent_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT event_tickets_pkey PRIMARY KEY (id),
+  CONSTRAINT event_tickets_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT event_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  starts_at timestamp with time zone NOT NULL,
+  ends_at timestamp with time zone NOT NULL,
+  price_cents integer NOT NULL DEFAULT 0,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  stream_provider text,
+  stream_url text,
+  playback_url text,
+  cover_image_url text,
+  timezone text DEFAULT 'UTC'::text,
+  location text,
+  rsvp_count integer NOT NULL DEFAULT 0,
+  rrule text,
+  CONSTRAINT events_pkey PRIMARY KEY (id),
+  CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.fan_club_content (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid,
+  release_id uuid UNIQUE,
+  subscription_tier_required text NOT NULL DEFAULT 'basic'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT fan_club_content_pkey PRIMARY KEY (id),
+  CONSTRAINT fan_club_content_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT fan_club_content_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id)
+);
+CREATE TABLE public.fan_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  fan_id uuid NOT NULL,
+  creator_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'active'::text,
+  price_cents integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT fan_subscriptions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.favorites (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  beat_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT favorites_pkey PRIMARY KEY (id),
+  CONSTRAINT favorites_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.genre_categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  description text,
+  parent_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT genre_categories_pkey PRIMARY KEY (id),
+  CONSTRAINT genre_categories_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.genre_categories(id)
+);
+CREATE TABLE public.label_invitations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label_id uuid NOT NULL,
+  email text NOT NULL,
+  role USER-DEFINED NOT NULL DEFAULT 'viewer'::label_role,
+  token text NOT NULL UNIQUE,
+  expires_at timestamp with time zone NOT NULL,
+  invited_by uuid,
+  accepted_by_user_id uuid,
+  accepted_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT label_invitations_pkey PRIMARY KEY (id),
+  CONSTRAINT label_invitations_accepted_by_user_id_fkey FOREIGN KEY (accepted_by_user_id) REFERENCES auth.users(id),
+  CONSTRAINT label_invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES auth.users(id),
+  CONSTRAINT label_invitations_label_id_fkey FOREIGN KEY (label_id) REFERENCES public.labels(id)
+);
+CREATE TABLE public.label_members (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['owner'::text, 'admin'::text, 'manager'::text, 'viewer'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT label_members_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.label_stripe_accounts (
+  label_id uuid NOT NULL,
+  stripe_account_id text,
+  onboarding_complete boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT label_stripe_accounts_pkey PRIMARY KEY (label_id)
+);
+CREATE TABLE public.labels (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  slug text NOT NULL UNIQUE CHECK (slug ~ '^[a-z0-9-]{3,}$'::text),
+  name text NOT NULL,
+  logo_url text,
+  cover_image_url text,
+  genre text,
+  contact_email text,
+  country text,
+  owner_user_id uuid,
+  created_by_admin boolean NOT NULL DEFAULT false,
+  claimed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT labels_pkey PRIMARY KEY (id),
+  CONSTRAINT labels_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.license_templates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  price numeric NOT NULL DEFAULT 0,
+  license_type text NOT NULL,
+  file_types ARRAY NOT NULL DEFAULT '{mp3}'::text[],
+  description text,
+  terms text,
+  usage_rights jsonb DEFAULT '{}'::jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT license_templates_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.licensing_contracts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beat_id uuid NOT NULL,
+  producer_id uuid NOT NULL,
+  artist_id uuid NOT NULL,
+  template_type text NOT NULL,
+  license_fee numeric NOT NULL,
+  contract_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  legal_text text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'signed'::text, 'completed'::text, 'cancelled'::text])),
+  signed_at timestamp with time zone,
+  producer_signature text,
+  artist_signature text,
+  producer_ip_address text,
+  artist_ip_address text,
+  contract_pdf_url text,
+  transaction_id text,
+  stripe_payment_intent_id text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT licensing_contracts_pkey PRIMARY KEY (id),
+  CONSTRAINT licensing_contracts_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT licensing_contracts_template_type_fkey FOREIGN KEY (template_type) REFERENCES public.contract_templates(template_type)
+);
+CREATE TABLE public.licensing_options (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beat_id uuid NOT NULL,
+  license_type text NOT NULL,
+  price numeric NOT NULL DEFAULT 0,
+  is_available boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT licensing_options_pkey PRIMARY KEY (id),
+  CONSTRAINT licensing_options_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id)
+);
+CREATE TABLE public.likes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT likes_pkey PRIMARY KEY (id),
+  CONSTRAINT likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id),
+  CONSTRAINT likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.mailing_list (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT mailing_list_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.mailing_list_rate_limits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ip_address inet NOT NULL,
+  email text NOT NULL,
+  submission_count integer NOT NULL DEFAULT 1,
+  first_submission_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_submission_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT mailing_list_rate_limits_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.managed_profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label_id uuid NOT NULL,
+  profile_id uuid NOT NULL,
+  role text CHECK (role = ANY (ARRAY['primary'::text, 'distribution_only'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT managed_profiles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  conversation_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_read boolean DEFAULT false,
+  CONSTRAINT messages_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_messages_conversation_id FOREIGN KEY (conversation_id) REFERENCES public.conversations(id)
+);
+CREATE TABLE public.moderation_actions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  moderator_id uuid NOT NULL,
+  target_type text NOT NULL,
+  target_id uuid NOT NULL,
+  action text NOT NULL CHECK (action = ANY (ARRAY['approve'::text, 'reject'::text, 'hide'::text, 'warn'::text, 'ban'::text])),
+  reason text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT moderation_actions_pkey PRIMARY KEY (id),
+  CONSTRAINT moderation_actions_moderator_id_fkey FOREIGN KEY (moderator_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.moderation_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  item_type text NOT NULL CHECK (item_type = ANY (ARRAY['release'::text, 'comment'::text, 'profile'::text, 'report'::text])),
+  item_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  severity text NOT NULL DEFAULT 'low'::text CHECK (severity = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text])),
+  reported_by uuid,
+  reviewed_by uuid,
+  reason text,
+  admin_notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  reviewed_at timestamp with time zone,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT moderation_items_pkey PRIMARY KEY (id),
+  CONSTRAINT moderation_items_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES auth.users(id),
+  CONSTRAINT moderation_items_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.monthly_challenges (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  theme text,
+  rules text,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  voting_end_date date,
+  status text NOT NULL DEFAULT 'upcoming'::text CHECK (status = ANY (ARRAY['upcoming'::text, 'active'::text, 'voting'::text, 'completed'::text])),
+  prize_description text,
+  winner_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT monthly_challenges_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  data jsonb DEFAULT '{}'::jsonb,
+  read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  related_id uuid,
+  related_type text,
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.order_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  quantity integer NOT NULL DEFAULT 1,
+  price numeric NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  license_pdf_url text,
+  kind text,
+  creator_id uuid,
+  CONSTRAINT order_items_pkey PRIMARY KEY (id),
+  CONSTRAINT order_items_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.store_products(id)
+);
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  total_amount numeric NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'cancelled'::text, 'refunded'::text])),
+  payment_id text,
+  shipping_address jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  referrer_code text,
+  invoice_pdf_url text,
+  referral_reward_status text DEFAULT 'none'::text CHECK (referral_reward_status = ANY (ARRAY['none'::text, 'pending'::text, 'granted'::text])),
+  referral_reward_credits integer DEFAULT 0,
+  CONSTRAINT orders_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.ownership_transfer_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label_id uuid NOT NULL,
+  from_user_id uuid NOT NULL,
+  to_user_id uuid,
+  to_email text,
+  token text NOT NULL UNIQUE,
+  expires_at timestamp with time zone NOT NULL,
+  accepted_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ownership_transfer_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT ownership_transfer_requests_from_user_id_fkey FOREIGN KEY (from_user_id) REFERENCES auth.users(id),
+  CONSTRAINT ownership_transfer_requests_label_id_fkey FOREIGN KEY (label_id) REFERENCES public.labels(id),
+  CONSTRAINT ownership_transfer_requests_to_user_id_fkey FOREIGN KEY (to_user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.payout_batches (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_id text NOT NULL UNIQUE,
+  total_amount numeric NOT NULL DEFAULT 0,
+  total_producers integer NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'processing'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  completed_at timestamp with time zone,
+  error_message text,
+  CONSTRAINT payout_batches_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.payout_records (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  beat_id uuid,
+  purchase_id uuid,
+  amount numeric NOT NULL,
+  payout_method text NOT NULL DEFAULT 'stripe'::text,
+  payout_status text NOT NULL DEFAULT 'pending'::text,
+  payout_reference text,
+  processed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT payout_records_pkey PRIMARY KEY (id),
+  CONSTRAINT payout_records_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT payout_records_purchase_id_fkey FOREIGN KEY (purchase_id) REFERENCES public.purchases(id)
+);
+CREATE TABLE public.playlist_collaborators (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  playlist_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'editor'::text CHECK (role = ANY (ARRAY['owner'::text, 'editor'::text, 'viewer'::text])),
+  invited_at timestamp with time zone DEFAULT now(),
+  accepted_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT playlist_collaborators_pkey PRIMARY KEY (id),
+  CONSTRAINT playlist_collaborators_playlist_id_fkey FOREIGN KEY (playlist_id) REFERENCES public.playlists(id)
+);
+CREATE TABLE public.playlist_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  playlist_id uuid NOT NULL,
+  release_id uuid,
+  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  beat_id uuid,
+  position integer DEFAULT 0,
+  CONSTRAINT playlist_items_pkey PRIMARY KEY (id),
+  CONSTRAINT playlist_items_playlist_id_fkey FOREIGN KEY (playlist_id) REFERENCES public.playlists(id),
+  CONSTRAINT playlist_items_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id)
+);
+CREATE TABLE public.playlists (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  description text,
+  is_public boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  tags ARRAY DEFAULT '{}'::text[],
+  visibility text DEFAULT 'private'::text CHECK (visibility = ANY (ARRAY['public'::text, 'unlisted'::text, 'private'::text])),
+  collaborative boolean DEFAULT false,
+  cover_art_url text,
+  CONSTRAINT playlists_pkey PRIMARY KEY (id),
+  CONSTRAINT playlists_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.plug_schedules (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  automation_type USER-DEFINED NOT NULL,
+  config_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  is_enabled boolean NOT NULL DEFAULT true,
+  next_run_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT plug_schedules_pkey PRIMARY KEY (id),
+  CONSTRAINT plug_schedules_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.post_analytics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL,
+  post_id uuid NOT NULL,
+  platform text NOT NULL,
+  impressions integer DEFAULT 0,
+  clicks integer DEFAULT 0,
+  likes integer DEFAULT 0,
+  shares integer DEFAULT 0,
+  comments integer DEFAULT 0,
+  engagement_rate numeric DEFAULT 0.00,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT post_analytics_pkey PRIMARY KEY (id),
+  CONSTRAINT post_analytics_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT post_analytics_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.social_posts(id)
+);
+CREATE TABLE public.posts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  content text NOT NULL,
+  type text NOT NULL DEFAULT 'discussion'::text,
+  tags ARRAY,
+  likes_count integer NOT NULL DEFAULT 0,
+  comments_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT posts_pkey PRIMARY KEY (id),
+  CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.producer_earnings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  producer_id uuid NOT NULL,
+  date_recorded date NOT NULL DEFAULT CURRENT_DATE,
+  total_earnings numeric NOT NULL DEFAULT 0,
+  pending_earnings numeric NOT NULL DEFAULT 0,
+  paid_earnings numeric NOT NULL DEFAULT 0,
+  beats_sold_count integer NOT NULL DEFAULT 0,
+  total_sales_volume numeric NOT NULL DEFAULT 0,
+  monthly_revenue numeric NOT NULL DEFAULT 0,
+  commission_earned numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT producer_earnings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.producer_payouts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  producer_id uuid NOT NULL,
+  beat_id uuid NOT NULL,
+  purchase_id uuid NOT NULL,
+  gross_amount numeric NOT NULL,
+  platform_fee numeric NOT NULL,
+  net_amount numeric NOT NULL,
+  stripe_transfer_id text,
+  payout_status text DEFAULT 'pending'::text,
+  processed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  adjusted_amount_cents integer,
+  admin_note text,
+  payout_type text DEFAULT 'content'::text CHECK (payout_type = ANY (ARRAY['content'::text, 'wallet_cashout'::text])),
+  from_credits boolean DEFAULT false,
+  CONSTRAINT producer_payouts_pkey PRIMARY KEY (id),
+  CONSTRAINT producer_payouts_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT producer_payouts_producer_id_fkey FOREIGN KEY (producer_id) REFERENCES auth.users(id),
+  CONSTRAINT producer_payouts_purchase_id_fkey FOREIGN KEY (purchase_id) REFERENCES public.purchases(id)
+);
+CREATE TABLE public.producer_stripe_accounts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  stripe_account_id text NOT NULL UNIQUE,
+  onboarding_complete boolean DEFAULT false,
+  account_status text DEFAULT 'pending'::text,
+  capabilities jsonb DEFAULT '{}'::jsonb,
+  requirements jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  payouts_enabled boolean DEFAULT false,
+  details_submitted boolean DEFAULT false,
+  external_account_id text,
+  country text DEFAULT 'GB'::text,
+  default_currency text DEFAULT 'gbp'::text,
+  CONSTRAINT producer_stripe_accounts_pkey PRIMARY KEY (id),
+  CONSTRAINT producer_stripe_accounts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.product_images (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  product_id uuid NOT NULL,
+  image_url text NOT NULL,
+  display_order integer DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT product_images_pkey PRIMARY KEY (id),
+  CONSTRAINT product_images_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.store_products(id)
+);
+CREATE TABLE public.product_options (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  product_id uuid NOT NULL,
+  option_type text NOT NULL,
+  option_value text NOT NULL,
+  price_modifier numeric DEFAULT 0,
+  stock_quantity integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT product_options_pkey PRIMARY KEY (id),
+  CONSTRAINT product_options_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.store_products(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  username text,
+  full_name text,
+  avatar_url text,
+  bio text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  user_type USER-DEFINED DEFAULT 'artist'::user_type,
+  is_creator boolean DEFAULT false,
+  onboarding_completed boolean DEFAULT false,
+  referral_code text DEFAULT upper(SUBSTRING(md5((random())::text) FROM 1 FOR 8)) UNIQUE,
+  presskit_url text,
+  is_verified boolean DEFAULT false,
+  verification_status text DEFAULT 'none'::text CHECK (verification_status = ANY (ARRAY['none'::text, 'pending'::text, 'approved'::text, 'rejected'::text])),
+  verification_note text,
+  mailchimp_list_id text,
+  mailchimp_status text DEFAULT 'disconnected'::text CHECK (mailchimp_status = ANY (ARRAY['disconnected'::text, 'connected'::text, 'error'::text])),
+  mailchimp_auto_sync boolean DEFAULT false,
+  discord_guild_id text,
+  discord_role_map jsonb DEFAULT '{}'::jsonb,
+  referral_rewards_earned integer DEFAULT 0,
+  referral_signups_count integer DEFAULT 0,
+  embed_settings jsonb DEFAULT '{"size": "card", "theme": "dark", "accent": "#6366f1", "autoplay": false}'::jsonb,
+  onboarding_progress jsonb DEFAULT '{"completed_at": null, "completed_tasks": [], "rewards_claimed": false}'::jsonb,
+  profile_type text DEFAULT 'creator'::text CHECK (profile_type = ANY (ARRAY['creator'::text, 'label'::text])),
+  is_label boolean DEFAULT false,
+  slug text UNIQUE,
+  logo_url text,
+  cover_image_url text,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.project_applications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL,
+  applicant_id uuid NOT NULL,
+  message text,
+  status text NOT NULL DEFAULT 'pending'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT project_applications_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_project_applications_project_id FOREIGN KEY (project_id) REFERENCES public.collaboration_projects(id)
+);
+CREATE TABLE public.purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  buyer_id uuid NOT NULL,
+  beat_id uuid NOT NULL,
+  amount numeric NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  stripe_payment_intent_id text,
+  status text DEFAULT 'pending'::text,
+  license_type text DEFAULT 'standard'::text,
+  commission_rate numeric,
+  commission_amount numeric,
+  producer_amount numeric,
+  platform_fee_amount numeric,
+  payout_status text NOT NULL DEFAULT 'pending'::text CHECK (payout_status = ANY (ARRAY['pending'::text, 'eligible'::text, 'processing'::text, 'paid'::text, 'failed'::text])),
+  license_pdf_url text,
+  CONSTRAINT purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT purchases_beat_id_fkey FOREIGN KEY (beat_id) REFERENCES public.beats(id),
+  CONSTRAINT purchases_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.quests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  xp integer NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT quests_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.quiz_results (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  lesson_id text NOT NULL,
+  score numeric NOT NULL,
+  max_score numeric NOT NULL,
+  answers jsonb NOT NULL DEFAULT '{}'::jsonb,
+  completed_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT quiz_results_pkey PRIMARY KEY (id),
+  CONSTRAINT quiz_results_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.radio_queue (
+  position integer NOT NULL,
+  track_id uuid NOT NULL,
+  CONSTRAINT radio_queue_pkey PRIMARY KEY (position),
+  CONSTRAINT radio_queue_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.radio_state (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  now_track_id uuid,
+  listeners integer NOT NULL DEFAULT 0,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT radio_state_pkey PRIMARY KEY (id),
+  CONSTRAINT radio_state_now_track_id_fkey FOREIGN KEY (now_track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.release_analytics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid,
+  user_id uuid NOT NULL,
+  date_recorded date NOT NULL DEFAULT CURRENT_DATE,
+  plays_count integer DEFAULT 0,
+  downloads_count integer DEFAULT 0,
+  revenue_amount numeric DEFAULT 0,
+  unique_listeners integer DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT release_analytics_pkey PRIMARY KEY (id),
+  CONSTRAINT release_analytics_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id)
+);
+CREATE TABLE public.release_comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid,
+  user_id uuid,
+  parent_comment_id uuid,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT release_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT release_comments_parent_comment_id_fkey FOREIGN KEY (parent_comment_id) REFERENCES public.release_comments(id),
+  CONSTRAINT release_comments_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT release_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.release_drafts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  artist text,
+  description text,
+  genre text,
+  release_type text NOT NULL DEFAULT 'Single'::text,
+  cover_art_url text,
+  preview_url text,
+  download_price numeric DEFAULT 0,
+  download_url text,
+  status text NOT NULL DEFAULT 'draft'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  moderation_notes text,
+  price numeric DEFAULT 0,
+  pay_what_you_want boolean DEFAULT false,
+  minimum_price numeric DEFAULT 0,
+  upc_code text,
+  release_date date,
+  digital_release_date timestamp with time zone,
+  distribution_settings jsonb DEFAULT '{}'::jsonb CHECK (distribution_settings IS NULL OR jsonb_typeof(distribution_settings) = 'object'::text),
+  CONSTRAINT release_drafts_pkey PRIMARY KEY (id),
+  CONSTRAINT release_drafts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.release_plays (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid,
+  track_id uuid,
+  user_id uuid,
+  played_at timestamp with time zone NOT NULL DEFAULT now(),
+  play_duration integer,
+  country_code text,
+  device_type text,
+  CONSTRAINT release_plays_pkey PRIMARY KEY (id),
+  CONSTRAINT release_plays_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT release_plays_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id),
+  CONSTRAINT release_plays_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.release_purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  release_id uuid,
+  amount_paid numeric NOT NULL,
+  stripe_payment_intent_id text,
+  purchased_at timestamp with time zone NOT NULL DEFAULT now(),
+  download_url text,
+  download_expires_at timestamp with time zone,
+  downloads_used integer DEFAULT 0,
+  last_download_at timestamp with time zone,
+  receipt_pdf_url text,
+  CONSTRAINT release_purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT release_purchases_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT release_purchases_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.releases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  artist text NOT NULL,
+  description text,
+  release_date date NOT NULL,
+  cover_art_url text,
+  spotify_url text,
+  apple_music_url text,
+  youtube_url text,
+  soundcloud_url text,
+  genre text,
+  is_featured boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  featured_artist text,
+  download_url text,
+  download_price numeric DEFAULT 0,
+  release_type text NOT NULL DEFAULT 'Single'::text,
+  preview_url text,
+  price numeric DEFAULT 0,
+  pay_what_you_want boolean DEFAULT false,
+  minimum_price numeric DEFAULT 0,
+  scheduled_publish_date timestamp with time zone,
+  approval_status text DEFAULT 'auto_approved'::text,
+  is_premium_content boolean DEFAULT false,
+  total_plays integer DEFAULT 0,
+  total_revenue numeric DEFAULT 0,
+  enable_direct_sales boolean DEFAULT true,
+  download_limit integer DEFAULT 3,
+  download_expires_days integer DEFAULT 30,
+  user_id uuid,
+  approved boolean DEFAULT true,
+  status text DEFAULT 'live'::text CHECK (status = ANY (ARRAY['draft'::text, 'submitted'::text, 'approved'::text, 'live'::text, 'rejected'::text, 'scheduled'::text])),
+  spotlight boolean DEFAULT false,
+  perk_access text DEFAULT 'public'::text CHECK (perk_access = ANY (ARRAY['public'::text, 'subscribers'::text, 'tier:pro'::text, 'tier:premium'::text])),
+  distributor_provider text DEFAULT 'manual'::text,
+  distribution_status text DEFAULT 'pending'::text,
+  dsp_links jsonb DEFAULT '{}'::jsonb,
+  smartlink_slug text UNIQUE,
+  explicit boolean DEFAULT false,
+  is_instrumental boolean DEFAULT false,
+  lyrics text,
+  credits_json jsonb DEFAULT '[]'::jsonb,
+  distribution_submission_ref text,
+  distribution_partner_response jsonb DEFAULT '{}'::jsonb,
+  presskit_url text,
+  digital_release_date timestamp with time zone,
+  upc_code text,
+  distribution_settings jsonb DEFAULT '{}'::jsonb CHECK (distribution_settings IS NULL OR jsonb_typeof(distribution_settings) = 'object'::text),
+  moderation_notes text,
+  featured_artists ARRAY,
+  owns_100_percent boolean DEFAULT false,
+  distribution_rights_confirmed boolean DEFAULT false,
+  label text,
+  producer text,
+  executive_producer text,
+  songwriter text,
+  composer text,
+  mixing_engineer text,
+  mastering_engineer text,
+  recording_engineer text,
+  additional_credits jsonb,
+  primary_genre text,
+  sub_genre text,
+  mood_tags ARRAY,
+  language text DEFAULT 'English'::text,
+  producers ARRAY,
+  songwriters ARRAY,
+  composers ARRAY,
+  isrc_code text,
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT releases_pkey PRIMARY KEY (id),
+  CONSTRAINT releases_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.sample_pack_purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  sample_pack_id uuid,
+  amount_paid numeric NOT NULL,
+  purchased_at timestamp with time zone NOT NULL DEFAULT now(),
+  download_expires_at timestamp with time zone,
+  stripe_payment_intent_id text,
+  download_url text,
+  CONSTRAINT sample_pack_purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT sample_pack_purchases_sample_pack_id_fkey FOREIGN KEY (sample_pack_id) REFERENCES public.sample_packs(id)
+);
+CREATE TABLE public.sample_packs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  cover_art_url text,
+  price numeric DEFAULT 0,
+  genre text,
+  bpm_range text,
+  sample_count integer DEFAULT 0,
+  download_url text,
+  preview_url text,
+  tags ARRAY DEFAULT '{}'::text[],
+  is_featured boolean DEFAULT false,
+  total_downloads integer DEFAULT 0,
+  total_revenue numeric DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  owner_type text DEFAULT 'user'::text CHECK (owner_type = ANY (ARRAY['user'::text, 'label'::text])),
+  owner_id uuid,
+  CONSTRAINT sample_packs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.security_audit_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  table_name text NOT NULL,
+  action text NOT NULL,
+  record_id uuid,
+  ip_address inet,
+  user_agent text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT security_audit_log_pkey PRIMARY KEY (id),
+  CONSTRAINT security_audit_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.session_feedback (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  content text,
+  timecode_seconds integer,
+  CONSTRAINT session_feedback_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.session_files (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  file_name text NOT NULL,
+  file_url text NOT NULL,
+  file_type text,
+  size integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT session_files_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.session_members (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'viewer'::text,
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT session_members_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.session_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT session_messages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.session_notes (
+  session_id uuid NOT NULL UNIQUE,
+  content text NOT NULL DEFAULT ''::text,
+  updated_by uuid NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  user_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT session_notes_pkey PRIMARY KEY (session_id),
+  CONSTRAINT session_notes_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id)
+);
+CREATE TABLE public.session_participants (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'collaborator'::text CHECK (role = ANY (ARRAY['host'::text, 'collaborator'::text, 'viewer'::text])),
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  left_at timestamp with time zone,
+  CONSTRAINT session_participants_pkey PRIMARY KEY (id),
+  CONSTRAINT session_participants_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.session_rooms(id),
+  CONSTRAINT session_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.session_rooms (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  host_id uuid NOT NULL,
+  title text NOT NULL,
+  status text NOT NULL DEFAULT 'idle'::text CHECK (status = ANY (ARRAY['idle'::text, 'live'::text, 'ended'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  ended_at timestamp with time zone,
+  description text,
+  is_public boolean DEFAULT true,
+  CONSTRAINT session_rooms_pkey PRIMARY KEY (id),
+  CONSTRAINT session_rooms_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  host_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  status text NOT NULL DEFAULT 'live'::text,
+  is_public boolean NOT NULL DEFAULT true,
+  scheduled_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT sessions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.smartlinks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  slug text NOT NULL UNIQUE,
+  title text NOT NULL,
+  release_id uuid,
+  beat_id uuid,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT smartlinks_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.social_connections (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  provider text NOT NULL CHECK (provider = ANY (ARRAY['instagram'::text, 'tiktok'::text, 'youtube'::text, 'twitter'::text, 'gmail'::text, 'mailchimp'::text, 'sendgrid'::text])),
+  display_name text,
+  account_id text,
+  scopes ARRAY,
+  access_token text,
+  refresh_token text,
+  expires_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT social_connections_pkey PRIMARY KEY (id),
+  CONSTRAINT social_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.social_posts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  body text NOT NULL,
+  media_paths ARRAY DEFAULT '{}'::text[],
+  destinations ARRAY NOT NULL,
+  scheduled_at timestamp with time zone,
+  status text NOT NULL DEFAULT 'queued'::text CHECK (status = ANY (ARRAY['queued'::text, 'posted'::text, 'failed'::text, 'cancelled'::text])),
+  provider_message_ids jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT social_posts_pkey PRIMARY KEY (id),
+  CONSTRAINT social_posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.splits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid,
+  track_id uuid,
+  collaborator_id uuid,
+  split_type text NOT NULL CHECK (split_type = ANY (ARRAY['master_recording'::text, 'publishing'::text, 'performance'::text, 'mechanical'::text])),
+  percentage numeric NOT NULL CHECK (percentage >= 0::numeric AND percentage <= 100::numeric),
+  description text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT splits_pkey PRIMARY KEY (id),
+  CONSTRAINT splits_collaborator_id_fkey FOREIGN KEY (collaborator_id) REFERENCES public.collaborators(id),
+  CONSTRAINT splits_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT splits_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.store_product_items (
+  bundle_product_id uuid NOT NULL,
+  item_type text NOT NULL CHECK (item_type = ANY (ARRAY['beat'::text, 'release'::text, 'pack'::text])),
+  item_id uuid NOT NULL,
+  qty integer DEFAULT 1,
+  CONSTRAINT store_product_items_pkey PRIMARY KEY (bundle_product_id, item_type, item_id),
+  CONSTRAINT store_product_items_bundle_product_id_fkey FOREIGN KEY (bundle_product_id) REFERENCES public.store_products(id)
+);
+CREATE TABLE public.store_products (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  price numeric NOT NULL,
+  product_type text NOT NULL CHECK (product_type = ANY (ARRAY['digital_download'::text, 'course'::text, 'merchandise'::text, 'sample_pack'::text, 'software'::text])),
+  image_url text,
+  download_url text,
+  is_active boolean DEFAULT true,
+  stock_quantity integer,
+  tags ARRAY,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  bundle boolean DEFAULT false,
+  CONSTRAINT store_products_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.track_analytics (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  artist_analytics_id uuid NOT NULL,
+  track_id text NOT NULL,
+  track_name text NOT NULL,
+  streams integer DEFAULT 0,
+  likes integer DEFAULT 0,
+  comments integer DEFAULT 0,
+  shares integer DEFAULT 0,
+  views integer DEFAULT 0,
+  date_recorded date NOT NULL DEFAULT CURRENT_DATE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT track_analytics_pkey PRIMARY KEY (id),
+  CONSTRAINT track_analytics_artist_analytics_id_fkey FOREIGN KEY (artist_analytics_id) REFERENCES public.artist_analytics(id)
+);
+CREATE TABLE public.tracks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  release_id uuid NOT NULL,
+  title text NOT NULL,
+  track_number integer NOT NULL,
+  audio_url text NOT NULL,
+  duration integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  featured_artists ARRAY,
+  owns_100_percent boolean DEFAULT false,
+  distribution_rights_confirmed boolean DEFAULT false,
+  producer text,
+  songwriter text,
+  composer text,
+  additional_credits jsonb,
+  producers ARRAY,
+  songwriters ARRAY,
+  composers ARRAY,
+  isrc_code text,
+  release_draft_id uuid,
+  CONSTRAINT tracks_pkey PRIMARY KEY (id),
+  CONSTRAINT tracks_release_draft_id_fkey FOREIGN KEY (release_draft_id) REFERENCES public.release_drafts(id),
+  CONSTRAINT tracks_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id)
+);
+CREATE TABLE public.unified_inbox (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  provider text NOT NULL,
+  thread_id text,
+  message_id text,
+  author_handle text,
+  author_name text,
+  snippet text,
+  permalink text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_read boolean NOT NULL DEFAULT false,
+  is_starred boolean NOT NULL DEFAULT false,
+  CONSTRAINT unified_inbox_pkey PRIMARY KEY (id),
+  CONSTRAINT unified_inbox_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.user_achievements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  achievement_type text NOT NULL,
+  achievement_name text NOT NULL,
+  description text,
+  points_awarded integer DEFAULT 0,
+  unlocked_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_achievements_pkey PRIMARY KEY (id),
+  CONSTRAINT user_achievements_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_course_progress (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  course_id uuid NOT NULL,
+  progress_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  completion_percentage integer DEFAULT 0,
+  last_accessed_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_course_progress_pkey PRIMARY KEY (id),
+  CONSTRAINT user_course_progress_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+);
+CREATE TABLE public.user_discounts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  creator_id uuid NOT NULL,
+  discount_type text NOT NULL,
+  discount_percent integer NOT NULL,
+  expires_at timestamp with time zone NOT NULL,
+  used_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_discounts_pkey PRIMARY KEY (id),
+  CONSTRAINT user_discounts_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id),
+  CONSTRAINT user_discounts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_file_quotas (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  total_storage_used bigint DEFAULT 0,
+  monthly_uploads_count integer DEFAULT 0,
+  monthly_uploads_size bigint DEFAULT 0,
+  last_reset_date date DEFAULT CURRENT_DATE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_file_quotas_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_follows (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  follower_id uuid NOT NULL,
+  following_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_follows_pkey PRIMARY KEY (id),
+  CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES auth.users(id),
+  CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_quest_progress (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  quest_id uuid NOT NULL,
+  completed_at timestamp with time zone,
+  CONSTRAINT user_quest_progress_pkey PRIMARY KEY (id),
+  CONSTRAINT user_quest_progress_quest_id_fkey FOREIGN KEY (quest_id) REFERENCES public.quests(id),
+  CONSTRAINT user_quest_progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  role USER-DEFINED NOT NULL DEFAULT 'user'::user_role,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_stats (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  total_points integer DEFAULT 0,
+  level integer DEFAULT 1,
+  beats_uploaded integer DEFAULT 0,
+  beats_purchased integer DEFAULT 0,
+  beats_sold integer DEFAULT 0,
+  collaborations_completed integer DEFAULT 0,
+  days_active integer DEFAULT 0,
+  current_streak integer DEFAULT 0,
+  longest_streak integer DEFAULT 0,
+  last_active_date date,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_stats_pkey PRIMARY KEY (id),
+  CONSTRAINT user_stats_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  tier USER-DEFINED NOT NULL DEFAULT 'free'::subscription_tier,
+  billing_cycle text DEFAULT 'monthly'::text,
+  stripe_subscription_id text,
+  status text DEFAULT 'active'::text,
+  current_period_start timestamp with time zone,
+  current_period_end timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  commission_rate numeric DEFAULT 15.00,
+  CONSTRAINT user_subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT user_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_usage (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  active_courses integer DEFAULT 0,
+  beats_uploaded_month integer DEFAULT 0,
+  projects_posted_month integer DEFAULT 0,
+  tool_usage_today integer DEFAULT 0,
+  feedback_submissions_month integer DEFAULT 0,
+  last_reset_date date DEFAULT CURRENT_DATE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  beats_uploaded_total integer DEFAULT 0,
+  CONSTRAINT user_usage_pkey PRIMARY KEY (id),
+  CONSTRAINT user_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.videos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  youtube_url text NOT NULL,
+  thumbnail_url text,
+  artist_id uuid,
+  is_featured boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT videos_pkey PRIMARY KEY (id),
+  CONSTRAINT videos_artist_id_fkey FOREIGN KEY (artist_id) REFERENCES public.artists(id)
+);
+CREATE TABLE public.wallet_ledger (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  kind text NOT NULL CHECK (kind = ANY (ARRAY['topup'::text, 'spend_tip'::text, 'spend_purchase'::text, 'spend_battle'::text, 'award_prize'::text, 'convert_cashout'::text, 'convert_sub_applied'::text])),
+  amount_credits bigint NOT NULL,
+  ref_type text,
+  ref_id uuid,
+  counterparty_user_id uuid,
+  meta jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT wallet_ledger_pkey PRIMARY KEY (id),
+  CONSTRAINT wallet_ledger_counterparty_user_id_fkey FOREIGN KEY (counterparty_user_id) REFERENCES auth.users(id),
+  CONSTRAINT wallet_ledger_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.web_push_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  endpoint text NOT NULL,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT web_push_subscriptions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.webhook_deliveries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  endpoint_id uuid NOT NULL,
+  event_type text NOT NULL,
+  payload_json jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  attempt_count integer NOT NULL DEFAULT 0,
+  last_error text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  delivered_at timestamp with time zone,
+  CONSTRAINT webhook_deliveries_pkey PRIMARY KEY (id),
+  CONSTRAINT webhook_deliveries_endpoint_id_fkey FOREIGN KEY (endpoint_id) REFERENCES public.webhook_endpoints(id)
+);
+CREATE TABLE public.webhook_endpoints (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  url text NOT NULL,
+  secret text NOT NULL,
+  events ARRAY NOT NULL DEFAULT '{}'::text[],
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT webhook_endpoints_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wishlists (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  product_title text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT wishlists_pkey PRIMARY KEY (id)
+);
