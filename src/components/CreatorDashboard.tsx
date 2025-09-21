@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingStatus } from './OnboardingStatus';
 import { OnboardingChecklist } from './OnboardingChecklist';
+import { LabelUpgradeCTA } from './LabelUpgradeCTA';
 
 interface CreatorPack {
   id: string;
@@ -193,6 +194,9 @@ export const CreatorDashboard = () => {
 
       {/* Onboarding Checklist - always show for task completion */}
       <OnboardingChecklist />
+
+      {/* Label Upgrade CTA */}
+      <LabelUpgradeCTA className="my-6" />
 
       {/* Quick Actions Panel */}
       <Card>

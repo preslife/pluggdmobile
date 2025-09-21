@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CalendarIcon, Upload, Check, X, Music, Image, FileAudio, Users, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { GenreSelector } from './GenreSelector';
+import { PublishAsSelector, usePublishAs } from './PublishAsSelector';
 
 interface ReleaseTrack {
   id: string;
@@ -49,6 +50,7 @@ interface Split {
 export const EnhancedReleaseBuilder = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { publishAs, setPublishAs, getOwnerData } = usePublishAs();
   
   // Basic release info
   const [title, setTitle] = useState('');
@@ -557,6 +559,7 @@ export const EnhancedReleaseBuilder = () => {
       
       if (releaseId) {
         // Update existing draft in unified releases table
+        const ownerData = getOwnerData();
         const { error } = await supabase
           .from('releases')
           .update({
@@ -579,6 +582,9 @@ export const EnhancedReleaseBuilder = () => {
               apple_music: distributeToApple,
               youtube_music: distributeToYoutube
             },
+            // Ownership data
+            owner_type: ownerData.owner_type,
+            owner_id: ownerData.owner_id,
             // Credits - with fallback for missing columns
             label: label.trim() || null,
             ...(producers.filter(p => p.trim()).length > 0 && { producers: producers.filter(p => p.trim()) }),
@@ -608,6 +614,7 @@ export const EnhancedReleaseBuilder = () => {
         } catch {}
       } else {
         // Create new draft in unified releases table
+        const ownerData = getOwnerData();
         const { data: release, error } = await supabase
           .from('releases')
           .insert({
@@ -630,6 +637,9 @@ export const EnhancedReleaseBuilder = () => {
               apple_music: distributeToApple,
               youtube_music: distributeToYoutube
             },
+            // Ownership data
+            owner_type: ownerData.owner_type,
+            owner_id: ownerData.owner_id,
             // Credits - with fallback for missing columns
             label: label.trim() || null,
             ...(producers.filter(p => p.trim()).length > 0 && { producers: producers.filter(p => p.trim()) }),
@@ -1052,6 +1062,12 @@ export const EnhancedReleaseBuilder = () => {
   // Stage content renderer
   const renderBasicInformationStage = () => (
     <div className="space-y-4">
+      <PublishAsSelector
+        value={publishAs}
+        onChange={setPublishAs}
+        className="pb-4 border-b"
+      />
+
       <div>
         <Label htmlFor="title">Title</Label>
         <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Release title" />

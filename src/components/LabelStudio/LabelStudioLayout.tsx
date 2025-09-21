@@ -1,31 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
+import { useLabelMemberships } from "@/hooks/useLabelMemberships";
 
 const navLinkBase =
   "px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground";
 
 export default function LabelStudioLayout() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const { memberships, loading, refresh } = useLabelMemberships();
+  const authorized = memberships.length > 0;
 
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!user) { setAuthorized(false); return; }
-      // Allow if profile is a label OR user is a member of any label
-      const [{ data: myProfile }, { data: membership }] = await Promise.all([
-        supabase.from("profiles").select("is_label").eq("user_id", user.id).single(),
-        supabase.from("label_members").select("label_id").eq("user_id", user.id).limit(1),
-      ]);
-      setAuthorized(!!myProfile?.is_label || (membership && membership.length > 0));
-    };
-    checkAccess();
-  }, [user]);
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-24 px-4">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
+          <p className="text-muted-foreground">Checking your label access…</p>
+        </div>
+      </div>
+    );
+  }
 
-  // If not authorized or still loading, show upgrade CTA + form
   if (!authorized) {
     return (
       <div className="min-h-screen pt-24 px-4">
@@ -34,7 +30,12 @@ export default function LabelStudioLayout() {
             <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
             <p className="text-muted-foreground">Create or upgrade to a label to get started.</p>
           </div>
-          <CreateLabelForm onCreated={() => navigate("/studio/label/roster")} />
+          <CreateLabelForm
+            onCreated={async () => {
+              await refresh();
+              navigate("/studio/label/roster");
+            }}
+          />
         </div>
       </div>
     );
@@ -102,5 +103,4 @@ export default function LabelStudioLayout() {
     </div>
   );
 }
-
 

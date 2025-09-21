@@ -40,19 +40,23 @@ export default function CreateLabelForm({ onCreated }: CreateLabelFormProps) {
 
   const canSubmit = useMemo(() => !!labelName && !!slug, [labelName, slug]);
 
-  const uploadIfNeeded = async (file: File | null, kind: "logo" | "cover") => {
+  const uploadIfNeeded = async (file: File | null, kind: "logo" | "cover", folder: string) => {
     if (!file || !user) return null;
     const ext = file.name.split(".").pop() || "png";
-    const path = `labels/${user.id}/${kind}-${Date.now()}.${ext}`;
+    // Path must start with user.id to satisfy RLS
+    const path = `${folder}/${kind}-${Date.now()}.${ext}`;
+  
     const { error: upErr } = await supabase.storage.from("artist-images").upload(path, file, {
       cacheControl: "3600",
       upsert: true,
       contentType: file.type,
     });
     if (upErr) throw upErr;
+  
     const { data } = supabase.storage.from("artist-images").getPublicUrl(path);
     return data.publicUrl || null;
   };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,11 +81,18 @@ export default function CreateLabelForm({ onCreated }: CreateLabelFormProps) {
         return;
       }
 
-      // Upload files if provided
-      let finalLogoUrl = logoUrl;
-      let finalCoverUrl = coverUrl;
-      if (logoFile) finalLogoUrl = (await uploadIfNeeded(logoFile, "logo")) || finalLogoUrl;
-      if (coverFile) finalCoverUrl = (await uploadIfNeeded(coverFile, "cover")) || finalCoverUrl;
+// Upload files if provided (folder MUST start with user.id for RLS)
+let finalLogoUrl = logoUrl;
+let finalCoverUrl = coverUrl;
+const folder = `${user.id}/labels/${slug}`;
+
+if (logoFile) {
+  finalLogoUrl = (await uploadIfNeeded(logoFile, "logo", folder)) || finalLogoUrl;
+}
+if (coverFile) {
+  finalCoverUrl = (await uploadIfNeeded(coverFile, "cover", folder)) || finalCoverUrl;
+}
+
 
       // Create label via RPC (adds owner membership)
       const { data: created, error: createErr } = await supabase.rpc("create_label_for_current_user", {

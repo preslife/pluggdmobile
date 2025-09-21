@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOptionalStudioContext } from "@/contexts/StudioContext";
 
 export type ActiveLabel = {
   id: string;
@@ -12,6 +13,17 @@ export type ActiveLabel = {
 };
 
 export function useActiveLabel() {
+  const studioContext = useOptionalStudioContext();
+
+  if (studioContext) {
+    const { mode, activeLabel, labelsLoading } = studioContext;
+    return {
+      label: mode === "label" ? activeLabel : null,
+      loading: labelsLoading,
+      error: null as string | null,
+    };
+  }
+
   const { user } = useAuth();
   const [label, setLabel] = useState<ActiveLabel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,5 +85,4 @@ export function useActiveLabel() {
 
   return { label, loading, error };
 }
-
 

@@ -98,6 +98,7 @@ import CreatorEarningsPage from "./pages/CreatorEarnings";
 import CreatorAnalyticsPage from "./pages/CreatorAnalytics";
 import CreatorGrowthPage from "./pages/CreatorGrowth";
 import SettingsConnectionsPage from "./pages/SettingsConnections";
+import LabelInvite from "./pages/LabelInvite";
 import SettingsFavNicknamesPage from "./pages/SettingsFavNicknames";
 import SearchPage from "./pages/SearchPage";
 import SmartLinkPage from "./pages/SmartLinkPage";
@@ -218,6 +219,7 @@ const AppContent = () => {
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/label" element={<Label />} />
         <Route path="/label/:slug" element={<Label />} />
+        <Route path="/labels/invite/:token" element={<LabelInvite />} />
         <Route path="/artist/:id" element={<Artist />} />
         
         {/* Fan and Embed Routes */}
