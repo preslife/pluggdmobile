@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EnhancedCourseCard } from "@/components/EnhancedCourseCard";
 import { EnhancedCourseViewer } from "@/components/EnhancedCourseViewer";
-import { AdminCourseManager } from "@/components/AdminCourseManager";
+import { EnhancedAdminCourseManager } from "@/components/EnhancedAdminCourseManager";
 import { CourseUpgradeModal } from "@/components/CourseUpgradeModal";
 
 import { 
@@ -292,7 +292,7 @@ export default function Education() {
     return (
       <div className="min-h-screen bg-background">
         <div className="pt-16">
-          <AdminCourseManager />
+          <EnhancedAdminCourseManager />
         </div>
       </div>
     );

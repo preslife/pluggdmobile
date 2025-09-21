@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
 import { Link, useNavigate } from "react-router-dom";
 import { DistributionExporter } from "@/components/DistributionExporter";
-import { DistributionPanel } from "@/components/DistributionPanel";
+import { EnhancedDistributionPanel } from "@/components/EnhancedDistributionPanel";
 
 interface Draft {
   id: string;
@@ -188,7 +188,7 @@ const MyReleases = () => {
 
         {/* Distribution Panel Modal */}
         {selectedDistributionRelease && (
-          <DistributionPanel
+          <EnhancedDistributionPanel
             release={selectedDistributionRelease}
             onClose={() => setSelectedDistributionRelease(null)}
             onUpdate={() => {

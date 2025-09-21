@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Edit, Trash2, Users, Package, Music, ShoppingCart, FileText, Eye, BookOpen, AudioWaveform, Upload, Plug, Mail, Download, Globe, ExternalLink, AlertCircle, Shield, DollarSign, ShoppingBag, UserCheck, HelpCircle, Video, Package2, Music2, Trophy, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { AdminCourseManager } from "@/components/AdminCourseManager";
+import { EnhancedAdminCourseManager } from "@/components/EnhancedAdminCourseManager";
 import { DirectorySubmissions } from "@/components/DirectorySubmissions";
 import { AdminProductManager } from "@/components/AdminProductManager";
 import { AdminArtistManager } from "@/components/AdminArtistManager";
@@ -1686,7 +1686,7 @@ const Admin = () => {
 
           {/* Courses Tab */}
           <TabsContent value="courses" className="space-y-6">
-            <AdminCourseManager />
+            <EnhancedAdminCourseManager />
           </TabsContent>
 
 
