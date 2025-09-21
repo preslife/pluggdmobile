@@ -1,58 +1,95 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
 
+type MinimalLabel = {
+  id: string;
+  slug: string;
+  name: string | null;
+  role: string | null;
+};
+
 export default function LabelStudioRedirect() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [hasMembership, setHasMembership] = useState(false);
+  const [labels, setLabels] = useState<MinimalLabel[]>([]);
+  const [errorText, setErrorText] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const checkMembership = async () => {
-      if (!user) {
+    const load = async () => {
+      setLoading(true);
+      setErrorText(null);
+
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        if (!isMounted) return;
+        setLabels([]);
         setLoading(false);
         return;
       }
 
-      const { count, error } = await supabase
-        .from("label_members")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
+      const { data, error } = await supabase.rpc("get_current_user_labels");
       if (!isMounted) return;
+
       if (error) {
-        console.error("Label membership check failed", error);
-        setHasMembership(false);
+        setLabels([]);
+        setErrorText(error.message);
       } else {
-        setHasMembership((count || 0) > 0);
+        const parsed = Array.isArray(data) ? data : [];
+        setLabels(
+          parsed.map((item: any) => ({
+            id: item.id,
+            slug: item.slug,
+            name: item.name ?? null,
+            role: item.role ?? item.your_role ?? null,
+          }))
+        );
       }
+
       setLoading(false);
     };
 
-    checkMembership();
+    load();
+
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, []);
 
-  if (loading) return null;
-
-  if (hasMembership) {
-    return <Navigate to="/studio/label/roster" replace />;
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-24 px-4">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
+          <p className="text-muted-foreground">Checking your label access…</p>
+        </div>
+      </div>
+    );
   }
 
-  // No membership yet → show the create form.
+  if (labels.length > 0) {
+    const firstSlug = labels[0]?.slug;
+    if (firstSlug) {
+      return <Navigate to={`/studio/label/${firstSlug}/roster`} replace />;
+    }
+  }
+
   return (
-    <CreateLabelForm
-      onCreated={() => {
-        // after successful creation jump straight into the studio
-        navigate("/studio/label/roster", { replace: true });
-      }}
-    />
+    <div className="min-h-screen pt-24 px-4">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
+          <p className="text-muted-foreground">Create or upgrade to a label to get started.</p>
+          {errorText ? <p className="text-sm text-red-500 mt-2">Error: {errorText}</p> : null}
+        </div>
+        <CreateLabelForm
+          onCreated={() => {
+            window.location.replace("/studio/label");
+          }}
+        />
+      </div>
+    </div>
   );
 }

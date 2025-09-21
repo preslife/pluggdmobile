@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptionalStudioContext } from "@/contexts/StudioContext";
@@ -14,6 +15,7 @@ export type ActiveLabel = {
 
 export function useActiveLabel() {
   const studioContext = useOptionalStudioContext();
+  const { slug: routeSlug } = useParams<{ slug?: string }>();
 
   if (studioContext) {
     const { mode, activeLabel, labelsLoading } = studioContext;
@@ -35,6 +37,53 @@ export function useActiveLabel() {
       setLoading(true);
       setError(null);
       try {
+        if (routeSlug) {
+          const { data: labelAccess, error: accessErr } = await supabase.rpc(
+            "label_basic_by_slug",
+            { p_slug: routeSlug }
+          );
+          if (accessErr) throw accessErr;
+
+          const accessRow = Array.isArray(labelAccess)
+            ? labelAccess[0]
+            : labelAccess;
+
+          if (!accessRow) {
+            setLabel(null);
+            setLoading(false);
+            return;
+          }
+
+          const { data: labelRow, error: labelErr } = await supabase
+            .from("labels")
+            .select("id, name, slug, logo_url, cover_image_url")
+            .eq("slug", routeSlug)
+            .maybeSingle();
+
+          if (labelErr) throw labelErr;
+
+          if (!labelRow) {
+            setLabel(null);
+            setLoading(false);
+            return;
+          }
+
+          setLabel({
+            id: labelRow.id,
+            name: labelRow.name,
+            slug: labelRow.slug,
+            logo_url: labelRow.logo_url,
+            cover_image_url: labelRow.cover_image_url,
+            role:
+              accessRow.role ??
+              accessRow.your_role ??
+              accessRow.current_role ??
+              null,
+          });
+          setLoading(false);
+          return;
+        }
+
         // Prefer an owned label, else first membership
         const { data: owned, error: ownedErr } = await supabase
           .from("label_members")
@@ -81,8 +130,7 @@ export function useActiveLabel() {
       }
     };
     run();
-  }, [user?.id]);
+  }, [routeSlug, user?.id]);
 
   return { label, loading, error };
 }
-

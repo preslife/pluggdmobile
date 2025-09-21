@@ -154,6 +154,8 @@ const Release = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const previewSourceUrl = release?.preview_url || tracks[0]?.audio_url || null;
+
   // Check if this release is also available as a store product
   const [isStoreProduct, setIsStoreProduct] = useState(false);
   const [storeProduct, setStoreProduct] = useState<any>(null);
@@ -361,14 +363,14 @@ const Release = () => {
                 <StreamingLinks release={release} />
                 
                 {/* Preview Player */}
-                {release.preview_url && (
+                {previewSourceUrl && (
                   <div className="mt-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Play className="w-4 h-4" />
                       <span className="text-sm font-medium">Preview</span>
                     </div>
                     <ReleasePreviewPlayer
-                      previewUrl={release.preview_url}
+                      previewUrl={previewSourceUrl}
                       title={release.title}
                       artist={release.artist}
                       isPlaying={previewPlayingId === release.id}

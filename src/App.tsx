@@ -119,6 +119,7 @@ import CreatorDashboardPage from "./pages/CreatorDashboard";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import CreatorStudioPage from "./pages/CreatorStudio";
 import LabelStudioLayout from "./components/LabelStudio/LabelStudioLayout";
+import LabelStudioRedirect from "./components/LabelStudio/LabelStudioRedirect";
 import LabelRosterModule from "./components/LabelStudio/LabelRosterModule";
 import LabelCatalogModule from "./components/LabelStudio/LabelCatalogModule";
 import LabelStorefrontModule from "./components/LabelStudio/LabelStorefrontModule";
@@ -275,17 +276,22 @@ const AppContent = () => {
         <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
         <Route path="/studio/*" element={<ProtectedRoute><CreatorStudioPage /></ProtectedRoute>} />
         <Route
-          path="/studio/label/*"
+          path="/studio/label"
+          element={
+            <ProtectedRoute>
+              <LabelStudioRedirect />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/studio/label/:slug/*"
           element={
             <ProtectedRoute>
               <LabelStudioLayout />
             </ProtectedRoute>
           }
         >
-          {/* 👇 This is the missing piece */}
-          <Route index element={<Navigate to="/studio/label/roster" replace />} />
-
-          {/* keep your existing subpages */}
+          <Route index element={<Navigate to="roster" replace />} />
           <Route path="roster" element={<ProtectedRoute><LabelRosterModule /></ProtectedRoute>} />
           <Route path="catalog" element={<ProtectedRoute><LabelCatalogModule /></ProtectedRoute>} />
           <Route path="storefront" element={<ProtectedRoute><LabelStorefrontModule /></ProtectedRoute>} />

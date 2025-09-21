@@ -83,6 +83,7 @@ This plan aligns to the 8 flows you specified and assumes a dedicated `labels` e
 - Feature flag: LABELS_ENABLED per environment
 - Progressive enable: start with admin create + claim; then upgrade; then signup toggle
 - Backups and journals before each phase; small, reversible edits
+- Admin-only cleanup: prefer the `public.admin_delete_label(p_label_id uuid)` helper (see supabase/migrations/20250918094500_add_admin_delete_label_function.sql:1) instead of manual cascades when removing test labels.
 
 # DETAILED IMPLEMENTATION PLAN
 **Date**: January 13, 2025

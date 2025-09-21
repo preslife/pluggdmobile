@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -8,11 +8,13 @@ const navLinkBase =
 
 export default function LabelStudioLayout() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { slug: routeSlug } = useParams<{ slug?: string }>();
 
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [currentSlug, setCurrentSlug] = useState<string | null>(null);
+  const [labels, setLabels] = useState<
+    { id: string; slug: string; name: string | null; role: string | null }[]
+  >([]);
   const [errText, setErrText] = useState<string | null>(null);
 
   // Use RPCs so RLS never blocks us
@@ -28,43 +30,32 @@ export default function LabelStudioLayout() {
       if (authErr || !authData?.user) {
         if (!mounted) return;
         setAuthorized(false);
-        setCurrentSlug(null);
+        setLabels([]);
         setLoading(false);
         return;
       }
 
-      // 1) do I have any memberships?
-      const { data: hasMem, error: memErr } = await supabase.rpc("has_label_membership");
+      const { data, error } = await supabase.rpc("get_current_user_labels");
       if (!mounted) return;
 
-      if (memErr) {
-        setErrText(memErr.message);
+      if (error) {
+        setErrText(error.message);
         setAuthorized(false);
-        setCurrentSlug(null);
+        setLabels([]);
         setLoading(false);
         return;
       }
 
-      const isMember = Boolean(hasMem);
-      setAuthorized(isMember);
-
-      // 2) if yes, get the first slug
-      if (isMember) {
-        const { data: slugRow, error: slugErr } = await supabase.rpc(
-          "first_label_slug_for_current_user"
-        );
-        if (!mounted) return;
-
-        if (slugErr) {
-          setErrText(slugErr.message);
-          setCurrentSlug(null);
-        } else {
-          setCurrentSlug(slugRow ?? null);
-        }
-      } else {
-        setCurrentSlug(null);
-      }
-
+      const parsed = Array.isArray(data) ? data : [];
+      setLabels(
+        parsed.map((item: any) => ({
+          id: item.id,
+          slug: item.slug,
+          name: item.name ?? null,
+          role: item.role ?? item.your_role ?? null,
+        }))
+      );
+      setAuthorized(parsed.length > 0);
       setLoading(false);
     })();
 
@@ -73,28 +64,17 @@ export default function LabelStudioLayout() {
     };
   }, []);
 
-  // Redirect base paths to slugged route
+  // Ensure we always have a valid slug in the URL once memberships are known
   useEffect(() => {
-    if (!authorized || !currentSlug) return;
+    if (!authorized || loading) return;
 
-    const basePaths = [
-      "/studio/label",
-      "/studio/label/",
-      "/studio/label/roster",
-      "/studio/label/catalog",
-      "/studio/label/storefront",
-      "/studio/label/analytics",
-      "/studio/label/financials",
-      "/studio/label/settings",
-    ];
+    const firstSlug = labels[0]?.slug;
+    if (!firstSlug) return;
 
-    const isBase = basePaths.includes(location.pathname);
-    const alreadySlugged = location.pathname.startsWith(`/studio/label/${currentSlug}`);
-
-    if (isBase && !alreadySlugged) {
-      navigate(`/studio/label/${currentSlug}/roster`, { replace: true });
+    if (!routeSlug || !labels.some((label) => label.slug === routeSlug)) {
+      navigate(`/studio/label/${firstSlug}/roster`, { replace: true });
     }
-  }, [authorized, currentSlug, location.pathname, navigate]);
+  }, [authorized, labels, loading, navigate, routeSlug]);
 
   if (loading) {
     return (
@@ -127,7 +107,12 @@ export default function LabelStudioLayout() {
     );
   }
 
-  const slug = currentSlug ?? "";
+  const activeLabel = useMemo(() => {
+    if (!routeSlug) return labels[0] ?? null;
+    return labels.find((label) => label.slug === routeSlug) ?? labels[0] ?? null;
+  }, [labels, routeSlug]);
+
+  const slug = activeLabel?.slug ?? "";
 
   return (
     <div className="min-h-screen pt-24 px-4">
@@ -186,7 +171,7 @@ export default function LabelStudioLayout() {
             Settings
           </NavLink>
         </div>
-        <Outlet />
+        <Outlet context={{ label: activeLabel, labels }} />
       </div>
     </div>
   );
