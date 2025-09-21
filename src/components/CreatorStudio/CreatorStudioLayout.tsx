@@ -454,7 +454,7 @@ const navigationItems = [
   },
   {
     title: "Label Studio",
-    url: "/studio/label",
+    url: "/studio/label/roster",
     icon: Building,
   },
 ];
@@ -601,7 +601,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate("/studio/label")}>
+        <DropdownMenuItem onSelect={() => navigate("/studio/label/roster")}>
           <Building className="h-4 w-4 mr-2" />
           Open Label Studio
         </DropdownMenuItem>

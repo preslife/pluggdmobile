@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Wallet from "./pages/Wallet";
 import { useReferralTracking } from "@/hooks/useReferralTracking";
 import { ComingSoon } from "@/components/ComingSoon";
@@ -274,13 +274,25 @@ const AppContent = () => {
         <Route path="/producer" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
         <Route path="/studio/*" element={<ProtectedRoute><CreatorStudioPage /></ProtectedRoute>} />
-        <Route path="/studio/label/*" element={<ProtectedRoute><LabelStudioLayout /></ProtectedRoute>} />
-        <Route path="/studio/label/roster" element={<ProtectedRoute><LabelRosterModule /></ProtectedRoute>} />
-        <Route path="/studio/label/catalog" element={<ProtectedRoute><LabelCatalogModule /></ProtectedRoute>} />
-        <Route path="/studio/label/storefront" element={<ProtectedRoute><LabelStorefrontModule /></ProtectedRoute>} />
-        <Route path="/studio/label/analytics" element={<ProtectedRoute><LabelAnalyticsModule /></ProtectedRoute>} />
-        <Route path="/studio/label/financials" element={<ProtectedRoute><LabelFinancialsModule /></ProtectedRoute>} />
-        <Route path="/studio/label/settings" element={<ProtectedRoute><LabelSettingsModule /></ProtectedRoute>} />
+        <Route
+          path="/studio/label/*"
+          element={
+            <ProtectedRoute>
+              <LabelStudioLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* 👇 This is the missing piece */}
+          <Route index element={<Navigate to="/studio/label/roster" replace />} />
+
+          {/* keep your existing subpages */}
+          <Route path="roster" element={<ProtectedRoute><LabelRosterModule /></ProtectedRoute>} />
+          <Route path="catalog" element={<ProtectedRoute><LabelCatalogModule /></ProtectedRoute>} />
+          <Route path="storefront" element={<ProtectedRoute><LabelStorefrontModule /></ProtectedRoute>} />
+          <Route path="analytics" element={<ProtectedRoute><LabelAnalyticsModule /></ProtectedRoute>} />
+          <Route path="financials" element={<ProtectedRoute><LabelFinancialsModule /></ProtectedRoute>} />
+          <Route path="settings" element={<ProtectedRoute><LabelSettingsModule /></ProtectedRoute>} />
+        </Route>
         <Route path="/dashboard/creator/splits" element={<ProtectedRoute><CreatorSplitsPage /></ProtectedRoute>} />
         <Route path="/dashboard/creator/earnings" element={<ProtectedRoute><CreatorEarningsPage /></ProtectedRoute>} />
         <Route path="/dashboard/creator/analytics" element={<ProtectedRoute><CreatorAnalyticsPage /></ProtectedRoute>} />

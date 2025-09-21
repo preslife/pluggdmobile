@@ -1,15 +1,79 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
-import { useLabelMemberships } from "@/hooks/useLabelMemberships";
+import { supabase } from "@/integrations/supabase/client";
 
 const navLinkBase =
   "px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground";
 
+type MembershipRow = {
+  role: "owner" | "admin" | "editor" | "viewer";
+  created_at: string;
+  labels: {
+    id: string;
+    slug: string;
+    name: string;
+    logo_url: string | null;
+  } | null;
+};
+
 export default function LabelStudioLayout() {
   const navigate = useNavigate();
-  const { memberships, loading, refresh } = useLabelMemberships();
-  const authorized = memberships.length > 0;
+
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const [errText, setErrText] = useState<string | null>(null);
+
+  // ✅ Minimal, reliable membership detection (no custom hooks)
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      setLoading(true);
+      setErrText(null);
+
+      // get current auth user
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        if (!mounted) return;
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      const userId = authData.user.id;
+
+      // query memberships by user_id and join labels
+      const { data, error } = await supabase
+        .from("label_members")
+        .select(
+          `
+          role,
+          created_at,
+          labels:label_id (
+            id, slug, name, logo_url
+          )
+        `
+        )
+        .eq("user_id", userId);
+
+      if (!mounted) return;
+
+      if (error) {
+        setErrText(error.message);
+        setAuthorized(false);
+      } else {
+        const rows = (data as MembershipRow[] | null) ?? [];
+        const has = rows.some((r) => r.labels); // at least one joined label row present
+        setAuthorized(has);
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -28,12 +92,17 @@ export default function LabelStudioLayout() {
         <div className="max-w-3xl mx-auto space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
-            <p className="text-muted-foreground">Create or upgrade to a label to get started.</p>
+            <p className="text-muted-foreground">
+              Create or upgrade to a label to get started.
+            </p>
+            {errText ? (
+              <p className="text-sm text-red-500 mt-2">Error: {errText}</p>
+            ) : null}
           </div>
           <CreateLabelForm
-            onCreated={async () => {
-              await refresh();
-              navigate("/studio/label/roster");
+            onCreated={() => {
+              // hard redirect to avoid stale state keeping you on the form
+              window.location.replace("/studio/label/roster");
             }}
           />
         </div>
@@ -46,13 +115,17 @@ export default function LabelStudioLayout() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Label Studio</h1>
-          <p className="text-muted-foreground">Manage roster, catalog, storefront, and finances</p>
+          <p className="text-muted-foreground">
+            Manage roster, catalog, storefront, and finances
+          </p>
         </div>
         <div className="flex flex-wrap gap-2 mb-8">
           <NavLink
             to="/studio/label/roster"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Roster
@@ -60,7 +133,9 @@ export default function LabelStudioLayout() {
           <NavLink
             to="/studio/label/catalog"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Catalog
@@ -68,7 +143,9 @@ export default function LabelStudioLayout() {
           <NavLink
             to="/studio/label/storefront"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Storefront
@@ -76,7 +153,9 @@ export default function LabelStudioLayout() {
           <NavLink
             to="/studio/label/analytics"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Analytics
@@ -84,7 +163,9 @@ export default function LabelStudioLayout() {
           <NavLink
             to="/studio/label/financials"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Financials
@@ -92,7 +173,9 @@ export default function LabelStudioLayout() {
           <NavLink
             to="/studio/label/settings"
             className={({ isActive }) =>
-              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
+              `${navLinkBase} ${
+                isActive ? "bg-primary text-primary-foreground" : ""
+              }`
             }
           >
             Settings
@@ -103,4 +186,3 @@ export default function LabelStudioLayout() {
     </div>
   );
 }
-

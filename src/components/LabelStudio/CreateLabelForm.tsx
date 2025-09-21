@@ -106,8 +106,15 @@ if (coverFile) {
       });
       if (createErr) throw createErr;
 
-      toast({ title: "Label created", description: "Your account is now a label." });
-      onCreated?.();
+      toast({ title: "Label created", description: "Opening your label studio…" });
+
+      // hard-redirect so the SPA can't keep you on the form
+      window.location.replace(`/studio/label/${slug}`);
+      // if your app uses /studio/label (no slug), use this instead:
+      // window.location.replace(`/studio/label`);
+      
+      return; // stop running anything else after redirect
+      
     } catch (err: any) {
       console.error("Create label failed", err);
       toast({ title: "Could not create label", description: err.message || String(err), variant: "destructive" });
