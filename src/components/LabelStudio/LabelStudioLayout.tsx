@@ -1,30 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
 import { supabase } from "@/integrations/supabase/client";
 
 const navLinkBase =
   "px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground";
 
-type MembershipRow = {
-  role: "owner" | "admin" | "editor" | "viewer";
-  created_at: string;
-  labels: {
-    id: string;
-    slug: string;
-    name: string;
-    logo_url: string | null;
-  } | null;
-};
-
 export default function LabelStudioLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [currentSlug, setCurrentSlug] = useState<string | null>(null);
   const [errText, setErrText] = useState<string | null>(null);
 
-  // ✅ Minimal, reliable membership detection (no custom hooks)
+  // Use RPCs so RLS never blocks us
   useEffect(() => {
     let mounted = true;
 
@@ -32,41 +23,48 @@ export default function LabelStudioLayout() {
       setLoading(true);
       setErrText(null);
 
-      // get current auth user
+      // must be signed in
       const { data: authData, error: authErr } = await supabase.auth.getUser();
       if (authErr || !authData?.user) {
         if (!mounted) return;
         setAuthorized(false);
+        setCurrentSlug(null);
         setLoading(false);
         return;
       }
 
-      const userId = authData.user.id;
-
-      // query memberships by user_id and join labels
-      const { data, error } = await supabase
-        .from("label_members")
-        .select(
-          `
-          role,
-          created_at,
-          labels:label_id (
-            id, slug, name, logo_url
-          )
-        `
-        )
-        .eq("user_id", userId);
-
+      // 1) do I have any memberships?
+      const { data: hasMem, error: memErr } = await supabase.rpc("has_label_membership");
       if (!mounted) return;
 
-      if (error) {
-        setErrText(error.message);
+      if (memErr) {
+        setErrText(memErr.message);
         setAuthorized(false);
-      } else {
-        const rows = (data as MembershipRow[] | null) ?? [];
-        const has = rows.some((r) => r.labels); // at least one joined label row present
-        setAuthorized(has);
+        setCurrentSlug(null);
+        setLoading(false);
+        return;
       }
+
+      const isMember = Boolean(hasMem);
+      setAuthorized(isMember);
+
+      // 2) if yes, get the first slug
+      if (isMember) {
+        const { data: slugRow, error: slugErr } = await supabase.rpc(
+          "first_label_slug_for_current_user"
+        );
+        if (!mounted) return;
+
+        if (slugErr) {
+          setErrText(slugErr.message);
+          setCurrentSlug(null);
+        } else {
+          setCurrentSlug(slugRow ?? null);
+        }
+      } else {
+        setCurrentSlug(null);
+      }
+
       setLoading(false);
     })();
 
@@ -74,6 +72,29 @@ export default function LabelStudioLayout() {
       mounted = false;
     };
   }, []);
+
+  // Redirect base paths to slugged route
+  useEffect(() => {
+    if (!authorized || !currentSlug) return;
+
+    const basePaths = [
+      "/studio/label",
+      "/studio/label/",
+      "/studio/label/roster",
+      "/studio/label/catalog",
+      "/studio/label/storefront",
+      "/studio/label/analytics",
+      "/studio/label/financials",
+      "/studio/label/settings",
+    ];
+
+    const isBase = basePaths.includes(location.pathname);
+    const alreadySlugged = location.pathname.startsWith(`/studio/label/${currentSlug}`);
+
+    if (isBase && !alreadySlugged) {
+      navigate(`/studio/label/${currentSlug}/roster`, { replace: true });
+    }
+  }, [authorized, currentSlug, location.pathname, navigate]);
 
   if (loading) {
     return (
@@ -92,17 +113,13 @@ export default function LabelStudioLayout() {
         <div className="max-w-3xl mx-auto space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
-            <p className="text-muted-foreground">
-              Create or upgrade to a label to get started.
-            </p>
-            {errText ? (
-              <p className="text-sm text-red-500 mt-2">Error: {errText}</p>
-            ) : null}
+            <p className="text-muted-foreground">Create or upgrade to a label to get started.</p>
+            {errText ? <p className="text-sm text-red-500 mt-2">Error: {errText}</p> : null}
           </div>
           <CreateLabelForm
             onCreated={() => {
-              // hard redirect to avoid stale state keeping you on the form
-              window.location.replace("/studio/label/roster");
+              // reload to re-run the RPC checks
+              window.location.replace("/studio/label");
             }}
           />
         </div>
@@ -110,72 +127,60 @@ export default function LabelStudioLayout() {
     );
   }
 
+  const slug = currentSlug ?? "";
+
   return (
     <div className="min-h-screen pt-24 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Label Studio</h1>
-          <p className="text-muted-foreground">
-            Manage roster, catalog, storefront, and finances
-          </p>
+          <p className="text-muted-foreground">Manage roster, catalog, storefront, and finances</p>
         </div>
         <div className="flex flex-wrap gap-2 mb-8">
           <NavLink
-            to="/studio/label/roster"
+            to={`/studio/label/${slug}/roster`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Roster
           </NavLink>
           <NavLink
-            to="/studio/label/catalog"
+            to={`/studio/label/${slug}/catalog`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Catalog
           </NavLink>
           <NavLink
-            to="/studio/label/storefront"
+            to={`/studio/label/${slug}/storefront`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Storefront
           </NavLink>
           <NavLink
-            to="/studio/label/analytics"
+            to={`/studio/label/${slug}/analytics`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Analytics
           </NavLink>
           <NavLink
-            to="/studio/label/financials"
+            to={`/studio/label/${slug}/financials`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Financials
           </NavLink>
           <NavLink
-            to="/studio/label/settings"
+            to={`/studio/label/${slug}/settings`}
             className={({ isActive }) =>
-              `${navLinkBase} ${
-                isActive ? "bg-primary text-primary-foreground" : ""
-              }`
+              `${navLinkBase} ${isActive ? "bg-primary text-primary-foreground" : ""}`
             }
           >
             Settings
