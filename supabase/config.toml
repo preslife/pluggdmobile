@@ -1,0 +1,91 @@
+project_id = "qkwvqmubhyondemhasjp"
+
+[functions.api-token-management]
+verify_jwt = true
+
+[functions.analytics-processor]
+verify_jwt = false
+
+[functions.embed-generator]
+verify_jwt = false
+
+[functions.api-v1]
+verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = true
+
+[functions.create-course-payment]
+verify_jwt = true
+
+[functions.create-subscription]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.customer-portal]
+verify_jwt = true
+
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = true
+
+[functions.generate-lyrics]
+verify_jwt = true
+
+[functions.elevenlabs-text-to-speech]
+verify_jwt = true
+
+[functions.send-booking-notification]
+verify_jwt = false
+
+[functions.send-subscription-email]
+verify_jwt = false
+
+[functions.fetch-spotify-analytics]
+verify_jwt = true
+
+[functions.fetch-youtube-analytics]
+verify_jwt = true
+
+[functions.paypal-payout]
+verify_jwt = false
+
+[functions.create-store-checkout]
+verify_jwt = true
+
+[functions.create-connect-account]
+verify_jwt = true
+
+[functions.process-producer-payouts]
+verify_jwt = true
+
+[functions.create-fan-subscription]
+verify_jwt = true
+
+[functions.verify-fan-subscription]
+verify_jwt = true
+
+[functions.integrations-health]
+verify_jwt = true
+
+[functions.create-commission-funding]
+verify_jwt = true
+
+[functions.process-referral-rewards]
+verify_jwt = false
+
+[functions.track-share-signup]
+verify_jwt = false
+
+[functions.send-lifecycle-emails]
+verify_jwt = false
+
+[functions.webhook-handler]
+verify_jwt = false

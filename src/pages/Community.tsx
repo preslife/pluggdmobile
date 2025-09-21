@@ -1,0 +1,1408 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Trophy,
+  Radio,
+  Users,
+  Megaphone,
+  BookOpen,
+  Coins,
+  CalendarDays,
+  Clock,
+  Star,
+  Handshake,
+  Flame,
+  ArrowRight,
+  MessageSquarePlus,
+  PlayCircle,
+  Music2,
+  Crown,
+  Sparkles,
+  Gift,
+  Compass,
+  Command as CommandIcon,
+  Search,
+  Play,
+  Pause,
+  Download,
+} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArtistTipButton } from "@/components/ArtistTipButton";
+import { FollowButton } from "@/components/FollowButton";
+import { useAuth } from "@/hooks/useAuth";
+import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
+import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
+import { QuestsXP } from "@/components/QuestsXP";
+
+/**
+ * PLUGGD — COMMUNITY HUB (EPIC Edition)
+ * Fixed build errors + completed components.
+ * - Replaced pill chips with ModeSelect dropdown (non-duplicative)
+ * - Hero accepts `mode` and renders mode-specific CTAs
+ * - Completed EventsCalendar (defined `days` properly)
+ * - Added Command Bar, Action Dock, and all sections wired
+ * - Added lightweight "TestCases" dev component
+ */
+
+// ---------- Shared UI primitives ---------- //
+
+const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", children, ...props }) => (
+  <div
+    className={`rounded-2xl border border-white/10 bg-card backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] ${className}`}
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", children, ...props }) => (
+  <div className={`px-5 pt-5 ${className}`} {...props}>{children}</div>
+);
+
+const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className = "", children, ...props }) => (
+  <h3 className={`text-zinc-100 text-lg font-semibold tracking-tight ${className}`} {...props}>{children}</h3>
+);
+
+const CardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", children, ...props }) => (
+  <div className={`px-5 pb-5 ${className}`} {...props}>{children}</div>
+);
+
+const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className = "", children, ...props }) => (
+  <button
+    className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow hover:shadow-lg transition-all active:scale-[.98] ${className}`}
+    {...props}
+  >
+    {children}
+  </button>
+);
+
+const Badge: React.FC<React.HTMLAttributes<HTMLSpanElement>> = ({ className = "", children, ...props }) => (
+  <span
+    className={`inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 ${className}`}
+    {...props}
+  >
+    {children}
+  </span>
+);
+
+// ---------- Helpers ---------- //
+
+const formatNumber = (n: number) => new Intl.NumberFormat().format(n);
+const clamp = (v: number, min = 0, max = 1) => Math.max(min, Math.min(max, v));
+
+function timeLeft(toISO?: string) {
+  if (!toISO) return "";
+  const diff = new Date(toISO).getTime() - Date.now();
+  if (diff <= 0) return "ended";
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / (1000 * 60)) % 60);
+  if (d > 0) return `${d}d ${h}h left`;
+  if (h > 0) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
+function classNames(...n: (string | false | null | undefined)[]) { return n.filter(Boolean).join(" "); }
+
+// ---------- Types ---------- //
+
+type Contest = { id: string; title: string; cover: string | null; cover_image_url?: string | null; entrants: number; ends_at: string; slug: string };
+
+type Campaign = { id: string; title: string; cover?: string | null; goal: number; raised: number; ends_at?: string | null; slug?: string | null };
+
+type Track = { id: string; title: string; artist: string; cover: string | null; url: string | null; duration?: number };
+
+type LiveEvent = { id: string; title: string; cover: string | null; start_at: string; url: string; host: string; viewers: number; is_live: boolean };
+
+type Thread = { id: string; title: string; slug: string; tag: string; reply_count: number; updated_at: string; author: { username: string | null; avatar: string | null } };
+
+type Course = { id: string; title: string; instructor: string | null; level: string | null; length: string | null; cover: string | null; slug: string };
+
+type Member = { id: string; username: string | null; avatar: string | null; role: string; badges: string[] };
+
+type Creator = {
+  id: string; slug: string; name: string; avatar: string | null; cover: string | null; genres: string[]; followers: number;
+  bio: string; stats: { contest_wins: number; placements: number };
+  featured_track: { title: string | null; cover: string | null; url: string | null; plays: number };
+  featured_campaign_slug?: string | null;
+};
+
+type Announcement = { text: string };
+
+type DailyPromptT = { text: string; tag: string | null; cta_text?: string | null; cta_href?: string | null };
+
+type CollabBrief = { id: string; title: string; slug: string; genre: string | null; skill: string; budget: string | null; author: { avatar: string | null } };
+
+type Quest = { id: string; title: string; xp: number; completed?: boolean };
+
+type CommunityRadioT = { listeners: number; now: Track; queue: Track[] };
+
+type HubData = {
+  contests: Contest[]; campaigns: Campaign[]; events: LiveEvent[]; threads: Thread[]; courses: Course[]; members: Member[];
+  trending: { tag: string; count: number }[]; badges: string[];
+  stats: { members: number; active_week: number; streak_days: number; xp: number };
+  creator_spotlight: Creator | null; radio: CommunityRadioT; announcements: Announcement[]; daily_prompt: DailyPromptT | null; collab_briefs: CollabBrief[]; quests: Quest[];
+};
+
+type DockItem = { id: string; label: string; icon: React.ReactNode; count?: number; live?: boolean; on?: boolean; countType?: "listening" | "count" };
+
+type Mode = "create" | "collab" | "learn" | "earn";
+
+// ---------- Data Fetcher ---------- //
+
+async function fetchHubData(): Promise<HubData> {
+  const { data, error } = await supabase.rpc("fn_hub_payload");
+  if (error) throw error;
+
+  // Fetch additional data not included in fn_hub_payload
+  const [
+    campaignsRes,
+    announcementsRes,
+    dailyPromptRes,
+    questsRes,
+    radioStateRes,
+    radioQueueRes,
+  ] = await Promise.all([
+    supabase.from("campaigns").select("id, owner_id, title, cover_url, goal, raised, ends_at, slug").order("created_at", { ascending: false }).limit(6),
+    supabase.from("announcements").select("text, is_live, starts_at, ends_at").order("created_at", { ascending: false }).limit(3),
+    supabase.from("daily_prompts").select("text, tag, cta_text, cta_href, starts_at, ends_at").order("starts_at", { ascending: false }).limit(1),
+    supabase.from("quests").select("id, title, xp, is_active").order("created_at", { ascending: false }).limit(6),
+    supabase.from("radio_state").select("listeners, now_track_id").order("updated_at", { ascending: false }).limit(1),
+    supabase.from("radio_queue").select("position, track_id").order("position", { ascending: true }),
+  ]);
+
+  const campaigns = campaignsRes.data?.map(c => ({
+    id: c.id, title: c.title, cover: c.cover_url ?? null, goal: Number(c.goal ?? 0), raised: Number(c.raised ?? 0),
+    ends_at: c.ends_at ?? null, slug: c.slug ?? null
+  })) ?? [];
+
+  const now = new Date();
+  const announcements = (announcementsRes.data ?? [])
+    .filter(a => (a.is_live ?? true) && (!a.starts_at || new Date(a.starts_at) <= now) && (!a.ends_at || now <= new Date(a.ends_at)))
+    .map(a => ({ text: a.text }));
+
+  const daily_prompt = (dailyPromptRes.data?.[0])
+    ? { text: dailyPromptRes.data[0].text, tag: dailyPromptRes.data[0].tag ?? null, cta_text: dailyPromptRes.data[0].cta_text ?? null, cta_href: dailyPromptRes.data[0].cta_href ?? null }
+    : null;
+
+  const quests = (questsRes.data ?? [])
+    .filter(q => q.is_active)
+    .map(q => ({ id: q.id, title: q.title, xp: q.xp }));
+
+  // Radio join (safe fallback if empty)
+  const listeners = radioStateRes.data?.[0]?.listeners ?? 0;
+  const nowTrackId = radioStateRes.data?.[0]?.now_track_id ?? null;
+  const trackIds = [
+    ...(nowTrackId ? [nowTrackId] : []),
+    ...((radioQueueRes.data ?? []).map(q => q.track_id))
+  ];
+  const unique = Array.from(new Set(trackIds));
+  let radio: HubData["radio"] = {
+    listeners,
+    now: { id: "0", title: "Community Radio", artist: "Pluggd", cover: null, url: null },
+    queue: []
+  };
+  if (unique.length) {
+    const { data: tracks } = await supabase.from("tracks")
+      .select("id, title, audio_url, release:releases(id, title, artist, cover_art_url)")
+      .in("id", unique);
+
+    const toTrack = (t: any): Track => ({
+      id: t.id,
+      title: t.title,
+      artist: t.release?.artist ?? "Unknown",
+      cover: t.release?.cover_art_url ?? null,
+      url: t.audio_url ?? null
+    });
+
+    const map = new Map(tracks?.map(t => [t.id, t]) ?? []);
+    if (nowTrackId && map.has(nowTrackId)) radio.now = toTrack(map.get(nowTrackId));
+    radio.queue = (radioQueueRes.data ?? [])
+      .map(q => map.get(q.track_id))
+      .filter(Boolean)
+      .map(toTrack)
+      .slice(0, 5);
+  }
+
+  // Merge with RPC payload
+  const payload = data as any;
+  const hub: HubData = {
+    contests: payload.contests ?? [],
+    events: payload.events ?? [],
+    threads: payload.threads ?? [],
+    courses: payload.courses ?? [],
+    members: (payload.members ?? []).map((m: any) => ({
+      id: m.id, username: m.username, avatar: m.avatar, role: m.role ?? "member", badges: m.badges ?? []
+    })),
+    trending: payload.trending ?? [],
+    badges: [], // keep as [] for now (we show badges per member & achievements card)
+    stats: payload.stats ?? { members: 0, active_week: 0, streak_days: 0, xp: 0 },
+    creator_spotlight: payload.creator_spotlight ?? null,
+    radio,
+    announcements,
+    daily_prompt,
+    campaigns,
+    collab_briefs: payload.collab_briefs ?? [],
+    quests,
+  };
+
+  // Fill required fallbacks for nullables
+  hub.contests = hub.contests.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
+  hub.events   = hub.events.map((e: any) => ({ ...e, cover: e.cover ?? "/placeholder.svg" }));
+  hub.courses  = hub.courses.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
+
+  return hub;
+}
+
+// ---------- EPIC Community Hub ---------- //
+
+export default function CommunityHubEpic() {
+  const [data, setData] = useState<HubData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("create");
+  const [showCmd, setShowCmd] = useState(false);
+  const [active, setActive] = useState<string>("overview");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const hub = await fetchHubData();
+        if (!cancelled) { setData(hub); }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Failed to load");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Command bar hotkey
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault(); setShowCmd((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Scroll spy for sections with data-section="id"
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-section]"));
+    if (!els.length) return;
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.filter((o) => o.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+      if (vis[0]) setActive((vis[0].target as HTMLElement).dataset.section || "overview");
+    }, { rootMargin: "-40% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [loading]);
+
+  const livesNow = useMemo(() => (data?.events || []).filter((e) => e.is_live), [data?.events]);
+
+  // Section ordering based on mode (lightweight re-prioritization)
+  const spotlightOrder = useMemo(() => {
+    switch (mode) {
+      case "earn": return ["crowdfunding", "contests", "live"]; 
+      case "learn": return ["courses", "live", "contests"]; 
+      case "collab": return ["collab", "live", "contests"]; 
+      default: return ["contests", "live", "crowdfunding"]; // create
+    }
+  }, [mode]);
+
+  const dockItems: DockItem[] = [
+    { id: "overview", label: "Overview", icon: <Search className="h-4 w-4"/>, on: true },
+    { id: "creator", label: "Creator", icon: <Crown className="h-4 w-4"/> },
+    { id: "radio", label: "Radio", icon: <Music2 className="h-4 w-4"/>, count: data?.radio.listeners || 0, countType: "listening" },
+    { id: "contests", label: "Contests", icon: <Trophy className="h-4 w-4"/>, count: data?.contests.length || 0 },
+    { id: "crowdfunding", label: "Crowdfund", icon: <Coins className="h-4 w-4"/>, count: data?.campaigns.length || 0 },
+    { id: "live", label: "Live", icon: <Radio className="h-4 w-4"/>, live: !!livesNow.length, count: livesNow.length },
+    { id: "collab", label: "Collab", icon: <Handshake className="h-4 w-4"/>, count: data?.collab_briefs.length || 0 },
+    { id: "courses", label: "Courses", icon: <BookOpen className="h-4 w-4"/>, count: data?.courses.length || 0 },
+    { id: "forum", label: "Forum", icon: <MessageSquarePlus className="h-4 w-4"/>, count: data?.threads.length || 0 },
+    { id: "calendar", label: "Events", icon: <CalendarDays className="h-4 w-4"/> },
+  ];
+
+  if (loading) {
+    return (
+      <main className="relative min-h-screen w-full bg-background text-foreground">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-400 mx-auto mb-4"></div>
+            <p className="text-zinc-400">Loading Community Hub...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <main className="relative min-h-screen w-full bg-background text-foreground">
+      {/* Error banner */}
+      {error && (
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Ambient background */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-x-0 top-[-10%] mx-auto h-[40rem] w-[80rem] rounded-full bg-gradient-to-tr from-orange-500/20 via-amber-400/10 to-fuchsia-500/10 blur-3xl" />
+        <div className="absolute bottom-[-20%] right-[-10%] h-[26rem] w-[26rem] rounded-full bg-gradient-to-tr from-indigo-500/10 to-cyan-400/10 blur-2xl" />
+        <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_50%)]" />
+      </div>
+
+      {/* Sticky action dock + mode select */}
+      <div className="sticky top-16 z-30 border-b border-white/10 bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <section className="mx-auto max-w-7xl px-4 py-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <ActionDock active={active} items={dockItems} />
+            <div className="flex items-center gap-2">
+              <ModeSelect mode={mode} onChange={setMode} />
+              <Button className="hidden sm:inline-flex bg-white/10 text-white hover:bg-white/20" onClick={() => setShowCmd(true)}><CommandIcon className="h-4 w-4"/> Command</Button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Sticky announcements bar */}
+      <div className="sticky top-[88px] z-20">
+        <AnnouncementsBar announcements={data.announcements} />
+      </div>
+
+      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-6 sm:pt-8 lg:pt-10">
+        <div data-section="overview">
+            <Hero
+              mode={mode}
+              lives={livesNow}
+              memberCount={data.stats.members}
+              activeWeekly={data.stats.active_week}
+              contestsRunning={data.contests.length}
+              sessionsThisWeek={data.events.length}
+            />
+        </div>
+
+        {data.daily_prompt && <DailyPrompt prompt={data.daily_prompt} />}
+
+        {/* Creator + Radio */}
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-7" id="creator" data-section="creator">
+            {data.creator_spotlight?.id && <CreatorSpotlight creator={data.creator_spotlight} />}
+          </div>
+          <div className="lg:col-span-5" id="radio" data-section="radio">
+            <CommunityRadio radio={data.radio} />
+          </div>
+        </div>
+
+        {/* Spotlight rows (ordered by mode) */}
+        <div className="mt-8 space-y-6">
+          {spotlightOrder.map((key) => {
+            if (key === "contests") return (
+              <div id="contests" data-section="contests" key="contests">
+                <SpotlightRow title="Featured Contests" icon={<Trophy className="h-4 w-4" />} items={data.contests.map((c) => (<ContestCard key={c.id} contest={c} />))} href="/contests" />
+              </div>
+            );
+            if (key === "crowdfunding") return (
+              <div id="crowdfunding" data-section="crowdfunding" key="crowdfunding">
+                <SpotlightRow title="Crowdfunding Spotlights" icon={<Coins className="h-4 w-4" />} items={data.campaigns.map((c) => (<CampaignCard key={c.id} campaign={c} />))} href="/campaigns" />
+              </div>
+            );
+            if (key === "live") return (
+              <div id="live" data-section="live" key="live">
+                <SpotlightRow title="Upcoming Live Sessions" icon={<Radio className="h-4 w-4" />} items={data.events.map((e) => (<EventCard key={e.id} event={e} />))} href="/live" />
+              </div>
+            );
+            if (key === "collab") return (
+              <div id="collab" data-section="collab" key="collab">
+                <CollabRadar briefs={data.collab_briefs} />
+              </div>
+            );
+            if (key === "courses") return (
+              <div id="courses" data-section="courses" key="courses">
+                <CoursesStrip courses={data.courses} />
+              </div>
+            );
+            return null;
+          })}
+        </div>
+
+        {/* Main Grid */}
+        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-8">
+            <AnimatePresence mode="popLayout">
+              {livesNow.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                  <LiveNow lives={livesNow} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div id="forum" data-section="forum">
+              <ForumThreads threads={data.threads} loading={loading} />
+            </div>
+
+            <div id="courses-2">
+              <CoursesStrip courses={data.courses} />
+            </div>
+
+            <div id="calendar" data-section="calendar">
+              <EventsCalendar events={data.events} />
+            </div>
+          </div>
+
+          <div className="space-y-6 lg:col-span-4">
+            <QuickActions />
+            {!spotlightOrder.includes("collab") && (
+              <div id="collab-side" data-section="collab"><CollabRadar briefs={data.collab_briefs} /></div>
+            )}
+            <QuestsXP />
+            <TopMembers members={data.members} />
+            <TrendingTopics topics={data.trending} />
+            <StreakBadges streakDays={data.stats.streak_days} badges={data.badges} />
+          </div>
+        </div>
+      </section>
+
+      <FooterCTA />
+
+      <CommandBar open={showCmd} onClose={() => setShowCmd(false)} data={data} />
+    </main>
+  );
+}
+
+// ---------- Action Dock (sticky) ---------- //
+
+function ActionDock({ items, active }: { items: DockItem[]; active: string }) {
+  const scrollTo = (id: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-section='${id}']`) || document.getElementById(id);
+    if (!el) return; const y = el.getBoundingClientRect().top + window.scrollY - 88; window.scrollTo({ top: y, behavior: "smooth" });
+  };
+
+  return (
+    <nav className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto px-2">
+      {items.map((it) => (
+        <button key={it.id} onClick={() => scrollTo(it.id)} className={classNames(
+          "group inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm",
+          active === it.id ? "border-amber-400/40 bg-amber-500/10 text-amber-200" : "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+        )}>
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">{it.icon}</span>
+          <span className="whitespace-nowrap">{it.label}</span>
+          {typeof it.count === "number" && (
+            <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">{it.count}</span>
+          )}
+          {it.live && (
+            <span className="ml-1 inline-flex h-2 w-2 items-center">
+              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400/80" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+            </span>
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// ---------- Mode Select (replaces pill chips) ---------- //
+
+function ModeSelect({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  const [open, setOpen] = useState(false);
+  const modes: { id: Mode; label: string; desc: string; icon: React.ReactNode }[] = [
+    { id: "create", label: "Create", desc: "Make & share work", icon: <Sparkles className="h-4 w-4"/> },
+    { id: "collab", label: "Collaborate", desc: "Find people to work with", icon: <Handshake className="h-4 w-4"/> },
+    { id: "learn", label: "Learn", desc: "Courses & masterclasses", icon: <BookOpen className="h-4 w-4"/> },
+    { id: "earn", label: "Earn", desc: "Contests & crowdfunding", icon: <Coins className="h-4 w-4"/> },
+  ];
+  const current = modes.find(m => m.id === mode)!;
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(v=>!v)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/10">
+        {current.icon}
+        <span>Mode: <span className="font-semibold text-white">{current.label}</span></span>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-card p-1 shadow-xl">
+          {modes.map((m) => (
+            <button key={m.id} onClick={() => { onChange(m.id); setOpen(false); }} className={classNames("flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5", m.id===mode && "bg-white/5") }>
+              <span className="mt-0.5">{m.icon}</span>
+              <span>
+                <div className="font-medium text-white">{m.label}</div>
+                <div className="text-xs text-zinc-400">{m.desc}</div>
+              </span>
+            </button>
+          ))}
+          <div className="border-t border-white/10 px-3 py-2 text-[11px] text-zinc-500">Switching mode reorders sections & updates the shortcuts.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Command Bar ---------- //
+
+function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => void; data: HubData }) {
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (open) window.addEventListener("keydown", onEsc); return () => window.removeEventListener("keydown", onEsc);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const actions: { label: string; href?: string; sectionId?: string }[] = [
+    { label: "Jump: Creator Spotlight", sectionId: "creator" },
+    { label: "Jump: Community Radio", sectionId: "radio" },
+    { label: "Jump: Featured Contests", sectionId: "contests" },
+    { label: "Jump: Crowdfunding", sectionId: "crowdfunding" },
+    { label: "Jump: Live Sessions", sectionId: "live" },
+    { label: "Jump: Collab Radar", sectionId: "collab" },
+    { label: "Jump: Courses", sectionId: "courses" },
+    { label: "Jump: Forum", sectionId: "forum" },
+    { label: "Jump: Events Calendar", sectionId: "calendar" },
+    { label: "Action: Start a Post", href: "/forum/new" },
+    { label: "Action: Enter a Contest", href: "/challenges" },
+    { label: "Action: Start Crowdfunding", href: "/campaigns/new" },
+    { label: "Action: Host a Session", href: "/live/host" },
+  ];
+
+  const filtered = actions.filter(a => a.label.toLowerCase().includes(q.toLowerCase()));
+
+  const go = (a: { label: string; href?: string; sectionId?: string }) => {
+    if (a.href) { window.location.href = a.href; return; }
+    if (a.sectionId) {
+      const el = document.querySelector<HTMLElement>(`[data-section='${a.sectionId}']`) || document.getElementById(a.sectionId);
+      if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 88; window.scrollTo({ top: y, behavior: "smooth" }); }
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-white/10 bg-white/5 px-4 py-3">
+          <CommandIcon className="h-4 w-4 text-amber-300"/>
+          <input autoFocus value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Type a command or jump…" className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500" />
+          <kbd className="rounded bg-white/10 px-2 py-1 text-xs text-zinc-400">ESC</kbd>
+        </div>
+        <div className="max-h-80 overflow-y-auto p-2">
+          {filtered.map((a, i) => (
+            <button key={i} onClick={() => go(a)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-200 hover:bg-white/5">
+              {a.label}
+              <ArrowRight className="h-4 w-4 text-zinc-500"/>
+            </button>
+          ))}
+          {!filtered.length && <div className="px-3 py-6 text-center text-sm text-zinc-500">No matches</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Sections ---------- //
+
+function AnnouncementsBar({ announcements }: { announcements: Announcement[] }) {
+  if (!announcements?.length) return null;
+  return (
+    <div className="relative isolate mx-auto w-full bg-gradient-to-r from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 py-2">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 text-sm text-amber-200">
+        <SparkIcon />
+        <div className="flex-1 overflow-hidden">
+          <div className="whitespace-nowrap">
+            {announcements.map((a, i) => (
+              <span key={i} className="mr-6 opacity-90">{a.text}</span>
+            ))}
+          </div>
+        </div>
+        <a href="/changelog" className="text-amber-300 hover:text-amber-200">What's new</a>
+      </div>
+    </div>
+  );
+}
+
+function Hero({ mode, lives, memberCount, activeWeekly, contestsRunning, sessionsThisWeek }: { mode: Mode; lives: LiveEvent[]; memberCount: number; activeWeekly: number; contestsRunning: number; sessionsThisWeek: number; }) {
+  // Mode-aware CTAs
+  const ctas = useMemo(() => {
+    switch (mode) {
+      case "collab":
+        return [
+          { href: "/forum/new?tag=collab", label: "Post Collab Brief", icon: <Handshake className="h-4 w-4"/>, primary: true },
+          { href: "/directory", label: "Browse Directory", icon: <Users className="h-4 w-4"/> },
+          { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
+          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+        ];
+      case "learn":
+        return [
+          { href: "/courses", label: "Explore Courses", icon: <BookOpen className="h-4 w-4"/>, primary: true },
+          { href: "/live", label: "Join Masterclass", icon: <Radio className="h-4 w-4"/> },
+          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+          { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
+        ];
+      case "earn":
+        return [
+          { href: "/campaigns/new", label: "Start Crowdfunding", icon: <Megaphone className="h-4 w-4"/>, primary: true },
+          { href: "/contests", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/> },
+          { href: "/forum/new?tag=services", label: "Offer Services", icon: <Coins className="h-4 w-4"/> },
+          { href: "/live", label: "Pitch to A&R", icon: <Radio className="h-4 w-4"/> },
+        ];
+      default:
+        return [
+          { href: "/contests", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/>, primary: true },
+          { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
+          { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
+          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+        ];
+    }
+  }, [mode]);
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-8">
+      <div aria-hidden className="absolute right-[-20%] top-[-20%] h-72 w-72 rounded-full bg-amber-500/20 blur-3xl" />
+      <div aria-hidden className="absolute bottom-[-20%] left-[-10%] h-64 w-64 rounded-full bg-fuchsia-500/10 blur-2xl" />
+
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-2xl">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+            <SparkIcon />
+            THE HUB — Connect • Learn • Grow
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">Community Hub</h1>
+          <p className="mt-3 max-w-xl text-zinc-300/90">Jump into live sessions, contests, collabs, courses, and campaigns. Meet the tribe. Build momentum. Make records.</p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            {ctas.map((c) => (
+              <a key={c.label} href={c.href}>
+                <Button className={c.primary ? "bg-amber-500 text-zinc-950 hover:bg-amber-400" : "bg-white/10 text-white hover:bg-white/20"}>{c.icon}{c.label}</Button>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <MiniStat label="Members" value={formatNumber(memberCount)} />
+          <MiniStat label="Active this week" value={formatNumber(activeWeekly)} />
+          <MiniStat label="Contests running" value={formatNumber(contestsRunning)} />
+          <MiniStat label="Sessions this week" value={formatNumber(sessionsThisWeek)} />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {lives?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="mt-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+            <div className="flex items-center gap-3">
+              <Badge className="border-green-400/40 bg-green-500/10 text-green-200">
+                <span className="relative inline-flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
+                Live now
+              </Badge>
+              <div className="text-zinc-200"><strong>{lives[0].title}</strong> • {formatNumber(lives[0].viewers)} watching</div>
+            </div>
+            <a href={lives[0].url} className="group flex items-center gap-2 text-amber-300 hover:text-amber-200">Join <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
+      <div className="text-xl font-bold text-white">{value}</div>
+      <div className="text-xs text-zinc-400">{label}</div>
+    </div>
+  );
+}
+
+function DailyPrompt({ prompt }: { prompt: DailyPromptT }) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-4">
+      <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+        <div className="flex items-center gap-3 text-sm">
+          <Sparkles className="h-4 w-4 text-amber-300"/>
+          <span className="text-zinc-200"><strong>Daily Prompt:</strong> {prompt.text}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge className="border-white/10 bg-white/5">{prompt.tag}</Badge>
+          <a href={prompt.cta_href}><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400">{prompt.cta_text}</Button></a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Creator Spotlight & Audio ---------- //
+
+function CreatorSpotlight({ creator }: { creator: Creator }) {
+  const { user } = useAuth();
+  const { state, actions } = useGlobalPlayer();
+  
+  return (
+    <Card className="overflow-hidden">
+      <div className="relative h-36 w-full overflow-hidden">
+        <img src={creator.cover} alt="cover" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
+        <Badge className="absolute left-4 top-4 border-amber-400/30 bg-amber-500/10 text-amber-200"><Crown className="h-3 w-3"/>Creator of the Week</Badge>
+      </div>
+      <CardContent className="pt-4">
+        <div className="flex items-start gap-4">
+          <img src={creator.avatar} className="h-16 w-16 rounded-xl object-cover" alt="avatar"/>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xl font-semibold text-white">{creator.name}</h3>
+              <Badge>{creator.genres?.join(" • ") || "No genres"}</Badge>
+            </div>
+            <p className="mt-1 line-clamp-2 text-sm text-zinc-300/90">{creator.bio}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-zinc-400">
+              <span>{formatNumber(creator.followers)} followers</span>
+              <span>{formatNumber(creator.stats.contest_wins)} contest wins</span>
+              <span>{formatNumber(creator.stats.placements)} placements</span>
+            </div>
+          </div>
+          <div className="hidden sm:block">
+            <a href={`/profile/${creator.slug}`}><Button className="bg-white/10 text-white hover:bg-white/20">View Profile</Button></a>
+          </div>
+        </div>
+
+        {/* Featured track mini-player */}
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex items-center gap-3">
+            <img src={creator.featured_track.cover} className="h-12 w-12 rounded-lg object-cover" alt="track"/>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-white">{creator.featured_track.title}</div>
+              <div className="text-xs text-zinc-400">{creator.name} • {formatNumber(creator.featured_track.plays)} plays</div>
+            </div>
+            <SpotlightTrackPlayer creator={creator} />
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-3">
+          <ArtistTipButton 
+            artistId={creator.id} 
+            artistName={creator.name}
+            variant="default"
+            size="sm"
+          />
+          {creator.featured_campaign_slug && (
+            <a href={`/campaigns/${creator.featured_campaign_slug}`}>
+              <Button className="bg-white/10 text-white hover:bg-white/20">
+                <Megaphone className="h-4 w-4"/>Support Campaign
+              </Button>
+            </a>
+          )}
+          <FollowButton 
+            userId={creator.id} 
+            currentUserId={user?.id || null}
+            className="bg-white/10 text-white hover:bg-white/20"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SpotlightTrackPlayer({ creator }: { creator: Creator }) {
+    const { state, actions } = useGlobalPlayer();
+  
+  const track = {
+    id: `creator-spotlight-${creator.id}`,
+    title: creator.featured_track.title,
+    artist: creator.name,
+    src: creator.featured_track.url,
+    artwork: creator.featured_track.cover
+  };
+
+  const isCurrentTrack = state.currentTrack?.id === track.id;
+  const trackIsPlaying = isCurrentTrack && state.isPlaying;
+
+  const handlePlay = () => {
+    if (isCurrentTrack && state.isPlaying) {
+      // This track is already playing, the global player handles pause
+      return;
+    }
+    // Set up queue first, then play - same as SpotlightCarousel
+    actions.setQueue([track], 0);
+    actions.play(track);
+  };
+
+  return (
+    <div className="flex min-w-[160px] items-center gap-2">
+      <Button 
+        className="px-3 bg-white/10 text-white hover:bg-white/20" 
+        onClick={handlePlay}
+        disabled={!track.src}
+      >
+        {trackIsPlaying ? (
+          <Pause className="w-4 h-4" />
+        ) : (
+          <Play className="w-4 h-4" />
+        )}
+      </Button>
+      <div className="h-2 w-28 overflow-hidden rounded-full bg-white/10">
+        <div 
+          className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-500 transition-all duration-200" 
+          style={{ width: trackIsPlaying ? '60%' : '0%' }} 
+        />
+      </div>
+    </div>
+  );
+}
+
+function RadioTrackPlayer({ track }: { track: { id: string; title: string; artist: string; url: string; cover: string } }) {
+  const { state, actions } = useGlobalPlayer();
+  
+  const audioTrack = {
+    id: `radio-${track.id}`,
+    title: track.title,
+    artist: track.artist,
+    src: track.url,
+    artwork: track.cover
+  };
+
+  const isCurrentTrack = state.currentTrack?.id === audioTrack.id;
+  const trackIsPlaying = isCurrentTrack && state.isPlaying;
+
+  const handlePlay = () => {
+    if (isCurrentTrack && state.isPlaying) {
+      return;
+    }
+    actions.play(audioTrack);
+  };
+
+  return (
+    <div className="flex min-w-[160px] items-center gap-2">
+      <Button 
+        className="px-3 bg-white/10 text-white hover:bg-white/20" 
+        onClick={handlePlay}
+        disabled={!audioTrack.src}
+      >
+        {trackIsPlaying ? (
+          <Pause className="w-4 h-4" />
+        ) : (
+          <Play className="w-4 h-4" />
+        )}
+      </Button>
+      <div className="h-2 w-28 overflow-hidden rounded-full bg-white/10">
+        <div 
+          className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-500 transition-all duration-200" 
+          style={{ width: trackIsPlaying ? '60%' : '0%' }} 
+        />
+      </div>
+    </div>
+  );
+}
+
+function CommunityRadio({ radio }: { radio: CommunityRadioT }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><Music2 className="h-5 w-5"/><CardTitle>Community Radio</CardTitle></div>
+        <Badge className="border-green-400/40 bg-green-500/10 text-green-200">{formatNumber(radio.listeners)} listening</Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex items-center gap-3">
+            <img src={radio.now.cover} className="h-14 w-14 rounded-lg object-cover"/>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-white">{radio.now.title}</div>
+              <div className="text-xs text-zinc-400">{radio.now.artist}</div>
+            </div>
+            <RadioTrackPlayer track={radio.now} />
+          </div>
+        </div>
+        <div className="mt-3 text-xs text-zinc-400">Up next</div>
+        <div className="mt-1 flex flex-col gap-2">
+          {radio.queue.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-2">
+              <img src={t.cover} className="h-10 w-10 rounded-md object-cover"/>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm text-zinc-200">{t.title}</div>
+                <div className="text-xs text-zinc-400">{t.artist}</div>
+              </div>
+              <a href={`/track/${t.id}`} className="text-xs text-amber-300 hover:text-amber-200">View</a>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------- Spotlight rows & cards ---------- //
+
+function SpotlightRow({ title, icon, items, href }: { title: string; icon: React.ReactNode; items: React.ReactNode[]; href?: string; }) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/5">{icon}</span><h2 className="text-lg font-semibold">{title}</h2></div>
+        {href && (<a href={href} className="text-sm text-amber-300 hover:text-amber-200">View all</a>)}
+      </div>
+      <div className="group relative">
+        <div className="no-scrollbar -mx-2 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-2">{items?.length ? items : <EmptyPill />}</div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyPill() { return (<div className="snap-start rounded-xl border border-white/10 bg-white/5 px-4 py-10 text-center text-zinc-400">Nothing here yet — be the first!</div>); }
+
+function ContestCard({ contest }: { contest: Contest }) {
+  const fallbackImage = "/placeholder.svg";
+  
+  return (
+    <Card className="snap-start w-[280px] flex-shrink-0 overflow-hidden">
+      <div className="relative h-36 w-full overflow-hidden">
+        <img 
+          src={(contest as any).cover_image_url || contest.cover || fallbackImage} 
+          alt={contest.title}
+          className="h-full w-full object-cover" 
+          onError={(e) => {
+            e.currentTarget.src = fallbackImage;
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
+        <Badge className="absolute left-3 top-3 border-amber-400/30 bg-amber-500/10 text-amber-200">
+          <Trophy className="h-3 w-3"/>Contest
+        </Badge>
+        {/* Show download icon if resources available */}
+        {(contest as any).resource_files && (contest as any).resource_files.length > 0 && (
+          <Badge className="absolute right-3 top-3 border-blue-400/30 bg-blue-500/10 text-blue-200">
+            <Download className="h-3 w-3"/>Resources
+          </Badge>
+        )}
+      </div>
+      <CardHeader><CardTitle className="line-clamp-1">{contest.title}</CardTitle></CardHeader>
+      <CardContent>
+        <div className="mb-3 flex items-center justify-between text-xs text-zinc-400">
+          <span className="inline-flex items-center gap-1"><Users className="h-3 w-3"/>{formatNumber(contest.entrants)} entrants</span>
+          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3"/>{timeLeft(contest.ends_at)}</span>
+        </div>
+        <a href={`/contests/${contest.id}`}><Button className="w-full bg-amber-500 text-zinc-950 hover:bg-amber-400">More</Button></a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CampaignCard({ campaign }: { campaign: Campaign }) {
+  const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
+  return (
+    <Card className="snap-start w-[280px] flex-shrink-0 overflow-hidden">
+      <div className="relative h-36 w-full overflow-hidden">
+        <img src={campaign.cover} alt="campaign" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
+        <Badge className="absolute left-3 top-3 border-cyan-400/30 bg-cyan-500/10 text-cyan-100"><Megaphone className="h-3 w-3"/>Campaign</Badge>
+      </div>
+      <CardHeader><CardTitle className="line-clamp-1">{campaign.title}</CardTitle></CardHeader>
+      <CardContent>
+        <div className="mb-2 flex items-center justify-between text-xs text-zinc-400">
+          <span className="inline-flex items-center gap-1"><Coins className="h-3 w-3"/>£{formatNumber(campaign.raised)} / £{formatNumber(campaign.goal)}</span>
+          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3"/>{timeLeft(campaign.ends_at)}</span>
+        </div>
+        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+          <div className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={{ width: `${pct}%` }} />
+        </div>
+        <a href={`/campaigns/${campaign.slug}`}><Button className="w-full bg-white/10 text-white hover:bg-white/20">Support</Button></a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EventCard({ event }: { event: LiveEvent }) {
+  return (
+    <Card className="snap-start w-[280px] flex-shrink-0 overflow-hidden">
+      <div className="relative h-36 w-full overflow-hidden">
+        <img src={event.cover} alt="event" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0" />
+        <Badge className={classNames("absolute left-3 top-3", event.is_live ? "border-green-400/40 bg-green-500/10 text-green-200" : "border-indigo-400/40 bg-indigo-500/10 text-indigo-100")}><Radio className="h-3 w-3"/>{event.is_live ? "Live" : "Upcoming"}</Badge>
+      </div>
+      <CardHeader><CardTitle className="line-clamp-1">{event.title}</CardTitle></CardHeader>
+      <CardContent>
+        <div className="mb-3 flex items-center justify-between text-xs text-zinc-400">
+          <span className="inline-flex items-center gap-1"><Users className="h-3 w-3"/>{formatNumber(event.viewers)} attending</span>
+          <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3"/>{new Date(event.start_at).toLocaleString()}</span>
+        </div>
+        <a href={event.url}><Button className="w-full bg-white/10 text-white hover:bg-white/20">{event.is_live ? "Join now" : "Remind me"}</Button></a>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------- Main grid widgets ---------- //
+
+function LiveNow({ lives }: { lives: LiveEvent[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><PlayCircle className="h-5 w-5"/><CardTitle>Happening Now</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href="/live">All live</a></CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {lives.map((e) => (
+            <div key={e.id} className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-3">
+              <img src={e.cover} alt="cover" className="h-16 w-16 rounded-lg object-cover"/>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-sm"><Badge className="border-green-400/40 bg-green-500/10 text-green-200">Live</Badge><span className="truncate text-zinc-200">{e.title}</span></div>
+                <div className="mt-1 text-xs text-zinc-400">{formatNumber(e.viewers)} watching • Host: {e.host}</div>
+              </div>
+              <a href={e.url}><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400">Join</Button></a>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ForumThreads({ threads, loading }: { threads: Thread[]; loading: boolean }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><Handshake className="h-5 w-5"/><CardTitle>Latest Forum Threads</CardTitle></div><div className="flex items-center gap-2"><a href="/community-v1" className="text-sm text-amber-300 hover:text-amber-200">Open forum</a><a href="/community-v1" className="text-sm text-amber-300 hover:text-amber-200">Start a post</a></div></CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-3">
+          {loading && <SkeletonRows count={5}/>}        
+          {!loading && threads.map((t) => (
+            <a key={t.id} href={`/forum/${t.slug}`} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+              <img src={t.author.avatar} alt="avatar" className="h-10 w-10 rounded-full object-cover"/>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-sm"><Badge>{t.tag}</Badge><span className="truncate font-medium text-white group-hover:text-amber-200">{t.title}</span></div>
+                <div className="mt-0.5 text-xs text-zinc-400">by {t.author.username} • {t.reply_count} replies • updated {new Date(t.updated_at).toLocaleString()}</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-amber-300"/>
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CoursesStrip({ courses }: { courses: Course[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><BookOpen className="h-5 w-5"/><CardTitle>New Courses & Masterclasses</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href="/education">View all</a></CardHeader>
+      <CardContent>
+        <div className="no-scrollbar -mx-2 flex gap-4 overflow-x-auto px-2 pb-2">
+          {courses.map((c) => (
+            <div key={c.id} className="w-[280px] flex-shrink-0 rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-3">
+                <img src={c.cover} alt="course" className="h-16 w-16 rounded-lg object-cover"/>
+                <div className="min-w-0">
+                  <div className="line-clamp-1 font-medium text-white">{c.title}</div>
+                  <div className="text-xs text-zinc-400">by {c.instructor}</div>
+                  <div className="mt-1 text-xs text-zinc-400">{c.level} • {c.length}</div>
+                </div>
+              </div>
+              <a href="/education"><Button className="mt-3 w-full bg-white/10 text-white hover:bg-white/20">Watch</Button></a>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EventsCalendar({ events }: { events: LiveEvent[] }) {
+  const days = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const first = new Date(year, month, 1);
+    const startDay = first.getDay();
+    const total = new Date(year, month + 1, 0).getDate();
+    const cells: { day?: number; events?: LiveEvent[] }[] = [];
+    for (let i = 0; i < startDay; i++) cells.push({});
+    for (let d = 1; d <= total; d++) {
+      const dt = new Date(year, month, d);
+      const dayEvents = events.filter((e) => new Date(e.start_at).toDateString() === dt.toDateString());
+      cells.push({ day: d, events: dayEvents });
+    }
+    return { year, month, cells };
+  }, [events]);
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><CalendarDays className="h-5 w-5"/><CardTitle>Events Calendar</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href="/events">All events</a></CardHeader>
+      <CardContent>
+        <TooltipProvider>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-3 text-sm text-zinc-400">{new Date(days.year, days.month).toLocaleString(undefined, { month: "long", year: "numeric" })}</div>
+            <div className="grid grid-cols-7 gap-2 text-center text-xs text-zinc-400">{"SMTWTFS".split("").map((d) => (<div key={d}>{d}</div>))}</div>
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {days.cells.map((c, i) => (
+                <div key={i} className={classNames("h-14 rounded-lg border border-white/10 bg-card p-1", c.day ? "" : "opacity-30")}> 
+                  {c.day && (
+                    <div className="flex h-full flex-col items-center justify-center">
+                      <div className="text-sm text-zinc-200">{c.day}</div>
+                      {c.events && c.events.length > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 cursor-pointer" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="space-y-2">
+                              {c.events.map((event, idx) => (
+                                 <div key={event.id} className={idx > 0 ? "border-t border-white/20 pt-2" : ""}>
+                                   <a 
+                                     href={`/events/${event.id}`} 
+                                     className="font-medium text-sm text-amber-300 hover:text-amber-200 cursor-pointer"
+                                   >
+                                     {event.title}
+                                   </a>
+                                  <div className="text-xs text-muted-foreground">
+                                    Host: {event.host}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(event.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </TooltipProvider>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickActions() {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          <a href="/challenges"><ActionRow icon={<Trophy className="h-4 w-4"/>} label="Enter a contest" sub="Win prizes & placements"/></a>
+          <a href="/collaborate"><ActionRow icon={<Handshake className="h-4 w-4"/>} label="Post a collab brief" sub="Find your next co-creator"/></a>
+          <a href="/campaigns/new"><ActionRow icon={<Megaphone className="h-4 w-4"/>} label="Start crowdfunding" sub="Rally fans around your release"/></a>
+          <a href="/directory"><ActionRow icon={<Users className="h-4 w-4"/>} label="Browse directory" sub="Producers, writers, vocalists"/></a>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CollabRadar({ briefs }: { briefs: CollabBrief[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2"><Compass className="h-5 w-5"/><CardTitle>Collab Radar</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          {briefs.map((b) => (
+            <a key={b.id} href={`/forum/${b.slug}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+              <img src={b.author.avatar} className="h-10 w-10 rounded-full object-cover"/>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm text-white">{b.title}</div>
+                <div className="text-xs text-zinc-400">{b.genre} • {b.skill} • budget {b.budget}</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500"/>
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionRow({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">{icon}</div>
+      <div className="flex-1"><div className="text-sm font-medium text-zinc-100">{label}</div><div className="text-xs text-zinc-400">{sub}</div></div>
+      <ArrowRight className="h-4 w-4 text-zinc-500"/>
+    </div>
+  );
+}
+
+function TopMembers({ members }: { members: Member[] }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Top Members this Week</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          {members.map((m) => (
+            <a key={m.id} href={`/profile/${m.username}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+              <img src={m.avatar} className="h-10 w-10 rounded-full object-cover" alt="avatar"/>
+              <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-white">{m.username}</div><div className="text-xs text-zinc-400">{m.role} • {m.badges.join(" • ")}</div></div>
+              <Star className="h-4 w-4 text-amber-300"/>
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrendingTopics({ topics }: { topics: { tag: string; count: number }[] }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Trending Topics</CardTitle></CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-2">
+          {topics.map((t) => (
+            <a key={t.tag} href={`/forum?tag=${encodeURIComponent(t.tag)}`} className="group">
+              <Badge className="transition-colors group-hover:bg-white/15">#{t.tag} <span className="ml-1 text-zinc-400">{t.count}</span></Badge>
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StreakBadges({ streakDays, badges }: { streakDays: number; badges: string[] }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Your Streak & Badges</CardTitle></CardHeader>
+      <CardContent>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+          <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Flame className="h-4 w-4 text-amber-400"/><span>{streakDays} day streak</span></div><div className="text-xs text-zinc-400">Keep momentum for rewards</div></div>
+          <div className="mt-3 flex flex-wrap gap-2">{badges.map((b, i) => (<Badge key={i} className="border-amber-400/20 bg-amber-500/10 text-amber-200">{b}</Badge>))}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FooterCTA() {
+  return (
+    <section className="relative mx-auto mt-12 max-w-7xl px-4 pb-16">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-10">
+        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <h3 className="text-2xl font-semibold text-white">Want to host a session or submit a course?</h3>
+            <p className="mt-1 text-zinc-300/90">Share your expertise, grow your audience, and earn. We’ll help you craft an irresistible session.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a href="/live/host"><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400"><Radio className="h-4 w-4"/>Host a Session</Button></a>
+            <a href="/courses/new"><Button className="bg-white/10 text-white hover:bg-white/20"><BookOpen className="h-4 w-4"/>Submit a Course</Button></a>
+            <a href="/discord" className="text-sm text-amber-300 hover:text-amber-200">Join Discord</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SkeletonRows({ count = 5 }: { count?: number }) { return (<div className="grid gap-3">{Array.from({ length: count }).map((_, i) => (<div key={i} className="h-14 w-full animate-pulse rounded-xl bg-white/5" />))}</div>); }
+
+function SparkIcon() { return (<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 0l.9 3.2L10 5l-4.1 1.8L5 10l-.9-3.2L0 5l4.1-1.8L5 0z" fill="currentColor" /></svg>); }
+
+// ---------- Mock Data ---------- //
+
+function getMockHubDataEpic(): HubData {
+  return {
+    announcements: [ { text: "New: Weekly A&R Hotseat — Submit by Friday" }, { text: "Crowdfund tools v2 live: tiered rewards + stretch goals" } ],
+    daily_prompt: { text: "Post a 20-second chorus idea to the #hook-challenge.", tag: "hook-challenge", cta_text: "Post Now", cta_href: "/forum/new?tag=hook-challenge" },
+    creator_spotlight: {
+      id: "cr1",
+      slug: "ishola-pedro",
+      name: "Ishola Pedro",
+      avatar: "https://i.pravatar.cc/100?img=5",
+      cover: "https://images.unsplash.com/photo-1520975922284-7b29d3f11f4f?q=80&w=1400&auto=format&fit=crop",
+      genres: ["Dancehall", "Afro-Fusion"],
+      followers: 12840,
+      bio: "Producer & architect of PLUGGD sound. Blending Afro rhythms with cinematic textures.",
+      stats: { contest_wins: 3, placements: 12 },
+      featured_track: {
+        title: "Summer High (Preview)",
+        cover: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1400&auto=format&fit=crop",
+        // Public domain sample URL (placeholder). Replace with your CDN link.
+        url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_1da7c4cf34.mp3?filename=summer-walk-113162.mp3",
+        plays: 45210,
+      },
+      featured_campaign_slug: "summer-high-mv",
+    },
+    radio: {
+      listeners: 742,
+      now: {
+        id: "trk_now",
+        title: "Glow in the Dark",
+        artist: "NovaWaves",
+        cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop",
+        url: "https://cdn.pixabay.com/download/audio/2021/09/06/audio_7f86ad7b38.mp3?filename=vibes-hip-hop-11254.mp3",
+      },
+      queue: [
+        { id: "trk2", title: "Lionheart (Dub)", artist: "ELEKT876", cover: "https://images.unsplash.com/photo-1516281326934-c923fa379e95?q=80&w=1400&auto=format&fit=crop", url: "https://cdn.pixabay.com/download/audio/2022/02/23/audio_965d7f0584.mp3?filename=urban-hip-hop-123005.mp3" },
+        { id: "trk3", title: "Shimmer", artist: "Raebel", cover: "https://images.unsplash.com/photo-1499210894093-3ca52f1b4a81?q=80&w=1400&auto=format&fit=crop", url: "https://cdn.pixabay.com/download/audio/2022/03/10/audio_7aa90bf34a.mp3?filename=ambient-112532.mp3" },
+      ],
+    },
+    contests: [
+      { id: "c1", title: "Dancehall Hook Challenge", cover: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?q=80&w=1400&auto=format&fit=crop", entrants: 248, ends_at: addDaysISO(5), slug: "dancehall-hook" },
+      { id: "c2", title: "Afrobeats Producer Royale", cover: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?q=80&w=1400&auto=format&fit=crop", entrants: 612, ends_at: addDaysISO(2), slug: "afrobeats-royale" },
+      { id: "c3", title: "Best Remix: Open Stems", cover: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=1400&auto=format&fit=crop", entrants: 94, ends_at: addDaysISO(9), slug: "best-remix" },
+    ],
+    campaigns: [
+      { id: "p1", title: "Crowdfund: 'Summer High' MV", cover: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1400&auto=format&fit=crop", goal: 8000, raised: 5200, ends_at: addDaysISO(12), slug: "summer-high-mv" },
+      { id: "p2", title: "Vinyl Pressing — Limited 300", cover: "https://images.unsplash.com/photo-1516281326934-c923fa379e95?q=80&w=1400&auto=format&fit=crop", goal: 6000, raised: 2300, ends_at: addDaysISO(20), slug: "vinyl-press" },
+    ],
+    events: [
+      { id: "e1", title: "Live Mixing: The FaNaTiX Studio", cover: "https://images.unsplash.com/photo-1520975922284-7b29d3f11f4f?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(1), url: "/live/e1", host: "The FaNaTiX", viewers: 1243, is_live: true },
+      { id: "e2", title: "Masterclass: Afro-Fusion Drums", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(26), url: "/live/e2", host: "DJ Xena", viewers: 312, is_live: false },
+      { id: "e3", title: "A&R Hotseat — Pitch Your Record", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(54), url: "/live/e3", host: "9X Records", viewers: 698, is_live: false },
+    ],
+    threads: [
+      { id: "t1", title: "Looking for a female vocalist (Afro R&B)", slug: "vocalist-afro-rnb", tag: "collab", reply_count: 12, updated_at: new Date().toISOString(), author: { username: "AyoBeats", avatar: "https://i.pravatar.cc/100?img=40" } },
+      { id: "t2", title: "Feedback on my mix? 'Midnight Drive'", slug: "feedback-midnight-drive", tag: "feedback", reply_count: 34, updated_at: new Date().toISOString(), author: { username: "NovaWaves", avatar: "https://i.pravatar.cc/100?img=22" } },
+      { id: "t3", title: "Weekly Wins: I hit 100k streams!", slug: "weekly-wins-100k", tag: "win", reply_count: 18, updated_at: new Date().toISOString(), author: { username: "KeyzBoy", avatar: "https://i.pravatar.cc/100?img=31" } },
+    ],
+    courses: [
+      { id: "co1", title: "From Loop to Hit: Arrangement Tricks", instructor: "Julius Vero", level: "Intermediate", length: "48 min", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", slug: "loop-to-hit" },
+      { id: "co2", title: "Vocal Chains for Afro-Pop", instructor: "Raebel", level: "Beginner", length: "35 min", cover: "https://images.unsplash.com/photo-1499210894093-3ca52f1b4a81?q=80&w=1400&auto=format&fit=crop", slug: "vocal-chains" },
+      { id: "co3", title: "Royalties 101 — Keep Your Bag", instructor: "Ben Ryan", level: "All Levels", length: "42 min", cover: "https://images.unsplash.com/photo-1601935111741-a4f3f1a1b8a1?q=80&w=1400&auto=format&fit=crop", slug: "royalties-101" },
+    ],
+    members: [
+      { id: "m1", username: "IsholaPedro", avatar: "https://i.pravatar.cc/100?img=5", role: "Producer", badges: ["Top 1%", "Contest Winner"] },
+      { id: "m2", username: "LordTokumbo", avatar: "https://i.pravatar.cc/100?img=13", role: "A&R", badges: ["Mentor", "Helper"] },
+      { id: "m3", username: "ZeeksFan", avatar: "https://i.pravatar.cc/100?img=47", role: "Artist", badges: ["Rising", "Streak 7d"] },
+    ],
+    trending: [ { tag: "collab", count: 128 }, { tag: "feedback", count: 96 }, { tag: "win", count: 37 }, { tag: "sync", count: 22 }, { tag: "mixing", count: 81 } ],
+    badges: ["Day One", "Community Builder", "Contest Finalist"],
+    collab_briefs: [
+      { id: "cb1", title: "Need Afro-fusion topliner for summer single", slug: "afro-fusion-topliner", genre: "Afro", skill: "Topline", budget: "£200", author: { avatar: "https://i.pravatar.cc/100?img=29" } },
+      { id: "cb2", title: "Mix engineer for Dancehall EP (5 tracks)", slug: "mix-dancehall-ep", genre: "Dancehall", skill: "Mixing", budget: "£400", author: { avatar: "https://i.pravatar.cc/100?img=15" } },
+    ],
+    quests: [
+      { id: "q1", title: "Comment on 3 threads", xp: 20 },
+      { id: "q2", title: "Post a collab brief", xp: 30 },
+      { id: "q3", title: "Give feedback on 1 track", xp: 25 },
+    ],
+    stats: { members: 32487, active_week: 1823, streak_days: 3, xp: 120 },
+  };
+}
+
+function addDaysISO(days: number) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString(); }
+function addHoursISO(hours: number) { const d = new Date(); d.setHours(d.getHours() + hours); return d.toISOString(); }
+
+// ---------- DEV TEST CASES ---------- //
+
+/**
+ * Minimal dev-time tests rendered optionally in your app.
+ * Ensure the calendar has a valid month header and 28-31 day cells present.
+ */
+export function TestCases() {
+  // Calendar shape test
+  const sampleEvents: LiveEvent[] = [
+    { id: "te1", title: "Sample", cover: "", start_at: new Date().toISOString(), url: "#", host: "Host", viewers: 1, is_live: false },
+  ];
+  return (
+    <div className="p-4 space-y-4">
+      <div className="text-xs text-zinc-400">Test: EventsCalendar should render current month and mark at least one day.</div>
+      <EventsCalendar events={sampleEvents} />
+    </div>
+  );
+}

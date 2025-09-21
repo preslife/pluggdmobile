@@ -1,0 +1,42 @@
+.catalog-scope {
+  /* Force neutral, black-based surfaces inside Catalog only */
+  --background: 240 10% 3.9%; /* pure app background */
+  --card: 240 10% 6%;
+  --muted: 240 10% 8%;
+}
+
+.catalog-scope .card-ambient {
+  background: hsl(var(--card));
+}
+
+.catalog-scope .tabs-list-reset {
+  background: transparent;
+}
+
+/* Ensure any accidental orange “panel” classes are neutralized */
+/* Neutralize orange/yellow/primary backgrounds on block containers only. */
+.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-orange"]:not([class*="inline"]),
+.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-amber"]:not([class*="inline"]),
+.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-yellow"]:not([class*="inline"]),
+.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-primary"]:not([class*="inline"]),
+.catalog-scope .bg-card,
+.catalog-scope .bg-secondary,
+.catalog-scope .bg-muted {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Also neutralize gradient panels on block containers (not inline chips/badges) */
+.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-gradient"],
+.catalog-scope :is(div,section,main,article,aside,header,footer)[style*="gradient"] {
+  background: hsl(var(--background)) !important;
+}
+
+/* Remove shadows/glows from tiles to keep flat black surfaces */
+.catalog-scope .shadow,
+.catalog-scope .shadow-sm,
+.catalog-scope .shadow-md,
+.catalog-scope .shadow-lg { box-shadow: none !important; }
+
+.catalog-scope .border-primary { /* keep outlines allowed */ }
+
+
