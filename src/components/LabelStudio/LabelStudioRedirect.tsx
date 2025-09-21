@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CreateLabelForm from "@/components/LabelStudio/CreateLabelForm";
 
@@ -11,6 +11,8 @@ type MinimalLabel = {
 };
 
 export default function LabelStudioRedirect() {
+  const [searchParams] = useSearchParams();
+  const createRequested = searchParams.get("create") === "1";
   const [loading, setLoading] = useState(true);
   const [labels, setLabels] = useState<MinimalLabel[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export default function LabelStudioRedirect() {
     );
   }
 
-  if (labels.length > 0) {
+  if (!createRequested && labels.length > 0) {
     const firstSlug = labels[0]?.slug;
     if (firstSlug) {
       return <Navigate to={`/studio/label/${firstSlug}/roster`} replace />;
@@ -81,7 +83,11 @@ export default function LabelStudioRedirect() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">Label Studio</h1>
-          <p className="text-muted-foreground">Create or upgrade to a label to get started.</p>
+          <p className="text-muted-foreground">
+            {createRequested && labels.length > 0
+              ? "Create another label for your workspace."
+              : "Create or upgrade to a label to get started."}
+          </p>
           {errorText ? <p className="text-sm text-red-500 mt-2">Error: {errorText}</p> : null}
         </div>
         <CreateLabelForm

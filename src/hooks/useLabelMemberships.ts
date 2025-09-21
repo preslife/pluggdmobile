@@ -24,13 +24,7 @@ export function useLabelMemberships() {
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase
-      .from("label_members")
-      .select(
-        `label_id, role, labels!inner(id, name, slug, logo_url, cover_image_url)`
-      )
-      .eq("user_id", user.id)
-      .order("role", { ascending: true });
+    const { data, error } = await supabase.rpc("get_current_user_labels");
 
     if (error) {
       setError(error.message);
@@ -40,11 +34,11 @@ export function useLabelMemberships() {
     }
 
     const mapped: LabelMembership[] = (data || []).map((row: any) => ({
-      id: row.labels?.id ?? row.label_id,
-      name: row.labels?.name ?? null,
-      slug: row.labels?.slug ?? null,
-      logo_url: row.labels?.logo_url ?? null,
-      cover_image_url: row.labels?.cover_image_url ?? null,
+      id: row.id,
+      name: row.name ?? null,
+      slug: row.slug ?? null,
+      logo_url: row.logo_url ?? null,
+      cover_image_url: row.cover_image_url ?? null,
       role: row.role ?? null,
     }));
 

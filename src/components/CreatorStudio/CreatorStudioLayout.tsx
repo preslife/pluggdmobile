@@ -454,7 +454,7 @@ const navigationItems = [
   },
   {
     title: "Label Studio",
-    url: "/studio/label/roster",
+    url: "/studio/label",
     icon: Building,
   },
 ];
@@ -601,11 +601,11 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate("/studio/label/roster")}>
+        <DropdownMenuItem onSelect={() => navigate("/studio/label") }>
           <Building className="h-4 w-4 mr-2" />
           Open Label Studio
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => navigate("/studio/label/create")}>
+        <DropdownMenuItem onSelect={() => navigate("/studio/label?create=1")}>
           <Plus className="h-4 w-4 mr-2" />
           Create New Label
         </DropdownMenuItem>
@@ -640,7 +640,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
   return (
     <StudioContext.Provider value={contextValue}>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full">
         <Sidebar className="border-r">
           <SidebarHeader>
             <div className="flex items-center gap-2 px-2 py-2">

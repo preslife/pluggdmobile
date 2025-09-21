@@ -13,7 +13,15 @@ export default function LabelStudioLayout() {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [labels, setLabels] = useState<
-    { id: string; slug: string; name: string | null; role: string | null }[]
+    {
+      id: string;
+      slug: string;
+      name: string | null;
+      logo_url: string | null;
+      cover_image_url: string | null;
+      role: string | null;
+      created_at: string | null;
+    }[]
   >([]);
   const [errText, setErrText] = useState<string | null>(null);
 
@@ -47,14 +55,38 @@ export default function LabelStudioLayout() {
       }
 
       const parsed = Array.isArray(data) ? data : [];
-      setLabels(
-        parsed.map((item: any) => ({
-          id: item.id,
-          slug: item.slug,
-          name: item.name ?? null,
-          role: item.role ?? item.your_role ?? null,
-        }))
-      );
+      const rank = (role?: string | null) => {
+        switch (role) {
+          case "owner":
+            return 0;
+          case "admin":
+            return 1;
+          case "editor":
+            return 2;
+          default:
+            return 3;
+        }
+      };
+
+      const mapped = parsed.map((item: any) => ({
+        id: item.id,
+        slug: item.slug,
+        name: item.name ?? null,
+        logo_url: item.logo_url ?? null,
+        cover_image_url: item.cover_image_url ?? null,
+        role: item.role ?? item.your_role ?? null,
+        created_at: item.created_at ?? null,
+      }));
+
+      mapped.sort((a, b) => {
+        const roleDiff = rank(a.role) - rank(b.role);
+        if (roleDiff !== 0) return roleDiff;
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      setLabels(mapped);
       setAuthorized(parsed.length > 0);
       setLoading(false);
     })();
@@ -64,17 +96,32 @@ export default function LabelStudioLayout() {
     };
   }, []);
 
+  const resolvedSlug = useMemo(() => {
+    if (!labels.length) return null;
+    if (routeSlug && labels.some((label) => label.slug === routeSlug)) {
+      return routeSlug;
+    }
+    return labels[0]?.slug ?? null;
+  }, [labels, routeSlug]);
+
+  const activeLabel = useMemo(() => {
+    if (!labels.length) return null;
+    if (resolvedSlug) {
+      return labels.find((label) => label.slug === resolvedSlug) ?? labels[0] ?? null;
+    }
+    return labels[0] ?? null;
+  }, [labels, resolvedSlug]);
+
+  const slug = activeLabel?.slug ?? "";
+
   // Ensure we always have a valid slug in the URL once memberships are known
   useEffect(() => {
     if (!authorized || loading) return;
-
-    const firstSlug = labels[0]?.slug;
-    if (!firstSlug) return;
-
-    if (!routeSlug || !labels.some((label) => label.slug === routeSlug)) {
-      navigate(`/studio/label/${firstSlug}/roster`, { replace: true });
+    if (!resolvedSlug) return;
+    if (!routeSlug || routeSlug !== resolvedSlug) {
+      navigate(`/studio/label/${resolvedSlug}/roster`, { replace: true });
     }
-  }, [authorized, labels, loading, navigate, routeSlug]);
+  }, [authorized, loading, navigate, resolvedSlug, routeSlug]);
 
   if (loading) {
     return (
@@ -106,13 +153,6 @@ export default function LabelStudioLayout() {
       </div>
     );
   }
-
-  const activeLabel = useMemo(() => {
-    if (!routeSlug) return labels[0] ?? null;
-    return labels.find((label) => label.slug === routeSlug) ?? labels[0] ?? null;
-  }, [labels, routeSlug]);
-
-  const slug = activeLabel?.slug ?? "";
 
   return (
     <div className="min-h-screen pt-24 px-4">

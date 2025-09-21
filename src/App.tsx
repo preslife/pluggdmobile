@@ -193,6 +193,7 @@ const AppContent = () => {
   return (
     <>
       <DomainAwareNavigation />
+      <div className="pt-16 md:pt-20">
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
@@ -348,6 +349,7 @@ const AppContent = () => {
       {(isLiveDomain || location.pathname.startsWith('/live')) ? <LiveFooter /> : <Footer />}
       <MobileBottomTabBar />
       <OnboardingFlow isOpen={showOnboarding} onComplete={completeOnboarding} />
+      </div>
     </>
   );
 };

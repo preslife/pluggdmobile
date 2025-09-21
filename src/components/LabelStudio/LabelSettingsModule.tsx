@@ -1,15 +1,29 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveLabel } from "@/hooks/useActiveLabel";
+import { AlertTriangle } from "lucide-react";
 
 export default function LabelSettingsModule() {
   const { label: activeLabel } = useActiveLabel();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -17,6 +31,7 @@ export default function LabelSettingsModule() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (activeLabel) {
@@ -63,6 +78,32 @@ export default function LabelSettingsModule() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!activeLabel) return;
+    try {
+      setDeleting(true);
+      const { error } = await supabase.rpc("delete_label_as_owner", {
+        p_label_id: activeLabel.id,
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Label deleted",
+        description: "The label and its memberships have been removed.",
+      });
+
+      navigate("/studio/label", { replace: true });
+    } catch (err: any) {
+      toast({
+        title: "Failed to delete label",
+        description: err.message || String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!activeLabel) {
     return <div className="space-y-2"><h2 className="text-2xl font-semibold">Settings</h2><p className="text-muted-foreground">No active label.</p></div>;
   }
@@ -104,8 +145,39 @@ export default function LabelSettingsModule() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="border-destructive/20">
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> Danger Zone
+          </CardTitle>
+          <CardDescription>Deleting a label removes all team access, invitations, and linked data. This action cannot be undone.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete Label"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {activeLabel.name || "this label"}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will immediately remove the label, its team members, invitations, and any managed profiles. Content you own remains in your personal workspace.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction disabled={deleting} onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Confirm Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
 
