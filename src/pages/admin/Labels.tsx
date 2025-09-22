@@ -129,7 +129,15 @@ export default function AdminLabelsPage() {
       setCoverUrl("");
       load();
     } catch (err: any) {
-      toast({ title: "Create failed", description: err.message || String(err), variant: "destructive" });
+      const message = err?.message || String(err);
+      toast({
+        title: "Create failed",
+        description:
+          message.includes("forbidden_service_role_required")
+            ? "admin_create_managed_label currently requires a service-role context. Run this operation via the admin CLI or edge function."
+            : message,
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }

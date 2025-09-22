@@ -843,6 +843,35 @@ const LabelWorkspaceDashboard: React.FC<LabelWorkspaceDashboardProps> = ({ label
     catalog: 0,
   });
 
+  const labelQuickActions: QuickAction[] = [
+    {
+      title: "Manage roster",
+      description: "Invite members and adjust roles",
+      icon: Users,
+      action: () => navigate(`/studio/label/${label.slug}/roster`),
+    },
+    {
+      title: "Review catalog",
+      description: "Check releases owned by the label",
+      icon: Package,
+      action: () => navigate(`/studio/label/${label.slug}/catalog`),
+    },
+    {
+      title: "Customize storefront",
+      description: "Update the public label page",
+      icon: Store,
+      action: () => navigate(`/studio/label/${label.slug}/storefront`),
+      variant: "secondary",
+    },
+    {
+      title: "Monitor finances",
+      description: "Verify payouts and Stripe status",
+      icon: CreditCard,
+      action: () => navigate(`/studio/label/${label.slug}/financials`),
+      variant: "secondary",
+    },
+  ];
+
   useEffect(() => {
     let isMounted = true;
     const fetchSnapshot = async () => {
@@ -937,6 +966,34 @@ const LabelWorkspaceDashboard: React.FC<LabelWorkspaceDashboardProps> = ({ label
             <Settings className="h-4 w-4 mr-2" /> Label Settings
           </Button>
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {labelQuickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Card key={action.title} className="border-border/60">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm">{action.title}</h3>
+                    <p className="text-xs text-muted-foreground">{action.description}</p>
+                  </div>
+                  <div className="rounded-full bg-primary/10 text-primary p-2">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                </div>
+                <Button
+                  variant={action.variant === "secondary" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={action.action}
+                >
+                  Go
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

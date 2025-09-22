@@ -18,12 +18,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveLabel } from "@/hooks/useActiveLabel";
+import { useOptionalStudioContext } from "@/contexts/StudioContext";
 import { AlertTriangle } from "lucide-react";
 
 export default function LabelSettingsModule() {
   const { label: activeLabel } = useActiveLabel();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const studioContext = useOptionalStudioContext();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -92,6 +94,9 @@ export default function LabelSettingsModule() {
         description: "The label and its memberships have been removed.",
       });
 
+      await studioContext?.refreshLabels();
+      studioContext?.setActiveLabelId(null);
+      studioContext?.setMode("personal");
       navigate("/studio/label", { replace: true });
     } catch (err: any) {
       toast({
@@ -180,4 +185,3 @@ export default function LabelSettingsModule() {
     </div>
   );
 }
-
