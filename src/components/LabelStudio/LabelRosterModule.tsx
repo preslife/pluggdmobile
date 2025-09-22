@@ -84,66 +84,38 @@ export default function LabelRosterModule() {
   useEffect(() => {
     const init = async () => {
       if (!user) { setLoading(false); return; }
-      if (labelId) {
-        await Promise.all([
-          loadMembers(labelId),
-          loadPendingInvites(labelId)
+      if (!labelId) { setLoading(false); return; }
+      try {
+        const [{ data: roster, error: rosterErr }, { data: invites, error: inviteErr }] = await Promise.all([
+          supabase.rpc("label_roster", { p_label_id: labelId }),
+          supabase.rpc("label_pending_invites", { p_label_id: labelId })
         ]);
+
+        if (rosterErr) throw rosterErr;
+        if (inviteErr) throw inviteErr;
+
+        setMembers((roster || []).map((row: any) => ({
+          user_id: row.user_id,
+          username: row.username ?? null,
+          full_name: row.full_name ?? null,
+          avatar_url: row.avatar_url ?? null,
+          role: row.role ?? null,
+          joined_at: row.joined_at,
+        })));
+
+        setPendingInvites(invites || []);
+      } catch (err: any) {
+        toast({
+          title: "Failed to load roster",
+          description: err.message || String(err),
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, labelId]);
-
-  const loadMembers = async (lid: string) => {
-    const { data: rows, error } = await supabase
-      .from("label_members")
-      .select("user_id, role, created_at")
-      .eq("label_id", lid)
-      .order("role", { ascending: true });
-    if (error) {
-      toast({ title: "Failed to load roster", description: error.message, variant: "destructive" });
-      return;
-    }
-    const userIds = (rows || []).map(r => r.user_id);
-    if (userIds.length === 0) { setMembers([]); return; }
-    const { data: profiles, error: pErr } = await supabase
-      .from("profiles")
-      .select("user_id, username, full_name, avatar_url")
-      .in("user_id", userIds);
-    if (pErr) {
-      toast({ title: "Failed to load profiles", description: pErr.message, variant: "destructive" });
-      return;
-    }
-    const map = new Map<string, any>();
-    (profiles || []).forEach(p => map.set(p.user_id, p));
-    setMembers((rows || []).map(r => ({
-      user_id: r.user_id,
-      username: map.get(r.user_id)?.username ?? null,
-      full_name: map.get(r.user_id)?.full_name ?? null,
-      avatar_url: map.get(r.user_id)?.avatar_url ?? null,
-      role: r.role ?? null,
-      joined_at: r.created_at,
-    })));
-  };
-
-  const loadPendingInvites = async (lid: string) => {
-    const { data, error } = await supabase
-      .from("label_invitations")
-      .select("id, email, role, expires_at, token")
-      .eq("label_id", lid)
-      .is("accepted_at", null)
-      .gte("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Failed to load invites:", error);
-      return;
-    }
-
-    setPendingInvites(data || []);
-  };
+  }, [user?.id, labelId, toast]);
 
   const handleChangeRole = async (memberUserId: string, newRole: string) => {
     if (!canChangeRoles || !labelId) return;

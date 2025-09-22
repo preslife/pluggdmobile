@@ -40,7 +40,7 @@ interface CatalogItem {
 }
 
 export default function LabelCatalogModule() {
-  const { activeLabel, loading: labelLoading } = useActiveLabel();
+  const { label: activeLabel, loading: labelLoading } = useActiveLabel();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,69 +65,96 @@ export default function LabelCatalogModule() {
 
     setLoading(true);
     try {
-      // Fetch releases
-      const { data: releases, error: releasesError } = await supabase
+      const allItems: CatalogItem[] = [];
+
+      // Releases (required)
+      const releasesRes = await supabase
         .from('releases')
-        .select('id, title, artwork_url, price, status, created_at')
+        .select('id, title, cover_art_url, price, status, total_plays, created_at')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
+      if (releasesRes.error) throw releasesRes.error;
+      releasesRes.data?.forEach((item: any) => {
+        allItems.push({
+          id: item.id,
+          title: item.title,
+          type: 'release',
+          artwork_url: item.cover_art_url,
+          price: item.price || 0,
+          status: item.status || 'draft',
+          created_at: item.created_at,
+        });
+      });
 
-      if (releasesError) throw releasesError;
-
-      // Fetch beats
-      const { data: beats, error: beatsError } = await supabase
+      // Beats (optional owner columns)
+      const beatsRes = await supabase
         .from('beats')
-        .select('id, title, image_url, price, status, created_at')
+        .select('id, title, image_url, price, status, total_plays, created_at, owner_type, owner_id')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
+      if (!beatsRes.error) {
+        beatsRes.data?.forEach((item: any) => {
+          allItems.push({
+            id: item.id,
+            title: item.title,
+            type: 'beat',
+            artwork_url: item.image_url,
+            price: item.price || 0,
+            status: item.status || 'draft',
+            created_at: item.created_at,
+          });
+        });
+      } else if (beatsRes.error.code !== '42703') {
+        throw beatsRes.error;
+      }
 
-      if (beatsError) throw beatsError;
-
-      // Fetch sample packs
-      const { data: packs, error: packsError } = await supabase
+      // Sample packs (optional owner columns)
+     const packsRes = await supabase
         .from('sample_packs')
-        .select('id, title, artwork_url, price, status, created_at')
+        .select('id, title, artwork_url, cover_art_url, price, status, download_count, created_at, owner_type, owner_id')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
+     if (!packsRes.error) {
+        packsRes.data?.forEach((item: any) => {
+          allItems.push({
+            id: item.id,
+            title: item.title,
+            type: 'pack',
+            artwork_url: item.artwork_url || item.cover_art_url,
+            price: item.price || 0,
+            status: item.status || 'draft',
+            created_at: item.created_at,
+          });
+        });
+      } else if (packsRes.error.code !== '42703') {
+        throw packsRes.error;
+      }
 
-      if (packsError) throw packsError;
-
-      // Fetch store products
-      const { data: products, error: productsError } = await supabase
+      // Store products (optional owner columns)
+      const productsRes = await supabase
         .from('store_products')
-        .select('id, title, image_url, price, status, created_at')
+        .select('id, title, image_url, price, status, created_at, owner_type, owner_id')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
-
-      if (productsError) throw productsError;
-
-      // Combine and format all items
-      const allItems: CatalogItem[] = [
-        ...(releases || []).map(item => ({
-          ...item,
-          type: 'release' as const,
-          image_url: item.artwork_url
-        })),
-        ...(beats || []).map(item => ({
-          ...item,
-          type: 'beat' as const,
-          artwork_url: item.image_url
-        })),
-        ...(packs || []).map(item => ({
-          ...item,
-          type: 'pack' as const,
-          image_url: item.artwork_url
-        })),
-        ...(products || []).map(item => ({
-          ...item,
-          type: 'product' as const,
-          artwork_url: item.image_url
-        }))
-      ];
+      if (!productsRes.error) {
+        productsRes.data?.forEach((item: any) => {
+          allItems.push({
+            id: item.id,
+            title: item.title,
+            type: 'product',
+            artwork_url: item.image_url,
+            price: item.price || 0,
+            status: item.status || 'draft',
+            created_at: item.created_at,
+          });
+        });
+      } else if (productsRes.error.code !== '42703') {
+        throw productsRes.error;
+      }
 
       setItems(allItems);
     } catch (error) {
@@ -193,7 +220,17 @@ export default function LabelCatalogModule() {
         .update({ status: newStatus })
         .eq('id', item.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42703') {
+          toast({
+            title: "Status toggle not supported",
+            description: "This content type does not expose a publish toggle yet.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -485,8 +522,4 @@ export default function LabelCatalogModule() {
     </div>
   );
 }
-
-
-
-
 

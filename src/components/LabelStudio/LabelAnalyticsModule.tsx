@@ -33,7 +33,7 @@ const asNumber = (value: unknown) => {
 };
 
 export default function LabelAnalyticsModule() {
-  const { activeLabel, loading: labelLoading } = useActiveLabel();
+  const { label: activeLabel, loading: labelLoading } = useActiveLabel();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
@@ -268,5 +268,4 @@ export default function LabelAnalyticsModule() {
     </div>
   );
 }
-
 

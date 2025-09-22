@@ -30,8 +30,31 @@ const asNumber = (value: unknown) => {
   return Number.isFinite(num) ? num : 0;
 };
 
+const exportFinancials = (rows: CatalogRevenue[]) => {
+  if (!rows.length) return;
+  const headers = ['Title', 'Type', 'Price', 'Estimated Streams', 'Estimated Revenue'];
+  const csv = [
+    headers.join(','),
+    ...rows.map((row) => [
+      row.title,
+      row.type,
+      asNumber(row.price).toString(),
+      asNumber(row.estimatedStreams).toString(),
+      asNumber(row.estimatedRevenue).toString(),
+    ].join(',')),
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'label-financials.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function LabelFinancialsModule() {
-  const { activeLabel, loading: labelLoading } = useActiveLabel();
+  const { label: activeLabel, loading: labelLoading } = useActiveLabel();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stripeState, setStripeState] = useState<StripeState | null>(null);
@@ -157,9 +180,14 @@ export default function LabelFinancialsModule() {
             Monitor Stripe onboarding, catalog value, and estimated revenue for {activeLabel.name || activeLabel.slug}.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchFinancials}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchFinancials}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => exportFinancials(catalog)} disabled={!catalog.length}>
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -279,7 +307,4 @@ export default function LabelFinancialsModule() {
     </div>
   );
 }
-
-
-
 

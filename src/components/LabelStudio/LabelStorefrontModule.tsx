@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveLabel } from "@/hooks/useActiveLabel";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
 export default function LabelStorefrontModule() {
-  const { activeLabel, loading: labelLoading } = useActiveLabel();
+  const { label: activeLabel, loading: labelLoading } = useActiveLabel();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
@@ -19,6 +20,9 @@ export default function LabelStorefrontModule() {
   const [genre, setGenre] = useState("");
   const [country, setCountry] = useState("");
   const [previewReleases, setPreviewReleases] = useState<Array<{ id: string; title: string; status: string; created_at: string }>>([]);
+  const [heroHeading, setHeroHeading] = useState("");
+  const [heroSubheading, setHeroSubheading] = useState("");
+  const [featuredReleaseId, setFeaturedReleaseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!labelLoading && activeLabel) {
@@ -32,7 +36,7 @@ export default function LabelStorefrontModule() {
     try {
       const { data: labelRow, error: labelError } = await supabase
         .from("labels")
-        .select("contact_email, genre, country")
+        .select("contact_email, genre, country, storefront_settings")
         .eq("id", labelId)
         .maybeSingle();
       if (labelError) throw labelError;
@@ -40,6 +44,10 @@ export default function LabelStorefrontModule() {
         setContactEmail(labelRow.contact_email || "");
         setGenre(labelRow.genre || "");
         setCountry(labelRow.country || "");
+        const config = labelRow.storefront_settings || {};
+        setHeroHeading(config.hero_heading || "");
+        setHeroSubheading(config.hero_subheading || "");
+        setFeaturedReleaseId(config.featured_release_id || null);
       }
 
       const { data: releases, error: releasesError } = await supabase
@@ -65,6 +73,12 @@ export default function LabelStorefrontModule() {
     if (!activeLabel) return;
     try {
       setSaving(true);
+      const settings = {
+        hero_heading: heroHeading,
+        hero_subheading: heroSubheading,
+        featured_release_id: featuredReleaseId,
+      };
+
       const { error } = await supabase
         .from("labels")
         .update({
@@ -73,6 +87,7 @@ export default function LabelStorefrontModule() {
           contact_email: contactEmail || null,
           genre: genre || null,
           country: country || null,
+          storefront_settings: settings,
         })
         .eq("id", activeLabel.id);
 
@@ -174,6 +189,42 @@ export default function LabelStorefrontModule() {
         </Card>
       </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Hero section</CardTitle>
+            <CardDescription>Control the messaging that appears at the top of the label storefront.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="hero-heading">Headline</Label>
+              <Input
+                id="hero-heading"
+                value={heroHeading}
+                onChange={(e) => setHeroHeading(e.target.value)}
+                placeholder="Championing independent sound."
+              />
+            </div>
+            <div>
+              <Label htmlFor="hero-subheading">Subheading</Label>
+              <Textarea
+                id="hero-subheading"
+                value={heroSubheading}
+                onChange={(e) => setHeroSubheading(e.target.value)}
+                placeholder="Tell listeners what makes this label unique."
+              />
+            </div>
+            <div>
+              <Label htmlFor="featured-release">Featured release</Label>
+              <Input
+                id="featured-release"
+                value={featuredReleaseId || ""}
+                onChange={(e) => setFeaturedReleaseId(e.target.value || null)}
+                placeholder="Optional release ID to feature"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Recent releases featured on storefront</CardTitle>
@@ -200,7 +251,5 @@ export default function LabelStorefrontModule() {
     </div>
   );
 }
-
-
 
 
