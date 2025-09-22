@@ -29,6 +29,7 @@ import {
   Download,
   Calendar,
   MoreHorizontal,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -41,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useStudioContext } from "@/contexts/StudioContext";
 
 interface CatalogItem {
   id: string;
@@ -85,6 +87,8 @@ export const CatalogModule: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { mode, activeLabel } = useStudioContext();
+  const isLabelWorkspace = mode === "label" && !!activeLabel;
 
   // Get tab from query parameter
   const searchParams = new URLSearchParams(location.search);
@@ -104,10 +108,10 @@ export const CatalogModule: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLabelWorkspace) {
       fetchCatalogItems();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, isLabelWorkspace]);
 
   const fetchCatalogItems = async () => {
     if (!user) return;
@@ -260,6 +264,35 @@ export const CatalogModule: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (isLabelWorkspace && activeLabel) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-primary/30">
+          <div className="p-6 space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider">Label workspace</p>
+              <h1 className="text-3xl font-bold mt-1">Catalog management</h1>
+              <p className="text-muted-foreground mt-2 max-w-2xl">
+                Catalog editing for {activeLabel.name || activeLabel.slug} lives inside Label Studio. Switch there to upload new releases, manage roster-owned beats, or update storefront settings.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => navigate(`/studio/label/${activeLabel.slug}/catalog`)}>
+                <Package className="h-4 w-4 mr-2" /> Open Label Catalog
+              </Button>
+              <Button variant="outline" onClick={() => navigate(`/studio/label/${activeLabel.slug}/storefront`)}>
+                <ShoppingBag className="h-4 w-4 mr-2" /> Customize Storefront
+              </Button>
+              <Button variant="outline" onClick={() => navigate(`/studio/label/${activeLabel.slug}/roster`)}>
+                <Users className="h-4 w-4 mr-2" /> Manage Roster Access
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const filteredItems = catalogItems.filter(item => {
     const title = (item.title || '').toString();

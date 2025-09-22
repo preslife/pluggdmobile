@@ -27,6 +27,10 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownRight,
+  Settings,
+  Store,
+  CreditCard,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +39,8 @@ import { useToast } from "@/hooks/use-toast";
 import { EarningsSparkline } from "./widgets/EarningsSparkline";
 import { TicketsSoldWidget } from "./widgets/TicketsSoldWidget";
 import { InvitesWidget } from "./widgets/InvitesWidget";
+import { useStudioContext } from "@/contexts/StudioContext";
+import type { LabelMembership } from "@/hooks/useLabelMemberships";
 
 interface DashboardStats {
   todayEarnings: number;
@@ -88,6 +94,9 @@ export const CreatorStudioDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { mode, activeLabel } = useStudioContext();
+  const isLabelWorkspace = mode === "label" && !!activeLabel;
+
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     todayEarnings: 0,
@@ -107,13 +116,23 @@ export const CreatorStudioDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [salesBreakdown, setSalesBreakdown] = useState<SalesBreakdown[]>([]);
 
+  useEffect(() => {
+    if (isLabelWorkspace && activeLabel) {
+      setLoading(false);
+    }
+  }, [isLabelWorkspace, activeLabel]);
+
+  if (isLabelWorkspace && activeLabel) {
+    return <LabelWorkspaceDashboard label={activeLabel} navigate={navigate} />;
+  }
+
   // Sample sparkline data (in a real app, this would come from your analytics)
   useEffect(() => {
-    if (user) {
+    if (user && !isLabelWorkspace) {
       fetchDashboardData();
       generateSampleEarningsData();
     }
-  }, [user]);
+  }, [user, isLabelWorkspace]);
 
   useEffect(() => {
     generateSampleEarningsData();
@@ -805,6 +824,196 @@ export const CreatorStudioDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+};
+
+interface LabelWorkspaceDashboardProps {
+  label: LabelMembership;
+  navigate: ReturnType<typeof useNavigate>;
+}
+
+const LabelWorkspaceDashboard: React.FC<LabelWorkspaceDashboardProps> = ({ label, navigate }) => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState({
+    team: 0,
+    invites: 0,
+    releases: 0,
+    catalog: 0,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSnapshot = async () => {
+      setLoading(true);
+      try {
+        const [{ count: teamCount, error: teamErr }, { count: inviteCount, error: inviteErr }, { count: releaseCount, error: releaseErr }] = await Promise.all([
+          supabase
+            .from("label_members")
+            .select("id", { head: true, count: "exact" })
+            .eq("label_id", label.id),
+          supabase
+            .from("label_invitations")
+            .select("id", { head: true, count: "exact" })
+            .eq("label_id", label.id)
+            .is("accepted_at", null),
+          supabase
+            .from("releases")
+            .select("id", { head: true, count: "exact" })
+            .eq("owner_type", "label")
+            .eq("owner_id", label.id),
+        ]);
+
+        if (teamErr || inviteErr || releaseErr) {
+          throw teamErr || inviteErr || releaseErr;
+        }
+
+        let catalogCount = releaseCount ?? 0;
+
+        // Attempt to include beats if schema supports owner columns
+        try {
+          const { count: beatCount } = await supabase
+            .from("beats")
+            .select("id", { head: true, count: "exact" })
+            .eq("owner_type", "label")
+            .eq("owner_id", label.id);
+          if (typeof beatCount === "number") {
+            catalogCount += beatCount;
+          }
+        } catch (err: any) {
+          if (err?.code !== "42703") {
+            toast({
+              title: "Beat count unavailable",
+              description: err.message || String(err),
+              variant: "destructive",
+            });
+          }
+        }
+
+        if (!isMounted) return;
+        setSnapshot({
+          team: teamCount ?? 0,
+          invites: inviteCount ?? 0,
+          releases: releaseCount ?? 0,
+          catalog: catalogCount,
+        });
+      } catch (err: any) {
+        if (!isMounted) return;
+        toast({
+          title: "Could not load label metrics",
+          description: err.message || String(err),
+          variant: "destructive",
+        });
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchSnapshot();
+    return () => {
+      isMounted = false;
+    };
+  }, [label.id, toast]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground uppercase tracking-wider">Label workspace</p>
+          <h1 className="text-3xl font-bold mt-1">{label.name || label.slug}</h1>
+          <p className="text-muted-foreground mt-2 max-w-xl">
+            Manage roster, catalog, and label operations from here. Jump into Label Studio for deeper tools.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => navigate(`/studio/label/${label.slug}/roster`)}>
+            <Users className="h-4 w-4 mr-2" /> Manage Roster
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/studio/label/${label.slug}/catalog`)}>
+            <Package className="h-4 w-4 mr-2" /> Open Label Catalog
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/studio/label/${label.slug}/settings`)}>
+            <Settings className="h-4 w-4 mr-2" /> Label Settings
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+            <CardDescription>Active label roles</CardDescription>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">
+            {loading ? "--" : snapshot.team}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Pending Invites</CardTitle>
+            <CardDescription>Awaiting acceptance</CardDescription>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">
+            {loading ? "--" : snapshot.invites}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Releases</CardTitle>
+            <CardDescription>Owned by this label</CardDescription>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">
+            {loading ? "--" : snapshot.releases}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Total catalog</CardTitle>
+            <CardDescription>Releases + beats tracked under this label</CardDescription>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold">
+            {loading ? "--" : snapshot.catalog}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Next steps</CardTitle>
+          <CardDescription>Key actions to keep your label running smoothly.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm">Grow your roster</h3>
+            <p className="text-sm text-muted-foreground">Invite collaborators and assign roles so everyone has the right access.</p>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/studio/label/${label.slug}/roster`)}>
+              <UserPlus className="h-4 w-4 mr-2" /> Send Invitation
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm">Review label catalog</h3>
+            <p className="text-sm text-muted-foreground">Check release status, transfer ownership, and prep upcoming drops.</p>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/studio/label/${label.slug}/catalog`)}>
+              <Music className="h-4 w-4 mr-2" /> View Label Catalog
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm">Keep finances in sync</h3>
+            <p className="text-sm text-muted-foreground">Complete Stripe onboarding and verify payout details.</p>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/studio/label/${label.slug}/financials`)}>
+              <CreditCard className="h-4 w-4 mr-2" /> Review Financials
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm">Update public profile</h3>
+            <p className="text-sm text-muted-foreground">Refresh branding, bios, and storefront blocks.</p>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/studio/label/${label.slug}/storefront`)}>
+              <Store className="h-4 w-4 mr-2" /> Customize Storefront
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
