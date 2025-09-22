@@ -70,17 +70,18 @@ export default function LabelCatalogModule() {
       // Releases (required)
       const releasesRes = await supabase
         .from('releases')
-        .select('id, title, cover_art_url, price, status, total_plays, created_at')
+        .select('id, title, cover_art_url, price, status, created_at')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
       if (releasesRes.error) throw releasesRes.error;
       releasesRes.data?.forEach((item: any) => {
+        const artwork = item.cover_art_url || null;
         allItems.push({
           id: item.id,
           title: item.title,
           type: 'release',
-          artwork_url: item.cover_art_url,
+          artwork_url: artwork,
           price: item.price || 0,
           status: item.status || 'draft',
           created_at: item.created_at,
@@ -90,19 +91,24 @@ export default function LabelCatalogModule() {
       // Beats (optional owner columns)
       const beatsRes = await supabase
         .from('beats')
-        .select('id, title, image_url, price, status, total_plays, created_at, owner_type, owner_id')
+        .select('id, title, image_url, price, is_published, status, created_at, owner_type, owner_id')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
       if (!beatsRes.error) {
         beatsRes.data?.forEach((item: any) => {
+          const beatStatus = typeof item.status === 'string'
+            ? item.status
+            : item.is_published
+            ? 'published'
+            : 'draft';
           allItems.push({
             id: item.id,
             title: item.title,
             type: 'beat',
             artwork_url: item.image_url,
             price: item.price || 0,
-            status: item.status || 'draft',
+            status: beatStatus,
             created_at: item.created_at,
           });
         });
@@ -111,19 +117,20 @@ export default function LabelCatalogModule() {
       }
 
       // Sample packs (optional owner columns)
-     const packsRes = await supabase
+      const packsRes = await supabase
         .from('sample_packs')
-        .select('id, title, artwork_url, cover_art_url, price, status, download_count, created_at, owner_type, owner_id')
+        .select('id, title, cover_art_url, price, status, created_at, owner_type, owner_id')
         .eq('owner_type', 'label')
         .eq('owner_id', activeLabel.id)
         .order('created_at', { ascending: false });
-     if (!packsRes.error) {
+      if (!packsRes.error) {
         packsRes.data?.forEach((item: any) => {
+          const artwork = item.cover_art_url || null;
           allItems.push({
             id: item.id,
             title: item.title,
             type: 'pack',
-            artwork_url: item.artwork_url || item.cover_art_url,
+            artwork_url: artwork,
             price: item.price || 0,
             status: item.status || 'draft',
             created_at: item.created_at,
@@ -522,4 +529,3 @@ export default function LabelCatalogModule() {
     </div>
   );
 }
-

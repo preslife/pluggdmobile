@@ -1,7 +1,8 @@
+-- Label roster + invites helpers
 create or replace function public.label_roster(p_label_id uuid)
 returns table (
-  user_id uuid,
-  role text,
+  member_user_id uuid,
+  member_role text,
   joined_at timestamptz,
   username text,
   full_name text,
@@ -31,9 +32,9 @@ begin
 
   return query
     select
-      lm.user_id,
-      lm.role::text,
-      lm.created_at,
+      lm.user_id as member_user_id,
+      lm.role::text as member_role,
+      lm.created_at as joined_at,
       p.username,
       p.full_name,
       p.avatar_url
@@ -48,9 +49,9 @@ grant execute on function public.label_roster(uuid) to authenticated;
 
 create or replace function public.label_pending_invites(p_label_id uuid)
 returns table (
-  id uuid,
+  invitation_id uuid,
   email text,
-  role text,
+  invite_role text,
   expires_at timestamptz,
   token text,
   invited_by uuid,
@@ -80,9 +81,9 @@ begin
 
   return query
     select
-      li.id,
+      li.id as invitation_id,
       li.email,
-      li.role::text,
+      li.role::text as invite_role,
       li.expires_at,
       li.token,
       li.invited_by,

@@ -95,15 +95,21 @@ export default function LabelRosterModule() {
         if (inviteErr) throw inviteErr;
 
         setMembers((roster || []).map((row: any) => ({
-          user_id: row.user_id,
+          user_id: row.member_user_id,
           username: row.username ?? null,
           full_name: row.full_name ?? null,
           avatar_url: row.avatar_url ?? null,
-          role: row.role ?? null,
+          role: row.member_role ?? null,
           joined_at: row.joined_at,
         })));
 
-        setPendingInvites(invites || []);
+        setPendingInvites((invites || []).map((row: any) => ({
+          id: row.invitation_id,
+          email: row.email,
+          role: row.invite_role,
+          expires_at: row.expires_at,
+          token: row.token,
+        })));
       } catch (err: any) {
         toast({
           title: "Failed to load roster",

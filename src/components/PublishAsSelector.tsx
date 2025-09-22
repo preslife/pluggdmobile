@@ -1,5 +1,5 @@
 import React from "react";
-import { useStudioContext } from "@/contexts/StudioContext";
+import { useOptionalStudioContext } from "@/contexts/StudioContext";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,8 +32,10 @@ export function PublishAsSelector({
   showDescription = true
 }: PublishAsSelectorProps) {
   const { user } = useAuth();
-  const studioContext = useStudioContext();
-  const { mode, activeLabel, memberships } = studioContext;
+  const studioContext = useOptionalStudioContext();
+  const mode = studioContext?.mode ?? "personal";
+  const activeLabel = studioContext?.activeLabel ?? null;
+  const memberships = studioContext?.memberships ?? [];
 
   // Build available options
   const options = React.useMemo<PublishAsOption[]>(() => {

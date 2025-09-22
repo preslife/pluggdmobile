@@ -13,7 +13,7 @@ export interface StudioContextValue {
   refreshLabels: () => Promise<void>;
 }
 
-const StudioContext = createContext<StudioContextValue | undefined>(undefined);
+const StudioContext = createContext<StudioContextValue | null>(null);
 
 export function useStudioContext(): StudioContextValue {
   const ctx = useContext(StudioContext);
@@ -24,7 +24,8 @@ export function useStudioContext(): StudioContextValue {
 }
 
 export function useOptionalStudioContext(): StudioContextValue | undefined {
-  return useContext(StudioContext);
+  const ctx = useContext(StudioContext);
+  return ctx ?? undefined;
 }
 
 export { StudioContext };
