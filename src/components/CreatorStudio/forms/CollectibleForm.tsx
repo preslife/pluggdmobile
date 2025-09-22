@@ -136,7 +136,7 @@ export const CollectibleForm = () => {
   };
 
   const handleDigitalAssetUpload = (url: string) => {
-    setDigitalAssets([...digitalAssets, url]);
+    setDigitalAssets((prev) => [...prev, url]);
   };
 
   const removeDigitalAsset = (index: number) => {
@@ -358,10 +358,10 @@ export const CollectibleForm = () => {
                   <div>
                     <FormLabel>Main Image</FormLabel>
                     <FileUpload
-                      onUploadComplete={handleImageUpload}
-                      acceptedFileTypes={['image/*']}
-                      maxFileSize={10 * 1024 * 1024}
-                      uploadType="image"
+                      onUpload={(url) => handleImageUpload(url)}
+                      accept="image/*"
+                      bucketName="beat-artwork"
+                      maxSizeMB={10}
                     />
                     {imageUrl && (
                       <div className="mt-2">
@@ -526,10 +526,10 @@ export const CollectibleForm = () => {
                       Upload high-resolution files, 3D models, or other digital assets
                     </FormDescription>
                     <FileUpload
-                      onUploadComplete={handleDigitalAssetUpload}
-                      acceptedFileTypes={['image/*', 'video/*', 'model/*']}
-                      maxFileSize={50 * 1024 * 1024}
-                      uploadType="file"
+                      onUpload={(url) => handleDigitalAssetUpload(url)}
+                      accept="image/*,video/*,model/*"
+                      bucketName="beat-artwork"
+                      maxSizeMB={50}
                     />
                     {digitalAssets.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">

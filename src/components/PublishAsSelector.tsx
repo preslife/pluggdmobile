@@ -7,6 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { Building, User, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { useLabelMemberships } from "@/hooks/useLabelMemberships";
+import { useSearchParams } from "react-router-dom";
+
+const getStoredLabelId = () => {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem("studio:context");
+  if (stored && stored.startsWith("label:")) {
+    const [, id] = stored.split(":");
+    return id || null;
+  }
+  return null;
+};
 
 export type PublishAsOption = {
   type: 'user' | 'label';
@@ -33,9 +45,27 @@ export function PublishAsSelector({
 }: PublishAsSelectorProps) {
   const { user } = useAuth();
   const studioContext = useOptionalStudioContext();
-  const mode = studioContext?.mode ?? "personal";
+  const [searchParams] = useSearchParams();
+  const storedLabelId = React.useMemo(() => getStoredLabelId(), []);
+  const preselectOwnerTypeFromQuery = searchParams.get("owner") ?? searchParams.get("ownerType");
+  const preselectOwnerIdFromQuery = searchParams.get("labelId") ?? searchParams.get("ownerId");
+  const preselectOwnerName =
+    searchParams.get("labelName") ??
+    searchParams.get("ownerName") ??
+    searchParams.get("labelSlug") ??
+    undefined;
+  const { memberships: fallbackMemberships } = useLabelMemberships();
+  const effectiveOwnerType =
+    preselectOwnerTypeFromQuery ?? (storedLabelId ? "label" : undefined);
+  const effectiveOwnerId =
+    preselectOwnerIdFromQuery ?? storedLabelId ?? undefined;
+  const mode =
+    studioContext?.mode ?? (effectiveOwnerType === "label" ? "label" : "personal");
   const activeLabel = studioContext?.activeLabel ?? null;
-  const memberships = studioContext?.memberships ?? [];
+  const contextMemberships = studioContext?.memberships ?? [];
+  const memberships = contextMemberships.length > 0 ? contextMemberships : fallbackMemberships;
+  const resolvedActiveLabelId =
+    activeLabel?.id ?? (effectiveOwnerType === "label" ? effectiveOwnerId ?? null : null);
 
   // Build available options
   const options = React.useMemo<PublishAsOption[]>(() => {
@@ -48,7 +78,7 @@ export function PublishAsSelector({
         id: user.id, // This should be profile.id in production
         name: 'Personal Profile',
         avatar: user.user_metadata?.avatar_url,
-        isDefault: mode === 'personal'
+        isDefault: mode === 'personal' && effectiveOwnerType !== 'label'
       });
     }
 
@@ -61,20 +91,61 @@ export function PublishAsSelector({
           id: membership.id,
           name: membership.name || membership.slug || 'Label',
           avatar: membership.logo_url || undefined,
-          isDefault: mode === 'label' && activeLabel?.id === membership.id
+          isDefault: mode === 'label' && resolvedActiveLabelId === membership.id
         });
       });
 
+    if (
+      effectiveOwnerType === 'label' &&
+      effectiveOwnerId &&
+      !opts.some(opt => opt.type === 'label' && opt.id === effectiveOwnerId)
+    ) {
+      const membership = memberships.find(m => m.id === effectiveOwnerId);
+      opts.push({
+        type: 'label',
+        id: effectiveOwnerId,
+        name: preselectOwnerName || membership?.name || membership?.slug || 'Label account',
+        avatar: membership?.logo_url || undefined,
+        isDefault: mode === 'label' && resolvedActiveLabelId === effectiveOwnerId
+      });
+    }
+
     return opts;
-  }, [user, memberships, mode, activeLabel]);
+  }, [user, memberships, mode, resolvedActiveLabelId, effectiveOwnerType, effectiveOwnerId, preselectOwnerName]);
+
+  const preselectOption = React.useMemo(() => {
+    if (!effectiveOwnerType || !effectiveOwnerId) return undefined;
+    return options.find(option => option.type === effectiveOwnerType && option.id === effectiveOwnerId);
+  }, [options, effectiveOwnerType, effectiveOwnerId]);
 
   // Set default value if not provided
   React.useEffect(() => {
-    if (!value && options.length > 0) {
-      const defaultOption = options.find(opt => opt.isDefault) || options[0];
-      onChange(defaultOption);
+    if (!options.length) return;
+
+    if (preselectOption) {
+      if (!value || value.type !== preselectOption.type || value.id !== preselectOption.id) {
+        onChange(preselectOption);
+      }
+      return;
     }
-  }, [value, options, onChange]);
+
+    if (!value) {
+      const defaultOption = options.find(opt => opt.isDefault) || options[0];
+      if (defaultOption) {
+        onChange(defaultOption);
+      }
+    }
+  }, [value, options, onChange, preselectOption]);
+
+  React.useEffect(() => {
+    if (!value) return;
+    const matchingOption = options.find(
+      option => option.type === value.type && option.id === value.id
+    );
+    if (matchingOption && matchingOption.name !== value.name) {
+      onChange(matchingOption);
+    }
+  }, [options, value, onChange]);
 
   if (options.length === 0) {
     return null;
@@ -207,14 +278,54 @@ export function PublishAsSelector({
 
 // Hook for using publish-as in forms
 export function usePublishAs() {
-  const [publishAs, setPublishAs] = React.useState<PublishAsOption | undefined>();
+  const [searchParams] = useSearchParams();
+  const storedLabelId = React.useMemo(() => getStoredLabelId(), []);
+  const initialOwnerTypeFromQuery = searchParams.get('owner') ?? searchParams.get('ownerType');
+  const initialOwnerIdFromQuery = searchParams.get('labelId') ?? searchParams.get('ownerId');
+  const initialOwnerName =
+    searchParams.get('labelName') ??
+    searchParams.get('ownerName') ??
+    searchParams.get('labelSlug') ??
+    'Label account';
+
+  const effectiveOwnerType = initialOwnerTypeFromQuery ?? (storedLabelId ? 'label' : null);
+  const effectiveOwnerId = initialOwnerIdFromQuery ?? storedLabelId ?? null;
+
+  const [publishAs, setPublishAs] = React.useState<PublishAsOption | undefined>(() => {
+    if (effectiveOwnerType === 'label' && effectiveOwnerId) {
+      return {
+        type: 'label',
+        id: effectiveOwnerId,
+        name: initialOwnerName,
+      };
+    }
+    return undefined;
+  });
+
+  React.useEffect(() => {
+    if (!publishAs && effectiveOwnerType === 'label' && effectiveOwnerId) {
+      setPublishAs({
+        type: 'label',
+        id: effectiveOwnerId,
+        name: initialOwnerName,
+      });
+    }
+  }, [publishAs, effectiveOwnerType, effectiveOwnerId, initialOwnerName]);
 
   const getOwnerData = () => {
-    if (!publishAs) return { owner_type: null, owner_id: null };
-    return {
-      owner_type: publishAs.type,
-      owner_id: publishAs.id
-    };
+    if (publishAs) {
+      return {
+        owner_type: publishAs.type,
+        owner_id: publishAs.id,
+      };
+    }
+    if (effectiveOwnerType === 'label' && effectiveOwnerId) {
+      return {
+        owner_type: 'label',
+        owner_id: effectiveOwnerId,
+      };
+    }
+    return { owner_type: null, owner_id: null };
   };
 
   return {

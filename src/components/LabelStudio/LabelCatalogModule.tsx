@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Grid,
   List,
   Search,
@@ -49,6 +55,68 @@ export default function LabelCatalogModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleCreate = (type: CatalogItem['type']) => {
+    if (!activeLabel) {
+      toast({
+        title: "Select a label",
+        description: "Choose a label context before adding catalog items.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const baseParams = new URLSearchParams({ owner: 'label', labelId: activeLabel.id });
+    if (activeLabel.slug) {
+      baseParams.set('labelSlug', activeLabel.slug);
+    }
+    if (activeLabel.name) {
+      baseParams.set('labelName', activeLabel.name);
+    }
+
+    switch (type) {
+      case 'release':
+        navigate(`/release/new?${baseParams.toString()}`);
+        break;
+      case 'beat':
+        navigate(`/producer?${baseParams.toString()}&source=label`);
+        break;
+      case 'pack':
+        navigate(`/sample-pack/upload?${baseParams.toString()}&source=label`);
+        break;
+      case 'product':
+        navigate(`/studio/catalog/merch/new?${baseParams.toString()}&source=label`);
+        break;
+      default:
+        navigate(`/release/new?${baseParams.toString()}`);
+    }
+  };
+
+  const renderAddItemMenu = (trigger: React.ReactNode) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {trigger}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onSelect={() => handleCreate('release')}>
+          <Disc className="w-4 h-4 mr-2" />
+          Release
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleCreate('beat')}>
+          <Music className="w-4 h-4 mr-2" />
+          Beat
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleCreate('pack')}>
+          <Package className="w-4 h-4 mr-2" />
+          Sample Pack
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleCreate('product')}>
+          <ShoppingBag className="w-4 h-4 mr-2" />
+          Merchandise
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   useEffect(() => {
     if (activeLabel?.id) {
@@ -337,10 +405,12 @@ export default function LabelCatalogModule() {
           >
             {viewMode === "grid" ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
           </Button>
-          <Button size="sm" onClick={() => navigate('/release/new')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
+          {renderAddItemMenu(
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -385,10 +455,12 @@ export default function LabelCatalogModule() {
               <p className="text-muted-foreground mb-4">
                 No {activeTab === 'all' ? 'items' : activeTab} found
               </p>
-              <Button onClick={() => navigate('/release/new')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Item
-              </Button>
+              {renderAddItemMenu(
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Item
+                </Button>
+              )}
             </Card>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

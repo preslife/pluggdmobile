@@ -94,7 +94,7 @@ export const MerchandiseForm = () => {
   };
 
   const handleGalleryImageUpload = (url: string) => {
-    setGalleryImages([...galleryImages, url]);
+    setGalleryImages((prev) => [...prev, url]);
   };
 
   const removeGalleryImage = (index: number) => {
@@ -550,10 +550,10 @@ export const MerchandiseForm = () => {
                   <div>
                     <FormLabel>Main Product Image</FormLabel>
                     <FileUpload
-                      onUploadComplete={handleImageUpload}
-                      acceptedFileTypes={['image/*']}
-                      maxFileSize={5 * 1024 * 1024}
-                      uploadType="image"
+                      onUpload={(url) => handleImageUpload(url)}
+                      accept="image/*"
+                      bucketName="beat-artwork"
+                      maxSizeMB={5}
                     />
                     {imageUrl && (
                       <div className="mt-2">
@@ -569,10 +569,10 @@ export const MerchandiseForm = () => {
                   <div>
                     <FormLabel>Gallery Images</FormLabel>
                     <FileUpload
-                      onUploadComplete={handleGalleryImageUpload}
-                      acceptedFileTypes={['image/*']}
-                      maxFileSize={5 * 1024 * 1024}
-                      uploadType="image"
+                      onUpload={(url) => handleGalleryImageUpload(url)}
+                      accept="image/*"
+                      bucketName="beat-artwork"
+                      maxSizeMB={5}
                     />
                     {galleryImages.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
