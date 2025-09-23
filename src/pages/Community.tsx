@@ -105,6 +105,32 @@ function timeLeft(toISO?: string) {
 
 function classNames(...n: (string | false | null | undefined)[]) { return n.filter(Boolean).join(" "); }
 
+function normalizeCommunityHref(href?: string | null) {
+  if (!href) return "/collaborate";
+  try {
+    if (href.startsWith("/forum")) {
+      const url = new URL(href, "https://pluggd.community");
+      const tag = url.searchParams.get("tag");
+      const parts = url.pathname.split("/").filter(Boolean);
+      const slug = parts[1];
+      if (tag) return `/collaborate?tag=${encodeURIComponent(tag)}`;
+      if (slug) return `/collaborate?thread=${encodeURIComponent(slug)}`;
+      return "/collaborate";
+    }
+    if (href.startsWith("/campaigns")) {
+      const url = new URL(href, "https://pluggd.community");
+      const parts = url.pathname.split("/").filter(Boolean);
+      const slug = parts[1];
+      return `/studio/crowdfunding${slug ? `?campaign=${encodeURIComponent(slug)}` : ""}`;
+    }
+    if (href === "/contests") return "/challenges";
+    if (href === "/campaigns/new") return "/studio/crowdfunding";
+  } catch {
+    return "/collaborate";
+  }
+  return href;
+}
+
 // ---------- Types ---------- //
 
 type Contest = { id: string; title: string; cover: string | null; cover_image_url?: string | null; entrants: number; ends_at: string; slug: string };
@@ -407,12 +433,12 @@ export default function CommunityHubEpic() {
           {spotlightOrder.map((key) => {
             if (key === "contests") return (
               <div id="contests" data-section="contests" key="contests">
-                <SpotlightRow title="Featured Contests" icon={<Trophy className="h-4 w-4" />} items={data.contests.map((c) => (<ContestCard key={c.id} contest={c} />))} href="/contests" />
+                <SpotlightRow title="Featured Contests" icon={<Trophy className="h-4 w-4" />} items={data.contests.map((c) => (<ContestCard key={c.id} contest={c} />))} href="/challenges" />
               </div>
             );
             if (key === "crowdfunding") return (
               <div id="crowdfunding" data-section="crowdfunding" key="crowdfunding">
-                <SpotlightRow title="Crowdfunding Spotlights" icon={<Coins className="h-4 w-4" />} items={data.campaigns.map((c) => (<CampaignCard key={c.id} campaign={c} />))} href="/campaigns" />
+                <SpotlightRow title="Crowdfunding Spotlights" icon={<Coins className="h-4 w-4" />} items={data.campaigns.map((c) => (<CampaignCard key={c.id} campaign={c} />))} href="/studio/crowdfunding" />
               </div>
             );
             if (key === "live") return (
@@ -567,10 +593,10 @@ function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => voi
     { label: "Jump: Courses", sectionId: "courses" },
     { label: "Jump: Forum", sectionId: "forum" },
     { label: "Jump: Events Calendar", sectionId: "calendar" },
-    { label: "Action: Start a Post", href: "/forum/new" },
+    { label: "Action: Start a Post", href: "/collaborate" },
     { label: "Action: Enter a Contest", href: "/challenges" },
-    { label: "Action: Start Crowdfunding", href: "/campaigns/new" },
-    { label: "Action: Host a Session", href: "/live/host" },
+    { label: "Action: Start Crowdfunding", href: "/studio/crowdfunding" },
+    { label: "Action: Host a Session", href: "/studio/live/sessions" },
   ];
 
   const filtered = actions.filter(a => a.label.toLowerCase().includes(q.toLowerCase()));
@@ -621,7 +647,7 @@ function AnnouncementsBar({ announcements }: { announcements: Announcement[] }) 
             ))}
           </div>
         </div>
-        <a href="/changelog" className="text-amber-300 hover:text-amber-200">What's new</a>
+        <a href="/roadmap" className="text-amber-300 hover:text-amber-200">What's new</a>
       </div>
     </div>
   );
@@ -633,31 +659,31 @@ function Hero({ mode, lives, memberCount, activeWeekly, contestsRunning, session
     switch (mode) {
       case "collab":
         return [
-          { href: "/forum/new?tag=collab", label: "Post Collab Brief", icon: <Handshake className="h-4 w-4"/>, primary: true },
+          { href: "/collaborate", label: "Post Collab Brief", icon: <Handshake className="h-4 w-4"/>, primary: true },
           { href: "/directory", label: "Browse Directory", icon: <Users className="h-4 w-4"/> },
           { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
-          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
         ];
       case "learn":
         return [
-          { href: "/courses", label: "Explore Courses", icon: <BookOpen className="h-4 w-4"/>, primary: true },
+          { href: "/education", label: "Explore Courses", icon: <BookOpen className="h-4 w-4"/>, primary: true },
           { href: "/live", label: "Join Masterclass", icon: <Radio className="h-4 w-4"/> },
-          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
           { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
         ];
       case "earn":
         return [
-          { href: "/campaigns/new", label: "Start Crowdfunding", icon: <Megaphone className="h-4 w-4"/>, primary: true },
-          { href: "/contests", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/> },
-          { href: "/forum/new?tag=services", label: "Offer Services", icon: <Coins className="h-4 w-4"/> },
+          { href: "/studio/crowdfunding", label: "Start Crowdfunding", icon: <Megaphone className="h-4 w-4"/>, primary: true },
+          { href: "/challenges", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/> },
+          { href: "/collaborate", label: "Offer Services", icon: <Coins className="h-4 w-4"/> },
           { href: "/live", label: "Pitch to A&R", icon: <Radio className="h-4 w-4"/> },
         ];
       default:
         return [
-          { href: "/contests", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/>, primary: true },
+          { href: "/challenges", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/>, primary: true },
           { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
           { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
-          { href: "/forum/new", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
+          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
         ];
     }
   }, [mode]);
@@ -724,6 +750,7 @@ function MiniStat({ label, value }: { label: string; value: string | number }) {
 }
 
 function DailyPrompt({ prompt }: { prompt: DailyPromptT }) {
+  const targetHref = normalizeCommunityHref(prompt.cta_href);
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-4">
       <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
@@ -732,8 +759,8 @@ function DailyPrompt({ prompt }: { prompt: DailyPromptT }) {
           <span className="text-zinc-200"><strong>Daily Prompt:</strong> {prompt.text}</span>
         </div>
         <div className="flex items-center gap-3">
-          <Badge className="border-white/10 bg-white/5">{prompt.tag}</Badge>
-          <a href={prompt.cta_href}><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400">{prompt.cta_text}</Button></a>
+          {prompt.tag ? <Badge className="border-white/10 bg-white/5">{prompt.tag}</Badge> : null}
+          <a href={targetHref}><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400">{prompt.cta_text || 'Open'}</Button></a>
         </div>
       </div>
     </div>
@@ -769,7 +796,7 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
             </div>
           </div>
           <div className="hidden sm:block">
-            <a href={`/profile/${creator.slug}`}><Button className="bg-white/10 text-white hover:bg-white/20">View Profile</Button></a>
+            <a href={`/creator/${creator.slug}`}><Button className="bg-white/10 text-white hover:bg-white/20">View Profile</Button></a>
           </div>
         </div>
 
@@ -793,7 +820,7 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
             size="sm"
           />
           {creator.featured_campaign_slug && (
-            <a href={`/campaigns/${creator.featured_campaign_slug}`}>
+            <a href={`/studio/crowdfunding${creator.featured_campaign_slug ? `?campaign=${creator.featured_campaign_slug}` : ''}`}>
               <Button className="bg-white/10 text-white hover:bg-white/20">
                 <Megaphone className="h-4 w-4"/>Support Campaign
               </Button>
@@ -1011,7 +1038,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
           <div className="h-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={{ width: `${pct}%` }} />
         </div>
-        <a href={`/campaigns/${campaign.slug}`}><Button className="w-full bg-white/10 text-white hover:bg-white/20">Support</Button></a>
+        <a href={`/studio/crowdfunding${campaign.slug ? `?campaign=${campaign.slug}` : ''}`}><Button className="w-full bg-white/10 text-white hover:bg-white/20">Support</Button></a>
       </CardContent>
     </Card>
   );
@@ -1064,12 +1091,12 @@ function LiveNow({ lives }: { lives: LiveEvent[] }) {
 function ForumThreads({ threads, loading }: { threads: Thread[]; loading: boolean }) {
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><Handshake className="h-5 w-5"/><CardTitle>Latest Forum Threads</CardTitle></div><div className="flex items-center gap-2"><a href="/community-v1" className="text-sm text-amber-300 hover:text-amber-200">Open forum</a><a href="/community-v1" className="text-sm text-amber-300 hover:text-amber-200">Start a post</a></div></CardHeader>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><Handshake className="h-5 w-5"/><CardTitle>Latest Forum Threads</CardTitle></div><div className="flex items-center gap-2"><a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Open forum</a><a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Start a post</a></div></CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-3">
           {loading && <SkeletonRows count={5}/>}        
           {!loading && threads.map((t) => (
-            <a key={t.id} href={`/forum/${t.slug}`} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+            <a key={t.id} href={normalizeCommunityHref(`/forum/${t.slug}`)} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
               <img src={t.author.avatar} alt="avatar" className="h-10 w-10 rounded-full object-cover"/>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm"><Badge>{t.tag}</Badge><span className="truncate font-medium text-white group-hover:text-amber-200">{t.title}</span></div>
@@ -1188,7 +1215,7 @@ function QuickActions() {
         <div className="grid gap-3">
           <a href="/challenges"><ActionRow icon={<Trophy className="h-4 w-4"/>} label="Enter a contest" sub="Win prizes & placements"/></a>
           <a href="/collaborate"><ActionRow icon={<Handshake className="h-4 w-4"/>} label="Post a collab brief" sub="Find your next co-creator"/></a>
-          <a href="/campaigns/new"><ActionRow icon={<Megaphone className="h-4 w-4"/>} label="Start crowdfunding" sub="Rally fans around your release"/></a>
+          <a href="/studio/crowdfunding"><ActionRow icon={<Megaphone className="h-4 w-4"/>} label="Start crowdfunding" sub="Rally fans around your release"/></a>
           <a href="/directory"><ActionRow icon={<Users className="h-4 w-4"/>} label="Browse directory" sub="Producers, writers, vocalists"/></a>
         </div>
       </CardContent>
@@ -1203,7 +1230,7 @@ function CollabRadar({ briefs }: { briefs: CollabBrief[] }) {
       <CardContent>
         <div className="grid gap-3">
           {briefs.map((b) => (
-            <a key={b.id} href={`/forum/${b.slug}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+            <a key={b.id} href={normalizeCommunityHref(`/forum/${b.slug}`)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
               <img src={b.author.avatar} className="h-10 w-10 rounded-full object-cover"/>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm text-white">{b.title}</div>
@@ -1234,13 +1261,16 @@ function TopMembers({ members }: { members: Member[] }) {
       <CardHeader><CardTitle>Top Members this Week</CardTitle></CardHeader>
       <CardContent>
         <div className="grid gap-3">
-          {members.map((m) => (
-            <a key={m.id} href={`/profile/${m.username}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+          {members.map((m) => {
+            const profileHref = m.username ? `/u/${m.username}` : `/profile/${m.id}`;
+            return (
+              <a key={m.id} href={profileHref} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
               <img src={m.avatar} className="h-10 w-10 rounded-full object-cover" alt="avatar"/>
               <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-white">{m.username}</div><div className="text-xs text-zinc-400">{m.role} • {m.badges.join(" • ")}</div></div>
               <Star className="h-4 w-4 text-amber-300"/>
-            </a>
-          ))}
+              </a>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -1254,7 +1284,7 @@ function TrendingTopics({ topics }: { topics: { tag: string; count: number }[] }
       <CardContent>
         <div className="flex flex-wrap gap-2">
           {topics.map((t) => (
-            <a key={t.tag} href={`/forum?tag=${encodeURIComponent(t.tag)}`} className="group">
+            <a key={t.tag} href={normalizeCommunityHref(`/forum?tag=${encodeURIComponent(t.tag)}`)} className="group">
               <Badge className="transition-colors group-hover:bg-white/15">#{t.tag} <span className="ml-1 text-zinc-400">{t.count}</span></Badge>
             </a>
           ))}
@@ -1288,9 +1318,9 @@ function FooterCTA() {
             <p className="mt-1 text-zinc-300/90">Share your expertise, grow your audience, and earn. We’ll help you craft an irresistible session.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a href="/live/host"><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400"><Radio className="h-4 w-4"/>Host a Session</Button></a>
-            <a href="/courses/new"><Button className="bg-white/10 text-white hover:bg-white/20"><BookOpen className="h-4 w-4"/>Submit a Course</Button></a>
-            <a href="/discord" className="text-sm text-amber-300 hover:text-amber-200">Join Discord</a>
+            <a href="/studio/live/sessions"><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400"><Radio className="h-4 w-4"/>Host a Session</Button></a>
+            <a href="/studio/courses/builder"><Button className="bg-white/10 text-white hover:bg-white/20"><BookOpen className="h-4 w-4"/>Submit a Course</Button></a>
+            <a href="https://discord.gg/pluggd" className="text-sm text-amber-300 hover:text-amber-200" target="_blank" rel="noreferrer">Join Discord</a>
           </div>
         </div>
       </div>
@@ -1307,7 +1337,7 @@ function SparkIcon() { return (<svg width="10" height="10" viewBox="0 0 10 10" f
 function getMockHubDataEpic(): HubData {
   return {
     announcements: [ { text: "New: Weekly A&R Hotseat — Submit by Friday" }, { text: "Crowdfund tools v2 live: tiered rewards + stretch goals" } ],
-    daily_prompt: { text: "Post a 20-second chorus idea to the #hook-challenge.", tag: "hook-challenge", cta_text: "Post Now", cta_href: "/forum/new?tag=hook-challenge" },
+    daily_prompt: { text: "Post a 20-second chorus idea to the #hook-challenge.", tag: "hook-challenge", cta_text: "Post Now", cta_href: "/collaborate?tag=hook-challenge" },
     creator_spotlight: {
       id: "cr1",
       slug: "ishola-pedro",
