@@ -490,8 +490,8 @@ export default function CommunityHubEpic() {
       <div className="relative pb-16">
         <div className="mx-auto max-w-7xl px-4 pt-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
-            <div className="rounded-3xl border border-white/10 bg-card/80 p-4 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-              <PluggdCarousel accentColor="#FF5A00" heightClass="min-h-[24rem]" />
+            <div className="flex min-h-[26rem] items-center justify-center rounded-3xl border border-white/10 bg-card/80 p-6 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+              <PluggdCarousel accentColor="#FF5A00" heightClass="h-[22rem] md:h-[24rem]" />
             </div>
             <div id="quick-actions">
               <QuickActionSidebar
