@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,37 +12,38 @@ import {
   Clock,
   Star,
   Handshake,
-  Flame,
   ArrowRight,
   MessageSquarePlus,
   PlayCircle,
   Music2,
   Crown,
   Sparkles,
-  Gift,
   Compass,
   Command as CommandIcon,
   Search,
   Play,
   Pause,
   Download,
+  Plus,
+  PenSquare,
+  X,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArtistTipButton } from "@/components/ArtistTipButton";
 import { FollowButton } from "@/components/FollowButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
-import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
+import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
 
 /**
- * PLUGGD — COMMUNITY HUB (EPIC Edition)
- * Fixed build errors + completed components.
- * - Replaced pill chips with ModeSelect dropdown (non-duplicative)
- * - Hero accepts `mode` and renders mode-specific CTAs
- * - Completed EventsCalendar (defined `days` properly)
- * - Added Command Bar, Action Dock, and all sections wired
- * - Added lightweight "TestCases" dev component
+ * PLUGGD — COMMUNITY HUB
+ * Refreshed hub around the release carousel, quick actions, and sticky tabs.
+ * - Adds Supabase-powered feed with blog/forum merge + top releases rail.
+ * - Introduces create modal + quick action sidebar tied to key workflows.
+ * - Reorganises verticals into dedicated tab layouts while keeping command bar.
  */
 
 // ---------- Shared UI primitives ---------- //
@@ -164,16 +165,22 @@ type Quest = { id: string; title: string; xp: number; completed?: boolean };
 
 type CommunityRadioT = { listeners: number; now: Track; queue: Track[] };
 
+type BlogPost = {
+  id: string;
+  title: string;
+  excerpt?: string | null;
+  featured_image_url?: string | null;
+  tags?: string[];
+  created_at: string;
+  slug?: string | null;
+};
+
 type HubData = {
   contests: Contest[]; campaigns: Campaign[]; events: LiveEvent[]; threads: Thread[]; courses: Course[]; members: Member[];
   trending: { tag: string; count: number }[]; badges: string[];
   stats: { members: number; active_week: number; streak_days: number; xp: number };
-  creator_spotlight: Creator | null; radio: CommunityRadioT; announcements: Announcement[]; daily_prompt: DailyPromptT | null; collab_briefs: CollabBrief[]; quests: Quest[];
+  creator_spotlight: Creator | null; radio: CommunityRadioT; announcements: Announcement[]; daily_prompt: DailyPromptT | null; collab_briefs: CollabBrief[]; quests: Quest[]; blog_posts: BlogPost[];
 };
-
-type DockItem = { id: string; label: string; icon: React.ReactNode; count?: number; live?: boolean; on?: boolean; countType?: "listening" | "count" };
-
-type Mode = "create" | "collab" | "learn" | "earn";
 
 // ---------- Data Fetcher ---------- //
 
@@ -189,6 +196,7 @@ async function fetchHubData(): Promise<HubData> {
     questsRes,
     radioStateRes,
     radioQueueRes,
+    blogPostsRes,
   ] = await Promise.all([
     supabase.from("campaigns").select("id, owner_id, title, cover_url, goal, raised, ends_at, slug").order("created_at", { ascending: false }).limit(6),
     supabase.from("announcements").select("text, is_live, starts_at, ends_at").order("created_at", { ascending: false }).limit(3),
@@ -196,6 +204,7 @@ async function fetchHubData(): Promise<HubData> {
     supabase.from("quests").select("id, title, xp, is_active").order("created_at", { ascending: false }).limit(6),
     supabase.from("radio_state").select("listeners, now_track_id").order("updated_at", { ascending: false }).limit(1),
     supabase.from("radio_queue").select("position, track_id").order("position", { ascending: true }),
+    supabase.from("blog_posts").select("id, title, excerpt, featured_image_url, tags, created_at, slug, is_published").eq("is_published", true).order("created_at", { ascending: false }).limit(6),
   ]);
 
   const campaigns = campaignsRes.data?.map(c => ({
@@ -215,6 +224,16 @@ async function fetchHubData(): Promise<HubData> {
   const quests = (questsRes.data ?? [])
     .filter(q => q.is_active)
     .map(q => ({ id: q.id, title: q.title, xp: q.xp }));
+
+  const blog_posts: BlogPost[] = (blogPostsRes.data ?? []).map((post: any) => ({
+    id: post.id,
+    title: post.title,
+    excerpt: post.excerpt ?? null,
+    featured_image_url: post.featured_image_url ?? null,
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    created_at: post.created_at,
+    slug: post.slug ?? null,
+  }));
 
   // Radio join (safe fallback if empty)
   const listeners = radioStateRes.data?.[0]?.listeners ?? 0;
@@ -271,6 +290,7 @@ async function fetchHubData(): Promise<HubData> {
     campaigns,
     collab_briefs: payload.collab_briefs ?? [],
     quests,
+    blog_posts,
   };
 
   // Fill required fallbacks for nullables
@@ -283,13 +303,26 @@ async function fetchHubData(): Promise<HubData> {
 
 // ---------- EPIC Community Hub ---------- //
 
+type TabId = "feed" | "contests" | "collabs" | "crowdfund" | "live" | "blog";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "feed", label: "Feed" },
+  { id: "contests", label: "Contests" },
+  { id: "collabs", label: "Collabs" },
+  { id: "crowdfund", label: "Crowdfund" },
+  { id: "live", label: "Live" },
+  { id: "blog", label: "Blog" },
+];
+
 export default function CommunityHubEpic() {
   const [data, setData] = useState<HubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>("create");
   const [showCmd, setShowCmd] = useState(false);
-  const [active, setActive] = useState<string>("overview");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("feed");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -316,49 +349,123 @@ export default function CommunityHubEpic() {
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Scroll spy for sections with data-section="id"
   useEffect(() => {
-    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-section]"));
-    if (!els.length) return;
-    const io = new IntersectionObserver((entries) => {
-      const vis = entries.filter((o) => o.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-      if (vis[0]) setActive((vis[0].target as HTMLElement).dataset.section || "overview");
-    }, { rootMargin: "-40% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] });
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [loading]);
+    const tabParam = searchParams.get("tab");
+    if (tabParam && TABS.some((tab) => tab.id === tabParam)) {
+      setActiveTab(tabParam as TabId);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = useCallback(
+    (next: TabId) => {
+      setActiveTab(next);
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", next);
+      navigate({ search: params.toString() }, { replace: true });
+    },
+    [navigate, searchParams]
+  );
 
   const livesNow = useMemo(() => (data?.events || []).filter((e) => e.is_live), [data?.events]);
 
-  // Section ordering based on mode (lightweight re-prioritization)
-  const spotlightOrder = useMemo(() => {
-    switch (mode) {
-      case "earn": return ["crowdfunding", "contests", "live"]; 
-      case "learn": return ["courses", "live", "contests"]; 
-      case "collab": return ["collab", "live", "contests"]; 
-      default: return ["contests", "live", "crowdfunding"]; // create
-    }
-  }, [mode]);
+  const quickActions = useMemo(
+    () => [
+      {
+        label: "Enter a contest",
+        description: "Win placements and cash prizes",
+        href: "/challenges",
+        icon: <Trophy className="h-4 w-4" />,
+      },
+      {
+        label: "Post a collab brief",
+        description: "Find your next co-creator",
+        href: "/collaborate",
+        icon: <Handshake className="h-4 w-4" />,
+      },
+      {
+        label: "Start crowdfunding",
+        description: "Launch member-only rewards",
+        href: "/studio/crowdfunding",
+        icon: <Megaphone className="h-4 w-4" />,
+      },
+      {
+        label: "Host a live session",
+        description: "Book a slot and go live",
+        href: "/studio/live/sessions",
+        icon: <Radio className="h-4 w-4" />,
+      },
+    ],
+    []
+  );
 
-  const dockItems: DockItem[] = [
-    { id: "overview", label: "Overview", icon: <Search className="h-4 w-4"/>, on: true },
-    { id: "creator", label: "Creator", icon: <Crown className="h-4 w-4"/> },
-    { id: "radio", label: "Radio", icon: <Music2 className="h-4 w-4"/>, count: data?.radio.listeners || 0, countType: "listening" },
-    { id: "contests", label: "Contests", icon: <Trophy className="h-4 w-4"/>, count: data?.contests.length || 0 },
-    { id: "crowdfunding", label: "Crowdfund", icon: <Coins className="h-4 w-4"/>, count: data?.campaigns.length || 0 },
-    { id: "live", label: "Live", icon: <Radio className="h-4 w-4"/>, live: !!livesNow.length, count: livesNow.length },
-    { id: "collab", label: "Collab", icon: <Handshake className="h-4 w-4"/>, count: data?.collab_briefs.length || 0 },
-    { id: "courses", label: "Courses", icon: <BookOpen className="h-4 w-4"/>, count: data?.courses.length || 0 },
-    { id: "forum", label: "Forum", icon: <MessageSquarePlus className="h-4 w-4"/>, count: data?.threads.length || 0 },
-    { id: "calendar", label: "Events", icon: <CalendarDays className="h-4 w-4"/> },
-  ];
+  const createActions = useMemo(
+    () => [
+      { label: "Contest", description: "Launch a new challenge", href: "/studio/catalog?tab=releases", icon: <Trophy className="h-4 w-4" /> },
+      { label: "Collab Brief", description: "Recruit producers, writers, vocalists", href: "/collaborate", icon: <Handshake className="h-4 w-4" /> },
+      { label: "Crowdfunding Campaign", description: "Fund releases with fan backing", href: "/studio/crowdfunding", icon: <Megaphone className="h-4 w-4" /> },
+      { label: "Live Session", description: "Schedule a livestream or listening party", href: "/studio/live/sessions", icon: <Radio className="h-4 w-4" /> },
+      { label: "Blog Post", description: "Share news, recaps, or tutorials", href: "/studio/courses/builder", icon: <PenSquare className="h-4 w-4" /> },
+    ],
+    []
+  );
+
+  const renderTabContent = () => {
+    if (!data) return null;
+
+    switch (activeTab) {
+      case "contests":
+        return (
+          <ContestsTabContent
+            contests={data.contests}
+            leaderboard={data.members}
+            events={data.events}
+          />
+        );
+      case "collabs":
+        return (
+          <CollabsTabContent
+            briefs={data.collab_briefs}
+            threads={data.threads}
+            trending={data.trending}
+          />
+        );
+      case "crowdfund":
+        return <CrowdfundTabContent campaigns={data.campaigns} />;
+      case "live":
+        return (
+          <LiveTabContent
+            events={data.events}
+            livesNow={livesNow}
+            radio={data.radio}
+          />
+        );
+      case "blog":
+        return <BlogTabContent posts={data.blog_posts} threads={data.threads} />;
+      case "feed":
+      default:
+        return (
+          <FeedTabContent
+            loading={loading}
+            dailyPrompt={data.daily_prompt}
+            threads={data.threads}
+            blogPosts={data.blog_posts}
+            events={data.events}
+            radio={data.radio}
+            trending={data.trending}
+            creator={data.creator_spotlight}
+          />
+        );
+    }
+  };
+
+  const tabContent = renderTabContent();
 
   if (loading) {
     return (
       <main className="relative min-h-screen w-full bg-background text-foreground">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-400 mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 h-32 w-32 animate-spin rounded-full border-b-2 border-amber-400"></div>
             <p className="text-zinc-400">Loading Community Hub...</p>
           </div>
         </div>
@@ -368,9 +475,10 @@ export default function CommunityHubEpic() {
 
   if (!data) return null;
 
+  const hasAnnouncements = Boolean(data.announcements?.length);
+
   return (
     <main className="relative min-h-screen w-full bg-background text-foreground">
-      {/* Error banner */}
       {error && (
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
@@ -379,201 +487,70 @@ export default function CommunityHubEpic() {
         </div>
       )}
 
-      {/* Ambient background */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-[-10%] mx-auto h-[40rem] w-[80rem] rounded-full bg-gradient-to-tr from-orange-500/20 via-amber-400/10 to-fuchsia-500/10 blur-3xl" />
-        <div className="absolute bottom-[-20%] right-[-10%] h-[26rem] w-[26rem] rounded-full bg-gradient-to-tr from-indigo-500/10 to-cyan-400/10 blur-2xl" />
-        <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_50%)]" />
-      </div>
-
-      {/* Sticky action dock + mode select */}
-      <div className="sticky top-16 z-30 border-b border-white/10 bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <section className="mx-auto max-w-7xl px-4 py-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <ActionDock active={active} items={dockItems} />
-            <div className="flex items-center gap-2">
-              <ModeSelect mode={mode} onChange={setMode} />
-              <Button className="hidden sm:inline-flex bg-white/10 text-white hover:bg-white/20" onClick={() => setShowCmd(true)}><CommandIcon className="h-4 w-4"/> Command</Button>
+      <div className="relative pb-16">
+        <div className="mx-auto max-w-7xl px-4 pt-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
+            <div className="rounded-3xl border border-white/10 bg-card/80 p-4 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+              <PluggdCarousel accentColor="#FF5A00" heightClass="min-h-[24rem]" />
+            </div>
+            <div id="quick-actions">
+              <QuickActionSidebar
+                actions={quickActions}
+                stats={data.stats}
+                onCreate={() => setShowCreateModal(true)}
+              />
             </div>
           </div>
+        </div>
+
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-x-0 top-[-10%] mx-auto h-[40rem] w-[80rem] rounded-full bg-gradient-to-tr from-orange-500/20 via-amber-400/10 to-fuchsia-500/10 blur-3xl" />
+          <div className="absolute bottom-[-20%] right-[-10%] h-[26rem] w-[26rem] rounded-full bg-gradient-to-tr from-indigo-500/10 to-cyan-400/10 blur-2xl" />
+          <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_50%)]" />
+        </div>
+
+        <div className="sticky top-16 z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto max-w-7xl px-4">
+            <TabsNav
+              tabs={TABS}
+              active={activeTab}
+              onSelect={handleTabChange}
+              onCreate={() => setShowCreateModal(true)}
+              onCommand={() => setShowCmd(true)}
+            />
+          </div>
+        </div>
+
+        {hasAnnouncements && (
+          <div className="border-b border-white/10 bg-background/70">
+            <div className="mx-auto max-w-7xl px-4 py-2">
+              <AnnouncementsBar announcements={data.announcements} />
+            </div>
+          </div>
+        )}
+
+        <section className="mx-auto max-w-7xl px-4 py-10">
+          {tabContent}
         </section>
       </div>
 
-      {/* Sticky announcements bar */}
-      <div className="sticky top-[88px] z-20">
-        <AnnouncementsBar announcements={data.announcements} />
-      </div>
-
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-6 sm:pt-8 lg:pt-10">
-        <div data-section="overview">
-            <Hero
-              mode={mode}
-              lives={livesNow}
-              memberCount={data.stats.members}
-              activeWeekly={data.stats.active_week}
-              contestsRunning={data.contests.length}
-              sessionsThisWeek={data.events.length}
-            />
-        </div>
-
-        {data.daily_prompt && <DailyPrompt prompt={data.daily_prompt} />}
-
-        {/* Creator + Radio */}
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-7" id="creator" data-section="creator">
-            {data.creator_spotlight?.id && <CreatorSpotlight creator={data.creator_spotlight} />}
-          </div>
-          <div className="lg:col-span-5" id="radio" data-section="radio">
-            <CommunityRadio radio={data.radio} />
-          </div>
-        </div>
-
-        {/* Spotlight rows (ordered by mode) */}
-        <div className="mt-8 space-y-6">
-          {spotlightOrder.map((key) => {
-            if (key === "contests") return (
-              <div id="contests" data-section="contests" key="contests">
-                <SpotlightRow title="Featured Contests" icon={<Trophy className="h-4 w-4" />} items={data.contests.map((c) => (<ContestCard key={c.id} contest={c} />))} href="/challenges" />
-              </div>
-            );
-            if (key === "crowdfunding") return (
-              <div id="crowdfunding" data-section="crowdfunding" key="crowdfunding">
-                <SpotlightRow title="Crowdfunding Spotlights" icon={<Coins className="h-4 w-4" />} items={data.campaigns.map((c) => (<CampaignCard key={c.id} campaign={c} />))} href="/studio/crowdfunding" />
-              </div>
-            );
-            if (key === "live") return (
-              <div id="live" data-section="live" key="live">
-                <SpotlightRow title="Upcoming Live Sessions" icon={<Radio className="h-4 w-4" />} items={data.events.map((e) => (<EventCard key={e.id} event={e} />))} href="/live" />
-              </div>
-            );
-            if (key === "collab") return (
-              <div id="collab" data-section="collab" key="collab">
-                <CollabRadar briefs={data.collab_briefs} />
-              </div>
-            );
-            if (key === "courses") return (
-              <div id="courses" data-section="courses" key="courses">
-                <CoursesStrip courses={data.courses} />
-              </div>
-            );
-            return null;
-          })}
-        </div>
-
-        {/* Main Grid */}
-        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-8">
-            <AnimatePresence mode="popLayout">
-              {livesNow.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-                  <LiveNow lives={livesNow} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div id="forum" data-section="forum">
-              <ForumThreads threads={data.threads} loading={loading} />
-            </div>
-
-            <div id="courses-2">
-              <CoursesStrip courses={data.courses} />
-            </div>
-
-            <div id="calendar" data-section="calendar">
-              <EventsCalendar events={data.events} />
-            </div>
-          </div>
-
-          <div className="space-y-6 lg:col-span-4">
-            <QuickActions />
-            {!spotlightOrder.includes("collab") && (
-              <div id="collab-side" data-section="collab"><CollabRadar briefs={data.collab_briefs} /></div>
-            )}
-            <QuestsXP />
-            <TopMembers members={data.members} />
-            <TrendingTopics topics={data.trending} />
-            <StreakBadges streakDays={data.stats.streak_days} badges={data.badges} />
-          </div>
-        </div>
-      </section>
-
       <FooterCTA />
 
-      <CommandBar open={showCmd} onClose={() => setShowCmd(false)} data={data} />
+      <CreateModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        actions={createActions}
+      />
+      <CommandBar open={showCmd} onClose={() => setShowCmd(false)} onSelectTab={handleTabChange} />
     </main>
   );
 }
 
 // ---------- Action Dock (sticky) ---------- //
 
-function ActionDock({ items, active }: { items: DockItem[]; active: string }) {
-  const scrollTo = (id: string) => {
-    const el = document.querySelector<HTMLElement>(`[data-section='${id}']`) || document.getElementById(id);
-    if (!el) return; const y = el.getBoundingClientRect().top + window.scrollY - 88; window.scrollTo({ top: y, behavior: "smooth" });
-  };
-
-  return (
-    <nav className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto px-2">
-      {items.map((it) => (
-        <button key={it.id} onClick={() => scrollTo(it.id)} className={classNames(
-          "group inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm",
-          active === it.id ? "border-amber-400/40 bg-amber-500/10 text-amber-200" : "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
-        )}>
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">{it.icon}</span>
-          <span className="whitespace-nowrap">{it.label}</span>
-          {typeof it.count === "number" && (
-            <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">{it.count}</span>
-          )}
-          {it.live && (
-            <span className="ml-1 inline-flex h-2 w-2 items-center">
-              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400/80" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-            </span>
-          )}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-// ---------- Mode Select (replaces pill chips) ---------- //
-
-function ModeSelect({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const [open, setOpen] = useState(false);
-  const modes: { id: Mode; label: string; desc: string; icon: React.ReactNode }[] = [
-    { id: "create", label: "Create", desc: "Make & share work", icon: <Sparkles className="h-4 w-4"/> },
-    { id: "collab", label: "Collaborate", desc: "Find people to work with", icon: <Handshake className="h-4 w-4"/> },
-    { id: "learn", label: "Learn", desc: "Courses & masterclasses", icon: <BookOpen className="h-4 w-4"/> },
-    { id: "earn", label: "Earn", desc: "Contests & crowdfunding", icon: <Coins className="h-4 w-4"/> },
-  ];
-  const current = modes.find(m => m.id === mode)!;
-  return (
-    <div className="relative">
-      <button onClick={() => setOpen(v=>!v)} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/10">
-        {current.icon}
-        <span>Mode: <span className="font-semibold text-white">{current.label}</span></span>
-      </button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-card p-1 shadow-xl">
-          {modes.map((m) => (
-            <button key={m.id} onClick={() => { onChange(m.id); setOpen(false); }} className={classNames("flex w-full items-start gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5", m.id===mode && "bg-white/5") }>
-              <span className="mt-0.5">{m.icon}</span>
-              <span>
-                <div className="font-medium text-white">{m.label}</div>
-                <div className="text-xs text-zinc-400">{m.desc}</div>
-              </span>
-            </button>
-          ))}
-          <div className="border-t border-white/10 px-3 py-2 text-[11px] text-zinc-500">Switching mode reorders sections & updates the shortcuts.</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ---------- Command Bar ---------- //
 
-function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => void; data: HubData }) {
+function CommandBar({ open, onClose, onSelectTab }: { open: boolean; onClose: () => void; onSelectTab?: (tab: TabId) => void }) {
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -583,16 +560,14 @@ function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => voi
 
   if (!open) return null;
 
-  const actions: { label: string; href?: string; sectionId?: string }[] = [
-    { label: "Jump: Creator Spotlight", sectionId: "creator" },
-    { label: "Jump: Community Radio", sectionId: "radio" },
-    { label: "Jump: Featured Contests", sectionId: "contests" },
-    { label: "Jump: Crowdfunding", sectionId: "crowdfunding" },
-    { label: "Jump: Live Sessions", sectionId: "live" },
-    { label: "Jump: Collab Radar", sectionId: "collab" },
-    { label: "Jump: Courses", sectionId: "courses" },
-    { label: "Jump: Forum", sectionId: "forum" },
-    { label: "Jump: Events Calendar", sectionId: "calendar" },
+  const actions: { label: string; href?: string; sectionId?: string; tab?: TabId }[] = [
+    { label: "Switch to Feed tab", tab: "feed" },
+    { label: "Switch to Contests tab", tab: "contests" },
+    { label: "Switch to Collabs tab", tab: "collabs" },
+    { label: "Switch to Crowdfund tab", tab: "crowdfund" },
+    { label: "Switch to Live tab", tab: "live" },
+    { label: "Switch to Blog tab", tab: "blog" },
+    { label: "Jump: Quick Actions", sectionId: "quick-actions" },
     { label: "Action: Start a Post", href: "/collaborate" },
     { label: "Action: Enter a Contest", href: "/challenges" },
     { label: "Action: Start Crowdfunding", href: "/studio/crowdfunding" },
@@ -601,8 +576,14 @@ function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => voi
 
   const filtered = actions.filter(a => a.label.toLowerCase().includes(q.toLowerCase()));
 
-  const go = (a: { label: string; href?: string; sectionId?: string }) => {
+  const go = (a: { label: string; href?: string; sectionId?: string; tab?: TabId }) => {
     if (a.href) { window.location.href = a.href; return; }
+    if (a.tab && onSelectTab) {
+      onSelectTab(a.tab);
+      onClose();
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+      return;
+    }
     if (a.sectionId) {
       const el = document.querySelector<HTMLElement>(`[data-section='${a.sectionId}']`) || document.getElementById(a.sectionId);
       if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 88; window.scrollTo({ top: y, behavior: "smooth" }); }
@@ -632,6 +613,173 @@ function CommandBar({ open, onClose, data }: { open: boolean; onClose: () => voi
   );
 }
 
+type QuickActionItem = {
+  label: string;
+  description: string;
+  href: string;
+  icon: React.ReactNode;
+};
+
+function QuickActionSidebar({ actions, stats, onCreate }: { actions: QuickActionItem[]; stats: HubData["stats"]; onCreate: () => void }) {
+  return (
+    <div className="flex h-full flex-col gap-5 rounded-3xl border border-white/10 bg-card/70 p-5 shadow-[0_20px_50px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+      <div>
+        <h2 className="text-lg font-semibold text-white">Quick Actions</h2>
+        <p className="text-sm text-zinc-400">Pick a next step and keep momentum.</p>
+      </div>
+      <div className="grid gap-3">
+        {actions.map((action) => (
+          <a
+            key={action.label}
+            href={action.href}
+            className="group block rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/10"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-amber-200">
+                {action.icon}
+              </span>
+              <div className="flex-1">
+                <div className="font-medium text-white">{action.label}</div>
+                <div className="text-xs text-zinc-400">{action.description}</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500 transition group-hover:text-amber-300" />
+            </div>
+          </a>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-200">
+        <div className="mb-2 text-xs uppercase tracking-wide text-zinc-400">This Week</div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <div className="font-semibold text-white">{formatNumber(stats.active_week)}</div>
+            <div className="text-xs text-zinc-400">Active creators</div>
+          </div>
+          <div>
+            <div className="font-semibold text-white">{formatNumber(stats.members)}</div>
+            <div className="text-xs text-zinc-400">Members in hub</div>
+          </div>
+          <div>
+            <div className="font-semibold text-white">{formatNumber(stats.xp)}</div>
+            <div className="text-xs text-zinc-400">XP earned</div>
+          </div>
+          <div>
+            <div className="font-semibold text-white">{formatNumber(stats.streak_days)}</div>
+            <div className="text-xs text-zinc-400">Avg streak</div>
+          </div>
+        </div>
+      </div>
+      <Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400" onClick={onCreate}>
+        <Plus className="h-4 w-4" />
+        Create
+      </Button>
+    </div>
+  );
+}
+
+type TabsNavProps = {
+  tabs: { id: TabId; label: string }[];
+  active: TabId;
+  onSelect: (tab: TabId) => void;
+  onCreate: () => void;
+  onCommand: () => void;
+};
+
+function TabsNav({ tabs, active, onSelect, onCreate, onCommand }: TabsNavProps) {
+  return (
+    <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+      <nav className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto px-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={classNames(
+              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+              active === tab.id
+                ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+                : "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+      <div className="flex items-center gap-2 self-start md:self-auto">
+        <Button className="hidden sm:inline-flex bg-white/10 text-white hover:bg-white/15" onClick={onCommand}>
+          <CommandIcon className="h-4 w-4" />
+          Command
+        </Button>
+        <Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400" onClick={onCreate}>
+          <Plus className="h-4 w-4" />
+          Create
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type CreateModalProps = {
+  open: boolean;
+  onClose: () => void;
+  actions: { label: string; description: string; href: string; icon: React.ReactNode }[];
+};
+
+function CreateModal({ open, onClose, actions }: CreateModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const stop = (event: React.MouseEvent<HTMLDivElement>) => event.stopPropagation();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-xl rounded-3xl border border-white/10 bg-card p-6 shadow-2xl"
+        onClick={stop}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-semibold text-white">Launch something new</h3>
+            <p className="text-sm text-zinc-400">Choose a format and we’ll open the right workspace.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-white/10 bg-white/5 p-2 text-zinc-300 hover:bg-white/10"
+            aria-label="Close create modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3">
+          {actions.map((action) => (
+            <a
+              key={action.label}
+              href={action.href}
+              className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10"
+              onClick={onClose}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-amber-200">
+                {action.icon}
+              </span>
+              <div className="flex-1">
+                <div className="font-medium text-white">{action.label}</div>
+                <div className="text-sm text-zinc-400">{action.description}</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500 transition group-hover:text-amber-300" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Sections ---------- //
 
 function AnnouncementsBar({ announcements }: { announcements: Announcement[] }) {
@@ -649,102 +797,6 @@ function AnnouncementsBar({ announcements }: { announcements: Announcement[] }) 
         </div>
         <a href="/roadmap" className="text-amber-300 hover:text-amber-200">What's new</a>
       </div>
-    </div>
-  );
-}
-
-function Hero({ mode, lives, memberCount, activeWeekly, contestsRunning, sessionsThisWeek }: { mode: Mode; lives: LiveEvent[]; memberCount: number; activeWeekly: number; contestsRunning: number; sessionsThisWeek: number; }) {
-  // Mode-aware CTAs
-  const ctas = useMemo(() => {
-    switch (mode) {
-      case "collab":
-        return [
-          { href: "/collaborate", label: "Post Collab Brief", icon: <Handshake className="h-4 w-4"/>, primary: true },
-          { href: "/directory", label: "Browse Directory", icon: <Users className="h-4 w-4"/> },
-          { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
-          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
-        ];
-      case "learn":
-        return [
-          { href: "/education", label: "Explore Courses", icon: <BookOpen className="h-4 w-4"/>, primary: true },
-          { href: "/live", label: "Join Masterclass", icon: <Radio className="h-4 w-4"/> },
-          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
-          { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
-        ];
-      case "earn":
-        return [
-          { href: "/studio/crowdfunding", label: "Start Crowdfunding", icon: <Megaphone className="h-4 w-4"/>, primary: true },
-          { href: "/challenges", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/> },
-          { href: "/collaborate", label: "Offer Services", icon: <Coins className="h-4 w-4"/> },
-          { href: "/live", label: "Pitch to A&R", icon: <Radio className="h-4 w-4"/> },
-        ];
-      default:
-        return [
-          { href: "/challenges", label: "Enter Contest", icon: <Trophy className="h-4 w-4"/>, primary: true },
-          { href: "/live", label: "Join Live", icon: <Radio className="h-4 w-4"/> },
-          { href: "/directory", label: "Directory", icon: <Users className="h-4 w-4"/> },
-          { href: "/collaborate", label: "Start a Post", icon: <MessageSquarePlus className="h-4 w-4"/> },
-        ];
-    }
-  }, [mode]);
-
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-8">
-      <div aria-hidden className="absolute right-[-20%] top-[-20%] h-72 w-72 rounded-full bg-amber-500/20 blur-3xl" />
-      <div aria-hidden className="absolute bottom-[-20%] left-[-10%] h-64 w-64 rounded-full bg-fuchsia-500/10 blur-2xl" />
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-2xl">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-            <SparkIcon />
-            THE HUB — Connect • Learn • Grow
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">Community Hub</h1>
-          <p className="mt-3 max-w-xl text-zinc-300/90">Jump into live sessions, contests, collabs, courses, and campaigns. Meet the tribe. Build momentum. Make records.</p>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            {ctas.map((c) => (
-              <a key={c.label} href={c.href}>
-                <Button className={c.primary ? "bg-amber-500 text-zinc-950 hover:bg-amber-400" : "bg-white/10 text-white hover:bg-white/20"}>{c.icon}{c.label}</Button>
-              </a>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <MiniStat label="Members" value={formatNumber(memberCount)} />
-          <MiniStat label="Active this week" value={formatNumber(activeWeekly)} />
-          <MiniStat label="Contests running" value={formatNumber(contestsRunning)} />
-          <MiniStat label="Sessions this week" value={formatNumber(sessionsThisWeek)} />
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {lives?.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="mt-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
-            <div className="flex items-center gap-3">
-              <Badge className="border-green-400/40 bg-green-500/10 text-green-200">
-                <span className="relative inline-flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-                </span>
-                Live now
-              </Badge>
-              <div className="text-zinc-200"><strong>{lives[0].title}</strong> • {formatNumber(lives[0].viewers)} watching</div>
-            </div>
-            <a href={lives[0].url} className="group flex items-center gap-2 text-amber-300 hover:text-amber-200">Join <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></a>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
-      <div className="text-xl font-bold text-white">{value}</div>
-      <div className="text-xs text-zinc-400">{label}</div>
     </div>
   );
 }
@@ -964,24 +1016,351 @@ function CommunityRadio({ radio }: { radio: CommunityRadioT }) {
   );
 }
 
-// ---------- Spotlight rows & cards ---------- //
+// ---------- Tab Layouts ---------- //
 
-function SpotlightRow({ title, icon, items, href }: { title: string; icon: React.ReactNode; items: React.ReactNode[]; href?: string; }) {
+type CombinedPost = {
+  id: string;
+  type: "forum" | "blog";
+  title: string;
+  subtitle: string;
+  href: string;
+  date: string;
+  tag?: string | null;
+};
+
+function FeedTabContent({
+  loading,
+  dailyPrompt,
+  threads,
+  blogPosts,
+  events,
+  radio,
+  trending,
+  creator,
+}: {
+  loading: boolean;
+  dailyPrompt: DailyPromptT | null;
+  threads: Thread[];
+  blogPosts: BlogPost[];
+  events: LiveEvent[];
+  radio: CommunityRadioT;
+  trending: { tag: string; count: number }[];
+  creator: Creator | null;
+}) {
+  const { data: releases, loading: releasesLoading, error: releasesError } = useReleases(6);
+
+  useEffect(() => {
+    if (releasesError) console.warn("Failed to load releases for feed", releasesError);
+  }, [releasesError]);
+
+  const latestPosts = useMemo<CombinedPost[]>(() => {
+    const forumPosts: CombinedPost[] = threads.slice(0, 6).map((thread) => ({
+      id: `thread-${thread.id}`,
+      type: "forum",
+      title: thread.title,
+      subtitle: `by ${thread.author.username ?? "Unknown"} • ${thread.reply_count} replies`,
+      href: normalizeCommunityHref(`/forum/${thread.slug}`),
+      date: thread.updated_at,
+      tag: thread.tag,
+    }));
+
+    const blog: CombinedPost[] = blogPosts.slice(0, 6).map((post) => ({
+      id: `blog-${post.id}`,
+      type: "blog",
+      title: post.title,
+      subtitle: post.excerpt ?? "",
+      href: post.slug ? `/blog/${post.slug}` : `/blog`,
+      date: post.created_at,
+      tag: (post.tags && post.tags[0]) || "Blog",
+    }));
+
+    return [...forumPosts, ...blog]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 6);
+  }, [threads, blogPosts]);
+
+  const eventsTeaser = useMemo(() => events.slice(0, 3), [events]);
+
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-zinc-200"><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/5">{icon}</span><h2 className="text-lg font-semibold">{title}</h2></div>
-        {href && (<a href={href} className="text-sm text-amber-300 hover:text-amber-200">View all</a>)}
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr),minmax(0,1.2fr)]">
+      <div className="space-y-6">
+        {dailyPrompt && <DailyPrompt prompt={dailyPrompt} />}
+        {creator ? <CreatorSpotlight creator={creator} /> : null}
+        <LatestPostsList posts={latestPosts} />
+        <TopReleasesList loading={releasesLoading} releases={releases} />
       </div>
-      <div className="group relative">
-        <div className="no-scrollbar -mx-2 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-2">{items?.length ? items : <EmptyPill />}</div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent" />
+      <aside className="space-y-6">
+        <RadioMiniCard radio={radio} />
+        <QuestsXP />
+        <UpcomingEventsTeaser events={eventsTeaser} />
+        <TrendingTopics topics={trending} />
+      </aside>
+    </div>
+  );
+}
+
+function LatestPostsList({ posts }: { posts: CombinedPost[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200">
+          <MessageSquarePlus className="h-5 w-5" />
+          <CardTitle>Latest posts</CardTitle>
+        </div>
+        <a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Open feed</a>
+      </CardHeader>
+      <CardContent>
+        {posts.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No conversations yet — start one!</div>
+        ) : (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <a
+                key={post.id}
+                href={post.href}
+                className="group flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-amber-200">
+                  {post.type === "blog" ? <PenSquare className="h-4 w-4" /> : <MessageSquarePlus className="h-4 w-4" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-sm font-medium text-white group-hover:text-amber-200">{post.title}</span>
+                    {post.tag ? <Badge>{post.tag}</Badge> : null}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-400">{post.subtitle}</div>
+                </div>
+                <div className="text-xs text-zinc-500">{new Date(post.date).toLocaleDateString()}</div>
+              </a>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopReleasesList({ releases, loading }: { releases: ReleaseSummary[]; loading: boolean }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200">
+          <PlayCircle className="h-5 w-5" />
+          <CardTitle>Top releases</CardTitle>
+        </div>
+        <a href="/releases" className="text-sm text-amber-300 hover:text-amber-200">Browse all</a>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((idx) => (
+              <div key={idx} className="h-24 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+            ))}
+          </div>
+        ) : releases.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {releases.map((release) => (
+              <a
+                key={release.id}
+                href={`/release/${release.id}`}
+                className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+              >
+                <img
+                  src={release.cover_art_url || "/placeholder.svg"}
+                  alt={release.title ?? "Release art"}
+                  className="h-16 w-16 rounded-lg object-cover"
+                />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-white">{release.title ?? "Untitled release"}</div>
+                  <div className="text-xs text-zinc-400">{release.artist ?? "Unknown"}</div>
+                  <div className="text-xs text-zinc-500">
+                    {release.genre ?? ""}
+                    {release.release_date ? ` • ${new Date(release.release_date).toLocaleDateString()}` : ""}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No live releases yet.</div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RadioMiniCard({ radio }: { radio: CommunityRadioT }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><Music2 className="h-5 w-5"/><CardTitle>Community radio</CardTitle></div>
+        <Badge className="border-green-400/40 bg-green-500/10 text-green-200">{formatNumber(radio.listeners)} listening</Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+          <img src={radio.now.cover || "/placeholder.svg"} alt={radio.now.title} className="h-12 w-12 rounded-lg object-cover" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-white">{radio.now.title}</div>
+            <div className="text-xs text-zinc-400">{radio.now.artist}</div>
+          </div>
+          <a href="/radio" className="text-sm text-amber-300 hover:text-amber-200">Listen</a>
+        </div>
+        {radio.queue.length ? (
+          <div className="mt-3 space-y-2">
+            {radio.queue.slice(0, 3).map((track) => (
+              <div key={track.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-zinc-400">
+                <img src={track.cover || "/placeholder.svg"} alt={track.title} className="h-8 w-8 rounded-md object-cover" />
+                <div className="min-w-0 flex-1 truncate text-zinc-300">{track.title}</div>
+                <span className="text-zinc-500">{track.artist}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function UpcomingEventsTeaser({ events }: { events: LiveEvent[] }) {
+  if (!events.length) return null;
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><CalendarDays className="h-5 w-5"/><CardTitle>Upcoming events</CardTitle></div>
+        <a href="/live" className="text-sm text-amber-300 hover:text-amber-200">See schedule</a>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {events.map((event) => (
+            <a
+              key={event.id}
+              href={event.url}
+              className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+            >
+              <img src={event.cover || "/placeholder.svg"} alt={event.title} className="h-12 w-12 rounded-lg object-cover" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-white">{event.title}</div>
+                <div className="text-xs text-zinc-400">{new Date(event.start_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500" />
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContestsTabContent({ contests, leaderboard, events }: { contests: Contest[]; leaderboard: Member[]; events: LiveEvent[] }) {
+  const liveEvents = useMemo(() => events.filter((event) => event.is_live), [events]);
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-lg font-semibold text-white">Featured contests</h2>
+        <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {contests.length ? contests.map((contest) => (
+            <ContestCard key={contest.id} contest={contest} />
+          )) : <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No contests are running right now.</div>}
+        </div>
+      </div>
+      {liveEvents.length ? <LiveNow lives={liveEvents} /> : null}
+      <TopMembers members={leaderboard.slice(0, 5)} />
+    </div>
+  );
+}
+
+function CollabsTabContent({ briefs, threads, trending }: { briefs: CollabBrief[]; threads: Thread[]; trending: { tag: string; count: number }[] }) {
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
+      <div className="space-y-6">
+        <CollabRadar briefs={briefs} />
+        <ForumThreads threads={threads} loading={false} />
+      </div>
+      <div className="space-y-6">
+        <TrendingTopics topics={trending} />
+        <QuestsXP />
       </div>
     </div>
   );
 }
 
-function EmptyPill() { return (<div className="snap-start rounded-xl border border-white/10 bg-white/5 px-4 py-10 text-center text-zinc-400">Nothing here yet — be the first!</div>); }
+function CrowdfundTabContent({ campaigns }: { campaigns: Campaign[] }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {campaigns.length ? campaigns.map((campaign) => (
+          <CampaignCard key={campaign.id} campaign={campaign} />
+        )) : <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No active campaigns yet.</div>}
+      </div>
+    </div>
+  );
+}
+
+function LiveTabContent({ events, livesNow, radio }: { events: LiveEvent[]; livesNow: LiveEvent[]; radio: CommunityRadioT }) {
+  return (
+    <div className="space-y-8">
+      {livesNow.length ? <LiveNow lives={livesNow} /> : null}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
+        <EventsCalendar events={events} />
+        <CommunityRadio radio={radio} />
+      </div>
+    </div>
+  );
+}
+
+function BlogTabContent({ posts, threads }: { posts: BlogPost[]; threads: Thread[] }) {
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr),minmax(0,1.2fr)]">
+      <div className="space-y-6">
+        <BlogPostList posts={posts.slice(0, 6)} />
+      </div>
+      <aside className="space-y-6">
+        <ForumThreads threads={threads.slice(0, 5)} loading={false} />
+      </aside>
+    </div>
+  );
+}
+
+function BlogPostList({ posts }: { posts: BlogPost[] }) {
+  if (!posts.length) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Latest blog updates</CardTitle></CardHeader>
+        <CardContent>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No blog posts yet.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {posts.map((post) => (
+        <a
+          key={post.id}
+          href={post.slug ? `/blog/${post.slug}` : `/blog`}
+          className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-card hover:border-white/20"
+        >
+          <div className="aspect-video w-full overflow-hidden bg-white/5">
+            <img src={post.featured_image_url || "/placeholder.svg"} alt={post.title} className="h-full w-full object-cover transition group-hover:scale-[1.02]" />
+          </div>
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+              {post.tags && post.tags.length ? <Badge className="bg-white/5">{post.tags[0]}</Badge> : null}
+            </div>
+            <div className="text-base font-semibold text-white group-hover:text-amber-200">{post.title}</div>
+            {post.excerpt ? <p className="text-sm text-zinc-400">{post.excerpt}</p> : null}
+            <span className="mt-auto text-sm text-amber-300">Read article →</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+
+// ---------- Spotlight rows & cards ---------- //
 
 function ContestCard({ contest }: { contest: Contest }) {
   const fallbackImage = "/placeholder.svg";
@@ -1021,11 +1400,13 @@ function ContestCard({ contest }: { contest: Contest }) {
 }
 
 function CampaignCard({ campaign }: { campaign: Campaign }) {
-  const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
+  const goal = campaign.goal || 1;
+  const pct = Math.min(100, Math.round((campaign.raised / goal) * 100));
+  const cover = campaign.cover || "/placeholder.svg";
   return (
     <Card className="snap-start w-[280px] flex-shrink-0 overflow-hidden">
       <div className="relative h-36 w-full overflow-hidden">
-        <img src={campaign.cover} alt="campaign" className="h-full w-full object-cover" />
+        <img src={cover} alt="campaign" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
         <Badge className="absolute left-3 top-3 border-cyan-400/30 bg-cyan-500/10 text-cyan-100"><Megaphone className="h-3 w-3"/>Campaign</Badge>
       </div>
@@ -1207,51 +1588,29 @@ function EventsCalendar({ events }: { events: LiveEvent[] }) {
   );
 }
 
-function QuickActions() {
-  return (
-    <Card>
-      <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid gap-3">
-          <a href="/challenges"><ActionRow icon={<Trophy className="h-4 w-4"/>} label="Enter a contest" sub="Win prizes & placements"/></a>
-          <a href="/collaborate"><ActionRow icon={<Handshake className="h-4 w-4"/>} label="Post a collab brief" sub="Find your next co-creator"/></a>
-          <a href="/studio/crowdfunding"><ActionRow icon={<Megaphone className="h-4 w-4"/>} label="Start crowdfunding" sub="Rally fans around your release"/></a>
-          <a href="/directory"><ActionRow icon={<Users className="h-4 w-4"/>} label="Browse directory" sub="Producers, writers, vocalists"/></a>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function CollabRadar({ briefs }: { briefs: CollabBrief[] }) {
   return (
     <Card>
       <CardHeader className="flex items-center gap-2"><Compass className="h-5 w-5"/><CardTitle>Collab Radar</CardTitle></CardHeader>
       <CardContent>
-        <div className="grid gap-3">
-          {briefs.map((b) => (
-            <a key={b.id} href={normalizeCommunityHref(`/forum/${b.slug}`)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-              <img src={b.author.avatar} className="h-10 w-10 rounded-full object-cover"/>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-white">{b.title}</div>
-                <div className="text-xs text-zinc-400">{b.genre} • {b.skill} • budget {b.budget}</div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-zinc-500"/>
-            </a>
-          ))}
-        </div>
+        {briefs.length ? (
+          <div className="grid gap-3">
+            {briefs.map((b) => (
+              <a key={b.id} href={normalizeCommunityHref(`/forum/${b.slug}`)} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+                <img src={b.author.avatar || "/placeholder.svg"} className="h-10 w-10 rounded-full object-cover"/>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-white">{b.title}</div>
+                  <div className="text-xs text-zinc-400">{b.genre ?? "Any genre"} • {b.skill} • budget {b.budget ?? "tbd"}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-zinc-500"/>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No open briefs right now. Post yours to get collaborators.</div>
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-function ActionRow({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">{icon}</div>
-      <div className="flex-1"><div className="text-sm font-medium text-zinc-100">{label}</div><div className="text-xs text-zinc-400">{sub}</div></div>
-      <ArrowRight className="h-4 w-4 text-zinc-500"/>
-    </div>
   );
 }
 
@@ -1288,20 +1647,6 @@ function TrendingTopics({ topics }: { topics: { tag: string; count: number }[] }
               <Badge className="transition-colors group-hover:bg-white/15">#{t.tag} <span className="ml-1 text-zinc-400">{t.count}</span></Badge>
             </a>
           ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StreakBadges({ streakDays, badges }: { streakDays: number; badges: string[] }) {
-  return (
-    <Card>
-      <CardHeader><CardTitle>Your Streak & Badges</CardTitle></CardHeader>
-      <CardContent>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
-          <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Flame className="h-4 w-4 text-amber-400"/><span>{streakDays} day streak</span></div><div className="text-xs text-zinc-400">Keep momentum for rewards</div></div>
-          <div className="mt-3 flex flex-wrap gap-2">{badges.map((b, i) => (<Badge key={i} className="border-amber-400/20 bg-amber-500/10 text-amber-200">{b}</Badge>))}</div>
         </div>
       </CardContent>
     </Card>

@@ -168,7 +168,7 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
   const getTierLimits = () => {
     switch (subscription?.tier) {
       case 'free':
-        return { monthly: 5 };
+        return { monthly: 10 };
       case 'creator':
         return { monthly: 15 };
       case 'pro':

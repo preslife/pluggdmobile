@@ -93,11 +93,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     switch (tier) {
       case 'creator':
         return {
-          maxActiveCourses: 3,
+          maxActiveCourses: 5,
           maxBeatsPerMonth: 15,
-          maxProjectsPerMonth: 2,
-          maxToolUsagePerDay: 5,
-          maxFeedbackPerMonth: 2,
+          maxProjectsPerMonth: 3,
+          maxToolUsagePerDay: 10,
+          maxFeedbackPerMonth: 5,
           canUploadBeats: true,
           canSellSamplePacks: true,
           canPostProjects: true,
@@ -135,12 +135,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         return {
           maxActiveCourses: 1,
           maxBeatsPerMonth: 5,
-          maxProjectsPerMonth: 0,
+          maxProjectsPerMonth: 1,
           maxToolUsagePerDay: 3,
-          maxFeedbackPerMonth: 0,
+          maxFeedbackPerMonth: 1,
           canUploadBeats: true,
           canSellSamplePacks: false,
-          canPostProjects: false,
+          canPostProjects: true,
           canHostEvents: false,
           canSubmitChallenges: false,
           hasAnalyticsDashboard: false,

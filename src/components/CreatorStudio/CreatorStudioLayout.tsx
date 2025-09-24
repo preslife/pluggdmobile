@@ -745,7 +745,8 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
             <ThemeToggle />
           </header>
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 creator-studio-scope">
+
             {children}
           </main>
         </SidebarInset>

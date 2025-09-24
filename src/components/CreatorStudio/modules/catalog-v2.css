@@ -39,4 +39,44 @@
 
 .catalog-scope .border-primary { /* keep outlines allowed */ }
 
+.creator-studio-scope {
+  /* Force neutral, black-based surfaces inside Creator Studio */
+  --background: 240 10% 3.9%; /* pure app background */
+  --card: 240 10% 6%;
+  --muted: 240 10% 8%;
+}
+
+.creator-studio-scope .card-ambient {
+  background: hsl(var(--card));
+}
+
+.creator-studio-scope .tabs-list-reset {
+  background: transparent;
+}
+
+/* Ensure any accidental orange "panel" classes are neutralized */
+/* Neutralize orange/yellow/primary backgrounds on block containers only. */
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-orange"]:not([class*="inline"]),
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-amber"]:not([class*="inline"]),
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-yellow"]:not([class*="inline"]),
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-primary"]:not([class*="inline"]),
+.creator-studio-scope .bg-card,
+.creator-studio-scope .bg-secondary,
+.creator-studio-scope .bg-muted {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Also neutralize gradient panels on block containers (not inline chips/badges) */
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-gradient"],
+.creator-studio-scope :is(div,section,main,article,aside,header,footer)[style*="gradient"] {
+  background: hsl(var(--background)) !important;
+}
+
+/* Remove shadows/glows from tiles to keep flat black surfaces */
+.creator-studio-scope .shadow,
+.creator-studio-scope .shadow-sm,
+.creator-studio-scope .shadow-md,
+.creator-studio-scope .shadow-lg { box-shadow: none !important; }
+
+.creator-studio-scope .border-primary { /* keep outlines allowed */ }
 
