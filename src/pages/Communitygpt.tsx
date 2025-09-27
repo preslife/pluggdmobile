@@ -20,7 +20,6 @@ import {
   Sparkles,
   Compass,
   Command as CommandIcon,
-  Search,
   Play,
   Pause,
   Download,
@@ -37,13 +36,16 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
+import BlogGrid from "@/components/BlogGrid"; // reuse your existing grid
 
 /**
- * PLUGGD — COMMUNITY HUB
- * Refreshed hub around the release carousel, quick actions, and sticky tabs.
- * - Adds Supabase-powered feed with blog/forum merge + top releases rail.
- * - Introduces create modal + quick action sidebar tied to key workflows.
- * - Reorganises verticals into dedicated tab layouts while keeping command bar.
+ * PLUGGD — COMMUNITY HUB (refreshed)
+ * - Backgroundless carousel hero (uses page bg)
+ * - Blog tab reuses BlogGrid; feed links to /blog
+ * - Create → Blog points to /admin/blog?new=1
+ * - Command palette jumps to Blog and New Blog Post
+ * - Supabase fallback to mock ensures page never blanks
+ * - Little UX polish: sticky tabs offset, conditional sections
  */
 
 // ---------- Shared UI primitives ---------- //
@@ -135,17 +137,11 @@ function normalizeCommunityHref(href?: string | null) {
 // ---------- Types ---------- //
 
 type Contest = { id: string; title: string; cover: string | null; cover_image_url?: string | null; entrants: number; ends_at: string; slug: string };
-
 type Campaign = { id: string; title: string; cover?: string | null; goal: number; raised: number; ends_at?: string | null; slug?: string | null };
-
 type Track = { id: string; title: string; artist: string; cover: string | null; url: string | null; duration?: number };
-
 type LiveEvent = { id: string; title: string; cover: string | null; start_at: string; url: string; host: string; viewers: number; is_live: boolean };
-
 type Thread = { id: string; title: string; slug: string; tag: string; reply_count: number; updated_at: string; author: { username: string | null; avatar: string | null } };
-
 type Course = { id: string; title: string; instructor: string | null; level: string | null; length: string | null; cover: string | null; slug: string };
-
 type Member = { id: string; username: string | null; avatar: string | null; role: string; badges: string[] };
 
 type Creator = {
@@ -182,123 +178,129 @@ type HubData = {
   creator_spotlight: Creator | null; radio: CommunityRadioT; announcements: Announcement[]; daily_prompt: DailyPromptT | null; collab_briefs: CollabBrief[]; quests: Quest[]; blog_posts: BlogPost[];
 };
 
-// ---------- Data Fetcher ---------- //
+// ---------- Data Fetcher (with safe fallback) ---------- //
 
 async function fetchHubData(): Promise<HubData> {
-  const { data, error } = await supabase.rpc("fn_hub_payload");
-  if (error) throw error;
+  try {
+    const { data, error } = await supabase.rpc("fn_hub_payload");
+    if (error) throw error;
 
-  // Fetch additional data not included in fn_hub_payload
-  const [
-    campaignsRes,
-    announcementsRes,
-    dailyPromptRes,
-    questsRes,
-    radioStateRes,
-    radioQueueRes,
-    blogPostsRes,
-  ] = await Promise.all([
-    supabase.from("campaigns").select("id, owner_id, title, cover_url, goal, raised, ends_at, slug").order("created_at", { ascending: false }).limit(6),
-    supabase.from("announcements").select("text, is_live, starts_at, ends_at").order("created_at", { ascending: false }).limit(3),
-    supabase.from("daily_prompts").select("text, tag, cta_text, cta_href, starts_at, ends_at").order("starts_at", { ascending: false }).limit(1),
-    supabase.from("quests").select("id, title, xp, is_active").order("created_at", { ascending: false }).limit(6),
-    supabase.from("radio_state").select("listeners, now_track_id").order("updated_at", { ascending: false }).limit(1),
-    supabase.from("radio_queue").select("position, track_id").order("position", { ascending: true }),
-    supabase.from("blog_posts").select("id, title, excerpt, featured_image_url, tags, created_at, slug, is_published").eq("is_published", true).order("created_at", { ascending: false }).limit(6),
-  ]);
+    const [
+      campaignsRes,
+      announcementsRes,
+      dailyPromptRes,
+      questsRes,
+      radioStateRes,
+      radioQueueRes,
+      blogPostsRes,
+    ] = await Promise.all([
+      supabase.from("campaigns").select("id, owner_id, title, cover_url, goal, raised, ends_at, slug").order("created_at", { ascending: false }).limit(6),
+      supabase.from("announcements").select("text, is_live, starts_at, ends_at").order("created_at", { ascending: false }).limit(3),
+      supabase.from("daily_prompts").select("text, tag, cta_text, cta_href, starts_at, ends_at").order("starts_at", { ascending: false }).limit(1),
+      supabase.from("quests").select("id, title, xp, is_active").order("created_at", { ascending: false }).limit(6),
+      supabase.from("radio_state").select("listeners, now_track_id").order("updated_at", { ascending: false }).limit(1),
+      supabase.from("radio_queue").select("position, track_id").order("position", { ascending: true }),
+      supabase.from("blog_posts").select("id, title, excerpt, featured_image_url, tags, created_at, slug, is_published").eq("is_published", true).order("created_at", { ascending: false }).limit(6),
+    ]);
 
-  const campaigns = campaignsRes.data?.map(c => ({
-    id: c.id, title: c.title, cover: c.cover_url ?? null, goal: Number(c.goal ?? 0), raised: Number(c.raised ?? 0),
-    ends_at: c.ends_at ?? null, slug: c.slug ?? null
-  })) ?? [];
+    const campaigns = campaignsRes.data?.map(c => ({
+      id: c.id, title: c.title, cover: c.cover_url ?? null, goal: Number(c.goal ?? 0), raised: Number(c.raised ?? 0),
+      ends_at: c.ends_at ?? null, slug: c.slug ?? null
+    })) ?? [];
 
-  const now = new Date();
-  const announcements = (announcementsRes.data ?? [])
-    .filter(a => (a.is_live ?? true) && (!a.starts_at || new Date(a.starts_at) <= now) && (!a.ends_at || now <= new Date(a.ends_at)))
-    .map(a => ({ text: a.text }));
+    const now = new Date();
+    const announcements = (announcementsRes.data ?? [])
+      .filter(a => (a.is_live ?? true) && (!a.starts_at || new Date(a.starts_at) <= now) && (!a.ends_at || now <= new Date(a.ends_at)))
+      .map(a => ({ text: a.text }));
 
-  const daily_prompt = (dailyPromptRes.data?.[0])
-    ? { text: dailyPromptRes.data[0].text, tag: dailyPromptRes.data[0].tag ?? null, cta_text: dailyPromptRes.data[0].cta_text ?? null, cta_href: dailyPromptRes.data[0].cta_href ?? null }
-    : null;
+    const daily_prompt = (dailyPromptRes.data?.[0])
+      ? { text: dailyPromptRes.data[0].text, tag: dailyPromptRes.data[0].tag ?? null, cta_text: dailyPromptRes.data[0].cta_text ?? null, cta_href: dailyPromptRes.data[0].cta_href ?? null }
+      : null;
 
-  const quests = (questsRes.data ?? [])
-    .filter(q => q.is_active)
-    .map(q => ({ id: q.id, title: q.title, xp: q.xp }));
+    const quests = (questsRes.data ?? [])
+      .filter(q => q.is_active)
+      .map(q => ({ id: q.id, title: q.title, xp: q.xp }));
 
-  const blog_posts: BlogPost[] = (blogPostsRes.data ?? []).map((post: any) => ({
-    id: post.id,
-    title: post.title,
-    excerpt: post.excerpt ?? null,
-    featured_image_url: post.featured_image_url ?? null,
-    tags: Array.isArray(post.tags) ? post.tags : [],
-    created_at: post.created_at,
-    slug: post.slug ?? null,
-  }));
+    const blog_posts: BlogPost[] = (blogPostsRes.data ?? []).map((post: any) => ({
+      id: post.id,
+      title: post.title,
+      excerpt: post.excerpt ?? null,
+      featured_image_url: post.featured_image_url ?? null,
+      tags: Array.isArray(post.tags) ? post.tags : [],
+      created_at: post.created_at,
+      slug: post.slug ?? null,
+    }));
 
-  // Radio join (safe fallback if empty)
-  const listeners = radioStateRes.data?.[0]?.listeners ?? 0;
-  const nowTrackId = radioStateRes.data?.[0]?.now_track_id ?? null;
-  const trackIds = [
-    ...(nowTrackId ? [nowTrackId] : []),
-    ...((radioQueueRes.data ?? []).map(q => q.track_id))
-  ];
-  const unique = Array.from(new Set(trackIds));
-  let radio: HubData["radio"] = {
-    listeners,
-    now: { id: "0", title: "Community Radio", artist: "Pluggd", cover: null, url: null },
-    queue: []
-  };
-  if (unique.length) {
-    const { data: tracks } = await supabase.from("tracks")
-      .select("id, title, audio_url, release:releases(id, title, artist, cover_art_url)")
-      .in("id", unique);
+    // Radio join (safe fallback if empty)
+    const listeners = radioStateRes.data?.[0]?.listeners ?? 0;
+    const nowTrackId = radioStateRes.data?.[0]?.now_track_id ?? null;
+    const trackIds = [
+      ...(nowTrackId ? [nowTrackId] : []),
+      ...((radioQueueRes.data ?? []).map(q => q.track_id))
+    ];
+    const unique = Array.from(new Set(trackIds));
+    let radio: HubData["radio"] = {
+      listeners,
+      now: { id: "0", title: "Community Radio", artist: "Pluggd", cover: null, url: null },
+      queue: []
+    };
+    if (unique.length) {
+      const { data: tracks } = await supabase.from("tracks")
+        .select("id, title, audio_url, release:releases(id, title, artist, cover_art_url)")
+        .in("id", unique);
 
-    const toTrack = (t: any): Track => ({
-      id: t.id,
-      title: t.title,
-      artist: t.release?.artist ?? "Unknown",
-      cover: t.release?.cover_art_url ?? null,
-      url: t.audio_url ?? null
-    });
+      const toTrack = (t: any): Track => ({
+        id: t.id,
+        title: t.title,
+        artist: t.release?.artist ?? "Unknown",
+        cover: t.release?.cover_art_url ?? null,
+        url: t.audio_url ?? null
+      });
 
-    const map = new Map(tracks?.map(t => [t.id, t]) ?? []);
-    if (nowTrackId && map.has(nowTrackId)) radio.now = toTrack(map.get(nowTrackId));
-    radio.queue = (radioQueueRes.data ?? [])
-      .map(q => map.get(q.track_id))
-      .filter(Boolean)
-      .map(toTrack)
-      .slice(0, 5);
+      const map = new Map(tracks?.map(t => [t.id, t]) ?? []);
+      if (nowTrackId && map.has(nowTrackId)) radio.now = toTrack(map.get(nowTrackId));
+      radio.queue = (radioQueueRes.data ?? [])
+        .map(q => map.get(q.track_id))
+        .filter(Boolean)
+        .map(toTrack)
+        .slice(0, 5);
+    }
+
+    const payload = data as any;
+    const hub: HubData = {
+      contests: payload.contests ?? [],
+      events: payload.events ?? [],
+      threads: payload.threads ?? [],
+      courses: payload.courses ?? [],
+      members: (payload.members ?? []).map((m: any) => ({
+        id: m.id, username: m.username, avatar: m.avatar, role: m.role ?? "member", badges: m.badges ?? []
+      })),
+      trending: payload.trending ?? [],
+      badges: [],
+      stats: payload.stats ?? { members: 0, active_week: 0, streak_days: 0, xp: 0 },
+      creator_spotlight: payload.creator_spotlight ?? null,
+      radio,
+      announcements,
+      daily_prompt,
+      campaigns,
+      collab_briefs: payload.collab_briefs ?? [],
+      quests,
+      blog_posts,
+    };
+
+    // Fill required fallbacks for nullables
+    hub.contests = hub.contests.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
+    hub.events   = hub.events.map((e: any) => ({ ...e, cover: e.cover ?? "/placeholder.svg" }));
+    hub.courses  = hub.courses.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
+
+    return hub;
+  } catch (err) {
+    console.warn("[CommunityHub] Falling back to mock data:", err);
+    const mock = getMockHubDataEpic();
+    mock.contests = mock.contests.map(c => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
+    mock.events   = mock.events.map(e => ({ ...e, cover: e.cover ?? "/placeholder.svg" }));
+    return mock;
   }
-
-  // Merge with RPC payload
-  const payload = data as any;
-  const hub: HubData = {
-    contests: payload.contests ?? [],
-    events: payload.events ?? [],
-    threads: payload.threads ?? [],
-    courses: payload.courses ?? [],
-    members: (payload.members ?? []).map((m: any) => ({
-      id: m.id, username: m.username, avatar: m.avatar, role: m.role ?? "member", badges: m.badges ?? []
-    })),
-    trending: payload.trending ?? [],
-    badges: [], // keep as [] for now (we show badges per member & achievements card)
-    stats: payload.stats ?? { members: 0, active_week: 0, streak_days: 0, xp: 0 },
-    creator_spotlight: payload.creator_spotlight ?? null,
-    radio,
-    announcements,
-    daily_prompt,
-    campaigns,
-    collab_briefs: payload.collab_briefs ?? [],
-    quests,
-    blog_posts,
-  };
-
-  // Fill required fallbacks for nullables
-  hub.contests = hub.contests.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
-  hub.events   = hub.events.map((e: any) => ({ ...e, cover: e.cover ?? "/placeholder.svg" }));
-  hub.courses  = hub.courses.map((c: any) => ({ ...c, cover: c.cover ?? "/placeholder.svg" }));
-
-  return hub;
 }
 
 // ---------- EPIC Community Hub ---------- //
@@ -370,30 +372,10 @@ export default function CommunityHubEpic() {
 
   const quickActions = useMemo(
     () => [
-      {
-        label: "Enter a contest",
-        description: "Win placements and cash prizes",
-        href: "/challenges",
-        icon: <Trophy className="h-4 w-4" />,
-      },
-      {
-        label: "Post a collab brief",
-        description: "Find your next co-creator",
-        href: "/collaborate",
-        icon: <Handshake className="h-4 w-4" />,
-      },
-      {
-        label: "Start crowdfunding",
-        description: "Launch member-only rewards",
-        href: "/studio/crowdfunding",
-        icon: <Megaphone className="h-4 w-4" />,
-      },
-      {
-        label: "Host a live session",
-        description: "Book a slot and go live",
-        href: "/studio/live/sessions",
-        icon: <Radio className="h-4 w-4" />,
-      },
+      { label: "Enter a contest", description: "Win placements and cash prizes", href: "/challenges", icon: <Trophy className="h-4 w-4" /> },
+      { label: "Post a collab brief", description: "Find your next co-creator", href: "/collaborate", icon: <Handshake className="h-4 w-4" /> },
+      { label: "Start crowdfunding", description: "Launch member-only rewards", href: "/studio/crowdfunding", icon: <Megaphone className="h-4 w-4" /> },
+      { label: "Host a live session", description: "Book a slot and go live", href: "/studio/live/sessions", icon: <Radio className="h-4 w-4" /> },
     ],
     []
   );
@@ -404,7 +386,7 @@ export default function CommunityHubEpic() {
       { label: "Collab Brief", description: "Recruit producers, writers, vocalists", href: "/collaborate", icon: <Handshake className="h-4 w-4" /> },
       { label: "Crowdfunding Campaign", description: "Fund releases with fan backing", href: "/studio/crowdfunding", icon: <Megaphone className="h-4 w-4" /> },
       { label: "Live Session", description: "Schedule a livestream or listening party", href: "/studio/live/sessions", icon: <Radio className="h-4 w-4" /> },
-      { label: "Blog Post", description: "Share news, recaps, or tutorials", href: "/studio/courses/builder", icon: <PenSquare className="h-4 w-4" /> },
+      { label: "Blog Post", description: "Write & publish an article", href: "/admin/blog?new=1", icon: <PenSquare className="h-4 w-4" /> },
     ],
     []
   );
@@ -414,31 +396,13 @@ export default function CommunityHubEpic() {
 
     switch (activeTab) {
       case "contests":
-        return (
-          <ContestsTabContent
-            contests={data.contests}
-            leaderboard={data.members}
-            events={data.events}
-          />
-        );
+        return <ContestsTabContent contests={data.contests} leaderboard={data.members} events={data.events} />;
       case "collabs":
-        return (
-          <CollabsTabContent
-            briefs={data.collab_briefs}
-            threads={data.threads}
-            trending={data.trending}
-          />
-        );
+        return <CollabsTabContent briefs={data.collab_briefs} threads={data.threads} trending={data.trending} />;
       case "crowdfund":
         return <CrowdfundTabContent campaigns={data.campaigns} />;
       case "live":
-        return (
-          <LiveTabContent
-            events={data.events}
-            livesNow={livesNow}
-            radio={data.radio}
-          />
-        );
+        return <LiveTabContent events={data.events} livesNow={livesNow} radio={data.radio} />;
       case "blog":
         return <BlogTabContent posts={data.blog_posts} threads={data.threads} />;
       case "feed":
@@ -490,10 +454,13 @@ export default function CommunityHubEpic() {
       <div className="relative pb-16">
         <div className="mx-auto max-w-7xl px-4 pt-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
-            <div className="flex min-h-[26rem] items-center justify-center rounded-3xl border border-white/10 bg-card/80 p-6 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+            {/* Backgroundless carousel hero — lets page background show */}
+            <div className="min-h-[26rem] rounded-3xl">
               <PluggdCarousel accentColor="#FF5A00" heightClass="h-[22rem] md:h-[24rem]" />
             </div>
-            <div id="quick-actions">
+
+            {/* Quick actions (add data-section for command jump) */}
+            <div id="quick-actions" data-section="quick-actions">
               <QuickActionSidebar
                 actions={quickActions}
                 stats={data.stats}
@@ -503,7 +470,15 @@ export default function CommunityHubEpic() {
           </div>
         </div>
 
-        <div className="sticky top-16 z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Soft ambient background accents */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-x-0 top-[-10%] mx-auto h-[40rem] w-[80rem] rounded-full bg-gradient-to-tr from-orange-500/20 via-amber-400/10 to-fuchsia-500/10 blur-3xl" />
+          <div className="absolute bottom-[-20%] right-[-10%] h-[26rem] w-[26rem] rounded-full bg-gradient-to-tr from-indigo-500/10 to-cyan-400/10 blur-2xl" />
+          <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_50%)]" />
+        </div>
+
+        {/* Sticky tabs (slight bigger offset to avoid header overlap) */}
+        <div className="sticky top-16 md:top-20 z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="mx-auto max-w-7xl px-4">
             <TabsNav
               tabs={TABS}
@@ -540,8 +515,6 @@ export default function CommunityHubEpic() {
   );
 }
 
-// ---------- Action Dock (sticky) ---------- //
-
 // ---------- Command Bar ---------- //
 
 function CommandBar({ open, onClose, onSelectTab }: { open: boolean; onClose: () => void; onSelectTab?: (tab: TabId) => void }) {
@@ -562,6 +535,8 @@ function CommandBar({ open, onClose, onSelectTab }: { open: boolean; onClose: ()
     { label: "Switch to Live tab", tab: "live" },
     { label: "Switch to Blog tab", tab: "blog" },
     { label: "Jump: Quick Actions", sectionId: "quick-actions" },
+    { label: "Open Blog", href: "/blog" },
+    { label: "New Blog Post", href: "/admin/blog?new=1" },
     { label: "Action: Start a Post", href: "/collaborate" },
     { label: "Action: Enter a Contest", href: "/challenges" },
     { label: "Action: Start Crowdfunding", href: "/studio/crowdfunding" },
@@ -733,10 +708,7 @@ function CreateModal({ open, onClose, actions }: CreateModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-xl rounded-3xl border border-white/10 bg-card p-6 shadow-2xl"
-        onClick={stop}
-      >
+      <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-card p-6 shadow-2xl" onClick={stop}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-white">Launch something new</h3>
@@ -884,7 +856,7 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
 }
 
 function SpotlightTrackPlayer({ creator }: { creator: Creator }) {
-    const { state, actions } = useGlobalPlayer();
+  const { state, actions } = useGlobalPlayer();
   
   const track = {
     id: `creator-spotlight-${creator.id}`,
@@ -898,11 +870,7 @@ function SpotlightTrackPlayer({ creator }: { creator: Creator }) {
   const trackIsPlaying = isCurrentTrack && state.isPlaying;
 
   const handlePlay = () => {
-    if (isCurrentTrack && state.isPlaying) {
-      // This track is already playing, the global player handles pause
-      return;
-    }
-    // Set up queue first, then play - same as SpotlightCarousel
+    if (isCurrentTrack && state.isPlaying) return;
     actions.setQueue([track], 0);
     actions.play(track);
   };
@@ -914,11 +882,7 @@ function SpotlightTrackPlayer({ creator }: { creator: Creator }) {
         onClick={handlePlay}
         disabled={!track.src}
       >
-        {trackIsPlaying ? (
-          <Pause className="w-4 h-4" />
-        ) : (
-          <Play className="w-4 h-4" />
-        )}
+        {trackIsPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
       </Button>
       <div className="h-2 w-28 overflow-hidden rounded-full bg-white/10">
         <div 
@@ -945,9 +909,7 @@ function RadioTrackPlayer({ track }: { track: { id: string; title: string; artis
   const trackIsPlaying = isCurrentTrack && state.isPlaying;
 
   const handlePlay = () => {
-    if (isCurrentTrack && state.isPlaying) {
-      return;
-    }
+    if (isCurrentTrack && state.isPlaying) return;
     actions.play(audioTrack);
   };
 
@@ -958,11 +920,7 @@ function RadioTrackPlayer({ track }: { track: { id: string; title: string; artis
         onClick={handlePlay}
         disabled={!audioTrack.src}
       >
-        {trackIsPlaying ? (
-          <Pause className="w-4 h-4" />
-        ) : (
-          <Play className="w-4 h-4" />
-        )}
+        {trackIsPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
       </Button>
       <div className="h-2 w-28 overflow-hidden rounded-full bg-white/10">
         <div 
@@ -984,27 +942,31 @@ function CommunityRadio({ radio }: { radio: CommunityRadioT }) {
       <CardContent>
         <div className="rounded-xl border border-white/10 bg-white/5 p-3">
           <div className="flex items-center gap-3">
-            <img src={radio.now.cover} className="h-14 w-14 rounded-lg object-cover"/>
+            <img src={radio.now.cover || "/placeholder.svg"} className="h-14 w-14 rounded-lg object-cover"/>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-white">{radio.now.title}</div>
               <div className="text-xs text-zinc-400">{radio.now.artist}</div>
             </div>
-            <RadioTrackPlayer track={radio.now} />
+            <RadioTrackPlayer track={radio.now as any} />
           </div>
         </div>
-        <div className="mt-3 text-xs text-zinc-400">Up next</div>
-        <div className="mt-1 flex flex-col gap-2">
-          {radio.queue.map((t) => (
-            <div key={t.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-2">
-              <img src={t.cover} className="h-10 w-10 rounded-md object-cover"/>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-zinc-200">{t.title}</div>
-                <div className="text-xs text-zinc-400">{t.artist}</div>
-              </div>
-              <a href={`/track/${t.id}`} className="text-xs text-amber-300 hover:text-amber-200">View</a>
+        {radio.queue.length ? (
+          <>
+            <div className="mt-3 text-xs text-zinc-400">Up next</div>
+            <div className="mt-1 flex flex-col gap-2">
+              {radio.queue.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-2">
+                  <img src={t.cover || "/placeholder.svg"} className="h-10 w-10 rounded-md object-cover"/>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm text-zinc-200">{t.title}</div>
+                    <div className="text-xs text-zinc-400">{t.artist}</div>
+                  </div>
+                  <a href={`/track/${t.id}`} className="text-xs text-amber-300 hover:text-amber-200">View</a>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -1234,7 +1196,9 @@ function UpcomingEventsTeaser({ events }: { events: LiveEvent[] }) {
               <img src={event.cover || "/placeholder.svg"} alt={event.title} className="h-12 w-12 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-white">{event.title}</div>
-                <div className="text-xs text-zinc-400">{new Date(event.start_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                <div className="text-xs text-zinc-400">
+                  {new Date(event.start_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </div>
               </div>
               <ArrowRight className="h-4 w-4 text-zinc-500" />
             </a>
@@ -1291,13 +1255,18 @@ function CrowdfundTabContent({ campaigns }: { campaigns: Campaign[] }) {
 }
 
 function LiveTabContent({ events, livesNow, radio }: { events: LiveEvent[]; livesNow: LiveEvent[]; radio: CommunityRadioT }) {
+  const hasEvents = events && events.length > 0;
   return (
     <div className="space-y-8">
       {livesNow.length ? <LiveNow lives={livesNow} /> : null}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
-        <EventsCalendar events={events} />
+      {hasEvents ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
+          <EventsCalendar events={events} />
+          <CommunityRadio radio={radio} />
+        </div>
+      ) : (
         <CommunityRadio radio={radio} />
-      </div>
+      )}
     </div>
   );
 }
@@ -1305,54 +1274,26 @@ function LiveTabContent({ events, livesNow, radio }: { events: LiveEvent[]; live
 function BlogTabContent({ posts, threads }: { posts: BlogPost[]; threads: Thread[] }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr),minmax(0,1.2fr)]">
+      {/* Left: full blog grid (search, tags, modal) */}
       <div className="space-y-6">
-        <BlogPostList posts={posts.slice(0, 6)} />
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Latest from the Blog</CardTitle>
+            <a href="/blog" className="text-sm text-amber-300 hover:text-amber-200">Open blog</a>
+          </CardHeader>
+          <CardContent className="p-0">
+            <BlogGrid />
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Right: forum cross-pollination */}
       <aside className="space-y-6">
         <ForumThreads threads={threads.slice(0, 5)} loading={false} />
       </aside>
     </div>
   );
 }
-
-function BlogPostList({ posts }: { posts: BlogPost[] }) {
-  if (!posts.length) {
-    return (
-      <Card>
-        <CardHeader><CardTitle>Latest blog updates</CardTitle></CardHeader>
-        <CardContent>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No blog posts yet.</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {posts.map((post) => (
-        <a
-          key={post.id}
-          href={post.slug ? `/blog/${post.slug}` : `/blog`}
-          className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-card hover:border-white/20"
-        >
-          <div className="aspect-video w-full overflow-hidden bg-white/5">
-            <img src={post.featured_image_url || "/placeholder.svg"} alt={post.title} className="h-full w-full object-cover transition group-hover:scale-[1.02]" />
-          </div>
-          <div className="flex flex-1 flex-col gap-2 p-4">
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <span>{new Date(post.created_at).toLocaleDateString()}</span>
-              {post.tags && post.tags.length ? <Badge className="bg-white/5">{post.tags[0]}</Badge> : null}
-            </div>
-            <div className="text-base font-semibold text-white group-hover:text-amber-200">{post.title}</div>
-            {post.excerpt ? <p className="text-sm text-zinc-400">{post.excerpt}</p> : null}
-            <span className="mt-auto text-sm text-amber-300">Read article →</span>
-          </div>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 
 // ---------- Spotlight rows & cards ---------- //
 
@@ -1366,15 +1307,12 @@ function ContestCard({ contest }: { contest: Contest }) {
           src={(contest as any).cover_image_url || contest.cover || fallbackImage} 
           alt={contest.title}
           className="h-full w-full object-cover" 
-          onError={(e) => {
-            e.currentTarget.src = fallbackImage;
-          }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImage; }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
         <Badge className="absolute left-3 top-3 border-amber-400/30 bg-amber-500/10 text-amber-200">
           <Trophy className="h-3 w-3"/>Contest
         </Badge>
-        {/* Show download icon if resources available */}
         {(contest as any).resource_files && (contest as any).resource_files.length > 0 && (
           <Badge className="absolute right-3 top-3 border-blue-400/30 bg-blue-500/10 text-blue-200">
             <Download className="h-3 w-3"/>Resources
@@ -1423,7 +1361,7 @@ function EventCard({ event }: { event: LiveEvent }) {
   return (
     <Card className="snap-start w-[280px] flex-shrink-0 overflow-hidden">
       <div className="relative h-36 w-full overflow-hidden">
-        <img src={event.cover} alt="event" className="h-full w-full object-cover" />
+        <img src={event.cover || "/placeholder.svg"} alt="event" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0" />
         <Badge className={classNames("absolute left-3 top-3", event.is_live ? "border-green-400/40 bg-green-500/10 text-green-200" : "border-indigo-400/40 bg-indigo-500/10 text-indigo-100")}><Radio className="h-3 w-3"/>{event.is_live ? "Live" : "Upcoming"}</Badge>
       </div>
@@ -1444,12 +1382,15 @@ function EventCard({ event }: { event: LiveEvent }) {
 function LiveNow({ lives }: { lives: LiveEvent[] }) {
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><PlayCircle className="h-5 w-5"/><CardTitle>Happening Now</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href="/live">All live</a></CardHeader>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><PlayCircle className="h-5 w-5"/><CardTitle>Happening Now</CardTitle></div>
+        <a className="text-sm text-amber-300 hover:text-amber-200" href="/live">All live</a>
+      </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {lives.map((e) => (
             <div key={e.id} className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-3">
-              <img src={e.cover} alt="cover" className="h-16 w-16 rounded-lg object-cover"/>
+              <img src={e.cover || "/placeholder.svg"} alt="cover" className="h-16 w-16 rounded-lg object-cover"/>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm"><Badge className="border-green-400/40 bg-green-500/10 text-green-200">Live</Badge><span className="truncate text-zinc-200">{e.title}</span></div>
                 <div className="mt-1 text-xs text-zinc-400">{formatNumber(e.viewers)} watching • Host: {e.host}</div>
@@ -1466,16 +1407,22 @@ function LiveNow({ lives }: { lives: LiveEvent[] }) {
 function ForumThreads({ threads, loading }: { threads: Thread[]; loading: boolean }) {
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><Handshake className="h-5 w-5"/><CardTitle>Latest Forum Threads</CardTitle></div><div className="flex items-center gap-2"><a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Open forum</a><a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Start a post</a></div></CardHeader>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-zinc-200"><Handshake className="h-5 w-5"/><CardTitle>Latest Forum Threads</CardTitle></div>
+        <div className="flex items-center gap-2">
+          <a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Open forum</a>
+          <a href="/collaborate" className="text-sm text-amber-300 hover:text-amber-200">Start a post</a>
+        </div>
+      </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-3">
           {loading && <SkeletonRows count={5}/>}        
           {!loading && threads.map((t) => (
             <a key={t.id} href={normalizeCommunityHref(`/forum/${t.slug}`)} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-              <img src={t.author.avatar} alt="avatar" className="h-10 w-10 rounded-full object-cover"/>
+              <img src={t.author.avatar || "/placeholder.svg"} alt="avatar" className="h-10 w-10 rounded-full object-cover"/>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm"><Badge>{t.tag}</Badge><span className="truncate font-medium text-white group-hover:text-amber-200">{t.title}</span></div>
-                <div className="mt-0.5 text-xs text-zinc-400">by {t.author.username} • {t.reply_count} replies • updated {new Date(t.updated_at).toLocaleString()}</div>
+                <div className="mt-0.5 text-xs text-zinc-400">by {t.author.username ?? "Unknown"} • {t.reply_count} replies • updated {new Date(t.updated_at).toLocaleString()}</div>
               </div>
               <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-amber-300"/>
             </a>
@@ -1495,11 +1442,11 @@ function CoursesStrip({ courses }: { courses: Course[] }) {
           {courses.map((c) => (
             <div key={c.id} className="w-[280px] flex-shrink-0 rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center gap-3">
-                <img src={c.cover} alt="course" className="h-16 w-16 rounded-lg object-cover"/>
+                <img src={c.cover || "/placeholder.svg"} alt="course" className="h-16 w-16 rounded-lg object-cover"/>
                 <div className="min-w-0">
                   <div className="line-clamp-1 font-medium text-white">{c.title}</div>
-                  <div className="text-xs text-zinc-400">by {c.instructor}</div>
-                  <div className="mt-1 text-xs text-zinc-400">{c.level} • {c.length}</div>
+                  <div className="text-xs text-zinc-400">by {c.instructor ?? "Unknown"}</div>
+                  <div className="mt-1 text-xs text-zinc-400">{c.level ?? "All Levels"} • {c.length ?? ""}</div>
                 </div>
               </div>
               <a href="/education"><Button className="mt-3 w-full bg-white/10 text-white hover:bg-white/20">Watch</Button></a>
@@ -1618,9 +1565,12 @@ function TopMembers({ members }: { members: Member[] }) {
             const profileHref = m.username ? `/u/${m.username}` : `/profile/${m.id}`;
             return (
               <a key={m.id} href={profileHref} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
-              <img src={m.avatar} className="h-10 w-10 rounded-full object-cover" alt="avatar"/>
-              <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-white">{m.username}</div><div className="text-xs text-zinc-400">{m.role} • {m.badges.join(" • ")}</div></div>
-              <Star className="h-4 w-4 text-amber-300"/>
+                <img src={m.avatar || "/placeholder.svg"} className="h-10 w-10 rounded-full object-cover" alt="avatar"/>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-white">{m.username ?? "Member"}</div>
+                  <div className="text-xs text-zinc-400">{m.role} • {m.badges.join(" • ")}</div>
+                </div>
+                <Star className="h-4 w-4 text-amber-300"/>
               </a>
             );
           })}
@@ -1631,12 +1581,13 @@ function TopMembers({ members }: { members: Member[] }) {
 }
 
 function TrendingTopics({ topics }: { topics: { tag: string; count: number }[] }) {
+  const top = topics.slice(0, 8); // cap for readability
   return (
     <Card>
       <CardHeader><CardTitle>Trending Topics</CardTitle></CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2">
-          {topics.map((t) => (
+          {top.map((t) => (
             <a key={t.tag} href={normalizeCommunityHref(`/forum?tag=${encodeURIComponent(t.tag)}`)} className="group">
               <Badge className="transition-colors group-hover:bg-white/15">#{t.tag} <span className="ml-1 text-zinc-400">{t.count}</span></Badge>
             </a>
@@ -1667,11 +1618,15 @@ function FooterCTA() {
   );
 }
 
-function SkeletonRows({ count = 5 }: { count?: number }) { return (<div className="grid gap-3">{Array.from({ length: count }).map((_, i) => (<div key={i} className="h-14 w-full animate-pulse rounded-xl bg-white/5" />))}</div>); }
+function SkeletonRows({ count = 5 }: { count?: number }) {
+  return (<div className="grid gap-3">{Array.from({ length: count }).map((_, i) => (<div key={i} className="h-14 w-full animate-pulse rounded-xl bg-white/5" />))}</div>);
+}
 
-function SparkIcon() { return (<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 0l.9 3.2L10 5l-4.1 1.8L5 10l-.9-3.2L0 5l4.1-1.8L5 0z" fill="currentColor" /></svg>); }
+function SparkIcon() {
+  return (<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 0l.9 3.2L10 5l-4.1 1.8L5 10l-.9-3.2L0 5l4.1-1.8L5 0z" fill="currentColor" /></svg>);
+}
 
-// ---------- Mock Data ---------- //
+// ---------- Mock Data (fallback) ---------- //
 
 function getMockHubDataEpic(): HubData {
   return {
@@ -1690,7 +1645,6 @@ function getMockHubDataEpic(): HubData {
       featured_track: {
         title: "Summer High (Preview)",
         cover: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1400&auto=format&fit=crop",
-        // Public domain sample URL (placeholder). Replace with your CDN link.
         url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_1da7c4cf34.mp3?filename=summer-walk-113162.mp3",
         plays: 45210,
       },
@@ -1759,12 +1713,7 @@ function addHoursISO(hours: number) { const d = new Date(); d.setHours(d.getHour
 
 // ---------- DEV TEST CASES ---------- //
 
-/**
- * Minimal dev-time tests rendered optionally in your app.
- * Ensure the calendar has a valid month header and 28-31 day cells present.
- */
 export function TestCases() {
-  // Calendar shape test
   const sampleEvents: LiveEvent[] = [
     { id: "te1", title: "Sample", cover: "", start_at: new Date().toISOString(), url: "#", host: "Host", viewers: 1, is_live: false },
   ];
