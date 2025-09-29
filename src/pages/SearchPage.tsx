@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,7 @@ export const SearchPage = () => {
     }
   });
   const { items: trendingItems } = useTrendingContent();
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setMeta(
@@ -124,7 +125,7 @@ export const SearchPage = () => {
     window.history.replaceState({}, '', newUrl);
   }, [activeTab, location.pathname, searchParams]);
 
-  const performSearch = async (searchQuery: string) => {
+  const performSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults({ creators: [], releases: [], beats: [] });
       return;
@@ -219,7 +220,7 @@ export const SearchPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, trendingItems]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,7 +228,6 @@ export const SearchPage = () => {
       const params = new URLSearchParams(searchParams);
       params.set('q', query.trim());
       setSearchParams(params);
-      performSearch(query.trim());
     }
   };
 
@@ -247,14 +247,80 @@ export const SearchPage = () => {
       ...prev,
       [tabName]: tabFilters
     }));
-    
-    // Re-run search with new filters
-    if (query.trim()) {
-      performSearch(query.trim());
-    }
   };
 
   const totalResults = results.creators.length + results.releases.length + results.beats.length;
+
+  const currentResults = useMemo(() => {
+    if (!query.trim()) return [];
+    if (activeTab === 'beats') {
+      return results.beats.map((beat, index) => ({ id: beat.id, elementId: `search-result-beat-${index}` }));
+    }
+    if (activeTab === 'creators') {
+      return results.creators.map((creator, index) => ({ id: creator.user_id || creator.username || `creator-${index}`, elementId: `search-result-creator-${index}` }));
+    }
+    return results.releases.map((release, index) => ({ id: release.id, elementId: `search-result-music-${index}` }));
+  }, [activeTab, query, results]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setHighlightedIndex(null);
+      setLoading(false);
+      setResults({ creators: [], releases: [], beats: [] });
+      return;
+    }
+
+    const handler = window.setTimeout(() => {
+      performSearch(trimmed);
+    }, 300);
+
+    return () => window.clearTimeout(handler);
+  }, [query, performSearch]);
+
+  useEffect(() => {
+    setHighlightedIndex(null);
+  }, [activeTab, currentResults.length]);
+
+  useEffect(() => {
+    if (highlightedIndex === null) return;
+    const target = currentResults[highlightedIndex];
+    if (!target) return;
+    const el = document.getElementById(target.elementId);
+    el?.focus();
+  }, [highlightedIndex, currentResults]);
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!currentResults.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setHighlightedIndex((prev) => {
+        if (prev === null) return 0;
+        return (prev + 1) % currentResults.length;
+      });
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setHighlightedIndex((prev) => {
+        if (prev === null) return currentResults.length - 1;
+        return (prev - 1 + currentResults.length) % currentResults.length;
+      });
+    } else if (event.key === 'Enter' && highlightedIndex !== null) {
+      event.preventDefault();
+      const target = currentResults[highlightedIndex];
+      const el = document.getElementById(target.elementId);
+      if (el) {
+        const actionable = el.querySelector('a,button');
+        if (actionable instanceof HTMLElement) {
+          actionable.click();
+        } else if (el instanceof HTMLElement) {
+          el.click();
+        }
+      }
+    } else if (event.key === 'Escape') {
+      setHighlightedIndex(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -277,6 +343,7 @@ export const SearchPage = () => {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleInputKeyDown}
                 placeholder="Search for music, beats, artists, and more..."
                 className="pl-12 pr-20 h-14 text-lg border-2 focus:border-primary transition-colors"
               />
@@ -388,8 +455,15 @@ export const SearchPage = () => {
                     <TabsContent value="music" className="space-y-4">
                       {results.releases.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
-                          {results.releases.map((release) => (
-                            <EnhancedReleaseCard key={release.id} release={release} searchContext={preserveSearchContext()} />
+                          {results.releases.map((release, index) => (
+                            <EnhancedReleaseCard
+                              key={release.id}
+                              release={release}
+                              searchContext={preserveSearchContext()}
+                              elementId={`search-result-music-${index}`}
+                              isHighlighted={highlightedIndex === index && activeTab === 'music'}
+                              onHover={() => setHighlightedIndex(index)}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -404,8 +478,15 @@ export const SearchPage = () => {
                     <TabsContent value="beats" className="space-y-4">
                       {results.beats.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
-                          {results.beats.map((beat) => (
-                            <EnhancedBeatCard key={beat.id} beat={beat} searchContext={preserveSearchContext()} />
+                          {results.beats.map((beat, index) => (
+                            <EnhancedBeatCard
+                              key={beat.id}
+                              beat={beat}
+                              searchContext={preserveSearchContext()}
+                              elementId={`search-result-beat-${index}`}
+                              isHighlighted={highlightedIndex === index && activeTab === 'beats'}
+                              onHover={() => setHighlightedIndex(index)}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -420,8 +501,15 @@ export const SearchPage = () => {
                     <TabsContent value="creators" className="space-y-4">
                       {results.creators.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
-                          {results.creators.map((creator) => (
-                            <EnhancedCreatorCard key={creator.user_id} creator={creator} searchContext={preserveSearchContext()} />
+                          {results.creators.map((creator, index) => (
+                            <EnhancedCreatorCard
+                              key={creator.user_id}
+                              creator={creator}
+                              searchContext={preserveSearchContext()}
+                              elementId={`search-result-creator-${index}`}
+                              isHighlighted={highlightedIndex === index && activeTab === 'creators'}
+                              onHover={() => setHighlightedIndex(index)}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -446,8 +534,27 @@ export const SearchPage = () => {
 };
 
 // Enhanced component for creator results
-const EnhancedCreatorCard = ({ creator, searchContext }: { creator: any; searchContext: string }) => (
-  <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+const EnhancedCreatorCard = ({
+  creator,
+  searchContext,
+  elementId,
+  isHighlighted,
+  onHover,
+}: {
+  creator: any;
+  searchContext: string;
+  elementId: string;
+  isHighlighted: boolean;
+  onHover: () => void;
+}) => (
+  <Card
+    id={elementId}
+    tabIndex={0}
+    onMouseEnter={onHover}
+    className={`group hover:shadow-lg transition-all duration-300 border-2 ${
+      isHighlighted ? 'border-primary ring-2 ring-primary/50' : 'hover:border-primary/20'
+    }`}
+  >
     <CardContent className="p-6">
       <div className="flex items-center space-x-4">
         <div className="relative">
@@ -495,12 +602,24 @@ const EnhancedCreatorCard = ({ creator, searchContext }: { creator: any; searchC
 );
 
 // Enhanced component for release results
-const EnhancedReleaseCard = ({ release, searchContext }: { release: any; searchContext: string }) => {
+const EnhancedReleaseCard = ({
+  release,
+  searchContext,
+  elementId,
+  isHighlighted,
+  onHover,
+}: {
+  release: any;
+  searchContext: string;
+  elementId: string;
+  isHighlighted: boolean;
+  onHover: () => void;
+}) => {
   const { state, actions } = useGlobalPlayer();
   const isTrending = release.total_plays > 1000;
   const isCurrentTrack = state.currentTrack?.id === release.id;
   const playing = isCurrentTrack && state.isPlaying;
-  
+
   const handlePlayClick = () => {
     if (release.preview_url || release.audio_url) {
       if (isCurrentTrack) {
@@ -514,14 +633,21 @@ const EnhancedReleaseCard = ({ release, searchContext }: { release: any; searchC
           artwork: release.cover_art_url,
           type: 'release',
           releaseId: release.id,
-          price: release.price
+          price: release.price,
         });
       }
     }
   };
-  
+
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+    <Card
+      id={elementId}
+      tabIndex={0}
+      onMouseEnter={onHover}
+      className={`group hover:shadow-lg transition-all duration-300 border-2 ${
+        isHighlighted ? 'border-primary ring-2 ring-primary/40' : 'hover:border-primary/20'
+      }`}
+    >
       <CardContent className="p-6">
         <div className="flex items-center space-x-6">
           <div className="relative">
@@ -591,12 +717,25 @@ const EnhancedReleaseCard = ({ release, searchContext }: { release: any; searchC
 };
 
 // Enhanced component for beat results
-const EnhancedBeatCard = ({ beat, searchContext }: { beat: any; searchContext: string }) => {
+const EnhancedBeatCard = ({
+  beat,
+  searchContext,
+  elementId,
+  isHighlighted,
+  onHover,
+}: {
+  beat: any;
+  searchContext: string;
+  elementId: string;
+  isHighlighted: boolean;
+  onHover: () => void;
+}) => {
+  const [hovered, setHovered] = useState(false);
   const { state, actions } = useGlobalPlayer();
   const isTrending = new Date(beat.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const isCurrentTrack = state.currentTrack?.id === beat.id;
   const playing = isCurrentTrack && state.isPlaying;
-  
+
   const handlePlayClick = () => {
     if (beat.audio_url || beat.preview_url) {
       if (isCurrentTrack) {
@@ -609,14 +748,25 @@ const EnhancedBeatCard = ({ beat, searchContext }: { beat: any; searchContext: s
           src: beat.audio_url || beat.preview_url,
           artwork: beat.image_url,
           type: 'beat',
-          price: beat.price
+          price: beat.price,
         });
       }
     }
   };
-  
+
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20">
+    <Card
+      id={elementId}
+      tabIndex={0}
+      className={`group border-2 transition-all overflow-hidden ${
+        isHighlighted ? 'border-primary ring-2 ring-primary/40' : 'hover:border-primary/20'
+      }`}
+      onMouseEnter={() => {
+        setHovered(true);
+        onHover();
+      }}
+      onMouseLeave={() => setHovered(false)}
+    >
       <CardContent className="p-6">
         <div className="flex items-center space-x-6">
           <div className="relative">

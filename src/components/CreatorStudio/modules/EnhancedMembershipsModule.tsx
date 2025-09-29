@@ -1,575 +1,488 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { 
-  Users, 
-  Plus, 
-  DollarSign, 
-  Gift,
-  Crown,
-  Star,
-  Zap,
-  Shield,
-  CheckCircle,
-  TrendingUp,
-  Settings,
-  Edit,
-  Trash2
-} from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { Plus, Edit, Trash2, Users, DollarSign } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { useMembershipTiers, MembershipTier, UpsertMembershipTierInput } from "@/hooks/useMembershipTiers";
+import { formatCurrency } from "@/lib/utils";
 
-interface MembershipTier {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  features: string[];
-  perks: string[];
-  is_active: boolean;
-  subscriber_count: number;
-  color: string;
-}
+const emptyForm = {
+  name: "",
+  description: "",
+  priceMonthly: "",
+  priceYearly: "",
+  priceLifetime: "",
+  currency: "USD",
+  status: "active",
+  features: "",
+  color: "",
+  emoji: "",
+};
 
-interface Subscriber {
-  id: string;
-  user_id: string;
-  tier_id: string;
-  tier_name: string;
-  username: string;
-  email: string;
-  joined_date: string;
-  status: 'active' | 'paused' | 'cancelled';
-  lifetime_value: number;
-}
+type TierFormState = typeof emptyForm;
 
-/**
- * EnhancedMembershipsModule - Full membership/subscription management
- * Connects to Stripe for payments and fan subscriptions
- */
-export const EnhancedMembershipsModule = () => {
-  const { user } = useAuth();
+const parseAmount = (value: string) => {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const prepareTierInput = (form: TierFormState): UpsertMembershipTierInput => ({
+  name: form.name,
+  description: form.description,
+  priceMonthly: parseAmount(form.priceMonthly),
+  priceYearly: parseAmount(form.priceYearly),
+  priceLifetime: parseAmount(form.priceLifetime),
+  currency: form.currency || "USD",
+  status: form.status,
+  features: form.features
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0),
+  color: form.color || null,
+  emoji: form.emoji || null,
+});
+
+const centsToCurrency = (value: number | null | undefined, currency = "USD") => {
+  if (!value) return formatCurrency(0, currency);
+  return formatCurrency(value / 100, currency);
+};
+
+export const EnhancedMembershipsModule: React.FC = () => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [tiers, setTiers] = useState<MembershipTier[]>([]);
-  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-  const [stats, setStats] = useState({
-    totalSubscribers: 0,
-    monthlyRevenue: 0,
-    averageValue: 0,
-    churnRate: 0,
-    growthRate: 0
-  });
-  const [showCreateTier, setShowCreateTier] = useState(false);
+  const {
+    tiers,
+    loading,
+    mutating,
+    error,
+    ownerType,
+    ownerId,
+    requiresLabelSelection,
+    createTier,
+    updateTier,
+    deleteTier,
+  } = useMembershipTiers();
+
+  const [formState, setFormState] = useState<TierFormState>(emptyForm);
+  const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<MembershipTier | null>(null);
-  
-  // Form state for creating/editing tiers
-  const [tierForm, setTierForm] = useState({
-    name: '',
-    description: '',
-    price: 5,
-    features: '',
-    perks: '',
-    color: 'blue'
-  });
 
-  useEffect(() => {
-    if (user) {
-      fetchMembershipData();
-    }
-  }, [user]);
-
-  const fetchMembershipData = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      
-      // Fetch fan subscriptions
-      const { data: subscriptions } = await supabase
-        .from('fan_subscriptions')
-        .select('*, profiles!fan_subscriptions_fan_id_fkey(username, email)')
-        .eq('creator_id', user.id)
-        .eq('status', 'active');
-      
-      // Mock tier data (would come from database)
-      const mockTiers: MembershipTier[] = [
-        {
-          id: '1',
-          name: 'Supporter',
-          description: 'Basic support tier for fans',
-          price: 5,
-          features: ['Early access to releases', 'Exclusive updates', 'Discord access'],
-          perks: ['10% merch discount', 'Monthly Q&A'],
-          is_active: true,
-          subscriber_count: subscriptions?.filter(s => s.price_cents === 500).length || 0,
-          color: 'blue'
-        },
-        {
-          id: '2',
-          name: 'VIP',
-          description: 'Premium tier with extra perks',
-          price: 15,
-          features: ['Everything in Supporter', 'Exclusive content', 'Behind the scenes', 'Direct messaging'],
-          perks: ['25% merch discount', 'Free digital downloads', 'Birthday shoutout'],
-          is_active: true,
-          subscriber_count: subscriptions?.filter(s => s.price_cents === 1500).length || 0,
-          color: 'purple'
-        },
-        {
-          id: '3',
-          name: 'Producer Circle',
-          description: 'Top tier for serious supporters',
-          price: 50,
-          features: ['Everything in VIP', '1-on-1 monthly call', 'Production tutorials', 'Stems & project files'],
-          perks: ['50% merch discount', 'Guest list spots', 'Credits in releases', 'Custom beats'],
-          is_active: true,
-          subscriber_count: subscriptions?.filter(s => s.price_cents === 5000).length || 0,
-          color: 'gold'
-        }
-      ];
-      
-      setTiers(mockTiers);
-      
-      // Process subscribers
-      const processedSubscribers: Subscriber[] = subscriptions?.map((sub: any) => ({
-        id: sub.id,
-        user_id: sub.fan_id,
-        tier_id: sub.price_cents === 500 ? '1' : sub.price_cents === 1500 ? '2' : '3',
-        tier_name: sub.price_cents === 500 ? 'Supporter' : sub.price_cents === 1500 ? 'VIP' : 'Producer Circle',
-        username: sub.profiles?.username || 'Unknown',
-        email: sub.profiles?.email || '',
-        joined_date: sub.created_at,
-        status: sub.status,
-        lifetime_value: (sub.price_cents / 100) * 3 // Mock calculation
-      })) || [];
-      
-      setSubscribers(processedSubscribers);
-      
-      // Calculate stats
-      const totalSubs = processedSubscribers.length;
-      const monthlyRev = processedSubscribers.reduce((sum, sub) => {
-        const tier = mockTiers.find(t => t.id === sub.tier_id);
-        return sum + (tier?.price || 0);
-      }, 0);
-      
-      setStats({
-        totalSubscribers: totalSubs,
-        monthlyRevenue: monthlyRev,
-        averageValue: totalSubs > 0 ? monthlyRev / totalSubs : 0,
-        churnRate: 2.5, // Mock
-        growthRate: 15.3 // Mock
-      });
-      
-    } catch (error: any) {
-      console.error('Error fetching membership data:', error);
-      toast({
-        title: "Error loading memberships",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+  const resetForm = () => {
+    setFormState(emptyForm);
+    setEditingTier(null);
   };
 
-  const handleCreateTier = async () => {
-    try {
-      // In production, this would create a Stripe product/price
-      toast({
-        title: "Tier created",
-        description: `${tierForm.name} tier has been created successfully`,
-      });
-      
-      setShowCreateTier(false);
-      setTierForm({ name: '', description: '', price: 5, features: '', perks: '', color: 'blue' });
-      fetchMembershipData();
-    } catch (error: any) {
-      toast({
-        title: "Error creating tier",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
+  const handleOpenCreate = () => {
+    resetForm();
+    setShowModal(true);
   };
 
-  const handleDeleteTier = async (tierId: string) => {
-    if (!confirm('Are you sure you want to delete this tier? Existing subscribers will be unaffected.')) {
+  const handleOpenEdit = (tier: MembershipTier) => {
+    setEditingTier(tier);
+    setFormState({
+      name: tier.name,
+      description: tier.description ?? "",
+      priceMonthly: tier.price_monthly ? (tier.price_monthly / 100).toString() : "",
+      priceYearly: tier.price_yearly ? (tier.price_yearly / 100).toString() : "",
+      priceLifetime: tier.price_lifetime ? (tier.price_lifetime / 100).toString() : "",
+      currency: tier.currency || "USD",
+      status: tier.status || "active",
+      features: (tier.features || []).join("\n"),
+      color: tier.color ?? "",
+      emoji: tier.emoji ?? "",
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmitTier = async () => {
+    if (!formState.name.trim()) {
+      toast({ title: "Tier name required", variant: "destructive" });
       return;
     }
-    
+
+    const payload = prepareTierInput(formState);
+
     try {
-      // In production, archive the Stripe product
+      if (editingTier) {
+        await updateTier(editingTier.id, payload);
+        toast({ title: "Tier updated" });
+      } else {
+        await createTier(payload);
+        toast({ title: "Tier created" });
+      }
+      setShowModal(false);
+      resetForm();
+    } catch (err: any) {
       toast({
-        title: "Tier deleted",
-        description: "The membership tier has been removed",
-      });
-      fetchMembershipData();
-    } catch (error: any) {
-      toast({
-        title: "Error deleting tier",
-        description: error.message,
-        variant: "destructive"
+        title: "Membership tier error",
+        description: err?.message ?? "Unable to save tier",
+        variant: "destructive",
       });
     }
   };
 
-  if (loading) {
+  const handleDeleteTier = async (tier: MembershipTier) => {
+    if (!window.confirm(`Delete tier “${tier.name}”? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteTier(tier.id);
+      toast({ title: "Tier deleted" });
+    } catch (err: any) {
+      toast({
+        title: "Unable to delete tier",
+        description: err?.message ?? "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const totalSubscribers = useMemo(
+    () => tiers.reduce((acc, tier) => acc + (tier.current_members ?? 0), 0),
+    [tiers]
+  );
+
+  const monthlyRevenue = useMemo(
+    () =>
+      tiers.reduce((acc, tier) => {
+        const price = tier.price_monthly ?? 0;
+        return acc + price * (tier.current_members ?? 0);
+      }, 0),
+    [tiers]
+  );
+
+  const activeTierCount = useMemo(() => tiers.filter((tier) => tier.status === "active").length, [tiers]);
+  const draftTierCount = useMemo(() => tiers.filter((tier) => tier.status === "draft").length, [tiers]);
+
+  if (requiresLabelSelection) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Memberships & Subscriptions</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-secondary rounded w-3/4" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-secondary rounded" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Select a Label</CardTitle>
+          <CardDescription>
+            Choose a label in the Studio header to manage its membership tiers.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!ownerType || !ownerId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Memberships unavailable</CardTitle>
+          <CardDescription>
+            Sign in to manage memberships or switch to the correct workspace.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Memberships & Subscriptions</h1>
-          <p className="text-muted-foreground">Create tiers and manage your paying supporters</p>
+          <h1 className="text-3xl font-bold">Memberships &amp; Subscriptions</h1>
+          <p className="text-muted-foreground">
+            Create tiers, manage supporters, and track recurring revenue.
+          </p>
         </div>
-        <Button onClick={() => setShowCreateTier(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Tier
+        <Button onClick={handleOpenCreate} disabled={mutating}>
+          <Plus className="h-4 w-4 mr-2" />
+          New tier
         </Button>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load tiers</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Subscribers</CardTitle>
+            <CardTitle className="text-sm font-medium">Total subscribers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSubscribers}</div>
-            <p className="text-xs text-muted-foreground">Active members</p>
+            <div className="text-2xl font-bold">{totalSubscribers}</div>
+            <p className="text-xs text-muted-foreground">Across all active tiers</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Monthly revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.monthlyRevenue}</div>
-            <p className="text-xs text-muted-foreground">Recurring income</p>
+            <div className="text-2xl font-bold">
+              {centsToCurrency(monthlyRevenue, tiers[0]?.currency ?? "USD")}
+            </div>
+            <p className="text-xs text-muted-foreground">Estimated recurring income</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Active tiers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.averageValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Per subscriber</p>
+            <div className="text-2xl font-bold">{activeTierCount}</div>
+            <p className="text-xs text-muted-foreground">Currently available</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Drafts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.churnRate}%</div>
-            <p className="text-xs text-muted-foreground">Monthly churn</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Growth</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">+{stats.growthRate}%</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">{draftTierCount}</div>
+            <p className="text-xs text-muted-foreground">Prepare tiers before launching</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="tiers" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="tiers">Membership Tiers</TabsTrigger>
+          <TabsTrigger value="tiers">Membership tiers</TabsTrigger>
           <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
-          <TabsTrigger value="perks">Perks & Benefits</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tiers" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {tiers.map((tier) => (
-              <Card key={tier.id} className={`relative ${!tier.is_active && 'opacity-60'}`}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {tier.name === 'Producer Circle' && <Crown className="w-5 h-5 text-yellow-500" />}
-                        {tier.name === 'VIP' && <Star className="w-5 h-5 text-purple-500" />}
-                        {tier.name === 'Supporter' && <Heart className="w-5 h-5 text-blue-500" />}
-                        {tier.name}
-                      </CardTitle>
-                      <CardDescription>{tier.description}</CardDescription>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setEditingTier(tier)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTier(tier.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-3xl font-bold">${tier.price}</div>
-                    <p className="text-sm text-muted-foreground">per month</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Features:</p>
-                    <ul className="text-sm space-y-1">
-                      {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Perks:</p>
-                    <ul className="text-sm space-y-1">
-                      {tier.perks.map((perk, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <Gift className="w-4 h-4 text-purple-500" />
-                          {perk}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        {tier.subscriber_count} subscribers
-                      </span>
-                      <Switch checked={tier.is_active} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="subscribers" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Subscribers</CardTitle>
-              <CardDescription>Manage your paying supporters</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {subscribers.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No subscribers yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Share your membership page to start growing your community
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {subscribers.map((subscriber) => (
-                    <div key={subscriber.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                          {subscriber.username[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium">{subscriber.username}</p>
-                          <p className="text-sm text-muted-foreground">{subscriber.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Badge variant={subscriber.tier_id === '3' ? 'default' : 'secondary'}>
-                          {subscriber.tier_name}
-                        </Badge>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">${subscriber.lifetime_value.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Since {new Date(subscriber.joined_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button variant="outline" size="sm">Manage</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="perks" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Perks & Benefits</CardTitle>
-              <CardDescription>Configure what each tier receives</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-medium mb-3">Digital Perks</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Zap className="w-4 h-4" />
-                        <span className="text-sm">Early Access</span>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        <span className="text-sm">Exclusive Content</span>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium mb-3">Physical Perks</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-4 h-4" />
-                        <span className="text-sm">Merch Discounts</span>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Star className="w-4 h-4" />
-                        <span className="text-sm">VIP Event Access</span>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Membership Analytics</CardTitle>
-              <CardDescription>Track your membership program performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Analytics dashboard coming soon</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Track subscriber growth, revenue trends, and engagement metrics
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {[...Array(3).keys()].map((key) => (
+                <Card key={key} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-4 w-1/2 bg-muted rounded" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-8 bg-muted rounded" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : tiers.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center space-y-2">
+                <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="font-medium">No membership tiers yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Create your first tier to start offering exclusive access to supporters.
                 </p>
-              </div>
+                <Button onClick={handleOpenCreate} className="mt-3" disabled={mutating}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create tier
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {tiers.map((tier) => (
+                <Card key={tier.id} className="flex h-full flex-col justify-between">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {tier.emoji && <span className="text-xl">{tier.emoji}</span>}
+                          {tier.name}
+                        </CardTitle>
+                        <CardDescription>{tier.description || "No description provided."}</CardDescription>
+                      </div>
+                      <Badge variant={tier.status === "active" ? "default" : tier.status === "draft" ? "secondary" : "outline"}>
+                        {tier.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-lg font-semibold">
+                        <DollarSign className="h-4 w-4" />
+                        {centsToCurrency(tier.price_monthly, tier.currency)} / mo
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Users className="h-4 w-4" /> {tier.current_members} members
+                      </div>
+                    </div>
+                    {tier.features.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium uppercase text-muted-foreground">Perks</p>
+                        <ul className="space-y-1 text-sm text-muted-foreground">
+                          {tier.features.slice(0, 4).map((feature) => (
+                            <li key={feature} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                          {tier.features.length > 4 && (
+                            <li className="text-xs text-muted-foreground">+{tier.features.length - 4} more</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => handleOpenEdit(tier)} disabled={mutating}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button variant="outline" className="flex-1" onClick={() => handleDeleteTier(tier)} disabled={mutating}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="subscribers">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscriber directory</CardTitle>
+              <CardDescription>Detailed subscriber analytics will arrive in a future update.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center space-y-3 py-12 text-center text-muted-foreground">
+              <Users className="h-10 w-10" />
+              <p className="text-sm max-w-md">
+                We&rsquo;re capturing real membership activity. Soon you&rsquo;ll be able to see individual supporters, billing
+                status, and churn right here.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Create/Edit Tier Modal */}
-      {(showCreateTier || editingTier) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">
-              {editingTier ? 'Edit Tier' : 'Create New Tier'}
-            </h2>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {editingTier ? "Edit membership tier" : "Create membership tier"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Define pricing, perks, and presentation for this tier.
+                </p>
+              </div>
+            </div>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name">Tier Name</Label>
+                <Label htmlFor="tier-name">Name</Label>
                 <Input
-                  id="name"
-                  value={tierForm.name}
-                  onChange={(e) => setTierForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., VIP Supporter"
+                  id="tier-name"
+                  value={formState.name}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="VIP Supporters"
                 />
               </div>
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="tier-description">Description</Label>
                 <Textarea
-                  id="description"
-                  value={tierForm.description}
-                  onChange={(e) => setTierForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="What makes this tier special?"
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Monthly Price ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  min="1"
-                  value={tierForm.price}
-                  onChange={(e) => setTierForm(prev => ({ ...prev, price: parseInt(e.target.value) }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="features">Features (one per line)</Label>
-                <Textarea
-                  id="features"
-                  value={tierForm.features}
-                  onChange={(e) => setTierForm(prev => ({ ...prev, features: e.target.value }))}
-                  placeholder="Early access&#10;Exclusive content&#10;Discord access"
+                  id="tier-description"
+                  value={formState.description}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, description: event.target.value }))}
+                  placeholder="What do members receive at this tier?"
                   rows={3}
                 />
               </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="tier-price-monthly">Monthly price (in {formState.currency})</Label>
+                  <Input
+                    id="tier-price-monthly"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={formState.priceMonthly}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, priceMonthly: event.target.value }))}
+                    placeholder="9.99"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tier-price-yearly">Yearly price</Label>
+                  <Input
+                    id="tier-price-yearly"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formState.priceYearly}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, priceYearly: event.target.value }))}
+                    placeholder="99"
+                  />
+                </div>
+              </div>
               <div>
-                <Label htmlFor="perks">Perks (one per line)</Label>
+                <Label htmlFor="tier-features">Perks (one per line)</Label>
                 <Textarea
-                  id="perks"
-                  value={tierForm.perks}
-                  onChange={(e) => setTierForm(prev => ({ ...prev, perks: e.target.value }))}
-                  placeholder="20% merch discount&#10;Monthly Q&A&#10;Birthday shoutout"
-                  rows={3}
+                  id="tier-features"
+                  value={formState.features}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, features: event.target.value }))}
+                  placeholder={"Exclusive drops\nMonthly Q&A\nEarly access to releases"}
+                  rows={4}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button onClick={handleCreateTier} className="flex-1">
-                  {editingTier ? 'Update' : 'Create'} Tier
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowCreateTier(false);
-                    setEditingTier(null);
-                    setTierForm({ name: '', description: '', price: 5, features: '', perks: '', color: 'blue' });
-                  }}
-                >
-                  Cancel
-                </Button>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="tier-emoji">Emoji</Label>
+                  <Input
+                    id="tier-emoji"
+                    value={formState.emoji}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, emoji: event.target.value }))}
+                    placeholder="🌟"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tier-color">Badge color</Label>
+                  <Input
+                    id="tier-color"
+                    value={formState.color}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, color: event.target.value }))}
+                    placeholder="#7c3aed"
+                  />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select
+                    value={formState.status}
+                    onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                disabled={mutating}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitTier} disabled={mutating}>
+                {editingTier ? "Save changes" : "Create tier"}
+              </Button>
             </div>
           </div>
         </div>

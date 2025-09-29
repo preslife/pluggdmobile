@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CalendarIcon, Upload, Check, X, Music, Image, FileAudio, Users, Award } from 'lucide-react';
+import { CalendarIcon, Upload, Check, X, Music, Image, FileAudio, Users, Award, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { GenreSelector } from './GenreSelector';
 import { PublishAsSelector, usePublishAs } from './PublishAsSelector';
@@ -46,6 +48,23 @@ interface Split {
   percentage: number;
   description?: string;
 }
+
+type SimpleMembershipTier = {
+  id: string;
+  name: string;
+  tier_order: number;
+  status: string;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  price_lifetime: number | null;
+  currency: string;
+  features: string[];
+};
+
+const mapOwnerTypeForMembership = (ownerType?: string | null) => {
+  if (!ownerType) return null;
+  return ownerType === 'label' ? 'label' : 'profile';
+};
 
 export const EnhancedReleaseBuilder = () => {
   const { user } = useAuth();
@@ -116,12 +135,209 @@ export const EnhancedReleaseBuilder = () => {
   const [currentStage, setCurrentStage] = useState(1);
   const [showAdditionalCredits, setShowAdditionalCredits] = useState(false);
 
+  // Membership gating
+  const [availableTiers, setAvailableTiers] = useState<SimpleMembershipTier[]>([]);
+  const [tiersLoading, setTiersLoading] = useState(false);
+  const [gateEnabled, setGateEnabled] = useState(false);
+  const [gateType, setGateType] = useState<'any_tier' | 'tier_or_higher' | 'specific_tier'>('tier_or_higher');
+  const [minimumTierId, setMinimumTierId] = useState<string | null>(null);
+  const [allowedTierIds, setAllowedTierIds] = useState<string[]>([]);
+  const [previewText, setPreviewText] = useState('');
+  const [previewDuration, setPreviewDuration] = useState('');
+
   const stages = [
     { id: 1, title: 'Basic Information', description: 'Release title, artist, and genre' },
     { id: 2, title: 'Artwork & Audio', description: 'Upload your cover art and tracks' },
     { id: 3, title: 'Credits & Details', description: 'Credits, language, and additional details' },
     { id: 4, title: 'Pricing & Distribution', description: 'Set pricing, codes, and distribution settings' }
   ];
+
+  const resolveMembershipOwner = useCallback(() => {
+    const ownerData = getOwnerData();
+    const resolvedType = mapOwnerTypeForMembership(ownerData.owner_type ?? (publishAs?.type ?? null));
+    let resolvedId: string | null = null;
+
+    if (ownerData.owner_type === 'label') {
+      resolvedId = ownerData.owner_id ?? null;
+    } else if (ownerData.owner_type === 'user') {
+      resolvedId = ownerData.owner_id ?? user?.id ?? null;
+    } else if (publishAs?.type === 'label') {
+      resolvedId = publishAs.id;
+    } else if (publishAs?.type === 'user') {
+      resolvedId = publishAs.id ?? user?.id ?? null;
+    } else if (user) {
+      resolvedId = user.id;
+    }
+
+    return { ownerType: resolvedType, ownerId: resolvedId };
+  }, [getOwnerData, publishAs, user?.id]);
+
+  const loadMembershipTiers = useCallback(async () => {
+    const { ownerType, ownerId } = resolveMembershipOwner();
+
+    if (!ownerType || !ownerId) {
+      setAvailableTiers([]);
+      setGateEnabled(false);
+      return;
+    }
+
+    setTiersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('membership_tiers')
+        .select('id, name, tier_order, status, price_monthly, price_yearly, price_lifetime, currency, features')
+        .eq('owner_type', ownerType)
+        .eq('owner_id', ownerId)
+        .eq('status', 'active')
+        .order('tier_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const tiers = (data ?? []).map((tier) => ({
+        id: tier.id,
+        name: tier.name,
+        tier_order: tier.tier_order ?? 0,
+        status: tier.status ?? 'active',
+        price_monthly: tier.price_monthly ?? null,
+        price_yearly: tier.price_yearly ?? null,
+        price_lifetime: tier.price_lifetime ?? null,
+        currency: tier.currency ?? 'USD',
+        features: Array.isArray(tier.features) ? tier.features : [],
+      })) as SimpleMembershipTier[];
+
+      setAvailableTiers(tiers);
+
+      if (!tiers.length) {
+        setGateEnabled(false);
+        setMinimumTierId(null);
+        setAllowedTierIds([]);
+      } else {
+        if (gateType === 'tier_or_higher') {
+          if (!minimumTierId || !tiers.some((tier) => tier.id === minimumTierId)) {
+            setMinimumTierId(tiers[0].id);
+          }
+        } else if (gateType === 'specific_tier') {
+          setAllowedTierIds((prev) => prev.filter((id) => tiers.some((tier) => tier.id === id)));
+        }
+      }
+    } catch (err) {
+      console.error('[ReleaseBuilder] Failed to load membership tiers', err);
+      setAvailableTiers([]);
+    } finally {
+      setTiersLoading(false);
+    }
+  }, [gateType, minimumTierId, resolveMembershipOwner]);
+
+  useEffect(() => {
+    loadMembershipTiers();
+  }, [loadMembershipTiers]);
+
+  useEffect(() => {
+    if (!gateEnabled) return;
+    if (gateType === 'tier_or_higher' && !minimumTierId && availableTiers.length > 0) {
+      setMinimumTierId(availableTiers[0].id);
+    }
+    if (gateType === 'specific_tier' && availableTiers.length > 0) {
+      setAllowedTierIds((prev) => {
+        const filtered = prev.filter((id) => availableTiers.some((tier) => tier.id === id));
+        if (!filtered.length && availableTiers.length) {
+          return [availableTiers[0].id];
+        }
+        return filtered;
+      });
+    }
+  }, [gateEnabled, gateType, availableTiers, minimumTierId]);
+
+  const loadGatingRules = useCallback(
+    async (releaseUuid: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('gated_content')
+          .select('gate_type, minimum_tier_id, allowed_tier_ids, preview_text, preview_duration')
+          .eq('content_type', 'release')
+          .eq('content_id', releaseUuid)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (data) {
+          setGateEnabled(true);
+          setGateType((data.gate_type as typeof gateType) ?? 'tier_or_higher');
+          setMinimumTierId(data.minimum_tier_id ?? null);
+          setAllowedTierIds(Array.isArray(data.allowed_tier_ids) ? data.allowed_tier_ids : []);
+          setPreviewText(data.preview_text ?? '');
+          setPreviewDuration(data.preview_duration ? String(data.preview_duration) : '');
+        } else {
+          setGateEnabled(false);
+          setGateType('tier_or_higher');
+          setMinimumTierId(null);
+          setAllowedTierIds([]);
+          setPreviewText('');
+          setPreviewDuration('');
+        }
+      } catch (err) {
+        console.error('[ReleaseBuilder] Failed to load gating rules', err);
+      }
+    },
+    []
+  );
+
+  const syncGatingForRelease = useCallback(
+    async (releaseUuid: string) => {
+      const { ownerType, ownerId } = resolveMembershipOwner();
+
+      if (!ownerType || !ownerId || !releaseUuid) {
+        return;
+      }
+
+      if (!gateEnabled || availableTiers.length === 0) {
+        await supabase
+          .from('gated_content')
+          .delete()
+          .eq('content_type', 'release')
+          .eq('content_id', releaseUuid);
+        return;
+      }
+
+      let resolvedMinimumId = minimumTierId;
+      if (gateType === 'tier_or_higher') {
+        if (!resolvedMinimumId || !availableTiers.some((tier) => tier.id === resolvedMinimumId)) {
+          resolvedMinimumId = availableTiers[0]?.id ?? null;
+        }
+        if (!resolvedMinimumId) {
+          return;
+        }
+      }
+
+      const filteredAllowed = gateType === 'specific_tier'
+        ? allowedTierIds.filter((id) => availableTiers.some((tier) => tier.id === id))
+        : null;
+
+      const previewDurationNumber = previewDuration.trim()
+        ? Math.max(0, parseInt(previewDuration.trim(), 10) || 0)
+        : null;
+
+      const payload = {
+        content_type: 'release' as const,
+        content_id: releaseUuid,
+        owner_type: ownerType,
+        owner_id: ownerId,
+        gate_type: gateType,
+        minimum_tier_id: gateType === 'tier_or_higher' ? resolvedMinimumId : null,
+        allowed_tier_ids: gateType === 'specific_tier' ? filteredAllowed : null,
+        preview_text: previewText.trim() || null,
+        preview_duration: previewDurationNumber,
+      };
+
+      const { error } = await supabase
+        .from('gated_content')
+        .upsert(payload, { onConflict: 'content_type,content_id' });
+
+      if (error) throw error;
+    },
+    [allowedTierIds, availableTiers, gateEnabled, gateType, minimumTierId, previewDuration, previewText, resolveMembershipOwner]
+  );
 
   // Load existing release data when in edit mode
   useEffect(() => {
@@ -160,6 +376,7 @@ export const EnhancedReleaseBuilder = () => {
         setMinimumPrice(release.minimum_price || 0);
         setCoverUrl(release.cover_art_url || '');
         setReleaseId(release.id);
+        await loadGatingRules(release.id);
 
         // Load credits - use array fields
         setLabel(release.label || '');
@@ -601,6 +818,12 @@ export const EnhancedReleaseBuilder = () => {
           .eq('id', releaseId);
 
         if (error) throw error;
+
+        try {
+          await syncGatingForRelease(releaseId);
+        } catch (err) {
+          console.error('[ReleaseBuilder] Failed to sync gating (draft update)', err);
+        }
         // Notify creator of successful draft save
         try {
           await supabase.from('notifications').insert({
@@ -662,6 +885,13 @@ export const EnhancedReleaseBuilder = () => {
           throw error;
         }
         setReleaseId(release.id);
+
+        try {
+          await syncGatingForRelease(release.id);
+        } catch (err) {
+          console.error('[ReleaseBuilder] Failed to sync gating (new draft)', err);
+        }
+        await loadGatingRules(release.id);
         // Notify creator of successful draft save
         try {
           await supabase.from('notifications').insert({
@@ -864,6 +1094,17 @@ export const EnhancedReleaseBuilder = () => {
       }
 
       setReleaseId(release.id);
+
+      try {
+        await syncGatingForRelease(release.id);
+      } catch (err) {
+        console.error('[ReleaseBuilder] Failed to sync gating (submit)', err);
+        toast({
+          title: 'Membership gating warning',
+          description: 'Release submitted but membership gating could not be updated. You can retry after submission.',
+          variant: 'destructive',
+        });
+      }
 
       // Store track information in release metadata
       const trackInfo = tracks
@@ -1218,6 +1459,152 @@ export const EnhancedReleaseBuilder = () => {
             YouTube Music
           </label>
         </div>
+      </div>
+
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="font-medium">Membership gating</div>
+            <p className="text-xs text-muted-foreground">
+              Restrict full access to supporters and offer previews for everyone else.
+            </p>
+          </div>
+          <Switch
+            checked={gateEnabled}
+            disabled={tiersLoading || availableTiers.length === 0}
+            onCheckedChange={(checked) => setGateEnabled(checked)}
+          />
+        </div>
+
+        {tiersLoading ? (
+          <div className="text-xs text-muted-foreground">Loading membership tiers…</div>
+        ) : availableTiers.length === 0 ? (
+          <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+            You need at least one active membership tier before gating content. Create tiers in Creator Studio → Memberships.
+          </div>
+        ) : gateEnabled ? (
+          <div className="space-y-4">
+            <RadioGroup
+              value={gateType}
+              onValueChange={(value) => setGateType(value as 'any_tier' | 'tier_or_higher' | 'specific_tier')}
+              className="space-y-2"
+            >
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <RadioGroupItem value="tier_or_higher" id="gate-tier-or-higher" />
+                <div>
+                  <Label htmlFor="gate-tier-or-higher" className="text-sm font-medium">
+                    Minimum tier and above
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Members on the selected tier or higher unlock the full release.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <RadioGroupItem value="specific_tier" id="gate-specific" />
+                <div>
+                  <Label htmlFor="gate-specific" className="text-sm font-medium">
+                    Specific tiers only
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Choose the exact tiers that gain access. Great for exclusive drops.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <RadioGroupItem value="any_tier" id="gate-any" />
+                <div>
+                  <Label htmlFor="gate-any" className="text-sm font-medium">
+                    Any active member
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Everyone with an active membership can unlock this release.
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+
+            {gateType === 'tier_or_higher' && (
+              <div>
+                <Label className="text-xs font-medium">Minimum tier</Label>
+                <Select
+                  value={minimumTierId ?? ''}
+                  onValueChange={(value) => setMinimumTierId(value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTiers.map((tier) => (
+                      <SelectItem key={tier.id} value={tier.id}>
+                        {tier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {gateType === 'specific_tier' && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Allowed tiers</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTiers.map((tier) => {
+                    const selected = allowedTierIds.includes(tier.id);
+                    return (
+                      <Button
+                        key={tier.id}
+                        size="sm"
+                        variant={selected ? 'default' : 'outline'}
+                        onClick={() =>
+                          setAllowedTierIds((prev) =>
+                            prev.includes(tier.id)
+                              ? prev.filter((id) => id !== tier.id)
+                              : [...prev, tier.id]
+                          )
+                        }
+                      >
+                        {tier.name}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {allowedTierIds.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Select at least one tier.</p>
+                )}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Preview message</Label>
+                <Textarea
+                  value={previewText}
+                  onChange={(event) => setPreviewText(event.target.value)}
+                  placeholder="Add a teaser message for non-members…"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Preview duration (seconds)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={previewDuration}
+                  onChange={(event) => setPreviewDuration(event.target.value)}
+                  placeholder="30"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Optional. Controls how much audio preview to share with non-members.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Toggle on to lock downloads and full playback behind your membership tiers.
+          </p>
+        )}
       </div>
     </div>
   );

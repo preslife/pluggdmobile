@@ -5,7 +5,7 @@ import { StorefrontLayout } from "@/components/StorefrontLayout";
 import DomainAwareNavigation from "@/components/DomainAwareNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { setMeta } from "@/lib/seo";
+import SEOHelmet from "@/components/SEOHelmet";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -84,15 +84,6 @@ const Profile = () => {
     if (userId) {
       fetchUserData();
     }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    setMeta(
-      "Creator Profile — Pluggd",
-      "Explore beats, projects, and activity from this creator.",
-      `/profile/${userId}`
-    );
   }, [userId]);
 
   useEffect(() => {
@@ -203,6 +194,20 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHelmet
+        config={{
+          title: `${profile.full_name || profile.username || 'Creator'} | Pluggd Profile`,
+          description: profile.bio || 'Discover beats, releases, and collaborations from this creator on Pluggd.',
+          canonical: `/profile/${userId}`,
+          keywords: [profile.username, profile.full_name, ...(profile.genres || []), 'artist profile'].filter(Boolean) as string[],
+        }}
+        artistData={{
+          name: profile.full_name || profile.username || 'Creator',
+          bio: profile.bio || undefined,
+          image_url: profile.avatar_url || undefined,
+          genres: profile.genres || undefined,
+        }}
+      />
       <DomainAwareNavigation />
       <StorefrontLayout 
         userId={userId!}

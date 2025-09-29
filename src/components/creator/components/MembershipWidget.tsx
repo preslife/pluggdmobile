@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 
 import {
@@ -25,20 +24,9 @@ import {
   CheckCircle,
   Plus,
   Settings,
-  CreditCard
+  CreditCard,
+  Info,
 } from 'lucide-react';
-
-interface SubscriptionTier {
-  id: string;
-  name: string;
-  description: string;
-  price_cents: number;
-  benefits: string[];
-  badge_color?: string;
-  max_subscribers?: number;
-  current_subscribers?: number;
-  is_popular?: boolean;
-}
 
 interface VisitorStatus {
   isOwner: boolean;
@@ -46,11 +34,35 @@ interface VisitorStatus {
   isSubscribed: boolean;
 }
 
-interface MembershipStats {
-  total_subscribers: number;
-  monthly_revenue: number;
-  growth_rate: number;
-  tier_distribution: Record<string, number>;
+interface MembershipTierRow {
+  id: string;
+  name: string;
+  description: string | null;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  price_lifetime: number | null;
+  currency: string;
+  status: string;
+  current_members: number;
+  features: string[];
+  emoji: string | null;
+  color: string | null;
+}
+
+interface ActiveMembership {
+  id: string;
+  tier_id: string;
+  started_at: string;
+  membership_tiers: {
+    name: string | null;
+    price_monthly: number | null;
+    currency: string | null;
+  } | null;
+}
+
+interface MembershipStatsSummary {
+  totalSubscribers: number;
+  monthlyRevenue: number;
 }
 
 interface MembershipWidgetProps {
@@ -58,144 +70,184 @@ interface MembershipWidgetProps {
   visitorStatus: VisitorStatus | null;
 }
 
+const ESTIMATE_MULTIPLIER_FOR_YEARLY = 1 / 12;
+
+const normaliseFeatures = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .map((item) => item.trim());
+  }
+  return [];
+};
+
+const deriveStats = (tiers: MembershipTierRow[]): MembershipStatsSummary => {
+  const totalSubscribers = tiers.reduce((sum, tier) => sum + (tier.current_members ?? 0), 0);
+
+  const monthlyRevenue = tiers.reduce((sum, tier) => {
+    if (tier.price_monthly) {
+      return sum + tier.price_monthly * (tier.current_members ?? 0);
+    }
+
+    if (tier.price_yearly) {
+      return sum + tier.price_yearly * ESTIMATE_MULTIPLIER_FOR_YEARLY * (tier.current_members ?? 0);
+    }
+
+    return sum;
+  }, 0);
+
+  return {
+    totalSubscribers,
+    monthlyRevenue,
+  };
+};
+
+const describePrice = (tier: MembershipTierRow) => {
+  if (tier.price_monthly) {
+    return {
+      amount: formatCurrency(tier.price_monthly / 100, tier.currency || 'USD'),
+      cadence: 'month',
+    };
+  }
+
+  if (tier.price_yearly) {
+    return {
+      amount: formatCurrency(tier.price_yearly / 100, tier.currency || 'USD'),
+      cadence: 'year',
+    };
+  }
+
+  if (tier.price_lifetime) {
+    return {
+      amount: formatCurrency(tier.price_lifetime / 100, tier.currency || 'USD'),
+      cadence: 'lifetime',
+    };
+  }
+
+  return {
+    amount: 'Free',
+    cadence: '',
+  };
+};
+
 export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
-  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
-  const [stats, setStats] = useState<MembershipStats | null>(null);
+
+  const [tiers, setTiers] = useState<MembershipTierRow[]>([]);
+  const [activeMembership, setActiveMembership] = useState<ActiveMembership | null>(null);
+  const [stats, setStats] = useState<MembershipStatsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchMembershipData();
-  }, [creatorId, user]);
-
-  const fetchMembershipData = async () => {
+  const loadMembershipData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Fetch subscription tiers
-      const { data: tiersData, error: tiersError } = await supabase
-        .from('creator_subscription_tiers')
-        .select('*')
-        .eq('user_id', creatorId)
-        .eq('active', true)
-        .order('price_cents', { ascending: true });
+      const { data: tierRows, error: tiersError } = await supabase
+        .from('membership_tiers')
+        .select(
+          `id, name, description, price_monthly, price_yearly, price_lifetime, currency, status, current_members, features, emoji, color`
+        )
+        .eq('owner_type', 'profile')
+        .eq('owner_id', creatorId)
+        .neq('status', 'archived')
+        .order('tier_order', { ascending: true })
+        .order('created_at', { ascending: true });
 
       if (tiersError) throw tiersError;
 
-      // Fetch current subscription if user is logged in
-      let subscriptionData = null;
+      const normalisedTiers: MembershipTierRow[] = (tierRows ?? []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description ?? null,
+        price_monthly: row.price_monthly ?? null,
+        price_yearly: row.price_yearly ?? null,
+        price_lifetime: row.price_lifetime ?? null,
+        currency: row.currency ?? 'USD',
+        status: row.status ?? 'draft',
+        current_members: row.current_members ?? 0,
+        features: normaliseFeatures(row.features),
+        emoji: row.emoji ?? null,
+        color: row.color ?? null,
+      }));
+
+      setTiers(normalisedTiers);
+      setStats(deriveStats(normalisedTiers));
+
       if (user) {
-        const { data: subData } = await supabase
-          .from('fan_subscriptions')
-          .select(`
-            *,
-            creator_subscription_tiers (*)
-          `)
+        const { data: membershipRow, error: membershipError } = await supabase
+          .from('memberships')
+          .select(
+            `id, tier_id, started_at, status, membership_tiers!inner(name, price_monthly, currency, owner_id, owner_type)`
+          )
           .eq('user_id', user.id)
-          .eq('creator_id', creatorId)
           .eq('status', 'active')
+          .eq('membership_tiers.owner_type', 'profile')
+          .eq('membership_tiers.owner_id', creatorId)
           .maybeSingle();
 
-        subscriptionData = subData;
+        if (membershipError && membershipError.code !== 'PGRST116') {
+          throw membershipError;
+        }
+
+        setActiveMembership(membershipRow ?? null);
+      } else {
+        setActiveMembership(null);
       }
-
-      // Fetch membership stats
-      const { data: statsData } = await supabase.rpc('get_creator_membership_stats', {
-        p_creator_id: creatorId
-      });
-
-      // Enhanced tiers with subscriber counts
-      const enhancedTiers = await Promise.all(
-        (tiersData || []).map(async (tier) => {
-          const { count } = await supabase
-            .from('fan_subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('tier_id', tier.id)
-            .eq('status', 'active');
-
-          return {
-            ...tier,
-            current_subscribers: count || 0
-          };
-        })
-      );
-
-      setTiers(enhancedTiers);
-      setCurrentSubscription(subscriptionData);
-      setStats(statsData?.[0] || null);
-
-    } catch (error) {
-      console.error('Error fetching membership data:', error);
+    } catch (err: any) {
+      console.error('[MembershipWidget] load error', err);
+      setError(err?.message ?? 'Unable to load membership data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [creatorId, user?.id]);
 
-  const handleSubscribe = async (tier: SubscriptionTier) => {
+  useEffect(() => {
+    loadMembershipData();
+  }, [loadMembershipData]);
+
+  const handleSubscribe = (tier: MembershipTierRow) => {
     if (!user) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to subscribe to creators",
-        variant: "destructive"
+        title: 'Sign in required',
+        description: 'Create a free account to access memberships',
+        variant: 'destructive',
       });
       return;
     }
 
-    if (currentSubscription) {
+    if (activeMembership) {
       toast({
-        title: "Already subscribed",
-        description: "You're already supporting this creator",
-        variant: "destructive"
+        title: 'Already subscribed',
+        description: 'You already have an active membership for this creator.',
+        variant: 'destructive',
       });
       return;
     }
 
     setSubscribing(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('create-fan-subscription', {
-        body: {
-          creatorId,
-          tierId: tier.id,
-          priceCents: tier.price_cents
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-
-    } catch (error: any) {
-      toast({
-        title: "Subscription failed",
-        description: error.message || "Unable to process subscription",
-        variant: "destructive"
-      });
-    } finally {
-      setSubscribing(false);
-    }
+    toast({
+      title: 'Checkout coming soon',
+      description: 'Membership checkout is being wired to the new tier system. Please check back shortly.',
+    });
+    setSubscribing(false);
   };
 
   const handleManageBilling = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      
-      if (error) throw error;
-      
+      const { data, error: portalError } = await supabase.functions.invoke('customer-portal');
+      if (portalError) throw portalError;
       if (data?.url) {
         window.open(data.url, '_blank');
       }
-    } catch (error: any) {
+    } catch (err: any) {
       toast({
-        title: "Error",
-        description: error.message || "Unable to open billing portal",
-        variant: "destructive"
+        title: 'Unable to open billing portal',
+        description: err?.message ?? 'Please try again later.',
+        variant: 'destructive',
       });
     }
   };
@@ -203,253 +255,272 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-muted rounded w-32"></div>
-            <div className="h-4 bg-muted rounded w-full"></div>
-            <div className="h-10 bg-muted rounded"></div>
+        <CardContent className="space-y-4 p-6">
+          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+          <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="h-10 w-full animate-pulse rounded bg-muted" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive/30 bg-destructive/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Info className="h-4 w-4" />
+            Memberships unavailable
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-destructive">
+          <p>{error}</p>
+          <p className="text-xs opacity-80">
+            If you believe this is an error, please refresh the page or try again later.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isOwner = Boolean(visitorStatus?.isOwner);
+
+  if (isOwner) {
+    if (tiers.length === 0) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Membership program
+          </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <p className="text-muted-foreground">
+              You haven&apos;t created any membership tiers yet. Head to Creator Studio → Memberships to publish your
+              first tier and start earning support from fans.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/studio/memberships/tiers">
+                <Plus className="h-4 w-4 mr-2" /> Create a tier
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Membership program
+            </CardTitle>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/studio/memberships/tiers">
+                <Settings className="h-4 w-4 mr-2" /> Manage tiers
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {stats && (
+            <div className="grid grid-cols-2 gap-4 text-center text-sm">
+              <div>
+                <div className="text-2xl font-semibold">{stats.totalSubscribers}</div>
+                <div className="text-muted-foreground">Subscribers</div>
+              </div>
+              <div>
+                <div className="text-2xl font-semibold">
+                  {formatCurrency((stats.monthlyRevenue ?? 0) / 100, tiers[0]?.currency ?? 'USD')}
+                </div>
+                <div className="text-muted-foreground">Est. monthly revenue</div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {tiers.map((tier) => {
+              const price = describePrice(tier);
+              return (
+                <div key={tier.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      {tier.emoji && <span className="text-lg" aria-hidden>{tier.emoji}</span>}
+                      <span>{tier.name}</span>
+                      <Badge variant={tier.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                        {tier.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {tier.current_members} member{tier.current_members === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <div className="text-sm font-semibold">
+                    {price.amount}
+                    {price.cadence && <span className="text-xs text-muted-foreground"> / {price.cadence}</span>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Owner view
-  if (visitorStatus?.isOwner) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="w-5 h-5 text-yellow-500" />
-            Membership
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {stats && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{stats.total_subscribers}</div>
-                <div className="text-xs text-muted-foreground">Subscribers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{formatCurrency(stats.monthly_revenue)}</div>
-                <div className="text-xs text-muted-foreground">Monthly</div>
-              </div>
-            </div>
-          )}
-
-          {tiers.length === 0 ? (
-            <div className="text-center py-6">
-              <Crown className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Set up membership tiers to monetize your content
-              </p>
-              <Button asChild size="sm">
-                <Link to="/creator/subscriptions">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Tiers
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {tiers.map((tier) => (
-                <div key={tier.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <div className="font-medium">{tier.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {tier.current_subscribers} subscribers
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium">
-                    {formatCurrency(tier.price_cents / 100)}/mo
-                  </div>
-                </div>
-              ))}
-              
-              <Button asChild variant="outline" size="sm" className="w-full">
-                <Link to="/creator/subscriptions">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Manage Tiers
-                </Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // No tiers available
   if (tiers.length === 0) {
     return null;
   }
 
-  // Already subscribed
-  if (currentSubscription) {
+  if (activeMembership) {
     return (
-      <Card className="border-primary/50 bg-primary/5">
+      <Card className="border-primary/30 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-            Active Membership
+            <CheckCircle className="h-5 w-5 text-primary" />
+            Active membership
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 text-sm">
           <div className="text-center">
             <Badge variant="outline" className="mb-2">
-              {currentSubscription.creator_subscription_tiers?.name}
+              {activeMembership.membership_tiers?.name ?? 'Supporter'}
             </Badge>
-            <div className="text-sm text-muted-foreground">
-              Supporting since {new Date(currentSubscription.created_at).toLocaleDateString()}
-            </div>
+            <p className="text-muted-foreground">
+              Supporting since {new Date(activeMembership.started_at).toLocaleDateString()}
+            </p>
           </div>
-
-          <div className="space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={handleManageBilling}
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Manage Billing
-            </Button>
-          </div>
-
-          <div className="text-xs text-center text-muted-foreground">
+          <Button variant="outline" className="w-full" onClick={handleManageBilling}>
+            <CreditCard className="h-4 w-4 mr-2" /> Manage billing
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
             Thank you for supporting this creator! 💜
-          </div>
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  // Subscription options for visitors
+  const heroTier = tiers[0];
+  const otherTiers = tiers.slice(1, 3);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <HeartHandshake className="w-5 h-5 text-primary" />
-          Support This Creator
+          <HeartHandshake className="h-5 w-5 text-primary" /> Support this creator
         </CardTitle>
-        {stats && stats.total_subscribers > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span>{stats.total_subscribers} supporters</span>
+        {stats && stats.totalSubscribers > 0 && (
+          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            <Users className="h-3 w-3" />
+            {stats.totalSubscribers} members already in the community
           </div>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Get exclusive access to behind-the-scenes content, early releases, and direct creator interaction.
+          Join the membership to unlock exclusive releases, behind-the-scenes updates, and more ways to support this
+          artist.
         </p>
 
         <div className="space-y-3">
-          {tiers.slice(0, 2).map((tier) => (
-            <div 
-              key={tier.id} 
-              className={`border rounded-lg p-4 transition-all hover:shadow-md ${
-                tier.is_popular ? 'border-primary bg-primary/5' : 'border-border'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium">{tier.name}</h4>
-                  {tier.is_popular && (
-                    <Badge variant="default" className="text-xs">
-                      <Star className="w-3 h-3 mr-1" />
-                      Popular
-                    </Badge>
-                  )}
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  {heroTier?.emoji && <span className="text-lg" aria-hidden>{heroTier.emoji}</span>}
+                  <span>{heroTier?.name}</span>
                 </div>
-                <div className="text-lg font-bold">
-                  {formatCurrency(tier.price_cents / 100)}
-                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                <div className="text-xs text-muted-foreground">
+                  {heroTier?.current_members ?? 0} member{(heroTier?.current_members ?? 0) === 1 ? '' : 's'}
                 </div>
               </div>
-
-              {tier.description && (
-                <p className="text-sm text-muted-foreground mb-3">
-                  {tier.description}
-                </p>
-              )}
-
-              {tier.benefits && tier.benefits.length > 0 && (
-                <ul className="text-sm space-y-1 mb-4">
-                  {tier.benefits.slice(0, 3).map((benefit, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      {benefit}
-                    </li>
-                  ))}
-                  {tier.benefits.length > 3 && (
-                    <li className="text-muted-foreground">
-                      +{tier.benefits.length - 3} more benefits
-                    </li>
+              {heroTier && (
+                <div className="text-right text-sm font-semibold">
+                  {describePrice(heroTier).amount}
+                  {describePrice(heroTier).cadence && (
+                    <span className="text-xs text-muted-foreground"> / {describePrice(heroTier).cadence}</span>
                   )}
-                </ul>
-              )}
-
-              {/* Subscriber progress for limited tiers */}
-              {tier.max_subscribers && (
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{tier.current_subscribers} / {tier.max_subscribers} spots</span>
-                    <span>{Math.round(((tier.current_subscribers || 0) / tier.max_subscribers) * 100)}% filled</span>
-                  </div>
-                  <Progress 
-                    value={((tier.current_subscribers || 0) / tier.max_subscribers) * 100} 
-                    className="h-2"
-                  />
                 </div>
               )}
-
-              <Button 
-                onClick={() => handleSubscribe(tier)}
-                disabled={subscribing || !user}
-                className="w-full"
-                variant={tier.is_popular ? "default" : "outline"}
-              >
-                {!user ? (
-                  <>
-                    <Link to="/auth" className="flex items-center">
-                      Sign in to Subscribe
-                    </Link>
-                  </>
-                ) : subscribing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Heart className="w-4 h-4 mr-2" />
-                    Subscribe {formatCurrency(tier.price_cents / 100)}/mo
-                  </>
-                )}
-              </Button>
             </div>
-          ))}
-
-          {tiers.length > 2 && (
-            <Button variant="ghost" size="sm" className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
-              View All {tiers.length} Tiers
+            {heroTier?.features?.length ? (
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {heroTier.features.slice(0, 3).map((perk) => (
+                  <li key={perk} className="flex items-start gap-2">
+                    <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span>{perk}</span>
+                  </li>
+                ))}
+                {heroTier.features.length > 3 && (
+                  <li className="text-[11px] text-muted-foreground/70">
+                    +{heroTier.features.length - 3} more perks
+                  </li>
+                )}
+              </ul>
+            ) : null}
+            <Button
+              className="mt-4 w-full"
+              disabled={subscribing}
+              onClick={() => heroTier && handleSubscribe(heroTier)}
+            >
+              {subscribing ? 'Preparing checkout…' : 'Join membership'}
             </Button>
+          </div>
+
+          {otherTiers.length > 0 && (
+            <div className="space-y-3 text-sm">
+              {otherTiers.map((tier) => {
+                const price = describePrice(tier);
+                return (
+                  <div key={tier.id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            style={{ backgroundColor: tier.color ?? undefined }}
+                            className={cn('text-[11px]', !tier.color && 'bg-muted text-muted-foreground')}
+                          >
+                            {tier.name}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {tier.current_members} member{tier.current_members === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        {tier.features.slice(0, 2).map((perk) => (
+                          <div key={perk} className="text-[11px] text-muted-foreground">
+                            • {perk}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-right text-sm font-semibold">
+                        {price.amount}
+                        {price.cadence && <span className="text-xs text-muted-foreground"> / {price.cadence}</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
         <Separator />
 
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">
-            Secure payments via Stripe • Cancel anytime
-          </p>
+        <div className="space-y-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5" />
+            Cancel anytime. Perks unlock instantly once checkout is available.
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5" />
+            Membership payments are securely processed through Stripe.
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 };
-
-export default MembershipWidget;

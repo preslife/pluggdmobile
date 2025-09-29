@@ -28,7 +28,7 @@ import BeatRecommendations from '@/components/BeatRecommendations';
 import ShareModal from '@/components/ShareModal';
 import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
-import { setMeta, setOGMeta } from '@/lib/seo';
+import SEOHelmet from '@/components/SEOHelmet';
 
 type Beat = {
   id: string;
@@ -84,23 +84,6 @@ const BeatDetail = () => {
       fetchBeat();
     }
   }, [id]);
-
-  // Set SEO meta tags when beat data is loaded
-  useEffect(() => {
-    if (beat) {
-      const artistName = beat.uploaded_by_admin ? 
-        (beat.producer_name || 'Internal Producer') : 
-        (beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist');
-      
-      const title = `${beat.title} — ${artistName}`;
-      const description = beat.description ? 
-        beat.description.substring(0, 140) : 
-        'Buy / PWYW on Pluggd';
-      
-      setMeta(title, description, `/beat/${beat.id}`);
-      setOGMeta(title, description, beat.image_url, 'music.song');
-    }
-  }, [beat]);
 
   const fetchBeat = async () => {
     try {
@@ -222,8 +205,28 @@ const BeatDetail = () => {
     );
   }
 
+  const artistName = beat.uploaded_by_admin
+    ? beat.producer_name || 'Internal Producer'
+    : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist';
+  const beatDescription = beat.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      <SEOHelmet
+        config={{
+          title: `${beat.title} — ${artistName} | Pluggd`,
+          description: beatDescription,
+          canonical: `/beat/${beat.id}`,
+          keywords: [beat.title, artistName, beat.genre, `${beat.bpm} bpm`, 'instrumental beat'].filter(Boolean) as string[],
+          ogType: 'music.song',
+        }}
+        artistData={{
+          name: artistName,
+          bio: beatDescription,
+          image_url: beat.image_url,
+          genres: beat.genre ? [beat.genre] : [],
+        }}
+      />
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Back Button */}

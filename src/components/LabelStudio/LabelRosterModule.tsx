@@ -153,15 +153,67 @@ export default function LabelRosterModule() {
     setTimeout(() => setCopiedInvite(null), 3000);
   };
 
+  const sendInviteEmail = async (payload: { id: string; email: string; token: string; role: string; labelName?: string | null }) => {
+    try {
+      const inviteUrl = `${window.location.origin}/labels/invite/${payload.token}`;
+
+      const { error } = await supabase.functions.invoke('send-lifecycle-emails', {
+        body: {
+          user_id: user?.id ?? null,
+          email_type: 'label_team_invite',
+          user_data: {
+            invitee_email: payload.email,
+            invite_url: inviteUrl,
+            label_name: payload.labelName || activeLabel?.name || 'Label team',
+            role: payload.role,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('[LabelRoster] invite email failed', error);
+        toast({
+          title: 'Invite created (email pending)',
+          description: 'The invitation was refreshed but the email could not be sent. Share the link manually.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Invitation emailed', description: `Invite sent to ${payload.email}` });
+      }
+    } catch (err: any) {
+      console.error('[LabelRoster] invite email error', err);
+      toast({
+        title: 'Invite email failed',
+        description: err?.message || 'Share the invite link manually.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const resendInvite = async (inviteId: string, email: string) => {
     try {
-      const { error } = await supabase.rpc("resend_label_invite", {
+      const { data, error } = await supabase.rpc("resend_label_invite", {
         p_invitation_id: inviteId
       });
 
       if (error) throw error;
 
-      toast({ title: "Invitation resent", description: `New invite sent to ${email}` });
+      const inviteRow = Array.isArray(data) ? data[0] : data;
+      const newToken = inviteRow?.token;
+      const inviteMeta = pendingInvites.find((invite) => invite.id === inviteId);
+
+      if (newToken) {
+        await sendInviteEmail({
+          id: inviteId,
+          email,
+          token: newToken,
+          role: inviteMeta?.role || selectedRole,
+          labelName: activeLabel?.name,
+        });
+      } else {
+        toast({ title: "Invitation refreshed", description: `New token generated for ${email}` });
+      }
+
       await loadPendingInvites(labelId!);
     } catch (err: any) {
       toast({
@@ -202,13 +254,24 @@ export default function LabelRosterModule() {
       setAdding(true);
       const trimmed = usernameToAdd.trim();
       if (trimmed.includes("@")) {
-        const { error: inviteErr } = await supabase.rpc("invite_label_member", {
+        const { data: inviteRows, error: inviteErr } = await supabase.rpc("invite_label_member", {
           p_label_id: labelId,
           p_email: trimmed,
           p_role: selectedRole,
         });
         if (inviteErr) throw inviteErr;
-        toast({ title: "Invitation sent", description: `Invite emailed to ${trimmed}.` });
+        const createdInvite = Array.isArray(inviteRows) ? inviteRows[0] : inviteRows;
+        if (createdInvite?.token) {
+          await sendInviteEmail({
+            id: createdInvite.invitation_id ?? createdInvite.id,
+            email: trimmed,
+            token: createdInvite.token,
+            role: selectedRole,
+            labelName: activeLabel?.name,
+          });
+        } else {
+          toast({ title: "Invitation created", description: `Share the invite link with ${trimmed}.` });
+        }
         setUsernameToAdd("");
         await loadPendingInvites(labelId!);
       } else {

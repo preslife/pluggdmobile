@@ -208,9 +208,28 @@ const SEOHelmet = ({ config, releaseData, artistData }: SEOHelmetProps) => {
   // Generate Open Graph image
   const getOGImage = () => {
     if (config.ogImage) return config.ogImage;
-    if (releaseData?.cover_art_url) return releaseData.cover_art_url;
-    if (artistData?.image_url) return artistData.image_url;
-    return `${window.location.origin}/og-default.jpg`;
+    const baseUrl = window.location.origin;
+
+    if (releaseData) {
+      const params = new URLSearchParams({
+        title: releaseData.title,
+        artist: releaseData.artist,
+        cover: releaseData.cover_art_url || '',
+        releaseDate: releaseData.release_date || '',
+      });
+      return `${baseUrl}/og/release?${params.toString()}`;
+    }
+
+    if (artistData) {
+      const params = new URLSearchParams({
+        name: artistData.name,
+        image: artistData.image_url || '',
+        followers: artistData.follower_count?.toString() || '0',
+      });
+      return `${baseUrl}/og/artist?${params.toString()}`;
+    }
+
+    return `${baseUrl}/og/default`;
   };
 
   return (

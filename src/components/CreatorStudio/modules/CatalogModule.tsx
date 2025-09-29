@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./catalog-v2.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -107,18 +107,26 @@ export const CatalogModule: React.FC = () => {
     setActiveTab(newTab);
   }, [location.search]);
 
-  useEffect(() => {
-    if (user && !isLabelWorkspace) {
-      fetchCatalogItems();
+  const resolveOwner = useCallback(() => {
+    if (isLabelWorkspace && activeLabel) {
+      return { ownerType: 'label' as const, ownerId: activeLabel.id };
     }
-  }, [user, activeTab, isLabelWorkspace]);
+    if (user) {
+      return { ownerType: 'profile' as const, ownerId: user.id };
+    }
+    return null;
+  }, [isLabelWorkspace, activeLabel?.id, user?.id]);
 
-  const fetchCatalogItems = async () => {
-    if (!user) return;
+  useEffect(() => {
+    const owner = resolveOwner();
+    if (owner) {
+      fetchCatalogItems(owner);
+    }
+  }, [resolveOwner, activeTab]);
 
+  const fetchCatalogItems = async (owner: { ownerType: 'label' | 'profile'; ownerId: string }) => {
     setLoading(true);
     try {
-      // Fetch different types based on active tab
       let data: any[] = [];
       
       switch (activeTab) {
@@ -127,7 +135,8 @@ export const CatalogModule: React.FC = () => {
           const { data: releases, error: releasesError } = await supabase
             .from('releases')
             .select('*')
-            .eq('user_id', user.id);
+            .eq('owner_type', owner.ownerType)
+            .eq('owner_id', owner.ownerId);
           
           if (releasesError) throw releasesError;
           
@@ -158,12 +167,16 @@ export const CatalogModule: React.FC = () => {
           break;
 
         case "beats":
-          const { data: beats, error: beatsError } = await supabase
-            .from('beats')
-            .select('*')
-            .eq('user_id', user.id);
-          
-          if (beatsError) throw beatsError;
+          let beatsQuery = supabase.from('beats').select('*');
+          if (owner.ownerType === 'label') {
+            beatsQuery = beatsQuery
+              .eq('owner_type', 'label')
+              .eq('owner_id', owner.ownerId);
+          } else {
+            beatsQuery = beatsQuery.eq('user_id', owner.ownerId);
+          }
+          const { data: beats, error: beatsError } = await beatsQuery;
+          if (beatsError && beatsError.code !== '42703') throw beatsError;
           
           data = (beats || []).map(beat => ({
             ...beat,
@@ -176,11 +189,15 @@ export const CatalogModule: React.FC = () => {
           break;
 
         case "sound-packs":
-          const { data: packs, error: packsError } = await supabase
-            .from('sample_packs')
-            .select('*')
-            .eq('user_id', user.id);
-          
+          let packsQuery = supabase.from('sample_packs').select('*');
+          if (owner.ownerType === 'label') {
+            packsQuery = packsQuery
+              .eq('owner_type', 'label')
+              .eq('owner_id', owner.ownerId);
+          } else {
+            packsQuery = packsQuery.eq('user_id', owner.ownerId);
+          }
+          const { data: packs, error: packsError } = await packsQuery;
           if (packsError) throw packsError;
           
           data = (packs || []).map(pack => ({
@@ -194,11 +211,15 @@ export const CatalogModule: React.FC = () => {
           break;
           
         case "merch":
-          const { data: merchandise, error: merchError } = await supabase
-            .from('creator_merchandise')
-            .select('*')
-            .eq('user_id', user.id);
-          
+          let merchQuery = supabase.from('creator_merchandise').select('*');
+          if (owner.ownerType === 'label') {
+            merchQuery = merchQuery
+              .eq('owner_type', 'label')
+              .eq('owner_id', owner.ownerId);
+          } else {
+            merchQuery = merchQuery.eq('user_id', owner.ownerId);
+          }
+          const { data: merchandise, error: merchError } = await merchQuery;
           if (merchError) throw merchError;
           
           data = (merchandise || []).map(item => ({
@@ -215,8 +236,8 @@ export const CatalogModule: React.FC = () => {
           const { data: bundles, error: bundlesError } = await supabase
             .from('creator_bundles')
             .select('*')
-            .eq('user_id', user.id);
-          
+            .eq(owner.ownerType === 'label' ? 'owner_id' : 'user_id', owner.ownerId)
+            .eq(owner.ownerType === 'label' ? 'owner_type' : 'owner_type', owner.ownerType);
           if (bundlesError) throw bundlesError;
           
           data = (bundles || []).map(item => ({
@@ -233,8 +254,8 @@ export const CatalogModule: React.FC = () => {
           const { data: collectibles, error: collectiblesError } = await supabase
             .from('creator_collectibles')
             .select('*')
-            .eq('user_id', user.id);
-          
+            .eq(owner.ownerType === 'label' ? 'owner_id' : 'user_id', owner.ownerId)
+            .eq(owner.ownerType === 'label' ? 'owner_type' : 'owner_type', owner.ownerType);
           if (collectiblesError) throw collectiblesError;
           
           data = (collectibles || []).map(item => ({

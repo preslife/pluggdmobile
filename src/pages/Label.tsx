@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Music, Calendar, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import SEOHelmet from "@/components/SEOHelmet";
 
 import { ArtistCard } from "@/components/ArtistCard";
 import { VideoCard } from "@/components/VideoCard";
@@ -191,6 +192,15 @@ const Label = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <SEOHelmet
+        config={{
+          title: '9X Music Label — Pluggd',
+          description: 'Explore exclusive releases, featured artists, videos, and merchandise from the 9X Music collective on Pluggd.',
+          canonical: '/label',
+          keywords: ['9X Music', 'label', 'collective', 'beats', 'releases', 'artists'],
+          ogType: 'music.group',
+        }}
+      />
       {/* Navigation */}
       <DomainAwareNavigation />
       

@@ -17,7 +17,7 @@ import { DistributionExporter } from "@/components/DistributionExporter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { setMeta } from "@/lib/seo";
+import SEOHelmet from "@/components/SEOHelmet";
 
 interface Track {
   id: string;
@@ -80,16 +80,6 @@ const ReleaseDetail = () => {
       toast.success('Tip sent successfully! The artist will appreciate your support.');
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    if (release) {
-      setMeta(
-        `${release.title} - ${release.artist} | Pluggd`,
-        release.description || `${release.release_type} by ${release.artist}`,
-        `/release/${id}`
-      );
-    }
-  }, [release, id]);
 
   const fetchReleaseData = async () => {
     try {
@@ -198,6 +188,24 @@ const ReleaseDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHelmet
+        config={{
+          title: `${release.title} — ${release.artist} | Pluggd`,
+          description: release.description || `${release.release_type} by ${release.artist}`,
+          canonical: `/release/${release.id}`,
+          keywords: [release.artist, release.title, release.genre, 'music release'].filter(Boolean) as string[],
+        }}
+        releaseData={{
+          title: release.title,
+          artist: release.artist,
+          description: release.description,
+          cover_art_url: release.cover_art_url,
+          genre: release.genre,
+          release_date: release.release_date,
+          duration: totalDuration,
+          price: Math.round((release.price || 0) * 100),
+        }}
+      />
       <DomainAwareNavigation />
       <main className="pt-24 px-4">
         <div className="max-w-6xl mx-auto space-y-8">

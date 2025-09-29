@@ -8,9 +8,17 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  user_id: string;
-  email_type: 'creator_welcome' | 'creator_first_earnings' | 'creator_grow_faster' | 'creator_audience_insights' |
-             'fan_welcome' | 'fan_new_from_creators' | 'fan_unlock_perks' | 'fan_your_library';
+  user_id?: string | null;
+  email_type:
+    | 'creator_welcome'
+    | 'creator_first_earnings'
+    | 'creator_grow_faster'
+    | 'creator_audience_insights'
+    | 'fan_welcome'
+    | 'fan_new_from_creators'
+    | 'fan_unlock_perks'
+    | 'fan_your_library'
+    | 'label_team_invite';
   user_data?: any;
 }
 
@@ -22,7 +30,7 @@ const formatCredits = (credits: number) => {
   return `${credits.toLocaleString()} credits (£${gbp})`;
 };
 
-const emailTemplates = {
+const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((data: any) => string); html: (data: any) => string }> = {
   creator_welcome: {
     subject: "Welcome to Pluggd - Start Earning with Your Music! 🎵",
     html: (data: any) => `
@@ -116,6 +124,27 @@ const emailTemplates = {
         <p>Best regards,<br>The Pluggd Team</p>
       </div>
     `
+  },
+  label_team_invite: {
+    subject: (data: any) => `You're invited to join ${data.label_name || 'a label team'} on Pluggd`,
+    html: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #2563eb;">Join ${data.label_name || 'the team'} on Pluggd</h1>
+        <p>Hi ${data.invitee_email || 'there'},</p>
+        <p>${data.invited_by_name ? `${data.invited_by_name} has` : 'You have'} invited you to collaborate as a <strong>${(data.role || 'team member').replace('_', ' ')}</strong>.</p>
+        <p style="margin: 24px 0;">
+          <a 
+            href="${data.invite_url}" 
+            style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none;"
+          >
+            Accept invitation
+          </a>
+        </p>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #2563eb;">${data.invite_url}</p>
+        <p style="margin-top: 24px;">Looking forward to building something great together!<br>The Pluggd Team</p>
+      </div>
+    `
   }
 };
 
@@ -133,32 +162,40 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { user_id, email_type, user_data }: EmailRequest = await req.json();
 
-    console.log(`Sending lifecycle email: ${email_type} to user ${user_id}`);
+    console.log(`Sending lifecycle email: ${email_type} ${user_id ? `for user ${user_id}` : ''}`);
 
-    // Get user profile and email
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user_id)
-      .single();
+    let profile: any = null;
+    let userEmail: string | null = null;
 
-    if (profileError) throw profileError;
+    if (user_id) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user_id)
+        .single();
 
-    // Get user email from auth
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
-    if (authError) throw authError;
+      if (profileError && profileError.code !== 'PGRST116') throw profileError;
+      profile = profileData;
 
-    const userEmail = authUser.user?.email;
-    if (!userEmail) throw new Error('User email not found');
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+      if (authError && authError.message !== 'User not found') throw authError;
+      userEmail = authUser?.user?.email ?? null;
+    }
 
+    const recipientEmail = user_data?.invitee_email || userEmail;
+    if (!recipientEmail) throw new Error('Recipient email not provided');
+
+    const profileName = profile?.full_name || profile?.username;
     // Prepare email data
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://yourdomain.com';
+
     const emailData = {
-      name: profile.full_name || profile.username,
-      referral_link: `${Deno.env.get('SITE_URL') || 'https://yourdomain.com'}?ref=${profile.referral_code}`,
-      dashboard_url: `${Deno.env.get('SITE_URL') || 'https://yourdomain.com'}/dashboard`,
-      wallet_url: `${Deno.env.get('SITE_URL') || 'https://yourdomain.com'}/dashboard/wallet`,
-      browse_url: `${Deno.env.get('SITE_URL') || 'https://yourdomain.com'}/browse`,
-      marketplace_url: `${Deno.env.get('SITE_URL') || 'https://yourdomain.com'}/marketplace`,
+      name: profileName,
+      referral_link: profile?.referral_code ? `${siteUrl}?ref=${profile.referral_code}` : `${siteUrl}`,
+      dashboard_url: `${siteUrl}/dashboard`,
+      wallet_url: `${siteUrl}/dashboard/wallet`,
+      browse_url: `${siteUrl}/browse`,
+      marketplace_url: `${siteUrl}/marketplace`,
       ...user_data
     };
 
@@ -168,27 +205,30 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send email via Resend
+    const subject = typeof template.subject === 'function' ? template.subject(emailData) : template.subject;
+
     const { data: emailResult, error: emailError } = await resend.emails.send({
       from: "9X Music Hub <no-reply@resend.dev>",
-      to: [userEmail],
-      subject: template.subject,
+      to: [recipientEmail],
+      subject,
       html: template.html(emailData),
     });
 
     if (emailError) throw emailError;
 
-    // Log analytics event
-    await supabase
-      .from('analytics_events')
-      .insert({
-        user_id,
-        event_name: 'lifecycle_email_sent',
-        properties: {
-          email_type,
-          email_id: emailResult?.id,
-          recipient_email: userEmail
-        }
-      });
+    if (user_id) {
+      await supabase
+        .from('analytics_events')
+        .insert({
+          user_id,
+          event_name: 'lifecycle_email_sent',
+          properties: {
+            email_type,
+            email_id: emailResult?.id,
+            recipient_email: recipientEmail
+          }
+        });
+    }
 
     console.log(`Lifecycle email sent successfully: ${email_type}`);
 
