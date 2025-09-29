@@ -100,11 +100,24 @@ export const CatalogModule: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Update active tab when URL changes
   useEffect(() => {
     const newTab = searchParams.get('tab') || 'releases';
     setActiveTab(newTab);
+  }, [location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get('highlight');
+    if (highlight) {
+      setHighlightId(highlight);
+      const timer = setTimeout(() => setHighlightId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+
+    setHighlightId(null);
   }, [location.search]);
 
   const resolveOwner = useCallback(() => {
@@ -358,7 +371,7 @@ export const CatalogModule: React.FC = () => {
       case "sound-packs":
         return "/sample-pack/upload";
       case "merch":
-        return "/studio/catalog/merch/new";
+        return "/studio/catalog/merchandise/new";
       case "bundles":
         return "/studio/catalog/bundles/new";
       case "collectibles":
@@ -405,6 +418,19 @@ export const CatalogModule: React.FC = () => {
     }
   };
 
+  const resolveCatalogPath = (type: CatalogItem['type']) => {
+    switch (type) {
+      case 'merch':
+        return 'merchandise';
+      case 'bundle':
+        return 'bundles';
+      case 'collectible':
+        return 'collectibles';
+      default:
+        return type;
+    }
+  };
+
   const getViewUrl = (item: CatalogItem) => {
     switch (item.type) {
       case "release":
@@ -418,7 +444,7 @@ export const CatalogModule: React.FC = () => {
       case "pack":
         return `/sample-pack/${item.id}`;
       default:
-        return `/studio/catalog/${item.type}/${item.id}`;
+        return `/studio/catalog/${resolveCatalogPath(item.type)}/${item.id}`;
     }
   };
 
@@ -431,7 +457,7 @@ export const CatalogModule: React.FC = () => {
       case "pack":
         return `/sample-pack/${item.id}/edit`;
       default:
-        return `/studio/catalog/${item.type}/${item.id}/edit`;
+        return `/studio/catalog/${resolveCatalogPath(item.type)}/${item.id}/edit`;
     }
   };
 
@@ -464,8 +490,14 @@ export const CatalogModule: React.FC = () => {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {items.map((item) => {
         const Icon = typeIcons[item.type];
+        const isHighlighted = item.id === highlightId;
         return (
-          <div key={item.id} className="group relative rounded-xl overflow-hidden border border-border bg-transparent">
+          <div
+            key={item.id}
+            className={`group relative rounded-xl overflow-hidden border border-border bg-transparent transition-all ${
+              isHighlighted ? 'ring-2 ring-blue-500 bg-blue-50/50' : ''
+            }`}
+          >
             <div className="aspect-square relative">
               {(item.cover_art_url || item.image_url) ? (
                 <img src={item.cover_art_url || item.image_url} alt={item.title} className="w-full h-full object-cover" />
@@ -628,6 +660,33 @@ export const CatalogModule: React.FC = () => {
               <Plus className="h-4 w-4 mr-2" />
               Create New
             </Button>
+            {activeTab === 'merch' && (
+              <Button
+                onClick={() => navigate('/studio/catalog/merchandise/new')}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Merchandise
+              </Button>
+            )}
+            {activeTab === 'bundles' && (
+              <Button
+                onClick={() => navigate('/studio/catalog/bundles/new')}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Bundle
+              </Button>
+            )}
+            {activeTab === 'collectibles' && (
+              <Button
+                onClick={() => navigate('/studio/catalog/collectibles/new')}
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Collectible
+              </Button>
+            )}
           </div>
         </div>
 
@@ -723,7 +782,7 @@ export const CatalogModule: React.FC = () => {
               <p className="text-muted-foreground mb-4">
                 Start selling merchandise to your fans
               </p>
-              <Button onClick={() => navigate("/studio/catalog/merch/new")}>
+              <Button onClick={() => navigate("/studio/catalog/merchandise/new")}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Merchandise
               </Button>

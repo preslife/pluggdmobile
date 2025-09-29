@@ -165,9 +165,11 @@ export const MerchandiseForm = () => {
         revenue_total: 0,
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('creator_merchandise')
-        .insert([merchandiseData]);
+        .insert([merchandiseData])
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -176,7 +178,11 @@ export const MerchandiseForm = () => {
         description: "Merchandise created successfully",
       });
 
-      navigate('/studio/catalog');
+      if (data?.id) {
+        navigate(`/studio/catalog?tab=merch&highlight=${data.id}`);
+      } else {
+        navigate('/studio/catalog?tab=merch');
+      }
     } catch (error) {
       console.error('Error creating merchandise:', error);
       toast({
@@ -697,7 +703,7 @@ export const MerchandiseForm = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/studio/catalog')}
+                  onClick={() => navigate('/studio/catalog?tab=merch')}
                 >
                   Cancel
                 </Button>

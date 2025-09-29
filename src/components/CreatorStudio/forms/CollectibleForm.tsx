@@ -220,9 +220,11 @@ export const CollectibleForm = () => {
         revenue_total: 0,
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('creator_collectibles')
-        .insert([collectibleData]);
+        .insert([collectibleData])
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -231,7 +233,11 @@ export const CollectibleForm = () => {
         description: "Collectible created successfully",
       });
 
-      navigate('/studio/catalog');
+      if (data?.id) {
+        navigate(`/studio/catalog?tab=collectibles&highlight=${data.id}`);
+      } else {
+        navigate('/studio/catalog?tab=collectibles');
+      }
     } catch (error) {
       console.error('Error creating collectible:', error);
       toast({
@@ -818,7 +824,7 @@ export const CollectibleForm = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/studio/catalog')}
+                  onClick={() => navigate('/studio/catalog?tab=collectibles')}
                 >
                   Cancel
                 </Button>

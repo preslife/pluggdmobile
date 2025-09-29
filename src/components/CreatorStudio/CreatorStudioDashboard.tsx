@@ -31,6 +31,8 @@ import {
   Store,
   CreditCard,
   UserPlus,
+  Gift,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -331,6 +333,24 @@ export const CreatorStudioDashboard: React.FC = () => {
       description: "Build and distribute a release",
       icon: Upload,
       action: () => navigate("/release/new"),
+    },
+    {
+      title: "Create Merchandise",
+      description: "Add physical merchandise to your store",
+      icon: Gift,
+      action: () => navigate("/studio/catalog/merchandise/new"),
+    },
+    {
+      title: "Create Bundle",
+      description: "Bundle multiple items together",
+      icon: ShoppingBag,
+      action: () => navigate("/studio/catalog/bundles/new"),
+    },
+    {
+      title: "Create Collectible",
+      description: "Create digital collectibles and NFTs",
+      icon: Sparkles,
+      action: () => navigate("/studio/catalog/collectibles/new"),
     },
     {
       title: "Schedule Live Session",
