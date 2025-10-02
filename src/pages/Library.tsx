@@ -1,38 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { CreditBalance } from '@/components/checkout/CreditBalance';
 import DomainAwareNavigation from '@/components/DomainAwareNavigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
-import { creditSystem } from '@/services/credits/credit-system';
+import { CreditBalance } from '@/components/checkout/CreditBalance';
 import { setMeta } from '@/lib/seo';
-import {
-  Music,
-  Download,
-  Play,
-  Pause,
-  Search,
-  Filter,
-  Folder,
-  Heart,
-  Share2,
-  ExternalLink,
-  Plus
-} from 'lucide-react';
-import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { Folder, ExternalLink, Plus } from 'lucide-react';
+import { DownloadTracker } from '@/components/DownloadTracker';
 
 const Library = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const { state, actions } = useGlobalPlayer();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     setMeta(
       "Your Library — Pluggd",
@@ -86,14 +63,18 @@ const Library = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3 space-y-6">
+            <DownloadTracker />
+          </div>
+
+          <div className="lg:col-span-1 space-y-6">
             <Card>
-              <CardContent className="text-center py-12">
-                <Folder className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">Your library is empty</h3>
+              <CardContent className="p-6 text-center">
+                <Folder className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">Need more sounds?</h3>
                 <p className="text-muted-foreground mb-4">
-                  Start building your collection by purchasing beats and tracks
+                  Browse the marketplace for new beats, packs, and exclusive drops.
                 </p>
-                <Button asChild>
+                <Button asChild variant="outline">
                   <a href="/marketplace">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Explore Marketplace
@@ -101,9 +82,7 @@ const Library = () => {
                 </Button>
               </CardContent>
             </Card>
-          </div>
 
-          <div className="lg:col-span-1">
             <CreditBalance showTransactions={true} />
           </div>
         </div>
