@@ -54,12 +54,21 @@ export const CartSidebar = () => {
       if (error) throw error;
 
       if (data?.url) {
-        // Open Stripe checkout in new tab
-        window.open(data.url, '_blank');
-        
+        if (data.sessionId) {
+          sessionStorage.setItem('pluggd:lastCheckoutSession', data.sessionId);
+        }
+
         toast({
-          title: "Redirecting to checkout...",
-          description: "Complete your purchase in the new tab that opened."
+          title: "Redirecting to checkout",
+          description: "Complete your payment in Stripe to unlock your downloads."
+        });
+
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Checkout unavailable",
+          description: "We couldn't generate a Stripe session. Please try again shortly.",
+          variant: "destructive"
         });
       }
     } catch (error: any) {

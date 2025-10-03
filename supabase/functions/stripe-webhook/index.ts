@@ -226,19 +226,202 @@ serve(async (req) => {
               logStep("Course purchase recorded successfully");
             }
           } else if (session.metadata?.type === 'store_purchase') {
-            // Handle store purchase - update order status
-            const { error: orderError } = await supabaseClient
-              .from('orders')
-              .update({ 
-                status: 'completed',
-                updated_at: new Date().toISOString()
-              })
-              .eq('payment_id', session.id);
+            const sessionTotal = session.amount_total ? session.amount_total / 100 : null;
+            const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-            if (orderError) {
-              logStep("Order update error", { error: orderError.message });
+            const { data: existingOrder, error: existingOrderError } = await supabaseClient
+              .from('orders')
+              .select('id, user_id, total_amount')
+              .eq('payment_id', session.id)
+              .maybeSingle();
+
+            let orderRecord = existingOrder;
+
+            if (!orderRecord && !existingOrderError) {
+              const { data: legacyOrder, error: legacyError } = await supabaseClient
+                .from('orders')
+                .select('id, user_id, total_amount')
+                .eq('stripe_session_id', session.id)
+                .maybeSingle();
+
+              if (legacyError) {
+                logStep('Legacy order lookup failed', { error: legacyError.message, sessionId: session.id });
+              }
+              orderRecord = legacyOrder ?? null;
+            }
+
+            if (!orderRecord) {
+              logStep('Order not found for session', { sessionId: session.id });
             } else {
-              logStep("Store order completed", { sessionId: session.id });
+              const updatePayload: Record<string, unknown> = {
+                status: 'completed',
+                updated_at: new Date().toISOString(),
+              };
+
+              if (sessionTotal !== null) {
+                updatePayload.total_amount = sessionTotal;
+              }
+
+              updatePayload['paid_at'] = new Date().toISOString();
+              updatePayload['payment_provider'] = 'stripe';
+
+              const { error: orderUpdateError } = await supabaseClient
+                .from('orders')
+                .update(updatePayload)
+                .eq('id', orderRecord.id);
+
+              if (orderUpdateError) {
+                logStep('Order update error', { error: orderUpdateError.message, orderId: orderRecord.id });
+              } else {
+                logStep('Store order completed', { sessionId: session.id, orderId: orderRecord.id });
+
+                try {
+                  await supabaseClient
+                    .from('system_logs')
+                    .insert({
+                      level: 2,
+                      message: 'Store order completed',
+                      user_id: orderRecord.user_id,
+                      session_id: session.id,
+                      component: 'store.checkout',
+                      action: 'order_completed',
+                      metadata: {
+                        order_id: orderRecord.id,
+                        amount: sessionTotal ?? orderRecord.total_amount,
+                        payment_intent: paymentIntentId,
+                        currency: session.currency,
+                      },
+                    });
+                } catch (logError) {
+                  const errorMessage = logError instanceof Error ? logError.message : String(logError);
+                  logStep('System log insert failed', { error: errorMessage, orderId: orderRecord.id });
+                }
+              }
+            }
+          } else if (session.metadata?.type === 'artist_tip') {
+            const tipTotal = session.amount_total ? session.amount_total / 100 : null;
+            const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+
+            const { data: tipRecord, error: tipLookupError } = await supabaseClient
+              .from('artist_tips')
+              .select('id, fan_id, artist_id, amount, message, stripe_payment_intent_id')
+              .eq('stripe_session_id', session.id)
+              .maybeSingle();
+
+            let tip = tipRecord;
+
+            if (!tip && !tipLookupError && paymentIntentId) {
+              const { data: tipByIntent, error: tipIntentError } = await supabaseClient
+                .from('artist_tips')
+                .select('id, fan_id, artist_id, amount, message, stripe_payment_intent_id')
+                .eq('stripe_payment_intent_id', paymentIntentId)
+                .maybeSingle();
+
+              if (tipIntentError) {
+                logStep('Artist tip lookup by payment intent failed', { error: tipIntentError.message });
+              }
+              tip = tipByIntent ?? null;
+            }
+
+            if (!tip) {
+              logStep('Artist tip record not found', { sessionId: session.id, paymentIntentId });
+            } else {
+              const updatePayload: Record<string, unknown> = {
+                status: 'succeeded',
+                paid_at: new Date().toISOString(),
+              };
+
+              if (paymentIntentId) {
+                updatePayload['stripe_payment_intent_id'] = paymentIntentId;
+              }
+
+              if (tipTotal !== null) {
+                updatePayload['amount'] = tipTotal;
+              }
+
+              const { error: tipUpdateError } = await supabaseClient
+                .from('artist_tips')
+                .update(updatePayload)
+                .eq('id', tip.id);
+
+              if (tipUpdateError) {
+                logStep('Artist tip update error', { error: tipUpdateError.message, tipId: tip.id });
+              } else {
+                logStep('Artist tip settled', { tipId: tip.id, sessionId: session.id });
+
+                const siteUrl = Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
+
+                try {
+                  const [{ data: artistProfile }, { data: fanProfile }] = await Promise.all([
+                    supabaseClient
+                      .from('profiles')
+                      .select('full_name, username')
+                      .eq('user_id', tip.artist_id)
+                      .maybeSingle(),
+                    supabaseClient
+                      .from('profiles')
+                      .select('full_name, username')
+                      .eq('user_id', tip.fan_id)
+                      .maybeSingle(),
+                  ]);
+
+                  const artistName = artistProfile?.full_name || artistProfile?.username || 'your favorite creator';
+                  const fanName = fanProfile?.full_name || fanProfile?.username || null;
+                  const tipAmount = tipTotal ?? tip.amount ?? 0;
+
+                  const emailPromises = [
+                    supabaseClient.functions.invoke('send-lifecycle-emails', {
+                      body: {
+                        user_id: tip.fan_id,
+                        email_type: 'fan_tip_receipt',
+                        user_data: {
+                          amount: tipAmount,
+                          artist_name: artistName,
+                          artist_url: `${siteUrl}/artist/${tip.artist_id}`,
+                          message: tip.message,
+                        },
+                      },
+                    }),
+                    supabaseClient.functions.invoke('send-lifecycle-emails', {
+                      body: {
+                        user_id: tip.artist_id,
+                        email_type: 'creator_tip_notification',
+                        user_data: {
+                          amount: tipAmount,
+                          fan_name: fanName,
+                          message: tip.message,
+                        },
+                      },
+                    }),
+                  ];
+
+                  await Promise.allSettled(emailPromises);
+                } catch (emailError) {
+                  const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+                  logStep('Artist tip email notification failed', { error: errorMessage, tipId: tip.id });
+                }
+
+                try {
+                  await supabaseClient
+                    .from('system_logs')
+                    .insert({
+                      level: 2,
+                      message: 'Artist tip completed',
+                      user_id: tip.artist_id,
+                      session_id: session.id,
+                      component: 'tips.checkout',
+                      action: 'tip_completed',
+                      metadata: {
+                        tip_id: tip.id,
+                        fan_id: tip.fan_id,
+                        amount: tipTotal ?? tip.amount,
+                      },
+                    });
+                } catch (logError) {
+                  const errorMessage = logError instanceof Error ? logError.message : String(logError);
+                  logStep('Artist tip log insert failed', { error: errorMessage, tipId: tip.id });
+                }
+              }
             }
           } else if (session.metadata?.type === 'commission_funding') {
             // Handle commission funding - mark commission as funded

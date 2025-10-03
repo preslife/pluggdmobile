@@ -37,6 +37,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
+import { setMeta } from "@/lib/seo";
 
 /**
  * PLUGGD — COMMUNITY HUB
@@ -348,6 +349,17 @@ export default function CommunityHubEpic() {
     };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    const dynamicDescription = data?.announcements?.[0]?.text
+      || "Catch live battles, collaborate with peers, and unlock quests inside the Pluggd community hub.";
+    setMeta(
+      "Community Hub — Pluggd",
+      dynamicDescription,
+      "/community",
+      data?.creator_spotlight?.cover || undefined
+    );
+  }, [data]);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");

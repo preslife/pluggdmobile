@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, useContext, createContext 
 import { motion } from "framer-motion";
 import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { setMeta } from "@/lib/seo";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -181,6 +182,14 @@ export default function PluggdHomepage() {
   const [live, setLive] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMeta(
+      "Pluggd — The creator-first music platform",
+      "Discover exclusive releases, license beats, join live sessions, and grow your creative business with Pluggd.",
+      "/"
+    );
+  }, []);
 
   const labels = useMemo(
     () =>

@@ -18,6 +18,8 @@ interface EmailRequest {
     | 'fan_new_from_creators'
     | 'fan_unlock_perks'
     | 'fan_your_library'
+    | 'fan_tip_receipt'
+    | 'creator_tip_notification'
     | 'label_team_invite';
   user_data?: any;
 }
@@ -121,7 +123,35 @@ const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((d
         <p>Hi ${data.name || 'Music Lover'},</p>
         <p>Your collection is growing! Total tracks: ${data.total_tracks || 1}</p>
         <p><a href="${data.marketplace_url}" style="color: #2563eb;">Explore More</a></p>
+      <p>Best regards,<br>The Pluggd Team</p>
+      </div>
+    `
+  },
+  fan_tip_receipt: {
+    subject: (data: any) => `Thanks for supporting ${data.artist_name || 'a creator'} ❤️`,
+    html: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #2563eb;">You just tipped ${data.artist_name || 'a creator'}!</h1>
+        <p>Hi ${data.name || 'music lover'},</p>
+        <p>Thank you for sending <strong>£${Number(data.amount ?? 0).toFixed(2)}</strong> to ${data.artist_name || 'this artist'} on Pluggd.</p>
+        ${data.message ? `<blockquote style="border-left: 2px solid #2563eb; margin: 16px 0; padding: 8px 16px; color: #4b5563;">“${data.message}”</blockquote>` : ''}
+        <p>Your support means the world. You can view the creator's page here:</p>
+        <p><a href="${data.artist_url}" style="color: #2563eb;">Visit ${data.artist_name || 'creator'} on Pluggd</a></p>
         <p>Best regards,<br>The Pluggd Team</p>
+      </div>
+    `
+  },
+  creator_tip_notification: {
+    subject: (data: any) => `You received a £${Number(data.amount ?? 0).toFixed(2)} tip on Pluggd!`,
+    html: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #16a34a;">You have a new tip!</h1>
+        <p>Hi ${data.name || 'creator'},</p>
+        <p>${data.fan_name ? `${data.fan_name} just tipped you` : 'You just received a new tip'} for <strong>£${Number(data.amount ?? 0).toFixed(2)}</strong>.</p>
+        ${data.message ? `<p style="margin: 16px 0; color: #4b5563;">They said: “${data.message}”</p>` : ''}
+        <p>You can view your tip history at any time:</p>
+        <p><a href="${data.dashboard_url}" style="color: #2563eb;">Open your creator dashboard</a></p>
+        <p>Keep creating magic,<br>The Pluggd Team</p>
       </div>
     `
   },

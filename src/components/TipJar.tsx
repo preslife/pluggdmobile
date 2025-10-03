@@ -67,7 +67,9 @@ export const TipJar = ({ creatorId, creatorName, className }: TipJarProps) => {
           fan_id: user.id,
           artist_id: creatorId,
           amount: amount,
-          message: message || null
+          message: message || null,
+          status: 'succeeded',
+          paid_at: new Date().toISOString()
         });
 
       if (tipError) throw tipError;

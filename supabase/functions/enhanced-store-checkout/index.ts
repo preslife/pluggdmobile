@@ -66,9 +66,17 @@ serve(async (req) => {
     }
 
     // Get product details from different tables based on cart items
-    const lineItems = [];
-    const orderItems = [];
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    const orderItems: Array<{
+      product_id: string;
+      quantity: number;
+      price: number;
+      creator_id?: string | null;
+      kind?: string | null;
+    }> = [];
+    const cartItemIds: string[] = [];
     let hasPhysicalProducts = false;
+    let orderSubtotal = 0;
 
     // Create Supabase service client for data operations
     const supabaseService = createClient(
@@ -78,7 +86,7 @@ serve(async (req) => {
     );
 
     for (const item of cartItems) {
-      let productData = null;
+      let productData: any = null;
       let productType = 'digital';
 
       // Try to find the product in different tables
@@ -157,8 +165,13 @@ serve(async (req) => {
 
       logStep('Found product', { productId: item.productId, type: productType });
 
+      cartItemIds.push(item.productId);
+
       // Create Stripe line item
-      const lineItem = {
+      const unitPrice = item.selectedOptions?.customPrice || productData.price;
+      const quantity = item.quantity || 1;
+
+      const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = {
         price_data: {
           currency: 'gbp',
           product_data: {
@@ -170,20 +183,21 @@ serve(async (req) => {
               user_id: user.id,
             },
           },
-          unit_amount: Math.round((item.selectedOptions?.customPrice || productData.price) * 100),
+          unit_amount: Math.round(unitPrice * 100),
         },
-        quantity: item.quantity || 1,
+        quantity,
       };
 
       lineItems.push(lineItem);
+      orderSubtotal += unitPrice * quantity;
 
       // Store order item details
       orderItems.push({
         product_id: productData.id,
-        product_type: productType,
-        quantity: item.quantity || 1,
-        price: item.selectedOptions?.customPrice || productData.price,
-        selected_options: item.selectedOptions,
+        quantity,
+        price: unitPrice,
+        creator_id: productData.owner_id || productData.user_id || null,
+        kind: productType,
       });
     }
 
@@ -197,8 +211,9 @@ serve(async (req) => {
       success_url: `${req.headers.get('origin')}/store/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/store`,
       metadata: {
+        type: 'store_purchase',
         user_id: user.id,
-        order_type: 'mixed_cart',
+        cart_item_ids: cartItemIds.join(','),
       },
     };
 
@@ -262,12 +277,10 @@ serve(async (req) => {
       .from('orders')
       .insert({
         user_id: user.id,
-        stripe_session_id: session.id,
-        amount: Math.round(lineItems.reduce((sum, item) => sum + (item.price_data.unit_amount * item.quantity), 0)),
-        currency: 'gbp',
+        total_amount: orderSubtotal,
         status: 'pending',
+        payment_id: session.id,
         shipping_address: hasPhysicalProducts ? shippingAddress : null,
-        order_type: 'mixed_cart',
       })
       .select()
       .single();
@@ -295,6 +308,27 @@ serve(async (req) => {
     }
 
     logStep('Created order items', { count: orderItemsWithOrderId.length });
+
+    try {
+      await supabaseService
+        .from('system_logs')
+        .insert({
+          level: 2,
+          message: 'Checkout session initiated',
+          user_id: user.id,
+          session_id: session.id,
+          component: 'store.checkout',
+          action: 'checkout_session_created',
+          metadata: {
+            order_id: order.id,
+            item_count: orderItemsWithOrderId.length,
+            has_physical: hasPhysicalProducts,
+          },
+        });
+    } catch (logError) {
+      const errorMessage = logError instanceof Error ? logError.message : String(logError);
+      logStep('System log insert failed', { error: errorMessage });
+    }
 
     return new Response(
       JSON.stringify({

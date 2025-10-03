@@ -1,0 +1,54 @@
+name: Supabase Migrations
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/supabase-migrations.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/supabase-migrations.yml'
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dry run migrations (PRs)
+        if: github.event_name == 'pull_request'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is not set" >&2
+            exit 1
+          fi
+          supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
+
+      - name: Push migrations (main)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is not set" >&2
+            exit 1
+          fi
+          supabase db push --db-url "$SUPABASE_DB_URL"
+
+
+

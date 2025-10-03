@@ -1,32 +1,59 @@
-export const setMeta = (title: string, description: string, path?: string) => {
-  if (title) document.title = title;
+const DEFAULT_DESCRIPTION = 'Pluggd helps creators sell releases, beats, memberships, and more while fans discover the next wave of sound.';
+const DEFAULT_OG_IMAGE = (import.meta as any).env?.VITE_OG_DEFAULT_IMAGE || '/placeholder.svg';
 
-  let desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-  if (!desc) {
-    desc = document.createElement('meta');
-    desc.name = 'description';
-    document.head.appendChild(desc);
+const ensureMeta = (selector: string, attr: 'name' | 'property', value: string) => {
+  let meta = document.querySelector(selector) as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute(attr, value);
+    document.head.appendChild(meta);
   }
-  desc.setAttribute('content', description || '');
+  return meta;
+};
 
-  if (path) {
-    const canonicalHref = `${window.location.origin}${path}`;
-    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'canonical';
-      document.head.appendChild(link);
-    }
-    link.href = canonicalHref;
+const ensureCanonical = (href: string) => {
+  let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'canonical';
+    document.head.appendChild(link);
+  }
+  link.href = href;
+};
+
+export const getCanonicalUrl = (path?: string) => {
+  const base = path && path.startsWith('http') ? path : `${window.location.origin}${path || window.location.pathname}`;
+  try {
+    return new URL(base).toString();
+  } catch {
+    return `${window.location.origin}${window.location.pathname}`;
   }
 };
 
-export const setOGMeta = (title: string, description: string, image?: string, type = 'website') => {
+export const setMeta = (title: string, description = DEFAULT_DESCRIPTION, path?: string, image = DEFAULT_OG_IMAGE) => {
+  if (title) document.title = title;
+
+  const metaDescription = ensureMeta('meta[name="description"]', 'name', 'description');
+  metaDescription.setAttribute('content', description || DEFAULT_DESCRIPTION);
+
+  const canonicalHref = getCanonicalUrl(path);
+  ensureCanonical(canonicalHref);
+
+  setOGMeta(title, description, image, 'website', canonicalHref);
+};
+
+export const setOGMeta = (
+  title: string,
+  description = DEFAULT_DESCRIPTION,
+  image = DEFAULT_OG_IMAGE,
+  type = 'website',
+  canonicalUrl: string = getCanonicalUrl()
+) => {
   const metaTags = [
     { property: 'og:title', content: title },
     { property: 'og:description', content: description },
     { property: 'og:type', content: type },
-    { property: 'og:url', content: window.location.href },
+    { property: 'og:url', content: canonicalUrl },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description }
@@ -40,16 +67,12 @@ export const setOGMeta = (title: string, description: string, image?: string, ty
   }
 
   metaTags.forEach(({ property, name, content }) => {
-    const selector = property ? `meta[property="${property}"]` : `meta[name="${name}"]`;
-    let meta = document.querySelector(selector) as HTMLMetaElement | null;
-    
-    if (!meta) {
-      meta = document.createElement('meta');
-      if (property) meta.setAttribute('property', property);
-      if (name) meta.setAttribute('name', name);
-      document.head.appendChild(meta);
+    if (property) {
+      const meta = ensureMeta(`meta[property="${property}"]`, 'property', property);
+      meta.setAttribute('content', content);
+    } else if (name) {
+      const meta = ensureMeta(`meta[name="${name}"]`, 'name', name);
+      meta.setAttribute('content', content);
     }
-    
-    meta.setAttribute('content', content);
   });
 };

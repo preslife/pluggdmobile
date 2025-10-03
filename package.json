@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:link": "supabase link --project-ref qkwvqmubhyondemhasjp --yes",
+    "db:push": "supabase db push --linked --yes",
+    "sitemap:generate": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@11labs/react": "^0.1.4",

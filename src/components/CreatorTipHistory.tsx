@@ -12,6 +12,7 @@ interface Tip {
   message: string | null;
   created_at: string;
   fan_id: string;
+  status?: string | null;
 }
 
 export const CreatorTipHistory = () => {
@@ -30,8 +31,9 @@ export const CreatorTipHistory = () => {
     try {
       const { data, error } = await supabase
         .from('artist_tips')
-        .select('id, amount, message, created_at, fan_id')
+        .select('id, amount, message, created_at, fan_id, status')
         .eq('artist_id', user!.id)
+        .or('status.eq.succeeded,status.is.null')
         .order('created_at', { ascending: false })
         .limit(20);
 

@@ -109,7 +109,9 @@ serve(async (req) => {
         release_id: releaseId || null,
         amount: amount,
         message: message || null,
-        stripe_payment_intent_id: session.payment_intent,
+        stripe_payment_intent_id: session.payment_intent ?? null,
+        stripe_session_id: session.id,
+        status: 'pending'
       });
 
     if (tipError) {
@@ -118,7 +120,25 @@ serve(async (req) => {
       logStep("Tip record created");
     }
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    try {
+      await supabaseService.from('system_logs').insert({
+        level: 2,
+        message: 'Artist tip checkout created',
+        user_id: user.id,
+        session_id: session.id,
+        component: 'tips.checkout',
+        action: 'checkout_session_created',
+        metadata: {
+          artist_id: artistId,
+          amount,
+        }
+      });
+    } catch (logError) {
+      const errorMessage = logError instanceof Error ? logError.message : String(logError);
+      logStep('System log insert failed', { error: errorMessage });
+    }
+
+    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

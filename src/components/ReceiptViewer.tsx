@@ -5,14 +5,17 @@ import { FileText, Download, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+type ReceiptType = 'purchase' | 'order' | 'payout' | 'subscription';
+
 interface ReceiptViewerProps {
-  purchaseId: string;
+  paymentId: string;
   receiptUrl?: string;
   className?: string;
   children?: React.ReactNode;
+  receiptType?: ReceiptType;
 }
 
-export const ReceiptViewer = ({ purchaseId, receiptUrl, className, children }: ReceiptViewerProps) => {
+export const ReceiptViewer = ({ paymentId, receiptUrl, className, children, receiptType = 'purchase' }: ReceiptViewerProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(receiptUrl);
@@ -25,8 +28,8 @@ export const ReceiptViewer = ({ purchaseId, receiptUrl, className, children }: R
     try {
       const { data, error } = await supabase.functions.invoke('generate-receipt', {
         body: {
-          payment_id: purchaseId,
-          type: 'purchase'
+          payment_id: paymentId,
+          type: receiptType
         }
       });
 

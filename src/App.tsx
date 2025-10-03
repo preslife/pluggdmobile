@@ -36,6 +36,8 @@ import Releases from "./pages/Releases";
 import ReleaseDetail from "./pages/ReleaseDetail";
 import ReleaseBuilder from "./pages/ReleaseBuilder";
 import Store from "./pages/Store";
+import StoreSuccess from "./pages/StoreSuccess";
+import AccountOrders from "./pages/AccountOrders";
 import Admin from "./pages/Admin";
 import BetaProgram from "./pages/BetaProgram";
 import Roadmap from "./pages/Roadmap";
@@ -239,6 +241,8 @@ const AppContent = () => {
 <Route path="/my-releases" element={<ProtectedRoute><MyReleases /></ProtectedRoute>} />
 <Route path="/release/:id" element={<ReleaseDetail />} />
         <Route path="/store" element={<Store />} />
+        <Route path="/store/success" element={<ProtectedRoute><StoreSuccess /></ProtectedRoute>} />
+        <Route path="/account/orders" element={<ProtectedRoute><AccountOrders /></ProtectedRoute>} />
         <Route path="/product/:id" element={<ProductRedirect />} />
         <Route path="/store/product/:id" element={<ProductDetail />} />
         <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>} >

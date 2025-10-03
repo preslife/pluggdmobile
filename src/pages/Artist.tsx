@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Music } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { setMeta } from "@/lib/seo";
 
 import spotifyIcon from "@/assets/spotify-icon.svg";
 import appleMusicIcon from "@/assets/apple-music-icon.svg";
@@ -136,6 +137,19 @@ const Artist = () => {
       )}
     </div>
   );
+
+  useEffect(() => {
+    if (!artist) return;
+    const description = artist.bio
+      ? artist.bio.slice(0, 155)
+      : `Explore music, releases, and social links from ${artist.name} on Pluggd.`;
+    setMeta(
+      `${artist.name} — Artist Profile | Pluggd`,
+      description,
+      id ? `/artist/${id}` : undefined,
+      artist.image_url || undefined
+    );
+  }, [artist, id]);
 
   if (loading) {
     return (

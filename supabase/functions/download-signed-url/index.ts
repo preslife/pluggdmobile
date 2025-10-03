@@ -56,7 +56,7 @@ serve(async (req) => {
     // Check if user has purchased this release or if it's free
     const { data: release, error: releaseError } = await supabaseService
       .from('releases')
-      .select('download_url, price, user_id')
+      .select('download_url, price, user_id, title')
       .eq('id', releaseId)
       .eq('approved', true)
       .eq('status', 'live')
@@ -74,6 +74,7 @@ serve(async (req) => {
 
     // Check access permissions
     let hasAccess = false;
+    const now = new Date();
 
     // Free releases - everyone can download
     if (release.price === 0) {
@@ -87,34 +88,64 @@ serve(async (req) => {
     else {
       const { data: purchase } = await supabaseService
         .from('release_purchases')
-        .select('id, downloads_used, download_expires_at')
+        .select('id, downloads_used, download_expires_at, status')
         .eq('user_id', user.id)
         .eq('release_id', releaseId)
         .single();
 
-      if (purchase) {
-        // Check if download hasn't expired and user hasn't exceeded download limit
-        const now = new Date();
+      if (purchase && (purchase.status === null || purchase.status === 'completed')) {
         const expiresAt = purchase.download_expires_at ? new Date(purchase.download_expires_at) : null;
-        
+
         if (!expiresAt || now < expiresAt) {
-          if (purchase.downloads_used < 3) { // Max 3 downloads
+          if ((purchase.downloads_used ?? 0) < 3) {
             hasAccess = true;
-            
-            // Increment download count
+
             await supabaseService
               .from('release_purchases')
-              .update({ 
-                downloads_used: purchase.downloads_used + 1,
-                last_download_at: now.toISOString()
+              .update({
+                downloads_used: (purchase.downloads_used ?? 0) + 1,
+                last_download_at: now.toISOString(),
               })
               .eq('id', purchase.id);
           }
         }
       }
+
+      if (!hasAccess) {
+        const { data: orderItem } = await supabaseService
+          .from('order_items')
+          .select('id, orders!inner(user_id, status)')
+          .eq('product_id', releaseId)
+          .eq('kind', 'release')
+          .eq('orders.user_id', user.id)
+          .eq('orders.status', 'completed')
+          .limit(1)
+          .maybeSingle();
+
+        if (orderItem) {
+          hasAccess = true;
+        }
+      }
     }
 
     if (!hasAccess) {
+      try {
+        await supabaseService
+          .from('system_logs')
+          .insert({
+            level: 3,
+            message: 'Download denied',
+            user_id: user.id,
+            component: 'downloads',
+            action: 'access_denied',
+            metadata: {
+              release_id: releaseId,
+            },
+          });
+      } catch (logError) {
+        console.error('Failed to log denied download:', logError);
+      }
+
       return new Response(
         JSON.stringify({ error: "Access denied. Purchase required or download limit exceeded." }),
         { 
@@ -163,6 +194,24 @@ serve(async (req) => {
     } catch (logError) {
       console.error('Failed to log download event:', logError);
       // Don't fail the download if logging fails
+    }
+
+    try {
+      await supabaseService
+        .from('system_logs')
+        .insert({
+          level: 2,
+          message: 'Download granted',
+          user_id: user.id,
+          component: 'downloads',
+          action: 'signed_url_issued',
+          metadata: {
+            release_id: releaseId,
+            expires_in: 3600,
+          },
+        });
+    } catch (logError) {
+      console.error('Failed to log granted download:', logError);
     }
 
     return new Response(

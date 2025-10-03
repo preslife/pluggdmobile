@@ -55,11 +55,14 @@ export const ArtistTipButton = ({
 
       if (error) throw error;
 
-      if (data.url) {
-        window.open(data.url, '_blank');
+      if (data?.url) {
+        if (data.sessionId) {
+          sessionStorage.setItem('pluggd:lastTipSession', data.sessionId);
+        }
         setIsOpen(false);
         setMessage("");
         toast.success("Redirecting to payment...");
+        window.location.href = data.url;
       }
     } catch (error) {
       console.error('Tip error:', error);

@@ -257,8 +257,11 @@ export type Database = {
           fan_id: string | null
           id: string
           message: string | null
+          paid_at: string | null
           release_id: string | null
+          status: string | null
           stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
         }
         Insert: {
           amount: number
@@ -267,8 +270,11 @@ export type Database = {
           fan_id?: string | null
           id?: string
           message?: string | null
+          paid_at?: string | null
           release_id?: string | null
+          status?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
         }
         Update: {
           amount?: number
@@ -277,8 +283,11 @@ export type Database = {
           fan_id?: string | null
           id?: string
           message?: string | null
+          paid_at?: string | null
           release_id?: string | null
+          status?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
         }
         Relationships: [
           {
@@ -3803,11 +3812,14 @@ export type Database = {
           id: string
           invoice_pdf_url: string | null
           payment_id: string | null
+          paid_at: string | null
           referral_reward_credits: number | null
           referral_reward_status: string | null
           referrer_code: string | null
           shipping_address: Json | null
+          payment_provider: string | null
           status: string
+          stripe_session_id: string | null
           total_amount: number
           updated_at: string
           user_id: string
@@ -3817,11 +3829,14 @@ export type Database = {
           id?: string
           invoice_pdf_url?: string | null
           payment_id?: string | null
+          paid_at?: string | null
           referral_reward_credits?: number | null
           referral_reward_status?: string | null
           referrer_code?: string | null
           shipping_address?: Json | null
+          payment_provider?: string | null
           status?: string
+          stripe_session_id?: string | null
           total_amount: number
           updated_at?: string
           user_id: string
@@ -3831,11 +3846,14 @@ export type Database = {
           id?: string
           invoice_pdf_url?: string | null
           payment_id?: string | null
+          paid_at?: string | null
           referral_reward_credits?: number | null
           referral_reward_status?: string | null
           referrer_code?: string | null
           shipping_address?: Json | null
+          payment_provider?: string | null
           status?: string
+          stripe_session_id?: string | null
           total_amount?: number
           updated_at?: string
           user_id?: string

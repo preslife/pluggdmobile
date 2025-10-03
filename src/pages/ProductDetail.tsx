@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/lib/utils";
+import { setMeta } from "@/lib/seo";
 
 interface StoreProduct {
   id: string;
@@ -52,6 +53,17 @@ const ProductDetail = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!product) return;
+    const description = product.description?.slice(0, 155) || `Purchase ${product.title} on the Pluggd store.`;
+    setMeta(
+      `${product.title} — Pluggd Store`,
+      description,
+      id ? `/store/product/${id}` : undefined,
+      product.image_url || undefined
+    );
+  }, [product, id]);
 
   useEffect(() => {
     if (id) {
@@ -333,26 +345,28 @@ const ProductDetail = () => {
             )}
 
             {/* Quantity and Price */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Quantity</label>
-                <Select value={quantity.toString()} onValueChange={(value) => setQuantity(parseInt(value))}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[...Array(10)].map((_, i) => (
-                      <SelectItem key={i + 1} value={(i + 1).toString()}>
-                        {i + 1}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex flex-col gap-4 sm:gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="w-full sm:w-auto">
+                  <label className="text-sm font-medium mb-2 block">Quantity</label>
+                  <Select value={quantity.toString()} onValueChange={(value) => setQuantity(parseInt(value))}>
+                    <SelectTrigger className="w-full sm:w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[...Array(10)].map((_, i) => (
+                        <SelectItem key={i + 1} value={(i + 1).toString()}>
+                          {i + 1}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <div className="text-3xl font-bold text-primary">
+                <div className="text-3xl font-bold text-primary text-left sm:text-right">
                   {formatCurrency(calculateTotalPrice())}
                 </div>
+              </div>
 
               {product.stock_quantity !== null && (
                 <p className="text-sm text-muted-foreground">

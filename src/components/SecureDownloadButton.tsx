@@ -40,6 +40,10 @@ export const SecureDownloadButton = ({
 
       if (error) throw error;
 
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       if (data?.downloadUrl) {
         // Create a temporary link and trigger download
         const link = document.createElement('a');
@@ -56,9 +60,13 @@ export const SecureDownloadButton = ({
       }
     } catch (error: any) {
       console.error('Download error:', error);
+      const description = error?.message?.includes('Access denied')
+        ? 'This download is locked. Complete your purchase or verify your membership.'
+        : (error?.message || 'Unable to download. Please try again.');
+
       toast({
         title: 'Download Failed',
-        description: error?.message || 'Unable to download. Please try again.',
+        description,
         variant: 'destructive',
       });
     } finally {

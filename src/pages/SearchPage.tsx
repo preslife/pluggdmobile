@@ -47,6 +47,49 @@ interface SearchFilters {
   };
 }
 
+type FilterTab = keyof SearchFilters;
+
+const DEFAULT_FILTERS: SearchFilters = {
+  music: {
+    genre: 'all',
+    priceRange: [0, 100],
+    format: 'all'
+  },
+  beats: {
+    genre: 'all',
+    bpmRange: [60, 180],
+    key: 'all',
+    priceRange: [0, 100],
+    licenseType: 'all'
+  },
+  creators: {
+    genre: 'all',
+    type: 'all',
+    verified: false
+  }
+};
+
+const createDefaultFilters = (): SearchFilters => ({
+  music: {
+    ...DEFAULT_FILTERS.music,
+    priceRange: [...DEFAULT_FILTERS.music.priceRange] as [number, number],
+  },
+  beats: {
+    ...DEFAULT_FILTERS.beats,
+    bpmRange: [...DEFAULT_FILTERS.beats.bpmRange] as [number, number],
+    priceRange: [...DEFAULT_FILTERS.beats.priceRange] as [number, number],
+  },
+  creators: { ...DEFAULT_FILTERS.creators },
+});
+
+const parseNumber = (value: string | null, fallback: number) => {
+  if (value === null) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const filtersAreEqual = (a: SearchFilters, b: SearchFilters) => JSON.stringify(a) === JSON.stringify(b);
+
 export const SearchPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,25 +104,7 @@ export const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'music');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<SearchFilters>({
-    music: {
-      genre: 'all',
-      priceRange: [0, 100],
-      format: 'all'
-    },
-    beats: {
-      genre: 'all',
-      bpmRange: [60, 180],
-      key: 'all',
-      priceRange: [0, 100],
-      licenseType: 'all'
-    },
-    creators: {
-      genre: 'all',
-      type: 'all',
-      verified: false
-    }
-  });
+  const [filters, setFilters] = useState<SearchFilters>(createDefaultFilters);
   const { items: trendingItems } = useTrendingContent();
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
@@ -93,25 +118,57 @@ export const SearchPage = () => {
 
   // Search context preservation
   const preserveSearchContext = useCallback(() => {
-    const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (activeTab !== 'music') params.set('tab', activeTab);
-    return params.toString();
-  }, [query, activeTab]);
+    return new URLSearchParams(searchParams).toString();
+  }, [searchParams]);
 
   useEffect(() => {
     const queryParam = searchParams.get('q');
     const tabParam = searchParams.get('tab');
-    
+
     if (queryParam && queryParam !== query) {
       setQuery(queryParam);
       performSearch(queryParam);
     }
-    
+
     if (tabParam && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
-  }, [searchParams]);
+
+    setFilters((prev) => {
+      const next: SearchFilters = {
+        music: {
+          genre: searchParams.get('musicGenre') || DEFAULT_FILTERS.music.genre,
+          priceRange: [
+            parseNumber(searchParams.get('musicPriceMin'), DEFAULT_FILTERS.music.priceRange[0]),
+            parseNumber(searchParams.get('musicPriceMax'), DEFAULT_FILTERS.music.priceRange[1])
+          ],
+          format: searchParams.get('musicFormat') || DEFAULT_FILTERS.music.format
+        },
+        beats: {
+          genre: searchParams.get('beatsGenre') || DEFAULT_FILTERS.beats.genre,
+          bpmRange: [
+            parseNumber(searchParams.get('beatsBpmMin'), DEFAULT_FILTERS.beats.bpmRange[0]),
+            parseNumber(searchParams.get('beatsBpmMax'), DEFAULT_FILTERS.beats.bpmRange[1])
+          ],
+          key: searchParams.get('beatsKey') || DEFAULT_FILTERS.beats.key,
+          priceRange: [
+            parseNumber(searchParams.get('beatsPriceMin'), DEFAULT_FILTERS.beats.priceRange[0]),
+            parseNumber(searchParams.get('beatsPriceMax'), DEFAULT_FILTERS.beats.priceRange[1])
+          ],
+          licenseType: searchParams.get('beatsLicense') || DEFAULT_FILTERS.beats.licenseType
+        },
+        creators: {
+          genre: searchParams.get('creatorsGenre') || DEFAULT_FILTERS.creators.genre,
+          type: searchParams.get('creatorsType') || DEFAULT_FILTERS.creators.type,
+          verified: searchParams.get('creatorsVerified')
+            ? searchParams.get('creatorsVerified') === 'true'
+            : DEFAULT_FILTERS.creators.verified
+        }
+      };
+
+      return filtersAreEqual(prev, next) ? prev : next;
+    });
+  }, [searchParams, activeTab, performSearch, query]);
 
   useEffect(() => {
     // Update URL when tab changes without triggering navigation
@@ -242,11 +299,116 @@ export const SearchPage = () => {
     setSearchParams(params);
   };
 
-  const handleFiltersChange = (tabFilters: any, tabName: string) => {
+  const updateFilterParams = useCallback((tabName: FilterTab, tabFilters: any) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (tabName === 'music') {
+      const defaults = DEFAULT_FILTERS.music;
+      if (tabFilters.genre && tabFilters.genre !== defaults.genre) {
+        params.set('musicGenre', tabFilters.genre);
+      } else {
+        params.delete('musicGenre');
+      }
+
+      const [minPrice, maxPrice] = tabFilters.priceRange || defaults.priceRange;
+      if (minPrice !== defaults.priceRange[0]) {
+        params.set('musicPriceMin', String(minPrice));
+      } else {
+        params.delete('musicPriceMin');
+      }
+      if (maxPrice !== defaults.priceRange[1]) {
+        params.set('musicPriceMax', String(maxPrice));
+      } else {
+        params.delete('musicPriceMax');
+      }
+
+      if (tabFilters.format && tabFilters.format !== defaults.format) {
+        params.set('musicFormat', tabFilters.format);
+      } else {
+        params.delete('musicFormat');
+      }
+    }
+
+    if (tabName === 'beats') {
+      const defaults = DEFAULT_FILTERS.beats;
+      if (tabFilters.genre && tabFilters.genre !== defaults.genre) {
+        params.set('beatsGenre', tabFilters.genre);
+      } else {
+        params.delete('beatsGenre');
+      }
+
+      const [minBpm, maxBpm] = tabFilters.bpmRange || defaults.bpmRange;
+      if (minBpm !== defaults.bpmRange[0]) {
+        params.set('beatsBpmMin', String(minBpm));
+      } else {
+        params.delete('beatsBpmMin');
+      }
+      if (maxBpm !== defaults.bpmRange[1]) {
+        params.set('beatsBpmMax', String(maxBpm));
+      } else {
+        params.delete('beatsBpmMax');
+      }
+
+      if (tabFilters.key && tabFilters.key !== defaults.key) {
+        params.set('beatsKey', tabFilters.key);
+      } else {
+        params.delete('beatsKey');
+      }
+
+      const [minPrice, maxPrice] = tabFilters.priceRange || defaults.priceRange;
+      if (minPrice !== defaults.priceRange[0]) {
+        params.set('beatsPriceMin', String(minPrice));
+      } else {
+        params.delete('beatsPriceMin');
+      }
+      if (maxPrice !== defaults.priceRange[1]) {
+        params.set('beatsPriceMax', String(maxPrice));
+      } else {
+        params.delete('beatsPriceMax');
+      }
+
+      if (tabFilters.licenseType && tabFilters.licenseType !== defaults.licenseType) {
+        params.set('beatsLicense', tabFilters.licenseType);
+      } else {
+        params.delete('beatsLicense');
+      }
+    }
+
+    if (tabName === 'creators') {
+      const defaults = DEFAULT_FILTERS.creators;
+      if (tabFilters.genre && tabFilters.genre !== defaults.genre) {
+        params.set('creatorsGenre', tabFilters.genre);
+      } else {
+        params.delete('creatorsGenre');
+      }
+
+      if (tabFilters.type && tabFilters.type !== defaults.type) {
+        params.set('creatorsType', tabFilters.type);
+      } else {
+        params.delete('creatorsType');
+      }
+
+      if (typeof tabFilters.verified === 'boolean') {
+        if (tabFilters.verified !== defaults.verified) {
+          params.set('creatorsVerified', tabFilters.verified ? 'true' : 'false');
+        } else {
+          params.delete('creatorsVerified');
+        }
+      }
+    }
+
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleFiltersChange = (tabFilters: any, tabName: FilterTab) => {
     setFilters(prev => ({
       ...prev,
       [tabName]: tabFilters
     }));
+    updateFilterParams(tabName, tabFilters);
+    if (query.trim()) {
+      performSearch(query.trim());
+    }
   };
 
   const totalResults = results.creators.length + results.releases.length + results.beats.length;

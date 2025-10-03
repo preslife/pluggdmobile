@@ -9,7 +9,7 @@ const corsHeaders = {
 interface ReceiptRequest {
   payment_id: string;
   stripe_reference?: string;
-  type?: 'purchase' | 'payout' | 'subscription';
+  type?: 'purchase' | 'payout' | 'subscription' | 'order';
 }
 
 serve(async (req) => {
@@ -114,6 +114,38 @@ serve(async (req) => {
         };
         break;
 
+      case 'order':
+        const { data: orderData, error: orderError } = await supabaseClient.rpc('get_orders_for_user', {
+          p_user_id: user.id,
+          p_order_id: payment_id,
+          p_limit: 1,
+          p_offset: 0,
+        });
+
+        if (orderError || !orderData || orderData.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Order not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const order = orderData[0] as any;
+        const orderItems = Array.isArray(order.items) ? order.items : [];
+
+        paymentData = order;
+        receiptData = {
+          type: 'order',
+          title: 'Store Order Receipt',
+          item_name: `${orderItems.length} item${orderItems.length === 1 ? '' : 's'}`,
+          amount: order.total_amount,
+          date: order.paid_at || order.created_at,
+          payment_method: order.payment_provider || 'Stripe',
+          reference: payment_id,
+          items: orderItems,
+          currency: order.currency || 'GBP',
+        };
+        break;
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid payment type' }),
@@ -165,7 +197,18 @@ serve(async (req) => {
   }
 });
 
+function formatCurrency(amount: number | null | undefined, currency?: string): string {
+  const value = typeof amount === 'number' ? amount : Number(amount ?? 0);
+  const cur = currency || 'GBP';
+  try {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: cur }).format(value);
+  } catch {
+    return `£${value.toFixed(2)}`;
+  }
+}
+
 function generateReceiptHTML(data: any): string {
+  const items = Array.isArray(data.items) ? data.items : [];
   return `
     <!DOCTYPE html>
     <html>
@@ -173,13 +216,17 @@ function generateReceiptHTML(data: any): string {
       <meta charset="UTF-8">
       <title>Receipt - ${data.receipt_id}</title>
       <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; }
         .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
         .receipt-details { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .row { display: flex; justify-content: space-between; margin: 10px 0; }
         .label { font-weight: bold; }
         .amount { font-size: 24px; font-weight: bold; color: #2563eb; }
         .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f3f4f6; }
+        td:last-child, th:last-child { text-align: right; }
       </style>
     </head>
     <body>
@@ -196,52 +243,66 @@ function generateReceiptHTML(data: any): string {
         </div>
         <div class="row">
           <span class="label">Date:</span>
-          <span>${new Date(data.date).toLocaleDateString()}</span>
+          <span>${new Date(data.date).toLocaleString()}</span>
         </div>
         <div class="row">
-          <span class="label">Customer:</span>
+          <span class="label">Billed To:</span>
           <span>${data.user_name} (${data.user_email})</span>
         </div>
         <div class="row">
-          <span class="label">Item:</span>
+          <span class="label">Description:</span>
           <span>${data.item_name}</span>
         </div>
-        <div class="row">
-          <span class="label">Payment Method:</span>
-          <span>${data.payment_method}</span>
-        </div>
-        ${data.reference ? `
-        <div class="row">
-          <span class="label">Transaction ID:</span>
-          <span>${data.reference}</span>
-        </div>
-        ` : ''}
+        ${data.reference ? `<div class="row"><span class="label">Reference:</span><span>${data.reference}</span></div>` : ''}
+        ${data.payment_method ? `<div class="row"><span class="label">Payment Method:</span><span>${data.payment_method}</span></div>` : ''}
+        ${data.status ? `<div class="row"><span class="label">Status:</span><span>${data.status}</span></div>` : ''}
         <hr style="margin: 20px 0;">
         <div class="row">
-          <span class="label">Total Amount:</span>
-          <span class="amount">$${Number(data.amount).toFixed(2)}</span>
+          <span class="label">Amount Paid:</span>
+          <span class="amount">${formatCurrency(data.amount, data.currency)}</span>
         </div>
       </div>
-      
-      ${data.download_url ? `
-      <div class="receipt-details">
-        <h3>Download Information</h3>
-        <div class="row">
-          <span class="label">Download Link:</span>
-          <span><a href="${data.download_url}">Download Now</a></span>
+
+      ${items.length ? `
+        <div class="receipt-details">
+          <h3 style="margin-top: 0;">Items</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item: any) => `
+                <tr>
+                  <td>${item.title || 'Store item'}</td>
+                  <td>${item.kind || '-'}</td>
+                  <td>${item.quantity || 1}</td>
+                  <td>${formatCurrency(item.price, data.currency)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
-        ${data.expires_at ? `
-        <div class="row">
-          <span class="label">Expires:</span>
-          <span>${new Date(data.expires_at).toLocaleDateString()}</span>
-        </div>
-        ` : ''}
-      </div>
       ` : ''}
-      
+
+      ${data.download_url ? `
+        <div class="receipt-details">
+          <h3 style="margin-top: 0;">Download Information</h3>
+          <div class="row">
+            <span class="label">Download Link:</span>
+            <span><a href="${data.download_url}">Download Now</a></span>
+          </div>
+          ${data.expires_at ? `<div class="row"><span class="label">Expires:</span><span>${new Date(data.expires_at).toLocaleString()}</span></div>` : ''}
+        </div>
+      ` : ''}
+
       <div class="footer">
-        <p>Thank you for your purchase!</p>
-        <p>For support, contact us at support@pluggd.fm</p>
+        <p>Thank you for supporting creators on Pluggd.fm</p>
+        <p>Need help? Contact support@pluggd.fm</p>
       </div>
     </body>
     </html>
