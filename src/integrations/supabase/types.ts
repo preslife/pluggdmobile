@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -968,6 +994,8 @@ export type Database = {
           license_prices: Json | null
           license_types: Json | null
           moods: string[] | null
+          owner_id: string | null
+          owner_type: string | null
           price: number
           producer_name: string | null
           stems_required: boolean | null
@@ -995,6 +1023,8 @@ export type Database = {
           license_prices?: Json | null
           license_types?: Json | null
           moods?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           price?: number
           producer_name?: string | null
           stems_required?: boolean | null
@@ -1022,6 +1052,8 @@ export type Database = {
           license_prices?: Json | null
           license_types?: Json | null
           moods?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           price?: number
           producer_name?: string | null
           stems_required?: boolean | null
@@ -2479,6 +2511,8 @@ export type Database = {
           main_store_submitted_at: string | null
           max_items: number | null
           min_items: number | null
+          owner_id: string | null
+          owner_type: string | null
           revenue_total: number | null
           sales_count: number | null
           status: string
@@ -2509,6 +2543,8 @@ export type Database = {
           main_store_submitted_at?: string | null
           max_items?: number | null
           min_items?: number | null
+          owner_id?: string | null
+          owner_type?: string | null
           revenue_total?: number | null
           sales_count?: number | null
           status?: string
@@ -2539,6 +2575,8 @@ export type Database = {
           main_store_submitted_at?: string | null
           max_items?: number | null
           min_items?: number | null
+          owner_id?: string | null
+          owner_type?: string | null
           revenue_total?: number | null
           sales_count?: number | null
           status?: string
@@ -2570,6 +2608,8 @@ export type Database = {
           is_transferable: boolean | null
           main_store_submitted_at: string | null
           metadata: Json | null
+          owner_id: string | null
+          owner_type: string | null
           physical_description: string | null
           price: number
           provides_access: string | null
@@ -2605,6 +2645,8 @@ export type Database = {
           is_transferable?: boolean | null
           main_store_submitted_at?: string | null
           metadata?: Json | null
+          owner_id?: string | null
+          owner_type?: string | null
           physical_description?: string | null
           price?: number
           provides_access?: string | null
@@ -2640,6 +2682,8 @@ export type Database = {
           is_transferable?: boolean | null
           main_store_submitted_at?: string | null
           metadata?: Json | null
+          owner_id?: string | null
+          owner_type?: string | null
           physical_description?: string | null
           price?: number
           provides_access?: string | null
@@ -2707,6 +2751,8 @@ export type Database = {
           is_main_store_approved: boolean | null
           main_store_submitted_at: string | null
           materials: string[] | null
+          owner_id: string | null
+          owner_type: string | null
           price: number
           product_type: string
           profit_margin: number | null
@@ -2745,6 +2791,8 @@ export type Database = {
           is_main_store_approved?: boolean | null
           main_store_submitted_at?: string | null
           materials?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           price?: number
           product_type: string
           profit_margin?: number | null
@@ -2783,6 +2831,8 @@ export type Database = {
           is_main_store_approved?: boolean | null
           main_store_submitted_at?: string | null
           materials?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           price?: number
           product_type?: string
           profit_margin?: number | null
@@ -2975,6 +3025,44 @@ export type Database = {
           text?: string
         }
         Relationships: []
+      }
+      deletion_requests: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          label_id: string
+          payload_json: Json
+          requested_by: string
+          type: Database["public"]["Enums"]["label_deletion_type"]
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          label_id: string
+          payload_json?: Json
+          requested_by: string
+          type: Database["public"]["Enums"]["label_deletion_type"]
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          label_id?: string
+          payload_json?: Json
+          requested_by?: string
+          type?: Database["public"]["Enums"]["label_deletion_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deletion_requests_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       directory_submissions: {
         Row: {
@@ -3281,6 +3369,56 @@ export type Database = {
           },
         ]
       }
+      gated_content: {
+        Row: {
+          allowed_tier_ids: string[] | null
+          content_id: string
+          content_type: string
+          created_at: string
+          gate_type: Database["public"]["Enums"]["content_gate_type"]
+          id: string
+          minimum_tier_id: string | null
+          owner_id: string
+          owner_type: string
+          preview_duration: number | null
+          preview_text: string | null
+        }
+        Insert: {
+          allowed_tier_ids?: string[] | null
+          content_id: string
+          content_type: string
+          created_at?: string
+          gate_type?: Database["public"]["Enums"]["content_gate_type"]
+          id?: string
+          minimum_tier_id?: string | null
+          owner_id: string
+          owner_type: string
+          preview_duration?: number | null
+          preview_text?: string | null
+        }
+        Update: {
+          allowed_tier_ids?: string[] | null
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          gate_type?: Database["public"]["Enums"]["content_gate_type"]
+          id?: string
+          minimum_tier_id?: string | null
+          owner_id?: string
+          owner_type?: string
+          preview_duration?: number | null
+          preview_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gated_content_minimum_tier_id_fkey"
+            columns: ["minimum_tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genre_categories: {
         Row: {
           created_at: string
@@ -3312,6 +3450,166 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      label_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          label_id: string
+          role: Database["public"]["Enums"]["label_member_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by?: string | null
+          label_id: string
+          role?: Database["public"]["Enums"]["label_member_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          label_id?: string
+          role?: Database["public"]["Enums"]["label_member_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_invitations_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      label_members: {
+        Row: {
+          created_at: string
+          id: string
+          label_id: string
+          role: Database["public"]["Enums"]["label_member_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label_id: string
+          role?: Database["public"]["Enums"]["label_member_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label_id?: string
+          role?: Database["public"]["Enums"]["label_member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_members_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      label_stripe_accounts: {
+        Row: {
+          capabilities: Json | null
+          created_at: string
+          label_id: string
+          onboarding_complete: boolean | null
+          requirements: Json | null
+          stripe_account_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          capabilities?: Json | null
+          created_at?: string
+          label_id: string
+          onboarding_complete?: boolean | null
+          requirements?: Json | null
+          stripe_account_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: Json | null
+          created_at?: string
+          label_id?: string
+          onboarding_complete?: boolean | null
+          requirements?: Json | null
+          stripe_account_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      labels: {
+        Row: {
+          claimed_at: string | null
+          contact_email: string | null
+          country: string | null
+          cover_image_url: string | null
+          created_at: string
+          created_by_admin: boolean
+          genre: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          owner_user_id: string | null
+          slug: string
+          storefront_settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          contact_email?: string | null
+          country?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_admin?: boolean
+          genre?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_user_id?: string | null
+          slug: string
+          storefront_settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          contact_email?: string | null
+          country?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_admin?: boolean
+          genre?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_user_id?: string | null
+          slug?: string
+          storefront_settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       license_templates: {
         Row: {
@@ -3513,6 +3811,156 @@ export type Database = {
           },
         ]
       }
+      live_gift_catalog: {
+        Row: {
+          animation_url: string | null
+          created_at: string
+          credit_cost: number
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          metadata: Json | null
+          slug: string
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          animation_url?: string | null
+          created_at?: string
+          credit_cost: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          metadata?: Json | null
+          slug: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          animation_url?: string | null
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          metadata?: Json | null
+          slug?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      live_gift_events: {
+        Row: {
+          animation_variant: string | null
+          created_at: string
+          gift_id: string
+          id: string
+          message: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+          total_credits: number
+        }
+        Insert: {
+          animation_variant?: string | null
+          created_at?: string
+          gift_id: string
+          id?: string
+          message?: string | null
+          quantity?: number
+          room_id: string
+          sender_id: string
+          total_credits: number
+        }
+        Update: {
+          animation_variant?: string | null
+          created_at?: string
+          gift_id?: string
+          id?: string
+          message?: string | null
+          quantity?: number
+          room_id?: string
+          sender_id?: string
+          total_credits?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gift_events_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "session_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_sessions: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_free: boolean
+          max_participants: number | null
+          price_cents: number
+          recording_url: string | null
+          scheduled_for: string
+          session_type: string
+          status: string
+          stream_url: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_free?: boolean
+          max_participants?: number | null
+          price_cents?: number
+          recording_url?: string | null
+          scheduled_for: string
+          session_type?: string
+          status?: string
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_free?: boolean
+          max_participants?: number | null
+          price_cents?: number
+          recording_url?: string | null
+          scheduled_for?: string
+          session_type?: string
+          status?: string
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mailing_list: {
         Row: {
           created_at: string
@@ -3557,6 +4005,306 @@ export type Database = {
           submission_count?: number
         }
         Relationships: []
+      }
+      managed_profiles: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          invited_by: string | null
+          label_id: string
+          profile_id: string
+          role: Database["public"]["Enums"]["managed_profile_role"] | null
+          status: Database["public"]["Enums"]["managed_profile_status"] | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          label_id: string
+          profile_id: string
+          role?: Database["public"]["Enums"]["managed_profile_role"] | null
+          status?: Database["public"]["Enums"]["managed_profile_status"] | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          label_id?: string
+          profile_id?: string
+          role?: Database["public"]["Enums"]["managed_profile_role"] | null
+          status?: Database["public"]["Enums"]["managed_profile_status"] | null
+        }
+        Relationships: []
+      }
+      membership_discord_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          discord_user_id: string
+          discord_username: string | null
+          expires_at: string
+          id: string
+          membership_id: string
+          refresh_token: string
+          roles_synced_at: string | null
+          sync_error: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          discord_user_id: string
+          discord_username?: string | null
+          expires_at: string
+          id?: string
+          membership_id: string
+          refresh_token: string
+          roles_synced_at?: string | null
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          discord_user_id?: string
+          discord_username?: string | null
+          expires_at?: string
+          id?: string
+          membership_id?: string
+          refresh_token?: string
+          roles_synced_at?: string | null
+          sync_error?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_discord_tokens_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_metrics: {
+        Row: {
+          churned_members: number
+          created_at: string
+          date: string
+          gross_revenue: number
+          id: string
+          net_revenue: number
+          new_members: number
+          owner_id: string
+          owner_type: string
+          tier_breakdown: Json | null
+          total_members: number
+        }
+        Insert: {
+          churned_members?: number
+          created_at?: string
+          date: string
+          gross_revenue?: number
+          id?: string
+          net_revenue?: number
+          new_members?: number
+          owner_id: string
+          owner_type: string
+          tier_breakdown?: Json | null
+          total_members?: number
+        }
+        Update: {
+          churned_members?: number
+          created_at?: string
+          date?: string
+          gross_revenue?: number
+          id?: string
+          net_revenue?: number
+          new_members?: number
+          owner_id?: string
+          owner_type?: string
+          tier_breakdown?: Json | null
+          total_members?: number
+        }
+        Relationships: []
+      }
+      membership_perks: {
+        Row: {
+          config: Json | null
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          name: string
+          tier_id: string
+          type: Database["public"]["Enums"]["perk_type"]
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          tier_id: string
+          type: Database["public"]["Enums"]["perk_type"]
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          tier_id?: string
+          type?: Database["public"]["Enums"]["perk_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_perks_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_tiers: {
+        Row: {
+          color: string | null
+          created_at: string
+          currency: string
+          current_members: number
+          description: string | null
+          emoji: string | null
+          features: Json | null
+          id: string
+          image_url: string | null
+          max_members: number | null
+          name: string
+          owner_id: string
+          owner_type: string
+          price_lifetime: number | null
+          price_monthly: number | null
+          price_yearly: number | null
+          slug: string
+          status: Database["public"]["Enums"]["tier_status"]
+          tier_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          currency?: string
+          current_members?: number
+          description?: string | null
+          emoji?: string | null
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          max_members?: number | null
+          name: string
+          owner_id: string
+          owner_type: string
+          price_lifetime?: number | null
+          price_monthly?: number | null
+          price_yearly?: number | null
+          slug: string
+          status?: Database["public"]["Enums"]["tier_status"]
+          tier_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          currency?: string
+          current_members?: number
+          description?: string | null
+          emoji?: string | null
+          features?: Json | null
+          id?: string
+          image_url?: string | null
+          max_members?: number | null
+          name?: string
+          owner_id?: string
+          owner_type?: string
+          price_lifetime?: number | null
+          price_monthly?: number | null
+          price_yearly?: number | null
+          slug?: string
+          status?: Database["public"]["Enums"]["tier_status"]
+          tier_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      memberships: {
+        Row: {
+          billing_period: Database["public"]["Enums"]["billing_period"]
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          started_at: string
+          status: Database["public"]["Enums"]["membership_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          support_amount: number
+          tier_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_period: Database["public"]["Enums"]["billing_period"]
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          support_amount?: number
+          tier_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_period?: Database["public"]["Enums"]["billing_period"]
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          support_amount?: number
+          tier_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -3811,13 +4559,13 @@ export type Database = {
           created_at: string
           id: string
           invoice_pdf_url: string | null
-          payment_id: string | null
           paid_at: string | null
+          payment_id: string | null
+          payment_provider: string | null
           referral_reward_credits: number | null
           referral_reward_status: string | null
           referrer_code: string | null
           shipping_address: Json | null
-          payment_provider: string | null
           status: string
           stripe_session_id: string | null
           total_amount: number
@@ -3828,13 +4576,13 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_pdf_url?: string | null
-          payment_id?: string | null
           paid_at?: string | null
+          payment_id?: string | null
+          payment_provider?: string | null
           referral_reward_credits?: number | null
           referral_reward_status?: string | null
           referrer_code?: string | null
           shipping_address?: Json | null
-          payment_provider?: string | null
           status?: string
           stripe_session_id?: string | null
           total_amount: number
@@ -3845,13 +4593,13 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_pdf_url?: string | null
-          payment_id?: string | null
           paid_at?: string | null
+          payment_id?: string | null
+          payment_provider?: string | null
           referral_reward_credits?: number | null
           referral_reward_status?: string | null
           referrer_code?: string | null
           shipping_address?: Json | null
-          payment_provider?: string | null
           status?: string
           stripe_session_id?: string | null
           total_amount?: number
@@ -3859,6 +4607,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ownership_transfer_requests: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          expires_at: string
+          from_user_id: string
+          id: string
+          label_id: string
+          to_email: string | null
+          to_user_id: string | null
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          expires_at: string
+          from_user_id: string
+          id?: string
+          label_id: string
+          to_email?: string | null
+          to_user_id?: string | null
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          expires_at?: string
+          from_user_id?: string
+          id?: string
+          label_id?: string
+          to_email?: string | null
+          to_user_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_requests_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payout_batches: {
         Row: {
@@ -4162,6 +4954,8 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number
+          owner_id: string | null
+          owner_type: string | null
           tags: string[] | null
           title: string
           type: string
@@ -4174,6 +4968,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          owner_id?: string | null
+          owner_type?: string | null
           tags?: string[] | null
           title: string
           type?: string
@@ -4186,6 +4982,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          owner_id?: string | null
+          owner_type?: string | null
           tags?: string[] | null
           title?: string
           type?: string
@@ -4436,6 +5234,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           created_at: string
           discord_guild_id: string | null
           discord_role_map: Json | null
@@ -4443,16 +5242,20 @@ export type Database = {
           full_name: string | null
           id: string
           is_creator: boolean | null
+          is_label: boolean | null
           is_verified: boolean | null
+          logo_url: string | null
           mailchimp_auto_sync: boolean | null
           mailchimp_list_id: string | null
           mailchimp_status: string | null
           onboarding_completed: boolean | null
           onboarding_progress: Json | null
           presskit_url: string | null
+          profile_type: string | null
           referral_code: string | null
           referral_rewards_earned: number | null
           referral_signups_count: number | null
+          slug: string | null
           updated_at: string
           user_id: string
           user_type: Database["public"]["Enums"]["user_type"] | null
@@ -4463,6 +5266,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           created_at?: string
           discord_guild_id?: string | null
           discord_role_map?: Json | null
@@ -4470,16 +5274,20 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
+          is_label?: boolean | null
           is_verified?: boolean | null
+          logo_url?: string | null
           mailchimp_auto_sync?: boolean | null
           mailchimp_list_id?: string | null
           mailchimp_status?: string | null
           onboarding_completed?: boolean | null
           onboarding_progress?: Json | null
           presskit_url?: string | null
+          profile_type?: string | null
           referral_code?: string | null
           referral_rewards_earned?: number | null
           referral_signups_count?: number | null
+          slug?: string | null
           updated_at?: string
           user_id: string
           user_type?: Database["public"]["Enums"]["user_type"] | null
@@ -4490,6 +5298,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           created_at?: string
           discord_guild_id?: string | null
           discord_role_map?: Json | null
@@ -4497,16 +5306,20 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
+          is_label?: boolean | null
           is_verified?: boolean | null
+          logo_url?: string | null
           mailchimp_auto_sync?: boolean | null
           mailchimp_list_id?: string | null
           mailchimp_status?: string | null
           onboarding_completed?: boolean | null
           onboarding_progress?: Json | null
           presskit_url?: string | null
+          profile_type?: string | null
           referral_code?: string | null
           referral_rewards_earned?: number | null
           referral_signups_count?: number | null
+          slug?: string | null
           updated_at?: string
           user_id?: string
           user_type?: Database["public"]["Enums"]["user_type"] | null
@@ -5050,6 +5863,8 @@ export type Database = {
           mixing_engineer: string | null
           moderation_notes: string | null
           mood_tags: string[] | null
+          owner_id: string | null
+          owner_type: string | null
           owns_100_percent: boolean | null
           pay_what_you_want: boolean | null
           perk_access: string | null
@@ -5122,6 +5937,8 @@ export type Database = {
           mixing_engineer?: string | null
           moderation_notes?: string | null
           mood_tags?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           owns_100_percent?: boolean | null
           pay_what_you_want?: boolean | null
           perk_access?: string | null
@@ -5194,6 +6011,8 @@ export type Database = {
           mixing_engineer?: string | null
           moderation_notes?: string | null
           mood_tags?: string[] | null
+          owner_id?: string | null
+          owner_type?: string | null
           owns_100_percent?: boolean | null
           pay_what_you_want?: boolean | null
           perk_access?: string | null
@@ -5291,6 +6110,8 @@ export type Database = {
           genre: string | null
           id: string
           is_featured: boolean | null
+          owner_id: string | null
+          owner_type: string | null
           preview_url: string | null
           price: number | null
           sample_count: number | null
@@ -5310,6 +6131,8 @@ export type Database = {
           genre?: string | null
           id?: string
           is_featured?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
           preview_url?: string | null
           price?: number | null
           sample_count?: number | null
@@ -5329,6 +6152,8 @@ export type Database = {
           genre?: string | null
           id?: string
           is_featured?: boolean | null
+          owner_id?: string | null
+          owner_type?: string | null
           preview_url?: string | null
           price?: number | null
           sample_count?: number | null
@@ -5568,6 +6393,12 @@ export type Database = {
       }
       session_rooms: {
         Row: {
+          agora_channel_name: string | null
+          agora_host_uid: number | null
+          agora_last_activity_at: string | null
+          agora_last_token_issued_at: string | null
+          agora_live_ended_at: string | null
+          agora_live_started_at: string | null
           created_at: string
           description: string | null
           ended_at: string | null
@@ -5578,6 +6409,12 @@ export type Database = {
           title: string
         }
         Insert: {
+          agora_channel_name?: string | null
+          agora_host_uid?: number | null
+          agora_last_activity_at?: string | null
+          agora_last_token_issued_at?: string | null
+          agora_live_ended_at?: string | null
+          agora_live_started_at?: string | null
           created_at?: string
           description?: string | null
           ended_at?: string | null
@@ -5588,6 +6425,12 @@ export type Database = {
           title: string
         }
         Update: {
+          agora_channel_name?: string | null
+          agora_host_uid?: number | null
+          agora_last_activity_at?: string | null
+          agora_last_token_issued_at?: string | null
+          agora_live_ended_at?: string | null
+          agora_live_started_at?: string | null
           created_at?: string
           description?: string | null
           ended_at?: string | null
@@ -5929,6 +6772,36 @@ export type Database = {
         }
         Relationships: []
       }
+      streaming_sessions: {
+        Row: {
+          device_info: Json | null
+          quality_settings: Json | null
+          session_start: string | null
+          total_duration: number | null
+          total_tracks_played: number | null
+          unique_tracks: number | null
+          user_id: string | null
+        }
+        Insert: {
+          device_info?: Json | null
+          quality_settings?: Json | null
+          session_start?: string | null
+          total_duration?: number | null
+          total_tracks_played?: number | null
+          unique_tracks?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          device_info?: Json | null
+          quality_settings?: Json | null
+          session_start?: string | null
+          total_duration?: number | null
+          total_tracks_played?: number | null
+          unique_tracks?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       track_analytics: {
         Row: {
           artist_analytics_id: string
@@ -5994,6 +6867,8 @@ export type Database = {
           featured_artists: string[] | null
           id: string
           isrc_code: string | null
+          owner_id: string | null
+          owner_type: string | null
           owns_100_percent: boolean | null
           producer: string | null
           producers: string[] | null
@@ -6016,6 +6891,8 @@ export type Database = {
           featured_artists?: string[] | null
           id?: string
           isrc_code?: string | null
+          owner_id?: string | null
+          owner_type?: string | null
           owns_100_percent?: boolean | null
           producer?: string | null
           producers?: string[] | null
@@ -6038,6 +6915,8 @@ export type Database = {
           featured_artists?: string[] | null
           id?: string
           isrc_code?: string | null
+          owner_id?: string | null
+          owner_type?: string | null
           owns_100_percent?: boolean | null
           producer?: string | null
           producers?: string[] | null
@@ -6297,6 +7176,21 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          locale_settings: Json | null
+          user_id: string
+        }
+        Insert: {
+          locale_settings?: Json | null
+          user_id: string
+        }
+        Update: {
+          locale_settings?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_quest_progress: {
         Row: {
           completed_at: string | null
@@ -6526,99 +7420,6 @@ export type Database = {
           },
         ]
       }
-      live_gift_catalog: {
-        Row: {
-          animation_url: string | null
-          created_at: string
-          credit_cost: number
-          description: string | null
-          id: string
-          is_active: boolean
-          label: string
-          metadata: Json | null
-          slug: string
-          thumbnail_url: string | null
-          updated_at: string
-        }
-        Insert: {
-          animation_url?: string | null
-          created_at?: string
-          credit_cost: number
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          label: string
-          metadata?: Json | null
-          slug: string
-          thumbnail_url?: string | null
-          updated_at?: string
-        }
-        Update: {
-          animation_url?: string | null
-          created_at?: string
-          credit_cost?: number
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          label?: string
-          metadata?: Json | null
-          slug?: string
-          thumbnail_url?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      live_gift_events: {
-        Row: {
-          animation_variant: string | null
-          created_at: string
-          gift_id: string
-          id: string
-          message: string | null
-          quantity: number
-          room_id: string
-          sender_id: string
-          total_credits: number
-        }
-        Insert: {
-          animation_variant?: string | null
-          created_at?: string
-          gift_id: string
-          id?: string
-          message?: string | null
-          quantity?: number
-          room_id: string
-          sender_id: string
-          total_credits: number
-        }
-        Update: {
-          animation_variant?: string | null
-          created_at?: string
-          gift_id?: string
-          id?: string
-          message?: string | null
-          quantity?: number
-          room_id?: string
-          sender_id?: string
-          total_credits?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "live_gift_events_gift_id_fkey"
-            columns: ["gift_id"]
-            isOneToOne: false
-            referencedRelation: "live_gift_catalog"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "live_gift_events_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "session_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       wallet_ledger: {
         Row: {
           amount_credits: number
@@ -6788,6 +7589,23 @@ export type Database = {
       }
     }
     Views: {
+      live_gift_room_totals: {
+        Row: {
+          events_count: number | null
+          room_id: string | null
+          total_credits: number | null
+          total_quantity: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gift_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "session_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_trending_content: {
         Row: {
           content_id: string | null
@@ -6805,15 +7623,6 @@ export type Database = {
           balance_credits: number | null
           pending_credits: number | null
           user_id: string | null
-        }
-        Relationships: []
-      }
-      live_gift_room_totals: {
-        Row: {
-          events_count: number | null
-          room_id: string | null
-          total_credits: number | null
-          total_quantity: number | null
         }
         Relationships: []
       }
@@ -6941,6 +7750,54 @@ export type Database = {
       }
     }
     Functions: {
+      _normalize_owner_type: {
+        Args: { p: string }
+        Returns: string
+      }
+      _set_search_path: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      accept_artist_link: {
+        Args: { p_link_id: string }
+        Returns: {
+          link_id: string
+          status: Database["public"]["Enums"]["managed_profile_status"]
+        }[]
+      }
+      accept_label_invite: {
+        Args: { p_token: string }
+        Returns: {
+          label_id: string
+          role: string
+        }[]
+      }
+      accept_ownership_transfer: {
+        Args: { p_token: string }
+        Returns: {
+          label_id: string
+          new_owner_user_id: string
+        }[]
+      }
+      admin_create_managed_label: {
+        Args: {
+          p_contact_email?: string
+          p_country?: string
+          p_cover_image_url?: string
+          p_logo_url?: string
+          p_name: string
+          p_owner_email?: string
+          p_slug: string
+        }
+        Returns: {
+          claim_token: string
+          label_id: string
+        }[]
+      }
+      admin_delete_label: {
+        Args: { p_label_id: string }
+        Returns: undefined
+      }
       award_quest_xp: {
         Args: { p_user_id: string; p_xp_amount: number }
         Returns: undefined
@@ -6957,6 +7814,40 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      check_content_access: {
+        Args: {
+          p_content_id: string
+          p_content_type: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      claim_admin_created_profile: {
+        Args: { p_token: string }
+        Returns: {
+          label_id: string
+        }[]
+      }
+      claim_label_by_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          ensured_membership: boolean
+          label_id: string
+          owner_user_id: string
+        }[]
+      }
+      create_label_for_current_user: {
+        Args: {
+          p_contact_email: string
+          p_country: string
+          p_cover_image_url: string
+          p_genre: string
+          p_logo_url: string
+          p_name: string
+          p_slug: string
+        }
+        Returns: string
+      }
       create_moderation_item: {
         Args: {
           p_item_id: string
@@ -6967,6 +7858,18 @@ export type Database = {
         Returns: string
       }
       create_payout_batch: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      delete_label_as_owner: {
+        Args: { p_label_id: string }
+        Returns: undefined
+      }
+      delete_labels_by_slug: {
+        Args: { p_slugs: string[] }
+        Returns: number
+      }
+      first_label_slug_for_current_user: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -6999,9 +7902,72 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_content_by_owner: {
+        Args: {
+          p_content_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_owner_id: string
+          p_owner_type: string
+        }
+        Returns: {
+          content_id: string
+          content_type: string
+          created_at: string
+          is_gated: boolean
+          stats: Json
+          title: string
+        }[]
+      }
       get_content_split_status: {
         Args: { p_content_id: string; p_content_type: string }
         Returns: string
+      }
+      get_current_user_labels: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cover_image_url: string
+          created_at: string
+          id: string
+          logo_url: string
+          name: string
+          role: string
+          slug: string
+        }[]
+      }
+      get_label_invitation_details: {
+        Args: { p_token: string }
+        Returns: {
+          current_member_role: string
+          expires_at: string
+          invitation_id: string
+          invited_by_name: string
+          is_member: boolean
+          label_id: string
+          label_name: string
+          label_slug: string
+          role: string
+        }[]
+      }
+      get_orders_for_user: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_order_id?: string
+          p_user_id: string
+        }
+        Returns: {
+          created_at: string
+          currency: string
+          item_count: number
+          items: Json
+          order_id: string
+          paid_at: string
+          payment_provider: string
+          shipping_address: Json
+          status: string
+          total_amount: number
+        }[]
       }
       get_producer_earnings_summary: {
         Args: { p_producer_id: string }
@@ -7018,6 +7984,21 @@ export type Database = {
       get_user_file_limits: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      get_user_memberships: {
+        Args: { p_user_id: string }
+        Returns: {
+          expires_at: string
+          membership_id: string
+          owner_id: string
+          owner_name: string
+          owner_type: string
+          perks: Json
+          status: string
+          tier_id: string
+          tier_name: string
+          tier_order: number
+        }[]
       }
       get_user_playlist_ids: {
         Args: { p_user_id: string }
@@ -7041,19 +8022,12 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
-      perform_live_gift: {
-        Args: {
-          p_sender: string
-          p_room_id: string
-          p_gift_id: string
-          p_quantity?: number
-          p_message?: string | null
-          p_animation_variant?: string | null
-        }
-        Returns: string
-      }
       has_course_access: {
         Args: { p_course_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_label_membership: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       has_purchased_release: {
@@ -7071,6 +8045,26 @@ export type Database = {
         Args: { p_usage_type: string; p_user_id: string }
         Returns: undefined
       }
+      invite_label_member: {
+        Args: {
+          p_email: string
+          p_label_id: string
+          p_role: Database["public"]["Enums"]["label_member_role"]
+        }
+        Returns: {
+          expires_at: string
+          invitation_id: string
+          token: string
+        }[]
+      }
+      is_label_admin: {
+        Args: { p_label_id: string }
+        Returns: boolean
+      }
+      is_label_member: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_payout_eligible: {
         Args: { p_producer_id: string }
         Returns: boolean
@@ -7078,6 +8072,41 @@ export type Database = {
       is_playlist_collaborator: {
         Args: { p_playlist_id: string; p_user_id: string }
         Returns: boolean
+      }
+      label_basic_by_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          cover_image_url: string
+          created_at: string
+          id: string
+          logo_url: string
+          name: string
+          role: string
+          slug: string
+        }[]
+      }
+      label_pending_invites: {
+        Args: { p_label_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          invitation_id: string
+          invite_role: string
+          invited_by: string
+          token: string
+        }[]
+      }
+      label_roster: {
+        Args: { p_label_id: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          joined_at: string
+          member_role: string
+          member_user_id: string
+          username: string
+        }[]
       }
       log_sensitive_access: {
         Args: { p_action: string; p_record_id?: string; p_table_name: string }
@@ -7091,6 +8120,17 @@ export type Database = {
         Args: { p_id: string; p_user_id: string }
         Returns: undefined
       }
+      perform_live_gift: {
+        Args: {
+          p_animation_variant?: string
+          p_gift_id: string
+          p_message?: string
+          p_quantity?: number
+          p_room_id: string
+          p_sender: string
+        }
+        Returns: string
+      }
       process_tip_payment: {
         Args: {
           p_amount_credits: number
@@ -7099,9 +8139,70 @@ export type Database = {
         }
         Returns: Json
       }
+      request_artist_link: {
+        Args:
+          | { p_creator_profile_id: string; p_label_id: string }
+          | {
+              p_creator_profile_id: string
+              p_label_id: string
+              p_role?: Database["public"]["Enums"]["managed_profile_role"]
+            }
+        Returns: {
+          link_id: string
+          status: string
+        }[]
+      }
+      request_label_action: {
+        Args: { p_action: string; p_label_id: string; p_payload?: Json }
+        Returns: {
+          action: string
+          request_id: string
+        }[]
+      }
+      request_ownership_transfer: {
+        Args: { p_label_id: string; p_to_email?: string; p_to_user_id?: string }
+        Returns: {
+          expires_at: string
+          token: string
+          transfer_id: string
+        }[]
+      }
+      resend_label_invite: {
+        Args: { p_invitation_id: string }
+        Returns: {
+          expires_at: string
+          token: string
+        }[]
+      }
+      revoke_label_invite: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       slugify: {
         Args: { txt: string }
         Returns: string
+      }
+      switch_content_owner: {
+        Args: {
+          p_id: string
+          p_table: unknown
+          p_to_owner_id: string
+          p_to_owner_type: string
+        }
+        Returns: undefined
+      }
+      transfer_content_ownership: {
+        Args: {
+          p_content_id: string
+          p_content_type: string
+          p_new_owner_id: string
+          p_new_owner_type: string
+        }
+        Returns: boolean
+      }
+      unlink_artist_from_label: {
+        Args: { p_creator_profile_id: string; p_label_id: string }
+        Returns: undefined
       }
       update_file_quotas: {
         Args: { p_file_size: number; p_user_id: string }
@@ -7128,8 +8229,28 @@ export type Database = {
     }
     Enums: {
       automation_type: "scheduled_post" | "auto_reply" | "smart_drop"
+      billing_period: "monthly" | "yearly" | "lifetime"
+      content_gate_type: "tier_or_higher" | "specific_tier" | "any_tier"
+      label_delete_type: "downgrade" | "delete"
+      label_deletion_type: "downgrade" | "delete"
+      label_member_role: "owner" | "admin" | "editor" | "viewer"
+      label_role: "owner" | "admin" | "editor" | "viewer"
+      managed_profile_role: "primary" | "distribution_only"
+      managed_profile_status: "pending" | "active" | "removed"
+      membership_status: "active" | "cancelled" | "expired" | "past_due"
+      perk_type:
+        | "discord_role"
+        | "early_access"
+        | "exclusive_content"
+        | "download_access"
+        | "merch_discount"
+        | "livestream_access"
+        | "custom_badge"
+        | "shoutout"
+        | "behind_the_scenes"
       submission_status: "pending" | "approved" | "rejected"
       subscription_tier: "free" | "creator" | "pro"
+      tier_status: "draft" | "active" | "paused" | "archived"
       transaction_type: "entry" | "payout"
       user_role: "user" | "admin" | "moderator"
       user_type: "artist" | "producer" | "industry"
@@ -7258,11 +8379,35 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       automation_type: ["scheduled_post", "auto_reply", "smart_drop"],
+      billing_period: ["monthly", "yearly", "lifetime"],
+      content_gate_type: ["tier_or_higher", "specific_tier", "any_tier"],
+      label_delete_type: ["downgrade", "delete"],
+      label_deletion_type: ["downgrade", "delete"],
+      label_member_role: ["owner", "admin", "editor", "viewer"],
+      label_role: ["owner", "admin", "editor", "viewer"],
+      managed_profile_role: ["primary", "distribution_only"],
+      managed_profile_status: ["pending", "active", "removed"],
+      membership_status: ["active", "cancelled", "expired", "past_due"],
+      perk_type: [
+        "discord_role",
+        "early_access",
+        "exclusive_content",
+        "download_access",
+        "merch_discount",
+        "livestream_access",
+        "custom_badge",
+        "shoutout",
+        "behind_the_scenes",
+      ],
       submission_status: ["pending", "approved", "rejected"],
       subscription_tier: ["free", "creator", "pro"],
+      tier_status: ["draft", "active", "paused", "archived"],
       transaction_type: ["entry", "payout"],
       user_role: ["user", "admin", "moderator"],
       user_type: ["artist", "producer", "industry"],

@@ -69,34 +69,86 @@ interface CreatorTabSystemProps {
   visitorStatus: VisitorStatus | null;
 }
 
+const productTableFallbacks = ['products', 'store_products'] as const;
+
+const isMissingRelationError = (error: any, tableName: string) => {
+  if (!error) return false;
+  const normalizedTable = tableName.toLowerCase();
+  const compareStrings = [
+    (error.message || '').toString().toLowerCase(),
+    (error.details || '').toString().toLowerCase(),
+    (error.hint || '').toString().toLowerCase()
+  ];
+
+  return (
+    error.code === '42P01' ||
+    compareStrings.some((text) => text.includes('does not exist') && text.includes(normalizedTable))
+  );
+};
+
 export const CreatorTabSystem = ({ profile, stats, visitorStatus }: CreatorTabSystemProps) => {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTabCounts();
-  }, [profile.user_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.user_id, visitorStatus?.isOwner]);
+
+  const fetchProductCount = async () => {
+    for (const tableName of productTableFallbacks) {
+      try {
+        let query = supabase
+          .from(tableName)
+          .select('*', { count: 'exact', head: true })
+          .eq('creator_id', profile.user_id);
+
+        if (!visitorStatus?.isOwner) {
+          query = query.eq('status', 'active');
+        }
+
+        const { count, error } = await query;
+
+        if (error) {
+          if (isMissingRelationError(error, tableName)) {
+            continue;
+          }
+          throw error;
+        }
+
+        return count || 0;
+      } catch (error: any) {
+        if (isMissingRelationError(error, tableName)) {
+          continue;
+        }
+        console.error('Error fetching product count:', error);
+        break;
+      }
+    }
+
+    return 0;
+  };
 
   const fetchTabCounts = async () => {
     try {
       setLoading(true);
 
-      // Fetch counts for all content types in parallel
+      // Fetch counts for all content types in parallel (products handled separately to support fallbacks)
       const [
         { count: releasesCount },
         { count: beatsCount },
-        { count: productsCount },
         { data: liveData },
         { count: coursesCount },
         { count: communityPosts }
       ] = await Promise.all([
         supabase.from('releases').select('*', { count: 'exact', head: true }).eq('user_id', profile.user_id).eq('status', 'published'),
         supabase.from('beats').select('*', { count: 'exact', head: true }).eq('user_id', profile.user_id).eq('is_published', true),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('creator_id', profile.user_id).eq('status', 'active'),
         supabase.from('live_sessions').select('*').eq('creator_id', profile.user_id).gte('scheduled_for', new Date().toISOString()).order('scheduled_for', { ascending: true }),
         supabase.from('courses').select('*', { count: 'exact', head: true }).eq('creator_id', profile.user_id).eq('status', 'published'),
         supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('creator_id', profile.user_id).eq('status', 'published')
       ]);
+
+      const productsCount = await fetchProductCount();
 
       setTabCounts({
         music: releasesCount || 0,

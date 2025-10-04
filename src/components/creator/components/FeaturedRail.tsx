@@ -45,9 +45,38 @@ interface FeaturedItem {
   };
 }
 
+interface ProductRow {
+  id: string;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  price_cents?: number | null;
+  created_at: string;
+  status?: string | null;
+  product_type?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 interface FeaturedRailProps {
   creatorId: string;
 }
+
+const productTableFallbacks = ['products', 'store_products'] as const;
+
+const isMissingRelationError = (error: any, tableName: string) => {
+  if (!error) return false;
+  const normalizedTable = tableName.toLowerCase();
+  const candidates = [
+    (error.message || '').toString().toLowerCase(),
+    (error.details || '').toString().toLowerCase(),
+    (error.hint || '').toString().toLowerCase()
+  ];
+
+  return (
+    error.code === '42P01' ||
+    candidates.some((text) => text.includes('does not exist') && text.includes(normalizedTable))
+  );
+};
 
 export const FeaturedRail = ({ creatorId }: FeaturedRailProps) => {
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
@@ -65,12 +94,44 @@ export const FeaturedRail = ({ creatorId }: FeaturedRailProps) => {
     try {
       setLoading(true);
 
+      const fetchFeaturedProducts = async () => {
+        for (const tableName of productTableFallbacks) {
+          try {
+            const { data, error } = await supabase
+              .from(tableName)
+              .select('*')
+              .eq('creator_id', creatorId)
+              .eq('is_featured', true)
+              .eq('status', 'active')
+              .order('created_at', { ascending: false })
+              .limit(2);
+
+            if (error) {
+              if (isMissingRelationError(error, tableName)) {
+                continue;
+              }
+              throw error;
+            }
+
+            return data || [];
+          } catch (error: any) {
+            if (isMissingRelationError(error, tableName)) {
+              continue;
+            }
+            console.error('Error fetching featured products:', error);
+            return [];
+          }
+        }
+
+        return [];
+      };
+
       // Fetch different types of featured content in parallel
       const [
         { data: featuredReleases },
         { data: featuredBeats },
         { data: featuredCourses },
-        { data: featuredProducts }
+        featuredProducts
       ] = await Promise.all([
         supabase
           .from('releases')
@@ -99,17 +160,12 @@ export const FeaturedRail = ({ creatorId }: FeaturedRailProps) => {
           .order('created_at', { ascending: false })
           .limit(2),
 
-        supabase
-          .from('products')
-          .select('*')
-          .eq('creator_id', creatorId)
-          .eq('is_featured', true)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(2)
+        fetchFeaturedProducts()
       ]);
 
       // Transform and combine all featured items
+      const safeFeaturedProducts = (featuredProducts as ProductRow[]) || [];
+
       const items: FeaturedItem[] = [
         ...(featuredReleases?.map(release => ({
           id: release.id,
@@ -160,7 +216,7 @@ export const FeaturedRail = ({ creatorId }: FeaturedRailProps) => {
           }
         })) || []),
 
-        ...(featuredProducts?.map(product => ({
+        ...(safeFeaturedProducts.map((product) => ({
           id: product.id,
           type: 'product' as const,
           title: product.name,
