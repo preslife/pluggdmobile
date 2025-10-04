@@ -515,7 +515,7 @@ export default function CommunityHubEpic() {
           </div>
         </div>
 
-        <div className="sticky top-16 z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="sticky top-[var(--masthead-h)] z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="mx-auto max-w-7xl px-4">
             <TabsNav
               tabs={TABS}

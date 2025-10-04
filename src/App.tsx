@@ -195,7 +195,7 @@ const AppContent = () => {
   return (
     <>
       <DomainAwareNavigation />
-      <div className="pt-16 md:pt-20">
+      <div className="pt-masthead md:pt-[calc(var(--masthead-h)+1rem)]">
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />

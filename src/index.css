@@ -46,6 +46,7 @@ All colors MUST be HSL and use semantic tokens */
     --ring: 191 91% 60%;
 
     --radius: 0.5rem;
+    --masthead-h: 4rem;
 
     /* Music platform gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
@@ -124,6 +125,16 @@ All colors MUST be HSL and use semantic tokens */
   
   .will-change-scroll {
     will-change: scroll-position;
+  }
+}
+
+@layer utilities {
+  .pt-masthead {
+    padding-top: var(--masthead-h);
+  }
+
+  .scroll-mt-masthead {
+    scroll-margin-top: var(--masthead-h);
   }
 }
 
