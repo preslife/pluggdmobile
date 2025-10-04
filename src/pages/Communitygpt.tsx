@@ -478,7 +478,7 @@ export default function CommunityHubEpic() {
         </div>
 
         {/* Sticky tabs (slight bigger offset to avoid header overlap) */}
-        <div className="sticky top-16 md:top-20 z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="sticky top-[var(--masthead-h)] md:top-[calc(var(--masthead-h)+1rem)] z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="mx-auto max-w-7xl px-4">
             <TabsNav
               tabs={TABS}

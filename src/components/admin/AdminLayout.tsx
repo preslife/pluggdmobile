@@ -6,7 +6,7 @@ const linkBase = "px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover
 
 export default function AdminLayout() {
   return (
-    <div className="min-h-screen pt-16">
+    <div className="min-h-screen pt-masthead">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Admin Console</h1>

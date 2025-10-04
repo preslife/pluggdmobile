@@ -306,7 +306,7 @@ export default function PluggdHomepage() {
 
   return (
     <div
-      className="min-h-screen w-full pt-16 bg-background text-foreground"
+      className="min-h-screen w-full pt-masthead bg-background text-foreground"
     >
       <Header role={role} setRole={setRole} />
       <main className="mx-auto max-w-[1280px] px-4">
@@ -434,7 +434,7 @@ function Header({
 }) {
   // Minimal sticky sub-bar: only the Fan/Creator toggle
   return (
-    <header className="sticky top-16 z-40">
+    <header className="sticky top-[var(--masthead-h)] z-40">
       <div className="mx-auto max-w-[1280px] px-4">
         <div className="mx-auto flex h-12 w-full items-center justify-center">
           <div

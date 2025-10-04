@@ -28,6 +28,43 @@ const DomainAwareNavigation = () => {
   // Use sticky header behavior
   useStickyHeader(navRef, 50);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
+    const navEl = navRef.current;
+    if (!navEl) {
+      return;
+    }
+
+    const root = document.documentElement;
+
+    const updateHeight = () => {
+      const height = navEl.getBoundingClientRect().height;
+      if (height > 0) {
+        root.style.setProperty("--masthead-h", `${height}px`);
+      }
+    };
+
+    updateHeight();
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => updateHeight())
+      : null;
+
+    resizeObserver?.observe(navEl);
+
+    const handleResize = () => updateHeight();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", handleResize);
+      root.style.removeProperty("--masthead-h");
+    };
+  }, []);
+
   // Get user profile to determine permissions
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);

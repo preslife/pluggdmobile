@@ -205,7 +205,7 @@ const Label = () => {
       <DomainAwareNavigation />
       
       {/* Label Header */}
-      <header className="fixed top-16 left-0 right-0 z-40 bg-black/80 backdrop-blur-sm">
+      <header className="fixed top-[var(--masthead-h)] left-0 right-0 z-40 bg-black/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center">
             <img 

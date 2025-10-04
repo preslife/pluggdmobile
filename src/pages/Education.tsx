@@ -291,7 +291,7 @@ export default function Education() {
   if (isAdminView) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="pt-16">
+        <div className="pt-masthead">
           <EnhancedAdminCourseManager />
         </div>
       </div>

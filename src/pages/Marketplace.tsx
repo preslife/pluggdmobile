@@ -381,7 +381,7 @@ const Marketplace = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative pb-8 pt-16 overflow-hidden">
+      <div className="relative pb-8 pt-masthead overflow-hidden">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
