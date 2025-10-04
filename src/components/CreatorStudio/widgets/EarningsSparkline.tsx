@@ -31,43 +31,67 @@ export const EarningsSparkline: React.FC = () => {
 
   const fetchEarningsData = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
       const days = timeRange === '7d' ? 7 : 30;
+
       const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - days);
-      
-      // Generate mock data for now - replace with actual query
-      // In production, query from beat_sales, orders, etc.
-      const mockData: SparklineData[] = [];
+      endDate.setHours(23, 59, 59, 999);
+
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - (days - 1));
+      startDate.setHours(0, 0, 0, 0);
+
+      const { data: orderItems, error } = await supabase
+        .from('order_items')
+        .select('price, quantity, created_at')
+        .eq('creator_id', user.id)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const earningsByDay = new Map<string, number>();
+
+      orderItems?.forEach((item) => {
+        const createdAt = item.created_at ? new Date(item.created_at) : null;
+        if (!createdAt) return;
+
+        const dayKey = createdAt.toISOString().split('T')[0];
+        const amount = (item.price ?? 0) * (item.quantity ?? 1);
+        earningsByDay.set(dayKey, (earningsByDay.get(dayKey) ?? 0) + amount);
+      });
+
+      const chartPoints: SparklineData[] = [];
       let total = 0;
-      
+
       for (let i = 0; i < days; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const earnings = Math.random() * 500 + 100; // Mock earnings
-        mockData.push({
-          day: date.toISOString().split('T')[0],
-          earnings: parseFloat(earnings.toFixed(2))
-        });
-        total += earnings;
+        const current = new Date(startDate);
+        current.setDate(startDate.getDate() + i);
+        const dayKey = current.toISOString().split('T')[0];
+        const value = parseFloat((earningsByDay.get(dayKey) ?? 0).toFixed(2));
+        chartPoints.push({ day: dayKey, earnings: value });
+        total += value;
       }
-      
-      setData(mockData);
+
+      setData(chartPoints);
       setTotalEarnings(total);
-      
-      // Calculate percent change
-      if (mockData.length >= 2) {
-        const recent = mockData.slice(-Math.ceil(days/2)).reduce((sum, d) => sum + d.earnings, 0);
-        const previous = mockData.slice(0, Math.floor(days/2)).reduce((sum, d) => sum + d.earnings, 0);
+
+      if (chartPoints.length >= 2) {
+        const midpoint = Math.floor(chartPoints.length / 2);
+        const previous = chartPoints.slice(0, midpoint).reduce((sum, point) => sum + point.earnings, 0);
+        const recent = chartPoints.slice(midpoint).reduce((sum, point) => sum + point.earnings, 0);
         const change = previous > 0 ? ((recent - previous) / previous) * 100 : 0;
         setPercentChange(parseFloat(change.toFixed(1)));
+      } else {
+        setPercentChange(0);
       }
-      
     } catch (error) {
       console.error('Error fetching earnings data:', error);
+      setData([]);
+      setTotalEarnings(0);
+      setPercentChange(0);
     } finally {
       setLoading(false);
     }

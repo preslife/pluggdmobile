@@ -6526,6 +6526,99 @@ export type Database = {
           },
         ]
       }
+      live_gift_catalog: {
+        Row: {
+          animation_url: string | null
+          created_at: string
+          credit_cost: number
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          metadata: Json | null
+          slug: string
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          animation_url?: string | null
+          created_at?: string
+          credit_cost: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          metadata?: Json | null
+          slug: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          animation_url?: string | null
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          metadata?: Json | null
+          slug?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      live_gift_events: {
+        Row: {
+          animation_variant: string | null
+          created_at: string
+          gift_id: string
+          id: string
+          message: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+          total_credits: number
+        }
+        Insert: {
+          animation_variant?: string | null
+          created_at?: string
+          gift_id: string
+          id?: string
+          message?: string | null
+          quantity?: number
+          room_id: string
+          sender_id: string
+          total_credits: number
+        }
+        Update: {
+          animation_variant?: string | null
+          created_at?: string
+          gift_id?: string
+          id?: string
+          message?: string | null
+          quantity?: number
+          room_id?: string
+          sender_id?: string
+          total_credits?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gift_events_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "session_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_ledger: {
         Row: {
           amount_credits: number
@@ -6712,6 +6805,15 @@ export type Database = {
           balance_credits: number | null
           pending_credits: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      live_gift_room_totals: {
+        Row: {
+          events_count: number | null
+          room_id: string | null
+          total_credits: number | null
+          total_quantity: number | null
         }
         Relationships: []
       }
@@ -6938,6 +7040,17 @@ export type Database = {
       get_wallet_balance: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      perform_live_gift: {
+        Args: {
+          p_sender: string
+          p_room_id: string
+          p_gift_id: string
+          p_quantity?: number
+          p_message?: string | null
+          p_animation_variant?: string | null
+        }
+        Returns: string
       }
       has_course_access: {
         Args: { p_course_id: string; p_user_id: string }

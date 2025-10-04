@@ -16,11 +16,13 @@ import SessionFiles from "@/components/live/SessionFiles";
 import SessionFeedback from "@/components/live/SessionFeedback";
 import SessionMedia from "@/components/live/SessionMedia";
 import { VideoCallInterface } from "@/components/VideoCallInterface";
+import { LiveGiftPanel } from "@/components/live/LiveGiftPanel";
 import { WaveformFeedback } from "@/components/WaveformFeedback";
 import PostEventRedirect from "@/components/PostEventRedirect";
 import LiveCTA from "@/components/LiveCTA";
 import { ArrowLeft, Copy, Users, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useLiveGifts } from "@/hooks/useLiveGifts";
 
 const SessionRoom = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +32,8 @@ const SessionRoom = () => {
   const { session, loading, error } = useSessions(id);
   const { joinRoom } = useSessionRooms();
   const [activeTab, setActiveTab] = useState("files");
+  const liveGiftState = useLiveGifts(id);
+  const latestGift = liveGiftState.events[0];
 
   useEffect(() => {
     if (session) {
@@ -140,12 +144,23 @@ const SessionRoom = () => {
           {/* Left Column - Media & Video */}
           <div className="lg:col-span-2 space-y-6">
             <SessionMedia sessionId={id} session={session} />
-            <VideoCallInterface sessionId={id} />
+            <VideoCallInterface
+              sessionId={id}
+              session={session}
+              latestGift={latestGift}
+            />
           </div>
 
           {/* Right Column - Chat */}
           <div className="space-y-6">
             <SessionChat sessionId={id} session={session} />
+            {id && (
+              <LiveGiftPanel
+                roomId={id}
+                hostId={session.host_id}
+                {...liveGiftState}
+              />
+            )}
           </div>
         </div>
 

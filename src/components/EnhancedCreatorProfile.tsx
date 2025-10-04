@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import DomainAwareNavigation from '@/components/DomainAwareNavigation';
 import { FollowButton } from '@/components/FollowButton';
 import { ReleasePurchaseButton } from '@/components/ReleasePurchaseButton';
@@ -30,6 +29,28 @@ import {
   TrendingUp
 } from 'lucide-react';
 
+interface ProfileTheme {
+  heroStyle: 'gradient' | 'image' | 'minimal';
+  gradientFrom: string;
+  gradientTo: string;
+  accentColor: string;
+  backgroundImage?: string;
+  layoutStyle: 'classic' | 'spotlight';
+  showBadges: boolean;
+  showAnalytics: boolean;
+  highlightProductIds?: string[];
+}
+
+const DEFAULT_THEME: ProfileTheme = {
+  heroStyle: 'gradient',
+  gradientFrom: 'rgba(99,102,241,0.12)',
+  gradientTo: 'rgba(45,212,191,0.10)',
+  accentColor: '#6366f1',
+  layoutStyle: 'classic',
+  showBadges: true,
+  showAnalytics: true,
+};
+
 interface CreatorProfile {
   id: string;
   user_id: string;
@@ -48,6 +69,7 @@ interface CreatorProfile {
     youtube?: string;
   };
   created_at: string;
+  embed_settings?: Record<string, any> | null;
 }
 
 interface CreatorRelease {
@@ -82,6 +104,10 @@ export const EnhancedCreatorProfile = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [isPremiumCreator, setIsPremiumCreator] = useState(false);
+  const [theme, setTheme] = useState<ProfileTheme>(DEFAULT_THEME);
+  const [spotlightRelease, setSpotlightRelease] = useState<CreatorRelease | null>(null);
+  const [earningsHistory, setEarningsHistory] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (creatorId || username) {
@@ -115,8 +141,13 @@ export const EnhancedCreatorProfile = () => {
       
       setProfile(profileData);
 
+      const embedSettings = (profileData.embed_settings as Record<string, any> | null) ?? null;
+      const themeFromProfile = embedSettings?.profile_theme && typeof embedSettings.profile_theme === 'object'
+        ? { ...DEFAULT_THEME, ...embedSettings.profile_theme }
+        : DEFAULT_THEME;
+
       // Fetch releases - filter by user_id to show only this creator's releases
-      const { data: releasesData, error: releasesError } = await supabase
+      const { data: releasesDataRaw, error: releasesError } = await supabase
         .from('releases')
         .select('*')
         .eq('user_id', profileData.user_id)
@@ -124,9 +155,19 @@ export const EnhancedCreatorProfile = () => {
         .limit(12);
 
       if (releasesError) throw releasesError;
-      setReleases(releasesData || []);
 
-      // Fetch analytics if user owns profile or has access
+      const releasesData: CreatorRelease[] = (releasesDataRaw || []).map((release: any) => ({
+        id: release.id,
+        title: release.title,
+        artist: release.artist || profileData.full_name || profileData.username,
+        cover_art_url: release.cover_art_url,
+        price: release.download_price ?? release.price ?? 0,
+        genre: release.genre || 'Uncategorized',
+        total_plays: release.total_plays || 0,
+        created_at: release.created_at,
+      }));
+      setReleases(releasesData);
+
       if (user?.id === profileData.user_id) {
         const { data: analyticsData } = await supabase.rpc('get_release_analytics', {
           p_user_id: profileData.user_id,
@@ -135,23 +176,95 @@ export const EnhancedCreatorProfile = () => {
         setAnalytics(analyticsData);
       }
 
-      // Calculate stats
-      const totalReleases = releasesData?.length || 0;
-      const totalPlays = releasesData?.reduce((sum, release) => sum + (release.total_plays || 0), 0) || 0;
-      
+      const [subscriptionRes, followerRes, orderItemsRes] = await Promise.all([
+        supabase
+          .from('user_subscriptions')
+          .select('tier, status')
+          .eq('user_id', profileData.user_id)
+          .eq('status', 'active')
+          .maybeSingle(),
+        supabase
+          .from('user_follows')
+          .select('id', { head: true, count: 'exact' })
+          .eq('following_id', profileData.user_id),
+        supabase
+          .from('order_items')
+          .select('price, quantity, created_at, product_id, kind')
+          .eq('creator_id', profileData.user_id),
+      ]);
+
+      if (subscriptionRes.error && subscriptionRes.error.code !== 'PGRST116') throw subscriptionRes.error;
+      if (followerRes.error) throw followerRes.error;
+      if (orderItemsRes.error) throw orderItemsRes.error;
+
+      const isPremium = subscriptionRes.data?.tier === 'pro' && subscriptionRes.data?.status === 'active';
+      setIsPremiumCreator(isPremium);
+      const resolvedTheme = isPremium ? themeFromProfile : DEFAULT_THEME;
+      setTheme(resolvedTheme);
+
+      const orderItems = orderItemsRes.data || [];
+      const totalDownloads = orderItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
+      const totalRevenue = orderItems.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1), 0);
+      const totalPlays = releasesData.reduce((sum, release) => sum + release.total_plays, 0);
+
       setStats({
-        total_releases: totalReleases,
+        total_releases: releasesData.length,
         total_plays: totalPlays,
-        total_downloads: Math.floor(totalPlays * 0.15), // Estimate
-        total_revenue: Math.floor(totalPlays * 0.001), // Estimate
-        followers_count: Math.floor(Math.random() * 1000) + 100 // Mock data
+        total_downloads: totalDownloads,
+        total_revenue: totalRevenue,
+        followers_count: followerRes.count ?? 0,
       });
+
+      const earningsMap = orderItems.reduce<Record<string, number>>((acc, item) => {
+        if (!item.created_at) return acc;
+        const dayKey = item.created_at.split('T')[0];
+        acc[dayKey] = (acc[dayKey] ?? 0) + (item.price ?? 0) * (item.quantity ?? 1);
+        return acc;
+      }, {});
+      setEarningsHistory(earningsMap);
+
+      resolveSpotlight(orderItems, releasesData, resolvedTheme, isPremium);
 
     } catch (error) {
       console.error('Error fetching creator data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resolveSpotlight = (
+    orderItems: Array<{ price: number | null; quantity: number | null; product_id: string | null }>,
+    releasesData: CreatorRelease[],
+    resolvedTheme: ProfileTheme,
+    isPremium: boolean,
+  ) => {
+    const earningsByProduct = new Map<string, number>();
+    orderItems.forEach((item) => {
+      if (!item.product_id) return;
+      const amount = (item.price ?? 0) * (item.quantity ?? 1);
+      earningsByProduct.set(item.product_id, (earningsByProduct.get(item.product_id) ?? 0) + amount);
+    });
+
+    let defaultSpotlight: CreatorRelease | null = null;
+    let highestEarning = -Infinity;
+    earningsByProduct.forEach((earnings, productId) => {
+      const release = releasesData.find((r) => r.id === productId);
+      if (release && earnings > highestEarning) {
+        highestEarning = earnings;
+        defaultSpotlight = release;
+      }
+    });
+
+    if (isPremium && resolvedTheme.highlightProductIds?.length) {
+      const highlightedId = resolvedTheme.highlightProductIds.find((id) => releasesData.some((release) => release.id === id));
+      if (highlightedId) {
+        const highlightedRelease = releasesData.find((release) => release.id === highlightedId) ?? null;
+        setSpotlightRelease(highlightedRelease ?? defaultSpotlight);
+        return;
+      }
+    }
+
+    setSpotlightRelease(defaultSpotlight);
   };
 
   if (loading) {
@@ -191,9 +304,24 @@ export const EnhancedCreatorProfile = () => {
       <DomainAwareNavigation />
       <main className="pt-20">
         {/* Hero Section */}
-        <div className="relative bg-gradient-to-r from-primary/10 to-accent/10 py-12">
+        <div
+          className={`relative py-12 ${theme.heroStyle === 'minimal' ? 'border-b border-border' : ''}`}
+          style={
+            theme.heroStyle === 'image' && theme.backgroundImage
+              ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url(${theme.backgroundImage})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : theme.heroStyle === 'gradient'
+              ? {
+                  backgroundImage: `linear-gradient(90deg, ${theme.gradientFrom}, ${theme.gradientTo})`,
+                }
+              : undefined
+          }
+        >
           <div className="max-w-6xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row items-start gap-6">
+            <div className={`flex flex-col md:flex-row items-start gap-6 ${theme.heroStyle === 'image' ? 'text-white' : ''}`}>
               <Avatar className="w-32 h-32 border-4 border-background shadow-lg">
                 <AvatarImage src={profile.avatar_url} />
                 <AvatarFallback className="text-2xl">
@@ -203,14 +331,20 @@ export const EnhancedCreatorProfile = () => {
               
               <div className="flex-1 space-y-4">
                 <div>
-                  <h1 className="text-3xl font-bold">{profile.full_name || profile.username}</h1>
-                  <p className="text-lg text-muted-foreground">@{profile.username}</p>
+                  <h1 className={`text-3xl font-bold ${theme.heroStyle === 'image' ? 'text-white' : ''}`}>
+                    {profile.full_name || profile.username}
+                  </h1>
+                  <p className={`text-lg ${theme.heroStyle === 'image' ? 'text-white/80' : 'text-muted-foreground'}`}>
+                    @{profile.username}
+                  </p>
                   {profile.bio && (
-                    <p className="text-muted-foreground mt-2">{profile.bio}</p>
+                    <p className={`${theme.heroStyle === 'image' ? 'text-white/80' : 'text-muted-foreground'} mt-2`}>
+                      {profile.bio}
+                    </p>
                   )}
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <div className={`flex flex-wrap items-center gap-4 text-sm ${theme.heroStyle === 'image' ? 'text-white/80' : 'text-muted-foreground'}`}>
                   {profile.location && (
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />

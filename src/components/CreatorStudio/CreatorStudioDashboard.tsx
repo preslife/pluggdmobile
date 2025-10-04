@@ -9,8 +9,6 @@ import {
   TrendingUp,
   Package,
   Calendar,
-  Crown,
-  MessageCircle,
   CheckSquare,
   Check,
   Radio,
@@ -20,7 +18,6 @@ import {
   Users,
   BarChart3,
   Clock,
-  Eye,
   PlayCircle,
   HeadphonesIcon,
   ShoppingBag,
@@ -48,11 +45,8 @@ interface DashboardStats {
   todaySales: number;
   todaySalesChange: number;
   totalProducts: number;
-  activeTickets: number;
-  memberships: number;
-  messages: number;
-  tasksCompleted: number;
-  upcomingLive: number;
+  liveSessions: number;
+  uniqueCustomers: number;
 }
 
 interface SalesBreakdown {
@@ -60,13 +54,14 @@ interface SalesBreakdown {
   sales: number;
   earnings: number;
   icon: React.ElementType;
-  color: string;
+  bgClass: string;
+  textClass: string;
 }
 
 interface TopProduct {
   id: string;
   title: string;
-  type: 'beat' | 'pack' | 'release' | 'course';
+  type: 'beat' | 'pack' | 'release' | 'course' | 'store';
   earnings: number;
   sales: number;
   cover?: string;
@@ -104,14 +99,12 @@ export const CreatorStudioDashboard: React.FC = () => {
     todaySales: 0,
     todaySalesChange: 0,
     totalProducts: 0,
-    activeTickets: 0,
-    memberships: 0,
-    messages: 0,
-    tasksCompleted: 0,
-    upcomingLive: 0,
+    liveSessions: 0,
+    uniqueCustomers: 0,
   });
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [earningsData, setEarningsData] = useState<Array<{ day: string; earnings: number }>>([]);
+  const [earningsHistory, setEarningsHistory] = useState<Record<string, number>>({});
   const [earningsPeriod, setEarningsPeriod] = useState<'7d' | '30d'>('30d');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [salesBreakdown, setSalesBreakdown] = useState<SalesBreakdown[]>([]);
@@ -126,160 +119,329 @@ export const CreatorStudioDashboard: React.FC = () => {
     return <LabelWorkspaceDashboard label={activeLabel} navigate={navigate} />;
   }
 
-  // Sample sparkline data (in a real app, this would come from your analytics)
   useEffect(() => {
     if (user && !isLabelWorkspace) {
       fetchDashboardData();
-      generateSampleEarningsData();
     }
   }, [user, isLabelWorkspace]);
 
   useEffect(() => {
-    generateSampleEarningsData();
-  }, [earningsPeriod]);
+    const days = earningsPeriod === '7d' ? 7 : 30;
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - (days - 1));
+
+    const points: Array<{ day: string; earnings: number }> = [];
+
+    for (let i = 0; i < days; i++) {
+      const current = new Date(startDate);
+      current.setDate(startDate.getDate() + i);
+      const key = current.toISOString().split('T')[0];
+      const value = parseFloat((earningsHistory[key] ?? 0).toFixed(2));
+      points.push({ day: key, earnings: value });
+    }
+
+    setEarningsData(points);
+  }, [earningsPeriod, earningsHistory]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
 
     try {
       // Fetch sample packs for stats
-      const { data: packs, error: packsError } = await supabase
-        .from('sample_packs')
-        .select('*')
-        .eq('user_id', user.id);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
 
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+      const startOf30Days = new Date(startOfToday);
+      startOf30Days.setDate(startOf30Days.getDate() - 29);
+
+      const [{ count: beatsCount, error: beatsError },
+        { count: packsCount, error: packsError },
+        { count: releasesCount, error: releasesError },
+        { count: sessionsCount, error: sessionsError },
+        { data: orderItems, error: orderItemsError }] = await Promise.all([
+        supabase.from('beats').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('sample_packs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('releases').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase
+          .from('session_rooms')
+          .select('id', { count: 'exact', head: true })
+          .eq('host_id', user.id)
+          .not('status', 'eq', 'ended'),
+        supabase
+          .from('order_items')
+          .select('price, quantity, created_at, kind, product_id, order_id')
+          .eq('creator_id', user.id)
+          .gte('created_at', startOf30Days.toISOString()),
+      ]);
+
+      if (beatsError) throw beatsError;
       if (packsError) throw packsError;
+      if (releasesError) throw releasesError;
+      if (sessionsError) throw sessionsError;
+      if (orderItemsError) throw orderItemsError;
 
-      // Calculate stats (mock data for demonstration)
-      const mockStats: DashboardStats = {
-        todayEarnings: 247.50,
-        todayEarningsChange: 12.5,
-        todaySales: 8,
-        todaySalesChange: -2.1,
-        totalProducts: packs?.length || 0,
-        activeTickets: 3,
-        memberships: 42,
-        messages: 7,
-        tasksCompleted: 85,
-        upcomingLive: 2,
+      const earningsByDay: Record<string, number> = {};
+      const salesByDay: Record<string, number> = {};
+      const salesBreakdownMap = new Map<string, { sales: number; earnings: number }>();
+      const productAggregates = new Map<string, { kind: string; productId: string; sales: number; earnings: number }>();
+      const orderIds = new Set<string>();
+
+      orderItems?.forEach((item) => {
+        const createdAt = item.created_at ? new Date(item.created_at) : null;
+        if (!createdAt) return;
+
+        const dayKey = createdAt.toISOString().split('T')[0];
+        const amount = (item.price ?? 0) * (item.quantity ?? 1);
+        const salesCount = item.quantity ?? 1;
+
+        earningsByDay[dayKey] = (earningsByDay[dayKey] ?? 0) + amount;
+        salesByDay[dayKey] = (salesByDay[dayKey] ?? 0) + salesCount;
+
+        if (dayKey === startOfToday.toISOString().split('T')[0]) {
+          const kindKey = item.kind ?? 'other';
+          const entry = salesBreakdownMap.get(kindKey) ?? { sales: 0, earnings: 0 };
+          entry.sales += salesCount;
+          entry.earnings += amount;
+          salesBreakdownMap.set(kindKey, entry);
+        }
+
+        if (item.product_id) {
+          const aggregateKey = `${item.kind ?? 'other'}::${item.product_id}`;
+          const aggregate = productAggregates.get(aggregateKey) ?? {
+            kind: item.kind ?? 'other',
+            productId: item.product_id,
+            sales: 0,
+            earnings: 0,
+          };
+          aggregate.sales += salesCount;
+          aggregate.earnings += amount;
+          productAggregates.set(aggregateKey, aggregate);
+        }
+
+        if (item.order_id) {
+          orderIds.add(item.order_id);
+        }
+      });
+
+      const todayKey = startOfToday.toISOString().split('T')[0];
+      const yesterdayKey = startOfYesterday.toISOString().split('T')[0];
+
+      const todayEarnings = earningsByDay[todayKey] ?? 0;
+      const yesterdayEarnings = earningsByDay[yesterdayKey] ?? 0;
+      const todaySales = salesByDay[todayKey] ?? 0;
+      const yesterdaySales = salesByDay[yesterdayKey] ?? 0;
+
+      const todayEarningsChange = yesterdayEarnings > 0
+        ? ((todayEarnings - yesterdayEarnings) / yesterdayEarnings) * 100
+        : 0;
+
+      const todaySalesChange = yesterdaySales > 0
+        ? ((todaySales - yesterdaySales) / yesterdaySales) * 100
+        : 0;
+
+      let uniqueCustomers = 0;
+      if (orderIds.size > 0) {
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('id, user_id')
+          .in('id', Array.from(orderIds));
+
+        if (ordersError) throw ordersError;
+        const customers = new Set<string>();
+        ordersData?.forEach((order) => {
+          if (order.user_id) {
+            customers.add(order.user_id);
+          }
+        });
+        uniqueCustomers = customers.size;
+      }
+
+      const totalProducts = (beatsCount ?? 0) + (packsCount ?? 0) + (releasesCount ?? 0);
+
+      setStats({
+        todayEarnings,
+        todayEarningsChange,
+        todaySales,
+        todaySalesChange,
+        totalProducts,
+        liveSessions: sessionsCount ?? 0,
+        uniqueCustomers,
+      });
+
+      setEarningsHistory(earningsByDay);
+
+      const breakdownMeta: Record<string, { label: string; icon: React.ElementType; bg: string; text: string }> = {
+        beat: { label: 'Beats', icon: HeadphonesIcon, bg: 'bg-blue-500/10', text: 'text-blue-600' },
+        sample_pack: { label: 'Sample Packs', icon: Package, bg: 'bg-purple-500/10', text: 'text-purple-600' },
+        release: { label: 'Releases', icon: Music, bg: 'bg-amber-500/10', text: 'text-amber-600' },
+        physical: { label: 'Merchandise', icon: ShoppingBag, bg: 'bg-green-500/10', text: 'text-green-600' },
+        store: { label: 'Store Products', icon: ShoppingBag, bg: 'bg-green-500/10', text: 'text-green-600' },
+        other: { label: 'Other', icon: Zap, bg: 'bg-gray-500/10', text: 'text-gray-600' },
       };
 
-      setStats(mockStats);
+      const salesBreakdownData: SalesBreakdown[] = Array.from(salesBreakdownMap.entries()).map(([kind, value]) => {
+        const meta = breakdownMeta[kind] ?? breakdownMeta.other;
+        return {
+          category: meta.label,
+          sales: value.sales,
+          earnings: value.earnings,
+          icon: meta.icon,
+          bgClass: meta.bg,
+          textClass: meta.text,
+        };
+      }).sort((a, b) => b.earnings - a.earnings);
 
-      // Mock top products with enhanced data
-      const mockTopProducts: TopProduct[] = [
-        {
-          id: '1',
-          title: 'Trap Essentials Vol. 3',
-          type: 'pack',
-          earnings: 389.50,
-          sales: 42,
-        },
-        {
-          id: '2',
-          title: 'Dark Melody Beat',
-          type: 'beat',
-          earnings: 245.00,
-          sales: 18,
-        },
-        {
-          id: '3',
-          title: 'Producer Masterclass',
-          type: 'course',
-          earnings: 599.00,
-          sales: 3,
-        },
-        {
-          id: '4',
-          title: 'Lo-Fi Vibes Collection',
-          type: 'pack',
-          earnings: 156.75,
-          sales: 12,
-        },
-        {
-          id: '5',
-          title: 'Hip-Hop Fundamentals',
-          type: 'course',
-          earnings: 299.99,
-          sales: 1,
-        },
-      ];
+      setSalesBreakdown(salesBreakdownData);
 
-      setTopProducts(mockTopProducts);
+      const beatIds: string[] = [];
+      const samplePackIds: string[] = [];
+      const releaseIds: string[] = [];
+      const storeProductIds: string[] = [];
 
-      // Mock tasks data
-      const mockTasks: Task[] = [
-        {
-          id: '1',
-          title: 'Upload new track artwork',
-          description: 'Create and upload artwork for "Dark Melody Beat"',
+      productAggregates.forEach((aggregate) => {
+        switch (aggregate.kind) {
+          case 'beat':
+            beatIds.push(aggregate.productId);
+            break;
+          case 'sample_pack':
+            samplePackIds.push(aggregate.productId);
+            break;
+          case 'release':
+            releaseIds.push(aggregate.productId);
+            break;
+          default:
+            storeProductIds.push(aggregate.productId);
+            break;
+        }
+      });
+
+      const uniqueBeatIds = Array.from(new Set(beatIds));
+      const uniqueSamplePackIds = Array.from(new Set(samplePackIds));
+      const uniqueReleaseIds = Array.from(new Set(releaseIds));
+      const uniqueStoreProductIds = Array.from(new Set(storeProductIds));
+
+      const [beatDetails, samplePackDetails, releaseDetails, storeDetails] = await Promise.all([
+        uniqueBeatIds.length
+          ? supabase.from('beats').select('id, title, image_url').in('id', uniqueBeatIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        uniqueSamplePackIds.length
+          ? supabase.from('sample_packs').select('id, title, cover_art_url').in('id', uniqueSamplePackIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        uniqueReleaseIds.length
+          ? supabase.from('releases').select('id, title, cover_art_url').in('id', uniqueReleaseIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        uniqueStoreProductIds.length
+          ? supabase.from('store_products').select('id, title, image_url').in('id', uniqueStoreProductIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ]);
+
+      if (beatDetails.error) throw beatDetails.error;
+      if (samplePackDetails.error) throw samplePackDetails.error;
+      if (releaseDetails.error) throw releaseDetails.error;
+      if (storeDetails.error) throw storeDetails.error;
+
+      const beatMap = new Map<string, { title: string; cover?: string }>();
+      beatDetails.data?.forEach((item: any) => beatMap.set(item.id, { title: item.title, cover: item.image_url }));
+
+      const packMap = new Map<string, { title: string; cover?: string }>();
+      samplePackDetails.data?.forEach((item: any) => packMap.set(item.id, { title: item.title, cover: item.cover_art_url }));
+
+      const releaseMap = new Map<string, { title: string; cover?: string }>();
+      releaseDetails.data?.forEach((item: any) => releaseMap.set(item.id, { title: item.title, cover: item.cover_art_url }));
+
+      const storeMap = new Map<string, { title: string; cover?: string }>();
+      storeDetails.data?.forEach((item: any) => storeMap.set(item.id, { title: item.title, cover: item.image_url }));
+
+      const resolvedTopProducts: TopProduct[] = Array.from(productAggregates.values())
+        .map((aggregate) => {
+          let details: { title: string; cover?: string } | undefined;
+          let type: TopProduct['type'] = 'beat';
+
+          switch (aggregate.kind) {
+            case 'beat':
+              details = beatMap.get(aggregate.productId);
+              type = 'beat';
+              break;
+            case 'sample_pack':
+              details = packMap.get(aggregate.productId);
+              type = 'pack';
+              break;
+          case 'release':
+            details = releaseMap.get(aggregate.productId);
+            type = 'release';
+            break;
+          default:
+            details = storeMap.get(aggregate.productId);
+            type = 'store';
+            break;
+        }
+
+          return {
+            id: aggregate.productId,
+            title: details?.title ?? 'Untitled',
+            type,
+            earnings: aggregate.earnings,
+            sales: aggregate.sales,
+            cover: details?.cover,
+          };
+        })
+        .sort((a, b) => b.earnings - a.earnings)
+        .slice(0, 5);
+
+      setTopProducts(resolvedTopProducts);
+
+      const derivedTasks: Task[] = [];
+
+      if ((beatsCount ?? 0) === 0) {
+        derivedTasks.push({
+          id: 'task-upload-beat',
+          title: 'Upload your first beat',
+          description: 'Add a beat to start selling instantly.',
           priority: 'high',
           status: 'pending',
-          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-          category: 'Production'
-        },
-        {
-          id: '2',
-          title: 'Respond to customer inquiries',
-          description: 'Reply to 3 pending messages about licensing',
+          category: 'Catalog',
+        });
+      }
+
+      if ((packsCount ?? 0) === 0) {
+        derivedTasks.push({
+          id: 'task-upload-pack',
+          title: 'Create a sample pack',
+          description: 'Bundle your sounds into a sellable pack.',
           priority: 'medium',
-          status: 'in_progress',
-          category: 'Customer Service'
-        },
-        {
-          id: '3',
-          title: 'Finalize remix contest rules',
-          description: 'Draft and publish contest guidelines',
+          status: 'pending',
+          category: 'Catalog',
+        });
+      }
+
+      if (todaySales > 0) {
+        derivedTasks.push({
+          id: 'task-follow-up',
+          title: 'Thank new customers',
+          description: 'Send download links or thank-you messages to today’s buyers.',
+          priority: 'medium',
+          status: 'pending',
+          category: 'Customer Success',
+        });
+      }
+
+      if ((sessionsCount ?? 0) === 0) {
+        derivedTasks.push({
+          id: 'task-live-session',
+          title: 'Schedule a live session',
+          description: 'Plan a stream to promote new products.',
           priority: 'low',
           status: 'pending',
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
-          category: 'Marketing'
-        },
-        {
-          id: '4',
-          title: 'Update producer profile',
-          description: 'Add new bio and update portfolio links',
-          priority: 'medium',
-          status: 'completed',
-          category: 'Profile'
-        }
-      ];
+          category: 'Engagement',
+        });
+      }
 
-      setTasks(mockTasks);
-
-      // Mock sales breakdown data
-      const mockSalesBreakdown: SalesBreakdown[] = [
-        {
-          category: 'Beats',
-          sales: 3,
-          earnings: 89.50,
-          icon: HeadphonesIcon,
-          color: 'bg-blue-500'
-        },
-        {
-          category: 'Sample Packs',
-          sales: 2,
-          earnings: 78.00,
-          icon: Package,
-          color: 'bg-purple-500'
-        },
-        {
-          category: 'Courses',
-          sales: 1,
-          earnings: 49.99,
-          icon: CheckSquare,
-          color: 'bg-green-500'
-        },
-        {
-          category: 'Live Sessions',
-          sales: 2,
-          earnings: 30.01,
-          icon: Radio,
-          color: 'bg-orange-500'
-        }
-      ];
-
-      setSalesBreakdown(mockSalesBreakdown);
+      setTasks(derivedTasks);
     } catch (error: any) {
       toast({
         title: "Error loading dashboard data",
@@ -289,28 +451,6 @@ export const CreatorStudioDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateSampleEarningsData = () => {
-    const data = [];
-    const baseEarnings = 150;
-    const days = earningsPeriod === '7d' ? 7 : 30;
-    
-    for (let i = days; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const variance = Math.random() * 100 - 50; // Random variance
-      const formatOptions = earningsPeriod === '7d' 
-        ? { weekday: 'short' as const } 
-        : { month: 'short' as const, day: 'numeric' as const };
-      
-      data.push({
-        day: date.toLocaleDateString('en-US', formatOptions),
-        earnings: Math.max(0, baseEarnings + variance),
-      });
-    }
-    
-    setEarningsData(data);
   };
 
   const quickActions: QuickAction[] = [
@@ -363,6 +503,8 @@ export const CreatorStudioDashboard: React.FC = () => {
         return Music;
       case 'course':
         return CheckSquare;
+      case 'store':
+        return ShoppingBag;
       default:
         return Music;
     }
@@ -525,25 +667,14 @@ export const CreatorStudioDashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Members</CardTitle>
-            <Crown className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Unique Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.memberships}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="w-3 h-3 text-green-500 mr-1" />
-              <span className="text-green-500">+6</span>
-              <span className="ml-1">this week</span>
-            </div>
-            <div className="mt-2">
-              <div className="flex justify-between text-xs mb-1">
-                <span>Growth target</span>
-                <span>84%</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-1.5">
-                <div className="bg-primary h-1.5 rounded-full" style={{ width: '84%' }}></div>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{stats.uniqueCustomers}</div>
+            <p className="text-xs text-muted-foreground">
+              Buyers across all time
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -567,8 +698,8 @@ export const CreatorStudioDashboard: React.FC = () => {
               const Icon = item.icon;
               return (
                 <div key={index} className="flex items-center gap-3 p-4 rounded-lg border">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${item.color}/10`}>
-                    <Icon className={`h-5 w-5 ${item.color.replace('bg-', 'text-')}`} />
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${item.bgClass}`}>
+                    <Icon className={`h-5 w-5 ${item.textClass}`} />
                   </div>
                   <div>
                     <h4 className="font-medium text-sm">{item.category}</h4>
@@ -661,47 +792,33 @@ export const CreatorStudioDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Live Tickets</span>
+                <span className="text-sm">Active Live Sessions</span>
               </div>
-              <Badge variant="secondary">{stats.activeTickets}</Badge>
+              <Badge variant="secondary">{stats.liveSessions}</Badge>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                  {stats.messages > 0 && (
-                    <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-                  )}
-                </div>
-                <span className="text-sm">Unread Messages</span>
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Unique Customers</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={stats.messages > 0 ? "destructive" : "secondary"}>
-                  {stats.messages}
-                </Badge>
-                {stats.messages > 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/studio/messages")}>
-                    <Eye className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
+              <Badge variant="secondary">{stats.uniqueCustomers}</Badge>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Tasks Complete</span>
+                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Products Live</span>
               </div>
-              <Badge variant="default">{stats.tasksCompleted}%</Badge>
+              <Badge variant="secondary">{stats.totalProducts}</Badge>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Radio className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Upcoming Live</span>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Orders Today</span>
               </div>
-              <Badge variant="secondary">{stats.upcomingLive}</Badge>
+              <Badge variant={stats.todaySales > 0 ? 'default' : 'secondary'}>{stats.todaySales}</Badge>
             </div>
           </CardContent>
         </Card>
@@ -750,16 +867,12 @@ export const CreatorStudioDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg">${product.earnings.toFixed(2)}</div>
-                      <div className="flex items-center gap-1 text-xs text-green-600">
-                        <TrendingUp className="w-3 h-3" />
-                        <span>+{(Math.random() * 20 + 5).toFixed(1)}%</span>
-                      </div>
-                    </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg">${product.earnings.toFixed(2)}</div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
             </div>
             {topProducts.length > 5 && (
               <div className="mt-4 pt-3 border-t">

@@ -76,13 +76,12 @@ export const TicketsSoldWidget: React.FC = () => {
       
     } catch (error) {
       console.error('Error fetching ticket stats:', error);
-      // Use mock data as fallback
       setStats({
-        totalSold: 42,
-        upcomingEvents: 3,
-        todaySales: 5,
-        nextEventTitle: "Live Production Masterclass",
-        nextEventDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+        totalSold: 0,
+        upcomingEvents: 0,
+        todaySales: 0,
+        nextEventTitle: undefined,
+        nextEventDate: undefined,
       });
     } finally {
       setLoading(false);

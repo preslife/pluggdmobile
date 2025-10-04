@@ -74,32 +74,11 @@ export const InvitesWidget: React.FC = () => {
         status: 'pending'
       })) || [];
 
-      // Add mock invites for demonstration
-      if (formattedInvites.length === 0) {
-        formattedInvites.push(
-          {
-            id: '1',
-            type: 'collaboration',
-            title: 'Summer Beat Tape',
-            from: 'BeatMaker Pro',
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            status: 'pending'
-          },
-          {
-            id: '2',
-            type: 'project',
-            title: 'Hip-Hop Album Production',
-            from: 'Studio Records',
-            createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            status: 'pending'
-          }
-        );
-      }
-
       setInvites(formattedInvites);
       
     } catch (error) {
       console.error('Error fetching invites:', error);
+      setInvites([]);
     } finally {
       setLoading(false);
     }

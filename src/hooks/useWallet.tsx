@@ -11,7 +11,16 @@ interface WalletBalance {
 
 interface WalletLedgerEntry {
   id: string;
-  kind: 'topup' | 'spend_tip' | 'spend_purchase' | 'spend_battle' | 'award_prize' | 'convert_cashout' | 'convert_sub_applied';
+  kind:
+    | 'topup'
+    | 'spend_tip'
+    | 'spend_purchase'
+    | 'spend_battle'
+    | 'award_prize'
+    | 'convert_cashout'
+    | 'convert_sub_applied'
+    | 'spend_gift'
+    | 'earn_gift';
   amount_credits: number;
   ref_type?: string;
   ref_id?: string;
