@@ -393,7 +393,7 @@ const ContestDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 pt-16 pb-8">
+      <main className="container mx-auto px-4 pt-masthead pb-8">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <Link to="/challenges" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">

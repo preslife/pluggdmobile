@@ -585,7 +585,7 @@ export const CatalogModule: React.FC = () => {
         </TabsList>
 
         {/* Filters and Controls */}
-        <div className="sticky top-16 z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border py-3 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="sticky top-[var(--masthead-h)] z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border py-3 flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="flex flex-1 max-w-md items-center space-x-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
