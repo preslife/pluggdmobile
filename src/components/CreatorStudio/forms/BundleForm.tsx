@@ -198,9 +198,11 @@ export const BundleForm = () => {
         revenue_total: 0,
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('creator_bundles')
-        .insert([bundleData]);
+        .insert([bundleData])
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -209,7 +211,11 @@ export const BundleForm = () => {
         description: "Bundle created successfully",
       });
 
-      navigate('/studio/catalog');
+      if (data?.id) {
+        navigate(`/studio/catalog?tab=bundles&highlight=${data.id}`);
+      } else {
+        navigate('/studio/catalog?tab=bundles');
+      }
     } catch (error) {
       console.error('Error creating bundle:', error);
       toast({
@@ -690,7 +696,7 @@ export const BundleForm = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/studio/catalog')}
+                  onClick={() => navigate('/studio/catalog?tab=bundles')}
                 >
                   Cancel
                 </Button>

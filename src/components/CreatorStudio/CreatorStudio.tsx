@@ -17,6 +17,9 @@ import {
   SettingsModule,
   PartnershipsModule,
 } from "./modules";
+import { MerchandiseForm } from "./forms/MerchandiseForm";
+import { BundleForm } from "./forms/BundleForm";
+import { CollectibleForm } from "./forms/CollectibleForm";
 
 export const CreatorStudio: React.FC = () => {
   return (
@@ -27,6 +30,12 @@ export const CreatorStudio: React.FC = () => {
         
         {/* Catalog Routes */}
         <Route path="/catalog/*" element={<CatalogModule />} />
+        <Route path="/catalog/merchandise/new" element={<MerchandiseForm />} />
+        <Route path="/catalog/merchandise/edit/:id" element={<MerchandiseForm />} />
+        <Route path="/catalog/bundles/new" element={<BundleForm />} />
+        <Route path="/catalog/bundles/edit/:id" element={<BundleForm />} />
+        <Route path="/catalog/collectibles/new" element={<CollectibleForm />} />
+        <Route path="/catalog/collectibles/edit/:id" element={<CollectibleForm />} />
         
         {/* Plugins/Channels Routes */}
         <Route path="/plugins/*" element={<PluginsModule />} />
