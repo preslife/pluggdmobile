@@ -113,7 +113,45 @@
 
 **Acceptance**: Creators assign tiers per asset; fans see accurate paywalls; unlocking content updates instantly after membership status changes.
 
-#### 6) Labels / Teams invites (polish)
+#### 6) Creator Studio module hardening
+- **Catalog**
+  - Swap remaining placeholder queries for Supabase RPCs (`list_creator_releases`, `list_creator_beats`, etc.); ensure pagination, drafts, and published filters work for labels and solo creators.
+  - Connect upload/delete flows to storage helpers and `catalog-sync` functions; surface progress, retry, and validation errors.
+  - Wire analytics chips (plays/sales) to real metrics tables so creators can gauge performance without leaving the module.
+- **Memberships**
+  - Finalise Stripe checkout + webhook updates to create `memberships` rows, update `membership_tiers.current_members`, and re-enable the Subscribe CTA.
+  - Replace mocked perk stats with live counts (posts, downloads, members) and add error handling for tier mutations.
+  - Integrate Discord sync status inside the module, including last-sync timestamps and manual retry.
+- **Crowdfunding**
+  - Replace dummy campaign data with Supabase functions for campaigns, pledges, and reward fulfilment; render state machine (draft → live → fulfilled/failed).
+  - Hook the contribution CTA into checkout/tipping flows with optimistic UI and failure recovery.
+  - Add progress analytics (goal %, backer count) backed by real-time listeners or polling.
+- **Collaborations**
+  - Connect project listings to `collaboration_projects` and `collaboration_applicants` tables, including status filters and pagination.
+  - Enable messaging by wiring to the existing inbox fetchers and ensuring RLS allows project participants to read/write.
+  - Surface milestone/escrow state from backend functions and provide mutation paths for approvals and payouts.
+- **CRM & Audience**
+  - Replace mock segments with Supabase views or RPCs for buyers, followers, members, and students; enable CSV export via edge function.
+  - Integrate search/filter controls with backend queries and respect role-based access for team members.
+  - Hook newsletter/Discord broadcast buttons to existing integrations (Mailchimp/Substack/Discord) and emit logs.
+- **Storefront & Profile**
+  - Drive theme/profile settings from real tables so changes instantly reflect on public pages (cover, featured, navigation order).
+  - Validate custom domain management via Supabase functions; show DNS verification state and renewal reminders.
+  - Persist featured item ordering, link hubs, and hero modules with optimistic updates and rollback on failure.
+- **Financials**
+  - Fetch orders, refunds, payouts, and splits from their respective tables with date filters and CSV export.
+  - Wire refund initiation and statement downloads to backend functions, including status toasts and error handling.
+  - Surface tax/KYC status by reading Connect account metadata and gating payouts when incomplete.
+- **Settings**
+  - Ensure account/team/integration toggles call real mutation endpoints; add optimistic updates and revert on failure.
+  - Expose notification preferences and connect them to the upcoming in-app notifications system.
+  - Audit RLS to confirm team members only see modules allowed by their role, surfacing helpful lock states.
+- **Partnerships**
+  - Populate brand campaign and mentorship listings from Supabase tables; allow filtering by status and assigned owner.
+  - Hook proposal submission and deliverable tracking to backend functions, including file uploads and timeline updates.
+  - Emit logs for every state change so admins can audit campaigns end-to-end.
+
+#### 7) Labels / Teams invites (polish)
 - Email dispatch — ✅ wired through `send-lifecycle-emails` so new + resent invites deliver magic-link mailers.
 - Acceptance UX
   - Surface success toasts/banners when an invite is accepted; ensure roster refresh.
@@ -128,7 +166,7 @@
 
 **Acceptance**: Owner sends invite → email delivered; recipient accepts via link and sees confirmation; roster + logs updated automatically.
 
-#### 7) SEO/OG and Sitemap
+#### 8) SEO/OG and Sitemap
 - Apply `SEOHelmet` consistently on: `ReleaseDetail`, `BeatDetail`, `Profile/Artist`, `Label` (in progress — Store/Index pending).
 - OG images
   - Add an OG image generator (edge route or serverless) that renders cover/artist; wire `og:image` per page.
@@ -137,7 +175,7 @@
 
 **Acceptance**: Pages render correct meta; social share previews show custom OG images; `sitemap.xml` includes public entities.
 
-#### 8) Search polish
+#### 9) Search polish
 - `src/pages/SearchPage.tsx`:
   - Add input debounce (300ms), keyboard navigation for results, explicit 0-results affordances per tab.
   - Persist filters in URL; ensure “clear filters” resets queries.
@@ -145,7 +183,7 @@
 
 **Acceptance**: Typing is debounced; arrow keys move focus; empty states communicate options; deep links preserve filters.
 
-#### 9) Notifications and Reporting (minimal MVP)
+#### 10) Notifications and Reporting (minimal MVP)
 - Reporting/Blocking
   - DB: tables `content_reports`, `user_blocks`; RLS; RPCs `report_content`, `block_user`.
   - UI: report buttons on `ReleaseDetail`, `BeatDetail`, `Profile`; admin queue in `Admin.tsx`.
@@ -156,7 +194,7 @@
 
 **Acceptance**: Users can report content; admins can review; in-app notification count and list update on key events.
 
-#### 10) Observability and analytics
+#### 11) Observability and analytics
 - `src/lib/logger.ts`: call on key flows (release publish, checkout create/success/error, tip success, invite send/accept, follow, report).
 - `user_properties` via `useAnalytics`:
   - Update on purchases, follows, plays, tips; record simple traits (genres of interest).
@@ -164,7 +202,7 @@
 
 **Acceptance**: Logs appear for all critical flows; user properties rows change on actions.
 
-#### 11) Mobile, Performance, Accessibility
+#### 12) Mobile, Performance, Accessibility
 - Mobile
   - Audit key pages/components at 360–428px: carousels drag, tap targets ≥44px, nav overflow, player controls.
 - Performance
@@ -174,13 +212,13 @@
 
 **Acceptance**: Lighthouse mobile ≥80; a11y top issues resolved; no layout shifts on key routes.
 
-#### 12) Admin console coverage
+#### 13) Admin console coverage
 - Ensure orders, tips, reports, labels governance (transfer/delete) visible and actionable.
 - Protect with RLS and admin role checks.
 
 **Acceptance**: Admin can view and adjust essential entities; actions audited via `system_logs`.
 
-#### 13) V2 features to spec
+#### 14) V2 features to spec
 
 - Playlists (public/sharing)
   - Extend current private CRUD (`usePlaylist.tsx`) with public visibility, share links, and embeddable view.
