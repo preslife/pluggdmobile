@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createDownloadRecords, handleChargeReversal, type Logger } from "./helpers.ts";
 
-const logStep = (step: string, details?: any) => {
+const logStep: Logger = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
@@ -12,66 +13,127 @@ const handleSplitAttribution = async (session: any, supabaseClient: any, stripe:
   try {
     logStep("Processing split attribution", { sessionId: session.id });
 
-    // Get line items from the session
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-      expand: ['data.price.product']
+      expand: ['data.price.product'],
     });
 
     for (const item of lineItems.data) {
       const product = item.price.product;
       const metadata = product.metadata || {};
-      
-      // Determine content type and ID from metadata
       const contentType = metadata.content_type;
       const contentId = metadata.content_id;
-      
+
       if (!contentType || !contentId) continue;
 
-      // Get splits for this content
       const { data: splits, error: splitsError } = await supabaseClient
         .from('content_splits')
         .select('*')
         .eq('content_type', contentType)
         .eq('content_id', contentId);
 
-      if (splitsError || !splits || splits.length === 0) {
-        logStep("No splits found, using single creator payout", { contentType, contentId });
-        continue;
+      if (splitsError) {
+        throw splitsError;
       }
 
-      const grossAmount = item.amount_total;
-      const platformFeeRate = 0.15; // 15% platform fee
+      const grossAmount = item.amount_total || 0;
+      const currency = session.currency || 'gbp';
+      const platformFeeRate = 0.15;
       const platformFee = Math.round(grossAmount * platformFeeRate);
       const netAmount = grossAmount - platformFee;
 
-      // Create payout records for each split
+      const fallbackCreator =
+        metadata.creator_id ||
+        metadata.owner_id ||
+        session.metadata?.creator_id ||
+        session.metadata?.seller_id;
+
+      if (!splits || splits.length === 0) {
+        if (!fallbackCreator) {
+          logStep("No splits or fallback creator available", { contentType, contentId });
+          continue;
+        }
+
+        const { error: statementError } = await supabaseClient
+          .from('creator_statements')
+          .insert({
+            user_id: fallbackCreator,
+            content_type: contentType,
+            content_id: contentId,
+            source_type: 'order',
+            source_id: session.id,
+            gross_amount_cents: grossAmount,
+            fee_amount_cents: platformFee,
+            net_amount_cents: netAmount,
+            split_percent: 100,
+            currency,
+            metadata: {
+              product_name: product?.name,
+              stripe_session_id: session.id,
+              line_item_id: item.id,
+            },
+          });
+
+        if (statementError) {
+          logStep("Error creating fallback statement", { error: statementError.message });
+        }
+
+        continue;
+      }
+
       for (const split of splits) {
-        const splitAmount = Math.round(netAmount * (split.percent / 100));
-        
+        const percent = Number(split.percent) || 0;
+        const grossShare = Math.round(grossAmount * (percent / 100));
+        const feeShare = Math.round(platformFee * (percent / 100));
+        const netShare = Math.round(netAmount * (percent / 100));
+
+        const { error: statementError } = await supabaseClient
+          .from('creator_statements')
+          .insert({
+            user_id: split.payee_user_id,
+            content_type: contentType,
+            content_id: contentId,
+            source_type: 'order',
+            source_id: session.id,
+            gross_amount_cents: grossShare,
+            fee_amount_cents: feeShare,
+            net_amount_cents: netShare,
+            split_percent: percent,
+            currency,
+            metadata: {
+              product_name: product?.name,
+              stripe_session_id: session.id,
+              line_item_id: item.id,
+            },
+          });
+
+        if (statementError) {
+          logStep("Error creating creator statement", { error: statementError.message, split });
+        }
+
         const { error: payoutError } = await supabaseClient
           .from('producer_payouts')
           .insert({
             producer_id: split.payee_user_id,
             beat_id: contentType === 'beat' ? contentId : null,
             purchase_id: session.id,
-            gross_amount: grossAmount,
-            platform_fee: platformFee,
-            net_amount: splitAmount,
-            payout_status: 'pending'
+            gross_amount: grossShare,
+            platform_fee: feeShare,
+            net_amount: netShare,
+            payout_status: 'pending',
           });
 
         if (payoutError) {
-          logStep("Error creating split payout", { error: payoutError, split });
+          logStep("Error creating split payout", { error: payoutError.message, split });
         } else {
-          logStep("Created split payout", { 
-            payeeId: split.payee_user_id, 
-            percent: split.percent, 
-            amount: splitAmount 
+          logStep("Created split payout", {
+            payeeId: split.payee_user_id,
+            percent,
+            amount: netShare,
           });
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     logStep("Error in split attribution", { error: error.message });
   }
 };
@@ -114,7 +176,7 @@ serve(async (req) => {
         if (session.metadata?.transaction_type === 'credits_topup') {
           const userId = session.metadata.user_id;
           const creditsAmount = parseInt(session.metadata.credits_amount);
-          
+
           if (userId && creditsAmount) {
             logStep("Processing credits top-up", { userId, creditsAmount });
             
@@ -142,7 +204,30 @@ serve(async (req) => {
           }
           break;
         }
-        
+
+        if (session.metadata?.transaction_type === 'hybrid_purchase') {
+          const userId = session.metadata.user_id;
+          const purchaseItemsRaw = session.metadata.purchase_items;
+
+          let purchaseItems: any[] = [];
+          if (purchaseItemsRaw) {
+            try {
+              purchaseItems = JSON.parse(purchaseItemsRaw);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              logStep('Failed to parse hybrid purchase items', { sessionId: session.id, error: message });
+            }
+          }
+
+          if (userId) {
+            await createDownloadRecords(supabaseClient, userId, purchaseItems, session.id, logStep);
+          } else {
+            logStep('Hybrid purchase missing user metadata', { sessionId: session.id });
+          }
+
+          break;
+        }
+
         // Handle split attribution for purchases
         await handleSplitAttribution(session, supabaseClient, stripe);
         
@@ -797,6 +882,20 @@ serve(async (req) => {
         break;
       }
 
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        logStep('Charge refunded', { chargeId: charge.id, amount_refunded: charge.amount_refunded });
+        await handleChargeReversal(supabaseClient, charge, event.id, 'refund', logStep);
+        break;
+      }
+
+      case 'charge.failed': {
+        const charge = event.data.object as Stripe.Charge;
+        logStep('Charge failed', { chargeId: charge.id });
+        await handleChargeReversal(supabaseClient, charge, event.id, 'failure', logStep);
+        break;
+      }
+
       default:
         logStep("Unhandled event type", { type: event.type });
     }
@@ -819,7 +918,7 @@ serve(async (req) => {
 async function triggerWebhook(supabaseClient: any, eventType: string, userId: string, data: any) {
   try {
     await supabaseClient.functions.invoke('trigger-webhook', {
-      body: { 
+      body: {
         event_type: eventType,
         user_id: userId,
         data: data
@@ -829,3 +928,5 @@ async function triggerWebhook(supabaseClient: any, eventType: string, userId: st
     console.error(`Failed to trigger ${eventType} webhook:`, error);
   }
 }
+
+export { handleChargeReversal, createDownloadRecords };

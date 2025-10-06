@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { setMeta } from "@/lib/seo";
+import { HomeStudioPreview } from "@/components/HomeStudioPreview";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -377,6 +378,8 @@ export default function PluggdHomepage() {
             <HeaderRow title="How it works" cta="" />
             <HowItWorks role={role} />
           </section>
+
+          <HomeStudioPreview role={role} />
 
           {/* FAQ */}
           <section className="py-12">

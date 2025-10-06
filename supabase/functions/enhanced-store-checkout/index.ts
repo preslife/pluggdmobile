@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CREDITS_PER_GBP = 100;
+
 const logStep = (step: string, details?: any) => {
   console.log(`[Enhanced Store Checkout] ${step}`, details ? JSON.stringify(details, null, 2) : '');
 };
@@ -20,8 +22,16 @@ serve(async (req) => {
   try {
     logStep('Request received', { method: req.method });
 
-    const { cartItems, shippingAddress } = await req.json();
-    logStep('Parsed request body', { cartItemsCount: cartItems?.length });
+    const {
+      cartItems = [],
+      shippingAddress,
+      manualAmountCredits,
+      paymentMetadata = {}
+    } = await req.json();
+    logStep('Parsed request body', {
+      cartItemsCount: cartItems?.length,
+      manualAmountCredits
+    });
 
     // Create Supabase client for user authentication
     const supabaseClient = createClient(
@@ -63,6 +73,70 @@ serve(async (req) => {
       });
       customerId = customer.id;
       logStep('Created new Stripe customer', { customerId });
+    }
+
+    if (manualAmountCredits && manualAmountCredits > 0) {
+      const manualAmountPence = Math.round((manualAmountCredits / CREDITS_PER_GBP) * 100);
+      if (manualAmountPence <= 0) {
+        throw new Error('Manual checkout amount must be greater than zero');
+      }
+
+      const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
+      const metadata: Record<string, string> = {
+        user_id: user.id,
+        transaction_type: typeof paymentMetadata.transaction_type === 'string' ? paymentMetadata.transaction_type : 'hybrid_purchase',
+        manual_amount_credits: manualAmountCredits.toString(),
+      };
+
+      if (paymentMetadata.credits_applied !== undefined) {
+        metadata['credits_applied'] = String(paymentMetadata.credits_applied);
+      }
+      if (paymentMetadata.total_cost_credits !== undefined) {
+        metadata['total_cost_credits'] = String(paymentMetadata.total_cost_credits);
+      }
+      if (paymentMetadata.max_credit_percentage !== undefined) {
+        metadata['max_credit_percentage'] = String(paymentMetadata.max_credit_percentage);
+      }
+      if (paymentMetadata.items) {
+        try {
+          metadata['purchase_items'] = JSON.stringify(paymentMetadata.items);
+        } catch (jsonError) {
+          logStep('Failed to serialize purchase items', { error: jsonError instanceof Error ? jsonError.message : String(jsonError) });
+        }
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'gbp',
+              product_data: {
+                name: 'PLGD Checkout Balance',
+                description: 'Remaining balance for hybrid credit purchase',
+              },
+              unit_amount: manualAmountPence,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${origin}/library?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/checkout?payment=cancelled`,
+        metadata,
+      });
+
+      logStep('Created manual checkout session', { sessionId: session.id, amountPence: manualAmountPence });
+
+      return new Response(JSON.stringify({
+        url: session.url,
+        sessionId: session.id,
+        paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
     // Get product details from different tables based on cart items

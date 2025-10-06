@@ -4,17 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { creditSystem, CreditTransaction } from '@/services/credits/credit-system';
-import { formatCurrency } from '@/lib/utils';
+import { creditSystem, CreditTransaction, WalletBalanceSummary } from '@/services/credits/credit-system';
 import {
   Coins,
   Plus,
   TrendingUp,
-  TrendingDown,
   History,
   Loader2,
   ShoppingCart,
-  Download,
   RefreshCw,
   CreditCard
 } from 'lucide-react';
@@ -27,7 +24,7 @@ interface CreditBalanceProps {
 export const CreditBalance = ({ showTransactions = false, className }: CreditBalanceProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState<WalletBalanceSummary | null>(null);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,12 +41,12 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
     setLoading(true);
     try {
       const [balanceResult, transactionsResult] = await Promise.all([
-        creditSystem.getBalance(user.id),
+        creditSystem.getBalanceSummary(user.id),
         showTransactions ? creditSystem.getTransactionHistory(user.id, 10) : Promise.resolve([])
       ]);
-      
+
       setBalance(balanceResult);
-      setTransactions(transactionsResult);
+      setTransactions(transactionsResult as CreditTransaction[]);
     } catch (error) {
       console.error('Error fetching credit data:', error);
       toast({
@@ -68,31 +65,56 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
     setRefreshing(false);
   };
 
-  const getTransactionIcon = (type: CreditTransaction['transaction_type']) => {
-    switch (type) {
-      case 'purchase':
+  const getTransactionIcon = (kind: CreditTransaction['kind']) => {
+    switch (kind) {
+      case 'topup':
         return <Plus className="h-4 w-4 text-green-500" />;
-      case 'spend':
+      case 'spend_purchase':
+      case 'spend_tip':
+      case 'spend_battle':
+      case 'spend_gift':
         return <ShoppingCart className="h-4 w-4 text-blue-500" />;
-      case 'earn':
+      case 'award_prize':
+      case 'earn_gift':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
-      case 'refund':
-        return <RefreshCw className="h-4 w-4 text-orange-500" />;
+      case 'convert_cashout':
+      case 'convert_sub_applied':
+        return <CreditCard className="h-4 w-4 text-purple-500" />;
       default:
         return <Coins className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
-  const getTransactionColor = (type: CreditTransaction['transaction_type']) => {
-    switch (type) {
-      case 'purchase':
-      case 'earn':
-      case 'refund':
-        return 'text-green-600';
-      case 'spend':
-        return 'text-red-600';
+  const getTransactionColor = (amount: number) => {
+    return amount >= 0 ? 'text-green-600' : 'text-red-600';
+  };
+
+  const getTransactionLabel = (transaction: CreditTransaction) => {
+    if (transaction.meta?.description) {
+      return transaction.meta.description;
+    }
+
+    switch (transaction.kind) {
+      case 'topup':
+        return 'Credits added';
+      case 'spend_purchase':
+        return transaction.meta?.product_title || 'Purchase';
+      case 'spend_tip':
+        return 'Tip sent';
+      case 'spend_battle':
+        return 'Battle entry';
+      case 'award_prize':
+        return 'Prize awarded';
+      case 'convert_cashout':
+        return 'Cash-out';
+      case 'convert_sub_applied':
+        return 'Subscription credits applied';
+      case 'spend_gift':
+        return 'Gift sent';
+      case 'earn_gift':
+        return 'Gift received';
       default:
-        return 'text-muted-foreground';
+        return 'Wallet transaction';
     }
   };
 
@@ -130,7 +152,7 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {loading || !balance ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
@@ -138,25 +160,25 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
             <div className="space-y-4">
               <div className="text-center">
                 <div className="text-3xl font-bold text-primary mb-1">
-                  {balance}
+                  {balance.available_credits}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Available Credits
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="text-center p-2 bg-muted/50 rounded-lg">
-                  <div className="font-semibold text-green-600">+{balance}</div>
+                  <div className="font-semibold text-green-600">+{balance.total_earned}</div>
                   <div className="text-muted-foreground">Earned</div>
                 </div>
                 <div className="text-center p-2 bg-muted/50 rounded-lg">
-                  <div className="font-semibold text-blue-600">-{Math.max(0, 0)}</div>
+                  <div className="font-semibold text-blue-600">-{balance.total_spent}</div>
                   <div className="text-muted-foreground">Spent</div>
                 </div>
               </div>
 
-              {balance < 10 && (
+              {balance.available_credits < 10 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
                   <div className="flex items-center gap-2 text-amber-800 font-medium mb-1">
                     <CreditCard className="h-4 w-4" />
@@ -202,24 +224,24 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
                     className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      {getTransactionIcon(transaction.transaction_type)}
+                      {getTransactionIcon(transaction.kind)}
                       <div>
                         <div className="font-medium text-sm">
-                          {transaction.description}
+                          {getTransactionLabel(transaction)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(transaction.created_at).toLocaleDateString()} 
-                          {transaction.metadata?.product_type && (
+                          {new Date(transaction.created_at).toLocaleDateString()}
+                          {transaction.meta?.product_type && (
                             <Badge variant="outline" className="ml-2 text-xs">
-                              {transaction.metadata.product_type}
+                              {transaction.meta.product_type}
                             </Badge>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className={`font-semibold ${getTransactionColor(transaction.transaction_type)}`}>
-                      {transaction.transaction_type === 'spend' ? '-' : '+'}
-                      {Math.abs(transaction.amount)}
+                    <div className={`font-semibold ${getTransactionColor(transaction.amount_credits)}`}>
+                      {transaction.amount_credits >= 0 ? '+' : '-'}
+                      {Math.abs(transaction.amount_credits)}
                     </div>
                   </div>
                 ))}

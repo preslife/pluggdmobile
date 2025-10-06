@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface SecureDownloadButtonProps {
   releaseId: string;
@@ -21,6 +22,7 @@ export const SecureDownloadButton = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [downloading, setDownloading] = useState(false);
+  const analytics = useAnalytics({ enableGDPRCompliance: true, consentRequired: false });
 
   const handleDownload = async () => {
     if (!user) {
@@ -52,10 +54,17 @@ export const SecureDownloadButton = ({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         toast({
           title: 'Download Started',
           description: 'Your secure download has begun',
+        });
+
+        await analytics.track('release_download', {
+          release_id: releaseId,
+          title,
+          status: 'success',
+          source: 'release_detail_secure_button'
         });
       }
     } catch (error: any) {

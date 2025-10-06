@@ -48,6 +48,7 @@ export function CreatorAnalytics() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7' | '30' | '90'>('30');
+  const [splitInsights, setSplitInsights] = useState<{ totalNet: number; content: { key: string; label: string; net: number; averagePercent: number | null }[] } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -79,20 +80,65 @@ export function CreatorAnalytics() {
       // Calculate summary statistics
       if (metricsData && metricsData.length > 0) {
         const latest = metricsData[metricsData.length - 1];
-        const previous = metricsData.length > 1 ? metricsData[metricsData.length - 2] : null;
-        
-        const growthRate = previous 
-          ? ((latest.subs_count - previous.subs_count) / Math.max(previous.subs_count, 1)) * 100
-          : 0;
+      const previous = metricsData.length > 1 ? metricsData[metricsData.length - 2] : null;
 
-        setSummary({
-          totalSubs: latest.subs_count,
-          totalRevenue: metricsData.reduce((sum, m) => sum + m.revenue_cents, 0),
-          totalLikes: metricsData.reduce((sum, m) => sum + m.likes_count, 0),
-          totalComments: metricsData.reduce((sum, m) => sum + m.comments_count, 0),
-          totalBattles: metricsData.reduce((sum, m) => sum + m.battles_entries_count, 0),
-          growthRate
-        });
+      const growthRate = previous
+        ? ((latest.subs_count - previous.subs_count) / Math.max(previous.subs_count, 1)) * 100
+        : 0;
+
+      setSummary({
+        totalSubs: latest.subs_count,
+        totalRevenue: metricsData.reduce((sum, m) => sum + m.revenue_cents, 0),
+        totalLikes: metricsData.reduce((sum, m) => sum + m.likes_count, 0),
+        totalComments: metricsData.reduce((sum, m) => sum + m.comments_count, 0),
+        totalBattles: metricsData.reduce((sum, m) => sum + m.battles_entries_count, 0),
+        growthRate
+      });
+    }
+
+      const { data: statementData, error: statementError } = await supabase
+        .from('creator_statements')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (statementError) throw statementError;
+
+      if (statementData && statementData.length > 0) {
+        const attribution = statementData.reduce((acc, statement) => {
+          const key = `${statement.content_type || 'content'}:${statement.content_id || 'none'}`;
+          if (!acc[key]) {
+            const label = statement.metadata?.content_title || statement.metadata?.product_name || `${statement.content_type || 'content'} · ${statement.content_id ? statement.content_id.slice(0, 8) : 'unlinked'}`;
+            acc[key] = {
+              key,
+              label,
+              net: 0,
+              percentTotal: 0,
+              percentCount: 0
+            };
+          }
+          acc[key].net += (statement.net_amount_cents || 0) / 100;
+          if (statement.split_percent !== null && statement.split_percent !== undefined) {
+            acc[key].percentTotal += Number(statement.split_percent);
+            acc[key].percentCount += 1;
+          }
+          return acc;
+        }, {} as Record<string, { key: string; label: string; net: number; percentTotal: number; percentCount: number }>);
+
+        const content = Object.values(attribution)
+          .map(item => ({
+            key: item.key,
+            label: item.label,
+            net: item.net,
+            averagePercent: item.percentCount > 0 ? item.percentTotal / item.percentCount : null
+          }))
+          .sort((a, b) => b.net - a.net);
+
+        const totalNet = content.reduce((sum, item) => sum + item.net, 0);
+        setSplitInsights({ totalNet, content });
+      } else {
+        setSplitInsights(null);
       }
 
     } catch (error) {
@@ -117,6 +163,9 @@ export function CreatorAnalytics() {
       engagement: metric.likes_count + metric.comments_count
     }));
   };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 
   if (!user) {
     return (
@@ -170,11 +219,11 @@ export function CreatorAnalytics() {
       </div>
 
       {summary && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-blue-500" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-blue-500" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Subscribers</p>
                   <div className="flex items-center space-x-2">
@@ -188,14 +237,40 @@ export function CreatorAnalytics() {
                   </div>
                 </div>
               </div>
+          </CardContent>
+        </Card>
+
+        {splitInsights && (
+          <Card className="lg:col-span-2">
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Split-adjusted Revenue</p>
+                  <p className="text-2xl font-bold">{formatCurrency(splitInsights.totalNet)}</p>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                {splitInsights.content.slice(0, 5).map(item => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.averagePercent !== null ? `${item.averagePercent.toFixed(1)}% share` : 'Pending collaborator approval'}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold">{formatCurrency(item.net)}</p>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+        )}
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                <div className="space-y-1">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="h-4 w-4 text-green-500" />
+              <div className="space-y-1">
                   <p className="text-sm font-medium">Revenue</p>
                   <p className="text-2xl font-bold">
                     ${(summary.totalRevenue / 100).toFixed(2)}

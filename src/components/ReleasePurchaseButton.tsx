@@ -17,6 +17,12 @@ interface ReleasePurchaseButtonProps {
   title: string;
   artist: string;
   hasPurchased?: boolean;
+  onSuccess?: (payload: {
+    releaseId: string;
+    amount: number;
+    checkoutUrl?: string;
+    immediateAccess?: boolean;
+  }) => void;
 }
 
 export const ReleasePurchaseButton = ({
@@ -27,7 +33,8 @@ export const ReleasePurchaseButton = ({
   minimumPrice = 0,
   title,
   artist,
-  hasPurchased = false
+  hasPurchased = false,
+  onSuccess
 }: ReleasePurchaseButtonProps) => {
   // Use exact same logic as ReleaseCard
   const calculatedPrice = download_price || price || 0;
@@ -56,8 +63,34 @@ export const ReleasePurchaseButton = ({
       if (error) throw error;
 
       if (data.url) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(
+            'recentReleaseReceipt',
+            JSON.stringify({
+              releaseId,
+              title,
+              artist,
+              checkoutUrl: data.url,
+              timestamp: new Date().toISOString()
+            })
+          );
+        }
+
         window.open(data.url, '_blank');
         setIsOpen(false);
+
+        onSuccess?.({
+          releaseId,
+          amount: payWhatYouWant ? (amount || customAmount) : calculatedPrice,
+          checkoutUrl: data.url,
+          immediateAccess: false
+        });
+      } else {
+        onSuccess?.({
+          releaseId,
+          amount: payWhatYouWant ? (amount || customAmount) : calculatedPrice,
+          immediateAccess: true
+        });
       }
     } catch (error) {
       console.error('Purchase error:', error);

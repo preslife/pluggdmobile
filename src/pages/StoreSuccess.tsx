@@ -30,6 +30,14 @@ type OrderSummary = {
   order_items: OrderItemSummary[];
 };
 
+type ReleaseReceiptContext = {
+  releaseId: string;
+  title: string;
+  artist?: string;
+  checkoutUrl?: string;
+  timestamp?: string;
+};
+
 const StoreSuccess: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -41,6 +49,7 @@ const StoreSuccess: React.FC = () => {
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cartCleared, setCartCleared] = useState(false);
+  const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -98,6 +107,35 @@ const StoreSuccess: React.FC = () => {
     );
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedReceipt = sessionStorage.getItem("recentReleaseReceipt");
+    if (storedReceipt) {
+      try {
+        const parsed = JSON.parse(storedReceipt) as ReleaseReceiptContext;
+        const timestampMs = parsed.timestamp ? Date.parse(parsed.timestamp) : Date.now();
+        const within24Hours = !Number.isNaN(timestampMs) ? Date.now() - timestampMs < 1000 * 60 * 60 * 24 : true;
+
+        if (within24Hours) {
+          setReleaseReceipt((current) => current ?? parsed);
+        }
+      } catch (parseError) {
+        console.warn("Failed to parse stored release receipt context", parseError);
+      } finally {
+        sessionStorage.removeItem("recentReleaseReceipt");
+      }
+    }
+
+    const releaseIdParam = searchParams.get("release_id");
+    if (releaseIdParam && !releaseReceipt) {
+      setReleaseReceipt({
+        releaseId: releaseIdParam,
+        title: "Your release",
+      });
+    }
+  }, [searchParams, releaseReceipt]);
+
   return (
     <div className="min-h-[60vh] px-4 py-16 flex flex-col items-center bg-background">
       <div className="max-w-2xl w-full space-y-6">
@@ -114,10 +152,41 @@ const StoreSuccess: React.FC = () => {
           <h1 className="text-3xl font-semibold tracking-tight">{heading}</h1>
           <p className="text-muted-foreground">
             {loading && "Hang tight while we confirm your payment with Stripe."}
-            {!loading && !error && "We've emailed your receipt. Download links unlock immediately in your library."}
+            {!loading && !error && (
+              releaseReceipt
+                ? "We've emailed your receipt. Use the download shortcut below or visit your library anytime."
+                : "We've emailed your receipt. Download links unlock immediately in your library."
+            )}
             {!loading && error && "Refresh the page or reach out to support if the charge completed."}
           </p>
         </div>
+
+        {releaseReceipt && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Access your download</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                {releaseReceipt.title}
+                {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ''}
+              </p>
+              <p className="text-xs">
+                Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <a href={`/release/${releaseReceipt.releaseId}?purchased=true`}>
+                    Go to release download
+                  </a>
+                </Button>
+                <Button variant="outline" onClick={() => navigate(`/release/${releaseReceipt.releaseId}?purchased=true`)}>
+                  View in this window
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

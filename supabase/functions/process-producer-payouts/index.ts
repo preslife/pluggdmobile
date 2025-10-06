@@ -51,27 +51,24 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Get pending beat sales that need payout with enhanced filtering
-    const { data: pendingSales, error: salesError } = await supabaseService
-      .from("beat_sales")
-      .select(`
-        *,
-        beats!beat_sales_beat_id_fkey(title, user_id)
-      `)
-      .eq("payout_status", "pending")
-      .gte("producer_earnings", 10) // Minimum £10 for payout
-      .limit(maxPayouts); // Rate limiting
+    // Get pending statements that are ready for payout
+    const { data: pendingStatements, error: statementsError } = await supabaseService
+      .from("creator_statements")
+      .select("*")
+      .eq("status", "ready")
+      .order("created_at", { ascending: true })
+      .limit(maxPayouts * 10);
 
-    if (salesError) {
-      throw new Error(`Failed to fetch sales: ${salesError.message}`);
+    if (statementsError) {
+      throw new Error(`Failed to fetch statements: ${statementsError.message}`);
     }
 
-    logStep("Pending sales fetched", { count: pendingSales?.length || 0 });
+    logStep("Pending statements fetched", { count: pendingStatements?.length || 0 });
 
-    if (!pendingSales || pendingSales.length === 0) {
-      return new Response(JSON.stringify({ 
-        message: "No pending payouts to process",
-        processed: 0 
+    if (!pendingStatements || pendingStatements.length === 0) {
+      return new Response(JSON.stringify({
+        message: 'No pending payouts to process',
+        processed: 0
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -81,29 +78,31 @@ serve(async (req) => {
     let processed = 0;
     const results = [];
 
-    // Group sales by producer for batch payouts
-    const salesByProducer = pendingSales.reduce((acc, sale) => {
-      const producerId = sale.producer_id;
-      if (!acc[producerId]) {
-        acc[producerId] = {
-          sales: []
+    // Group statements by payee and currency
+    const statementsByCreator = pendingStatements.reduce((acc, statement) => {
+      const key = `${statement.user_id}:${statement.currency || 'gbp'}`;
+      if (!acc[key]) {
+        acc[key] = {
+          user_id: statement.user_id,
+          currency: statement.currency || 'gbp',
+          statements: [] as any[]
         };
       }
-      acc[producerId].sales.push(sale);
+      acc[key].statements.push(statement);
       return acc;
-    }, {} as any);
+    }, {} as Record<string, { user_id: string; currency: string; statements: any[] }>);
 
     // Get producer Stripe accounts
-    const producerIds = Object.keys(salesByProducer);
+    const producerIds = Object.values(statementsByCreator).map(entry => entry.user_id);
     const { data: stripeAccounts } = await supabaseService
       .from("producer_stripe_accounts")
       .select("*")
       .in("user_id", producerIds);
 
     // Process payouts for each producer
-    for (const [producerId, data] of Object.entries(salesByProducer)) {
+    for (const entry of Object.values(statementsByCreator)) {
+      const producerId = entry.user_id;
       try {
-        const { sales } = data as any;
         const stripeAccount = stripeAccounts?.find(acc => acc.user_id === producerId);
 
         if (!stripeAccount || !stripeAccount.onboarding_complete || !stripeAccount.payouts_enabled) {
@@ -111,26 +110,44 @@ serve(async (req) => {
           continue;
         }
 
-        // Calculate total payout amount in pence
-        const totalEarningsPence = Math.round(sales.reduce((sum: number, sale: any) => 
-          sum + sale.producer_earnings, 0) * 100);
+        const totalNetCents = entry.statements.reduce((sum, statement) => sum + (statement.net_amount_cents || 0), 0);
+        if (totalNetCents < 1000) {
+        logStep("Skipping producer - below minimum threshold", { producerId, totalNetCents });
+          continue;
+        }
 
-        logStep("Processing payout", { 
-          producerId, 
-          totalEarningsPence, 
-          stripeAccountId: stripeAccount.stripe_account_id 
+        logStep("Processing payout", {
+          producerId,
+          totalNetCents,
+          stripeAccountId: stripeAccount.stripe_account_id,
+          statements: entry.statements.length
         });
+
+        const { data: payoutRecord, error: createPayoutError } = await supabaseService
+          .from("payouts")
+          .insert({
+            user_id: producerId,
+            total_amount_cents: totalNetCents,
+            currency: entry.currency,
+            status: 'processing'
+          })
+          .select()
+          .single();
+
+        if (createPayoutError) {
+          throw new Error(`Failed to create payout record: ${createPayoutError.message}`);
+        }
 
         // Create Stripe transfer with retry logic
         const transfer = await retryWithBackoff(async () => {
           return await stripe.transfers.create({
-            amount: totalEarningsPence,
-            currency: "gbp",
+            amount: totalNetCents,
+            currency: entry.currency || "gbp",
             destination: stripeAccount.stripe_account_id,
-            description: `Beat licensing earnings payout - ${sales.length} transactions`,
+            description: `Creator earnings payout - ${entry.statements.length} statements`,
             metadata: {
               producer_id: producerId,
-              sales_count: sales.length.toString(),
+              statements: entry.statements.length.toString(),
               period: new Date().toISOString().substring(0, 7), // YYYY-MM format
               batch_id: batchId || 'manual',
               payout_type: payoutType
@@ -138,85 +155,97 @@ serve(async (req) => {
           });
         });
 
-        logStep("Stripe transfer created", { 
-          transferId: transfer.id, 
-          amount: totalEarningsPence 
+        logStep("Stripe transfer created", {
+          transferId: transfer.id,
+          amount: totalNetCents
         });
 
-        // Update beat sales records
-        const saleIds = sales.map((s: any) => s.id);
-        const { error: updateError } = await supabaseService
-          .from("beat_sales")
+        const statementIds = entry.statements.map(statement => statement.id);
+
+        const { error: updateStatementsError } = await supabaseService
+          .from("creator_statements")
           .update({
-            payout_status: "paid",
-            payout_id: transfer.id,
+            status: 'paid',
             updated_at: new Date().toISOString()
           })
-          .in("id", saleIds);
+          .in('id', statementIds);
 
-        if (updateError) {
-          logStep("Error updating sales", { error: updateError.message });
-          throw updateError;
+        if (updateStatementsError) {
+          throw updateStatementsError;
         }
 
-        processed += sales.length;
+        const { error: updatePayoutError } = await supabaseService
+          .from("payouts")
+          .update({
+            status: 'paid',
+            stripe_transfer_id: transfer.id,
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', payoutRecord.id);
+
+        if (updatePayoutError) {
+          throw updatePayoutError;
+        }
+
+        const amountMap = new Map<string, number>(
+          entry.statements.map(statement => [statement.id, statement.net_amount_cents || 0])
+        );
+
+        const payoutStatementRows = statementIds.map(statementId => ({
+          payout_id: payoutRecord.id,
+          statement_id: statementId,
+          amount_cents: amountMap.get(statementId) || 0
+        }));
+
+        if (payoutStatementRows.length > 0) {
+          const { error: linkError } = await supabaseService
+            .from("payout_statements")
+            .insert(payoutStatementRows);
+
+          if (linkError) {
+            logStep("Failed to link payout statements", { error: linkError.message });
+          }
+        }
+
+        processed += statementIds.length;
         results.push({
           producerId,
           transferId: transfer.id,
-          amount: totalEarningsPence,
-          salesCount: sales.length
+          amount: totalNetCents,
+          statements: statementIds.length
         });
 
-        logStep("Payout completed", { 
-          producerId, 
-          transferId: transfer.id, 
-          salesCount: sales.length 
+        logStep("Payout completed", {
+          producerId,
+          transferId: transfer.id,
+          statements: statementIds.length
         });
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logStep("Error processing producer payout", { 
-          producerId, 
-          error: errorMessage 
+        logStep("Error processing producer payout", {
+          producerId,
+          error: errorMessage
         });
-        
-        // Enhanced error handling - mark sales as failed and create error record
-        const saleIds = (data as any).sales.map((s: any) => s.id);
+
+        const statementIds = entry.statements.map(statement => statement.id);
+
         await supabaseService
-          .from("beat_sales")
+          .from("creator_statements")
           .update({
-            payout_status: "failed",
-            error_message: errorMessage,
+            status: 'pending',
             updated_at: new Date().toISOString()
           })
-          .in("id", saleIds);
+          .in('id', statementIds);
 
-        // Create failed payout records for tracking
-        for (const sale of (data as any).sales) {
-          await supabaseService
-            .from('payout_records')
-            .insert({
-              user_id: producerId,
-              beat_id: sale.beat_id,
-              amount: sale.producer_earnings,
-              payout_method: 'stripe',
-              payout_status: 'failed'
-            });
-        }
-
-        // Add to dead letter queue for manual review
         await supabaseService
-          .from('failed_payouts')
-          .insert({
-            producer_id: producerId,
-            batch_id: batchId,
-            sales_count: (data as any).sales.length,
-            total_amount: (data as any).sales.reduce((sum: number, sale: any) => sum + sale.producer_earnings, 0),
-            error_message: errorMessage,
-            created_at: new Date().toISOString()
+          .from("payouts")
+          .update({
+            status: 'failed',
+            failure_reason: errorMessage
           })
-          .then(() => logStep("Added to failed payouts queue", { producerId }))
-          .catch(() => logStep("Failed to add to failed payouts queue", { producerId }));
+          .eq('user_id', producerId)
+          .eq('status', 'processing');
       }
     }
 

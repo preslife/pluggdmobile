@@ -5646,10 +5646,52 @@ export type Database = {
           },
         ]
       }
+      release_credits: {
+        Row: {
+          contribution_type: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          profile_url: string | null
+          release_id: string
+          role: string
+        }
+        Insert: {
+          contribution_type?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          profile_url?: string | null
+          release_id: string
+          role: string
+        }
+        Update: {
+          contribution_type?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          profile_url?: string | null
+          release_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_credits_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       release_drafts: {
         Row: {
           artist: string | null
           cover_art_url: string | null
+          contributors: Json | null
           created_at: string
           description: string | null
           digital_release_date: string | null
@@ -5674,6 +5716,7 @@ export type Database = {
         Insert: {
           artist?: string | null
           cover_art_url?: string | null
+          contributors?: Json | null
           created_at?: string
           description?: string | null
           digital_release_date?: string | null
@@ -5698,6 +5741,7 @@ export type Database = {
         Update: {
           artist?: string | null
           cover_art_url?: string | null
+          contributors?: Json | null
           created_at?: string
           description?: string | null
           digital_release_date?: string | null
@@ -5826,6 +5870,7 @@ export type Database = {
           approval_status: string | null
           approved: boolean | null
           artist: string
+          contributors: Json | null
           composer: string | null
           composers: string[] | null
           cover_art_url: string | null
@@ -5900,6 +5945,7 @@ export type Database = {
           approval_status?: string | null
           approved?: boolean | null
           artist: string
+          contributors?: Json | null
           composer?: string | null
           composers?: string[] | null
           cover_art_url?: string | null
@@ -5974,6 +6020,7 @@ export type Database = {
           approval_status?: string | null
           approved?: boolean | null
           artist?: string
+          contributors?: Json | null
           composer?: string | null
           composers?: string[] | null
           cover_art_url?: string | null

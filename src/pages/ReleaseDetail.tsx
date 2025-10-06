@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Calendar, Clock, Eye, Download, Share, Music, TrendingUp } from "lucide-react";
+import { Calendar, Clock, Eye, Download, Share, Music, TrendingUp, Users, FileText } from "lucide-react";
 import DomainAwareNavigation from "@/components/DomainAwareNavigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import SEOHelmet from "@/components/SEOHelmet";
+import { SecureDownloadButton } from "@/components/SecureDownloadButton";
 
 interface Track {
   id: string;
@@ -52,7 +53,71 @@ interface Release {
   soundcloud_url: string;
   preview_url?: string;
   user_id?: string; // Creator of the release
+  contributors?: unknown;
+  lyrics?: string | null;
 }
+
+interface ReleaseContributor {
+  name: string;
+  role?: string;
+  profileUrl?: string;
+}
+
+interface ReleaseCredit {
+  id: string;
+  release_id: string;
+  name: string;
+  role: string;
+  contribution_type?: string | null;
+  profile_url?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+const parseContributors = (value: unknown): ReleaseContributor[] => {
+  if (!value) return [];
+
+  const normaliseEntry = (entry: any): ReleaseContributor | null => {
+    if (!entry) return null;
+
+    if (typeof entry === 'string') {
+      return { name: entry };
+    }
+
+    if (typeof entry === 'object') {
+      const name = (entry.name || entry.full_name || entry.displayName || '').toString().trim();
+      if (!name) return null;
+
+      const role = entry.role || entry.title || entry.contribution;
+      const profileUrl = entry.profileUrl || entry.profile_url || entry.url;
+
+      return {
+        name,
+        role: role ? String(role) : undefined,
+        profileUrl: profileUrl ? String(profileUrl) : undefined
+      };
+    }
+
+    return null;
+  };
+
+  if (Array.isArray(value)) {
+    return value
+      .map(normaliseEntry)
+      .filter(Boolean) as ReleaseContributor[];
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parseContributors(parsed);
+    } catch (error) {
+      console.warn('Unable to parse contributors JSON', error);
+      return [];
+    }
+  }
+
+  return [];
+};
 
 const ReleaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +128,8 @@ const ReleaseDetail = () => {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [credits, setCredits] = useState<ReleaseCredit[]>([]);
+  const [contributors, setContributors] = useState<ReleaseContributor[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -91,24 +158,41 @@ const ReleaseDetail = () => {
         .single();
 
       if (releaseError) throw releaseError;
+
       setRelease(releaseData);
+      setContributors(parseContributors(releaseData?.contributors));
 
-      // Fetch tracks
-      const { data: tracksData, error: tracksError } = await supabase
-        .from('tracks')
-        .select('*')
-        .eq('release_id', id)
-        .order('track_number');
+      const [tracksResponse, creditsResponse] = await Promise.all([
+        supabase
+          .from('tracks')
+          .select('*')
+          .eq('release_id', id)
+          .order('track_number'),
+        supabase
+          .from('release_credits')
+          .select('id, release_id, name, role, contribution_type, profile_url, metadata')
+          .eq('release_id', id)
+          .order('created_at', { ascending: true })
+      ]);
 
+      const { data: tracksData, error: tracksError } = tracksResponse;
       if (tracksError) {
         console.error('Error fetching tracks:', tracksError);
-        // Don't throw error if tracks don't exist yet
       } else {
         setTracks(tracksData || []);
+      }
+
+      const { data: creditsData, error: creditsError } = creditsResponse;
+      if (creditsError) {
+        console.error('Error fetching release credits:', creditsError);
+      } else {
+        setCredits(creditsData || []);
       }
     } catch (error) {
       console.error('Error fetching release:', error);
       toast.error('Failed to load release');
+      setCredits([]);
+      setContributors([]);
     } finally {
       setIsLoading(false);
     }
@@ -146,6 +230,14 @@ const ReleaseDetail = () => {
   };
 
   const totalDuration = tracks.reduce((sum, track) => sum + (track.duration || 0), 0);
+
+  const handlePurchaseSuccess = (payload: { immediateAccess?: boolean }) => {
+    if (payload?.immediateAccess) {
+      setHasPurchased(true);
+      setHasAccess(true);
+      toast.success('Purchase complete! Your download is now available.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -293,13 +385,23 @@ const ReleaseDetail = () => {
                   title={release.title}
                   artist={release.artist}
                   hasPurchased={hasPurchased}
+                  onSuccess={handlePurchaseSuccess}
                 />
-                
+
                 <ArtistTipButton
                   artistId={user?.id || ''} // This should be the actual artist's user ID
                   artistName={release.artist}
                   releaseId={release.id}
                 />
+
+                {(hasAccess || hasPurchased) && (
+                  <SecureDownloadButton
+                    releaseId={release.id}
+                    title={release.title}
+                    disabled={tracks.length === 0}
+                    className="gap-2"
+                  />
+                )}
 
                 <Button
                   variant="outline"
@@ -354,12 +456,14 @@ const ReleaseDetail = () => {
 
           {/* Content Tabs */}
           <Tabs defaultValue="player" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
               <TabsTrigger value="player">Player</TabsTrigger>
               <TabsTrigger value="tracklist">Tracklist</TabsTrigger>
               <TabsTrigger value="tracks">Manage</TabsTrigger>
               <TabsTrigger value="distribution">Distribution</TabsTrigger>
               <TabsTrigger value="comments">Comments</TabsTrigger>
+              <TabsTrigger value="credits">Credits</TabsTrigger>
+              <TabsTrigger value="lyrics">Lyrics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="player" className="space-y-6">
@@ -446,6 +550,102 @@ const ReleaseDetail = () => {
 
             <TabsContent value="comments">
               <ReleaseComments releaseId={release.id} />
+            </TabsContent>
+            <TabsContent value="credits" className="space-y-6">
+              {contributors.length > 0 && (
+                <section aria-labelledby="release-contributors-heading" className="space-y-3">
+                  <h3 id="release-contributors-heading" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Contributors
+                  </h3>
+                  <ul className="grid gap-3 md:grid-cols-2" role="list">
+                    {contributors.map((contributor, index) => (
+                      <li key={`${contributor.name}-${index}`} className="rounded-lg border bg-card p-4 shadow-sm">
+                        <p className="font-medium text-foreground">{contributor.name}</p>
+                        {contributor.role && (
+                          <p className="text-sm text-muted-foreground">{contributor.role}</p>
+                        )}
+                        {contributor.profileUrl && (
+                          <a
+                            href={contributor.profileUrl}
+                            className="mt-2 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View profile
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {credits.length > 0 && (
+                <section aria-labelledby="release-credits-heading" className="space-y-3">
+                  <h3 id="release-credits-heading" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Detailed credits
+                  </h3>
+                  <div className="grid gap-3 md:grid-cols-2" role="list">
+                    {credits.map((credit) => (
+                      <article key={credit.id} className="rounded-lg border bg-card p-4 shadow-sm" role="listitem">
+                        <p className="font-semibold text-foreground">{credit.name}</p>
+                        <p className="text-sm text-muted-foreground">{credit.role}</p>
+                        {credit.contribution_type && (
+                          <p className="text-xs text-muted-foreground">{credit.contribution_type}</p>
+                        )}
+                        {credit.profile_url && (
+                          <a
+                            href={credit.profile_url}
+                            className="mt-2 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View contributor
+                          </a>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {contributors.length === 0 && credits.length === 0 && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/40 p-8 text-center text-muted-foreground"
+                >
+                  <Users className="h-10 w-10" aria-hidden="true" />
+                  <p className="text-base font-medium text-foreground">Credits not available</p>
+                  <p className="text-sm max-w-md">
+                    The artist hasn't added credits for this release yet. Check back soon for detailed collaborator information.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="lyrics" className="space-y-4">
+              {release.lyrics ? (
+                <article
+                  aria-label="Release lyrics"
+                  className="rounded-lg border bg-muted/30 p-6 text-left"
+                >
+                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
+                    {release.lyrics}
+                  </pre>
+                </article>
+              ) : (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/40 p-8 text-center text-muted-foreground"
+                >
+                  <FileText className="h-10 w-10" aria-hidden="true" />
+                  <p className="text-base font-medium text-foreground">Lyrics not available</p>
+                  <p className="text-sm max-w-md">
+                    Lyrics for this release have not been shared yet. When they are published you'll find them here in full.
+                  </p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

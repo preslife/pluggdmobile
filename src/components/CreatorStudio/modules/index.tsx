@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 // Export all Creator Studio modules
 export { CatalogRouter as CatalogModule } from './CatalogRouter';
@@ -42,14 +43,18 @@ export const StorefrontModule = EnhancedStorefrontModule;
 
 export const FinancialsModule = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState([]);
+  const { toast } = useToast();
+  const [statements, setStatements] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
-    totalOrders: 0,
+    totalStatements: 0,
     pendingPayouts: 0,
     thisMonth: 0
   });
+  const [accountStatus, setAccountStatus] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -57,35 +62,178 @@ export const FinancialsModule = () => {
     }
   }, [user]);
 
-  const fetchFinancialData = async () => {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP'
+    }).format(value);
+  };
+
+  const fetchFinancialData = async (silent = false) => {
     if (!user) return;
-    
+
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
-      // Fetch orders
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const [statementsRes, payoutsRes, accountRes] = await Promise.all([
+        supabase
+          .from('creator_statements')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(100),
+        supabase
+          .from('payouts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('producer_stripe_accounts')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle()
+      ]);
 
-      setOrders(ordersData || []);
+      if (statementsRes.error) throw statementsRes.error;
+      if (payoutsRes.error) throw payoutsRes.error;
 
-      // Calculate stats
-      const totalRevenue = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-      const totalOrders = ordersData?.length || 0;
+      const statementData = statementsRes.data || [];
+      const payoutData = payoutsRes.data || [];
+
+      setStatements(statementData);
+      setPayouts(payoutData);
+      setAccountStatus(accountRes.data || null);
+
+      const totalNetCents = statementData.reduce(
+        (sum, statement) => sum + (statement.net_amount_cents || 0),
+        0
+      );
+      const pendingNetCents = statementData
+        .filter(statement => ['ready', 'pending'].includes(statement.status))
+        .reduce((sum, statement) => sum + (statement.net_amount_cents || 0), 0);
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const thisMonthCents = statementData
+        .filter(statement => {
+          const createdAt = statement.created_at ? new Date(statement.created_at) : null;
+          return createdAt && createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+        })
+        .reduce((sum, statement) => sum + (statement.net_amount_cents || 0), 0);
 
       setStats({
-        totalRevenue,
-        totalOrders,
-        pendingPayouts: totalRevenue * 0.8, // 80% after platform fee
-        thisMonth: totalRevenue * 0.3 // Mock this month's earnings
+        totalRevenue: totalNetCents / 100,
+        totalStatements: statementData.length,
+        pendingPayouts: pendingNetCents / 100,
+        thisMonth: thisMonthCents / 100
       });
-      
     } catch (error) {
       console.error('Error fetching financial data:', error);
+      toast({
+        title: 'Unable to load financials',
+        description: error instanceof Error ? error.message : 'Please try again shortly.',
+        variant: 'destructive'
+      });
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const getContentLabel = (statement: any) => {
+    if (statement.metadata?.content_title) return statement.metadata.content_title;
+    if (statement.content_id) {
+      return `${statement.content_type ?? 'content'} · ${statement.content_id.slice(0, 8)}`;
+    }
+    return statement.content_type ?? 'General earnings';
+  };
+
+  const downloadCsv = (rows: Record<string, any>[], filename: string) => {
+    if (rows.length === 0) {
+      toast({
+        title: 'Nothing to export',
+        description: 'There are no records available to download yet.'
+      });
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    const csvLines = [headers.join(',')];
+
+    rows.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header];
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
+      csvLines.push(values.join(','));
+    });
+
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportStatements = () => {
+    const rows = statements.map(statement => ({
+      statement_id: statement.id,
+      created_at: statement.created_at,
+      content_type: statement.content_type,
+      content_id: statement.content_id,
+      gross_amount: (statement.gross_amount_cents || 0) / 100,
+      fee_amount: (statement.fee_amount_cents || 0) / 100,
+      net_amount: (statement.net_amount_cents || 0) / 100,
+      split_percent: statement.split_percent ?? '',
+      status: statement.status,
+      source_type: statement.source_type
+    }));
+    downloadCsv(rows, 'creator-statements.csv');
+  };
+
+  const exportPayouts = () => {
+    const rows = payouts.map(payout => ({
+      payout_id: payout.id,
+      created_at: payout.created_at,
+      processed_at: payout.processed_at,
+      total_amount: (payout.total_amount_cents || 0) / 100,
+      status: payout.status,
+      stripe_transfer_id: payout.stripe_transfer_id || ''
+    }));
+    downloadCsv(rows, 'creator-payouts.csv');
+  };
+
+  const refreshStripeStatus = async () => {
+    if (!user) return;
+
+    setRefreshingStatus(true);
+    try {
+      const { error } = await supabase.functions.invoke('update-stripe-account-status', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Stripe status refreshed' });
+      await fetchFinancialData(true);
+    } catch (error) {
+      console.error('Failed to refresh Stripe status', error);
+      toast({
+        title: 'Unable to refresh Stripe status',
+        description: error instanceof Error ? error.message : 'Please try again later.',
+        variant: 'destructive'
+      });
+    } finally {
+      setRefreshingStatus(false);
     }
   };
 
@@ -96,6 +244,28 @@ export const FinancialsModule = () => {
         <p className="text-muted-foreground">Track orders, refunds, payouts, and tax information.</p>
       </div>
 
+      {accountStatus && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Stripe Connect</CardTitle>
+              <CardDescription>Manage your payout account health</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={accountStatus.onboarding_complete ? 'default' : 'outline'}>
+                {accountStatus.onboarding_complete ? 'Onboarding complete' : 'Action required'}
+              </Badge>
+              <Badge variant={accountStatus.payouts_enabled ? 'default' : 'secondary'}>
+                {accountStatus.payouts_enabled ? 'Payouts enabled' : 'Payouts disabled'}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={refreshStripeStatus} disabled={refreshingStatus}>
+                {refreshingStatus ? 'Refreshing…' : 'Refresh status'}
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -103,15 +273,15 @@ export const FinancialsModule = () => {
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">Statements</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <div className="text-2xl font-bold">{stats.totalStatements}</div>
           </CardContent>
         </Card>
         <Card>
@@ -119,7 +289,7 @@ export const FinancialsModule = () => {
             <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.pendingPayouts.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.pendingPayouts)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -127,44 +297,58 @@ export const FinancialsModule = () => {
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.thisMonth.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.thisMonth)}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="orders" className="space-y-4">
+      <Tabs defaultValue="statements" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="orders">Recent Orders</TabsTrigger>
+          <TabsTrigger value="statements">Statements</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orders">
+        <TabsContent value="statements">
           <Card>
-            <CardHeader>
-              <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>Your latest customer orders</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>Recent Statements</CardTitle>
+                <CardDescription>Revenue attributed to your content and collaborators</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={exportStatements} disabled={statements.length === 0}>
+                Download CSV
+              </Button>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="text-center py-8">Loading...</div>
-              ) : orders.length === 0 ? (
+              ) : statements.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No orders found. Start selling to see your orders here.
+                  No statements yet. Once sales are processed you will see them here.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((order: any) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                  {statements.map(statement => (
+                    <div key={statement.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium">{getContentLabel(statement)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString()}
+                          {statement.source_type === 'order' ? 'Store order' : statement.source_type}
+                          {' · '}
+                          {statement.created_at ? new Date(statement.created_at).toLocaleDateString() : 'Pending'}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">${order.total_amount.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground capitalize">{order.status}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency((statement.net_amount_cents || 0) / 100)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Gross {formatCurrency((statement.gross_amount_cents || 0) / 100)} · Fees {formatCurrency((statement.fee_amount_cents || 0) / 100)}
+                          </p>
+                        </div>
+                        <Badge variant={statement.status === 'paid' ? 'default' : statement.status === 'ready' ? 'outline' : 'secondary'}>
+                          {statement.status}
+                        </Badge>
                       </div>
                     </div>
                   ))}
@@ -176,14 +360,49 @@ export const FinancialsModule = () => {
 
         <TabsContent value="payouts">
           <Card>
-            <CardHeader>
-              <CardTitle>Payout History</CardTitle>
-              <CardDescription>Track your earnings and payouts</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>Payout History</CardTitle>
+                <CardDescription>Transfers sent to your Stripe account</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={exportPayouts} disabled={payouts.length === 0}>
+                Download CSV
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Payout system integration coming soon. Connect your bank account to receive payouts.
-              </div>
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : payouts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No payouts have been processed yet.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {payouts.map(payout => (
+                    <div key={payout.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{payout.processed_at ? 'Transfer sent' : 'Payout pending'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Requested {payout.created_at ? new Date(payout.created_at).toLocaleDateString() : '—'}
+                          {payout.processed_at ? ` · Paid ${new Date(payout.processed_at).toLocaleDateString()}` : ''}
+                        </p>
+                        {payout.stripe_transfer_id && (
+                          <p className="text-xs text-muted-foreground">Transfer #{payout.stripe_transfer_id}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency((payout.total_amount_cents || 0) / 100)}</p>
+                          <p className="text-xs text-muted-foreground">{payout.currency?.toUpperCase() ?? 'GBP'}</p>
+                        </div>
+                        <Badge variant={payout.status === 'paid' ? 'default' : payout.status === 'failed' ? 'destructive' : 'secondary'}>
+                          {payout.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -192,12 +411,42 @@ export const FinancialsModule = () => {
           <Card>
             <CardHeader>
               <CardTitle>Financial Analytics</CardTitle>
-              <CardDescription>Detailed revenue analytics and trends</CardDescription>
+              <CardDescription>Revenue trends grouped by content</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Advanced financial analytics coming soon.
-              </div>
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : statements.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Add collaborators and complete orders to unlock revenue analytics.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(
+                    statements.reduce((acc: Record<string, { label: string; net: number; count: number }>, statement) => {
+                      const key = `${statement.content_type || 'unknown'}:${statement.content_id || 'none'}`;
+                      if (!acc[key]) {
+                        acc[key] = {
+                          label: getContentLabel(statement),
+                          net: 0,
+                          count: 0
+                        };
+                      }
+                      acc[key].net += (statement.net_amount_cents || 0) / 100;
+                      acc[key].count += 1;
+                      return acc;
+                    }, {})
+                  ).map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{value.label}</p>
+                        <p className="text-sm text-muted-foreground">{value.count} statement{value.count !== 1 ? 's' : ''}</p>
+                      </div>
+                      <p className="font-semibold">{formatCurrency(value.net)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

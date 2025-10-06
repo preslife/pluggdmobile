@@ -1,26 +1,35 @@
 import { supabase } from '@/integrations/supabase/client';
+import { creditPolicyService } from './credit-policy';
+
+export type WalletTransactionKind =
+  | 'topup'
+  | 'spend_tip'
+  | 'spend_purchase'
+  | 'spend_battle'
+  | 'award_prize'
+  | 'convert_cashout'
+  | 'convert_sub_applied'
+  | 'spend_gift'
+  | 'earn_gift';
 
 export interface CreditTransaction {
   id: string;
   user_id: string;
-  amount: number;
-  transaction_type: 'purchase' | 'spend' | 'refund' | 'earn';
-  description: string;
-  metadata?: {
-    product_id?: string;
-    product_type?: 'beat' | 'release' | 'pack' | 'license';
-    stripe_payment_intent_id?: string;
-    stripe_charge_id?: string;
-  };
+  kind: WalletTransactionKind;
+  amount_credits: number;
+  ref_type?: string | null;
+  ref_id?: string | null;
+  counterparty_user_id?: string | null;
+  meta?: Record<string, any> | null;
   created_at: string;
 }
 
-export interface CreditBalance {
-  user_id: string;
-  balance: number;
+export interface WalletBalanceSummary {
+  balance_credits: number;
+  pending_credits: number;
+  available_credits: number;
   total_earned: number;
   total_spent: number;
-  last_updated: string;
 }
 
 export interface PurchaseItem {
@@ -37,178 +46,248 @@ class CreditSystemService {
    * Get user's current credit balance
    */
   async getBalance(userId: string): Promise<number> {
-    const { data, error } = await supabase
-      .from('credit_balances')
-      .select('balance')
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') { // No row found
-        // Initialize balance for new user
-        await this.initializeBalance(userId);
-        return 0;
-      }
-      throw error;
-    }
-
-    return data?.balance || 0;
+    const balance = await this.getWalletBalance(userId);
+    return balance.available_credits;
   }
 
-  /**
-   * Initialize credit balance for new user
-   */
-  private async initializeBalance(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('credit_balances')
-      .insert({
-        user_id: userId,
-        balance: 0,
-        total_earned: 0,
-        total_spent: 0
-      });
+  private async getWalletBalance(userId: string): Promise<WalletBalanceSummary> {
+    const { data, error } = await supabase.rpc('get_wallet_balance', {
+      p_user_id: userId,
+    });
 
     if (error) {
       throw error;
     }
+
+    const balanceData = (data as any) || {};
+
+    const [earnedData, spentData] = await Promise.all([
+      supabase
+        .from('wallet_ledger')
+        .select('total:amount_credits', { head: false, count: 'exact' })
+        .eq('user_id', userId)
+        .gte('amount_credits', 0)
+        .single()
+        .then((result) => {
+          if (result.error && result.error.code !== 'PGRST116') {
+            throw result.error;
+          }
+          return (result.data as any)?.total ?? 0;
+        }),
+      supabase
+        .from('wallet_ledger')
+        .select('total:amount_credits', { head: false, count: 'exact' })
+        .eq('user_id', userId)
+        .lt('amount_credits', 0)
+        .single()
+        .then((result) => {
+          if (result.error && result.error.code !== 'PGRST116') {
+            throw result.error;
+          }
+          const spent = (result.data as any)?.total ?? 0;
+          return Math.abs(spent);
+        }),
+    ]);
+
+    return {
+      balance_credits: balanceData.balance_credits ?? 0,
+      pending_credits: balanceData.pending_credits ?? 0,
+      available_credits: balanceData.available_credits ?? 0,
+      total_earned: earnedData,
+      total_spent: spentData,
+    };
+  }
+
+  async getBalanceSummary(userId: string): Promise<WalletBalanceSummary> {
+    return this.getWalletBalance(userId);
   }
 
   /**
    * Add credits to user's balance
    */
   async addCredits(
-    userId: string, 
-    amount: number, 
-    description: string,
-    metadata?: CreditTransaction['metadata']
-  ): Promise<CreditTransaction> {
-    const { data, error } = await supabase.rpc('add_credits', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_description: description,
-      p_metadata: metadata || {}
+    userId: string,
+    amount: number,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
+    const { error } = await supabase.functions.invoke('process-credits-transaction', {
+      body: {
+        amount_credits: amount,
+        kind: 'topup',
+        meta: metadata || {},
+        ref_type: metadata?.ref_type,
+        ref_id: metadata?.ref_id,
+        counterparty_user_id: metadata?.counterparty_user_id,
+      },
     });
 
     if (error) {
       throw error;
     }
-
-    return data;
   }
 
-  /**
-   * Spend credits from user's balance
-   */
   async spendCredits(
-    userId: string, 
-    amount: number, 
-    description: string,
-    metadata?: CreditTransaction['metadata']
-  ): Promise<CreditTransaction> {
-    // Check balance first
+    userId: string,
+    amount: number,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
     const balance = await this.getBalance(userId);
     if (balance < amount) {
       throw new Error('Insufficient credits');
     }
 
-    const { data, error } = await supabase.rpc('spend_credits', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_description: description,
-      p_metadata: metadata || {}
+    const { error } = await supabase.functions.invoke('process-credits-transaction', {
+      body: {
+        amount_credits: -amount,
+        kind: 'spend_purchase',
+        meta: metadata || {},
+        ref_type: metadata?.ref_type,
+        ref_id: metadata?.ref_id,
+        counterparty_user_id: metadata?.counterparty_user_id,
+      },
     });
 
     if (error) {
       throw error;
     }
-
-    return data;
   }
 
   /**
    * Process a purchase using credits
    */
   async processPurchase(
-    userId: string, 
-    items: PurchaseItem[]
+    userId: string,
+    items: PurchaseItem[],
+    options: {
+      requestedCredits?: number;
+      requestedCreditSpend?: number;
+      maxCreditPercentage?: number;
+      cartTotal?: number;
+      stripePaymentIntentId?: string;
+      stripeChargeId?: string;
+      stripeCheckoutSessionId?: string;
+    } = {},
   ): Promise<{
-    success: boolean;
-    transactions: CreditTransaction[];
+    creditsUsed: number;
+    cashDue: number;
     totalCost: number;
     message: string;
+    appliedCredits: number;
+    maxCreditsAllowed: number;
+    cartTotal: number;
   }> {
     const totalCost = items.reduce((sum, item) => sum + item.price, 0);
-    
+
     if (totalCost === 0) {
-      // Free items - just create download records
       await this.createDownloadRecords(userId, items);
       return {
-        success: true,
-        transactions: [],
+        creditsUsed: 0,
+        cashDue: 0,
         totalCost: 0,
-        message: 'Free download successful'
+        message: 'Free download successful',
+        appliedCredits: 0,
+        maxCreditsAllowed: 0,
+        cartTotal: 0,
       };
     }
 
-    const balance = await this.getBalance(userId);
-    if (balance < totalCost) {
-      return {
-        success: false,
-        transactions: [],
-        totalCost,
-        message: `Insufficient credits. You need ${totalCost} credits but only have ${balance}.`
-      };
-    }
+    const cartTotal = Math.max(options.cartTotal ?? totalCost, 0);
 
-    try {
-      const transactions: CreditTransaction[] = [];
-      
-      // Process each item purchase
+    const [{ maxCartPercent }, balanceSummary] = await Promise.all([
+      creditPolicyService.getCurrentPolicy(),
+      this.getBalanceSummary(userId),
+    ]);
+
+    const policyPercent = Number.isFinite(maxCartPercent) ? maxCartPercent : 1;
+    const configuredPercent = options.maxCreditPercentage;
+    const effectiveMaxPercent = Math.max(
+      0,
+      Math.min(typeof configuredPercent === 'number' ? configuredPercent : policyPercent, 1),
+    );
+
+    const maxCreditsByPolicy = Math.floor(cartTotal * effectiveMaxPercent);
+    const maxCreditsAllowed = Math.max(
+      Math.min(maxCreditsByPolicy, balanceSummary.available_credits, totalCost),
+      0,
+    );
+
+    const requestedCreditsRaw =
+      options.requestedCredits ?? options.requestedCreditSpend ?? maxCreditsAllowed;
+    const creditsToUse = Math.max(
+      0,
+      Math.min(requestedCreditsRaw, maxCreditsAllowed),
+    );
+
+    let creditsSpent = 0;
+
+    if (creditsToUse > 0) {
+      let remainingCredits = creditsToUse;
+
       for (const item of items) {
-        if (item.price > 0) {
-          const transaction = await this.spendCredits(
-            userId,
-            item.price,
-            `Purchase: ${item.title}`,
-            {
-              product_id: item.id,
-              product_type: item.type,
-              license_type: item.license_type
+        if (item.price <= 0 || remainingCredits <= 0) {
+          continue;
+        }
+
+        const creditsForItem = Math.min(remainingCredits, item.price);
+        remainingCredits -= creditsForItem;
+        creditsSpent += creditsForItem;
+
+        if (creditsForItem > 0) {
+          const metadata: Record<string, any> = {
+            product_id: item.id,
+            product_type: item.type,
+            license_type: item.license_type,
+            requested_credits: creditsToUse,
+            max_credit_percentage: effectiveMaxPercent,
+            cash_due: Math.max(item.price - creditsForItem, 0),
+            stripe_payment_intent_id: options.stripePaymentIntentId,
+            stripe_charge_id: options.stripeChargeId,
+            stripe_checkout_session_id: options.stripeCheckoutSessionId,
+            product_title: item.title,
+            ...(item.metadata || {}),
+          };
+
+          Object.keys(metadata).forEach((key) => {
+            if (metadata[key] === undefined) {
+              delete metadata[key];
             }
-          );
-          transactions.push(transaction);
+          });
+
+          await this.spendCredits(userId, creditsForItem, metadata);
         }
       }
-
-      // Create download records
-      await this.createDownloadRecords(userId, items);
-
-      return {
-        success: true,
-        transactions,
-        totalCost,
-        message: 'Purchase successful'
-      };
-    } catch (error) {
-      throw error;
     }
+
+    const cashDue = Math.max(totalCost - creditsSpent, 0);
+
+    if (cashDue === 0) {
+      await this.createDownloadRecords(userId, items);
+    }
+
+    return {
+      creditsUsed: creditsSpent,
+      cashDue,
+      totalCost,
+      message: cashDue === 0 ? 'Purchase completed with credits' : 'Additional payment required',
+      appliedCredits: creditsSpent,
+      maxCreditsAllowed,
+      cartTotal,
+    };
   }
 
   /**
    * Create download records for purchased items
    */
   private async createDownloadRecords(userId: string, items: PurchaseItem[]): Promise<void> {
-    const downloadRecords = items.map(item => ({
+    const downloadRecords = items.map((item) => ({
       user_id: userId,
       product_id: item.id,
       product_type: item.type,
       license_type: item.license_type || 'basic',
-      metadata: item.metadata || {}
+      metadata: item.metadata || {},
     }));
 
-    const { error } = await supabase
-      .from('user_downloads')
-      .insert(downloadRecords);
+    const { error } = await supabase.from('user_downloads').insert(downloadRecords);
 
     if (error) {
       throw error;
@@ -221,10 +300,10 @@ class CreditSystemService {
   async getTransactionHistory(
     userId: string,
     limit: number = 50,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<CreditTransaction[]> {
     const { data, error } = await supabase
-      .from('credit_transactions')
+      .from('wallet_ledger')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -242,7 +321,7 @@ class CreditSystemService {
    */
   async getPurchasedItems(
     userId: string,
-    productType?: 'beat' | 'release' | 'pack'
+    productType?: 'beat' | 'release' | 'pack',
   ): Promise<any[]> {
     let query = supabase
       .from('user_downloads')
@@ -282,7 +361,7 @@ class CreditSystemService {
       throw error;
     }
 
-    return data && data.length > 0;
+    return !!(data && data.length > 0);
   }
 
   /**
@@ -291,14 +370,14 @@ class CreditSystemService {
   async purchaseCreditsWithStripe(
     userId: string,
     creditAmount: number,
-    priceInCents: number
+    priceInCents: number,
   ): Promise<{ clientSecret: string }> {
     const { data, error } = await supabase.functions.invoke('create-credit-purchase', {
       body: {
         userId,
         creditAmount,
-        priceInCents
-      }
+        priceInCents,
+      },
     });
 
     if (error) {
@@ -314,8 +393,8 @@ class CreditSystemService {
   async confirmCreditPurchase(paymentIntentId: string): Promise<CreditTransaction> {
     const { data, error } = await supabase.functions.invoke('confirm-credit-purchase', {
       body: {
-        paymentIntentId
-      }
+        paymentIntentId,
+      },
     });
 
     if (error) {
