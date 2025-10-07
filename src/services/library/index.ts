@@ -142,7 +142,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
         .from("sample_pack_purchases")
         .select(
           `id, amount_paid, purchased_at, download_expires_at, download_url, sample_pack_id,
-           sample_packs:sample_pack_id (id, title, cover_art_url, genre, demo_url, download_url, user_id)`
+           sample_packs:sample_pack_id (id, title, cover_art_url, genre, preview_url:demo_url, download_url, user_id)`
         )
         .eq("user_id", userId)
         .order("purchased_at", { ascending: false })
@@ -313,7 +313,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
       purchaseDate: purchase.purchased_at,
       pricePaid: normalisePrice(purchase.amount_paid),
       downloadSourcePath: purchase.download_url || pack.download_url,
-      previewUrl: pack.preview_url ?? undefined,
+      previewUrl: pack.preview_url ?? pack.demo_url ?? null,
       canDownload: counted < DEFAULT_SAMPLE_PACK_DOWNLOAD_LIMIT,
       downloadCount: counted,
       maxDownloads: DEFAULT_SAMPLE_PACK_DOWNLOAD_LIMIT,
