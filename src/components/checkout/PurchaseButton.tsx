@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutModal } from './CheckoutModal';
 import { useAuth } from '@/hooks/useAuth';
-import { creditSystem, PurchaseItem } from '@/services/credits/credit-system';
+import { creditSystem, type PurchaseItem } from '@/services/credits/credit-system';
 import { formatCurrency } from '@/lib/utils';
 import {
   ShoppingCart,
@@ -14,14 +14,7 @@ import {
 } from 'lucide-react';
 
 interface PurchaseButtonProps {
-  item: {
-    id: string;
-    type: 'beat' | 'release' | 'pack' | 'license';
-    title: string;
-    price: number;
-    license_type?: 'basic' | 'premium' | 'exclusive';
-    metadata?: Record<string, any>;
-  };
+  item: PurchaseItem;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
   className?: string;

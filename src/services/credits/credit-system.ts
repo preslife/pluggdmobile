@@ -63,7 +63,7 @@ const WALLET_TRANSACTION_RPC = 'wallet_process_transaction';
 
 export interface PurchaseItem {
   id: string;
-  type: 'beat' | 'release' | 'pack' | 'license';
+  type: PurchaseItemType;
   title: string;
   price: number;
   license_type?: 'basic' | 'premium' | 'exclusive';
@@ -407,7 +407,7 @@ class CreditSystemService {
    */
   async getPurchasedItems(
     userId: string,
-    productType?: 'beat' | 'release' | 'pack',
+    productType?: PurchaseItemType,
   ): Promise<any[]> {
     let query = supabase
       .from('user_downloads')
