@@ -271,6 +271,9 @@ describe("fetchLibraryItems", () => {
     expect(membershipItem.canDownload).toBe(true);
     expect(membershipItem.downloadSourcePath).toBe("https://example.com/member-pack.zip");
 
+    const samplePackItem = result.byType.sample_pack[0];
+    expect(samplePackItem.previewUrl).toBe("https://example.com/pack-demo.mp3");
+
     const courseItem = result.byType.course[0];
     expect(courseItem.canDownload).toBe(true);
     expect(courseItem.downloadSourcePath).toBe("https://example.com/lesson-download.pdf");
