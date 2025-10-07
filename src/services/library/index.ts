@@ -247,7 +247,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     itemsByType.release.push({
       id: purchase.id,
       type: "release",
-      productId: release.id,
+      productId: release?.id ?? purchase.release_id,
       title: release.title,
       creatorName: release.artist,
       artworkUrl: release.cover_art_url,

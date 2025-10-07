@@ -245,7 +245,7 @@ const LibraryPage = () => {
 
   const handleDownload = useCallback(
     async (item: LibraryItem) => {
-      if (!item.canDownload || !item.downloadSourcePath) {
+      if (!item.canDownload) {
         await handleRequestMore(item);
         return;
       }
@@ -255,6 +255,7 @@ const LibraryPage = () => {
           body: {
             purchaseId: item.id,
             purchaseType: item.type,
+            productId: item.productId,
           },
         });
 
@@ -652,12 +653,7 @@ const LibraryRow = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant={item.canDownload ? "default" : "outline"}
-            disabled={item.canDownload && !item.downloadSourcePath}
-            onClick={() => onDownload(item)}
-          >
+          <Button size="sm" variant={item.canDownload ? "default" : "outline"} onClick={() => onDownload(item)}>
             <Download className="mr-2 h-4 w-4" />
             {item.canDownload ? "Download" : "Request reset"}
           </Button>
