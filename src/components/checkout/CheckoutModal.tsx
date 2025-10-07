@@ -36,6 +36,12 @@ import {
   Package,
   BadgeCheck,
   GraduationCap,
+  Shirt,
+  Monitor,
+  Cloud,
+  Box,
+  Cpu,
+  Layers,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -93,6 +99,41 @@ export const PURCHASE_TYPE_CONFIG = {
     label: 'Course',
     icon: GraduationCap,
     accentClass: 'bg-pink-100 text-pink-600',
+  },
+  merchandise: {
+    label: 'Merchandise',
+    icon: Shirt,
+    accentClass: 'bg-orange-100 text-orange-600',
+  },
+  digital_download: {
+    label: 'Digital Download',
+    icon: Download,
+    accentClass: 'bg-cyan-100 text-cyan-600',
+  },
+  software: {
+    label: 'Software',
+    icon: Monitor,
+    accentClass: 'bg-slate-100 text-slate-600',
+  },
+  digital: {
+    label: 'Digital Product',
+    icon: Cloud,
+    accentClass: 'bg-sky-100 text-sky-600',
+  },
+  physical: {
+    label: 'Physical Product',
+    icon: Box,
+    accentClass: 'bg-yellow-100 text-yellow-600',
+  },
+  hardware: {
+    label: 'Hardware',
+    icon: Cpu,
+    accentClass: 'bg-indigo-100 text-indigo-600',
+  },
+  bundle: {
+    label: 'Bundle',
+    icon: Layers,
+    accentClass: 'bg-teal-100 text-teal-600',
   },
 } satisfies Record<PurchaseItemType, PurchaseTypeDisplayConfig>;
 
