@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -565,6 +566,13 @@ export const MyPlaylists = () => {
                   <span className="text-sm text-muted-foreground">
                     {new Date(playlist.updated_at).toLocaleDateString()}
                   </span>
+                </div>
+                <div className="mt-4">
+                  <Button variant="secondary" asChild className="w-full">
+                    <Link to={`/playlist/${playlist.id}`}>
+                      Open Playlist
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
