@@ -92,6 +92,20 @@ This document lists our Supabase Edge Functions, their purpose, auth model, and 
   - Auth: Service usage
   - Depends on: RESEND_API_KEY
 
+## Stripe Sandbox — Membership Checkout Flow
+
+Use this checklist when validating the new membership checkout in the Stripe sandbox:
+
+1. Publish a `membership_tier` with an attached Stripe price (stored in `metadata.stripe_price_id`).
+2. Call the `create-fan-subscription` edge function with `creatorId` and `membershipTierId` to generate the Checkout URL.
+3. Complete the hosted checkout using Stripe test card `4242 4242 4242 4242` (any future expiry, CVC, ZIP).
+4. After redirect, confirm `fan_sub=success` clears from the URL and the membership state refreshes on the profile.
+5. Verify Supabase tables:
+   - `memberships` row upserted with the correct tier, status, current period, and Stripe IDs.
+   - `membership_tiers.current_members` recalculated for the tier.
+6. Inspect the `stripe-webhook` function logs for `membership_sync` entries and ensure Discord sync was invoked (mocked in local dev).
+7. Repeat the flow cancelling the subscription from the Stripe dashboard; the webhook should mark the membership `cancelled` and decrement tier counts.
+
 Notes
 - All functions include CORS headers, and most require Authorization: Bearer <token>.
 - Service role key is used only within edge functions for privileged writes that must bypass RLS.
