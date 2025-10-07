@@ -175,11 +175,12 @@ describe('CheckoutModal hybrid checkout flow', () => {
     await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
     await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
 
-    expect(await screen.findByText('Release')).toBeInTheDocument();
-    expect(screen.getByText(/Beat • Premium license/i)).toBeInTheDocument();
-    expect(screen.getByText('Sample Pack')).toBeInTheDocument();
-    expect(screen.getByText('Membership')).toBeInTheDocument();
-    expect(screen.getByText('Course')).toBeInTheDocument();
+    expect(await screen.findAllByText('Release')).not.toHaveLength(0);
+    expect(screen.getAllByText('Beat')).not.toHaveLength(0);
+    expect(screen.getAllByText('Premium license')).not.toHaveLength(0);
+    expect(screen.getAllByText('Sample Pack')).not.toHaveLength(0);
+    expect(screen.getAllByText('Membership')).not.toHaveLength(0);
+    expect(screen.getAllByText('Course')).not.toHaveLength(0);
     expect(screen.getByText('Free')).toBeInTheDocument();
     expect(screen.getByText('Items (5)')).toBeInTheDocument();
 
@@ -229,7 +230,39 @@ describe('CheckoutModal hybrid checkout flow', () => {
 
     expect((window.location as any).href).toBe('https://stripe.test/checkout');
     expect(toastMock).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Continue to Payment' })
+      expect.objectContaining({ title: 'Complete Your Payment' })
     );
+  });
+});
+
+describe('CheckoutModal purchase type configuration', () => {
+  const purchaseTypeEntries = Object.entries(PURCHASE_TYPE_CONFIG) as Array<
+    [PurchaseItem['type'], ReturnType<typeof getPurchaseTypeConfig>]
+  >;
+
+  purchaseTypeEntries.forEach(([type, config]) => {
+    it(`renders ${type} items without crashing`, async () => {
+      expect(() =>
+        render(
+          <CheckoutModal
+            isOpen
+            onClose={() => {}}
+            items={[
+              {
+                id: `${type}-item`,
+                type,
+                title: `${config.label} Example`,
+                price: 10,
+              },
+            ]}
+          />
+        )
+      ).not.toThrow();
+
+      await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
+      await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
+
+      expect(screen.getAllByText(config.label)).not.toHaveLength(0);
+    });
   });
 });

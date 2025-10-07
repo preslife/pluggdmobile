@@ -31,6 +31,11 @@ import {
   CheckCircle,
   Loader2,
   FileText,
+  Music,
+  AudioWaveform,
+  Package,
+  BadgeCheck,
+  GraduationCap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -56,6 +61,67 @@ type PollResult =
   | { status: 'success'; paymentIntentId: string | null }
   | { status: 'expired' | 'timeout' | 'error'; message: string; paymentIntentId: string | null }
   | { status: 'cancelled'; paymentIntentId: string | null };
+
+export interface PurchaseTypeDisplayConfig {
+  label: string;
+  icon: LucideIcon;
+  accentClass: string;
+}
+
+export const PURCHASE_TYPE_CONFIG = {
+  release: {
+    label: 'Release',
+    icon: Music,
+    accentClass: 'bg-purple-100 text-purple-600',
+  },
+  beat: {
+    label: 'Beat',
+    icon: AudioWaveform,
+    accentClass: 'bg-blue-100 text-blue-600',
+  },
+  sample_pack: {
+    label: 'Sample Pack',
+    icon: Package,
+    accentClass: 'bg-amber-100 text-amber-600',
+  },
+  membership: {
+    label: 'Membership',
+    icon: BadgeCheck,
+    accentClass: 'bg-green-100 text-green-600',
+  },
+  course: {
+    label: 'Course',
+    icon: GraduationCap,
+    accentClass: 'bg-pink-100 text-pink-600',
+  },
+} satisfies Record<PurchaseItemType, PurchaseTypeDisplayConfig>;
+
+const FALLBACK_PURCHASE_TYPE_CONFIG: PurchaseTypeDisplayConfig = {
+  label: 'Product',
+  icon: FileText,
+  accentClass: 'bg-muted text-muted-foreground',
+};
+
+export const getPurchaseTypeConfig = (type: PurchaseItemType): PurchaseTypeDisplayConfig => {
+  const config = PURCHASE_TYPE_CONFIG[type];
+  if (!config) {
+    console.warn(`Missing purchase type config for "${type}"`);
+  }
+  return config ?? FALLBACK_PURCHASE_TYPE_CONFIG;
+};
+
+const formatLicenseLabel = (license?: PurchaseItem['license_type']) => {
+  switch (license) {
+    case 'basic':
+      return 'Basic license';
+    case 'premium':
+      return 'Premium license';
+    case 'exclusive':
+      return 'Exclusive license';
+    default:
+      return null;
+  }
+};
 
 export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutModalProps) => {
   const { user } = useAuth();
@@ -86,7 +152,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
   const checkoutItems = useMemo<PurchaseItem[]>(() => {
     return items.map((item) => {
-      const config = PURCHASE_TYPE_CONFIG[item.type];
+      const config = getPurchaseTypeConfig(item.type);
       const metadata = {
         type_label: config.label,
         ...(item.metadata ?? {}),
@@ -102,6 +168,68 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
   const totalCost = useMemo(
     () => checkoutItems.reduce((sum, item) => sum + item.price, 0),
     [checkoutItems],
+  );
+
+  const cashDuePreview = useMemo(() => {
+    return Math.max(totalCost - creditsToApply, 0);
+  }, [totalCost, creditsToApply]);
+
+  const hasCashComponent = cashDuePreview > 0;
+  const canCompleteWithCredits = cashDuePreview === 0;
+
+  const fetchTaxEstimate = useCallback(
+    async (cashDueCredits: number, { force = false }: { force?: boolean } = {}): Promise<TaxQuote | null> => {
+      const amountMinor = Math.max(Math.round((cashDueCredits / CREDITS_PER_GBP) * 100), 0);
+
+      if (amountMinor <= 0) {
+        setTaxQuote(null);
+        setTaxError(null);
+        return null;
+      }
+
+      if (!force && taxQuote && taxQuote.subtotalMinor === amountMinor) {
+        return taxQuote;
+      }
+
+      setTaxLoading(true);
+      setTaxError(null);
+      setLiveMessage('Calculating taxes for your purchase...');
+
+      try {
+        const { data, error } = await supabase.functions.invoke('estimate-tax', {
+          body: {
+            amount_minor: amountMinor,
+            currency: 'gbp',
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        const normalized: TaxQuote = {
+          currency: typeof data?.currency === 'string' ? data.currency : 'gbp',
+          subtotalMinor: typeof data?.subtotal_minor === 'number' ? data.subtotal_minor : amountMinor,
+          taxMinor: typeof data?.tax_minor === 'number' ? data.tax_minor : 0,
+          totalMinor: typeof data?.total_minor === 'number' ? data.total_minor : amountMinor,
+          taxRate:
+            typeof data?.tax_rate === 'number' && Number.isFinite(data.tax_rate) ? data.tax_rate : 0,
+        };
+
+        setTaxQuote(normalized);
+        setLiveMessage('Tax estimate ready.');
+        return normalized;
+      } catch (error) {
+        console.error('Tax estimation error:', error);
+        setTaxError('Unable to load a tax estimate. Tax will be finalized during payment.');
+        setLiveMessage('Unable to load the tax estimate automatically.');
+        setTaxQuote(null);
+        return null;
+      } finally {
+        setTaxLoading(false);
+      }
+    },
+    [taxQuote],
   );
 
   useEffect(() => {
@@ -152,6 +280,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       const paymentWindow = window.open(checkoutUrl, '_blank', 'noopener');
       paymentWindowOpenedRef.current = true;
       if (!paymentWindow) {
+        window.location.href = checkoutUrl;
         setPollMessage((current) =>
           current || 'Click the button below to open the secure payment page and finish checkout.',
         );
@@ -217,19 +346,12 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     );
   }, [balanceSummary, totalCost, maxCartPercent]);
 
-  const cashDuePreview = useMemo(() => {
-    return Math.max(totalCost - creditsToApply, 0);
-  }, [totalCost, creditsToApply]);
-
   const taxCurrency = taxQuote?.currency?.toUpperCase?.() ?? 'GBP';
   const subtotalCurrency = totalCost / CREDITS_PER_GBP;
   const baseCashDueCurrency = cashDuePreview / CREDITS_PER_GBP;
   const taxAmountCurrency = (taxQuote?.taxMinor ?? 0) / 100;
   const totalCashDueCurrency = baseCashDueCurrency + taxAmountCurrency;
   const totalCashDueCreditsWithTax = Math.round(totalCashDueCurrency * CREDITS_PER_GBP);
-
-  const hasCashComponent = cashDuePreview > 0;
-  const canCompleteWithCredits = cashDuePreview === 0;
   const policyPercentDisplay = Math.round(maxCartPercent * 100);
 
   const resetPollingState = useCallback(() => {
@@ -243,61 +365,6 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     setCheckoutSessionId(null);
     paymentWindowOpenedRef.current = false;
   }, []);
-
-  const fetchTaxEstimate = useCallback(
-    async (cashDueCredits: number, { force = false }: { force?: boolean } = {}): Promise<TaxQuote | null> => {
-      const amountMinor = Math.max(Math.round((cashDueCredits / CREDITS_PER_GBP) * 100), 0);
-
-      if (amountMinor <= 0) {
-        setTaxQuote(null);
-        setTaxError(null);
-        return null;
-      }
-
-      if (!force && taxQuote && taxQuote.subtotalMinor === amountMinor) {
-        return taxQuote;
-      }
-
-      setTaxLoading(true);
-      setTaxError(null);
-      setLiveMessage('Calculating taxes for your purchase...');
-
-      try {
-        const { data, error } = await supabase.functions.invoke('estimate-tax', {
-          body: {
-            amount_minor: amountMinor,
-            currency: 'gbp',
-          },
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        const normalized: TaxQuote = {
-          currency: typeof data?.currency === 'string' ? data.currency : 'gbp',
-          subtotalMinor: typeof data?.subtotal_minor === 'number' ? data.subtotal_minor : amountMinor,
-          taxMinor: typeof data?.tax_minor === 'number' ? data.tax_minor : 0,
-          totalMinor: typeof data?.total_minor === 'number' ? data.total_minor : amountMinor,
-          taxRate:
-            typeof data?.tax_rate === 'number' && Number.isFinite(data.tax_rate) ? data.tax_rate : 0,
-        };
-
-        setTaxQuote(normalized);
-        setLiveMessage('Tax estimate ready.');
-        return normalized;
-      } catch (error) {
-        console.error('Tax estimation error:', error);
-        setTaxError('Unable to load a tax estimate. Tax will be finalized during payment.');
-        setLiveMessage('Unable to load the tax estimate automatically.');
-        setTaxQuote(null);
-        return null;
-      } finally {
-        setTaxLoading(false);
-      }
-    },
-    [taxQuote],
-  );
 
   const createHybridCheckout = useCallback(
     async (
@@ -318,7 +385,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           credits_applied: creditsToApply,
           total_cost_credits: totalCost,
           max_credit_percentage: maxCartPercent,
-          items: items.map((item) => ({
+          items: checkoutItems.map((item) => ({
             id: item.id,
             type: item.type,
             title: item.title,
@@ -347,7 +414,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
       return data as { url: string; sessionId: string; paymentIntentId?: string | null };
     },
-    [creditsToApply, items, maxCartPercent, totalCost, user],
+    [checkoutItems, creditsToApply, maxCartPercent, totalCost, user],
   );
 
   const startPolling = useCallback(
@@ -737,7 +804,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
               <h3 className="font-semibold mb-3">Order Summary</h3>
               <div className="space-y-2">
                 {checkoutItems.map((item) => {
-                  const typeConfig = PURCHASE_TYPE_CONFIG[item.type];
+                  const typeConfig = getPurchaseTypeConfig(item.type);
                   const TypeIcon = typeConfig.icon;
                   const licenseLabel = formatLicenseLabel(item.license_type);
 
