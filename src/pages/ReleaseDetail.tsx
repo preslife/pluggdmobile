@@ -20,6 +20,11 @@ import { toast } from "sonner";
 import SEOHelmet from "@/components/SEOHelmet";
 import { SecureDownloadButton } from "@/components/SecureDownloadButton";
 
+type PurchaseMetadata = {
+  id: string;
+  type: "release" | "beat" | "sample_pack";
+};
+
 interface Track {
   id: string;
   title: string;
@@ -126,6 +131,7 @@ const ReleaseDetail = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [purchaseMetadata, setPurchaseMetadata] = useState<PurchaseMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [credits, setCredits] = useState<ReleaseCredit[]>([]);
@@ -208,8 +214,20 @@ const ReleaseDetail = () => {
 
       if (error) throw error;
 
-      setHasAccess(data.hasAccess);
-      setHasPurchased(data.hasPurchased);
+      const access = Boolean(data.hasAccess);
+      const purchased = Boolean(data.hasPurchased);
+
+      setHasAccess(access);
+      setHasPurchased(purchased);
+
+      if (purchased && data.latestPurchaseId && data.latestPurchaseType) {
+        setPurchaseMetadata({
+          id: data.latestPurchaseId,
+          type: data.latestPurchaseType,
+        });
+      } else {
+        setPurchaseMetadata(null);
+      }
     } catch (error) {
       console.error('Error checking access:', error);
     }
@@ -236,6 +254,7 @@ const ReleaseDetail = () => {
       setHasPurchased(true);
       setHasAccess(true);
       toast.success('Purchase complete! Your download is now available.');
+      void checkAccess();
     }
   };
 
@@ -394,9 +413,11 @@ const ReleaseDetail = () => {
                   releaseId={release.id}
                 />
 
-                {(hasAccess || hasPurchased) && (
+                {purchaseMetadata && (
                   <SecureDownloadButton
                     releaseId={release.id}
+                    purchaseId={purchaseMetadata.id}
+                    purchaseType={purchaseMetadata.type}
                     title={release.title}
                     disabled={tracks.length === 0}
                     className="gap-2"
