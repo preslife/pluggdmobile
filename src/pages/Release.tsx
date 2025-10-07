@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
+import { SubscriptionGatedContent } from "@/components/SubscriptionGatedContent";
 import spotifyIcon from "@/assets/spotify-icon.svg";
 import appleMusicIcon from "@/assets/apple-music-icon.svg";
 import youtubeIcon from "@/assets/youtube-icon.svg";
@@ -34,6 +35,10 @@ interface Release {
   featured_artist: string;
   release_type: string;
   preview_url: string;
+  owner_id?: string | null;
+  owner_type?: string | null;
+  user_id?: string | null;
+  perk_access?: string | null;
 }
 
 interface Track {
@@ -155,6 +160,13 @@ const Release = () => {
   };
 
   const previewSourceUrl = release?.preview_url || tracks[0]?.audio_url || null;
+
+  const membershipCreatorId = release?.owner_id || release?.user_id || "unknown";
+  const membershipCtaHref = release?.owner_id
+    ? `/creator/${release.owner_id}#membership`
+    : release?.user_id
+    ? `/creator/${release.user_id}#membership`
+    : "/subscription";
 
   // Check if this release is also available as a store product
   const [isStoreProduct, setIsStoreProduct] = useState(false);
@@ -358,13 +370,15 @@ const Release = () => {
                 </p>
               )}
 
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">Streaming Platforms</h3>
-                <StreamingLinks release={release} />
-                
-                {/* Preview Player */}
-                {previewSourceUrl && (
-                  <div className="mt-4">
+            <SubscriptionGatedContent
+              contentId={release.id}
+              contentType="release"
+              creatorId={membershipCreatorId}
+              ctaHref={membershipCtaHref}
+              fallbackText="Join this creator's membership to unlock the full release experience."
+              previewContent={
+                previewSourceUrl ? (
+                  <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Play className="w-4 h-4" />
                       <span className="text-sm font-medium">Preview</span>
@@ -376,44 +390,77 @@ const Release = () => {
                       isPlaying={previewPlayingId === release.id}
                       onPlay={() => handlePreviewPlay(release.id)}
                       onPause={handlePreviewPause}
-                      standalone={true}
+                      standalone
                     />
                   </div>
+                ) : undefined
+              }
+              className="space-y-6"
+            >
+              <div className="p-6 space-y-6">
+                {release.description && (
+                  <p className="text-muted-foreground leading-relaxed">
+                    {release.description}
+                  </p>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Streaming Platforms</h3>
+                    <StreamingLinks release={release} />
+                  </div>
+
+                  {previewSourceUrl && (
+                    <div className="rounded-lg border border-dashed border-primary/30 bg-muted/20 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Play className="w-4 h-4" />
+                        <span className="text-sm font-medium">Full Preview</span>
+                      </div>
+                      <ReleasePreviewPlayer
+                        previewUrl={previewSourceUrl}
+                        title={release.title}
+                        artist={release.artist}
+                        isPlaying={previewPlayingId === release.id}
+                        onPlay={() => handlePreviewPlay(release.id)}
+                        onPause={handlePreviewPause}
+                        standalone
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {tracks.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Track List</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {tracks.map((track) => (
+                          <div
+                            key={track.id}
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-muted-foreground w-6">
+                                {track.track_number}
+                              </span>
+                              <Play className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-medium">{track.title}</span>
+                            </div>
+                            {track.duration && (
+                              <span className="text-sm text-muted-foreground">
+                                {formatDuration(track.duration)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
-            </div>
-
-            {/* Track List for EP/Albums */}
-            {tracks.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Track List</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {tracks.map((track) => (
-                      <div 
-                        key={track.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground w-6">
-                            {track.track_number}
-                          </span>
-                          <Play className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{track.title}</span>
-                        </div>
-                        {track.duration && (
-                          <span className="text-sm text-muted-foreground">
-                            {formatDuration(track.duration)}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            </SubscriptionGatedContent>
           </div>
         </div>
       </div>

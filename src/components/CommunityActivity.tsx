@@ -321,48 +321,63 @@ export const CommunityActivity = () => {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-3">{post.content}</p>
-                  </div>
-
-                  {post.tags && post.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {post.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          #{tag}
-                        </Badge>
-                      ))}
+                <SubscriptionGatedContent
+                  contentId={post.id}
+                  contentType="post"
+                  creatorId={post.user_id}
+                  ctaHref={`/creator/${post.user_id}#membership`}
+                  fallbackText="Join this creator's membership to read the full post and unlock discussions."
+                  previewContent={
+                    <p className="text-sm text-muted-foreground line-clamp-4">{post.content}</p>
+                  }
+                  minimalWrapper
+                  className="px-6 pb-6"
+                >
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {post.content}
+                      </p>
                     </div>
-                  )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <div className="flex items-center space-x-4 text-muted-foreground">
-                      <button 
-                        className={`flex items-center space-x-1 hover:text-primary transition-colors ${
-                          likedPosts.has(post.id) ? 'text-red-500' : ''
-                        }`}
-                        onClick={() => toggleLike(post.id)}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {post.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <div className="flex items-center space-x-4 text-muted-foreground">
+                        <button
+                          className={`flex items-center space-x-1 hover:text-primary transition-colors ${
+                            likedPosts.has(post.id) ? 'text-red-500' : ''
+                          }`}
+                          onClick={() => toggleLike(post.id)}
+                        >
+                          <Heart className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-current' : ''}`} />
+                          <span className="text-xs">{(post.likes_count || 0) + (likedPosts.has(post.id) ? 1 : 0)}</span>
+                        </button>
+                        <button className="flex items-center space-x-1 hover:text-primary transition-colors">
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-xs">{post.comments_count || 0}</span>
+                        </button>
+                      </div>
+                      <button
+                        className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => sharePost(post)}
                       >
-                        <Heart className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-current' : ''}`} />
-                        <span className="text-xs">{(post.likes_count || 0) + (likedPosts.has(post.id) ? 1 : 0)}</span>
-                      </button>
-                      <button className="flex items-center space-x-1 hover:text-primary transition-colors">
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-xs">{post.comments_count || 0}</span>
+                        <Share2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <button 
-                      className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors"
-                      onClick={() => sharePost(post)}
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
                   </div>
-                </CardContent>
+                </SubscriptionGatedContent>
               </Card>
             ))}
           </div>

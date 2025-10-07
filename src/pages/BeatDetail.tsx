@@ -29,6 +29,7 @@ import ShareModal from '@/components/ShareModal';
 import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
+import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
 
 type Beat = {
   id: string;
@@ -50,6 +51,8 @@ type Beat = {
     full_name: string;
     avatar_url: string;
   } | null;
+  owner_id?: string | null;
+  owner_type?: string | null;
 };
 
 type LicenseOption = {
@@ -209,6 +212,10 @@ const BeatDetail = () => {
     ? beat.producer_name || 'Internal Producer'
     : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist';
   const beatDescription = beat.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+  const membershipCreatorId = beat.owner_id || beat.user_id || 'unknown';
+  const membershipCtaHref = beat.owner_id
+    ? `/creator/${beat.owner_id}#membership`
+    : `/creator/${beat.user_id}#membership`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -363,7 +370,14 @@ const BeatDetail = () => {
             </div>
 
             {/* Licensing Options */}
-            <div className="lg:col-span-2">
+            <SubscriptionGatedContent
+              contentId={beat.id}
+              contentType="track"
+              creatorId={membershipCreatorId}
+              ctaHref={membershipCtaHref}
+              fallbackText="Become a member to unlock licensing, stems, and full downloads."
+              className="lg:col-span-2"
+            >
               <Card>
                 <CardHeader>
                   <CardTitle className="text-2xl">Professional Licensing</CardTitle>
@@ -376,7 +390,7 @@ const BeatDetail = () => {
                     <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6 rounded-lg">
                       <h3 className="text-xl font-semibold mb-2">Secure Beat Licensing</h3>
                       <p className="text-muted-foreground mb-4">
-                        Get instant access to professional licensing with digital contracts, 
+                        Get instant access to professional licensing with digital contracts,
                         fair pricing, and secure payments.
                       </p>
                       <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
@@ -394,23 +408,23 @@ const BeatDetail = () => {
                         </div>
                       </div>
                     </div>
-                    
-                    <Button 
-                      size="lg" 
+
+                    <Button
+                      size="lg"
                       className="w-full max-w-md"
                       onClick={handleLicenseClick}
                     >
                       <ShoppingCart className="w-5 h-5 mr-2" />
                       License This Beat
                     </Button>
-                    
+
                     <p className="text-xs text-muted-foreground">
                       Multiple license types available • Secure contract generation • Instant download
                     </p>
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </SubscriptionGatedContent>
           </div>
 
           {/* AI-Powered Recommendations */}
