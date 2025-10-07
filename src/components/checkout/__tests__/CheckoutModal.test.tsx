@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CheckoutModal, PURCHASE_TYPE_CONFIG, getPurchaseTypeConfig } from '../CheckoutModal';
-import type { PurchaseItem } from '@/services/credits/credit-system';
+import { CheckoutModal } from '../CheckoutModal';
+import type { PurchaseItem, PurchaseItemType } from '@/services/credits/credit-system';
 
 const hoistedMocks = vi.hoisted(() => ({
   toastMock: vi.fn(),
@@ -156,12 +156,13 @@ describe('CheckoutModal hybrid checkout flow', () => {
       },
     ];
 
-    const typeLabels = (Object.entries(PURCHASE_TYPE_CONFIG) as Array<
-      [PurchaseItem['type'], ReturnType<typeof getPurchaseTypeConfig>]
-    >).reduce<Record<PurchaseItem['type'], string>>((acc, [type, config]) => {
-      acc[type] = config.label;
-      return acc;
-    }, {} as Record<PurchaseItem['type'], string>);
+    const typeLabels: Partial<Record<PurchaseItemType, string>> = {
+      release: 'Release',
+      beat: 'Beat',
+      sample_pack: 'Sample Pack',
+      membership: 'Membership',
+      course: 'Course',
+    };
 
     render(
       <CheckoutModal
@@ -190,32 +191,33 @@ describe('CheckoutModal hybrid checkout flow', () => {
     fireEvent.click(actionButton);
 
     await waitFor(() => {
-      const checkoutCall = invokeMock.mock.calls.find(([functionName]) => functionName === 'enhanced-store-checkout');
-      expect(checkoutCall).toBeTruthy();
-      expect(checkoutCall?.[1]).toMatchObject({
-        body: expect.objectContaining({
-          manualAmountCredits: 50,
-          paymentMetadata: expect.objectContaining({
-            items: checkoutItems.map((item) => ({
-              id: item.id,
-              type: item.type,
-              title: item.title,
-              price: item.price,
-              license_type: item.license_type,
+      expect(invokeMock).toHaveBeenCalledWith(
+        'enhanced-store-checkout',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            manualAmountCredits: 50,
+            paymentMetadata: expect.objectContaining({
+              items: checkoutItems.map((item) => ({
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                price: item.price,
+                license_type: item.license_type,
               metadata: expect.objectContaining({
                 ...(item.metadata ?? {}),
-                type_label: typeLabels[item.type],
+                type_label: typeLabels[item.type] ?? item.type,
               }),
             })),
           }),
         }),
-      });
+      })
+    );
       expect(processPurchaseMock).toHaveBeenCalledWith(
         'user-123',
         checkoutItems.map((item) => ({
           ...item,
           metadata: {
-            type_label: typeLabels[item.type],
+            type_label: typeLabels[item.type] ?? item.type,
             ...(item.metadata ?? {}),
           },
         })),

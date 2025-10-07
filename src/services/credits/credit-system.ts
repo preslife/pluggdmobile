@@ -12,6 +12,23 @@ export type WalletTransactionKind =
   | 'spend_gift'
   | 'earn_gift';
 
+export const PURCHASE_ITEM_TYPES = [
+  'beat',
+  'release',
+  'sample_pack',
+  'membership',
+  'course',
+  'merchandise',
+  'digital_download',
+  'software',
+  'digital',
+  'physical',
+  'hardware',
+  'bundle',
+] as const;
+
+export type PurchaseItemType = (typeof PURCHASE_ITEM_TYPES)[number];
+
 export interface CreditTransaction {
   id: string;
   user_id: string;
