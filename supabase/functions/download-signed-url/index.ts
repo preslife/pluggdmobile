@@ -128,7 +128,7 @@ serve(async (req) => {
         const { data: purchase, error } = await supabaseService
           .from("release_purchases")
           .select(
-            `id, user_id, downloads_used, download_expires_at, purchased_at, release_id, download_url,
+            `id, user_id, status, downloads_used, download_expires_at, purchased_at, release_id,
              releases:release_id (download_limit, download_url, download_expires_days)`,
           )
           .eq("id", purchaseId)
@@ -141,6 +141,14 @@ serve(async (req) => {
           );
         }
 
+        if (purchase.status !== 'completed') {
+          await logSystemEvent(supabaseService, user.id, "release_not_settled", metadata, 3);
+          return new Response(
+            JSON.stringify({ error: "Purchase is not completed" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
         if (purchase.user_id !== user.id) {
           await logSystemEvent(supabaseService, user.id, "release_access_denied", metadata, 3);
           return new Response(
@@ -150,7 +158,7 @@ serve(async (req) => {
         }
 
         const release = purchase.releases;
-        storage = parseStorageLocation(purchase.download_url || release?.download_url ?? null);
+        storage = parseStorageLocation(release?.download_url ?? null);
         limit = release?.download_limit ?? 3;
 
         downloadCount = Math.max(

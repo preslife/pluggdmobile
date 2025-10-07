@@ -310,6 +310,124 @@ serve(async (req) => {
             } else {
               logStep("Course purchase recorded successfully");
             }
+          } else if (session.metadata?.type === 'release_purchase') {
+            const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+            const sessionTotal = session.amount_total ?? null;
+
+            const { data: purchaseBySession, error: purchaseBySessionError } = await supabaseClient
+              .from('release_purchases')
+              .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at')
+              .eq('stripe_session_id', session.id)
+              .maybeSingle();
+
+            if (purchaseBySessionError) {
+              logStep('Release purchase lookup by session failed', { error: purchaseBySessionError.message, sessionId: session.id });
+            }
+
+            let purchase = purchaseBySession ?? null;
+
+            if (!purchase && paymentIntentId) {
+              const { data: purchaseByIntent, error: purchaseByIntentError } = await supabaseClient
+                .from('release_purchases')
+                .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at')
+                .eq('stripe_payment_intent_id', paymentIntentId)
+                .maybeSingle();
+
+              if (purchaseByIntentError) {
+                logStep('Release purchase lookup by intent failed', { error: purchaseByIntentError.message, paymentIntentId });
+              }
+
+              purchase = purchaseByIntent ?? null;
+            }
+
+            if (!purchase) {
+              logStep('Release purchase record not found for session', { sessionId: session.id, paymentIntentId });
+              break;
+            }
+
+            if (purchase.status === 'completed') {
+              logStep('Release purchase already completed', { purchaseId: purchase.id, sessionId: session.id });
+              break;
+            }
+
+            const storedAmountCents = Math.round(Number(purchase.amount_paid ?? 0) * 100);
+            if (sessionTotal !== null && Math.abs(storedAmountCents - sessionTotal) > 1) {
+              logStep('Release purchase amount mismatch', {
+                purchaseId: purchase.id,
+                storedAmountCents,
+                sessionTotal,
+              });
+            }
+
+            let downloadExpiresAt = purchase.download_expires_at;
+            if (purchase.release_id) {
+              const { data: releaseDetails, error: releaseLookupError } = await supabaseClient
+                .from('releases')
+                .select('id, download_expires_days, title, artist, user_id')
+                .eq('id', purchase.release_id)
+                .maybeSingle();
+
+              if (releaseLookupError) {
+                logStep('Release lookup failed during purchase completion', { error: releaseLookupError.message, releaseId: purchase.release_id });
+              }
+
+              if (releaseDetails?.download_expires_days) {
+                const baseDate = purchase.purchased_at ? new Date(purchase.purchased_at) : new Date();
+                baseDate.setDate(baseDate.getDate() + releaseDetails.download_expires_days);
+                downloadExpiresAt = baseDate.toISOString();
+              }
+
+              try {
+                await supabaseClient
+                  .from('system_logs')
+                  .insert({
+                    level: 2,
+                    message: 'Release purchase completed',
+                    user_id: purchase.user_id ?? session.metadata?.userId ?? null,
+                    session_id: session.id,
+                    component: 'releases.checkout',
+                    action: 'release_purchase_completed',
+                    metadata: {
+                      purchase_id: purchase.id,
+                      release_id: purchase.release_id,
+                      release_title: releaseDetails?.title,
+                      release_artist: releaseDetails?.artist,
+                      amount_paid: sessionTotal !== null ? sessionTotal / 100 : purchase.amount_paid,
+                      currency: session.currency,
+                      download_preparation: 'queued',
+                    },
+                  });
+              } catch (logError) {
+                const errorMessage = logError instanceof Error ? logError.message : String(logError);
+                logStep('Release purchase log insert failed', { error: errorMessage, purchaseId: purchase.id });
+              }
+            }
+
+            const updatePayload: Record<string, unknown> = {
+              status: 'completed',
+              paid_at: new Date().toISOString(),
+              stripe_session_id: session.id,
+              download_expires_at: downloadExpiresAt,
+            };
+
+            if (sessionTotal !== null) {
+              updatePayload['amount_paid'] = sessionTotal / 100;
+            }
+
+            if (paymentIntentId) {
+              updatePayload['stripe_payment_intent_id'] = paymentIntentId;
+            }
+
+            const { error: purchaseUpdateError } = await supabaseClient
+              .from('release_purchases')
+              .update(updatePayload)
+              .eq('id', purchase.id);
+
+            if (purchaseUpdateError) {
+              logStep('Release purchase update error', { error: purchaseUpdateError.message, purchaseId: purchase.id });
+            } else {
+              logStep('Release purchase marked as completed', { purchaseId: purchase.id, sessionId: session.id });
+            }
           } else if (session.metadata?.type === 'store_purchase') {
             const sessionTotal = session.amount_total ? session.amount_total / 100 : null;
             const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;

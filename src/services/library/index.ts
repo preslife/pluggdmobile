@@ -116,10 +116,11 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     ? supabase
         .from("release_purchases")
         .select(
-          `id, amount_paid, purchased_at, download_expires_at, downloads_used, receipt_pdf_url, release_id,
-           releases:release_id (id, title, artist, cover_art_url, genre, preview_url, download_url, download_limit, download_expires_days, user_id)`
+          `id, amount_paid, purchased_at, paid_at, status, download_expires_at, downloads_used, receipt_pdf_url, release_id,
+           releases:release_id (id, title, artist, cover_art_url, genre, preview_url, download_limit, download_expires_days, user_id)`
         )
         .eq("user_id", userId)
+        .eq("status", "completed")
         .order("purchased_at", { ascending: false })
     : Promise.resolve({ data: null, error: null });
   promises.push(releasePromise);
@@ -225,7 +226,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
 
   for (const purchase of releaseRes.data ?? []) {
     const release = purchase.releases;
-    if (!release) continue;
+    if (!release || purchase.status !== "completed") continue;
     const limit = release.download_limit ?? DEFAULT_RELEASE_DOWNLOAD_LIMIT;
     const used = purchase.downloads_used ?? 0;
     const downloadExpiresAt = purchase.download_expires_at
@@ -251,9 +252,9 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
       creatorName: release.artist,
       artworkUrl: release.cover_art_url,
       genre: release.genre,
-      purchaseDate: purchase.purchased_at,
+      purchaseDate: purchase.paid_at ?? purchase.purchased_at,
       pricePaid: normalisePrice(purchase.amount_paid),
-      downloadSourcePath: purchase.download_url || release.download_url,
+      downloadSourcePath: null,
       previewUrl: release.preview_url,
       canDownload: limit == null ? true : counted < limit,
       downloadCount: counted,

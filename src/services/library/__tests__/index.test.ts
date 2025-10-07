@@ -60,10 +60,11 @@ describe("fetchLibraryItems", () => {
           id: "rel-purchase",
           amount_paid: 1299,
           purchased_at: "2024-07-10T00:00:00Z",
+          paid_at: "2024-07-10T00:05:00Z",
           download_expires_at: null,
           downloads_used: 1,
           receipt_pdf_url: "https://example.com/receipt-release",
-          download_url: null,
+          status: "completed",
           release_id: "release-1",
           releases: {
             id: "release-1",
@@ -72,9 +73,30 @@ describe("fetchLibraryItems", () => {
             cover_art_url: "https://example.com/release.jpg",
             genre: "Electronic",
             preview_url: "https://example.com/release-preview.mp3",
-            download_url: "https://example.com/release-download.mp3",
             download_limit: 4,
             download_expires_days: 14,
+            user_id: "creator-1",
+          },
+        },
+        {
+          id: "rel-purchase-pending",
+          amount_paid: 999,
+          purchased_at: "2024-07-11T00:00:00Z",
+          paid_at: null,
+          download_expires_at: null,
+          downloads_used: 0,
+          receipt_pdf_url: null,
+          status: "pending",
+          release_id: "release-2",
+          releases: {
+            id: "release-2",
+            title: "Skyline Demo",
+            artist: "Nova",
+            cover_art_url: null,
+            genre: null,
+            preview_url: null,
+            download_limit: 3,
+            download_expires_days: null,
             user_id: "creator-1",
           },
         },
@@ -242,6 +264,8 @@ describe("fetchLibraryItems", () => {
     expect(releaseItem.downloadCount).toBe(1);
     expect(releaseItem.lastDownloadedAt).toBe("2024-07-12T00:00:00.000Z");
     expect(releaseItem.downloadExpiresAt).toBe("2024-07-24T00:00:00.000Z");
+    expect(releaseItem.purchaseDate).toBe("2024-07-10T00:05:00Z");
+    expect(releaseItem.downloadSourcePath).toBeNull();
 
     const membershipItem = result.byType.membership[0];
     expect(membershipItem.canDownload).toBe(true);
@@ -257,5 +281,6 @@ describe("fetchLibraryItems", () => {
 
     expect(result.items[0].id).toBe("rel-purchase");
     expect(result.items[result.items.length - 1].id).toBe("support-1");
+    expect(result.items.some((item) => item.id === "rel-purchase-pending")).toBe(false);
   });
 });
