@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { processCreditsTransaction } from "./logic.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,75 +35,19 @@ serve(async (req) => {
     console.log(`[PROCESS-CREDITS-TRANSACTION] User: ${user.id}`);
 
     // Parse request body
-    const { 
-      amount_credits, 
-      kind, 
-      ref_type, 
-      ref_id, 
-      counterparty_user_id,
-      meta = {} 
-    } = await req.json();
+    const payload = await req.json();
 
-    if (!amount_credits || !kind) {
-      throw new Error("Invalid transaction data");
-    }
+    console.log(`[PROCESS-CREDITS-TRANSACTION] Processing: ${payload.kind} ${payload.amount_credits} credits`);
 
-    console.log(`[PROCESS-CREDITS-TRANSACTION] Processing: ${kind} ${amount_credits} credits`);
+    const result = await processCreditsTransaction(supabaseClient as any, user.id, payload);
 
-    // For spending transactions, check balance first
-    if (amount_credits < 0) {
-      const { data: balanceData, error: balanceError } = await supabaseClient.rpc('get_wallet_balance', {
-        p_user_id: user.id
-      });
-
-      if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
-      
-      const balance = balanceData as any;
-      if (balance.available_credits < Math.abs(amount_credits)) {
-        throw new Error("Insufficient credits");
-      }
-    }
-
-    // Create ledger entry for the main user
-    const { error: ledgerError } = await supabaseClient
-      .from('wallet_ledger')
-      .insert({
-        user_id: user.id,
-        kind,
-        amount_credits,
-        ref_type,
-        ref_id,
-        counterparty_user_id,
-        meta,
-      });
-
-    if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
-
-    // For tips and transfers, create counterparty entry
-    if (counterparty_user_id && (kind === 'spend_tip' || kind === 'spend_purchase')) {
-      const counterpartyKind = kind === 'spend_tip' ? 'spend_tip' : 'spend_purchase';
-      
-      const { error: counterpartyError } = await supabaseClient
-        .from('wallet_ledger')
-        .insert({
-          user_id: counterparty_user_id,
-          kind: counterpartyKind,
-          amount_credits: Math.abs(amount_credits), // Always positive for receiver
-          ref_type,
-          ref_id,
-          counterparty_user_id: user.id,
-          meta,
-        });
-
-      if (counterpartyError) {
-        console.error(`[PROCESS-CREDITS-TRANSACTION] Counterparty error: ${counterpartyError.message}`);
-        // Don't fail the transaction for counterparty issues
-      }
+    if (result.counterparty_error) {
+      console.error(`[PROCESS-CREDITS-TRANSACTION] Counterparty error: ${result.counterparty_error}`);
     }
 
     console.log(`[PROCESS-CREDITS-TRANSACTION] Transaction completed successfully`);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
