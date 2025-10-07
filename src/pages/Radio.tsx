@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { setMeta } from '@/lib/seo';
+import { logAnalyticsEvent } from '@/lib/analytics';
 import {
   Radio as RadioIcon,
   Play,
@@ -27,7 +28,8 @@ import {
   Zap,
   Clock,
   Users,
-  TrendingUp
+  TrendingUp,
+  Bookmark
 } from 'lucide-react';
 
 interface RadioTrack {
@@ -124,6 +126,11 @@ const Radio = () => {
   ];
 
   const [stations, setStations] = useState<RadioStation[]>(defaultStations);
+  const [genresLoaded, setGenresLoaded] = useState(false);
+  const [bookmarkedStations, setBookmarkedStations] = useState<string[]>([]);
+  const preferencesHydratedRef = useRef(false);
+  const savedStationIdRef = useRef<string | null>(null);
+  const lastLoggedStationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMeta(
@@ -136,10 +143,71 @@ const Radio = () => {
   }, []);
 
   useEffect(() => {
-    if (currentStation && queue.length === 0) {
-      generateQueue();
+    if (!currentStation) return;
+    void generateQueue(true);
+  }, [currentStation, generateQueue]);
+
+  useEffect(() => {
+    if (!currentStation) return;
+    void generateQueue(false);
+  }, [currentStation, recommendationMode, generateQueue]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || preferencesHydratedRef.current) return;
+
+    try {
+      const stored = localStorage.getItem('pluggd-radio-preferences');
+      if (!stored) {
+        preferencesHydratedRef.current = true;
+        return;
+      }
+
+      const parsed = JSON.parse(stored);
+
+      if (Array.isArray(parsed.bookmarks)) {
+        setBookmarkedStations(parsed.bookmarks);
+      }
+
+      if (parsed.stationId) {
+        savedStationIdRef.current = parsed.stationId;
+      } else {
+        preferencesHydratedRef.current = true;
+      }
+    } catch (error) {
+      console.error('Failed to load radio preferences:', error);
+      preferencesHydratedRef.current = true;
     }
-  }, [currentStation]);
+  }, []);
+
+  useEffect(() => {
+    if (!savedStationIdRef.current) {
+      if (!preferencesHydratedRef.current && genresLoaded) {
+        preferencesHydratedRef.current = true;
+      }
+      return;
+    }
+
+    const matchedStation = stations.find((station) => station.id === savedStationIdRef.current);
+    if (matchedStation) {
+      setCurrentStation(matchedStation);
+      savedStationIdRef.current = null;
+      preferencesHydratedRef.current = true;
+    } else if (genresLoaded) {
+      savedStationIdRef.current = null;
+      preferencesHydratedRef.current = true;
+    }
+  }, [stations, genresLoaded]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !preferencesHydratedRef.current) return;
+
+    const payload = {
+      stationId: currentStation?.id || null,
+      bookmarks: bookmarkedStations
+    };
+
+    localStorage.setItem('pluggd-radio-preferences', JSON.stringify(payload));
+  }, [currentStation, bookmarkedStations]);
 
   const fetchGenres = async () => {
     try {
@@ -178,138 +246,142 @@ const Radio = () => {
       setStations([...defaultStations, ...genreStations]);
     } catch (error) {
       console.error('Error fetching genres:', error);
+    } finally {
+      setGenresLoaded(true);
     }
   };
 
-  const generateQueue = async () => {
+  const playTrack = useCallback((track: RadioTrack) => {
+    if (!track.audio_url) return;
+
+    playerActions.play({
+      id: track.id,
+      title: track.title,
+      artist: track.artist_name,
+      audioUrl: track.audio_url,
+      imageUrl: track.cover_url
+    });
+
+    setIsPlaying(true);
+  }, [playerActions]);
+
+  const generateQueue = useCallback(async (logSessionEvent: boolean = false) => {
     if (!currentStation) return;
 
     try {
       setIsLoading(true);
 
-      let query;
-      let recommendations: RadioTrack[] = [];
+      const beatSelect = `
+        id, title, cover_url, audio_url, genre, duration, bpm, key_signature, total_plays, created_at,
+        profiles!beats_user_id_fkey(full_name, username)
+      `;
 
-      // Generate different types of radio based on station
-      switch (currentStation.seed_type) {
-        case 'genre': {
-          // Fetch tracks from specific genre
-          const { data: genreBeats } = await supabase
-            .from('beats')
-            .select(`
-              id, title, cover_url, audio_url, genre, duration, bpm, key_signature, total_plays, created_at,
-              profiles!beats_user_id_fkey(full_name, username)
-            `)
-            .eq('genre', currentStation.seed_value)
-            .eq('is_published', true)
-            .limit(50);
+      const releaseSelect = `
+        id, title, cover_url, audio_url, genre, duration, total_plays, created_at,
+        profiles!releases_user_id_fkey(full_name, username)
+      `;
 
-          const { data: genreReleases } = await supabase
-            .from('releases')
-            .select(`
-              id, title, cover_url, audio_url, genre, duration, total_plays, created_at,
-              profiles!releases_user_id_fkey(full_name, username)
-            `)
-            .eq('genre', currentStation.seed_value)
-            .eq('status', 'published')
-            .limit(50);
+      let beatQuery = supabase
+        .from('beats')
+        .select(beatSelect)
+        .eq('is_published', true);
 
-          recommendations = [
-            ...(genreBeats?.map(item => ({
-              ...item,
-              artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
-              artist_username: item.profiles?.username || '',
-              type: 'beat' as const,
-              plays_count: item.total_plays || 0
-            })) || []),
-            ...(genreReleases?.map(item => ({
-              ...item,
-              artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
-              artist_username: item.profiles?.username || '',
-              type: 'release' as const,
-              plays_count: item.total_plays || 0
-            })) || [])
-          ];
-          break;
-        }
+      let releaseQuery = supabase
+        .from('releases')
+        .select(releaseSelect)
+        .eq('status', 'published');
 
-        case 'mood': {
-          let orderBy = 'created_at';
-          if (currentStation.seed_value === 'trending') {
-            orderBy = 'total_plays';
-          } else if (currentStation.seed_value === 'new') {
-            orderBy = 'created_at';
-          }
-
-          const { data: moodBeats } = await supabase
-            .from('beats')
-            .select(`
-              id, title, cover_url, audio_url, genre, duration, bpm, key_signature, total_plays, created_at,
-              profiles!beats_user_id_fkey(full_name, username)
-            `)
-            .eq('is_published', true)
-            .order(orderBy, { ascending: false })
-            .limit(30);
-
-          const { data: moodReleases } = await supabase
-            .from('releases')
-            .select(`
-              id, title, cover_url, audio_url, genre, duration, total_plays, created_at,
-              profiles!releases_user_id_fkey(full_name, username)
-            `)
-            .eq('status', 'published')
-            .order(orderBy, { ascending: false })
-            .limit(30);
-
-          recommendations = [
-            ...(moodBeats?.map(item => ({
-              ...item,
-              artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
-              artist_username: item.profiles?.username || '',
-              type: 'beat' as const,
-              plays_count: item.total_plays || 0
-            })) || []),
-            ...(moodReleases?.map(item => ({
-              ...item,
-              artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
-              artist_username: item.profiles?.username || '',
-              type: 'release' as const,
-              plays_count: item.total_plays || 0
-            })) || [])
-          ];
-          break;
-        }
-
-        default: {
-          // Fallback to trending
-          const { data: fallbackTracks } = await supabase
-            .from('beats')
-            .select(`
-              id, title, cover_url, audio_url, genre, duration, total_plays, created_at,
-              profiles!beats_user_id_fkey(full_name, username)
-            `)
-            .eq('is_published', true)
-            .order('total_plays', { ascending: false })
-            .limit(30);
-
-          recommendations = fallbackTracks?.map(item => ({
-            ...item,
-            artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
-            artist_username: item.profiles?.username || '',
-            type: 'beat' as const,
-            plays_count: item.total_plays || 0
-          })) || [];
-          break;
+      if (currentStation.seed_type === 'genre') {
+        beatQuery = beatQuery.eq('genre', currentStation.seed_value);
+        releaseQuery = releaseQuery.eq('genre', currentStation.seed_value);
+      } else if (currentStation.seed_type === 'mood') {
+        if (currentStation.seed_value === 'trending') {
+          beatQuery = beatQuery.not('total_plays', 'is', null);
+          releaseQuery = releaseQuery.not('total_plays', 'is', null);
+        } else if (currentStation.seed_value === 'new') {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          beatQuery = beatQuery.gte('created_at', thirtyDaysAgo.toISOString());
+          releaseQuery = releaseQuery.gte('created_at', thirtyDaysAgo.toISOString());
         }
       }
 
-      // Shuffle the recommendations for variety
-      const shuffled = [...recommendations].sort(() => Math.random() - 0.5);
-      setQueue(shuffled.slice(0, 30)); // Limit to 30 tracks
+      const applyRecommendationFilters = (query: any) => {
+        switch (recommendationMode) {
+          case 'trending':
+            return query
+              .not('total_plays', 'is', null)
+              .order('total_plays', { ascending: false });
+          case 'discovery':
+            return query
+              .or('total_plays.lte.1000,total_plays.is.null')
+              .order('created_at', { ascending: false });
+          case 'similar':
+          default:
+            return query.order('created_at', { ascending: false });
+        }
+      };
+
+      const preparedBeatQuery = applyRecommendationFilters(beatQuery).limit(50);
+      const preparedReleaseQuery = applyRecommendationFilters(releaseQuery).limit(50);
+
+      const [beatResult, releaseResult] = await Promise.all([preparedBeatQuery, preparedReleaseQuery]);
+
+      if (beatResult.error) throw beatResult.error;
+      if (releaseResult.error) throw releaseResult.error;
+
+      const mappedBeats =
+        beatResult.data?.map((item: any) => ({
+          ...item,
+          artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
+          artist_username: item.profiles?.username || '',
+          type: 'beat' as const,
+          plays_count: item.total_plays || 0
+        })) || [];
+
+      const mappedReleases =
+        releaseResult.data?.map((item: any) => ({
+          ...item,
+          artist_name: item.profiles?.full_name || item.profiles?.username || 'Unknown',
+          artist_username: item.profiles?.username || '',
+          type: 'release' as const,
+          plays_count: item.total_plays || 0
+        })) || [];
+
+      const combined = [...mappedBeats, ...mappedReleases];
+      const uniqueMap = new Map<string, RadioTrack>();
+
+      combined.forEach((track) => {
+        if (!track.audio_url) return;
+        const key = `${track.type}-${track.id}`;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, track);
+        }
+      });
+
+      const deduped = Array.from(uniqueMap.values());
+      const shuffled = [...deduped].sort(() => Math.random() - 0.5);
+      const limited = shuffled.slice(0, 30);
+
+      setQueue(limited);
       setCurrentTrackIndex(0);
 
-      if (shuffled.length > 0) {
-        playTrack(shuffled[0]);
+      if (limited.length > 0) {
+        const firstTrack = limited[0];
+        playTrack(firstTrack);
+
+        if (logSessionEvent && currentStation.id !== lastLoggedStationIdRef.current) {
+          await logAnalyticsEvent('radio_session_started', {
+            station_id: currentStation.id,
+            station_name: currentStation.name,
+            station_seed_type: currentStation.seed_type,
+            station_seed_value: currentStation.seed_value,
+            recommendation_mode: recommendationMode
+          });
+          lastLoggedStationIdRef.current = currentStation.id;
+        }
+      } else {
+        setIsPlaying(false);
       }
 
     } catch (error) {
@@ -322,27 +394,22 @@ const Radio = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const playTrack = (track: RadioTrack) => {
-    if (!track.audio_url) return;
-
-    playerActions.play({
-      id: track.id,
-      title: track.title,
-      artist: track.artist_name,
-      audioUrl: track.audio_url,
-      imageUrl: track.cover_url
-    });
-
-    setIsPlaying(true);
-  };
+  }, [currentStation, recommendationMode, playTrack, toast]);
 
   const handleStationSelect = (station: RadioStation) => {
-    setCurrentStation(station);
+    const isSameStation = currentStation?.id === station.id;
+
+    lastLoggedStationIdRef.current = null;
     setQueue([]);
     setCurrentTrackIndex(0);
     setIsPlaying(false);
+
+    if (isSameStation) {
+      void generateQueue(true);
+      return;
+    }
+
+    setCurrentStation(station);
   };
 
   const handlePlayPause = () => {
@@ -366,7 +433,7 @@ const Radio = () => {
       playTrack(queue[nextIndex]);
     } else {
       // Generate more tracks or restart
-      generateQueue();
+      void generateQueue(false);
     }
   };
 
@@ -392,7 +459,27 @@ const Radio = () => {
     }
   };
 
+  const toggleBookmark = (stationId: string) => {
+    setBookmarkedStations((prev) => {
+      if (prev.includes(stationId)) {
+        return prev.filter((id) => id !== stationId);
+      }
+      return [...prev, stationId];
+    });
+  };
+
   const currentTrack = queue[currentTrackIndex];
+  const stationOrder = new Map(stations.map((station, index) => [station.id, index]));
+  const sortedStations = [...stations].sort((a, b) => {
+    const aBookmarked = bookmarkedStations.includes(a.id) ? 1 : 0;
+    const bBookmarked = bookmarkedStations.includes(b.id) ? 1 : 0;
+
+    if (aBookmarked === bBookmarked) {
+      return (stationOrder.get(a.id) ?? 0) - (stationOrder.get(b.id) ?? 0);
+    }
+
+    return bBookmarked - aBookmarked;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -575,19 +662,23 @@ const Radio = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="space-y-2">
-                  {stations.map((station) => {
+                  {sortedStations.map((station) => {
                     const IconComponent = station.icon;
+                    const isActive = currentStation?.id === station.id;
+                    const isBookmarked = bookmarkedStations.includes(station.id);
+
                     return (
-                      <button
+                      <div
                         key={station.id}
-                        onClick={() => handleStationSelect(station)}
-                        className={`w-full text-left p-3 rounded-lg transition-colors ${
-                          currentStation?.id === station.id
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-muted'
+                        className={`group flex items-center gap-2 rounded-lg p-3 transition-colors ${
+                          isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleStationSelect(station)}
+                          className="flex flex-1 items-center gap-3 text-left focus:outline-none"
+                        >
                           <div className={`w-10 h-10 rounded-lg ${station.color} flex items-center justify-center flex-shrink-0`}>
                             <IconComponent className="h-5 w-5 text-white" />
                           </div>
@@ -595,8 +686,28 @@ const Radio = () => {
                             <p className="font-medium truncate">{station.name}</p>
                             <p className="text-xs opacity-70 truncate">{station.description}</p>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant={isActive ? 'secondary' : 'ghost'}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleBookmark(station.id);
+                          }}
+                          aria-pressed={isBookmarked}
+                          aria-label={
+                            isBookmarked
+                              ? `Remove ${station.name} from bookmarks`
+                              : `Bookmark ${station.name}`
+                          }
+                        >
+                          <Bookmark
+                            className="h-4 w-4"
+                            fill={isBookmarked ? 'currentColor' : 'none'}
+                          />
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>

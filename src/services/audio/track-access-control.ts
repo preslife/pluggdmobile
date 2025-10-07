@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { fetchLibraryItems } from '@/services/library';
 
 export interface TrackAccess {
   id?: string;
@@ -25,34 +26,160 @@ export interface Track {
   userId?: string;
   price?: number;
   currency?: string;
+  purchaseUrl?: string;
+  isLocked?: boolean;
+  requiresPurchase?: boolean;
 }
 
 class TrackAccessControlService {
+  private libraryCache: {
+    userId: string;
+    fetchedAt: number;
+    ownedReleases: Set<string>;
+    ownedBeats: Set<string>;
+    ownedPacks: Set<string>;
+  } | null = null;
+
+  private static LIBRARY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  private async getCurrentUserId(): Promise<string | null> {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error('Error fetching current user:', error);
+        return null;
+      }
+
+      return user?.id ?? null;
+    } catch (error) {
+      console.error('Error in getCurrentUserId:', error);
+      return null;
+    }
+  }
+
+  private async ensureLibraryOwnership(userId: string) {
+    const now = Date.now();
+    if (
+      this.libraryCache &&
+      this.libraryCache.userId === userId &&
+      now - this.libraryCache.fetchedAt < TrackAccessControlService.LIBRARY_CACHE_TTL
+    ) {
+      return this.libraryCache;
+    }
+
+    try {
+      const { items } = await fetchLibraryItems(userId);
+
+      const ownedReleases = new Set<string>();
+      const ownedBeats = new Set<string>();
+      const ownedPacks = new Set<string>();
+
+      for (const item of items) {
+        switch (item.type) {
+          case 'release':
+            if (item.productId) ownedReleases.add(item.productId);
+            break;
+          case 'beat':
+            if (item.productId) ownedBeats.add(item.productId);
+            break;
+          case 'sample_pack':
+            if (item.productId) ownedPacks.add(item.productId);
+            break;
+          default:
+            break;
+        }
+      }
+
+      this.libraryCache = {
+        userId,
+        fetchedAt: now,
+        ownedReleases,
+        ownedBeats,
+        ownedPacks
+      };
+
+      return this.libraryCache;
+    } catch (error) {
+      console.error('Error ensuring library ownership cache:', error);
+      return null;
+    }
+  }
+
+  private async fetchTrackAccessRecord(
+    userId: string,
+    trackId: string,
+    trackType: 'beat' | 'release' | 'pack'
+  ) {
+    const { data, error } = await supabase
+      .from('track_access')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('track_id', trackId)
+      .eq('track_type', trackType)
+      .or('expires_at.is.null,expires_at.gt.now()')
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    return data as TrackAccess | null;
+  }
+
+  private buildPurchaseUrl(track: Track): string | undefined {
+    if (track.purchaseUrl) return track.purchaseUrl;
+
+    switch (track.type) {
+      case 'release':
+        return track.releaseId ? `/release/${track.releaseId}` : `/release/${track.id}`;
+      case 'beat':
+        return `/beats/${track.id}`;
+      case 'pack':
+        return `/sample-pack-store`;
+      default:
+        return undefined;
+    }
+  }
+
+  private isOwnedInLibrary(libraryCache: NonNullable<TrackAccessControlService['libraryCache']>, track: Track) {
+    const idsToCheck = new Set<string>();
+    if (track.id) idsToCheck.add(track.id);
+    if (track.releaseId) idsToCheck.add(track.releaseId);
+
+    switch (track.type) {
+      case 'release':
+        return Array.from(idsToCheck).some(id => libraryCache.ownedReleases.has(id));
+      case 'beat':
+        return Array.from(idsToCheck).some(id => libraryCache.ownedBeats.has(id));
+      case 'pack':
+        return Array.from(idsToCheck).some(id => libraryCache.ownedPacks.has(id));
+      default:
+        return false;
+    }
+  }
+
   /**
    * Check if user has access to stream full track
    */
-  async hasFullAccess(trackId: string, trackType: 'beat' | 'release' | 'pack'): Promise<boolean> {
+  async hasFullAccess(trackId: string, trackType: 'beat' | 'release' | 'pack', userId?: string): Promise<boolean> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return false;
+      const resolvedUserId = userId ?? await this.getCurrentUserId();
 
-      const { data, error } = await supabase
-        .from('track_access')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('track_id', trackId)
-        .eq('track_type', trackType)
-        .or('expires_at.is.null,expires_at.gt.now()')
-        .single();
+      if (!resolvedUserId) return false;
 
-      if (error && error.code !== 'PGRST116') { // Not found error
-        console.error('Error checking track access:', error);
+      const data = await this.fetchTrackAccessRecord(resolvedUserId, trackId, trackType);
+
+      if (!data) {
         return false;
       }
 
-      return !!data && ['owned', 'licensed', 'membership'].includes(data.access_type);
+      return ['owned', 'licensed', 'membership'].includes(data.access_type);
     } catch (error) {
+      if ((error as { code?: string }).code && (error as { code?: string }).code !== 'PGRST116') {
+        console.error('Error checking track access:', error);
+    }
+
       console.error('Error in hasFullAccess:', error);
       return false;
     }
@@ -61,26 +188,26 @@ class TrackAccessControlService {
   /**
    * Get track access information
    */
-  async getTrackAccess(trackId: string, trackType: 'beat' | 'release' | 'pack'): Promise<TrackAccess | null> {
+  async getTrackAccess(trackId: string, trackType: 'beat' | 'release' | 'pack', userId?: string): Promise<TrackAccess | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return null;
+      const resolvedUserId = userId ?? await this.getCurrentUserId();
+
+      if (!resolvedUserId) return null;
 
       const { data, error } = await supabase
         .from('track_access')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', resolvedUserId)
         .eq('track_id', trackId)
         .eq('track_type', trackType)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error getting track access:', error);
         return null;
       }
 
-      return data;
+      return data as TrackAccess | null;
     } catch (error) {
       console.error('Error in getTrackAccess:', error);
       return null;
@@ -178,14 +305,40 @@ class TrackAccessControlService {
       track.type = 'release';
     }
 
-    const hasAccess = await this.hasFullAccess(track.id, track.type);
-    const access = await this.getTrackAccess(track.id, track.type);
-    
+    const userId = await this.getCurrentUserId();
+    let owned = false;
+    let hasAccess = false;
+
+    if (userId) {
+      const libraryCache = await this.ensureLibraryOwnership(userId);
+      const ownedViaLibrary = libraryCache ? this.isOwnedInLibrary(libraryCache, track) : false;
+
+      if (ownedViaLibrary) {
+        owned = true;
+        hasAccess = true;
+      } else {
+        const access = await this.getTrackAccess(track.id, track.type, userId);
+        if (access) {
+          owned = access.access_type === 'owned';
+          hasAccess = ['owned', 'licensed', 'membership'].includes(access.access_type);
+        } else {
+          hasAccess = false;
+        }
+      }
+    }
+
+    const previewDuration = this.getPreviewDuration(track.type, track.duration);
+    const isLocked = !hasAccess;
+    const requiresPurchase = isLocked && !owned;
+
     return {
       ...track,
       streamable: hasAccess,
-      owned: access?.access_type === 'owned',
-      preview_duration: this.getPreviewDuration(track.type, track.duration)
+      owned,
+      preview_duration: previewDuration,
+      purchaseUrl: this.buildPurchaseUrl(track),
+      isLocked,
+      requiresPurchase
     };
   }
 

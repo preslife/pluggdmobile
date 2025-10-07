@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CheckoutModal } from '../CheckoutModal';
+import type { PurchaseItem } from '@/services/credits/credit-system';
 
 const hoistedMocks = vi.hoisted(() => ({
   toastMock: vi.fn(),
@@ -116,16 +117,71 @@ afterAll(() => {
 
 describe('CheckoutModal hybrid checkout flow', () => {
   it('applies credits and redirects to Stripe for remaining balance', async () => {
+    const checkoutItems: PurchaseItem[] = [
+      {
+        id: 'release-1',
+        type: 'release',
+        title: 'Debut Release',
+        price: 20,
+        metadata: { cover_art: 'cover.jpg' },
+      },
+      {
+        id: 'beat-1',
+        type: 'beat',
+        title: 'Beat One',
+        price: 30,
+        license_type: 'premium',
+        metadata: { bpm: 120 },
+      },
+      {
+        id: 'pack-1',
+        type: 'sample_pack',
+        title: 'Producer Pack',
+        price: 0,
+        metadata: { sample_count: 50 },
+      },
+      {
+        id: 'membership-1',
+        type: 'membership',
+        title: 'Gold Membership',
+        price: 30,
+        metadata: { tier_id: 'tier-123' },
+      },
+      {
+        id: 'course-1',
+        type: 'course',
+        title: 'Mixing Masterclass',
+        price: 20,
+        metadata: { instructor: 'DJ Test' },
+      },
+    ];
+
+    const typeLabels: Record<PurchaseItem['type'], string> = {
+      release: 'Release',
+      beat: 'Beat',
+      sample_pack: 'Sample Pack',
+      membership: 'Membership',
+      course: 'Course',
+    };
+
     render(
       <CheckoutModal
         isOpen
         onClose={() => {}}
-        items={[{ id: 'beat-1', type: 'beat', title: 'Beat One', price: 100 }]}
+        items={checkoutItems}
       />
     );
 
     await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
     await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+    expect(screen.getByText(/Beat • Premium license/i)).toBeInTheDocument();
+    expect(screen.getByText('Sample Pack')).toBeInTheDocument();
+    expect(screen.getByText('Membership')).toBeInTheDocument();
+    expect(screen.getByText('Course')).toBeInTheDocument();
+    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getByText('Items (5)')).toBeInTheDocument();
 
     const actionButton = await screen.findByRole('button', {
       name: /apply 50 credits & pay/i,
@@ -137,12 +193,33 @@ describe('CheckoutModal hybrid checkout flow', () => {
       expect(invokeMock).toHaveBeenCalledWith(
         'enhanced-store-checkout',
         expect.objectContaining({
-          body: expect.objectContaining({ manualAmountCredits: 50 }),
+          body: expect.objectContaining({
+            manualAmountCredits: 50,
+            paymentMetadata: expect.objectContaining({
+              items: checkoutItems.map((item) => ({
+                id: item.id,
+                type: item.type,
+                title: item.title,
+                price: item.price,
+                license_type: item.license_type,
+                metadata: expect.objectContaining({
+                  ...(item.metadata ?? {}),
+                  type_label: typeLabels[item.type],
+                }),
+              })),
+            }),
+          }),
         })
       );
       expect(processPurchaseMock).toHaveBeenCalledWith(
         'user-123',
-        expect.any(Array),
+        checkoutItems.map((item) => ({
+          ...item,
+          metadata: {
+            type_label: typeLabels[item.type],
+            ...(item.metadata ?? {}),
+          },
+        })),
         expect.objectContaining({
           stripeCheckoutSessionId: 'sess_123',
           stripePaymentIntentId: 'pi_456',

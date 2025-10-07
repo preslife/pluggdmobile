@@ -24,6 +24,18 @@ export interface CreditTransaction {
   created_at: string;
 }
 
+export interface TransactionFilters {
+  kind?: WalletTransactionKind;
+  startDate?: string;
+  endDate?: string;
+}
+
+interface TransactionHistoryOptions {
+  limit?: number;
+  offset?: number;
+  filters?: TransactionFilters;
+}
+
 export interface WalletBalanceSummary {
   balance_credits: number;
   pending_credits: number;
@@ -51,7 +63,7 @@ const WALLET_TRANSACTION_RPC = 'wallet_process_transaction';
 
 export interface PurchaseItem {
   id: string;
-  type: 'beat' | 'release' | 'pack' | 'license';
+  type: PurchaseItemType;
   title: string;
   price: number;
   license_type?: 'basic' | 'premium' | 'exclusive';
@@ -327,15 +339,61 @@ class CreditSystemService {
    */
   async getTransactionHistory(
     userId: string,
-    limit: number = 50,
-    offset: number = 0,
+    options: TransactionHistoryOptions = {},
   ): Promise<CreditTransaction[]> {
-    const { data, error } = await supabase
+    const { limit = 50, offset = 0, filters } = options;
+
+    let query = supabase
+      .from('wallet_ledger')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (filters?.kind) {
+      query = query.eq('kind', filters.kind);
+    }
+
+    if (filters?.startDate) {
+      query = query.gte('created_at', filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      query = query.lte('created_at', filters.endDate);
+    }
+
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  async getFilteredTransactions(
+    userId: string,
+    filters?: TransactionFilters,
+  ): Promise<CreditTransaction[]> {
+    let query = supabase
       .from('wallet_ledger')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('created_at', { ascending: false });
+
+    if (filters?.kind) {
+      query = query.eq('kind', filters.kind);
+    }
+
+    if (filters?.startDate) {
+      query = query.gte('created_at', filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      query = query.lte('created_at', filters.endDate);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
@@ -349,7 +407,7 @@ class CreditSystemService {
    */
   async getPurchasedItems(
     userId: string,
-    productType?: 'beat' | 'release' | 'pack',
+    productType?: PurchaseItemType,
   ): Promise<any[]> {
     let query = supabase
       .from('user_downloads')

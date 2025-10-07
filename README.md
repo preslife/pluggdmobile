@@ -38,3 +38,37 @@ To use this schema, you can inspect the SQL files in this repository to understa
 This section can be expanded with instructions on how to set up the database, run migrations, and connect the application.
 Disclaimer
 Warning: The schema provided in this repository is for contextual understanding and architectural reference only. It is not guaranteed to be executable in its current state. The order of table creation and the dependencies between them may not be valid for direct execution.
+
+Orders & Wallet
+This section explains how commerce events propagate across orders, wallet ledgers, and a customer's digital library.
+
+Order Fulfillment Data Flow
+1. Customer places a store order (public.store_orders) with one or more line items.
+2. Successful payment triggers creation of wallet ledger entries (public.wallet_ledger) that credit the seller and record the platform's liability to deliver content.
+3. A fulfillment job reads the order + ledger entry IDs and creates corresponding library entries (public.user_library) so the buyer gains access to digital goods.
+4. The order record stores the correlation_id used across these tables so operators can trace the chain from the initial order to wallet movements and library unlocks.
+
+```
+[store_orders] --(order_id, correlation_id)--> [wallet_ledger]
+       |                                          |
+       v                                          v
+[order_items] ------------------------------> [wallet_manual_entries]
+       |                                          |
+       v                                          v
+ [library_fulfillment_job] --(ledger_id)--> [user_library]
+```
+
+Refunds & Claw-backs
+• Refund requests or chargebacks create negative ledger entries that reverse the spend (wallet_ledger.amount < 0) and mark the original ledger_id in reversal_of for traceability.
+• The same reversal logic updates public.wallet_balances via triggers so the customer's available balance reflects the refund.
+• Library entries linked to refunded order_items are soft-deleted (user_library.revoked_at timestamp) to remove access while keeping the audit trail.
+
+Credit Spend Tracking
+• Wallet credit purchases generate positive ledger entries with source = 'order_credit_purchase'.
+• When customers spend credit, a debit ledger entry is inserted with correlation_id referencing the originating order_item; the net wallet balance is enforced with check constraints and balance recalculation triggers.
+• Manual adjustments (public.wallet_manual_entries) use the same ledger table, differentiating by entry_type, ensuring audits include both automated and human initiated changes.
+
+Integrated Monitoring & Logging
+• Correlation IDs: store_orders.correlation_id is propagated to wallet_ledger and user_library events, and is logged in the payment service (structured logs in Supabase functions) for end-to-end tracing.
+• Alerting: A Supabase function emits events to the observability pipeline (e.g., Logflare/Webhooks) when wallet_ledger.balance_after deviates from expected totals or when library provisioning fails, triggering PagerDuty alerts.
+• Audit dashboards: SQL views aggregate wallet_ledger and manual entries for daily reconciliation; Grafana panels highlight unmatched credits or stuck fulfillments using the shared correlation IDs.

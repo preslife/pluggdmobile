@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type MouseEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Music, Users, Disc, Filter, Play, Pause, Heart, Share2, TrendingUp, Lightbulb, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Music, Users, Disc, Filter, Play, Pause, Heart, Share2, TrendingUp, Lightbulb, ChevronLeft, ChevronRight, ListPlus, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { setMeta } from "@/lib/seo";
 import { Link } from "react-router-dom";
@@ -20,6 +20,8 @@ import {
 } from "@/components/search";
 import { useAuth } from "@/hooks/useAuth";
 import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PlaylistModal } from "@/components/PlaylistModal";
 
 interface SearchResults {
   creators: any[];
@@ -1119,6 +1121,28 @@ const EnhancedReleaseCard = ({
   const isTrending = release.total_plays > 1000;
   const isCurrentTrack = state.currentTrack?.id === release.id;
   const playing = isCurrentTrack && state.isPlaying;
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const playlistTrack = useMemo(
+    () => ({
+      id: release.id,
+      title: release.title,
+      artist: release.artist,
+      src: release.preview_url || release.audio_url || '',
+      artwork: release.cover_art_url,
+      type: 'release' as const,
+      releaseId: release.id,
+      userId: release.user_id,
+    }),
+    [release.id, release.title, release.artist, release.preview_url, release.audio_url, release.cover_art_url, release.user_id]
+  );
+
+  const openPlaylistModal = (event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setIsPlaylistModalOpen(true);
+  };
+
+  const closePlaylistModal = () => setIsPlaylistModalOpen(false);
 
   const handlePlayClick = () => {
     if (release.preview_url || release.audio_url) {
@@ -1207,6 +1231,35 @@ const EnhancedReleaseCard = ({
               <Button variant="outline" size="sm">
                 <Share2 className="w-4 h-4" />
               </Button>
+              <Button variant="outline" size="sm" onClick={openPlaylistModal}>
+                <ListPlus className="w-4 h-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {(release.preview_url || release.audio_url) && (
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handlePlayClick();
+                      }}
+                    >
+                      {playing ? 'Pause preview' : 'Play preview'}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={openPlaylistModal}>
+                    Add to playlist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to={`/release/${release.id}?${searchContext}`}>View release</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button asChild variant="default" size="sm" className="group-hover:shadow-md transition-all">
                 <Link to={`/release/${release.id}?${searchContext}`}>
                   View
@@ -1216,6 +1269,11 @@ const EnhancedReleaseCard = ({
           </div>
         </div>
       </CardContent>
+      <PlaylistModal
+        isOpen={isPlaylistModalOpen}
+        onClose={closePlaylistModal}
+        track={playlistTrack}
+      />
     </Card>
   );
 };
@@ -1239,6 +1297,27 @@ const EnhancedBeatCard = ({
   const isTrending = new Date(beat.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const isCurrentTrack = state.currentTrack?.id === beat.id;
   const playing = isCurrentTrack && state.isPlaying;
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const playlistTrack = useMemo(
+    () => ({
+      id: beat.id,
+      title: beat.title,
+      artist: beat.producer_name || beat.artist,
+      src: beat.audio_url || beat.preview_url || '',
+      artwork: beat.image_url,
+      type: 'beat' as const,
+      userId: beat.user_id,
+    }),
+    [beat.id, beat.title, beat.producer_name, beat.artist, beat.audio_url, beat.preview_url, beat.image_url, beat.user_id]
+  );
+
+  const openPlaylistModal = (event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setIsPlaylistModalOpen(true);
+  };
+
+  const closePlaylistModal = () => setIsPlaylistModalOpen(false);
 
   const handlePlayClick = () => {
     if (beat.audio_url || beat.preview_url) {
@@ -1342,6 +1421,35 @@ const EnhancedBeatCard = ({
               <Button variant="outline" size="sm">
                 <Share2 className="w-4 h-4" />
               </Button>
+              <Button variant="outline" size="sm" onClick={openPlaylistModal}>
+                <ListPlus className="w-4 h-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {(beat.audio_url || beat.preview_url) && (
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handlePlayClick();
+                      }}
+                    >
+                      {playing ? 'Pause preview' : 'Play preview'}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={openPlaylistModal}>
+                    Add to playlist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to={`/beat/${beat.id}?${searchContext}`}>View beat</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button asChild variant="default" size="sm" className="group-hover:shadow-md transition-all">
                 <Link to={`/beat/${beat.id}?${searchContext}`}>
                   View
@@ -1351,6 +1459,11 @@ const EnhancedBeatCard = ({
           </div>
         </div>
       </CardContent>
+      <PlaylistModal
+        isOpen={isPlaylistModalOpen}
+        onClose={closePlaylistModal}
+        track={playlistTrack}
+      />
     </Card>
   );
 };
