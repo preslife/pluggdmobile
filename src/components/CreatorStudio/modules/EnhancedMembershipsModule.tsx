@@ -297,6 +297,35 @@ export const EnhancedMembershipsModule: React.FC = () => {
                           {tier.name}
                         </CardTitle>
                         <CardDescription>{tier.description || "No description provided."}</CardDescription>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              tier.stripe_product_id
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                            }
+                          >
+                            {tier.stripe_product_id ? "Stripe synced" : "Stripe sync pending"}
+                          </Badge>
+                          {tier.stripe_price_monthly_id && (
+                            <Badge variant="outline" className="border-primary/30 text-primary">
+                              Monthly billing ready
+                            </Badge>
+                          )}
+                          {(tier.price_yearly ?? null) !== null && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                tier.stripe_price_yearly_id
+                                  ? "border-primary/30 text-primary"
+                                  : "border-muted-foreground/20 text-muted-foreground"
+                              }
+                            >
+                              {tier.stripe_price_yearly_id ? "Yearly billing ready" : "Yearly price missing"}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <Badge variant={tier.status === "active" ? "default" : tier.status === "draft" ? "secondary" : "outline"}>
                         {tier.status}
