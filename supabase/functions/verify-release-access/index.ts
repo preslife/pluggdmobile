@@ -66,13 +66,38 @@ serve(async (req) => {
 
     // If user has access and is authenticated, check if they purchased it
     let hasPurchased = false;
+    let latestPurchaseId: string | null = null;
+    let latestPurchaseType: string | null = null;
     if (hasAccess && userId) {
-      const { data: purchaseData } = await supabaseService
+      const { data: purchaseData, error: purchaseError } = await supabaseService
         .rpc('has_purchased_release', {
           p_user_id: userId,
           p_release_id: releaseId
         });
+
+      if (purchaseError) {
+        logStep("Purchase check failed", { error: purchaseError.message });
+      }
+
       hasPurchased = purchaseData === true;
+
+      if (hasPurchased) {
+        const { data: latestPurchase, error: latestPurchaseError } = await supabaseService
+          .from('release_purchases')
+          .select('id, purchased_at')
+          .eq('user_id', userId)
+          .eq('release_id', releaseId)
+          .order('purchased_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (latestPurchaseError) {
+          logStep("Latest purchase lookup failed", { error: latestPurchaseError.message });
+        } else if (latestPurchase?.id) {
+          latestPurchaseId = latestPurchase.id;
+          latestPurchaseType = 'release';
+        }
+      }
     }
 
     // Get release info for additional context
@@ -94,6 +119,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       hasAccess: hasAccess && isPublished && !isScheduled,
       hasPurchased,
+      latestPurchaseId,
+      latestPurchaseType,
       needsPurchase: release.price > 0 && !hasPurchased,
       isPremium: release.is_premium_content,
       isScheduled,

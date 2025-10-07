@@ -6,15 +6,21 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
+type PurchaseType = "release" | "beat" | "sample_pack";
+
 interface SecureDownloadButtonProps {
-  releaseId: string;
+  purchaseId: string;
+  purchaseType: PurchaseType;
+  releaseId?: string;
   title: string;
   disabled?: boolean;
   className?: string;
 }
 
-export const SecureDownloadButton = ({ 
-  releaseId, 
+export const SecureDownloadButton = ({
+  purchaseId,
+  purchaseType,
+  releaseId,
   title,
   disabled = false,
   className = ''
@@ -37,7 +43,7 @@ export const SecureDownloadButton = ({
     setDownloading(true);
     try {
       const { data, error } = await supabase.functions.invoke('download-signed-url', {
-        body: { releaseId }
+        body: { purchaseId, purchaseType }
       });
 
       if (error) throw error;
@@ -46,10 +52,12 @@ export const SecureDownloadButton = ({
         throw new Error(data.error);
       }
 
-      if (data?.downloadUrl) {
+      const signedUrl: string | undefined = data?.signedUrl ?? data?.downloadUrl;
+
+      if (signedUrl) {
         // Create a temporary link and trigger download
         const link = document.createElement('a');
-        link.href = data.downloadUrl;
+        link.href = signedUrl;
         link.download = `${title}.zip`;
         document.body.appendChild(link);
         link.click();
@@ -64,7 +72,9 @@ export const SecureDownloadButton = ({
           release_id: releaseId,
           title,
           status: 'success',
-          source: 'release_detail_secure_button'
+          source: 'release_detail_secure_button',
+          purchase_id: purchaseId,
+          purchase_type: purchaseType,
         });
       }
     } catch (error: any) {
