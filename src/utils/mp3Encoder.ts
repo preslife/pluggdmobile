@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error lamejs lacks TypeScript types
 import lamejs from 'lamejs';
 
 export class MP3Encoder {

@@ -120,7 +120,7 @@ const ChordHelper = () => {
     setProgression(prev => [...prev, chordName]);
   };
 
-  const useProgression = (progressionChords: number[]) => {
+  const applyProgression = (progressionChords: number[]) => {
     const chords = getCurrentChords();
     const chordNames = progressionChords.map(degree => 
       chords.find(chord => chord.degree === degree)?.name || ""
@@ -230,7 +230,7 @@ const ChordHelper = () => {
                 <Button
                   key={index}
                   variant="ghost"
-                  onClick={() => useProgression(prog.chords)}
+                  onClick={() => applyProgression(prog.chords)}
                   className="justify-start h-auto py-2"
                 >
                   <span className="font-medium">{prog.name}</span>

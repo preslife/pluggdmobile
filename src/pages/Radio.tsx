@@ -192,7 +192,7 @@ const Radio = () => {
 
       // Generate different types of radio based on station
       switch (currentStation.seed_type) {
-        case 'genre':
+        case 'genre': {
           // Fetch tracks from specific genre
           const { data: genreBeats } = await supabase
             .from('beats')
@@ -231,8 +231,9 @@ const Radio = () => {
             })) || [])
           ];
           break;
+        }
 
-        case 'mood':
+        case 'mood': {
           let orderBy = 'created_at';
           if (currentStation.seed_value === 'trending') {
             orderBy = 'total_plays';
@@ -277,8 +278,9 @@ const Radio = () => {
             })) || [])
           ];
           break;
+        }
 
-        default:
+        default: {
           // Fallback to trending
           const { data: fallbackTracks } = await supabase
             .from('beats')
@@ -297,6 +299,8 @@ const Radio = () => {
             type: 'beat' as const,
             plays_count: item.total_plays || 0
           })) || [];
+          break;
+        }
       }
 
       // Shuffle the recommendations for variety

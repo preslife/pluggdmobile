@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Music, Users, Disc, Filter, Play, Pause, Heart, Share2, TrendingUp, Lightbulb } from "lucide-react";
+import { Search, Music, Users, Disc, Filter, Play, Pause, Heart, Share2, TrendingUp, Lightbulb, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { setMeta } from "@/lib/seo";
 import { Link } from "react-router-dom";
-import { useTrendingContent } from "@/hooks/useTrendingContent";
 import { 
   MusicFilters, 
   BeatsFilters, 
@@ -82,6 +82,36 @@ const createDefaultFilters = (): SearchFilters => ({
   creators: { ...DEFAULT_FILTERS.creators },
 });
 
+const PAGE_SIZE = 12;
+
+const SORT_OPTIONS: Record<FilterTab, { value: string; label: string }[]> = {
+  music: [
+    { value: "trending", label: "Trending" },
+    { value: "new", label: "Newest" },
+    { value: "price_low", label: "Price: Low to High" },
+    { value: "price_high", label: "Price: High to Low" },
+  ],
+  beats: [
+    { value: "trending", label: "Trending" },
+    { value: "new", label: "Newest" },
+    { value: "price_low", label: "Price: Low to High" },
+    { value: "price_high", label: "Price: High to Low" },
+    { value: "bpm_low", label: "BPM: Low to High" },
+    { value: "bpm_high", label: "BPM: High to Low" },
+  ],
+  creators: [
+    { value: "recommended", label: "Recommended" },
+    { value: "new", label: "Newest" },
+    { value: "name", label: "Name A-Z" },
+  ],
+};
+
+const DEFAULT_SORTS: Record<FilterTab, string> = {
+  music: "trending",
+  beats: "trending",
+  creators: "recommended",
+};
+
 const parseNumber = (value: string | null, fallback: number) => {
   if (value === null) return fallback;
   const parsed = Number(value);
@@ -93,8 +123,14 @@ const filtersAreEqual = (a: SearchFilters, b: SearchFilters) => JSON.stringify(a
 export const SearchPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const initialTab = (searchParams.get('tab') as FilterTab) || 'music';
+  const initialSortParam = searchParams.get('sort');
+  const allowedInitialSort = initialSortParam && SORT_OPTIONS[initialTab].some((option) => option.value === initialSortParam)
+    ? initialSortParam
+    : DEFAULT_SORTS[initialTab];
+  const initialPageParam = Number(searchParams.get('page') ?? '1');
+  const initialPage = Number.isFinite(initialPageParam) && initialPageParam > 0 ? initialPageParam : 1;
+
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [results, setResults] = useState<SearchResults>({
     creators: [],
@@ -102,10 +138,13 @@ export const SearchPage = () => {
     beats: []
   });
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'music');
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialTab);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(createDefaultFilters);
-  const { items: trendingItems } = useTrendingContent();
+  const [sort, setSort] = useState<string>(allowedInitialSort);
+  const [page, setPage] = useState<number>(initialPage);
+  const [hasMore, setHasMore] = useState({ music: false, beats: false, creators: false });
+  const [resultCounts, setResultCounts] = useState({ music: 0, beats: 0, creators: 0 });
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -123,15 +162,29 @@ export const SearchPage = () => {
 
   useEffect(() => {
     const queryParam = searchParams.get('q');
-    const tabParam = searchParams.get('tab');
+    const tabParam = (searchParams.get('tab') as FilterTab) || 'music';
+    const sortParam = searchParams.get('sort');
+    const pageParamValue = Number(searchParams.get('page') ?? '1');
+    const nextPage = Number.isFinite(pageParamValue) && pageParamValue > 0 ? pageParamValue : 1;
+
+    if (tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+
+    const nextSort = sortParam && SORT_OPTIONS[tabParam].some((option) => option.value === sortParam)
+      ? sortParam
+      : DEFAULT_SORTS[tabParam];
+    if (nextSort !== sort) {
+      setSort(nextSort);
+    }
+
+    if (nextPage !== page) {
+      setPage(nextPage);
+    }
 
     if (queryParam && queryParam !== query) {
       setQuery(queryParam);
-      performSearch(queryParam);
-    }
-
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+      performSearch(queryParam, { tab: tabParam, page: nextPage, sort: nextSort });
     }
 
     setFilters((prev) => {
@@ -168,139 +221,302 @@ export const SearchPage = () => {
 
       return filtersAreEqual(prev, next) ? prev : next;
     });
-  }, [searchParams, activeTab, performSearch, query]);
+  }, [searchParams, activeTab, page, performSearch, query, sort]);
 
-  useEffect(() => {
-    // Update URL when tab changes without triggering navigation
+  const fetchReleases = async (
+    searchQuery: string,
+    musicFilters: SearchFilters["music"],
+    pageNumber: number,
+    sortOption: string,
+  ) => {
+    let query = supabase
+      .from('releases')
+      .select('id,title,artist,genre,cover_art_url,preview_url,price,total_plays,created_at', { count: 'exact' })
+      .eq('status', 'live')
+      .eq('approved', true)
+      .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+
+    if (musicFilters.genre !== 'all') {
+      query = query.eq('genre', musicFilters.genre);
+    }
+
+    const [minPrice, maxPrice] = musicFilters.priceRange;
+    if (minPrice > 0) {
+      query = query.gte('price', minPrice);
+    }
+    if (maxPrice < 100) {
+      query = query.lte('price', maxPrice);
+    }
+
+    switch (sortOption) {
+      case 'new':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'price_low':
+        query = query.order('price', { ascending: true, nullsFirst: false });
+        break;
+      case 'price_high':
+        query = query.order('price', { ascending: false, nullsFirst: true });
+        break;
+      case 'trending':
+      default:
+        query = query.order('total_plays', { ascending: false, nullsFirst: true }).order('created_at', { ascending: false });
+        break;
+    }
+
+    const from = (pageNumber - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+
+    return {
+      data: data ?? [],
+      count: count ?? (data?.length ?? 0),
+    };
+  };
+
+  const fetchBeats = async (
+    searchQuery: string,
+    beatFilters: SearchFilters['beats'],
+    pageNumber: number,
+    sortOption: string,
+  ) => {
+    let query = supabase
+      .from('beats')
+      .select('id,title,producer_name,genre,price,image_url,audio_url,bpm,key,created_at,is_featured', { count: 'exact' })
+      .eq('is_published', true)
+      .or(`title.ilike.%${searchQuery}%,producer_name.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+
+    if (beatFilters.genre !== 'all') {
+      query = query.eq('genre', beatFilters.genre);
+    }
+    if (beatFilters.key !== 'all') {
+      query = query.eq('key', beatFilters.key);
+    }
+
+    const [minBpm, maxBpm] = beatFilters.bpmRange;
+    if (minBpm > 0) {
+      query = query.gte('bpm', minBpm);
+    }
+    if (maxBpm < 999) {
+      query = query.lte('bpm', maxBpm);
+    }
+
+    const [minPrice, maxPrice] = beatFilters.priceRange;
+    if (minPrice > 0) {
+      query = query.gte('price', minPrice);
+    }
+    if (maxPrice < 100) {
+      query = query.lte('price', maxPrice);
+    }
+
+    switch (sortOption) {
+      case 'new':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'price_low':
+        query = query.order('price', { ascending: true, nullsFirst: false });
+        break;
+      case 'price_high':
+        query = query.order('price', { ascending: false, nullsFirst: true });
+        break;
+      case 'bpm_low':
+        query = query.order('bpm', { ascending: true, nullsFirst: false });
+        break;
+      case 'bpm_high':
+        query = query.order('bpm', { ascending: false, nullsFirst: true });
+        break;
+      case 'trending':
+      default:
+        query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
+        break;
+    }
+
+    const from = (pageNumber - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+
+    return {
+      data: data ?? [],
+      count: count ?? (data?.length ?? 0),
+    };
+  };
+
+  const fetchCreators = async (
+    searchQuery: string,
+    creatorFilters: SearchFilters['creators'],
+    pageNumber: number,
+    sortOption: string,
+  ) => {
+    let query = supabase
+      .from('profiles')
+      .select('user_id, username, full_name, bio, avatar_url, is_verified, created_at', { count: 'exact' })
+      .or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%,bio.ilike.%${searchQuery}%`);
+
+    if (creatorFilters.verified) {
+      query = query.eq('is_verified', true);
+    }
+
+    switch (sortOption) {
+      case 'new':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'name':
+        query = query.order('full_name', { ascending: true, nullsFirst: false });
+        break;
+      case 'recommended':
+      default:
+        query = query.order('is_verified', { ascending: false }).order('created_at', { ascending: false });
+        break;
+    }
+
+    const from = (pageNumber - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+
+    return {
+      data: data ?? [],
+      count: count ?? (data?.length ?? 0),
+    };
+  };
+
+  const performSearch = useCallback(
+    async (rawQuery: string, options?: { page?: number; sort?: string; tab?: FilterTab; filtersOverride?: SearchFilters }) => {
+      const trimmed = rawQuery.trim();
+      if (!trimmed) {
+        setResults({ creators: [], releases: [], beats: [] });
+        setResultCounts({ music: 0, beats: 0, creators: 0 });
+        setHasMore({ music: false, beats: false, creators: false });
+        return;
+      }
+
+      setLoading(true);
+
+      const effectiveTab = options?.tab ?? activeTab;
+      const effectiveFilters = options?.filtersOverride ?? filters;
+      const pageByTab: Record<FilterTab, number> = {
+        music: effectiveTab === "music" ? options?.page ?? page : 1,
+        beats: effectiveTab === "beats" ? options?.page ?? page : 1,
+        creators: effectiveTab === "creators" ? options?.page ?? page : 1,
+      };
+
+      const sortByTab: Record<FilterTab, string> = {
+        music: effectiveTab === "music" ? options?.sort ?? sort : DEFAULT_SORTS.music,
+        beats: effectiveTab === "beats" ? options?.sort ?? sort : DEFAULT_SORTS.beats,
+        creators: effectiveTab === "creators" ? options?.sort ?? sort : DEFAULT_SORTS.creators,
+      };
+
+      try {
+        const [releaseResult, beatResult, creatorResult] = await Promise.all([
+          fetchReleases(trimmed, effectiveFilters.music, pageByTab.music, sortByTab.music),
+          fetchBeats(trimmed, effectiveFilters.beats, pageByTab.beats, sortByTab.beats),
+          fetchCreators(trimmed, effectiveFilters.creators, pageByTab.creators, sortByTab.creators),
+        ]);
+
+        setResults({
+          releases: releaseResult.data,
+          beats: beatResult.data,
+          creators: creatorResult.data,
+        });
+
+        setResultCounts({
+          music: releaseResult.count,
+          beats: beatResult.count,
+          creators: creatorResult.count,
+        });
+
+        setHasMore({
+          music: releaseResult.count > pageByTab.music * PAGE_SIZE,
+          beats: beatResult.count > pageByTab.beats * PAGE_SIZE,
+          creators: creatorResult.count > pageByTab.creators * PAGE_SIZE,
+        });
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeTab, filters, page, sort],
+  );
+
+  const handleSortChange = (value: string) => {
+    setSort(value);
+    setPage(1);
     const params = new URLSearchParams(searchParams);
-    if (activeTab !== 'music') {
-      params.set('tab', activeTab);
+    if (value !== DEFAULT_SORTS[activeTab]) {
+      params.set('sort', value);
     } else {
-      params.delete('tab');
+      params.delete('sort');
     }
-    const newUrl = `${location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, '', newUrl);
-  }, [activeTab, location.pathname, searchParams]);
+    params.delete('page');
+    setSearchParams(params, { replace: true });
 
-  const performSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      setResults({ creators: [], releases: [], beats: [] });
-      return;
+    if (query.trim()) {
+      performSearch(query.trim(), { sort: value, page: 1, tab: activeTab });
     }
+  };
 
-    setLoading(true);
-    try {
-      let creatorsQuery = supabase
-        .from('profiles')
-        .select('user_id, username, full_name, bio, avatar_url, is_verified')
-        .or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%,bio.ilike.%${searchQuery}%`);
-      
-      // Apply creator filters
-      if (filters.creators.verified) {
-        creatorsQuery = creatorsQuery.eq('is_verified', true);
-      }
-      
-      const { data: creators } = await creatorsQuery.limit(20);
-
-      let releasesQuery = supabase
-        .from('releases')
-        .select('*')
-        .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-        .eq('status', 'published');
-      
-      // Apply music filters
-      if (filters.music.genre !== 'all') {
-        releasesQuery = releasesQuery.eq('genre', filters.music.genre);
-      }
-      
-      const { data: releases } = await releasesQuery.limit(30);
-
-      // Filter by price range
-      const filteredReleases = releases?.filter(release => {
-        const price = release.price || 0;
-        return price >= filters.music.priceRange[0] && price <= filters.music.priceRange[1];
-      }) || [];
-
-      // Sort releases by trending score
-      const sortedReleases = filteredReleases.sort((a, b) => {
-        const aTrending = trendingItems.find(item => item.content_id === a.id && item.content_type === 'release');
-        const bTrending = trendingItems.find(item => item.content_id === b.id && item.content_type === 'release');
-        
-        if (aTrending && bTrending) return bTrending.total_score - aTrending.total_score;
-        if (aTrending) return -1;
-        if (bTrending) return 1;
-        return (b.total_plays || 0) - (a.total_plays || 0);
-      }).slice(0, 15);
-
-      let beatsQuery = supabase
-        .from('beats')
-        .select('*')
-        .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-        .eq('is_published', true);
-      
-      // Apply beats filters
-      if (filters.beats.genre !== 'all') {
-        beatsQuery = beatsQuery.eq('genre', filters.beats.genre);
-      }
-      if (filters.beats.key !== 'all') {
-        beatsQuery = beatsQuery.eq('key', filters.beats.key);
-      }
-      
-      const { data: beats } = await beatsQuery.limit(30);
-
-      // Filter by BPM and price range
-      const filteredBeats = beats?.filter(beat => {
-        const bpm = beat.bpm || 0;
-        const price = beat.price || 0;
-        return bpm >= filters.beats.bpmRange[0] && bpm <= filters.beats.bpmRange[1] &&
-               price >= filters.beats.priceRange[0] && price <= filters.beats.priceRange[1];
-      }) || [];
-
-      // Sort beats by trending score
-      const sortedBeats = filteredBeats.sort((a, b) => {
-        const aTrending = trendingItems.find(item => item.content_id === a.id && item.content_type === 'beat');
-        const bTrending = trendingItems.find(item => item.content_id === b.id && item.content_type === 'beat');
-        
-        if (aTrending && bTrending) return bTrending.total_score - aTrending.total_score;
-        if (aTrending) return -1;
-        if (bTrending) return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }).slice(0, 15);
-
-      setResults({
-        creators: creators || [],
-        releases: sortedReleases,
-        beats: sortedBeats
-      });
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setLoading(false);
+  const changePage = (newPage: number) => {
+    if (newPage < 1) return;
+    setPage(newPage);
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set('page', String(newPage));
+    } else {
+      params.delete('page');
     }
-  }, [filters, trendingItems]);
+    setSearchParams(params, { replace: true });
+
+    if (query.trim()) {
+      performSearch(query.trim(), { page: newPage, tab: activeTab });
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       const params = new URLSearchParams(searchParams);
       params.set('q', query.trim());
+      params.delete('page');
+      const defaultSort = DEFAULT_SORTS[activeTab];
+      if (sort !== defaultSort) {
+        params.set('sort', sort);
+      } else {
+        params.delete('sort');
+      }
       setSearchParams(params);
+      setPage(1);
+      performSearch(query.trim(), { page: 1 });
     }
   };
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+    const tabValue = tab as FilterTab;
+    setActiveTab(tabValue);
+    const defaultSort = DEFAULT_SORTS[tabValue];
+    setSort(defaultSort);
+    setPage(1);
+
     const params = new URLSearchParams(searchParams);
-    if (tab !== 'music') {
-      params.set('tab', tab);
+    if (tabValue !== 'music') {
+      params.set('tab', tabValue);
     } else {
       params.delete('tab');
     }
-    setSearchParams(params);
+    params.delete('page');
+    params.delete('sort');
+    setSearchParams(params, { replace: true });
+
+    if (query.trim()) {
+      performSearch(query.trim(), { tab: tabValue, page: 1, sort: defaultSort });
+    }
   };
 
   const updateFilterParams = useCallback((tabName: FilterTab, tabFilters: any) => {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete('page');
 
     if (tabName === 'music') {
       const defaults = DEFAULT_FILTERS.music;
@@ -401,17 +617,21 @@ export const SearchPage = () => {
   }, [searchParams, setSearchParams]);
 
   const handleFiltersChange = (tabFilters: any, tabName: FilterTab) => {
-    setFilters(prev => ({
-      ...prev,
-      [tabName]: tabFilters
-    }));
+    const nextFilters: SearchFilters = {
+      music: tabName === 'music' ? tabFilters : filters.music,
+      beats: tabName === 'beats' ? tabFilters : filters.beats,
+      creators: tabName === 'creators' ? tabFilters : filters.creators,
+    };
+
+    setFilters(nextFilters);
+    setPage(1);
     updateFilterParams(tabName, tabFilters);
     if (query.trim()) {
-      performSearch(query.trim());
+      performSearch(query.trim(), { tab: tabName, page: 1, filtersOverride: nextFilters });
     }
   };
 
-  const totalResults = results.creators.length + results.releases.length + results.beats.length;
+  const totalResults = resultCounts.creators + resultCounts.music + resultCounts.beats;
 
   const currentResults = useMemo(() => {
     if (!query.trim()) return [];
@@ -434,11 +654,12 @@ export const SearchPage = () => {
     }
 
     const handler = window.setTimeout(() => {
-      performSearch(trimmed);
+      setPage(1);
+      performSearch(trimmed, { page: 1, tab: activeTab, sort });
     }, 300);
 
     return () => window.clearTimeout(handler);
-  }, [query, performSearch]);
+  }, [query, performSearch, activeTab, sort]);
 
   useEffect(() => {
     setHighlightedIndex(null);
@@ -452,10 +673,10 @@ export const SearchPage = () => {
     el?.focus();
   }, [highlightedIndex, currentResults]);
 
-  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!currentResults.length) return;
+const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  if (!currentResults.length) return;
 
-    if (event.key === 'ArrowDown') {
+  if (event.key === 'ArrowDown') {
       event.preventDefault();
       setHighlightedIndex((prev) => {
         if (prev === null) return 0;
@@ -481,10 +702,10 @@ export const SearchPage = () => {
       }
     } else if (event.key === 'Escape') {
       setHighlightedIndex(null);
-    }
-  };
+  }
+};
 
-  return (
+return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
@@ -598,23 +819,51 @@ export const SearchPage = () => {
                         <Music className="w-4 h-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Music</span>
                         <span className="sm:hidden">Music</span>
-                        <span className="ml-1 sm:ml-2">({results.releases.length})</span>
+                        <span className="ml-1 sm:ml-2">({resultCounts.music})</span>
                       </TabsTrigger>
                       <TabsTrigger value="beats" className="text-sm sm:text-base">
                         <Disc className="w-4 h-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Beats</span>
                         <span className="sm:hidden">Beats</span>
-                        <span className="ml-1 sm:ml-2">({results.beats.length})</span>
+                        <span className="ml-1 sm:ml-2">({resultCounts.beats})</span>
                       </TabsTrigger>
                       <TabsTrigger value="creators" className="text-sm sm:text-base">
                         <Users className="w-4 h-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Creators</span>
                         <span className="sm:hidden">Creators</span>
-                        <span className="ml-1 sm:ml-2">({results.creators.length})</span>
+                        <span className="ml-1 sm:ml-2">({resultCounts.creators})</span>
                       </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="music" className="space-y-4">
+                      {activeTab === 'music' && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Sort by</span>
+                            <Select value={sort} onValueChange={handleSortChange}>
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Sort releases" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SORT_OPTIONS.music.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <PaginationControls
+                            currentPage={page}
+                            total={resultCounts.music}
+                            pageItems={results.releases.length}
+                            hasPrev={page > 1}
+                            hasNext={hasMore.music}
+                            onPrev={() => changePage(page - 1)}
+                            onNext={() => changePage(page + 1)}
+                          />
+                        </div>
+                      )}
                       {results.releases.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
                           {results.releases.map((release, index) => (
@@ -638,6 +887,34 @@ export const SearchPage = () => {
                     </TabsContent>
 
                     <TabsContent value="beats" className="space-y-4">
+                      {activeTab === 'beats' && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Sort by</span>
+                            <Select value={sort} onValueChange={handleSortChange}>
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Sort beats" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SORT_OPTIONS.beats.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <PaginationControls
+                            currentPage={page}
+                            total={resultCounts.beats}
+                            pageItems={results.beats.length}
+                            hasPrev={page > 1}
+                            hasNext={hasMore.beats}
+                            onPrev={() => changePage(page - 1)}
+                            onNext={() => changePage(page + 1)}
+                          />
+                        </div>
+                      )}
                       {results.beats.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
                           {results.beats.map((beat, index) => (
@@ -661,6 +938,34 @@ export const SearchPage = () => {
                     </TabsContent>
 
                     <TabsContent value="creators" className="space-y-4">
+                      {activeTab === 'creators' && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Sort by</span>
+                            <Select value={sort} onValueChange={handleSortChange}>
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Sort creators" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SORT_OPTIONS.creators.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <PaginationControls
+                            currentPage={page}
+                            total={resultCounts.creators}
+                            pageItems={results.creators.length}
+                            hasPrev={page > 1}
+                            hasNext={hasMore.creators}
+                            onPrev={() => changePage(page - 1)}
+                            onNext={() => changePage(page + 1)}
+                          />
+                        </div>
+                      )}
                       {results.creators.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
                           {results.creators.map((creator, index) => (
@@ -764,6 +1069,39 @@ const EnhancedCreatorCard = ({
 );
 
 // Enhanced component for release results
+interface PaginationControlsProps {
+  currentPage: number;
+  total: number;
+  pageItems: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+const PaginationControls = ({ currentPage, total, pageItems, hasPrev, hasNext, onPrev, onNext }: PaginationControlsProps) => {
+  const start = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const end = total === 0 ? 0 : Math.min(start + pageItems - 1, total);
+
+  return (
+    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+      {total > 0 && (
+        <span>
+          {start}-{end} of {total}
+        </span>
+      )}
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onPrev} disabled={!hasPrev}>
+          <ChevronLeft className="mr-1 h-4 w-4" />Prev
+        </Button>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={!hasNext}>
+          Next<ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const EnhancedReleaseCard = ({
   release,
   searchContext,
@@ -785,7 +1123,11 @@ const EnhancedReleaseCard = ({
   const handlePlayClick = () => {
     if (release.preview_url || release.audio_url) {
       if (isCurrentTrack) {
-        playing ? actions.pause() : actions.resume();
+        if (playing) {
+          actions.pause();
+        } else {
+          actions.resume();
+        }
       } else {
         actions.play({
           id: release.id,
@@ -901,7 +1243,11 @@ const EnhancedBeatCard = ({
   const handlePlayClick = () => {
     if (beat.audio_url || beat.preview_url) {
       if (isCurrentTrack) {
-        playing ? actions.pause() : actions.resume();
+        if (playing) {
+          actions.pause();
+        } else {
+          actions.resume();
+        }
       } else {
         actions.play({
           id: beat.id,

@@ -64,7 +64,7 @@ const LiveEvent = () => {
     setLoadingSubmissions(true);
     const { data } = await supabase
       .from("contest_submissions")
-      .select(`*, beats(title, audio_url, image_url), profiles(username, full_name)`) // @ts-ignore
+      .select(`*, beats(title, audio_url, image_url), profiles(username, full_name)`) // @ts-expect-error Supabase nested select typing
       .eq("contest_id", contestId)
       .order("votes_count", { ascending: false });
     setSubmissions((data as any[]) || []);

@@ -84,18 +84,25 @@ export const MyPurchases = () => {
     }
   };
 
-  const handleDownload = async (purchaseId: string, downloadUrl: string) => {
+  const handleDownload = async (purchaseId: string) => {
     try {
-      // Call edge function to get signed download URL
-      const { data, error } = await supabase.functions.invoke('create-signed-download', {
-        body: { purchase_id: purchaseId }
+      const { data, error } = await supabase.functions.invoke('download-signed-url', {
+        body: {
+          purchaseId,
+          purchaseType: 'release'
+        }
       });
 
       if (error) throw error;
 
       // Open download in new tab
-      window.open(data.download_url, '_blank');
-      
+      const signedUrl: string | undefined = data?.signedUrl ?? data?.downloadUrl;
+      if (!signedUrl) {
+        throw new Error('Download link unavailable. Please try again later.');
+      }
+
+      window.open(signedUrl, '_blank');
+
       toast({
         title: 'Download Started',
         description: 'Your download should begin shortly',
@@ -171,10 +178,10 @@ export const MyPurchases = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {new Date(purchase.download_expires_at) > new Date() ? (
+                    {(!purchase.download_expires_at || new Date(purchase.download_expires_at) > new Date()) ? (
                       <Button
                         size="sm"
-                        onClick={() => handleDownload(purchase.id, purchase.download_url)}
+                        onClick={() => handleDownload(purchase.id)}
                         disabled={purchase.downloads_used >= 3}
                       >
                         <Download className="w-4 h-4 mr-2" />

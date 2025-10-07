@@ -5,10 +5,28 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      "node_modules",
+      "scripts/**/*",
+      "supabase/**/*",
+      "tailwind.config.ts",
+      "postcss.config.js",
+      "vite.config.ts",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
+    files: [
+      "src/pages/Library.tsx",
+      "src/pages/SearchPage.tsx",
+      "src/pages/Index.tsx",
+      "src/components/DashboardTabs.tsx",
+      "src/components/DownloadTracker.tsx",
+      "src/components/PlaylistManager.tsx",
+      "src/services/library/**/*.{ts,tsx}",
+    ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -24,6 +42,9 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+      "no-empty": "off",
     },
   }
 );

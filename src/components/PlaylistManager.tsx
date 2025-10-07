@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { Plus, Music, Play, Trash2, Edit2, Share, Lock, Globe } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 type Playlist = {
   id: string;
@@ -65,25 +66,40 @@ const PlaylistManager = () => {
 
   const fetchPlaylistTracks = async (playlistId: string) => {
     try {
-      // Mock data for demo - this would be replaced with real playlist track fetching
-      const mockTracks: PlaylistTrack[] = [
-        {
-          id: '1',
-          release_id: '1',
-          position: 1,
-          added_at: new Date().toISOString(),
-          release: {
-            title: 'Sample Track',
-            artist: 'Demo Artist',
-            genre: 'Hip Hop',
-            cover_art_url: undefined,
-            preview_url: undefined
-          }
-        }
-      ];
-      setPlaylistTracks(mockTracks);
+      const { data, error } = await supabase
+        .from('playlist_items')
+        .select(`
+          id,
+          release_id,
+          position,
+          added_at,
+          releases:release_id (id, title, artist, genre, cover_art_url, preview_url)
+        `)
+        .eq('playlist_id', playlistId)
+        .order('position', { ascending: true });
+
+      if (error) throw error;
+
+      const tracks: PlaylistTrack[] = (data ?? []).map((item) => ({
+        id: item.id,
+        release_id: item.release_id,
+        position: item.position ?? 0,
+        added_at: item.added_at,
+        release: item.releases
+          ? {
+              title: item.releases.title,
+              artist: item.releases.artist,
+              genre: item.releases.genre,
+              cover_art_url: item.releases.cover_art_url ?? undefined,
+              preview_url: item.releases.preview_url ?? undefined,
+            }
+          : undefined,
+      }));
+
+      setPlaylistTracks(tracks);
     } catch (error) {
       console.error('Error fetching playlist tracks:', error);
+      setPlaylistTracks([]);
     }
   };
 

@@ -170,6 +170,15 @@ async function fetchLive(limit = 12): Promise<LiveSession[]> {
 }
 
 import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
+import SpotlightCarousel from "@/components/SpotlightCarousel";
+import NewThisWeekCarousel from "@/components/NewThisWeekCarousel";
+import LatestReleases from "@/components/LatestReleases";
+import FeaturedArtistsSection from "@/components/FeaturedArtistsSection";
+import FeaturedBeatsCarousel from "@/components/FeaturedBeatsCarousel";
+import UpcomingReleases from "@/components/UpcomingReleases";
+import { CommunityActivity } from "@/components/CommunityActivity";
+import PlatformStats from "@/components/PlatformStats";
+import FeaturesPreview from "@/components/FeaturesPreview";
 
 // -----------------------------------------------------------------------------
 // Pluggd — Homepage (X3)
@@ -313,6 +322,14 @@ export default function PluggdHomepage() {
       <main className="mx-auto max-w-[1280px] px-4">
           <Hero role={role} labels={labels} slides={slides} />
 
+          {/* Core discovery sections */}
+          <SpotlightCarousel />
+          <NewThisWeekCarousel />
+          <LatestReleases />
+          <FeaturedArtistsSection />
+          <FeaturedBeatsCarousel />
+          <UpcomingReleases />
+
           {/* Dynamic first rail by role */}
           <section ref={trendingRef} id="trending" className="py-12">
             {role === "fans" ? (
@@ -367,6 +384,9 @@ export default function PluggdHomepage() {
             <Carousel items={live} renderItem={(it) => <LiveCard item={it} />} itemWidth={360} />
           </section>
 
+          <CommunityActivity />
+          <PlatformStats />
+
           {/* Why Pluggd — credibility + conversion */}
           <section className="py-12">
             <HeaderRow title="Why Pluggd" cta="" />
@@ -379,6 +399,7 @@ export default function PluggdHomepage() {
             <HowItWorks role={role} />
           </section>
 
+          <FeaturesPreview />
           <HomeStudioPreview role={role} />
 
           {/* FAQ */}
@@ -400,7 +421,6 @@ export default function PluggdHomepage() {
                   className="rounded-md border border-red-500/30 px-2 py-1 text-xs hover:bg-red-500/20"
                   onClick={() => {
                     setError(null);
-                    // naive retry
                     setLoading(true);
                     Promise.all([fetchBeats(), fetchReleases(), fetchCollabs(), fetchLive()])
                       .then(([b, r, c, l]) => {
@@ -524,7 +544,6 @@ function HeroBackdrop({
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // @ts-ignore
     timerRef.current = window.setInterval(
       () => setIdx((i) => (i + 1) % slides.length),
       7000
