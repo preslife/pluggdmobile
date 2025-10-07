@@ -11,8 +11,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const defaultCorrelationId = crypto.randomUUID();
+  let correlationId = defaultCorrelationId;
+  let body: any = null;
+
   try {
-    console.log("[PROCESS-CREDITS-TRANSACTION] Function started");
+    body = await req.json();
+    if (typeof body?.correlation_id === "string" && body.correlation_id) {
+      correlationId = body.correlation_id;
+    }
+
+    console.log(
+      `[PROCESS-CREDITS-TRANSACTION][${correlationId}] Function started`,
+      { correlationId },
+    );
 
     // Initialize Supabase client with service role
     const supabaseClient = createClient(
@@ -31,23 +43,35 @@ serve(async (req) => {
     const user = userData.user;
     if (!user) throw new Error("User not authenticated");
 
-    console.log(`[PROCESS-CREDITS-TRANSACTION] User: ${user.id}`);
+    console.log(
+      `[PROCESS-CREDITS-TRANSACTION][${correlationId}] User authenticated`,
+      { correlationId, userId: user.id },
+    );
 
-    // Parse request body
-    const { 
-      amount_credits, 
-      kind, 
-      ref_type, 
-      ref_id, 
+    const {
+      amount_credits,
+      kind,
+      ref_type,
+      ref_id,
       counterparty_user_id,
-      meta = {} 
-    } = await req.json();
+      meta = {},
+    } = body ?? {};
+
+    const safeMeta = meta && typeof meta === "object" ? meta : {};
+
+    const transactionMeta = {
+      ...safeMeta,
+      correlation_id: correlationId,
+    };
 
     if (!amount_credits || !kind) {
       throw new Error("Invalid transaction data");
     }
 
-    console.log(`[PROCESS-CREDITS-TRANSACTION] Processing: ${kind} ${amount_credits} credits`);
+    console.log(
+      `[PROCESS-CREDITS-TRANSACTION][${correlationId}] Processing transaction`,
+      { correlationId, kind, amount_credits },
+    );
 
     // For spending transactions, check balance first
     if (amount_credits < 0) {
@@ -56,7 +80,7 @@ serve(async (req) => {
       });
 
       if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
-      
+
       const balance = balanceData as any;
       if (balance.available_credits < Math.abs(amount_credits)) {
         throw new Error("Insufficient credits");
@@ -73,7 +97,7 @@ serve(async (req) => {
         ref_type,
         ref_id,
         counterparty_user_id,
-        meta,
+        meta: transactionMeta,
       });
 
     if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
@@ -91,28 +115,48 @@ serve(async (req) => {
           ref_type,
           ref_id,
           counterparty_user_id: user.id,
-          meta,
+          meta: transactionMeta,
         });
 
       if (counterpartyError) {
-        console.error(`[PROCESS-CREDITS-TRANSACTION] Counterparty error: ${counterpartyError.message}`);
+        console.error(
+          `[PROCESS-CREDITS-TRANSACTION][${correlationId}] Counterparty ledger error`,
+          { correlationId, error: counterpartyError.message },
+        );
         // Don't fail the transaction for counterparty issues
       }
     }
 
-    console.log(`[PROCESS-CREDITS-TRANSACTION] Transaction completed successfully`);
+    console.log(
+      `[PROCESS-CREDITS-TRANSACTION][${correlationId}] Transaction completed successfully`,
+      { correlationId },
+    );
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ success: true, correlation_id: correlationId }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Correlation-Id": correlationId,
+        },
+        status: 200,
+      },
+    );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[PROCESS-CREDITS-TRANSACTION] Error: ${errorMessage}`);
-    
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    console.error(
+      `[PROCESS-CREDITS-TRANSACTION][${correlationId}] Error encountered`,
+      { correlationId, error: errorMessage },
+    );
+
+    return new Response(JSON.stringify({ error: errorMessage, correlation_id: correlationId }), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "X-Correlation-Id": correlationId,
+      },
       status: 500,
     });
   }
