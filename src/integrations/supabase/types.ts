@@ -4193,6 +4193,10 @@ export type Database = {
           slug: string
           status: Database["public"]["Enums"]["tier_status"]
           tier_order: number
+          stripe_price_lifetime_id: string | null
+          stripe_price_monthly_id: string | null
+          stripe_price_yearly_id: string | null
+          stripe_product_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4215,6 +4219,10 @@ export type Database = {
           slug: string
           status?: Database["public"]["Enums"]["tier_status"]
           tier_order?: number
+          stripe_price_lifetime_id?: string | null
+          stripe_price_monthly_id?: string | null
+          stripe_price_yearly_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4237,6 +4245,10 @@ export type Database = {
           slug?: string
           status?: Database["public"]["Enums"]["tier_status"]
           tier_order?: number
+          stripe_price_lifetime_id?: string | null
+          stripe_price_monthly_id?: string | null
+          stripe_price_yearly_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Relationships: []

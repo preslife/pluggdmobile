@@ -30,6 +30,10 @@ export interface MembershipTier {
   features: string[];
   created_at: string;
   updated_at: string;
+  stripe_product_id: string | null;
+  stripe_price_monthly_id: string | null;
+  stripe_price_yearly_id: string | null;
+  stripe_price_lifetime_id: string | null;
 }
 
 export interface UpsertMembershipTierInput {
@@ -116,7 +120,63 @@ const mapTier = (row: any): MembershipTier => ({
   features: normaliseFeatures(row.features),
   created_at: row.created_at,
   updated_at: row.updated_at,
+  stripe_product_id: row.stripe_product_id ?? null,
+  stripe_price_monthly_id: row.stripe_price_monthly_id ?? null,
+  stripe_price_yearly_id: row.stripe_price_yearly_id ?? null,
+  stripe_price_lifetime_id: row.stripe_price_lifetime_id ?? null,
 });
+
+type TierInsertPayload = {
+  owner_type: OwnerType;
+  owner_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  tier_order: number;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  price_lifetime: number | null;
+  currency: string;
+  status: TierStatus;
+  features: string[];
+  color: string | null;
+  emoji: string | null;
+  max_members: number | null;
+  image_url: string | null;
+};
+
+const buildOptimisticTier = (
+  id: string,
+  payload: TierInsertPayload
+): MembershipTier => {
+  const timestamp = new Date().toISOString();
+  return {
+    id,
+    owner_type: payload.owner_type,
+    owner_id: payload.owner_id,
+    name: payload.name,
+    slug: payload.slug,
+    description: payload.description,
+    tier_order: payload.tier_order,
+    price_monthly: payload.price_monthly,
+    price_yearly: payload.price_yearly,
+    price_lifetime: payload.price_lifetime,
+    currency: payload.currency,
+    status: payload.status,
+    max_members: payload.max_members,
+    current_members: 0,
+    color: payload.color,
+    emoji: payload.emoji,
+    image_url: payload.image_url,
+    features: payload.features,
+    created_at: timestamp,
+    updated_at: timestamp,
+    stripe_product_id: null,
+    stripe_price_monthly_id: null,
+    stripe_price_yearly_id: null,
+    stripe_price_lifetime_id: null,
+  };
+};
 
 export function useMembershipTiers(): MembershipTiersHook {
   const { user, loading: authLoading } = useAuth();
@@ -198,10 +258,14 @@ export function useMembershipTiers(): MembershipTiersHook {
 
   const createTier = useCallback(
     async (input: UpsertMembershipTierInput) => {
+      if (!ownerType || !ownerId) {
+        throw new Error("You need an active label or creator profile to manage tiers.");
+      }
+
       const order = typeof input.order === "number" ? input.order : tiers.length;
-      const payload = {
-        owner_type: ownerType,
-        owner_id: ownerId,
+      const payload: TierInsertPayload = {
+        owner_type: ownerType!,
+        owner_id: ownerId!,
         name: input.name.trim(),
         slug: withRandomSuffix(slugify(input.name.trim())),
         description: input.description?.trim() || null,
@@ -210,7 +274,7 @@ export function useMembershipTiers(): MembershipTiersHook {
         price_yearly: centsFromAmount(input.priceYearly),
         price_lifetime: centsFromAmount(input.priceLifetime),
         currency: input.currency || "USD",
-        status: input.status || "active",
+        status: (input.status || "active") as TierStatus,
         features: input.features && input.features.length ? input.features : [],
         color: input.color || null,
         emoji: input.emoji || null,
@@ -219,8 +283,26 @@ export function useMembershipTiers(): MembershipTiersHook {
       };
 
       await runMutation(async () => {
-        const { error } = await supabase.from("membership_tiers").insert(payload);
-        if (error) throw error;
+        const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(-6)}`;
+        const optimisticTier = buildOptimisticTier(optimisticId, payload);
+
+        setTiers((prev) => [...prev, optimisticTier]);
+
+        try {
+          const { data, error } = await supabase.rpc("create_membership_tier", {
+            p_input: payload,
+          });
+          if (error) throw error;
+
+          if (data) {
+            setTiers((prev) =>
+              prev.map((tier) => (tier.id === optimisticId ? mapTier(data) : tier))
+            );
+          }
+        } catch (err) {
+          setTiers((prev) => prev.filter((tier) => tier.id !== optimisticId));
+          throw err;
+        }
       });
     },
     [ownerId, ownerType, runMutation, tiers.length]
@@ -228,6 +310,11 @@ export function useMembershipTiers(): MembershipTiersHook {
 
   const updateTier = useCallback(
     async (tierId: string, input: UpsertMembershipTierInput) => {
+      const existing = tiers.find((tier) => tier.id === tierId);
+      if (!existing) {
+        throw new Error("Membership tier not found");
+      }
+
       const payload: Record<string, any> = {
         name: input.name.trim(),
         description: input.description?.trim() ?? null,
@@ -235,7 +322,7 @@ export function useMembershipTiers(): MembershipTiersHook {
         price_yearly: centsFromAmount(input.priceYearly),
         price_lifetime: centsFromAmount(input.priceLifetime),
         currency: input.currency || "USD",
-        status: input.status || "active",
+        status: (input.status || "active") as TierStatus,
         features: input.features && input.features.length ? input.features : [],
         color: input.color || null,
         emoji: input.emoji || null,
@@ -248,24 +335,75 @@ export function useMembershipTiers(): MembershipTiersHook {
       }
 
       await runMutation(async () => {
-        const { error } = await supabase
-          .from("membership_tiers")
-          .update(payload)
-          .eq("id", tierId);
-        if (error) throw error;
+        const optimisticTier: MembershipTier = {
+          ...existing,
+          name: payload.name,
+          description: payload.description,
+          price_monthly: payload.price_monthly,
+          price_yearly: payload.price_yearly,
+          price_lifetime: payload.price_lifetime,
+          currency: payload.currency,
+          status: payload.status,
+          features: payload.features,
+          color: payload.color,
+          emoji: payload.emoji,
+          max_members: payload.max_members,
+          image_url: payload.image_url,
+          tier_order: payload.tier_order ?? existing.tier_order,
+          updated_at: new Date().toISOString(),
+        };
+
+        setTiers((prev) =>
+          prev.map((tier) => (tier.id === tierId ? optimisticTier : tier))
+        );
+
+        try {
+          const { data, error } = await supabase.rpc("update_membership_tier", {
+            p_tier_id: tierId,
+            p_input: payload,
+          });
+          if (error) throw error;
+
+          if (data) {
+            setTiers((prev) =>
+              prev.map((tier) => (tier.id === tierId ? mapTier(data) : tier))
+            );
+          }
+        } catch (err) {
+          setTiers((prev) =>
+            prev.map((tier) => (tier.id === tierId ? existing : tier))
+          );
+          throw err;
+        }
       });
     },
-    [runMutation]
+    [runMutation, tiers]
   );
 
   const deleteTier = useCallback(
     async (tierId: string) => {
+      const existing = tiers.find((tier) => tier.id === tierId);
+      if (!existing) {
+        throw new Error("Membership tier not found");
+      }
+
+      const previousTiers = tiers.slice();
+
       await runMutation(async () => {
-        const { error } = await supabase.from("membership_tiers").delete().eq("id", tierId);
-        if (error) throw error;
+        setTiers((prev) => prev.filter((tier) => tier.id !== tierId));
+
+        try {
+          const { error } = await supabase.rpc("delete_membership_tier", {
+            p_tier_id: tierId,
+          });
+          if (error) throw error;
+        } catch (err) {
+          setTiers(previousTiers);
+          throw err;
+        }
       });
     },
-    [runMutation]
+    [runMutation, tiers]
   );
 
   return useMemo(
