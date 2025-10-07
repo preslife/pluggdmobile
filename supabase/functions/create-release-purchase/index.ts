@@ -55,14 +55,18 @@ serve(async (req) => {
     logStep("Release found", { release: release.title, artist: release.artist });
 
     // Check if user already purchased this release
-    const { data: existingPurchase } = await supabaseClient
+    const { data: existingPurchase, error: existingPurchaseError } = await supabaseClient
       .from('release_purchases')
-      .select('id')
+      .select('id, status, stripe_session_id')
       .eq('user_id', user.id)
       .eq('release_id', releaseId)
-      .single();
+      .maybeSingle();
 
-    if (existingPurchase) {
+    if (existingPurchaseError && existingPurchaseError.code !== 'PGRST116') {
+      throw new Error(`Failed to check existing purchases: ${existingPurchaseError.message}`);
+    }
+
+    if (existingPurchase?.status === 'completed') {
       throw new Error("You have already purchased this release");
     }
 
@@ -134,19 +138,46 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { error: purchaseError } = await supabaseService
-      .from('release_purchases')
-      .insert({
-        user_id: user.id,
-        release_id: releaseId,
-        amount_paid: finalAmount,
-        stripe_payment_intent_id: session.payment_intent,
-      });
+    const purchasePayload = {
+      user_id: user.id,
+      release_id: releaseId,
+      amount_paid: finalAmount,
+      status: 'pending' as const,
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      purchased_at: new Date().toISOString(),
+      paid_at: null,
+      download_expires_at: null,
+    };
+
+    let purchaseError = null;
+
+    if (existingPurchase) {
+      const { error } = await supabaseService
+        .from('release_purchases')
+        .update({
+          ...purchasePayload,
+          downloads_used: 0,
+          last_download_at: null,
+        })
+        .eq('id', existingPurchase.id);
+
+      purchaseError = error;
+    } else {
+      const { error } = await supabaseService
+        .from('release_purchases')
+        .insert(purchasePayload);
+
+      purchaseError = error;
+    }
 
     if (purchaseError) {
       logStep("Purchase record creation failed", { error: purchaseError });
     } else {
-      logStep("Purchase record created");
+      logStep(existingPurchase ? "Purchase record refreshed" : "Purchase record created", {
+        purchaseId: existingPurchase?.id,
+        status: purchasePayload.status,
+      });
     }
 
     return new Response(JSON.stringify({ url: session.url }), {

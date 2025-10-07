@@ -63,6 +63,7 @@ serve(async (req) => {
           `)
           .eq('id', payment_id)
           .eq('user_id', user.id)
+          .eq('status', 'completed')
           .single();
 
         if (purchaseError || !purchaseData) {
@@ -78,10 +79,9 @@ serve(async (req) => {
           title: 'Purchase Receipt',
           item_name: `${purchaseData.releases?.title} by ${purchaseData.releases?.artist}`,
           amount: purchaseData.amount_paid,
-          date: purchaseData.purchased_at,
+          date: purchaseData.paid_at ?? purchaseData.purchased_at,
           payment_method: 'Credit Card',
           reference: purchaseData.stripe_payment_intent_id,
-          download_url: purchaseData.download_url,
           expires_at: purchaseData.download_expires_at
         };
         break;

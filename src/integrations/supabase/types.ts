@@ -5817,40 +5817,46 @@ export type Database = {
         Row: {
           amount_paid: number
           download_expires_at: string | null
-          download_url: string | null
           downloads_used: number | null
           id: string
           last_download_at: string | null
+          paid_at: string | null
           purchased_at: string
           receipt_pdf_url: string | null
           release_id: string | null
+          status: string
           stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
           user_id: string | null
         }
         Insert: {
           amount_paid: number
           download_expires_at?: string | null
-          download_url?: string | null
           downloads_used?: number | null
           id?: string
           last_download_at?: string | null
+          paid_at?: string | null
           purchased_at?: string
           receipt_pdf_url?: string | null
           release_id?: string | null
+          status?: string
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           user_id?: string | null
         }
         Update: {
           amount_paid?: number
           download_expires_at?: string | null
-          download_url?: string | null
           downloads_used?: number | null
           id?: string
           last_download_at?: string | null
+          paid_at?: string | null
           purchased_at?: string
           receipt_pdf_url?: string | null
           release_id?: string | null
+          status?: string
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           user_id?: string | null
         }
         Relationships: [
