@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { processCreditsTransaction } from "./logic.ts";
+import { performManualTransactionFallback } from "./manualFallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,10 +47,8 @@ serve(async (req) => {
 
   const defaultCorrelationId = crypto.randomUUID();
   let correlationId = defaultCorrelationId;
-  let body: any = null;
-
   try {
-    body = await req.json();
+    const body = await req.json();
     if (typeof body?.correlation_id === "string" && body.correlation_id) {
       correlationId = body.correlation_id;
     }
@@ -90,8 +88,10 @@ serve(async (req) => {
       ref_id,
       counterparty_user_id,
       manual_entry,
-      meta = {}
-    } = await req.json();
+    } = body;
+    const meta = typeof body?.meta === "object" && body.meta !== null ? body.meta : {};
+    const manualEntry =
+      typeof manual_entry === "object" && manual_entry !== null ? manual_entry : undefined;
 
     if (!amount_credits || !kind) {
       throw new Error("Invalid transaction data");
@@ -117,19 +117,20 @@ serve(async (req) => {
     }
 
     const transactionPayload = {
-      user_id: user.id,
       amount_credits,
       kind,
       ref_type,
       ref_id,
       counterparty_user_id,
       meta,
-      manual_entry,
+      manual_entry: manualEntry,
     };
+
+    const rpcPayload = { ...transactionPayload, user_id: user.id };
 
     const { data: rpcData, error: rpcError } = await supabaseClient.rpc(
       'wallet_process_transaction',
-      transactionPayload as Record<string, unknown>,
+      rpcPayload as Record<string, unknown>,
     );
 
     if (!rpcError && rpcData) {
@@ -156,78 +157,16 @@ serve(async (req) => {
       );
     }
 
-    const { data: ledgerData, error: ledgerError } = await supabaseClient
-      .from('wallet_ledger')
-      .insert({
-        user_id: user.id,
-        kind,
-        amount_credits,
-        ref_type,
-        ref_id,
-        counterparty_user_id,
-        meta,
-      })
-      .select('id')
-      .single();
+    const fallbackResult = await performManualTransactionFallback(
+      supabaseClient,
+      user.id,
+      transactionPayload,
+    );
 
-    if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
-
-    const ledgerEntryId = (ledgerData as { id: string }).id;
-
-    let manualEntryId: string | null = null;
-
-    if (manual_entry) {
-      const manualPayload: Record<string, any> = {
-        ledger_entry_id: ledgerEntryId,
-        user_id: user.id,
-        order_id: manual_entry.order_id ?? ref_id ?? null,
-        item_type: manual_entry.item_type ?? meta?.product_type ?? null,
-        item_id: manual_entry.item_id ?? meta?.product_id ?? null,
-        operator_id: manual_entry.operator_id ?? user.id,
-        direction: manual_entry.direction ?? (amount_credits < 0 ? 'debit' : 'credit'),
-        amount_credits: manual_entry.amount_credits ?? Math.abs(amount_credits),
-        metadata: manual_entry.metadata ?? { ...meta, kind },
-      };
-
-      Object.keys(manualPayload).forEach((key) => {
-        if (manualPayload[key] === undefined) {
-          delete manualPayload[key];
-        }
-      });
-
-      const { data: manualData, error: manualError } = await supabaseClient
-        .from('wallet_manual_entries')
-        .insert(manualPayload)
-        .select('id')
-        .single();
-
-      if (manualError) {
-        console.error(
-          `[PROCESS-CREDITS-TRANSACTION] Manual entry insert failed: ${manualError.message}`,
-        );
-      } else {
-        manualEntryId = (manualData as { id?: string } | null)?.id ?? null;
-      }
-    }
-
-    // For tips and transfers, create counterparty entry
-    if (counterparty_user_id && (kind === 'spend_tip' || kind === 'spend_purchase')) {
-      const counterpartyKind = kind === 'spend_tip' ? 'spend_tip' : 'spend_purchase';
-      
-      const { error: counterpartyError } = await supabaseClient
-        .from('wallet_ledger')
-        .insert({
-          user_id: counterparty_user_id,
-          kind: counterpartyKind,
-          amount_credits: Math.abs(amount_credits), // Always positive for receiver
-          ref_type,
-          ref_id,
-          counterparty_user_id: user.id,
-          meta: transactionMeta,
-        });
-
-    if (result.counterparty_error) {
-      console.error(`[PROCESS-CREDITS-TRANSACTION] Counterparty error: ${result.counterparty_error}`);
+    if (fallbackResult.counterpartyError) {
+      console.error(
+        `[PROCESS-CREDITS-TRANSACTION] Counterparty insert failed during fallback: ${fallbackResult.counterpartyError}`,
+      );
     }
 
     console.log(
@@ -236,7 +175,11 @@ serve(async (req) => {
     );
 
     return new Response(
-      JSON.stringify({ success: true, ledgerEntryId, manualEntryId }),
+      JSON.stringify({
+        success: true,
+        ledgerEntryId: fallbackResult.ledgerEntryId,
+        manualEntryId: fallbackResult.manualEntryId,
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

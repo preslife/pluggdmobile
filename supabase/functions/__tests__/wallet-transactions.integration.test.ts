@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupabaseTestHarness } from './helpers/supabaseTestHarness';
 import { processCreditsTransaction } from '../process-credits-transaction/logic';
+import { performManualTransactionFallback } from '../process-credits-transaction/manualFallback';
 import { handleChargeReversal } from '../stripe-webhook/helpers';
 import type { SupabaseHarnessClient } from './helpers/supabaseTestHarness';
 
@@ -49,6 +50,46 @@ describe('wallet transactions integration', () => {
 
     const buyerSpend = ledger.find((entry) => entry.user_id === buyerId && entry.amount_credits === -200);
     const sellerEarn = ledger.find((entry) => entry.user_id === sellerId && entry.amount_credits === 200);
+
+    expect(buyerSpend).toMatchObject({
+      kind: 'spend_purchase',
+      counterparty_user_id: sellerId,
+      ref_id: orderId,
+    });
+
+    expect(sellerEarn).toMatchObject({
+      kind: 'spend_purchase',
+      counterparty_user_id: buyerId,
+      ref_id: orderId,
+    });
+  });
+
+  it('falls back to manual inserts when the RPC is unavailable', async () => {
+    const supabase = harness.createClient();
+    const buyerId = await harness.createUser();
+    const sellerId = await harness.createUser();
+    const orderId = await harness.createOrder({ userId: buyerId, totalAmount: 150 });
+
+    await seedTopup(supabase, buyerId, 400);
+
+    const result = await performManualTransactionFallback(supabase as any, buyerId, {
+      amount_credits: -150,
+      kind: 'spend_purchase',
+      ref_type: 'order',
+      ref_id: orderId,
+      counterparty_user_id: sellerId,
+      meta: { order_number: 'ORD-FALLBACK' },
+    });
+
+    expect(result.ledgerEntryId).toBeTruthy();
+    expect(result.manualEntryId).toBeNull();
+    expect(result.counterpartyError).toBeNull();
+
+    const ledger = await harness.getLedgerEntries();
+    expect(ledger).toHaveLength(3);
+
+    const buyerSpend = ledger.find((entry) => entry.user_id === buyerId && entry.amount_credits === -150);
+    const sellerEarn = ledger.find((entry) => entry.user_id === sellerId && entry.amount_credits === 150);
 
     expect(buyerSpend).toMatchObject({
       kind: 'spend_purchase',
