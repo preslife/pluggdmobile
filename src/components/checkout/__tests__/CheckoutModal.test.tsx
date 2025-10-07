@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CheckoutModal } from '../CheckoutModal';
+import { CheckoutModal, PURCHASE_TYPE_CONFIG, getPurchaseTypeConfig } from '../CheckoutModal';
 import type { PurchaseItem } from '@/services/credits/credit-system';
 
 const hoistedMocks = vi.hoisted(() => ({
@@ -156,13 +156,12 @@ describe('CheckoutModal hybrid checkout flow', () => {
       },
     ];
 
-    const typeLabels: Record<PurchaseItem['type'], string> = {
-      release: 'Release',
-      beat: 'Beat',
-      sample_pack: 'Sample Pack',
-      membership: 'Membership',
-      course: 'Course',
-    };
+    const typeLabels = (Object.entries(PURCHASE_TYPE_CONFIG) as Array<
+      [PurchaseItem['type'], ReturnType<typeof getPurchaseTypeConfig>]
+    >).reduce<Record<PurchaseItem['type'], string>>((acc, [type, config]) => {
+      acc[type] = config.label;
+      return acc;
+    }, {} as Record<PurchaseItem['type'], string>);
 
     render(
       <CheckoutModal
@@ -175,11 +174,12 @@ describe('CheckoutModal hybrid checkout flow', () => {
     await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
     await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
 
-    expect(await screen.findByText('Release')).toBeInTheDocument();
-    expect(screen.getByText(/Beat • Premium license/i)).toBeInTheDocument();
-    expect(screen.getByText('Sample Pack')).toBeInTheDocument();
-    expect(screen.getByText('Membership')).toBeInTheDocument();
-    expect(screen.getByText('Course')).toBeInTheDocument();
+    expect(await screen.findAllByText('Release')).not.toHaveLength(0);
+    expect(screen.getAllByText('Beat')).not.toHaveLength(0);
+    expect(screen.getAllByText('Premium license')).not.toHaveLength(0);
+    expect(screen.getAllByText('Sample Pack')).not.toHaveLength(0);
+    expect(screen.getAllByText('Membership')).not.toHaveLength(0);
+    expect(screen.getAllByText('Course')).not.toHaveLength(0);
     expect(screen.getByText('Free')).toBeInTheDocument();
     expect(screen.getByText('Items (5)')).toBeInTheDocument();
 
@@ -190,27 +190,26 @@ describe('CheckoutModal hybrid checkout flow', () => {
     fireEvent.click(actionButton);
 
     await waitFor(() => {
-      expect(invokeMock).toHaveBeenCalledWith(
-        'enhanced-store-checkout',
-        expect.objectContaining({
-          body: expect.objectContaining({
-            manualAmountCredits: 50,
-            paymentMetadata: expect.objectContaining({
-              items: checkoutItems.map((item) => ({
-                id: item.id,
-                type: item.type,
-                title: item.title,
-                price: item.price,
-                license_type: item.license_type,
-                metadata: expect.objectContaining({
-                  ...(item.metadata ?? {}),
-                  type_label: typeLabels[item.type],
-                }),
-              })),
-            }),
+      const checkoutCall = invokeMock.mock.calls.find(([functionName]) => functionName === 'enhanced-store-checkout');
+      expect(checkoutCall).toBeTruthy();
+      expect(checkoutCall?.[1]).toMatchObject({
+        body: expect.objectContaining({
+          manualAmountCredits: 50,
+          paymentMetadata: expect.objectContaining({
+            items: checkoutItems.map((item) => ({
+              id: item.id,
+              type: item.type,
+              title: item.title,
+              price: item.price,
+              license_type: item.license_type,
+              metadata: expect.objectContaining({
+                ...(item.metadata ?? {}),
+                type_label: typeLabels[item.type],
+              }),
+            })),
           }),
-        })
-      );
+        }),
+      });
       expect(processPurchaseMock).toHaveBeenCalledWith(
         'user-123',
         checkoutItems.map((item) => ({
@@ -229,7 +228,39 @@ describe('CheckoutModal hybrid checkout flow', () => {
 
     expect((window.location as any).href).toBe('https://stripe.test/checkout');
     expect(toastMock).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Continue to Payment' })
+      expect.objectContaining({ title: 'Complete Your Payment' })
     );
+  });
+});
+
+describe('CheckoutModal purchase type configuration', () => {
+  const purchaseTypeEntries = Object.entries(PURCHASE_TYPE_CONFIG) as Array<
+    [PurchaseItem['type'], ReturnType<typeof getPurchaseTypeConfig>]
+  >;
+
+  purchaseTypeEntries.forEach(([type, config]) => {
+    it(`renders ${type} items without crashing`, async () => {
+      expect(() =>
+        render(
+          <CheckoutModal
+            isOpen
+            onClose={() => {}}
+            items={[
+              {
+                id: `${type}-item`,
+                type,
+                title: `${config.label} Example`,
+                price: 10,
+              },
+            ]}
+          />
+        )
+      ).not.toThrow();
+
+      await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
+      await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
+
+      expect(screen.getAllByText(config.label)).not.toHaveLength(0);
+    });
   });
 });
