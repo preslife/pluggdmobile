@@ -31,7 +31,7 @@ describe('CreditSystemService.processPurchase', () => {
 
     spendCreditsSpy = vi
       .spyOn(creditSystem, 'spendCredits')
-      .mockResolvedValue(undefined);
+      .mockResolvedValue({ ledgerEntryId: 'ledger-1', manualEntryId: 'manual-1' });
 
     createDownloadSpy = vi
       .spyOn(creditSystem as any, 'createDownloadRecords')
@@ -66,10 +66,15 @@ describe('CreditSystemService.processPurchase', () => {
     expect(spendCreditsSpy).toHaveBeenCalledWith(
       'user-1',
       80,
+      'spend_purchase',
       expect.objectContaining({
         product_id: 'item-1',
         max_credit_percentage: 0.4,
         requested_credits: 80,
+        manual_entry: expect.objectContaining({
+          amount_credits: 80,
+          direction: 'debit',
+        }),
       }),
     );
   });
@@ -104,7 +109,11 @@ describe('CreditSystemService.processPurchase', () => {
     expect(spendCreditsSpy).toHaveBeenCalledWith(
       'user-3',
       60,
-      expect.objectContaining({ requested_credits: 60 }),
+      'spend_purchase',
+      expect.objectContaining({
+        requested_credits: 60,
+        manual_entry: expect.objectContaining({ amount_credits: 60 }),
+      }),
     );
   });
 });

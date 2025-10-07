@@ -32,12 +32,22 @@ export interface WalletBalanceSummary {
   total_spent: number;
 }
 
-export type PurchaseItemType =
-  | 'release'
-  | 'beat'
-  | 'sample_pack'
-  | 'membership'
-  | 'course';
+export interface ManualWalletEntryPayload {
+  order_id?: string | null;
+  item_type?: string | null;
+  item_id?: string | null;
+  operator_id?: string | null;
+  direction?: 'debit' | 'credit';
+  amount_credits: number;
+  metadata?: Record<string, any> | null;
+}
+
+export interface WalletTransactionResult {
+  ledgerEntryId: string;
+  manualEntryId: string | null;
+}
+
+const WALLET_TRANSACTION_RPC = 'wallet_process_transaction';
 
 export interface PurchaseItem {
   id: string;
@@ -116,47 +126,32 @@ class CreditSystemService {
     userId: string,
     amount: number,
     metadata?: Record<string, any>,
-  ): Promise<void> {
-    const { error } = await supabase.functions.invoke('process-credits-transaction', {
-      body: {
-        amount_credits: amount,
-        kind: 'topup',
-        meta: metadata || {},
-        ref_type: metadata?.ref_type,
-        ref_id: metadata?.ref_id,
-        counterparty_user_id: metadata?.counterparty_user_id,
-      },
+  ): Promise<WalletTransactionResult> {
+    return this.executeWalletTransaction({
+      userId,
+      amountCredits: amount,
+      kind: 'topup',
+      metadata,
     });
-
-    if (error) {
-      throw error;
-    }
   }
 
   async spendCredits(
     userId: string,
     amount: number,
+    kind: WalletTransactionKind,
     metadata?: Record<string, any>,
-  ): Promise<void> {
+  ): Promise<WalletTransactionResult> {
     const balance = await this.getBalance(userId);
     if (balance < amount) {
       throw new Error('Insufficient credits');
     }
 
-    const { error } = await supabase.functions.invoke('process-credits-transaction', {
-      body: {
-        amount_credits: -amount,
-        kind: 'spend_purchase',
-        meta: metadata || {},
-        ref_type: metadata?.ref_type,
-        ref_id: metadata?.ref_id,
-        counterparty_user_id: metadata?.counterparty_user_id,
-      },
+    return this.executeWalletTransaction({
+      userId,
+      amountCredits: -amount,
+      kind,
+      metadata,
     });
-
-    if (error) {
-      throw error;
-    }
   }
 
   /**
@@ -240,7 +235,14 @@ class CreditSystemService {
         creditsSpent += creditsForItem;
 
         if (creditsForItem > 0) {
-          const metadata: Record<string, any> = {
+          const orderId =
+            options.stripeCheckoutSessionId ||
+            options.stripePaymentIntentId ||
+            options.stripeChargeId ||
+            (item.metadata as any)?.order_id ||
+            undefined;
+
+          const baseMetadata: Record<string, any> = {
             product_id: item.id,
             product_type: item.type,
             license_type: item.license_type,
@@ -251,16 +253,35 @@ class CreditSystemService {
             stripe_charge_id: options.stripeChargeId,
             stripe_checkout_session_id: options.stripeCheckoutSessionId,
             product_title: item.title,
+            order_id: orderId,
+            operator_id: userId,
             ...(item.metadata || {}),
           };
 
-          Object.keys(metadata).forEach((key) => {
-            if (metadata[key] === undefined) {
-              delete metadata[key];
+          Object.keys(baseMetadata).forEach((key) => {
+            if (baseMetadata[key] === undefined) {
+              delete baseMetadata[key];
             }
           });
 
-          await this.spendCredits(userId, creditsForItem, metadata);
+          const manualEntry: ManualWalletEntryPayload = {
+            order_id: typeof orderId === 'string' ? orderId : undefined,
+            item_type: item.type,
+            item_id: item.id,
+            operator_id: userId,
+            direction: 'debit',
+            amount_credits: creditsForItem,
+            metadata: {
+              ...baseMetadata,
+              cart_total: totalCost,
+              credits_spent_on_item: creditsForItem,
+            },
+          };
+
+          await this.spendCredits(userId, creditsForItem, 'spend_purchase', {
+            ...baseMetadata,
+            manual_entry: manualEntry,
+          });
         }
       }
     }
@@ -409,6 +430,120 @@ class CreditSystemService {
     }
 
     return data;
+  }
+
+  private async executeWalletTransaction({
+    userId,
+    amountCredits,
+    kind,
+    metadata,
+  }: {
+    userId: string;
+    amountCredits: number;
+    kind: WalletTransactionKind;
+    metadata?: Record<string, any>;
+  }): Promise<WalletTransactionResult> {
+    const manualEntry = this.extractManualEntry(amountCredits, kind, metadata, userId);
+
+    const payload = {
+      user_id: userId,
+      amount_credits: amountCredits,
+      kind,
+      ref_type: metadata?.ref_type ?? null,
+      ref_id: metadata?.ref_id ?? null,
+      counterparty_user_id: metadata?.counterparty_user_id ?? null,
+      meta: this.stripUndefined({ ...(metadata ?? {}), manual_entry: manualEntry ?? undefined }),
+      manual_entry: manualEntry,
+    };
+
+    const rpcResult = await supabase.rpc(WALLET_TRANSACTION_RPC, payload as any);
+
+    if (rpcResult.error) {
+      console.warn('[Wallet] RPC failed, falling back to edge function', rpcResult.error.message);
+
+      const fallback = await supabase.functions.invoke('process-credits-transaction', {
+        body: payload,
+      });
+
+      if (fallback.error) {
+        throw fallback.error;
+      }
+
+      return this.normalizeTransactionResponse(fallback.data);
+    }
+
+    return this.normalizeTransactionResponse(rpcResult.data);
+  }
+
+  private extractManualEntry(
+    amountCredits: number,
+    kind: WalletTransactionKind,
+    metadata: Record<string, any> | undefined,
+    userId: string,
+  ): ManualWalletEntryPayload | null {
+    const manualFromMetadata = metadata?.manual_entry as ManualWalletEntryPayload | undefined;
+    const effectiveAmount = Math.abs(amountCredits);
+
+    if (manualFromMetadata) {
+      return {
+        direction: manualFromMetadata.direction ?? (amountCredits < 0 ? 'debit' : 'credit'),
+        amount_credits: manualFromMetadata.amount_credits ?? effectiveAmount,
+        item_id: manualFromMetadata.item_id ?? metadata?.product_id ?? null,
+        item_type: manualFromMetadata.item_type ?? metadata?.product_type ?? null,
+        order_id: manualFromMetadata.order_id ?? metadata?.order_id ?? null,
+        operator_id: manualFromMetadata.operator_id ?? metadata?.operator_id ?? userId,
+        metadata: manualFromMetadata.metadata ?? this.stripUndefined({ ...(metadata ?? {}) }),
+      };
+    }
+
+    if (!metadata) {
+      return null;
+    }
+
+    return {
+      order_id: metadata.order_id ?? metadata.ref_id ?? null,
+      item_type: metadata.product_type ?? null,
+      item_id: metadata.product_id ?? null,
+      operator_id: metadata.operator_id ?? userId,
+      direction: amountCredits < 0 ? 'debit' : 'credit',
+      amount_credits: effectiveAmount,
+      metadata: this.stripUndefined({
+        ...(metadata ?? {}),
+        kind,
+      }),
+    };
+  }
+
+  private normalizeTransactionResponse(data: any): WalletTransactionResult {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Unexpected wallet transaction response');
+    }
+
+    const ledgerEntryId =
+      data.ledgerEntryId || data.ledger_entry_id || data.ledger_id || data.id;
+
+    if (!ledgerEntryId || typeof ledgerEntryId !== 'string') {
+      throw new Error('Wallet transaction response missing ledger entry id');
+    }
+
+    const manualEntryId =
+      (typeof data.manualEntryId === 'string' && data.manualEntryId) ||
+      (typeof data.manual_entry_id === 'string' && data.manual_entry_id) ||
+      null;
+
+    return {
+      ledgerEntryId,
+      manualEntryId,
+    };
+  }
+
+  private stripUndefined<T extends Record<string, any>>(value: T): T {
+    Object.keys(value).forEach((key) => {
+      if (value[key] === undefined) {
+        delete value[key];
+      }
+    });
+    return value;
   }
 }
 
