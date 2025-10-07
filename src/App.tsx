@@ -242,7 +242,15 @@ const AppContent = () => {
 <Route path="/release/:id" element={<ReleaseDetail />} />
         <Route path="/store" element={<Store />} />
         <Route path="/store/success" element={<ProtectedRoute><StoreSuccess /></ProtectedRoute>} />
-        <Route path="/account/orders" element={<ProtectedRoute><AccountOrders /></ProtectedRoute>} />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <AccountOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/account/orders" element={<Navigate to="/orders" replace />} />
         <Route path="/product/:id" element={<ProductRedirect />} />
         <Route path="/store/product/:id" element={<ProductDetail />} />
         <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>} >
