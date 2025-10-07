@@ -1,274 +1,305 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useMembershipTiers } from "@/hooks/useMembershipTiers";
+import { formatCurrency } from "@/lib/utils";
+import { Edit, Plus, Trash2 } from "lucide-react";
 
-interface SubscriptionTier {
-  id: string;
+interface FormState {
   name: string;
-  price_cents: number;
-  perks: string[];
+  priceMonthly: string;
+  description: string;
+  features: string;
   active: boolean;
 }
 
+const defaultFormState: FormState = {
+  name: "",
+  priceMonthly: "4.99",
+  description: "",
+  features: "",
+  active: true,
+};
+
+const centsFromFormValue = (value: string): number | null => {
+  const numeric = Number.parseFloat(value);
+  if (Number.isNaN(numeric) || numeric < 0) {
+    return null;
+  }
+  return Math.round(numeric * 100);
+};
+
+const formatFeatures = (value: string) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
 export const CreatorSubscriptionsEditor = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingTier, setEditingTier] = useState<SubscriptionTier | null>(null);
+  const {
+    tiers,
+    loading,
+    mutating,
+    error,
+    requiresLabelSelection,
+    createTier,
+    updateTier,
+    deleteTier,
+    refresh,
+  } = useMembershipTiers();
+
   const [isCreating, setIsCreating] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    price_cents: 499,
-    perks: '',
-    active: true
-  });
+  const [editingTierId, setEditingTierId] = useState<string | null>(null);
+  const [formState, setFormState] = useState<FormState>(defaultFormState);
+
+  const editingTier = useMemo(
+    () => tiers.find((tier) => tier.id === editingTierId) ?? null,
+    [tiers, editingTierId]
+  );
 
   useEffect(() => {
-    if (user) {
-      fetchTiers();
-    }
-  }, [user]);
-
-  const fetchTiers = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('creator_subscription_tiers')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('price_cents', { ascending: true });
-
-      if (error) throw error;
-      setTiers(data || []);
-    } catch (error) {
-      console.error('Error fetching tiers:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load subscription tiers',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!editingTier) return;
+    setFormState({
+      name: editingTier.name,
+      priceMonthly: editingTier.price_monthly
+        ? (editingTier.price_monthly / 100).toFixed(2)
+        : "0.00",
+      description: editingTier.description ?? "",
+      features: editingTier.features.join("\n"),
+      active: editingTier.status === "active",
+    });
+  }, [editingTier]);
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      price_cents: 499,
-      perks: '',
-      active: true
-    });
-    setEditingTier(null);
+    setFormState(defaultFormState);
+    setEditingTierId(null);
     setIsCreating(false);
   };
 
-  const handleEdit = (tier: SubscriptionTier) => {
-    setEditingTier(tier);
-    setFormData({
-      name: tier.name,
-      price_cents: tier.price_cents,
-      perks: tier.perks.join('\n'),
-      active: tier.active
-    });
+  const handleCreateClick = () => {
+    setEditingTierId(null);
+    setFormState(defaultFormState);
+    setIsCreating(true);
+  };
+
+  const handleEdit = (tierId: string) => {
+    setEditingTierId(tierId);
     setIsCreating(true);
   };
 
   const handleSave = async () => {
-    if (!user || !formData.name.trim()) {
+    if (!formState.name.trim()) {
       toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
+        title: "Missing information",
+        description: "Please provide a tier name before saving.",
+        variant: "destructive",
       });
       return;
     }
 
-    try {
-      const tierData = {
-        user_id: user.id,
-        name: formData.name.trim(),
-        price_cents: formData.price_cents,
-        perks: formData.perks.split('\n').filter(perk => perk.trim()),
-        active: formData.active
-      };
-
-      if (editingTier) {
-        const { error } = await supabase
-          .from('creator_subscription_tiers')
-          .update(tierData)
-          .eq('id', editingTier.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('creator_subscription_tiers')
-          .insert(tierData);
-
-        if (error) throw error;
-      }
-
+    const priceCents = centsFromFormValue(formState.priceMonthly);
+    if (priceCents === null) {
       toast({
-        title: 'Success',
-        description: `Tier ${editingTier ? 'updated' : 'created'} successfully`,
+        title: "Invalid price",
+        description: "Please enter a valid monthly price.",
+        variant: "destructive",
       });
+      return;
+    }
 
+    const payload = {
+      name: formState.name.trim(),
+      description: formState.description.trim() || undefined,
+      priceMonthly: priceCents / 100,
+      status: formState.active ? "active" : "draft",
+      features: formatFeatures(formState.features),
+    } as const;
+
+    try {
+      if (editingTierId) {
+        await updateTier(editingTierId, payload);
+        toast({ title: "Tier updated", description: "Your membership tier has been saved." });
+      } else {
+        await createTier(payload);
+        toast({ title: "Tier created", description: "Your membership tier is now available." });
+      }
       resetForm();
-      fetchTiers();
-    } catch (error) {
-      console.error('Error saving tier:', error);
+      await refresh();
+    } catch (err: any) {
       toast({
-        title: 'Error',
-        description: 'Failed to save subscription tier',
-        variant: 'destructive',
+        title: "Unable to save tier",
+        description: err?.message ?? "An unexpected error occurred.",
+        variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (tierId: string) => {
-    if (!confirm('Are you sure you want to delete this subscription tier?')) return;
+    if (!confirm("Are you sure you want to delete this membership tier?")) {
+      return;
+    }
 
     try {
-      const { error } = await supabase
-        .from('creator_subscription_tiers')
-        .delete()
-        .eq('id', tierId);
-
-      if (error) throw error;
-
+      await deleteTier(tierId);
+      toast({ title: "Tier deleted", description: "The membership tier was removed." });
+      await refresh();
+    } catch (err: any) {
       toast({
-        title: 'Success',
-        description: 'Subscription tier deleted successfully',
-      });
-
-      fetchTiers();
-    } catch (error) {
-      console.error('Error deleting tier:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete subscription tier',
-        variant: 'destructive',
+        title: "Unable to delete tier",
+        description: err?.message ?? "An unexpected error occurred.",
+        variant: "destructive",
       });
     }
   };
 
-  const toggleTierActive = async (tier: SubscriptionTier) => {
+  const toggleTierStatus = async (tierId: string, active: boolean) => {
     try {
-      const { error } = await supabase
-        .from('creator_subscription_tiers')
-        .update({ active: !tier.active })
-        .eq('id', tier.id);
-
-      if (error) throw error;
-
-      fetchTiers();
-    } catch (error) {
-      console.error('Error toggling tier:', error);
+      await updateTier(tierId, { status: active ? "active" : "draft" });
+      await refresh();
+    } catch (err: any) {
       toast({
-        title: 'Error',
-        description: 'Failed to update tier status',
-        variant: 'destructive',
+        title: "Unable to update tier",
+        description: err?.message ?? "An unexpected error occurred.",
+        variant: "destructive",
       });
     }
   };
+
+  if (requiresLabelSelection) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-muted-foreground">
+            Select a label in the studio sidebar to manage its membership tiers.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
       <div className="flex justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
   }
+
+  const activeTiers = tiers.length;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Subscription Tiers</h2>
-          <p className="text-muted-foreground">Manage your fan subscription offerings</p>
+          <h2 className="text-2xl font-bold">Membership tiers</h2>
+          <p className="text-muted-foreground">
+            Configure the options your fans can subscribe to and keep pricing in sync with Stripe.
+          </p>
         </div>
         {!isCreating && (
-          <Button onClick={() => setIsCreating(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Tier
+          <Button onClick={handleCreateClick} disabled={mutating}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add tier
           </Button>
         )}
       </div>
 
-      {/* Create/Edit Form */}
+      {error && (
+        <Card>
+          <CardContent className="p-4 text-sm text-destructive">
+            {error}
+          </CardContent>
+        </Card>
+      )}
+
       {isCreating && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingTier ? 'Edit' : 'Create'} Subscription Tier</CardTitle>
+            <CardTitle>{editingTier ? "Edit membership tier" : "Create membership tier"}</CardTitle>
             <CardDescription>
-              Set up a subscription tier for your fans to support you monthly
+              Define the pricing and benefits for this tier. Stripe products and prices are generated automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Tier Name*</Label>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="tier-name">Tier name*</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Basic, Premium, VIP"
+                  id="tier-name"
+                  value={formState.name}
+                  onChange={(event) =>
+                    setFormState((state) => ({ ...state, name: event.target.value }))
+                  }
+                  placeholder="Superfan"
                 />
               </div>
-              <div>
-                <Label htmlFor="price">Price (in cents)*</Label>
+              <div className="space-y-2">
+                <Label htmlFor="tier-price">Monthly price (USD)*</Label>
                 <Input
-                  id="price"
+                  id="tier-price"
                   type="number"
-                  value={formData.price_cents}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price_cents: Number(e.target.value) }))}
-                  placeholder="499"
-                  min="100"
-                  step="1"
+                  min="0"
+                  step="0.01"
+                  value={formState.priceMonthly}
+                  onChange={(event) =>
+                    setFormState((state) => ({ ...state, priceMonthly: event.target.value }))
+                  }
+                  placeholder="4.99"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Currently: {formatCurrency(formData.price_cents / 100)}/month
+                <p className="text-xs text-muted-foreground">
+                  Displayed to fans as {formatCurrency(Number.parseFloat(formState.priceMonthly) || 0)} per month.
                 </p>
               </div>
             </div>
-            
-            <div>
-              <Label htmlFor="perks">Perks (one per line)</Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="tier-description">Description</Label>
               <Textarea
-                id="perks"
-                value={formData.perks}
-                onChange={(e) => setFormData(prev => ({ ...prev, perks: e.target.value }))}
-                placeholder="Early access to releases&#10;Behind-the-scenes content&#10;Monthly Q&A sessions"
+                id="tier-description"
+                rows={3}
+                value={formState.description}
+                onChange={(event) =>
+                  setFormState((state) => ({ ...state, description: event.target.value }))
+                }
+                placeholder="Tell fans what makes this tier special."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tier-features">Perks (one per line)</Label>
+              <Textarea
+                id="tier-features"
                 rows={4}
+                value={formState.features}
+                onChange={(event) =>
+                  setFormState((state) => ({ ...state, features: event.target.value }))
+                }
+                placeholder={"Early access to releases\nMonthly Q&A stream\nExclusive Discord role"}
               />
             </div>
 
             <div className="flex items-center space-x-2">
               <Switch
-                id="active"
-                checked={formData.active}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
+                id="tier-active"
+                checked={formState.active}
+                onCheckedChange={(checked) =>
+                  setFormState((state) => ({ ...state, active: checked }))
+                }
               />
-              <Label htmlFor="active">Active (visible to fans)</Label>
+              <Label htmlFor="tier-active">Published (visible to fans)</Label>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleSave}>
-                {editingTier ? 'Update' : 'Create'} Tier
+              <Button onClick={handleSave} disabled={mutating}>
+                {editingTier ? "Save changes" : "Create tier"}
               </Button>
-              <Button variant="outline" onClick={resetForm}>
+              <Button variant="outline" onClick={resetForm} disabled={mutating}>
                 Cancel
               </Button>
             </div>
@@ -276,65 +307,79 @@ export const CreatorSubscriptionsEditor = () => {
         </Card>
       )}
 
-      {/* Existing Tiers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tiers.map((tier) => (
-          <Card key={tier.id} className={!tier.active ? 'opacity-60' : ''}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{tier.name}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={tier.active}
-                    onCheckedChange={() => toggleTierActive(tier)}
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit(tier)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDelete(tier.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {tiers.map((tier) => {
+          const price = tier.price_monthly ?? tier.price_yearly ?? tier.price_lifetime ?? 0;
+          const cadence = tier.price_monthly
+            ? "month"
+            : tier.price_yearly
+              ? "year"
+              : tier.price_lifetime
+                ? "lifetime"
+                : null;
+
+          return (
+            <Card key={tier.id} className={tier.status !== "active" ? "opacity-60" : ""}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-lg">{tier.name}</CardTitle>
+                    <CardDescription>
+                      {price
+                        ? `${formatCurrency(price / 100)}${cadence ? `/${cadence}` : ""}`
+                        : "Free tier"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={tier.status === "active"}
+                      onCheckedChange={(checked) => toggleTierStatus(tier.id, checked)}
+                    />
+                    <Button size="sm" variant="ghost" onClick={() => handleEdit(tier.id)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDelete(tier.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <CardDescription>
-                {formatCurrency(tier.price_cents / 100)}/month
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Perks:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {tier.perks.map((perk, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {perk}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Status: {tier.status}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {tier.description && <p>{tier.description}</p>}
+                {tier.features.length > 0 ? (
+                  <ul className="space-y-1 text-muted-foreground">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2">
+                        <span className="mt-1 text-primary">•</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">No perks listed yet.</p>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  Stripe product: {tier.stripe_product_id ?? "pending"}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {tiers.length === 0 && !isCreating && (
+      {activeTiers === 0 && !isCreating && (
         <Card>
           <CardContent className="p-8 text-center">
-            <h3 className="text-lg font-medium mb-2">No subscription tiers yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create subscription tiers to allow fans to support you monthly
+            <h3 className="mb-2 text-lg font-medium">No membership tiers yet</h3>
+            <p className="mb-4 text-muted-foreground">
+              Create a tier to start accepting fan subscriptions.
             </p>
-            <Button onClick={() => setIsCreating(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Tier
+            <Button onClick={handleCreateClick}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create your first tier
             </Button>
           </CardContent>
         </Card>
