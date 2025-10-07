@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { creditSystem } from '@/services/credits/credit-system';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
@@ -36,7 +37,13 @@ interface WalletContextType {
   refreshBalance: () => Promise<void>;
   refreshLedger: () => Promise<void>;
   topUpCredits: (amount: number) => Promise<{ url?: string; error?: string }>;
-  spendCredits: (amount: number, kind: WalletLedgerEntry['kind'], ref_type?: string, ref_id?: string, counterparty_id?: string) => Promise<{ success: boolean; error?: string }>;
+  spendCredits: (
+    amount: number,
+    kind: WalletLedgerEntry['kind'],
+    ref_type?: string,
+    ref_id?: string,
+    counterparty_id?: string,
+  ) => Promise<{ success: boolean; ledgerEntryId?: string; manualEntryId?: string | null; error?: string }>;
   cashOutCredits: (amount: number) => Promise<{ success: boolean; error?: string }>;
   applyCreditsToSubscription: (amount: number) => Promise<{ success: boolean; error?: string }>;
 }
@@ -138,35 +145,38 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const spendCredits = async (
-    amount: number, 
-    kind: WalletLedgerEntry['kind'], 
-    ref_type?: string, 
-    ref_id?: string, 
+    amount: number,
+    kind: WalletLedgerEntry['kind'],
+    ref_type?: string,
+    ref_id?: string,
     counterparty_id?: string
   ) => {
     if (!user) return { success: false, error: 'User not authenticated' };
-    
+
     if (balance.available_credits < amount) {
       return { success: false, error: 'Insufficient credits' };
     }
-    
+
     try {
-      const { error } = await supabase.functions.invoke('process-credits-transaction', {
-        body: {
-          amount_credits: -amount,
-          kind,
-          ref_type,
-          ref_id,
-          counterparty_user_id: counterparty_id
+      const metadata: Record<string, any> = {
+        ref_type,
+        ref_id,
+        counterparty_user_id: counterparty_id,
+        operator_id: user.id,
+      };
+
+      Object.keys(metadata).forEach((key) => {
+        if (metadata[key] === undefined) {
+          delete metadata[key];
         }
       });
-      
-      if (error) throw error;
-      
+
+      const result = await creditSystem.spendCredits(user.id, amount, kind, metadata);
+
       await refreshBalance();
       await refreshLedger();
-      
-      return { success: true };
+
+      return { success: true, ledgerEntryId: result.ledgerEntryId, manualEntryId: result.manualEntryId };
     } catch (error) {
       console.error('Error spending credits:', error);
       return { success: false, error: 'Failed to process transaction' };

@@ -7,6 +7,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface WalletTransactionResponse {
+  ledgerEntryId: string;
+  manualEntryId: string | null;
+}
+
+function normalizeTransactionResponse(data: unknown): WalletTransactionResponse {
+  if (!data || typeof data !== "object") {
+    throw new Error("Unexpected wallet transaction response shape");
+  }
+
+  const ledgerEntryId =
+    (data as any).ledgerEntryId ||
+    (data as any).ledger_entry_id ||
+    (data as any).ledger_id ||
+    (data as any).id;
+
+  if (!ledgerEntryId || typeof ledgerEntryId !== "string") {
+    throw new Error("Wallet transaction response missing ledger entry id");
+  }
+
+  const manualEntryId =
+    typeof (data as any).manualEntryId === "string"
+      ? (data as any).manualEntryId
+      : typeof (data as any).manual_entry_id === "string"
+      ? (data as any).manual_entry_id
+      : null;
+
+  return {
+    ledgerEntryId,
+    manualEntryId,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,11 +68,145 @@ serve(async (req) => {
     console.log(`[PROCESS-CREDITS-TRANSACTION] User: ${user.id}`);
 
     // Parse request body
-    const payload = await req.json();
+    const {
+      amount_credits,
+      kind,
+      ref_type,
+      ref_id,
+      counterparty_user_id,
+      manual_entry,
+      meta = {}
+    } = await req.json();
 
-    console.log(`[PROCESS-CREDITS-TRANSACTION] Processing: ${payload.kind} ${payload.amount_credits} credits`);
+    if (!amount_credits || !kind) {
+      throw new Error("Invalid transaction data");
+    }
 
-    const result = await processCreditsTransaction(supabaseClient as any, user.id, payload);
+    console.log(`[PROCESS-CREDITS-TRANSACTION] Processing: ${kind} ${amount_credits} credits`);
+
+    // For spending transactions, check balance first
+    if (amount_credits < 0) {
+      const { data: balanceData, error: balanceError } = await supabaseClient.rpc('get_wallet_balance', {
+        p_user_id: user.id
+      });
+
+      if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
+      
+      const balance = balanceData as any;
+      if (balance.available_credits < Math.abs(amount_credits)) {
+        throw new Error("Insufficient credits");
+      }
+    }
+
+    const transactionPayload = {
+      user_id: user.id,
+      amount_credits,
+      kind,
+      ref_type,
+      ref_id,
+      counterparty_user_id,
+      meta,
+      manual_entry,
+    };
+
+    const { data: rpcData, error: rpcError } = await supabaseClient.rpc(
+      'wallet_process_transaction',
+      transactionPayload as Record<string, unknown>,
+    );
+
+    if (!rpcError && rpcData) {
+      const normalized = normalizeTransactionResponse(rpcData);
+
+      console.log('[PROCESS-CREDITS-TRANSACTION] Transaction completed via RPC');
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          ledgerEntryId: normalized.ledgerEntryId,
+          manualEntryId: normalized.manualEntryId,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
+      );
+    }
+
+    if (rpcError) {
+      console.warn(
+        `[PROCESS-CREDITS-TRANSACTION] RPC unavailable, falling back to manual inserts: ${rpcError.message}`,
+      );
+    }
+
+    const { data: ledgerData, error: ledgerError } = await supabaseClient
+      .from('wallet_ledger')
+      .insert({
+        user_id: user.id,
+        kind,
+        amount_credits,
+        ref_type,
+        ref_id,
+        counterparty_user_id,
+        meta,
+      })
+      .select('id')
+      .single();
+
+    if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
+
+    const ledgerEntryId = (ledgerData as { id: string }).id;
+
+    let manualEntryId: string | null = null;
+
+    if (manual_entry) {
+      const manualPayload: Record<string, any> = {
+        ledger_entry_id: ledgerEntryId,
+        user_id: user.id,
+        order_id: manual_entry.order_id ?? ref_id ?? null,
+        item_type: manual_entry.item_type ?? meta?.product_type ?? null,
+        item_id: manual_entry.item_id ?? meta?.product_id ?? null,
+        operator_id: manual_entry.operator_id ?? user.id,
+        direction: manual_entry.direction ?? (amount_credits < 0 ? 'debit' : 'credit'),
+        amount_credits: manual_entry.amount_credits ?? Math.abs(amount_credits),
+        metadata: manual_entry.metadata ?? { ...meta, kind },
+      };
+
+      Object.keys(manualPayload).forEach((key) => {
+        if (manualPayload[key] === undefined) {
+          delete manualPayload[key];
+        }
+      });
+
+      const { data: manualData, error: manualError } = await supabaseClient
+        .from('wallet_manual_entries')
+        .insert(manualPayload)
+        .select('id')
+        .single();
+
+      if (manualError) {
+        console.error(
+          `[PROCESS-CREDITS-TRANSACTION] Manual entry insert failed: ${manualError.message}`,
+        );
+      } else {
+        manualEntryId = (manualData as { id?: string } | null)?.id ?? null;
+      }
+    }
+
+    // For tips and transfers, create counterparty entry
+    if (counterparty_user_id && (kind === 'spend_tip' || kind === 'spend_purchase')) {
+      const counterpartyKind = kind === 'spend_tip' ? 'spend_tip' : 'spend_purchase';
+      
+      const { error: counterpartyError } = await supabaseClient
+        .from('wallet_ledger')
+        .insert({
+          user_id: counterparty_user_id,
+          kind: counterpartyKind,
+          amount_credits: Math.abs(amount_credits), // Always positive for receiver
+          ref_type,
+          ref_id,
+          counterparty_user_id: user.id,
+          meta,
+        });
 
     if (result.counterparty_error) {
       console.error(`[PROCESS-CREDITS-TRANSACTION] Counterparty error: ${result.counterparty_error}`);
@@ -47,10 +214,13 @@ serve(async (req) => {
 
     console.log(`[PROCESS-CREDITS-TRANSACTION] Transaction completed successfully`);
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ success: true, ledgerEntryId, manualEntryId }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
+    );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

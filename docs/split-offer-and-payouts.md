@@ -46,3 +46,20 @@ Refer to these tables when debugging:
 | `payouts` | Stripe transfer metadata and status per creator. |
 | `payout_statements` | Junction linking paid statements to a payout. |
 
+## Download limit policy & escalation
+
+Fans can download purchased releases, beats, sample packs, memberships drops, courses, and campaign rewards from the Library.
+
+- Each purchase type enforces a soft limit (default 3 for releases/sample packs, 5 for beats). Additional limits can be configured per product via `download_limit` fields.
+- The Library page surfaces remaining downloads, expiration timestamps, and the most recent download event.
+- When a limit is hit the UI exposes **Request reset**, which calls the `request-download-reset` Edge Function.
+
+The edge function logs a `support_tickets` row with metadata about the purchase, purchase type, and fan details, and pings the ops webhook (`OPS_SUPPORT_WEBHOOK_URL`) so support can triage the ticket. Ops should:
+
+1. Verify the fan’s order details and confirm ownership (use the purchase id from the ticket metadata).
+2. Reset the download count in the relevant table (`download_events`, `release_purchases.downloads_used`, or equivalent).
+3. Reply to the ticket confirming the reset and note any manual adjustments.
+4. Close the ticket in the moderation dashboard once the reset is complete. Add internal notes if a follow-up is required (for example, suspected abuse).
+
+If repeated requests come in for the same fan/product, escalate to engineering via the existing moderation tooling so permanent adjustments or audits can be performed.
+
