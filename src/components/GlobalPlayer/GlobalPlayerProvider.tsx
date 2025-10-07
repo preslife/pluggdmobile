@@ -24,6 +24,10 @@ export interface Track {
   previewUrl?: string;
   previewStart?: number;
   previewEnd?: number;
+  preview_duration?: number;
+  purchaseUrl?: string;
+  isLocked?: boolean;
+  requiresPurchase?: boolean;
 }
 
 interface PlaybackState {

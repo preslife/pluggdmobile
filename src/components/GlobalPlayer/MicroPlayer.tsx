@@ -1,14 +1,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Play, 
-  Pause, 
-  SkipForward, 
-  SkipBack, 
+import {
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
   ChevronUp,
   Heart,
-  MoreHorizontal
+  MoreHorizontal,
+  Lock
 } from 'lucide-react';
 import { useGlobalPlayer } from './GlobalPlayerProvider';
 import { cn } from '@/lib/utils';
@@ -19,13 +20,26 @@ interface MicroPlayerProps {
 
 export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
   const { state, actions } = useGlobalPlayer();
-  
+
   if (!state.currentTrack) {
     return null;
   }
 
-  const progress = state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0;
-  
+  const previewLimit = state.currentTrack.streamable
+    ? undefined
+    : state.currentTrack.preview_duration;
+
+  const effectiveDuration = state.currentTrack.streamable
+    ? state.duration
+    : previewLimit ?? state.currentTrack.preview_duration ?? state.duration;
+
+  const clampedDuration = effectiveDuration > 0 ? effectiveDuration : state.duration;
+  const clampedCurrentTime = state.currentTrack.streamable
+    ? state.currentTime
+    : Math.min(state.currentTime, previewLimit ?? state.currentTrack.preview_duration ?? state.currentTime);
+
+  const progress = clampedDuration > 0 ? (clampedCurrentTime / clampedDuration) * 100 : 0;
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -36,12 +50,20 @@ export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
-    const newTime = percentage * state.duration;
-    actions.seek(newTime);
+    const newTime = percentage * (clampedDuration || state.duration);
+    const limitedTime = state.currentTrack.streamable
+      ? newTime
+      : Math.min(
+          newTime,
+          previewLimit ?? state.currentTrack.preview_duration ?? newTime
+        );
+    actions.seek(limitedTime);
   };
 
+  const purchaseUrl = state.currentTrack.requiresPurchase ? state.currentTrack.purchaseUrl : undefined;
+
   return (
-    <div 
+    <div
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
         "border-t border-border shadow-lg",
@@ -79,9 +101,14 @@ export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
             />
           )}
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-medium truncate">
-              {state.currentTrack.title}
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium truncate">
+                {state.currentTrack.title}
+              </h4>
+              {state.currentTrack.isLocked && (
+                <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              )}
+            </div>
             <p className="text-xs text-muted-foreground truncate">
               {state.currentTrack.artist}
             </p>
@@ -150,9 +177,21 @@ export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
           </Button>
         </div>
 
+        {state.currentTrack.requiresPurchase && purchaseUrl && (
+          <Button
+            size="sm"
+            className="ml-2"
+            asChild
+          >
+            <a href={purchaseUrl}>
+              Purchase / Unlock
+            </a>
+          </Button>
+        )}
+
         {/* Time display - hidden on mobile */}
         <div className="text-xs text-muted-foreground hidden md:block whitespace-nowrap">
-          {formatTime(state.currentTime)} / {formatTime(state.duration)}
+          {formatTime(clampedCurrentTime)} / {formatTime(clampedDuration || state.duration)}
         </div>
       </div>
     </div>

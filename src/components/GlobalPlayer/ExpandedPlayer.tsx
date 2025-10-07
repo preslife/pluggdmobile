@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Play, 
-  Pause, 
-  SkipForward, 
+import {
+  Play,
+  Pause,
+  SkipForward,
   SkipBack,
   ChevronDown,
   Heart,
@@ -19,7 +19,8 @@ import {
   MoreHorizontal,
   List,
   Settings,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from 'lucide-react';
 import { useGlobalPlayer } from './GlobalPlayerProvider';
 import { cn } from '@/lib/utils';
@@ -38,8 +39,21 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
     return null;
   }
 
-  const progress = state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0;
-  
+  const previewLimit = state.currentTrack.streamable
+    ? undefined
+    : state.currentTrack.preview_duration;
+
+  const effectiveDuration = state.currentTrack.streamable
+    ? state.duration
+    : previewLimit ?? state.currentTrack.preview_duration ?? state.duration;
+
+  const safeDuration = effectiveDuration && effectiveDuration > 0 ? effectiveDuration : state.duration;
+  const clampedCurrentTime = state.currentTrack.streamable
+    ? state.currentTime
+    : Math.min(state.currentTime, previewLimit ?? state.currentTrack.preview_duration ?? state.currentTime);
+
+  const progress = safeDuration > 0 ? (clampedCurrentTime / safeDuration) * 100 : 0;
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -47,13 +61,21 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
   };
 
   const handleSeek = (value: number[]) => {
-    const newTime = (value[0] / 100) * state.duration;
-    actions.seek(newTime);
+    const newTime = (value[0] / 100) * (safeDuration || state.duration);
+    const limitedTime = state.currentTrack.streamable
+      ? newTime
+      : Math.min(
+          newTime,
+          previewLimit ?? state.currentTrack.preview_duration ?? newTime
+        );
+    actions.seek(limitedTime);
   };
 
   const handleVolumeChange = (value: number[]) => {
     actions.setVolume(value[0] / 100);
   };
+
+  const purchaseUrl = state.currentTrack.requiresPurchase ? state.currentTrack.purchaseUrl : undefined;
 
   return (
     <div 
@@ -148,7 +170,9 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
                         </Badge>
                       )}
                       {!state.currentTrack.streamable && (
-                        <Badge variant="secondary">Preview</Badge>
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Lock className="h-3 w-3" /> Preview
+                        </Badge>
                       )}
                       {state.currentTrack.owned && (
                         <Badge variant="default">Owned</Badge>
@@ -174,6 +198,13 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
                         </a>
                       </Button>
                     )}
+                    {state.currentTrack.requiresPurchase && purchaseUrl && (
+                      <Button size="sm" className="ml-2" asChild>
+                        <a href={purchaseUrl}>
+                          Purchase / Unlock
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -191,8 +222,8 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
                       className="w-full"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{formatTime(state.currentTime)}</span>
-                      <span>{formatTime(state.duration)}</span>
+                      <span>{formatTime(clampedCurrentTime)}</span>
+                      <span>{formatTime(safeDuration || state.duration)}</span>
                     </div>
                   </div>
 
