@@ -19,6 +19,7 @@ const typeLabelMap: Record<LibraryItem["type"], string> = {
   sample_pack: "Sample Pack",
   membership: "Membership",
   course: "Course",
+  campaign: "Campaign",
 };
 
 export const DownloadTracker = ({ items, loading, onDownload, onRequestMore }: DownloadTrackerProps) => {
