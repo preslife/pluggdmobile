@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DomainAwareNavigation from '@/components/DomainAwareNavigation';
 import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
+import type { Track as PlayerTrack } from '@/components/GlobalPlayer/GlobalPlayerProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { setMeta } from '@/lib/seo';
+import { logAnalyticsEvent } from '@/lib/analytics';
+import { trackAccessControl } from '@/services/audio/track-access-control';
+import type { Track as AccessControlTrack } from '@/services/audio/track-access-control';
 import {
   TrendingUp,
   Play,
@@ -221,23 +225,139 @@ const Charts = () => {
     }
   };
 
-  const handlePlay = (item: ChartItem) => {
+  const createAccessControlTrack = (item: ChartItem): AccessControlTrack | null => {
     if (!item.audio_url) {
+      return null;
+    }
+
+    return {
+      id: item.id,
+      title: item.title,
+      artist: item.artist_name,
+      src: item.audio_url,
+      artwork: item.cover_url,
+      duration: item.duration,
+      type: item.type,
+      price: item.price,
+      currency: item.currency
+    };
+  };
+
+  const mapToPlayerTrack = (track: AccessControlTrack): PlayerTrack => {
+    const mappedTrack = {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      src: track.src,
+      artwork: track.artwork,
+      duration: track.duration,
+      type: track.type,
+      price: track.price,
+      currency: track.currency,
+      streamable: track.streamable,
+      owned: track.owned,
+      preview_duration: track.preview_duration
+    } as PlayerTrack & { preview_duration?: number };
+
+    return mappedTrack;
+  };
+
+  const enhanceChartTrack = async (item: ChartItem): Promise<PlayerTrack | null> => {
+    const baseTrack = createAccessControlTrack(item);
+
+    if (!baseTrack) {
       toast({
         title: "Preview not available",
         description: "This track doesn't have a preview available",
         variant: "destructive"
       });
+      return null;
+    }
+
+    try {
+      const enhancedTrack = await trackAccessControl.enhanceTrackWithAccess(baseTrack);
+      return mapToPlayerTrack(enhancedTrack);
+    } catch (error) {
+      console.error('Error enhancing track access information:', error);
+      toast({
+        title: "Playback unavailable",
+        description: "We couldn't verify access for this track. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const handlePlay = async (item: ChartItem) => {
+    const playerTrack = await enhanceChartTrack(item);
+
+    if (!playerTrack) {
       return;
     }
 
-    playerActions.play({
-      id: item.id,
-      title: item.title,
-      artist: item.artist_name,
-      audioUrl: item.audio_url,
-      imageUrl: item.cover_url
+    await playerActions.play(playerTrack);
+
+    void logAnalyticsEvent('chart_playback_started', {
+      track_id: item.id,
+      track_type: item.type,
+      chart_period: selectedPeriod,
+      chart_genre: selectedGenre,
+      position: item.current_position,
+      streamable: playerTrack.streamable,
+      owned: playerTrack.owned
     });
+  };
+
+  const handleQueueAction = async (item: ChartItem, action: 'queue' | 'next') => {
+    const playerTrack = await enhanceChartTrack(item);
+
+    if (!playerTrack) {
+      return;
+    }
+
+    if (!playerTrack.src) {
+      toast({
+        title: "Playback unavailable",
+        description: "This track can't be queued because it doesn't have a valid source.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (action === 'queue') {
+        playerActions.addToQueue(playerTrack);
+        toast({
+          title: "Added to queue",
+          description: `${item.title} was added to your queue."
+        });
+      } else {
+        playerActions.playNext(playerTrack);
+        toast({
+          title: "Up next",
+          description: `${item.title} will play next."
+        });
+      }
+
+      const eventName = action === 'queue' ? 'chart_track_added_to_queue' : 'chart_track_play_next';
+
+      void logAnalyticsEvent(eventName, {
+        track_id: item.id,
+        track_type: item.type,
+        chart_period: selectedPeriod,
+        chart_genre: selectedGenre,
+        position: item.current_position,
+        streamable: playerTrack.streamable,
+        owned: playerTrack.owned
+      });
+    } catch (error) {
+      console.error('Error updating playback queue:', error);
+      toast({
+        title: "Queue update failed",
+        description: "We couldn't update your queue. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getPositionChange = (item: ChartItem) => {
@@ -298,7 +418,7 @@ const Charts = () => {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => handlePlay(item)}
+              onClick={() => void handlePlay(item)}
               className="p-1 h-8 w-8"
             >
               {isCurrentlyPlaying ? (
@@ -353,6 +473,12 @@ const Charts = () => {
 
         {/* Actions */}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button size="sm" variant="ghost" onClick={() => void handleQueueAction(item, 'next')}>
+            Play next
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void handleQueueAction(item, 'queue')}>
+            Add to queue
+          </Button>
           <Button size="sm" variant="ghost">
             <Heart className="h-4 w-4" />
           </Button>

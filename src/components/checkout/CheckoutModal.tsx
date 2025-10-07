@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,11 +30,7 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  AudioWaveform,
-  Disc,
-  Package,
-  Users,
-  GraduationCap,
+  FileText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -48,38 +44,18 @@ interface CheckoutModalProps {
 const DEFAULT_MAX_CART_PERCENT = 0.5;
 const CREDITS_PER_GBP = 100;
 
-const PURCHASE_TYPE_CONFIG: Record<PurchaseItemType, { label: string; icon: LucideIcon; accentClass: string }> = {
-  release: {
-    label: 'Release',
-    icon: Disc,
-    accentClass: 'bg-purple-500/10 text-purple-500',
-  },
-  beat: {
-    label: 'Beat',
-    icon: AudioWaveform,
-    accentClass: 'bg-blue-500/10 text-blue-500',
-  },
-  sample_pack: {
-    label: 'Sample Pack',
-    icon: Package,
-    accentClass: 'bg-amber-500/10 text-amber-500',
-  },
-  membership: {
-    label: 'Membership',
-    icon: Users,
-    accentClass: 'bg-emerald-500/10 text-emerald-500',
-  },
-  course: {
-    label: 'Course',
-    icon: GraduationCap,
-    accentClass: 'bg-sky-500/10 text-sky-500',
-  },
-};
+interface TaxQuote {
+  currency: string;
+  subtotalMinor: number;
+  taxMinor: number;
+  totalMinor: number;
+  taxRate: number;
+}
 
-const formatLicenseLabel = (licenseType?: PurchaseItem['license_type']): string | null => {
-  if (!licenseType) return null;
-  return `${licenseType.charAt(0).toUpperCase()}${licenseType.slice(1)} license`;
-};
+type PollResult =
+  | { status: 'success'; paymentIntentId: string | null }
+  | { status: 'expired' | 'timeout' | 'error'; message: string; paymentIntentId: string | null }
+  | { status: 'cancelled'; paymentIntentId: string | null };
 
 export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutModalProps) => {
   const { user } = useAuth();
@@ -91,6 +67,22 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
   const [creditsToApply, setCreditsToApply] = useState(0);
   const [maxCartPercent, setMaxCartPercent] = useState(DEFAULT_MAX_CART_PERCENT);
   const [policyLoading, setPolicyLoading] = useState(false);
+  const [taxLoading, setTaxLoading] = useState(false);
+  const [taxQuote, setTaxQuote] = useState<TaxQuote | null>(null);
+  const [taxError, setTaxError] = useState<string | null>(null);
+  const [liveMessage, setLiveMessage] = useState('');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
+  const [completedPaymentIntentId, setCompletedPaymentIntentId] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [pollAttempts, setPollAttempts] = useState(0);
+  const [pollMessage, setPollMessage] = useState('');
+  const [pollIntroMessage, setPollIntroMessage] = useState('');
+  const [pollError, setPollError] = useState<string | null>(null);
+  const pollAbortRef = useRef(false);
+  const paymentWindowOpenedRef = useRef(false);
 
   const checkoutItems = useMemo<PurchaseItem[]>(() => {
     return items.map((item) => {
@@ -138,6 +130,44 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
     setCreditsToApply(cap > 0 ? cap : 0);
   }, [balanceSummary, totalCost, isOpen, maxCartPercent]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (!hasCashComponent) {
+      setTaxQuote(null);
+      setTaxError(null);
+      return;
+    }
+
+    fetchTaxEstimate(cashDuePreview).catch((error) => {
+      console.error('Preloading tax estimate failed:', error);
+    });
+  }, [isOpen, hasCashComponent, cashDuePreview, fetchTaxEstimate]);
+
+  useEffect(() => {
+    if (step === 'payment' && checkoutUrl && !paymentWindowOpenedRef.current) {
+      const paymentWindow = window.open(checkoutUrl, '_blank', 'noopener');
+      paymentWindowOpenedRef.current = true;
+      if (!paymentWindow) {
+        setPollMessage((current) =>
+          current || 'Click the button below to open the secure payment page and finish checkout.',
+        );
+      } else {
+        setPollMessage((current) =>
+          current || 'A secure Stripe tab has opened. Complete the payment to continue.',
+        );
+      }
+    }
+  }, [checkoutUrl, step]);
+
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current = true;
+    };
+  }, []);
 
   const fetchBalance = async () => {
     if (!user) return;
@@ -191,57 +221,263 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     return Math.max(totalCost - creditsToApply, 0);
   }, [totalCost, creditsToApply]);
 
+  const taxCurrency = taxQuote?.currency?.toUpperCase?.() ?? 'GBP';
+  const subtotalCurrency = totalCost / CREDITS_PER_GBP;
+  const baseCashDueCurrency = cashDuePreview / CREDITS_PER_GBP;
+  const taxAmountCurrency = (taxQuote?.taxMinor ?? 0) / 100;
+  const totalCashDueCurrency = baseCashDueCurrency + taxAmountCurrency;
+  const totalCashDueCreditsWithTax = Math.round(totalCashDueCurrency * CREDITS_PER_GBP);
+
   const hasCashComponent = cashDuePreview > 0;
   const canCompleteWithCredits = cashDuePreview === 0;
   const policyPercentDisplay = Math.round(maxCartPercent * 100);
 
-  const createHybridCheckout = async (cashDueCredits: number) => {
-    if (!user || cashDueCredits <= 0) return null;
+  const resetPollingState = useCallback(() => {
+    pollAbortRef.current = true;
+    setPolling(false);
+    setPollAttempts(0);
+    setPollMessage('');
+    setPollError(null);
+    setPollIntroMessage('');
+    setCheckoutUrl(null);
+    setCheckoutSessionId(null);
+    paymentWindowOpenedRef.current = false;
+  }, []);
 
-    const payload = {
-      manualAmountCredits: cashDueCredits,
-      paymentMetadata: {
-        transaction_type: 'hybrid_purchase',
-        user_id: user.id,
-        credits_applied: creditsToApply,
-        total_cost_credits: totalCost,
-        max_credit_percentage: maxCartPercent,
-        items: checkoutItems.map((item) => ({
-          id: item.id,
-          type: item.type,
-          title: item.title,
-          price: item.price,
-          license_type: item.license_type,
-          metadata: item.metadata || {},
-        })),
+  const fetchTaxEstimate = useCallback(
+    async (cashDueCredits: number, { force = false }: { force?: boolean } = {}): Promise<TaxQuote | null> => {
+      const amountMinor = Math.max(Math.round((cashDueCredits / CREDITS_PER_GBP) * 100), 0);
+
+      if (amountMinor <= 0) {
+        setTaxQuote(null);
+        setTaxError(null);
+        return null;
+      }
+
+      if (!force && taxQuote && taxQuote.subtotalMinor === amountMinor) {
+        return taxQuote;
+      }
+
+      setTaxLoading(true);
+      setTaxError(null);
+      setLiveMessage('Calculating taxes for your purchase...');
+
+      try {
+        const { data, error } = await supabase.functions.invoke('estimate-tax', {
+          body: {
+            amount_minor: amountMinor,
+            currency: 'gbp',
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        const normalized: TaxQuote = {
+          currency: typeof data?.currency === 'string' ? data.currency : 'gbp',
+          subtotalMinor: typeof data?.subtotal_minor === 'number' ? data.subtotal_minor : amountMinor,
+          taxMinor: typeof data?.tax_minor === 'number' ? data.tax_minor : 0,
+          totalMinor: typeof data?.total_minor === 'number' ? data.total_minor : amountMinor,
+          taxRate:
+            typeof data?.tax_rate === 'number' && Number.isFinite(data.tax_rate) ? data.tax_rate : 0,
+        };
+
+        setTaxQuote(normalized);
+        setLiveMessage('Tax estimate ready.');
+        return normalized;
+      } catch (error) {
+        console.error('Tax estimation error:', error);
+        setTaxError('Unable to load a tax estimate. Tax will be finalized during payment.');
+        setLiveMessage('Unable to load the tax estimate automatically.');
+        setTaxQuote(null);
+        return null;
+      } finally {
+        setTaxLoading(false);
+      }
+    },
+    [taxQuote],
+  );
+
+  const createHybridCheckout = useCallback(
+    async (
+      cashDueCredits: number,
+      options: {
+        taxDetails?: TaxQuote | null;
+        appliedCredits: number;
+        baseCashDueCredits: number;
       },
-    };
+    ) => {
+      if (!user || cashDueCredits <= 0) return null;
 
-    const { data, error } = await supabase.functions.invoke('enhanced-store-checkout', {
-      body: payload,
-    });
+      const payload = {
+        manualAmountCredits: cashDueCredits,
+        paymentMetadata: {
+          transaction_type: 'hybrid_purchase',
+          user_id: user.id,
+          credits_applied: creditsToApply,
+          total_cost_credits: totalCost,
+          max_credit_percentage: maxCartPercent,
+          items: items.map((item) => ({
+            id: item.id,
+            type: item.type,
+            title: item.title,
+            price: item.price,
+            license_type: item.license_type,
+            metadata: item.metadata || {},
+          })),
+          cash_due_before_tax_credits: options.baseCashDueCredits,
+          cash_due_total_credits: cashDueCredits,
+          tax_currency: options.taxDetails?.currency,
+          tax_rate: options.taxDetails?.taxRate,
+          tax_minor: options.taxDetails?.taxMinor,
+          subtotal_minor: options.taxDetails?.subtotalMinor,
+          total_minor: options.taxDetails?.totalMinor,
+          credits_applied_effective: options.appliedCredits,
+        },
+      };
 
-    if (error) {
-      throw new Error(error.message || 'Failed to initiate Stripe checkout');
+      const { data, error } = await supabase.functions.invoke('enhanced-store-checkout', {
+        body: payload,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to initiate Stripe checkout');
+      }
+
+      return data as { url: string; sessionId: string; paymentIntentId?: string | null };
+    },
+    [creditsToApply, items, maxCartPercent, totalCost, user],
+  );
+
+  const startPolling = useCallback(
+    async (sessionId: string, paymentIntentId?: string | null): Promise<PollResult> => {
+      pollAbortRef.current = false;
+      setPolling(true);
+      setPollAttempts(0);
+      setPollError(null);
+      setPollMessage('Starting payment status checks...');
+      setLiveMessage('Waiting for payment confirmation from Stripe...');
+
+      const maxAttempts = 20;
+      const delayMs = 3000;
+      let latestPaymentIntentId = paymentIntentId ?? null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (pollAbortRef.current) {
+          setPolling(false);
+          return { status: 'cancelled', paymentIntentId: latestPaymentIntentId };
+        }
+
+        setPollAttempts(attempt);
+        setPollMessage(`Checking payment status (attempt ${attempt}/${maxAttempts})...`);
+
+        try {
+          const { data, error } = await supabase.functions.invoke('get-checkout-session', {
+            body: { sessionId },
+          });
+
+          if (pollAbortRef.current) {
+            setPolling(false);
+            return { status: 'cancelled', paymentIntentId: latestPaymentIntentId };
+          }
+
+          if (error) {
+            console.error('Checkout polling error:', error);
+            setPollError('Unable to reach Stripe. Retrying...');
+          } else if (data) {
+            if (typeof data.payment_intent_id === 'string') {
+              latestPaymentIntentId = data.payment_intent_id;
+            }
+
+            if (data.payment_status === 'paid' || data.status === 'complete') {
+              setLiveMessage('Payment confirmed. Finalizing your order...');
+              setPolling(false);
+              setPollError(null);
+              setPollMessage('Payment confirmed! Finalizing...');
+              return { status: 'success', paymentIntentId: latestPaymentIntentId };
+            }
+
+            if (data.status === 'expired' || data.payment_status === 'unpaid') {
+              setPollError('The checkout session expired before completion.');
+              setPolling(false);
+              setLiveMessage('Payment session expired before completion.');
+              return {
+                status: 'expired',
+                message: 'The checkout session expired before completion.',
+                paymentIntentId: latestPaymentIntentId,
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Unexpected polling error:', error);
+          setPollError('An unexpected error occurred while checking payment status.');
+        }
+
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+
+      setPolling(false);
+      setLiveMessage('Timed out while waiting for payment confirmation.');
+      return {
+        status: 'timeout',
+        message: 'We could not confirm the payment in time. Please refresh or try again.',
+        paymentIntentId: latestPaymentIntentId,
+      };
+    },
+    [setLiveMessage],
+  );
+
+  const openPaymentPage = useCallback(() => {
+    if (!checkoutUrl) return;
+
+    const newWindow = window.open(checkoutUrl, '_blank', 'noopener');
+    if (!newWindow) {
+      window.location.href = checkoutUrl;
+    } else {
+      newWindow.focus();
     }
-
-    return data as { url: string; sessionId: string; paymentIntentId?: string | null };
-  };
+  }, [checkoutUrl]);
 
   const handlePurchase = async () => {
     if (!user || !balanceSummary) return;
 
     setPurchasing(true);
+    setLiveMessage('Processing your purchase...');
+    resetPollingState();
+    setCompletedPaymentIntentId(null);
+    setReceiptUrl(null);
+
     try {
       const desiredCredits = Math.min(creditsToApply, creditCap);
-      const cashDueCredits = Math.max(totalCost - desiredCredits, 0);
+      const baseCashDueCredits = Math.max(totalCost - desiredCredits, 0);
 
+      let taxDetails: TaxQuote | null = null;
       let checkoutSession:
         | { url: string; sessionId: string; paymentIntentId?: string | null }
         | null = null;
+      let totalManualCredits = baseCashDueCredits;
 
-      if (cashDueCredits > 0) {
-        checkoutSession = await createHybridCheckout(cashDueCredits);
+      if (baseCashDueCredits > 0) {
+        taxDetails = await fetchTaxEstimate(baseCashDueCredits, { force: true });
+        const taxCredits = taxDetails ? Math.round(((taxDetails.taxMinor ?? 0) / 100) * CREDITS_PER_GBP) : 0;
+        totalManualCredits = baseCashDueCredits + taxCredits;
+
+        checkoutSession = await createHybridCheckout(totalManualCredits, {
+          taxDetails,
+          appliedCredits: desiredCredits,
+          baseCashDueCredits,
+        });
+
+        if (checkoutSession) {
+          setCheckoutUrl(checkoutSession.url);
+          setCheckoutSessionId(checkoutSession.sessionId);
+          setPollIntroMessage('Complete your payment in the secure Stripe checkout. We will confirm once the payment succeeds.');
+          setPollMessage('Waiting for you to complete payment...');
+          paymentWindowOpenedRef.current = false;
+        }
       }
 
       const result = await creditSystem.processPurchase(user.id, checkoutItems, {
@@ -253,13 +489,42 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       });
 
       if (result.cashDue > 0) {
-        if (checkoutSession?.url) {
+        if (checkoutSession?.url && checkoutSession.sessionId) {
+          const estimatedTotal = taxDetails
+            ? formatCurrency((taxDetails.totalMinor ?? 0) / 100, taxDetails.currency?.toUpperCase?.() ?? 'GBP')
+            : formatCurrency(baseCashDueCurrency, 'GBP');
+
           toast({
-            title: 'Continue to Payment',
-            description: `You will be redirected to complete the remaining ${formatCurrency(result.cashDue / CREDITS_PER_GBP)} by card.`,
+            title: 'Complete Your Payment',
+            description: `A secure Stripe window will open to charge ${estimatedTotal}. Finish the payment to access your downloads.`,
           });
+
           setStep('payment');
-          window.location.href = checkoutSession.url;
+          setPurchasing(false);
+
+          const pollResult = await startPolling(checkoutSession.sessionId, checkoutSession.paymentIntentId ?? null);
+
+          if (pollResult.status === 'success') {
+            setCompletedPaymentIntentId(pollResult.paymentIntentId ?? null);
+            toast({
+              title: 'Purchase Successful!',
+              description: 'Your payment has been confirmed.',
+            });
+            setStep('success');
+            setLiveMessage('Purchase complete. Downloads are ready.');
+            await fetchBalance();
+            onSuccess?.();
+          } else if (pollResult.status === 'cancelled') {
+            setLiveMessage('Payment polling cancelled.');
+          } else {
+            const errorMessage =
+              pollResult.status === 'expired'
+                ? pollResult.message
+                : pollResult.status === 'timeout'
+                ? pollResult.message
+                : pollResult.message || 'Unable to confirm payment.';
+            throw new Error(errorMessage);
+          }
         } else {
           throw new Error('Unable to start Stripe checkout for remaining balance');
         }
@@ -269,6 +534,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           description: result.message,
         });
         setStep('success');
+        setLiveMessage('Purchase complete. Downloads are ready.');
         await fetchBalance();
         onSuccess?.();
       }
@@ -280,13 +546,74 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         description: message,
         variant: 'destructive',
       });
+      setLiveMessage('Purchase failed. Please review the errors and try again.');
     } finally {
-      setPurchasing(false);
+      if (step !== 'payment') {
+        setPurchasing(false);
+      }
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!completedPaymentIntentId) {
+      toast({
+        title: 'Receipt unavailable',
+        description: 'We could not find a payment reference for this purchase yet.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (receiptUrl) {
+      window.open(receiptUrl, '_blank');
+      return;
+    }
+
+    setReceiptLoading(true);
+    setLiveMessage('Preparing your receipt for download...');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-receipt', {
+        body: {
+          payment_id: completedPaymentIntentId,
+          type: 'purchase',
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.pdf_url) {
+        setReceiptUrl(data.pdf_url);
+        window.open(data.pdf_url, '_blank');
+        setLiveMessage('Receipt ready. Opened in a new tab.');
+      } else {
+        throw new Error('No receipt URL returned');
+      }
+    } catch (error) {
+      console.error('Receipt generation error:', error);
+      toast({
+        title: 'Receipt unavailable',
+        description: 'We were unable to generate the receipt. Please try again shortly.',
+        variant: 'destructive',
+      });
+      setLiveMessage('Receipt generation failed.');
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
   const handleClose = () => {
+    resetPollingState();
     setStep('review');
+    setLiveMessage('');
+    setTaxQuote(null);
+    setTaxError(null);
+    setCompletedPaymentIntentId(null);
+    setReceiptUrl(null);
+    setPollMessage('');
+    setPollIntroMessage('');
     onClose();
   };
 
@@ -316,7 +643,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     return (
       <>
         <CreditCard className="h-4 w-4 mr-2" />
-        Apply {creditsToApply} credits & pay {formatCurrency(cashDuePreview / CREDITS_PER_GBP)}
+        Apply {creditsToApply} credits & pay {formatCurrency(totalCashDueCurrency, taxCurrency)}
       </>
     );
   };
@@ -336,6 +663,10 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           </DialogDescription>
         </DialogHeader>
 
+        <div aria-live="polite" className="sr-only">
+          {liveMessage}
+        </div>
+
         {step === 'success' ? (
           <div className="space-y-4">
             <div className="flex items-center justify-center py-8">
@@ -347,13 +678,56 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={handleDownloadReceipt}
+                disabled={receiptLoading || !completedPaymentIntentId}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {receiptLoading ? 'Preparing receipt...' : 'Download receipt'}
+              </Button>
               <Button className="flex-1" onClick={() => (window.location.href = '/library')}>
                 <Download className="h-4 w-4 mr-2" />
                 Go to Library
               </Button>
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="outline" onClick={handleClose} className="sm:w-auto">
                 Close
+              </Button>
+            </div>
+          </div>
+        ) : step === 'payment' ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center space-y-3">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" aria-hidden="true" />
+                <h3 className="text-lg font-semibold">Waiting for payment confirmation</h3>
+                <p className="text-sm text-muted-foreground">
+                  {pollIntroMessage || 'Complete your payment in the secure Stripe checkout window.'}
+                </p>
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {pollMessage || 'Waiting for confirmation...'}
+                </p>
+                {pollAttempts > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Status check {pollAttempts} of 20
+                  </p>
+                )}
+                {pollError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {pollError}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Button className="w-full" onClick={openPaymentPage} disabled={!checkoutUrl} aria-busy={polling}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Open secure payment page
+              </Button>
+              <Button variant="outline" className="w-full" onClick={handleClose}>
+                Cancel
               </Button>
             </div>
           </div>
@@ -413,23 +787,43 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                   <span>{totalCost} credits</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(subtotalCurrency, taxCurrency)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Estimated tax</span>
+                  <span className="flex items-center gap-2">
+                    {taxLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        <span className="text-xs text-muted-foreground">Calculating...</span>
+                      </>
+                    ) : (
+                      formatCurrency(taxAmountCurrency, taxCurrency)
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span>Credits applied</span>
                   <span>-{creditsToApply} credits</span>
                 </div>
-                {hasCashComponent && (
-                  <div className="flex justify-between text-sm">
-                    <span>Card payment due</span>
-                    <span>{formatCurrency(cashDuePreview / CREDITS_PER_GBP)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between font-semibold">
+                  <span>Cash due at checkout</span>
+                  <span>{formatCurrency(totalCashDueCurrency, taxCurrency)}</span>
+                </div>
                 <div className="flex justify-between font-semibold">
                   <span>Total due</span>
                   <span>
                     {canCompleteWithCredits
                       ? `${creditsToApply} credits`
-                      : `${creditsToApply} credits + ${formatCurrency(cashDuePreview / CREDITS_PER_GBP)}`}
+                      : `${creditsToApply} credits + ${formatCurrency(totalCashDueCurrency, taxCurrency)}`}
                   </span>
                 </div>
+                {taxError && (
+                  <p className="text-xs text-destructive" role="alert">
+                    {taxError}
+                  </p>
+                )}
               </div>
               <Separator />
             </div>
@@ -493,7 +887,8 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                 disabled={
                   purchasing ||
                   loading ||
-                  (totalCost > 0 && (!balanceSummary || policyLoading))
+                  (totalCost > 0 && (!balanceSummary || policyLoading)) ||
+                  (hasCashComponent && taxLoading)
                 }
               >
                 {purchasing ? (

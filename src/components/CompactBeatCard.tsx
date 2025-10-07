@@ -1,10 +1,13 @@
+import { useMemo, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Heart, Share2, ShoppingCart, Verified } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Verified, ListPlus, MoreHorizontal } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { PurchaseButton } from '@/components/checkout/PurchaseButton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PlaylistModal } from '@/components/PlaylistModal';
 
 interface Beat {
   id: string;
@@ -16,6 +19,7 @@ interface Beat {
   price: number;
   tags: string[];
   audio_url: string;
+  preview_url?: string;
   image_url: string;
   created_at: string;
   uploaded_by_admin: boolean;
@@ -37,18 +41,39 @@ interface CompactBeatCardProps {
   onShare?: () => void;
 }
 
-export const CompactBeatCard = ({ 
-  beat, 
-  viewMode, 
-  isPlaying = false, 
-  onPlay, 
-  onFavorite, 
+export const CompactBeatCard = ({
+  beat,
+  viewMode,
+  isPlaying = false,
+  onPlay,
+  onFavorite,
   isFavorited = false,
-  onShare 
+  onShare
 }: CompactBeatCardProps) => {
-  const artistName = beat.uploaded_by_admin 
-    ? (beat.producer_name || 'Internal Producer') 
+  const artistName = beat.uploaded_by_admin
+    ? (beat.producer_name || 'Internal Producer')
     : (beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist');
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const playlistTrack = useMemo(
+    () => ({
+      id: beat.id,
+      title: beat.title,
+      artist: artistName,
+      src: beat.audio_url || beat.preview_url || '',
+      artwork: beat.image_url,
+      type: 'beat' as const,
+      userId: beat.user_id
+    }),
+    [beat.id, beat.title, artistName, beat.audio_url, beat.preview_url, beat.image_url, beat.user_id]
+  );
+
+  const openPlaylistModal = (event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setIsPlaylistModalOpen(true);
+  };
+
+  const closePlaylistModal = () => setIsPlaylistModalOpen(false);
 
   if (viewMode === 'list') {
     return (
@@ -59,8 +84,8 @@ export const CompactBeatCard = ({
             <div className="relative flex-shrink-0">
               <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20">
                 {beat.image_url ? (
-                  <img 
-                    src={beat.image_url} 
+                  <img
+                    src={beat.image_url}
                     alt={beat.title}
                     className="w-full h-full object-cover"
                   />
@@ -70,18 +95,64 @@ export const CompactBeatCard = ({
               </div>
               
               {/* Play Button Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg">
-                <Button
-                  size="sm"
-                  onClick={onPlay}
-                  className="w-6 h-6 rounded-full bg-white/90 hover:bg-white text-black p-0"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-3 h-3" />
-                  ) : (
-                    <Play className="w-3 h-3 ml-0.5" />
-                  )}
-                </Button>
+              <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg">
+                <div className="flex items-center justify-end gap-1 p-1.5">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-6 w-6 rounded-full bg-white/90 text-black hover:bg-white"
+                    onClick={openPlaylistModal}
+                  >
+                    <ListPlus className="w-3 h-3" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-6 w-6 rounded-full bg-white/90 text-black hover:bg-white"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                      >
+                        <MoreHorizontal className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onPlay && (
+                        <DropdownMenuItem
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onPlay();
+                          }}
+                        >
+                          {isPlaying ? 'Pause preview' : 'Play preview'}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={openPlaylistModal}>
+                        Add to playlist
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/beat/${beat.id}`}>View beat</Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center justify-center pb-1.5">
+                  <Button
+                    size="sm"
+                    onClick={onPlay}
+                    className="w-6 h-6 rounded-full bg-white/90 hover:bg-white text-black p-0"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-3 h-3" />
+                    ) : (
+                      <Play className="w-3 h-3 ml-0.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -120,22 +191,56 @@ export const CompactBeatCard = ({
                   </div>
                   
                   <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-6 w-6 p-0"
                       onClick={onFavorite}
                     >
                       <Heart className={`w-3 h-3 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-6 w-6 p-0"
                       onClick={onShare}
                     >
                       <Share2 className="w-3 h-3" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={openPlaylistModal}
+                    >
+                      <ListPlus className="w-3 h-3" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onPlay && (
+                          <DropdownMenuItem
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onPlay();
+                            }}
+                          >
+                            {isPlaying ? 'Pause preview' : 'Play preview'}
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={openPlaylistModal}>
+                          Add to playlist
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={onShare}>
+                          Share
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <PurchaseButton
                       item={{
                         id: beat.id,
@@ -159,6 +264,7 @@ export const CompactBeatCard = ({
             </div>
           </div>
         </CardContent>
+        <PlaylistModal isOpen={isPlaylistModalOpen} onClose={closePlaylistModal} track={playlistTrack} />
       </Card>
     );
   }
@@ -215,13 +321,21 @@ export const CompactBeatCard = ({
         
         {/* Favorite Button */}
         <div className="absolute top-2 right-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="h-6 w-6 p-0 bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-sm"
             onClick={onFavorite}
           >
             <Heart className={`w-3 h-3 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-1 h-6 w-6 p-0 bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-sm"
+            onClick={openPlaylistModal}
+          >
+            <ListPlus className="w-3 h-3 text-white" />
           </Button>
         </div>
       </div>
@@ -261,14 +375,48 @@ export const CompactBeatCard = ({
         
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-6 w-6 p-0"
               onClick={onShare}
             >
               <Share2 className="w-3 h-3" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={openPlaylistModal}
+            >
+              <ListPlus className="w-3 h-3" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <MoreHorizontal className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onPlay && (
+                  <DropdownMenuItem
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onPlay();
+                    }}
+                  >
+                    {isPlaying ? 'Pause preview' : 'Play preview'}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={openPlaylistModal}>
+                  Add to playlist
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onShare}>
+                  Share
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <PurchaseButton
             item={{
@@ -289,6 +437,7 @@ export const CompactBeatCard = ({
           />
         </div>
       </CardContent>
+      <PlaylistModal isOpen={isPlaylistModalOpen} onClose={closePlaylistModal} track={playlistTrack} />
     </Card>
   );
 };

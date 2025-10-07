@@ -4,6 +4,9 @@ import { playerAnalytics } from '@/services/analytics/player-analytics';
 import { trackAccessControl } from '@/services/audio/track-access-control';
 import { resolvePlayableUrl } from '@/services/audio/url-resolver';
 
+const PLAYER_STORAGE_KEY = 'globalPlayer';
+const PLAYER_STORAGE_VERSION = 2;
+
 export interface Track {
   id: string;
   title: string;
@@ -21,6 +24,10 @@ export interface Track {
   previewUrl?: string;
   previewStart?: number;
   previewEnd?: number;
+  preview_duration?: number;
+  purchaseUrl?: string;
+  isLocked?: boolean;
+  requiresPurchase?: boolean;
 }
 
 interface PlaybackState {
@@ -53,6 +60,8 @@ type PlayerAction =
   | { type: 'TOGGLE_MUTE' }
   | { type: 'TOGGLE_SHUFFLE' }
   | { type: 'TOGGLE_REPEAT' }
+  | { type: 'SET_SHUFFLE'; payload: boolean }
+  | { type: 'SET_REPEAT'; payload: 'none' | 'one' | 'all' }
   | { type: 'TOGGLE_EXPANDED' }
   | { type: 'ADD_TO_QUEUE'; payload: Track }
   | { type: 'PLAY_NEXT'; payload: Track }
@@ -80,6 +89,146 @@ const initialState: PlaybackState = {
   crossfadeEnabled: false,
   gaplessEnabled: true,
   quality: 'auto'
+};
+
+interface PersistedPreferences {
+  volume: number;
+  shuffle: boolean;
+  repeat: 'none' | 'one' | 'all';
+  crossfadeEnabled: boolean;
+  gaplessEnabled: boolean;
+  quality: 'auto' | 'high' | 'medium' | 'low';
+}
+
+interface PersistedPlayerState {
+  version: number;
+  queue: Track[];
+  currentTrack: Track | null;
+  currentIndex: number;
+  currentTime: number;
+  preferences: PersistedPreferences;
+}
+
+const defaultPreferences: PersistedPreferences = {
+  volume: 1,
+  shuffle: false,
+  repeat: 'none',
+  crossfadeEnabled: false,
+  gaplessEnabled: true,
+  quality: 'auto'
+};
+
+const isValidTrack = (track: any): track is Track =>
+  Boolean(
+    track &&
+      typeof track === 'object' &&
+      typeof track.id === 'string' &&
+      typeof track.src === 'string'
+  );
+
+const clearPersistedPlayerState = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(PLAYER_STORAGE_KEY);
+};
+
+const loadPersistedPlayerState = (): PersistedPlayerState | null => {
+  if (typeof window === 'undefined') return null;
+
+  const rawState = window.localStorage.getItem(PLAYER_STORAGE_KEY);
+  if (!rawState) return null;
+
+  try {
+    const parsed = JSON.parse(rawState);
+
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Persisted player state is not an object');
+    }
+
+    if (parsed.version !== PLAYER_STORAGE_VERSION) {
+      throw new Error('Persisted player state version mismatch');
+    }
+
+    const queue = Array.isArray(parsed.queue) ? parsed.queue.filter(isValidTrack) : [];
+    const currentTrack = parsed.currentTrack && isValidTrack(parsed.currentTrack)
+      ? parsed.currentTrack
+      : null;
+    const currentIndex = typeof parsed.currentIndex === 'number' ? parsed.currentIndex : -1;
+    const currentTime =
+      typeof parsed.currentTime === 'number' && Number.isFinite(parsed.currentTime)
+        ? parsed.currentTime
+        : 0;
+
+    const rawPreferences =
+      parsed.preferences && typeof parsed.preferences === 'object' ? parsed.preferences : {};
+
+    const preferences: PersistedPreferences = {
+      volume:
+        typeof rawPreferences.volume === 'number' && Number.isFinite(rawPreferences.volume)
+          ? Math.max(0, Math.min(1, rawPreferences.volume))
+          : defaultPreferences.volume,
+      shuffle:
+        typeof rawPreferences.shuffle === 'boolean'
+          ? rawPreferences.shuffle
+          : defaultPreferences.shuffle,
+      repeat:
+        rawPreferences.repeat === 'all' || rawPreferences.repeat === 'one'
+          ? rawPreferences.repeat
+          : defaultPreferences.repeat,
+      crossfadeEnabled:
+        typeof rawPreferences.crossfadeEnabled === 'boolean'
+          ? rawPreferences.crossfadeEnabled
+          : defaultPreferences.crossfadeEnabled,
+      gaplessEnabled:
+        typeof rawPreferences.gaplessEnabled === 'boolean'
+          ? rawPreferences.gaplessEnabled
+          : defaultPreferences.gaplessEnabled,
+      quality:
+        rawPreferences.quality === 'high' ||
+        rawPreferences.quality === 'medium' ||
+        rawPreferences.quality === 'low'
+          ? rawPreferences.quality
+          : defaultPreferences.quality
+    };
+
+    return {
+      version: PLAYER_STORAGE_VERSION,
+      queue: queue.map(track => ({ ...track })),
+      currentTrack: currentTrack ? { ...currentTrack } : null,
+      currentIndex,
+      currentTime,
+      preferences
+    };
+  } catch (error) {
+    console.warn('Clearing persisted player state due to parse error:', error);
+    clearPersistedPlayerState();
+    return null;
+  }
+};
+
+const persistPlayerState = (state: PlaybackState) => {
+  if (typeof window === 'undefined') return;
+
+  const payload: PersistedPlayerState = {
+    version: PLAYER_STORAGE_VERSION,
+    queue: state.queue.filter(isValidTrack).map(track => ({ ...track })),
+    currentTrack: state.currentTrack ? { ...state.currentTrack } : null,
+    currentIndex: state.currentIndex,
+    currentTime: Number.isFinite(state.currentTime) ? state.currentTime : 0,
+    preferences: {
+      volume: state.volume,
+      shuffle: state.shuffle,
+      repeat: state.repeat,
+      crossfadeEnabled: state.crossfadeEnabled,
+      gaplessEnabled: state.gaplessEnabled,
+      quality: state.quality
+    }
+  };
+
+  try {
+    window.localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('Failed to persist player state:', error);
+  }
 };
 
 function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackState {
@@ -199,11 +348,23 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         shuffle: !state.shuffle
       };
 
+    case 'SET_SHUFFLE':
+      return {
+        ...state,
+        shuffle: action.payload
+      };
+
     case 'TOGGLE_REPEAT':
       const nextRepeat = state.repeat === 'none' ? 'all' : state.repeat === 'all' ? 'one' : 'none';
       return {
         ...state,
         repeat: nextRepeat
+      };
+
+    case 'SET_REPEAT':
+      return {
+        ...state,
+        repeat: action.payload
       };
 
     case 'TOGGLE_EXPANDED':
@@ -336,6 +497,7 @@ interface GlobalPlayerProviderProps {
 export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const pendingSeekRef = useRef<number | null>(null);
 
   // Initialize analytics session
   useEffect(() => {
@@ -441,16 +603,32 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
       dispatch({ type: 'PAUSE' });
     };
 
+    const handleLoadedMetadata = () => {
+      if (pendingSeekRef.current !== null) {
+        const targetTime = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+        if (!Number.isNaN(targetTime)) {
+          const clampedTime = Math.max(
+            0,
+            Math.min(targetTime, Number.isFinite(audio.duration) ? audio.duration : targetTime)
+          );
+          audio.currentTime = clampedTime;
+        }
+      }
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
   }, [state.repeat, state.currentTrack]);
 
@@ -485,37 +663,109 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
 
   // Persist player state to localStorage
   useEffect(() => {
-    const playerState = {
-      volume: state.volume,
-      shuffle: state.shuffle,
-      repeat: state.repeat,
-      crossfadeEnabled: state.crossfadeEnabled,
-      gaplessEnabled: state.gaplessEnabled,
-      quality: state.quality
-    };
-
-    localStorage.setItem('globalPlayer', JSON.stringify(playerState));
-  }, [state.volume, state.shuffle, state.repeat, state.crossfadeEnabled, state.gaplessEnabled, state.quality]);
+    persistPlayerState(state);
+  }, [
+    state.queue,
+    state.currentTrack,
+    state.currentIndex,
+    state.currentTime,
+    state.volume,
+    state.shuffle,
+    state.repeat,
+    state.crossfadeEnabled,
+    state.gaplessEnabled,
+    state.quality
+  ]);
 
   // Restore player state from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('globalPlayer');
-    if (saved) {
+    let isMounted = true;
+
+    const hydratePlayerState = async () => {
+      const savedState = loadPersistedPlayerState();
+      if (!savedState) return;
+
       try {
-        const savedState = JSON.parse(saved);
-        dispatch({ type: 'SET_VOLUME', payload: savedState.volume || 1 });
-        if (savedState.shuffle) dispatch({ type: 'TOGGLE_SHUFFLE' });
-        if (savedState.repeat && savedState.repeat !== 'none') {
-          dispatch({ type: 'TOGGLE_REPEAT' });
-          if (savedState.repeat === 'one') dispatch({ type: 'TOGGLE_REPEAT' });
+        const enhancedQueuePromises = savedState.queue.map(async storedTrack => {
+          try {
+            const enhancedTrack = await trackAccessControl.enhanceTrackWithAccess(storedTrack);
+            const resolvedSrc = await resolvePlayableUrl(enhancedTrack.src);
+            return { ...enhancedTrack, src: resolvedSrc } as Track;
+          } catch (error) {
+            console.warn('Failed to hydrate track from persisted state:', storedTrack?.id, error);
+            return null;
+          }
+        });
+
+        const enhancedQueue = (await Promise.all(enhancedQueuePromises)).filter(
+          (track): track is Track => Boolean(track)
+        );
+
+        if (!isMounted) return;
+
+        if (enhancedQueue.length === 0) {
+          clearPersistedPlayerState();
+          return;
         }
-        dispatch({ type: 'SET_CROSSFADE', payload: savedState.crossfadeEnabled || false });
-        dispatch({ type: 'SET_GAPLESS', payload: savedState.gaplessEnabled !== false });
-        dispatch({ type: 'SET_QUALITY', payload: savedState.quality || 'auto' });
+
+        const savedIndex = typeof savedState.currentIndex === 'number' ? savedState.currentIndex : -1;
+        const normalizedIndex = savedIndex >= 0 && savedIndex < enhancedQueue.length
+          ? savedIndex
+          : savedState.currentTrack
+            ? Math.max(
+                0,
+                enhancedQueue.findIndex(track => track.id === savedState.currentTrack?.id)
+              )
+            : 0;
+
+        const currentIndex = Math.min(
+          Math.max(0, normalizedIndex),
+          enhancedQueue.length - 1
+        );
+
+        dispatch({ type: 'SET_QUEUE', payload: { tracks: enhancedQueue, index: currentIndex } });
+
+        const seekTime = Math.max(0, savedState.currentTime || 0);
+        if (seekTime > 0) {
+          pendingSeekRef.current = seekTime;
+          dispatch({ type: 'SEEK', payload: seekTime });
+        }
+
+        const { preferences } = savedState;
+        if (typeof preferences.volume === 'number') {
+          dispatch({ type: 'SET_VOLUME', payload: preferences.volume });
+        }
+
+        if (typeof preferences.shuffle === 'boolean') {
+          dispatch({ type: 'SET_SHUFFLE', payload: preferences.shuffle });
+        }
+
+        if (preferences.repeat) {
+          dispatch({ type: 'SET_REPEAT', payload: preferences.repeat });
+        }
+
+        if (typeof preferences.crossfadeEnabled === 'boolean') {
+          dispatch({ type: 'SET_CROSSFADE', payload: preferences.crossfadeEnabled });
+        }
+
+        if (typeof preferences.gaplessEnabled === 'boolean') {
+          dispatch({ type: 'SET_GAPLESS', payload: preferences.gaplessEnabled });
+        }
+
+        if (preferences.quality) {
+          dispatch({ type: 'SET_QUALITY', payload: preferences.quality });
+        }
       } catch (error) {
-        console.error('Error restoring player state:', error);
+        console.error('Error hydrating player state:', error);
+        clearPersistedPlayerState();
       }
-    }
+    };
+
+    hydratePlayerState();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

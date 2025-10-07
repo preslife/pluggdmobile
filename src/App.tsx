@@ -35,6 +35,7 @@ import Release from "./pages/Release";
 import Releases from "./pages/Releases";
 import ReleaseDetail from "./pages/ReleaseDetail";
 import ReleaseBuilder from "./pages/ReleaseBuilder";
+import PlaylistPage from "./pages/Playlist";
 import Store from "./pages/Store";
 import StoreSuccess from "./pages/StoreSuccess";
 import AccountOrders from "./pages/AccountOrders";
@@ -240,9 +241,18 @@ const AppContent = () => {
 <Route path="/release/new" element={<ProtectedRoute><ReleaseBuilder /></ProtectedRoute>} />
 <Route path="/my-releases" element={<ProtectedRoute><MyReleases /></ProtectedRoute>} />
 <Route path="/release/:id" element={<ReleaseDetail />} />
+        <Route path="/playlist/:id" element={<PlaylistPage />} />
         <Route path="/store" element={<Store />} />
         <Route path="/store/success" element={<ProtectedRoute><StoreSuccess /></ProtectedRoute>} />
-        <Route path="/account/orders" element={<ProtectedRoute><AccountOrders /></ProtectedRoute>} />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <AccountOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/account/orders" element={<Navigate to="/orders" replace />} />
         <Route path="/product/:id" element={<ProductRedirect />} />
         <Route path="/store/product/:id" element={<ProductDetail />} />
         <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>} >
