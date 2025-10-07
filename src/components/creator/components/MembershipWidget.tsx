@@ -140,6 +140,7 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscribingTierId, setSubscribingTierId] = useState<string | null>(null);
 
   const loadMembershipData = useCallback(async () => {
     try {
@@ -209,7 +210,37 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
     loadMembershipData();
   }, [loadMembershipData]);
 
-  const handleSubscribe = (tier: MembershipTierRow) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fanSubResult = params.get('fan_sub');
+    if (!fanSubResult) {
+      return;
+    }
+
+    const sessionId = params.get('session_id');
+
+    if (fanSubResult === 'success') {
+      toast({
+        title: 'Membership confirmed',
+        description: 'Welcome aboard! Perks will unlock automatically.',
+      });
+    } else if (fanSubResult === 'canceled') {
+      toast({
+        title: 'Checkout cancelled',
+        description: 'No worries — you can restart the membership anytime.',
+      });
+    }
+
+    loadMembershipData();
+
+    params.delete('fan_sub');
+    if (sessionId) params.delete('session_id');
+    const nextSearch = params.toString();
+    const nextUrl = nextSearch ? `${window.location.pathname}?${nextSearch}` : window.location.pathname;
+    window.history.replaceState({}, '', nextUrl);
+  }, [loadMembershipData, toast]);
+
+  const handleSubscribe = async (tier: MembershipTierRow) => {
     if (!user) {
       toast({
         title: 'Sign in required',
@@ -229,11 +260,37 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
     }
 
     setSubscribing(true);
-    toast({
-      title: 'Checkout coming soon',
-      description: 'Membership checkout is being wired to the new tier system. Please check back shortly.',
-    });
-    setSubscribing(false);
+    setSubscribingTierId(tier.id);
+
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('create-fan-subscription', {
+        body: {
+          creatorId,
+          membershipTierId: tier.id,
+        },
+      });
+
+      if (invokeError) {
+        throw invokeError;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      throw new Error('Membership checkout URL was not returned.');
+    } catch (err: any) {
+      console.error('[MembershipWidget] subscribe error', err);
+      toast({
+        title: 'Unable to start checkout',
+        description: err?.message ?? 'Please try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubscribing(false);
+      setSubscribingTierId(null);
+    }
   };
 
   const handleManageBilling = async () => {
@@ -464,10 +521,10 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
             ) : null}
             <Button
               className="mt-4 w-full"
-              disabled={subscribing}
+              disabled={subscribing && subscribingTierId === heroTier?.id}
               onClick={() => heroTier && handleSubscribe(heroTier)}
             >
-              {subscribing ? 'Preparing checkout…' : 'Join membership'}
+              {subscribing && subscribingTierId === heroTier?.id ? 'Preparing checkout…' : 'Join membership'}
             </Button>
           </div>
 
@@ -513,7 +570,7 @@ export const MembershipWidget = ({ creatorId, visitorStatus }: MembershipWidgetP
         <div className="space-y-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Lock className="h-3.5 w-3.5" />
-            Cancel anytime. Perks unlock instantly once checkout is available.
+            Cancel anytime. Perks unlock instantly after checkout completes.
           </div>
           <div className="flex items-center gap-2">
             <Zap className="h-3.5 w-3.5" />

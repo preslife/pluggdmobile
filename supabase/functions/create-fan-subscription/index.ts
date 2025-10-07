@@ -24,8 +24,13 @@ serve(async (req) => {
   );
 
   try {
-    const { creatorId, pricePence = 500 } = await req.json(); // Default £5.00
+    const {
+      creatorId,
+      membershipTierId,
+      pricePence = 500,
+    } = await req.json(); // Default £5.00
     if (!creatorId) throw new Error("Missing creatorId");
+    if (!membershipTierId) throw new Error("Missing membershipTierId");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -50,6 +55,50 @@ serve(async (req) => {
     // Platform takes 20% fee (80/20 split)
     const applicationFeePercent = 20;
 
+    const { data: tierRow, error: tierError } = await supabaseService
+      .from('membership_tiers')
+      .select(
+        `id, owner_id, owner_type, status, price_monthly, currency, metadata, stripe_price_id, stripe_price_monthly_id`
+      )
+      .eq('id', membershipTierId)
+      .maybeSingle();
+
+    if (tierError) throw tierError;
+    if (!tierRow) throw new Error('Membership tier not found');
+    if (tierRow.owner_type !== 'profile' || tierRow.owner_id !== creatorId) {
+      throw new Error('This tier does not belong to the requested creator.');
+    }
+    if (tierRow.status !== 'active') {
+      throw new Error('This membership tier is not published yet.');
+    }
+
+    const tierPriceCents =
+      typeof tierRow.price_monthly === 'number' ? tierRow.price_monthly : pricePence;
+    if (!tierPriceCents) {
+      throw new Error('Membership tier price is not configured.');
+    }
+
+    const tierCurrency = tierRow.currency ?? 'usd';
+
+    const metadataRecord =
+      typeof tierRow.metadata === 'object' && tierRow.metadata !== null
+        ? (tierRow.metadata as Record<string, unknown>)
+        : {};
+
+    const metadataStripePrice =
+      typeof metadataRecord['stripe_price_id'] === 'string'
+        ? (metadataRecord['stripe_price_id'] as string)
+        : undefined;
+
+    const stripePriceId =
+      metadataStripePrice ||
+      (tierRow as any).stripe_price_id ||
+      (tierRow as any).stripe_price_monthly_id;
+
+    if (!stripePriceId || typeof stripePriceId !== 'string') {
+      throw new Error('Membership tier is missing a Stripe price.');
+    }
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
     });
@@ -69,15 +118,7 @@ serve(async (req) => {
       mode: 'subscription',
       line_items: [
         {
-          price_data: {
-            currency: 'gbp',
-            unit_amount: pricePence,
-            recurring: { interval: 'month' },
-            product_data: {
-              name: 'Fan Subscription',
-              description: 'Monthly support for a creator on Pluggd',
-            },
-          },
+          price: stripePriceId,
           quantity: 1,
         },
       ],
@@ -87,6 +128,9 @@ serve(async (req) => {
         metadata: {
           creatorId,
           fanId: user.id,
+          membershipTierId,
+          membership_tier_id: membershipTierId,
+          stripe_price_id: stripePriceId,
         },
       },
       success_url: `${origin}/profile/${creatorId}?fan_sub=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -95,6 +139,9 @@ serve(async (req) => {
         type: 'fan_subscription',
         creatorId,
         fanId: user.id,
+        membershipTierId,
+        membership_tier_id: membershipTierId,
+        stripe_price_id: stripePriceId,
       },
     });
 
@@ -103,8 +150,8 @@ serve(async (req) => {
       fan_id: user.id,
       creator_id: creatorId,
       status: 'pending',
-      price_cents: pricePence,
-      currency: 'gbp',
+      price_cents: tierPriceCents,
+      currency: tierCurrency,
     } as any);
 
     return new Response(JSON.stringify({ url: session.url }), {

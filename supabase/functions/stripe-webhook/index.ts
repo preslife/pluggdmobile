@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createDownloadRecords, handleChargeReversal, type Logger } from "./helpers.ts";
+import {
+  createDownloadRecords,
+  handleChargeReversal,
+  syncMembershipFromSubscription,
+  type Logger,
+} from "./helpers.ts";
 
 const logStep: Logger = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -904,11 +909,39 @@ serve(async (req) => {
         }
         break;
       }
+      case 'customer.subscription.created':
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        logStep('Processing subscription lifecycle event', {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          type: event.type,
+        });
+
+        await syncMembershipFromSubscription(supabaseClient, subscription, logStep);
+        break;
+      }
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
+        logStep('Processing subscription lifecycle event', {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          type: event.type,
+        });
+
+        const membershipResult = await syncMembershipFromSubscription(
+          supabaseClient,
+          subscription,
+          logStep
+        );
+
+        if (membershipResult?.processed) {
+          break;
+        }
+
         logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
-        
+
         const customerId = subscription.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
         
