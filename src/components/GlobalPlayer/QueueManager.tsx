@@ -1,13 +1,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+import {
   Play,
   X,
   GripVertical,
   MoreHorizontal,
   Music,
-  Clock
+  Clock,
+  Lock
 } from 'lucide-react';
 import { useGlobalPlayer, Track } from './GlobalPlayerProvider';
 import { cn } from '@/lib/utils';
@@ -91,11 +92,21 @@ export const QueueManager: React.FC<QueueManagerProps> = ({ className }) => {
               />
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{state.currentTrack.title}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium truncate">{state.currentTrack.title}</p>
+                {state.currentTrack.isLocked && (
+                  <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                )}
+              </div>
               <p className="text-sm text-muted-foreground truncate">{state.currentTrack.artist}</p>
             </div>
             <div className="text-sm text-muted-foreground">
-              {state.currentTrack.duration && formatTime(state.currentTrack.duration)}
+              {(() => {
+                const nowPlayingDuration = state.currentTrack.streamable
+                  ? state.currentTrack.duration || 0
+                  : state.currentTrack.preview_duration || state.currentTrack.duration || 0;
+                return nowPlayingDuration ? formatTime(nowPlayingDuration) : null;
+              })()}
             </div>
           </div>
         </div>
@@ -111,10 +122,15 @@ export const QueueManager: React.FC<QueueManagerProps> = ({ className }) => {
           {state.queue.map((track, index) => {
             const isCurrentTrack = index === state.currentIndex;
             const isUpcoming = index > state.currentIndex;
-            
+
+            const displayDuration = track.streamable
+              ? track.duration || 0
+              : track.preview_duration || track.duration || 0;
+            const purchaseUrl = track.requiresPurchase ? track.purchaseUrl : undefined;
+
             // Don't show current track in the upcoming list
             if (isCurrentTrack) return null;
-            
+
             return (
               <div
                 key={`${track.id}-${index}`}
@@ -154,17 +170,32 @@ export const QueueManager: React.FC<QueueManagerProps> = ({ className }) => {
 
                 {/* Track info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{track.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{track.title}</p>
+                    {track.isLocked && (
+                      <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
                 </div>
 
                 {/* Duration */}
                 <div className="text-sm text-muted-foreground">
-                  {track.duration && formatTime(track.duration)}
+                  {displayDuration ? formatTime(displayDuration) : null}
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                  {track.requiresPurchase && purchaseUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      asChild
+                    >
+                      <a href={purchaseUrl}>Unlock</a>
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
