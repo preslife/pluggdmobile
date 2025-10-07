@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { creditSystem, CreditTransaction, WalletBalanceSummary } from '@/services/credits/credit-system';
+import {
+  creditSystem,
+  CreditTransaction,
+  TransactionFilters,
+  WalletBalanceSummary,
+  WalletTransactionKind,
+} from '@/services/credits/credit-system';
 import {
   Coins,
   Plus,
@@ -13,8 +19,12 @@ import {
   Loader2,
   ShoppingCart,
   RefreshCw,
-  CreditCard
+  CreditCard,
+  Download,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface CreditBalanceProps {
   showTransactions?: boolean;
@@ -26,43 +36,199 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
   const { toast } = useToast();
   const [balance, setBalance] = useState<WalletBalanceSummary | null>(null);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(showTransactions);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [transactionKindFilter, setTransactionKindFilter] = useState<
+    WalletTransactionKind | 'all'
+  >('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const pageSize = 10;
+  const [currentPage, setCurrentPage] = useState(0);
+
+  useEffect(() => {
+    setTransactionsLoading(showTransactions);
+  }, [showTransactions]);
+
+  const buildFilterParams = useCallback((): TransactionFilters => {
+    const filters: TransactionFilters = {};
+
+    if (transactionKindFilter !== 'all') {
+      filters.kind = transactionKindFilter;
+    }
+
+    if (startDate) {
+      const start = new Date(`${startDate}T00:00:00`);
+      filters.startDate = start.toISOString();
+    }
+
+    if (endDate) {
+      const endDateObj = new Date(`${endDate}T23:59:59.999`);
+      filters.endDate = endDateObj.toISOString();
+    }
+
+    return filters;
+  }, [endDate, startDate, transactionKindFilter]);
+
+  const fetchBalance = useCallback(async () => {
+    if (!user) return;
+
+    setBalanceLoading(true);
+    try {
+      const balanceResult = await creditSystem.getBalanceSummary(user.id);
+      setBalance(balanceResult);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load credit balance',
+        variant: 'destructive',
+      });
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [toast, user]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!user || !showTransactions) return;
+
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+    const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
+
+    if (start && end && start > end) {
+      toast({
+        title: 'Invalid date range',
+        description: 'Start date must be earlier than end date.',
+        variant: 'destructive',
+      });
+      setTransactions([]);
+      setTransactionsLoading(false);
+      return;
+    }
+
+    setTransactionsLoading(true);
+    try {
+      const filters = buildFilterParams();
+      const transactionsResult = await creditSystem.getTransactionHistory(user.id, {
+        limit: pageSize,
+        offset: currentPage * pageSize,
+        filters,
+      });
+
+      setTransactions(transactionsResult);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load transactions',
+        variant: 'destructive',
+      });
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [
+    buildFilterParams,
+    currentPage,
+    endDate,
+    pageSize,
+    showTransactions,
+    startDate,
+    toast,
+    user,
+  ]);
 
   useEffect(() => {
     if (user) {
-      fetchData();
+      fetchBalance();
+      if (showTransactions) {
+        fetchTransactions();
+      }
     }
-  }, [user]);
+  }, [fetchBalance, fetchTransactions, showTransactions, user]);
 
-  const fetchData = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const [balanceResult, transactionsResult] = await Promise.all([
-        creditSystem.getBalanceSummary(user.id),
-        showTransactions ? creditSystem.getTransactionHistory(user.id, 10) : Promise.resolve([])
-      ]);
-
-      setBalance(balanceResult);
-      setTransactions(transactionsResult as CreditTransaction[]);
-    } catch (error) {
-      console.error('Error fetching credit data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load credit information',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [endDate, startDate, transactionKindFilter]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await Promise.all([fetchBalance(), showTransactions ? fetchTransactions() : Promise.resolve()]);
     setRefreshing(false);
+  };
+
+  const handleResetFilters = () => {
+    setTransactionKindFilter('all');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const handleExport = async () => {
+    if (!user) return;
+
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+    const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
+
+    if (start && end && start > end) {
+      toast({
+        title: 'Invalid date range',
+        description: 'Start date must be earlier than end date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const filters = buildFilterParams();
+      const exportTransactions = await creditSystem.getFilteredTransactions(user.id, filters);
+
+      if (!exportTransactions.length) {
+        toast({
+          title: 'No transactions to export',
+          description: 'Try adjusting your filters to include more transactions.',
+        });
+        return;
+      }
+
+      const csvHeader = ['Date', 'Type', 'Description', 'Amount'];
+      const csvRows = exportTransactions.map((transaction) => {
+        const date = new Date(transaction.created_at).toLocaleString();
+        const description = getTransactionLabel(transaction);
+        const amount = transaction.amount_credits.toString();
+
+        return [date, transaction.kind, description, amount]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(',');
+      });
+
+      const csvContent = [csvHeader.join(','), ...csvRows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `credit-transactions-${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export started',
+        description: 'Your CSV download should begin shortly.',
+      });
+    } catch (error) {
+      console.error('Error exporting transactions:', error);
+      toast({
+        title: 'Export failed',
+        description: 'There was an issue exporting your transactions.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getTransactionIcon = (kind: CreditTransaction['kind']) => {
@@ -122,6 +288,24 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
     return null;
   }
 
+  const transactionKindOptions = useMemo<
+    { value: WalletTransactionKind | 'all'; label: string }[]
+  >(
+    () => [
+      { value: 'all', label: 'All transactions' },
+      { value: 'topup', label: 'Credits added' },
+      { value: 'spend_purchase', label: 'Purchases' },
+      { value: 'spend_tip', label: 'Tips sent' },
+      { value: 'spend_battle', label: 'Battles' },
+      { value: 'spend_gift', label: 'Gifts sent' },
+      { value: 'award_prize', label: 'Prizes awarded' },
+      { value: 'earn_gift', label: 'Gifts received' },
+      { value: 'convert_cashout', label: 'Cash-outs' },
+      { value: 'convert_sub_applied', label: 'Subscription applied' },
+    ],
+    [],
+  );
+
   return (
     <div className={`space-y-4 ${className}`}>
       <Card>
@@ -152,7 +336,7 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
           </div>
         </CardHeader>
         <CardContent>
-          {loading || !balance ? (
+          {balanceLoading || !balance ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
@@ -203,7 +387,62 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            <div className="flex flex-col gap-4 mb-4 md:flex-row md:items-end md:justify-between">
+              <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="transaction-kind">Transaction type</Label>
+                  <Select
+                    value={transactionKindFilter}
+                    onValueChange={(value) =>
+                      setTransactionKindFilter(value as WalletTransactionKind | 'all')
+                    }
+                  >
+                    <SelectTrigger id="transaction-kind">
+                      <SelectValue placeholder="All transactions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {transactionKindOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="transaction-start">Start date</Label>
+                  <Input
+                    id="transaction-start"
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="transaction-end">End date</Label>
+                  <Input
+                    id="transaction-end"
+                    type="date"
+                    value={endDate}
+                    onChange={(event) => setEndDate(event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                  Reset
+                </Button>
+                <Button size="sm" onClick={handleExport} disabled={exporting}>
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Export CSV
+                </Button>
+              </div>
+            </div>
+            {transactionsLoading ? (
               <div className="space-y-2">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse">
@@ -246,7 +485,7 @@ export const CreditBalance = ({ showTransactions = false, className }: CreditBal
                   </div>
                 ))}
                 
-                {transactions.length >= 10 && (
+                {transactions.length >= pageSize && (
                   <Button variant="ghost" className="w-full mt-2" asChild>
                     <a href="/credits/history">
                       View All Transactions
