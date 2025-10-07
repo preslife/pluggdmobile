@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { EnhancedBadge } from '@/components/ui/badge-enhanced';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { ShoppingCart, Download, Heart, ExternalLink, Play, Pause } from 'lucide-react';
+import { ShoppingCart, Download, Heart, ExternalLink, Play, Pause, ListPlus, MoreHorizontal } from 'lucide-react';
 import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PlaylistModal } from '@/components/PlaylistModal';
 
 interface ReleaseCardProps {
   release: {
@@ -43,7 +45,8 @@ export const ReleaseCard = ({
   const { toast } = useToast();
   const [purchasing, setPurchasing] = useState(false);
   const { state, actions } = useGlobalPlayer();
-  
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+
   const isCurrentTrack = state.currentTrack?.id === release.id;
   const isPlaying = isCurrentTrack && state.isPlaying;
   const [customAmount, setCustomAmount] = useState(release.minimum_price || 0);
@@ -55,6 +58,26 @@ export const ReleaseCard = ({
   const audioSrc = release.download_url || release.preview_url;
   const hasAudio = !!audioSrc;
   const isTrackPlaying = isCurrentTrack && isPlaying;
+
+  const playlistTrack = useMemo(
+    () => ({
+      id: release.id,
+      title: release.title,
+      artist: release.artist,
+      src: audioSrc || '',
+      artwork: release.cover_art_url,
+      type: 'release' as const,
+      releaseId: release.id,
+      userId: release.user_id,
+    }),
+    [release.id, release.title, release.artist, audioSrc, release.cover_art_url, release.user_id]
+  );
+
+  const openPlaylistModal = (event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setIsPlaylistModalOpen(true);
+  };
 
   const handlePurchase = async (amount?: number) => {
     if (!user) {
@@ -113,7 +136,7 @@ export const ReleaseCard = ({
     handlePurchase(customAmount);
   };
 
-  const handlePlay = (e: React.MouseEvent) => {
+  const handlePlay = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (hasAudio) {
@@ -154,24 +177,68 @@ export const ReleaseCard = ({
           )}
           
           {/* Global Audio Player Overlay */}
-          {hasAudio && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm rounded-t-lg">
+          <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm rounded-t-lg">
+            <div className="flex items-center justify-end gap-2 p-3">
               <Button
-                size="lg"
-                onClick={handlePlay}
-                className="w-12 h-12 rounded-full bg-white/90 hover:bg-white text-black hover:scale-110 transition-all shadow-xl"
+                variant="secondary"
+                size="icon"
+                className="h-8 w-8 rounded-full bg-white/90 text-black hover:bg-white"
+                onClick={openPlaylistModal}
               >
-                {isTrackPlaying ? (
-                  <Pause className="w-5 h-5" />
-                ) : (
-                  <Play className="w-5 h-5 ml-0.5" />
-                )}
+                <ListPlus className="w-4 h-4" />
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-white/90 text-black hover:bg-white"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {hasAudio && (
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        handlePlay(event);
+                      }}
+                    >
+                      {isTrackPlaying ? 'Pause preview' : 'Play preview'}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={openPlaylistModal}>
+                    Add to playlist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to={`/release/${release.id}`}>View release</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
+            {hasAudio && (
+              <div className="flex items-center justify-center pb-4">
+                <Button
+                  size="lg"
+                  onClick={handlePlay}
+                  className="w-12 h-12 rounded-full bg-white/90 hover:bg-white text-black hover:scale-110 transition-all shadow-xl"
+                >
+                  {isTrackPlaying ? (
+                    <Pause className="w-5 h-5" />
+                  ) : (
+                    <Play className="w-5 h-5 ml-0.5" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
-    
+
     <CardContent className="p-3">
       <div className="space-y-2">
         <div>
@@ -197,6 +264,38 @@ export const ReleaseCard = ({
                 {release.total_plays} plays
               </span>
             )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={openPlaylistModal}
+            >
+              <ListPlus className="w-3 h-3 mr-2" />
+              Add to playlist
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasAudio && (
+                  <DropdownMenuItem onClick={handlePlay}>
+                    {isTrackPlaying ? 'Pause preview' : 'Play preview'}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={openPlaylistModal}>
+                  Add to playlist
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={`/release/${release.id}`}>View details</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {canPurchase && (
@@ -301,6 +400,11 @@ export const ReleaseCard = ({
           )}
         </div>
       </CardContent>
+      <PlaylistModal
+        isOpen={isPlaylistModalOpen}
+        onClose={() => setIsPlaylistModalOpen(false)}
+        track={playlistTrack}
+      />
     </Card>
   );
 };
