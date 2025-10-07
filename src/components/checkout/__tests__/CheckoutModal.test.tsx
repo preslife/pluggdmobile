@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CheckoutModal } from '../CheckoutModal';
-import type { PurchaseItem } from '@/services/credits/credit-system';
+import type { PurchaseItem, PurchaseItemType } from '@/services/credits/credit-system';
 
 const hoistedMocks = vi.hoisted(() => ({
   toastMock: vi.fn(),
@@ -156,7 +156,7 @@ describe('CheckoutModal hybrid checkout flow', () => {
       },
     ];
 
-    const typeLabels: Record<PurchaseItem['type'], string> = {
+    const typeLabels: Partial<Record<PurchaseItemType, string>> = {
       release: 'Release',
       beat: 'Beat',
       sample_pack: 'Sample Pack',
@@ -202,21 +202,21 @@ describe('CheckoutModal hybrid checkout flow', () => {
                 title: item.title,
                 price: item.price,
                 license_type: item.license_type,
-                metadata: expect.objectContaining({
-                  ...(item.metadata ?? {}),
-                  type_label: typeLabels[item.type],
-                }),
-              })),
-            }),
+              metadata: expect.objectContaining({
+                ...(item.metadata ?? {}),
+                type_label: typeLabels[item.type] ?? item.type,
+              }),
+            })),
           }),
-        })
-      );
+        }),
+      })
+    );
       expect(processPurchaseMock).toHaveBeenCalledWith(
         'user-123',
         checkoutItems.map((item) => ({
           ...item,
           metadata: {
-            type_label: typeLabels[item.type],
+            type_label: typeLabels[item.type] ?? item.type,
             ...(item.metadata ?? {}),
           },
         })),
