@@ -93,7 +93,7 @@ describe('CreditSystemService.processPurchase', () => {
 
   it('respects requestedCreditSpend when provided', async () => {
     const items: PurchaseItem[] = [
-      { id: 'pack-1', type: 'pack', title: 'Sample Pack', price: 150 },
+      { id: 'pack-1', type: 'sample_pack', title: 'Sample Pack', price: 150 },
     ];
 
     const result = await creditSystem.processPurchase('user-3', items, {

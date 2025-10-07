@@ -32,9 +32,16 @@ export interface WalletBalanceSummary {
   total_spent: number;
 }
 
+export type PurchaseItemType =
+  | 'release'
+  | 'beat'
+  | 'sample_pack'
+  | 'membership'
+  | 'course';
+
 export interface PurchaseItem {
   id: string;
-  type: 'beat' | 'release' | 'pack' | 'license';
+  type: PurchaseItemType;
   title: string;
   price: number;
   license_type?: 'basic' | 'premium' | 'exclusive';
@@ -321,7 +328,7 @@ class CreditSystemService {
    */
   async getPurchasedItems(
     userId: string,
-    productType?: 'beat' | 'release' | 'pack',
+    productType?: PurchaseItemType,
   ): Promise<any[]> {
     let query = supabase
       .from('user_downloads')

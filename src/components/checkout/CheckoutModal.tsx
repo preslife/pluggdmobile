@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   creditSystem,
   type PurchaseItem,
+  type PurchaseItemType,
   type WalletBalanceSummary,
 } from '@/services/credits/credit-system';
 import { creditPolicyService } from '@/services/credits/credit-policy';
@@ -26,11 +27,16 @@ import {
   CreditCard,
   Coins,
   Download,
-  Music,
   AlertCircle,
   CheckCircle,
   Loader2,
+  AudioWaveform,
+  Disc,
+  Package,
+  Users,
+  GraduationCap,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -41,6 +47,39 @@ interface CheckoutModalProps {
 
 const DEFAULT_MAX_CART_PERCENT = 0.5;
 const CREDITS_PER_GBP = 100;
+
+const PURCHASE_TYPE_CONFIG: Record<PurchaseItemType, { label: string; icon: LucideIcon; accentClass: string }> = {
+  release: {
+    label: 'Release',
+    icon: Disc,
+    accentClass: 'bg-purple-500/10 text-purple-500',
+  },
+  beat: {
+    label: 'Beat',
+    icon: AudioWaveform,
+    accentClass: 'bg-blue-500/10 text-blue-500',
+  },
+  sample_pack: {
+    label: 'Sample Pack',
+    icon: Package,
+    accentClass: 'bg-amber-500/10 text-amber-500',
+  },
+  membership: {
+    label: 'Membership',
+    icon: Users,
+    accentClass: 'bg-emerald-500/10 text-emerald-500',
+  },
+  course: {
+    label: 'Course',
+    icon: GraduationCap,
+    accentClass: 'bg-sky-500/10 text-sky-500',
+  },
+};
+
+const formatLicenseLabel = (licenseType?: PurchaseItem['license_type']): string | null => {
+  if (!licenseType) return null;
+  return `${licenseType.charAt(0).toUpperCase()}${licenseType.slice(1)} license`;
+};
 
 export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutModalProps) => {
   const { user } = useAuth();
@@ -53,7 +92,25 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
   const [maxCartPercent, setMaxCartPercent] = useState(DEFAULT_MAX_CART_PERCENT);
   const [policyLoading, setPolicyLoading] = useState(false);
 
-  const totalCost = items.reduce((sum, item) => sum + item.price, 0);
+  const checkoutItems = useMemo<PurchaseItem[]>(() => {
+    return items.map((item) => {
+      const config = PURCHASE_TYPE_CONFIG[item.type];
+      const metadata = {
+        type_label: config.label,
+        ...(item.metadata ?? {}),
+      };
+
+      return {
+        ...item,
+        metadata,
+      };
+    });
+  }, [items]);
+
+  const totalCost = useMemo(
+    () => checkoutItems.reduce((sum, item) => sum + item.price, 0),
+    [checkoutItems],
+  );
 
   useEffect(() => {
     if (isOpen && user) {
@@ -149,7 +206,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         credits_applied: creditsToApply,
         total_cost_credits: totalCost,
         max_credit_percentage: maxCartPercent,
-        items: items.map((item) => ({
+        items: checkoutItems.map((item) => ({
           id: item.id,
           type: item.type,
           title: item.title,
@@ -187,7 +244,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         checkoutSession = await createHybridCheckout(cashDueCredits);
       }
 
-      const result = await creditSystem.processPurchase(user.id, items, {
+      const result = await creditSystem.processPurchase(user.id, checkoutItems, {
         requestedCredits: desiredCredits,
         maxCreditPercentage: maxCartPercent,
         cartTotal: totalCost,
@@ -305,19 +362,31 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
             <div>
               <h3 className="font-semibold mb-3">Order Summary</h3>
               <div className="space-y-2">
-                {items.map((item) => (
+                {checkoutItems.map((item) => {
+                  const typeConfig = PURCHASE_TYPE_CONFIG[item.type];
+                  const TypeIcon = typeConfig.icon;
+                  const licenseLabel = formatLicenseLabel(item.license_type);
+
+                  return (
                   <Card key={item.id}>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Music className="h-5 w-5 text-primary" />
+                          <div
+                            className={`w-10 h-10 ${typeConfig.accentClass} rounded-lg flex items-center justify-center`}
+                          >
+                            <TypeIcon className="h-5 w-5" />
                           </div>
                           <div>
                             <div className="font-medium text-sm">{item.title}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {item.type}
-                              {item.license_type && ` • ${item.license_type} license`}
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span>{typeConfig.label}</span>
+                              {licenseLabel && (
+                                <>
+                                  <span>•</span>
+                                  <span>{licenseLabel}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -331,7 +400,8 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -339,7 +409,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
               <Separator />
               <div className="py-4 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Items ({items.length})</span>
+                  <span>Items ({checkoutItems.length})</span>
                   <span>{totalCost} credits</span>
                 </div>
                 <div className="flex justify-between text-sm">
