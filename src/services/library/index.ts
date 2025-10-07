@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 
-export type LibraryItemType = "beat" | "release" | "sample_pack" | "membership" | "course" | "campaign";
+export type LibraryItemType =
+  | "beat"
+  | "release"
+  | "sample_pack"
+  | "membership"
+  | "course"
+  | "campaign"
+  | "live_session";
 
 export interface LibraryItem {
   id: string; // purchase id
@@ -35,7 +42,15 @@ export interface FetchLibraryItemsOptions {
   types?: LibraryItemType[];
 }
 
-const LIBRARY_ITEM_TYPES: LibraryItemType[] = ["release", "beat", "sample_pack", "membership", "course", "campaign"];
+const LIBRARY_ITEM_TYPES: LibraryItemType[] = [
+  "release",
+  "beat",
+  "sample_pack",
+  "membership",
+  "course",
+  "campaign",
+  "live_session",
+];
 
 const DEFAULT_RELEASE_DOWNLOAD_LIMIT = 3;
 const DEFAULT_BEAT_DOWNLOAD_LIMIT = 5;
@@ -186,6 +201,39 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     : Promise.resolve({ data: null, error: null });
   promises.push(campaignPromise);
 
+  const liveSessionPromise = typeSet.has("live_session")
+    ? (async () => {
+        const { data: ticketRows, error: ticketError } = await supabase
+          .from("live_tickets")
+          .select("session_id")
+          .eq("user_id", userId)
+          .neq("status", "refunded");
+
+        if (ticketError) {
+          throw ticketError;
+        }
+
+        const sessionIds = Array.from(
+          new Set((ticketRows ?? []).map((row) => row.session_id).filter((value): value is string => Boolean(value))),
+        );
+
+        if (sessionIds.length === 0) {
+          return { data: [] as any[], error: null };
+        }
+
+        return supabase
+          .from("recordings")
+          .select(
+            `id, session_id, title, playback_url, created_at, published_at, duration_seconds,
+             sessions:sessions!inner(id, title, scheduled_at)`
+          )
+          .in("session_id", sessionIds)
+          .not("published_at", "is", null)
+          .order("created_at", { ascending: false });
+      })()
+    : Promise.resolve({ data: null, error: null });
+  promises.push(liveSessionPromise);
+
   const [
     downloadCounts,
     releaseRes,
@@ -194,6 +242,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     membershipRes,
     courseRes,
     campaignRes,
+    liveSessionRes,
   ] = await Promise.all(promises);
 
   if (releaseRes.error) {
@@ -214,6 +263,9 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
   if (campaignRes.error) {
     throw campaignRes.error;
   }
+  if (liveSessionRes.error) {
+    throw liveSessionRes.error;
+  }
 
   const itemsByType: Record<LibraryItemType, LibraryItem[]> = {
     release: [],
@@ -222,6 +274,7 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     membership: [],
     course: [],
     campaign: [],
+    live_session: [],
   };
 
   for (const purchase of releaseRes.data ?? []) {
@@ -436,6 +489,31 @@ export async function fetchLibraryItems(userId: string, options: FetchLibraryIte
     });
   }
 
+  for (const recording of (liveSessionRes.data as any[]) ?? []) {
+    const session = recording.sessions;
+    itemsByType.live_session.push({
+      id: recording.id,
+      type: "live_session",
+      productId: recording.id,
+      title: recording.title ?? session?.title ?? "Session recording",
+      creatorName: null,
+      artworkUrl: null,
+      tags: null,
+      genre: null,
+      purchaseDate: recording.created_at ?? new Date().toISOString(),
+      pricePaid: 0,
+      downloadSourcePath: recording.playback_url ?? null,
+      previewUrl: recording.playback_url ?? null,
+      canDownload: Boolean(recording.playback_url),
+      downloadCount: 0,
+      maxDownloads: null,
+      downloadExpiresAt: null,
+      lastDownloadedAt: null,
+      licenseUrl: null,
+      receiptUrl: null,
+    });
+  }
+
   const items = LIBRARY_ITEM_TYPES.filter((type) => typeSet.has(type)).flatMap((type) => itemsByType[type]);
   items.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
 
@@ -459,6 +537,7 @@ const emptyItemsByType = (): Record<LibraryItemType, LibraryItem[]> => ({
   membership: [],
   course: [],
   campaign: [],
+  live_session: [],
 });
 
 export function useLibrary(userId?: string | null): UseLibraryResult {

@@ -20,7 +20,8 @@ interface EmailRequest {
     | 'fan_your_library'
     | 'fan_tip_receipt'
     | 'creator_tip_notification'
-    | 'label_team_invite';
+    | 'label_team_invite'
+    | 'live_session_reminder';
   user_data?: any;
 }
 
@@ -173,6 +174,23 @@ const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((d
         <p>If the button doesn't work, copy and paste this link into your browser:</p>
         <p style="word-break: break-all; color: #2563eb;">${data.invite_url}</p>
         <p style="margin-top: 24px;">Looking forward to building something great together!<br>The Pluggd Team</p>
+      </div>
+    `
+  },
+  live_session_reminder: {
+    subject: (data: any) => {
+      const title = data.session_title || 'your live session';
+      const prefix = data.reminder_type === '24h' ? '24 hour reminder' : 'Starting soon';
+      return `${prefix}: ${title}`;
+    },
+    html: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #2563eb;">${data.session_title || 'Upcoming live session'}</h1>
+        <p style="margin-bottom: 16px;">This is your ${data.reminder_type === '24h' ? '24 hour' : '1 hour'} reminder.</p>
+        <p style="margin-bottom: 16px;">Start time: ${data.scheduled_at ? new Date(data.scheduled_at).toLocaleString() : 'Check your dashboard'}</p>
+        ${data.ics_url ? `<p style="margin-bottom: 16px;"><a href="${data.ics_url}" style="color: #2563eb;">Add to calendar (.ics)</a></p>` : ''}
+        <p style="margin-bottom: 16px;">We'll notify you again just before we go live. See you there!</p>
+        <p style="color: #6b7280; font-size: 12px;">If you no longer plan to attend you can manage reminders from your Pluggd dashboard.</p>
       </div>
     `
   }
