@@ -158,9 +158,18 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const creatorId = body.creator_id || userData.user.id;
-    const filters = body.filters || {};
-    const segmentId = body.segment_id || null;
+    const requestedCreatorId = body?.creator_id ?? null;
+    const filters = body?.filters ?? {};
+    const segmentId = body?.segment_id ?? null;
+
+    if (requestedCreatorId && requestedCreatorId !== userData.user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const creatorId = requestedCreatorId ?? userData.user.id;
 
     const { data: contacts, error: contactsError } = await serviceClient.rpc('get_crm_contacts', {
       p_creator_id: creatorId
