@@ -55,6 +55,20 @@ interface Segment {
   refreshed_at?: string | null;
 }
 
+interface SupporterEvent {
+  id: string;
+  supporterId?: string | null;
+  supporterName: string;
+  supporterEmail?: string;
+  amount: number;
+  status: string;
+  contributedAt: string;
+  fulfilledAt?: string | null;
+  refundedAt?: string | null;
+  campaignTitle: string;
+  rewardTitle?: string | null;
+}
+
 /**
  * EnhancedCRMModule - Customer Relationship Management
  * Manage fans, followers, customers, and email lists
@@ -671,7 +685,7 @@ export const EnhancedCRMModule = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
@@ -720,6 +734,22 @@ export const EnhancedCRMModule = () => {
             <div className="text-2xl font-bold">{stats.emailSubscribers}</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Crowdfund Raised</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">£{stats.crowdfundingRaised.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Supporters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.crowdfundingSupporters}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="contacts" className="space-y-4">
@@ -731,6 +761,56 @@ export const EnhancedCRMModule = () => {
         </TabsList>
 
         <TabsContent value="contacts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Crowdfunding supporters</CardTitle>
+                  <CardDescription>Latest contributions and fulfillment updates.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {supporterEvents.length === 0 ? (
+                <div className="text-center py-10">
+                  <Gift className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-muted-foreground">No supporters yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {supporterEvents.slice(0, 5).map((event) => (
+                    <div key={event.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium">{event.supporterName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {event.campaignTitle}{event.rewardTitle ? ` • ${event.rewardTitle}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Pledged on {new Date(event.contributedAt).toLocaleDateString()}
+                        </p>
+                        {event.fulfilledAt && (
+                          <p className="text-xs text-emerald-600 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Fulfilled {new Date(event.fulfilledAt).toLocaleDateString()}
+                          </p>
+                        )}
+                        {event.refundedAt && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Refunded {new Date(event.refundedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-lg font-semibold">£{event.amount.toFixed(2)}</p>
+                        <Badge variant={supporterStatusVariant(event.status)} className="capitalize">
+                          {event.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">

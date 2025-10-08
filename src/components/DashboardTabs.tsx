@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,14 +54,15 @@ export const MyPurchases = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPurchases();
-  }, [user]);
-
-  const fetchPurchases = async () => {
-    if (!user) return;
+  const fetchPurchases = useCallback(async () => {
+    if (!user) {
+      setPurchases([]);
+      setLoading(false);
+      return;
+    }
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('release_purchases')
         .select(`
@@ -83,7 +84,11 @@ export const MyPurchases = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, user]);
+
+  useEffect(() => {
+    void fetchPurchases();
+  }, [fetchPurchases]);
 
   const handleDownload = async (purchaseId: string) => {
     try {
@@ -214,14 +219,15 @@ export const MySubscriptions = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSubscriptions();
-  }, [user]);
-
-  const fetchSubscriptions = async () => {
-    if (!user) return;
+  const fetchSubscriptions = useCallback(async () => {
+    if (!user) {
+      setSubscriptions([]);
+      setLoading(false);
+      return;
+    }
 
     try {
+      setLoading(true);
       // Use a simpler query structure that works with the existing schema
       const { data, error } = await supabase
         .from('fan_subscriptions')
@@ -230,7 +236,7 @@ export const MySubscriptions = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       // Then fetch creator profiles separately
       const subscriptionsWithProfiles = await Promise.all(
         (data || []).map(async (subscription) => {
@@ -239,11 +245,11 @@ export const MySubscriptions = () => {
             .select('username, full_name, avatar_url')
             .eq('user_id', subscription.creator_id)
             .single();
-          
+
           return { ...subscription, profiles: profile };
         })
       );
-      
+
       setSubscriptions(subscriptionsWithProfiles);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
@@ -255,7 +261,11 @@ export const MySubscriptions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, user]);
+
+  useEffect(() => {
+    void fetchSubscriptions();
+  }, [fetchSubscriptions]);
 
   const handleCancelSubscription = async (subscriptionId: string) => {
     try {
@@ -271,7 +281,7 @@ export const MySubscriptions = () => {
         description: 'Your subscription has been cancelled successfully',
       });
 
-      fetchSubscriptions();
+      await fetchSubscriptions();
     } catch (error) {
       console.error('Error cancelling subscription:', error);
       toast({
@@ -380,14 +390,15 @@ export const MyPlaylists = () => {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '', is_public: false });
 
-  useEffect(() => {
-    fetchPlaylists();
-  }, [user]);
-
-  const fetchPlaylists = async () => {
-    if (!user) return;
+  const fetchPlaylists = useCallback(async () => {
+    if (!user) {
+      setPlaylists([]);
+      setLoading(false);
+      return;
+    }
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('playlists')
         .select('*')
@@ -406,7 +417,11 @@ export const MyPlaylists = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, user]);
+
+  useEffect(() => {
+    void fetchPlaylists();
+  }, [fetchPlaylists]);
 
   const handleCreatePlaylist = async () => {
     if (!user || !formData.name) return;
@@ -430,7 +445,7 @@ export const MyPlaylists = () => {
 
       setFormData({ name: '', description: '', is_public: false });
       setShowCreateForm(false);
-      fetchPlaylists();
+      await fetchPlaylists();
     } catch (error) {
       console.error('Error creating playlist:', error);
       toast({
@@ -455,7 +470,7 @@ export const MyPlaylists = () => {
         description: 'Your playlist has been deleted successfully',
       });
 
-      fetchPlaylists();
+      await fetchPlaylists();
     } catch (error) {
       console.error('Error deleting playlist:', error);
       toast({

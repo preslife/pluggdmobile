@@ -146,6 +146,11 @@ const LibraryPage = () => {
   const listRef = useRef<HTMLDivElement>(null);
 
   const { items, itemsByType, loading, loadingByType, error, ensureLoaded, refresh } = useLibrary(user?.id ?? null);
+  const ensureLoadedRef = useRef(ensureLoaded);
+
+  useEffect(() => {
+    ensureLoadedRef.current = ensureLoaded;
+  }, [ensureLoaded]);
 
   useEffect(() => {
     setMeta(
@@ -157,14 +162,14 @@ const LibraryPage = () => {
 
   useEffect(() => {
     if (!user) return;
+    const load = ensureLoadedRef.current;
     if (activeTab === "all") {
-      void ensureLoaded("all");
+      void load("all");
     } else {
-      void ensureLoaded([activeTab as LibraryItemType]);
+      void load([activeTab as LibraryItemType]);
     }
     void track("library_tab_viewed", { tab: activeTab });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.id]);
+  }, [activeTab, track, user]);
 
   const filterItems = useCallback(
     (list: LibraryItem[]) => {
@@ -338,6 +343,10 @@ const LibraryPage = () => {
     },
     [toast, track],
   );
+
+  if (!user) {
+    return unauthenticatedView;
+  }
 
   const emptyCopy = activeType ? EMPTY_COPY[activeType] : null;
   const isTabLoading = activeType ? loadingByType[activeType] : loadingByType.all;
