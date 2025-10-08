@@ -12,6 +12,9 @@ export type SessionRoom = {
   ended_at?: string;
   participant_count?: number;
   host_name?: string;
+  description?: string | null;
+  is_public?: boolean | null;
+  scheduled_for?: string | null;
 };
 
 export const useSessionRooms = () => {
@@ -50,7 +53,10 @@ export const useSessionRooms = () => {
           created_at: room.created_at,
           ended_at: room.ended_at,
           participant_count: count || 0,
-          host_name: room.profiles?.full_name || 'Unknown Host'
+          host_name: room.profiles?.full_name || 'Unknown Host',
+          description: room.description,
+          is_public: room.is_public,
+          scheduled_for: room.agora_live_started_at || room.created_at
         };
       }));
 
