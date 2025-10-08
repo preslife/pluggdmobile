@@ -2649,6 +2649,92 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_segment_members: {
+        Row: {
+          contact_id: string
+          creator_id: string
+          created_at: string
+          last_interaction: string | null
+          lifetime_value: number
+          segment_id: string
+          sources: string[]
+          total_spend: number
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          creator_id: string
+          created_at?: string
+          last_interaction?: string | null
+          lifetime_value?: number
+          segment_id: string
+          sources?: string[]
+          total_spend?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          creator_id?: string
+          created_at?: string
+          last_interaction?: string | null
+          lifetime_value?: number
+          segment_id?: string
+          sources?: string[]
+          total_spend?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_segment_members_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "crm_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_segments: {
+        Row: {
+          contact_count: number
+          created_at: string
+          creator_id: string
+          description: string | null
+          filters: Json
+          id: string
+          manual_contact_ids: string[]
+          name: string
+          refresh_frequency_minutes: number
+          refreshed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_count?: number
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          manual_contact_ids?: string[]
+          name: string
+          refresh_frequency_minutes?: number
+          refreshed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_count?: number
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          manual_contact_ids?: string[]
+          name?: string
+          refresh_frequency_minutes?: number
+          refreshed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       creator_bundles: {
         Row: {
           allow_customization: boolean | null
@@ -8164,6 +8250,27 @@ export type Database = {
         Args: { p_content_id: string; p_content_type: string }
         Returns: string
       }
+      get_crm_contacts: {
+        Args: { p_creator_id?: string }
+        Returns: {
+          contact_id: string
+          email: string | null
+          username: string | null
+          full_name: string | null
+          sources: string[] | null
+          total_spend: number | null
+          lifetime_value: number | null
+          last_interaction: string | null
+          first_interaction: string | null
+          order_count: number | null
+          follower_since: string | null
+          membership_status: string | null
+          membership_value: number | null
+          membership_since: string | null
+          student_value: number | null
+          student_since: string | null
+        }[]
+      }
       get_current_user_labels: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -8353,6 +8460,17 @@ export type Database = {
         Args: { p_action: string; p_record_id?: string; p_table_name: string }
         Returns: undefined
       }
+      log_system_event: {
+        Args: {
+          p_action: string
+          p_component: string
+          p_level: number
+          p_message: string
+          p_metadata?: Json
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       mark_all_notifications_read: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -8379,6 +8497,14 @@ export type Database = {
           p_payment_method?: string
         }
         Returns: Json
+      }
+      refresh_crm_segment: {
+        Args: { p_segment_id: string }
+        Returns: undefined
+      }
+      refresh_due_crm_segments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       request_artist_link: {
         Args:

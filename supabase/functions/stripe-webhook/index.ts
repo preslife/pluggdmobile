@@ -1007,7 +1007,42 @@ serve(async (req) => {
           type: event.type,
         });
 
-        await syncMembershipFromSubscription(supabaseClient, subscription, logStep);
+        const membershipResult = await syncMembershipFromSubscription(
+          supabaseClient,
+          subscription,
+          logStep
+        );
+
+        if (
+          membershipResult?.processed &&
+          membershipResult.userId &&
+          membershipResult.creatorId
+        ) {
+          const stripeCustomerId =
+            membershipResult.stripeCustomerId ||
+            (typeof subscription.customer === 'string'
+              ? subscription.customer
+              : (subscription.customer as Stripe.Customer)?.id ?? null);
+
+          const { error: fanSubscriptionError } = await supabaseClient
+            .from('fan_subscriptions')
+            .update({
+              status: membershipResult.status,
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: stripeCustomerId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('fan_id', membershipResult.userId)
+            .eq('creator_id', membershipResult.creatorId);
+
+          if (fanSubscriptionError) {
+            logStep('Failed to reconcile fan_subscriptions entry', {
+              error: fanSubscriptionError.message,
+              fanId: membershipResult.userId,
+              creatorId: membershipResult.creatorId,
+            });
+          }
+        }
         break;
       }
 
@@ -1026,6 +1061,32 @@ serve(async (req) => {
         );
 
         if (membershipResult?.processed) {
+          if (membershipResult.userId && membershipResult.creatorId) {
+            const stripeCustomerId =
+              membershipResult.stripeCustomerId ||
+              (typeof subscription.customer === 'string'
+                ? subscription.customer
+                : (subscription.customer as Stripe.Customer)?.id ?? null);
+
+            const { error: fanSubscriptionError } = await supabaseClient
+              .from('fan_subscriptions')
+              .update({
+                status: membershipResult.status,
+                stripe_subscription_id: subscription.id,
+                stripe_customer_id: stripeCustomerId,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('fan_id', membershipResult.userId)
+              .eq('creator_id', membershipResult.creatorId);
+
+            if (fanSubscriptionError) {
+              logStep('Failed to reconcile fan_subscriptions entry', {
+                error: fanSubscriptionError.message,
+                fanId: membershipResult.userId,
+                creatorId: membershipResult.creatorId,
+              });
+            }
+          }
           break;
         }
 

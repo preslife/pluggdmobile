@@ -292,6 +292,10 @@ export const syncMembershipFromSubscription = async (
     tierId,
     userId: membershipUserId ?? fanId ?? null,
     status: membershipStatus,
+    currentPeriodStart,
+    currentPeriodEnd,
+    creatorId: creatorIdFromMetadata || tierRow.owner_id,
+    stripeCustomerId,
   };
 };
 

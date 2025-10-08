@@ -42,6 +42,7 @@ const TAB_ORDER: { value: LibraryItemType | "all"; label: string; helper?: strin
   { value: "membership", label: "Memberships", helper: "Creator memberships" },
   { value: "course", label: "Courses", helper: "Lessons & programs" },
   { value: "campaign", label: "Campaigns", helper: "Crowdfunding pledges" },
+  { value: "live_session", label: "Live Sessions", helper: "Recordings from events" },
 ];
 
 const EMPTY_COPY: Record<LibraryItemType, { title: string; description: string }> = {
@@ -69,6 +70,10 @@ const EMPTY_COPY: Record<LibraryItemType, { title: string; description: string }
     title: "No pledges yet",
     description: "Support a crowdfunding campaign to see your rewards and updates here.",
   },
+  live_session: {
+    title: "No recordings yet",
+    description: "Attend a live session or workshop and the recording will appear here once published.",
+  },
 };
 
 const typeAccent: Record<LibraryItemType, string> = {
@@ -78,11 +83,12 @@ const typeAccent: Record<LibraryItemType, string> = {
   membership: "bg-amber-500/10 text-amber-400",
   course: "bg-indigo-500/10 text-indigo-400",
   campaign: "bg-rose-500/10 text-rose-400",
+  live_session: "bg-blue-500/10 text-blue-400",
 };
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString();
 
-const playableTypes = new Set<LibraryItemType>(["beat", "release"]);
+const playableTypes = new Set<LibraryItemType>(["beat", "release", "live_session"]);
 
 const formatPrice = (value: number) => {
   if (!value) return "Included";
@@ -121,6 +127,8 @@ const getSharePath = (item: LibraryItem): string | null => {
       return `/beats/${item.productId}`;
     case "course":
       return `/courses/${item.productId}`;
+    case "live_session":
+      return null;
     default:
       return null;
   }
@@ -190,26 +198,6 @@ const LibraryPage = () => {
     const firstRow = listRef.current.querySelector<HTMLElement>("[data-library-row]");
     firstRow?.focus();
   }, [activeTab, itemsForTab.length]);
-
-  const unauthenticatedView = (
-    <div className="min-h-screen bg-background">
-      <DomainAwareNavigation />
-      <div className="container mx-auto max-w-4xl px-4 py-16 pt-24 text-center">
-        <Card>
-          <CardContent className="py-12">
-            <LibraryIcon className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-            <h2 className="mb-2 text-2xl font-semibold">Sign in required</h2>
-            <p className="mb-6 text-muted-foreground">
-              Sign in to view your library of releases, beats, and downloads.
-            </p>
-            <Button asChild>
-              <a href="/auth/login?redirect=/library">Sign in</a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 
   const handleRequestMore = useCallback(
     async (item: LibraryItem) => {
@@ -364,6 +352,28 @@ const LibraryPage = () => {
   const isTabLoading = activeType ? loadingByType[activeType] : loadingByType.all;
   const totalCount = filteredAllItems.length;
   const tabCount = itemsForTab.length;
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DomainAwareNavigation />
+        <div className="container mx-auto max-w-4xl px-4 py-16 pt-24 text-center">
+          <Card>
+            <CardContent className="py-12">
+              <LibraryIcon className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+              <h2 className="mb-2 text-2xl font-semibold">Sign in required</h2>
+              <p className="mb-6 text-muted-foreground">
+                Sign in to view your library of releases, beats, and downloads.
+              </p>
+              <Button asChild>
+                <a href="/auth/login?redirect=/library">Sign in</a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
