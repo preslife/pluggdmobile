@@ -11,6 +11,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
   Radio,
   FileText,
   HeadphonesIcon,
@@ -1121,6 +1148,354 @@ export const LiveModule: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSession ? "Edit session" : "Schedule new session"}
+            </DialogTitle>
+            <DialogDescription>
+              Configure your session details and notify your followers.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="session-title">Title</Label>
+              <Input
+                id="session-title"
+                placeholder="Live session title"
+                value={sessionForm.title}
+                onChange={(event) =>
+                  setSessionForm((prev) => ({
+                    ...prev,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="session-description">Description</Label>
+              <Textarea
+                id="session-description"
+                placeholder="Let fans know what to expect"
+                value={sessionForm.description}
+                onChange={(event) =>
+                  setSessionForm((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="session-time">Scheduled for</Label>
+                <Input
+                  id="session-time"
+                  type="datetime-local"
+                  value={sessionForm.scheduledFor}
+                  onChange={(event) =>
+                    setSessionForm((prev) => ({
+                      ...prev,
+                      scheduledFor: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="session-status">Status</Label>
+                <Select
+                  value={sessionForm.status}
+                  onValueChange={(value: SessionFormState["status"]) =>
+                    setSessionForm((prev) => ({
+                      ...prev,
+                      status: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="session-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="idle">Scheduled</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="ended">Ended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">Public session</p>
+                <p className="text-xs text-muted-foreground">
+                  Toggle visibility so anyone with the link can join.
+                </p>
+              </div>
+              <Switch
+                checked={sessionForm.isPublic}
+                onCheckedChange={(checked) =>
+                  setSessionForm((prev) => ({
+                    ...prev,
+                    isPublic: checked,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSessionDialogOpen(false)}
+              disabled={sessionActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSessionSubmit} disabled={sessionActionLoading}>
+              {editingSession ? "Save changes" : "Schedule session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTicket ? "Edit ticket" : "Create ticket"}
+            </DialogTitle>
+            <DialogDescription>
+              Configure pricing and inventory for this live event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ticket-session">Session</Label>
+              <Select
+                value={ticketForm.sessionId}
+                onValueChange={(value) =>
+                  setTicketForm((prev) => ({
+                    ...prev,
+                    sessionId: value,
+                  }))
+                }
+              >
+                <SelectTrigger id="ticket-session">
+                  <SelectValue placeholder="Select a session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessionOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      <div className="flex flex-col gap-0.5">
+                        <span>{option.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateDisplay(option.scheduled, "Date TBA")}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ticket-price">Price (USD)</Label>
+                <Input
+                  id="ticket-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={ticketForm.price}
+                  onChange={(event) =>
+                    setTicketForm((prev) => ({
+                      ...prev,
+                      price: Number(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ticket-inventory">Inventory</Label>
+                <Input
+                  id="ticket-inventory"
+                  type="number"
+                  min={0}
+                  value={ticketForm.inventory}
+                  onChange={(event) =>
+                    setTicketForm((prev) => ({
+                      ...prev,
+                      inventory: Number(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ticket-max">Max per fan</Label>
+                <Input
+                  id="ticket-max"
+                  type="number"
+                  min={1}
+                  value={ticketForm.maxPerUser}
+                  onChange={(event) =>
+                    setTicketForm((prev) => ({
+                      ...prev,
+                      maxPerUser: Number(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ticket-status">Status</Label>
+                <Select
+                  value={ticketForm.status}
+                  onValueChange={(value) =>
+                    setTicketForm((prev) => ({
+                      ...prev,
+                      status: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="ticket-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="on_sale">On sale</SelectItem>
+                    <SelectItem value="sold_out">Sold out</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTicketDialogOpen(false)}
+              disabled={ticketActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleTicketSubmit} disabled={ticketActionLoading}>
+              {editingTicket ? "Save changes" : "Create ticket"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={recordingDialogOpen} onOpenChange={setRecordingDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRecording ? "Edit recording" : "Attach recording"}
+            </DialogTitle>
+            <DialogDescription>
+              Link recordings to your sessions for on-demand access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="recording-session">Session</Label>
+              <Select
+                value={recordingForm.sessionId}
+                onValueChange={(value) =>
+                  setRecordingForm((prev) => ({
+                    ...prev,
+                    sessionId: value,
+                  }))
+                }
+              >
+                <SelectTrigger id="recording-session">
+                  <SelectValue placeholder="Select a session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessionOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      <div className="flex flex-col gap-0.5">
+                        <span>{option.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateDisplay(option.scheduled, "Date TBA")}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recording-title">Recording title</Label>
+              <Input
+                id="recording-title"
+                placeholder="Session replay title"
+                value={recordingForm.title}
+                onChange={(event) =>
+                  setRecordingForm((prev) => ({
+                    ...prev,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recording-url">Playback URL</Label>
+              <Input
+                id="recording-url"
+                placeholder="https://..."
+                value={recordingForm.playbackUrl}
+                onChange={(event) =>
+                  setRecordingForm((prev) => ({
+                    ...prev,
+                    playbackUrl: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="recording-duration">Duration (seconds)</Label>
+                <Input
+                  id="recording-duration"
+                  type="number"
+                  min={0}
+                  value={recordingForm.durationSeconds}
+                  onChange={(event) =>
+                    setRecordingForm((prev) => ({
+                      ...prev,
+                      durationSeconds: Number(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recording-published">Published at</Label>
+                <Input
+                  id="recording-published"
+                  type="datetime-local"
+                  value={recordingForm.publishedAt}
+                  onChange={(event) =>
+                    setRecordingForm((prev) => ({
+                      ...prev,
+                      publishedAt: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRecordingDialogOpen(false)}
+              disabled={recordingActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleRecordingSubmit} disabled={recordingActionLoading}>
+              {editingRecording ? "Save changes" : "Attach recording"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
