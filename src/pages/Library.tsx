@@ -138,6 +138,11 @@ const LibraryPage = () => {
   const listRef = useRef<HTMLDivElement>(null);
 
   const { items, itemsByType, loading, loadingByType, error, ensureLoaded, refresh } = useLibrary(user?.id ?? null);
+  const ensureLoadedRef = useRef(ensureLoaded);
+
+  useEffect(() => {
+    ensureLoadedRef.current = ensureLoaded;
+  }, [ensureLoaded]);
 
   useEffect(() => {
     setMeta(
@@ -149,14 +154,14 @@ const LibraryPage = () => {
 
   useEffect(() => {
     if (!user) return;
+    const load = ensureLoadedRef.current;
     if (activeTab === "all") {
-      void ensureLoaded("all");
+      void load("all");
     } else {
-      void ensureLoaded([activeTab as LibraryItemType]);
+      void load([activeTab as LibraryItemType]);
     }
     void track("library_tab_viewed", { tab: activeTab });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.id]);
+  }, [activeTab, track, user]);
 
   const filterItems = useCallback(
     (list: LibraryItem[]) => {
@@ -186,27 +191,25 @@ const LibraryPage = () => {
     firstRow?.focus();
   }, [activeTab, itemsForTab.length]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <DomainAwareNavigation />
-        <div className="container mx-auto max-w-4xl px-4 py-16 pt-24 text-center">
-          <Card>
-            <CardContent className="py-12">
-              <LibraryIcon className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-              <h2 className="mb-2 text-2xl font-semibold">Sign in required</h2>
-              <p className="mb-6 text-muted-foreground">
-                Sign in to view your library of releases, beats, and downloads.
-              </p>
-              <Button asChild>
-                <a href="/auth/login?redirect=/library">Sign in</a>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+  const unauthenticatedView = (
+    <div className="min-h-screen bg-background">
+      <DomainAwareNavigation />
+      <div className="container mx-auto max-w-4xl px-4 py-16 pt-24 text-center">
+        <Card>
+          <CardContent className="py-12">
+            <LibraryIcon className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+            <h2 className="mb-2 text-2xl font-semibold">Sign in required</h2>
+            <p className="mb-6 text-muted-foreground">
+              Sign in to view your library of releases, beats, and downloads.
+            </p>
+            <Button asChild>
+              <a href="/auth/login?redirect=/library">Sign in</a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    );
-  }
+    </div>
+  );
 
   const handleRequestMore = useCallback(
     async (item: LibraryItem) => {
@@ -352,6 +355,10 @@ const LibraryPage = () => {
     },
     [toast, track],
   );
+
+  if (!user) {
+    return unauthenticatedView;
+  }
 
   const emptyCopy = activeType ? EMPTY_COPY[activeType] : null;
   const isTabLoading = activeType ? loadingByType[activeType] : loadingByType.all;

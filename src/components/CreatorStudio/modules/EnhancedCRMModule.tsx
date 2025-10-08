@@ -10,9 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Users, 
-  Mail, 
+import {
+  Users,
+  Mail,
   Filter,
   Download,
   Upload,
@@ -24,7 +24,10 @@ import {
   Search,
   MoreVertical,
   Send,
-  Eye
+  Eye,
+  Gift,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 interface Contact {
@@ -48,6 +51,20 @@ interface Segment {
   color: string;
 }
 
+interface SupporterEvent {
+  id: string;
+  supporterId?: string | null;
+  supporterName: string;
+  supporterEmail?: string;
+  amount: number;
+  status: string;
+  contributedAt: string;
+  fulfilledAt?: string | null;
+  refundedAt?: string | null;
+  campaignTitle: string;
+  rewardTitle?: string | null;
+}
+
 /**
  * EnhancedCRMModule - Customer Relationship Management
  * Manage fans, followers, customers, and email lists
@@ -67,8 +84,11 @@ export const EnhancedCRMModule = () => {
     vipContacts: 0,
     totalRevenue: 0,
     avgOrderValue: 0,
-    emailSubscribers: 0
+    emailSubscribers: 0,
+    crowdfundingSupporters: 0,
+    crowdfundingRaised: 0,
   });
+  const [supporterEvents, setSupporterEvents] = useState<SupporterEvent[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -93,7 +113,61 @@ export const EnhancedCRMModule = () => {
         .from('orders')
         .select('user_id, total_amount, created_at')
         .eq('status', 'completed');
-      
+
+      // Fetch crowdfunding supporters for owned campaigns
+      const { data: ownedCampaigns } = await supabase
+        .from('campaigns')
+        .select('id, title')
+        .eq('creator_id', user.id);
+
+      const campaignIds = ownedCampaigns?.map((campaign: any) => campaign.id) ?? [];
+      let supporterRows: any[] = [];
+
+      if (campaignIds.length > 0) {
+        const { data: supporterData, error: supporterError } = await supabase
+          .from('campaign_supporters')
+          .select(`
+            id,
+            campaign_id,
+            supporter_id,
+            contribution_amount_cents,
+            status,
+            contributed_at,
+            fulfilled_at,
+            refunded_at,
+            reward_id,
+            metadata,
+            supporter:profiles!campaign_supporters_supporter_id_fkey(full_name, username, email),
+            campaign:campaigns(title),
+            reward:campaign_rewards(title)
+          `)
+          .in('campaign_id', campaignIds)
+          .order('contributed_at', { ascending: false });
+
+        if (supporterError) throw supporterError;
+        supporterRows = supporterData ?? [];
+      }
+
+      const contributionEvents: SupporterEvent[] = supporterRows.map((row) => ({
+        id: row.id,
+        supporterId: row.supporter_id,
+        supporterName:
+          row.supporter?.full_name ||
+          row.supporter?.username ||
+          row.supporter?.email ||
+          'Supporter',
+        supporterEmail: row.supporter?.email ?? undefined,
+        amount: (row.contribution_amount_cents ?? 0) / 100,
+        status: row.status,
+        contributedAt: row.contributed_at,
+        fulfilledAt: row.fulfilled_at,
+        refundedAt: row.refunded_at,
+        campaignTitle: row.campaign?.title ?? 'Campaign',
+        rewardTitle: row.reward?.title ?? null,
+      }));
+
+      setSupporterEvents(contributionEvents);
+
       // Process contacts
       const contactMap = new Map<string, Contact>();
       
@@ -114,21 +188,57 @@ export const EnhancedCRMModule = () => {
           });
         }
       });
-      
+
       // Add purchase data
       orders?.forEach((order: any) => {
         const existing = contactMap.get(order.user_id);
         if (existing) {
           existing.total_spent += order.total_amount;
-          existing.tags.push('customer');
-          if (existing.total_spent > 100) {
+          if (!existing.tags.includes('customer')) {
+            existing.tags.push('customer');
+          }
+          if (existing.total_spent > 100 && !existing.tags.includes('vip')) {
             existing.status = 'vip';
             existing.tags.push('vip');
           }
         }
       });
-      
-      const contactList = Array.from(contactMap.values());
+
+      // Add crowdfunding supporters
+      supporterRows.forEach((row) => {
+        if (!row.supporter_id) return;
+        const profile = row.supporter;
+        const amount = (row.contribution_amount_cents ?? 0) / 100;
+        const existing = contactMap.get(row.supporter_id);
+        const baseContact: Contact = existing ?? {
+          id: row.supporter_id,
+          email: profile?.email || '',
+          username: profile?.username || undefined,
+          full_name: profile?.full_name || undefined,
+          tags: [],
+          total_spent: 0,
+          last_interaction: row.contributed_at,
+          status: 'active',
+          notes: '',
+        };
+
+        if (!baseContact.tags.includes('supporter')) {
+          baseContact.tags.push('supporter');
+        }
+
+        baseContact.total_spent += amount;
+        baseContact.last_interaction = row.contributed_at;
+        contactMap.set(row.supporter_id, baseContact);
+      });
+
+      const contactList = Array.from(contactMap.values()).map((contact) => {
+        if (contact.total_spent > 100 && !contact.tags.includes('vip')) {
+          contact.tags.push('vip');
+          contact.status = 'vip';
+        }
+        return contact;
+      });
+
       setContacts(contactList);
       
       // Create segments
@@ -148,6 +258,14 @@ export const EnhancedCRMModule = () => {
           criteria: { min_spent: 100 },
           contact_count: contactList.filter(c => c.status === 'vip').length,
           color: 'gold'
+        },
+        {
+          id: '2b',
+          name: 'Crowdfunding Supporters',
+          description: 'People who backed your campaigns',
+          criteria: { tag: 'supporter' },
+          contact_count: contactList.filter(c => c.tags.includes('supporter')).length,
+          color: 'purple'
         },
         {
           id: '3',
@@ -178,14 +296,17 @@ export const EnhancedCRMModule = () => {
       // Calculate stats
       const totalRevenue = contactList.reduce((sum, c) => sum + c.total_spent, 0);
       const customers = contactList.filter(c => c.tags.includes('customer'));
-      
+      const crowdfundingRaised = contributionEvents.reduce((sum, event) => sum + event.amount, 0);
+
       setStats({
         totalContacts: contactList.length,
         activeContacts: contactList.filter(c => c.status === 'active').length,
         vipContacts: contactList.filter(c => c.status === 'vip').length,
         totalRevenue,
         avgOrderValue: customers.length > 0 ? totalRevenue / customers.length : 0,
-        emailSubscribers: contactList.filter(c => c.email).length
+        emailSubscribers: contactList.filter(c => c.email).length,
+        crowdfundingSupporters: contributionEvents.length,
+        crowdfundingRaised,
       });
       
     } catch (error: any) {
@@ -245,15 +366,28 @@ export const EnhancedCRMModule = () => {
   };
 
   const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesTag = filterTag === 'all' || contact.tags.includes(filterTag);
-    
+
     return matchesSearch && matchesTag;
   });
+
+  const supporterStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    switch (status) {
+      case 'fulfilled':
+        return 'default';
+      case 'refunded':
+        return 'destructive';
+      case 'pledged':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
 
   if (loading) {
     return (
@@ -287,7 +421,7 @@ export const EnhancedCRMModule = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
@@ -336,6 +470,22 @@ export const EnhancedCRMModule = () => {
             <div className="text-2xl font-bold">{stats.emailSubscribers}</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Crowdfund Raised</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">£{stats.crowdfundingRaised.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Supporters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.crowdfundingSupporters}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="contacts" className="space-y-4">
@@ -347,6 +497,56 @@ export const EnhancedCRMModule = () => {
         </TabsList>
 
         <TabsContent value="contacts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Crowdfunding supporters</CardTitle>
+                  <CardDescription>Latest contributions and fulfillment updates.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {supporterEvents.length === 0 ? (
+                <div className="text-center py-10">
+                  <Gift className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-muted-foreground">No supporters yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {supporterEvents.slice(0, 5).map((event) => (
+                    <div key={event.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium">{event.supporterName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {event.campaignTitle}{event.rewardTitle ? ` • ${event.rewardTitle}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Pledged on {new Date(event.contributedAt).toLocaleDateString()}
+                        </p>
+                        {event.fulfilledAt && (
+                          <p className="text-xs text-emerald-600 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Fulfilled {new Date(event.fulfilledAt).toLocaleDateString()}
+                          </p>
+                        )}
+                        {event.refundedAt && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Refunded {new Date(event.refundedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-lg font-semibold">£{event.amount.toFixed(2)}</p>
+                        <Badge variant={supporterStatusVariant(event.status)} className="capitalize">
+                          {event.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -372,6 +572,7 @@ export const EnhancedCRMModule = () => {
                       <SelectItem value="all">All Tags</SelectItem>
                       <SelectItem value="follower">Followers</SelectItem>
                       <SelectItem value="customer">Customers</SelectItem>
+                      <SelectItem value="supporter">Supporters</SelectItem>
                       <SelectItem value="vip">VIP</SelectItem>
                     </SelectContent>
                   </Select>

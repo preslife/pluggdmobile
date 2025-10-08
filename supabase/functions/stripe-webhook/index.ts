@@ -176,7 +176,96 @@ serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         logStep("Checkout session completed", { sessionId: session.id });
-        
+
+        if (session.metadata?.transaction_type === 'crowdfunding_contribution') {
+          const campaignId = session.metadata.campaign_id;
+          const supporterId = session.metadata.user_id ?? null;
+          const rewardId = session.metadata.reward_id ?? null;
+          const supporterNote = session.metadata.supporter_note ?? null;
+          const campaignSlug = session.metadata.campaign_slug ?? null;
+          const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+          const amountCents = session.amount_total ?? Number(session.metadata.amount_cents ?? 0);
+
+          if (!campaignId || !amountCents) {
+            logStep('Crowdfunding contribution missing campaign or amount metadata', { sessionId: session.id });
+            break;
+          }
+
+          const upsertPayload: Record<string, unknown> = {
+            campaign_id: campaignId,
+            supporter_id: supporterId,
+            reward_id: rewardId || null,
+            contribution_amount_cents: amountCents,
+            status: 'pledged',
+            stripe_payment_intent_id: paymentIntentId,
+            stripe_session_id: session.id,
+            metadata: {
+              supporter_note: supporterNote,
+              stripe_customer_id: session.customer,
+              currency: session.currency,
+              campaign_slug: campaignSlug,
+            },
+          };
+
+          const { data: supporterRecord, error: supporterError } = await supabaseClient
+            .from('campaign_supporters')
+            .upsert(upsertPayload, { onConflict: 'stripe_payment_intent_id' })
+            .select()
+            .single();
+
+          if (supporterError) {
+            logStep('Failed to record crowdfunding contribution', { error: supporterError.message, sessionId: session.id });
+            break;
+          }
+
+          logStep('Crowdfunding contribution recorded', {
+            supporterId: supporterRecord?.supporter_id,
+            campaignId,
+            amountCents,
+          });
+
+          try {
+            await supabaseClient
+              .from('system_logs')
+              .insert({
+                level: 2,
+                message: 'Crowdfunding contribution completed',
+                user_id: supporterId ?? null,
+                session_id: session.id,
+                component: 'crowdfunding.checkout',
+                action: 'contribution_completed',
+                metadata: {
+                  campaign_id: campaignId,
+                  reward_id: rewardId,
+                  amount_cents: amountCents,
+                  payment_intent: paymentIntentId,
+                },
+              });
+          } catch (logError) {
+            const errorMessage = logError instanceof Error ? logError.message : String(logError);
+            logStep('Failed to insert crowdfunding contribution log', { error: errorMessage });
+          }
+
+          try {
+            await supabaseClient.functions.invoke('generate-receipt', {
+              body: {
+                type: 'campaign_contribution',
+                payment_id: paymentIntentId ?? session.id,
+                stripe_reference: paymentIntentId,
+                metadata: {
+                  campaign_id: campaignId,
+                  supporter_id: supporterId,
+                  reward_id: rewardId,
+                },
+              },
+            });
+          } catch (receiptError: any) {
+            logStep('Crowdfunding receipt generation failed', { error: receiptError.message });
+          }
+
+          break;
+        }
+
         // Check if this is a credits top-up
         if (session.metadata?.transaction_type === 'credits_topup') {
           const userId = session.metadata.user_id;
