@@ -45,8 +45,17 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const creatorId = body.creator_id || authData.user.id;
-    const segmentId = body.segment_id || null;
+    const requestedCreatorId = body?.creator_id ?? null;
+    const segmentId = body?.segment_id ?? null;
+
+    if (requestedCreatorId && requestedCreatorId !== authData.user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const creatorId = requestedCreatorId ?? authData.user.id;
 
     const { data: connection, error: connectionError } = await serviceClient
       .from('social_connections')
