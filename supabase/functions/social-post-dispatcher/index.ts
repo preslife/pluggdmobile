@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function logSystemEvent(
+  supabase: any,
+  entry: { level: number; message: string; action: string; user_id?: string; metadata?: Record<string, unknown> }
+) {
+  try {
+    await supabase.from('system_logs').insert({
+      level: entry.level,
+      message: entry.message,
+      action: entry.action,
+      user_id: entry.user_id ?? null,
+      component: 'social_post_dispatcher',
+      metadata: entry.metadata || {}
+    });
+  } catch (error) {
+    console.error('Failed to write system log entry', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,33 +49,68 @@ serve(async (req) => {
     }
 
     console.log(`Processing ${pendingPosts?.length || 0} scheduled posts`);
+    await logSystemEvent(supabase, {
+      level: 1,
+      message: 'Dispatch run started',
+      action: 'dispatch_run_started',
+      metadata: { pendingPosts: pendingPosts?.length || 0 }
+    });
 
     let processed = 0;
     let failed = 0;
 
     for (const post of pendingPosts || []) {
       try {
-        await processPost(supabase, post);
+        await logSystemEvent(supabase, {
+          level: 1,
+          message: 'Post dispatch started',
+          action: 'post_dispatch_started',
+          user_id: post.user_id,
+          metadata: { post_id: post.id, destinations: post.destinations }
+        });
+
+        const messageIds = await processPost(supabase, post);
+        await logSystemEvent(supabase, {
+          level: 1,
+          message: 'Post dispatch completed',
+          action: 'post_dispatch_completed',
+          user_id: post.user_id,
+          metadata: { post_id: post.id, destinations: Object.keys(messageIds), messageIds }
+        });
         processed++;
       } catch (error) {
         console.error(`Failed to process post ${post.id}:`, error);
-        
+
         // Mark as failed
         await supabase
           .from('social_posts')
-          .update({ 
+          .update({
             status: 'failed',
             provider_message_ids: { error: error.message }
           })
           .eq('id', post.id);
-        
+
+        await logSystemEvent(supabase, {
+          level: 3,
+          message: 'Post dispatch failed',
+          action: 'post_dispatch_failed',
+          user_id: post.user_id,
+          metadata: { post_id: post.id, error: String(error) }
+        });
         failed++;
       }
     }
 
+    await logSystemEvent(supabase, {
+      level: 1,
+      message: 'Dispatch run completed',
+      action: 'dispatch_run_completed',
+      metadata: { processed, failed }
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed,
         failed 
       }),
@@ -69,19 +122,32 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in social-post-dispatcher:', error);
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      await logSystemEvent(supabase, {
+        level: 3,
+        message: 'Dispatcher run failed',
+        action: 'dispatch_run_failed',
+        metadata: { error: String(error) }
+      });
+    } catch (logError) {
+      console.error('Failed to log dispatcher failure', logError);
+    }
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }
 });
 
-async function processPost(supabase: any, post: any) {
+async function processPost(supabase: any, post: any): Promise<Record<string, string>> {
   const messageIds: Record<string, string> = {};
-  
+
   // Get user's social connections
   const { data: connections } = await supabase
     .from('social_connections')
@@ -95,12 +161,19 @@ async function processPost(supabase: any, post: any) {
     try {
       let messageId: string | null = null;
       const connectionData = connectionMap.get(destination);
-      
+
       if (!connectionData) {
         messageIds[destination] = `error: No connection found for ${destination}`;
+        await logSystemEvent(supabase, {
+          level: 3,
+          message: 'Destination dispatch failed: missing connection',
+          action: 'destination_missing_connection',
+          user_id: post.user_id,
+          metadata: { post_id: post.id, destination }
+        });
         continue;
       }
-      
+
       switch (destination) {
         case 'twitter':
           messageId = await postToTwitter(post, connectionData);
@@ -118,16 +191,30 @@ async function processPost(supabase: any, post: any) {
           console.warn(`Unknown destination: ${destination}`);
           continue;
       }
-      
+
       if (messageId) {
         messageIds[destination] = messageId;
+        await logSystemEvent(supabase, {
+          level: 1,
+          message: 'Destination dispatched successfully',
+          action: 'destination_dispatched',
+          user_id: post.user_id,
+          metadata: { post_id: post.id, destination, messageId }
+        });
       }
     } catch (error) {
       console.error(`Failed to post to ${destination}:`, error);
       messageIds[destination] = `error: ${error.message}`;
+      await logSystemEvent(supabase, {
+        level: 3,
+        message: 'Destination dispatch failed',
+        action: 'destination_dispatch_failed',
+        user_id: post.user_id,
+        metadata: { post_id: post.id, destination, error: String(error) }
+      });
     }
   }
-  
+
   // Update post with results
   await supabase
     .from('social_posts')
@@ -136,8 +223,9 @@ async function processPost(supabase: any, post: any) {
       provider_message_ids: messageIds
     })
     .eq('id', post.id);
-  
+
   console.log(`Posted to ${Object.keys(messageIds).length} destinations for post ${post.id}`);
+  return messageIds;
 }
 
 // Social media posting implementations

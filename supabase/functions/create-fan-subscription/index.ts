@@ -58,7 +58,8 @@ serve(async (req) => {
     const { data: tierRow, error: tierError } = await supabaseService
       .from('membership_tiers')
       .select(
-        `id, owner_id, owner_type, status, price_monthly, currency, metadata, stripe_price_id, stripe_price_monthly_id`
+        `id, owner_id, owner_type, status, price_monthly, price_yearly, price_lifetime, currency,
+         stripe_product_id, stripe_price_monthly_id, stripe_price_yearly_id, stripe_price_lifetime_id`
       )
       .eq('id', membershipTierId)
       .maybeSingle();
@@ -73,27 +74,24 @@ serve(async (req) => {
     }
 
     const tierPriceCents =
-      typeof tierRow.price_monthly === 'number' ? tierRow.price_monthly : pricePence;
-    if (!tierPriceCents) {
+      typeof tierRow.price_monthly === 'number'
+        ? tierRow.price_monthly
+        : typeof tierRow.price_yearly === 'number'
+          ? tierRow.price_yearly
+          : typeof tierRow.price_lifetime === 'number'
+            ? tierRow.price_lifetime
+            : pricePence;
+
+    if (!tierPriceCents || Number.isNaN(tierPriceCents)) {
       throw new Error('Membership tier price is not configured.');
     }
 
     const tierCurrency = tierRow.currency ?? 'usd';
 
-    const metadataRecord =
-      typeof tierRow.metadata === 'object' && tierRow.metadata !== null
-        ? (tierRow.metadata as Record<string, unknown>)
-        : {};
-
-    const metadataStripePrice =
-      typeof metadataRecord['stripe_price_id'] === 'string'
-        ? (metadataRecord['stripe_price_id'] as string)
-        : undefined;
-
     const stripePriceId =
-      metadataStripePrice ||
-      (tierRow as any).stripe_price_id ||
-      (tierRow as any).stripe_price_monthly_id;
+      tierRow.stripe_price_monthly_id ||
+      tierRow.stripe_price_yearly_id ||
+      tierRow.stripe_price_lifetime_id;
 
     if (!stripePriceId || typeof stripePriceId !== 'string') {
       throw new Error('Membership tier is missing a Stripe price.');
@@ -131,6 +129,7 @@ serve(async (req) => {
           membershipTierId,
           membership_tier_id: membershipTierId,
           stripe_price_id: stripePriceId,
+          ...(tierRow.stripe_product_id ? { stripe_product_id: tierRow.stripe_product_id } : {}),
         },
       },
       success_url: `${origin}/profile/${creatorId}?fan_sub=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -142,6 +141,7 @@ serve(async (req) => {
         membershipTierId,
         membership_tier_id: membershipTierId,
         stripe_price_id: stripePriceId,
+        ...(tierRow.stripe_product_id ? { stripe_product_id: tierRow.stripe_product_id } : {}),
       },
     });
 

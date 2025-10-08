@@ -1195,31 +1195,49 @@ export type Database = {
           },
         ]
       }
-      campaign_pledges: {
+      campaign_rewards: {
         Row: {
-          amount: number
-          backer_id: string
           campaign_id: string
+          contribution_amount_cents: number
           created_at: string
+          description: string | null
+          estimated_delivery: string | null
           id: string
+          metadata: Json | null
+          quantity_claimed: number
+          quantity_limit: number | null
+          title: string
+          updated_at: string
         }
         Insert: {
-          amount: number
-          backer_id: string
           campaign_id: string
+          contribution_amount_cents: number
           created_at?: string
+          description?: string | null
+          estimated_delivery?: string | null
           id?: string
+          metadata?: Json | null
+          quantity_claimed?: number
+          quantity_limit?: number | null
+          title: string
+          updated_at?: string
         }
         Update: {
-          amount?: number
-          backer_id?: string
           campaign_id?: string
+          contribution_amount_cents?: number
           created_at?: string
+          description?: string | null
+          estimated_delivery?: string | null
           id?: string
+          metadata?: Json | null
+          quantity_claimed?: number
+          quantity_limit?: number | null
+          title?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "campaign_pledges_campaign_id_fkey"
+            foreignKeyName: "campaign_rewards_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
@@ -1227,41 +1245,183 @@ export type Database = {
           },
         ]
       }
-      campaigns: {
+      campaign_status_history: {
         Row: {
-          cover_url: string | null
+          campaign_id: string
+          changed_by: string | null
           created_at: string
-          ends_at: string | null
-          goal: number
+          from_status: Database['public']['Enums']['campaign_status'] | null
           id: string
-          owner_id: string
-          raised: number
-          slug: string | null
-          title: string
+          note: string | null
+          to_status: Database['public']['Enums']['campaign_status']
         }
         Insert: {
-          cover_url?: string | null
+          campaign_id: string
+          changed_by?: string | null
           created_at?: string
-          ends_at?: string | null
-          goal: number
+          from_status?: Database['public']['Enums']['campaign_status'] | null
           id?: string
-          owner_id: string
-          raised?: number
-          slug?: string | null
-          title: string
+          note?: string | null
+          to_status: Database['public']['Enums']['campaign_status']
         }
         Update: {
-          cover_url?: string | null
+          campaign_id?: string
+          changed_by?: string | null
           created_at?: string
-          ends_at?: string | null
-          goal?: number
+          from_status?: Database['public']['Enums']['campaign_status'] | null
           id?: string
-          owner_id?: string
-          raised?: number
-          slug?: string | null
-          title?: string
+          note?: string | null
+          to_status?: Database['public']['Enums']['campaign_status']
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaign_status_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_supporters: {
+        Row: {
+          campaign_id: string
+          contribution_amount_cents: number
+          contributed_at: string
+          id: string
+          metadata: Json | null
+          refunded_at: string | null
+          reward_id: string | null
+          status: Database['public']['Enums']['campaign_supporter_status']
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          supporter_id: string | null
+          fulfilled_at: string | null
+        }
+        Insert: {
+          campaign_id: string
+          contribution_amount_cents: number
+          contributed_at?: string
+          id?: string
+          metadata?: Json | null
+          refunded_at?: string | null
+          reward_id?: string | null
+          status?: Database['public']['Enums']['campaign_supporter_status']
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          supporter_id?: string | null
+          fulfilled_at?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          contribution_amount_cents?: number
+          contributed_at?: string
+          id?: string
+          metadata?: Json | null
+          refunded_at?: string | null
+          reward_id?: string | null
+          status?: Database['public']['Enums']['campaign_supporter_status']
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          supporter_id?: string | null
+          fulfilled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_supporters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_supporters_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_supporters_supporter_id_fkey"
+            columns: ["supporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "campaign_supporters_supporter_id_fkey"
+            columns: ["supporter_id"]
+            isOneToOne: false
+            referencedRelation: "view_hub_creator_spotlight"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          creator_id: string
+          current_amount_cents: number
+          description: string | null
+          funding_deadline: string | null
+          goal_amount_cents: number
+          id: string
+          metadata: Json | null
+          published_at: string | null
+          slug: string | null
+          status: Database['public']['Enums']['campaign_status']
+          supporter_count: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          current_amount_cents?: number
+          description?: string | null
+          funding_deadline?: string | null
+          goal_amount_cents: number
+          id?: string
+          metadata?: Json | null
+          published_at?: string | null
+          slug?: string | null
+          status?: Database['public']['Enums']['campaign_status']
+          supporter_count?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          current_amount_cents?: number
+          description?: string | null
+          funding_deadline?: string | null
+          goal_amount_cents?: number
+          id?: string
+          metadata?: Json | null
+          published_at?: string | null
+          slug?: string | null
+          status?: Database['public']['Enums']['campaign_status']
+          supporter_count?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "campaigns_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "view_hub_creator_spotlight"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       challenge_submissions: {
         Row: {
@@ -2485,6 +2645,92 @@ export type Database = {
           tags?: string[] | null
           thumbnail_url?: string | null
           title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_segment_members: {
+        Row: {
+          contact_id: string
+          creator_id: string
+          created_at: string
+          last_interaction: string | null
+          lifetime_value: number
+          segment_id: string
+          sources: string[]
+          total_spend: number
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          creator_id: string
+          created_at?: string
+          last_interaction?: string | null
+          lifetime_value?: number
+          segment_id: string
+          sources?: string[]
+          total_spend?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          creator_id?: string
+          created_at?: string
+          last_interaction?: string | null
+          lifetime_value?: number
+          segment_id?: string
+          sources?: string[]
+          total_spend?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_segment_members_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "crm_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_segments: {
+        Row: {
+          contact_count: number
+          created_at: string
+          creator_id: string
+          description: string | null
+          filters: Json
+          id: string
+          manual_contact_ids: string[]
+          name: string
+          refresh_frequency_minutes: number
+          refreshed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_count?: number
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          manual_contact_ids?: string[]
+          name: string
+          refresh_frequency_minutes?: number
+          refreshed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_count?: number
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          manual_contact_ids?: string[]
+          name?: string
+          refresh_frequency_minutes?: number
+          refreshed_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -7926,6 +8172,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      crowdfunding_mark_supporter_fulfilled: {
+        Args: { p_supporter_entry: string; p_note?: string | null }
+        Returns: Database['public']['Tables']['campaign_supporters']['Row']
+      }
+      crowdfunding_publish_campaign: {
+        Args: { p_campaign_id: string; p_go_live?: boolean | null; p_note?: string | null }
+        Returns: Database['public']['Tables']['campaigns']['Row']
+      }
+      crowdfunding_refund_supporter: {
+        Args: {
+          p_supporter_entry: string
+          p_reason?: string | null
+          p_refund_cents?: number | null
+        }
+        Returns: Database['public']['Tables']['campaign_supporters']['Row']
+      }
       delete_label_as_owner: {
         Args: { p_label_id: string }
         Returns: undefined
@@ -7987,6 +8249,27 @@ export type Database = {
       get_content_split_status: {
         Args: { p_content_id: string; p_content_type: string }
         Returns: string
+      }
+      get_crm_contacts: {
+        Args: { p_creator_id?: string }
+        Returns: {
+          contact_id: string
+          email: string | null
+          username: string | null
+          full_name: string | null
+          sources: string[] | null
+          total_spend: number | null
+          lifetime_value: number | null
+          last_interaction: string | null
+          first_interaction: string | null
+          order_count: number | null
+          follower_since: string | null
+          membership_status: string | null
+          membership_value: number | null
+          membership_since: string | null
+          student_value: number | null
+          student_since: string | null
+        }[]
       }
       get_current_user_labels: {
         Args: Record<PropertyKey, never>
@@ -8177,6 +8460,17 @@ export type Database = {
         Args: { p_action: string; p_record_id?: string; p_table_name: string }
         Returns: undefined
       }
+      log_system_event: {
+        Args: {
+          p_action: string
+          p_component: string
+          p_level: number
+          p_message: string
+          p_metadata?: Json
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       mark_all_notifications_read: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -8203,6 +8497,14 @@ export type Database = {
           p_payment_method?: string
         }
         Returns: Json
+      }
+      refresh_crm_segment: {
+        Args: { p_segment_id: string }
+        Returns: undefined
+      }
+      refresh_due_crm_segments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       request_artist_link: {
         Args:
@@ -8294,6 +8596,18 @@ export type Database = {
     }
     Enums: {
       automation_type: "scheduled_post" | "auto_reply" | "smart_drop"
+      campaign_status:
+        | "draft"
+        | "reviewing"
+        | "live"
+        | "success"
+        | "failed"
+        | "fulfilled"
+      campaign_supporter_status:
+        | "pledged"
+        | "refunded"
+        | "fulfilled"
+        | "cancelled"
       billing_period: "monthly" | "yearly" | "lifetime"
       content_gate_type: "tier_or_higher" | "specific_tier" | "any_tier"
       label_delete_type: "downgrade" | "delete"

@@ -135,11 +135,15 @@ describe('syncMembershipFromSubscription', () => {
       }),
       update: vi.fn((payload: any) => {
         membershipUpdatePayloads.push(payload);
-        return Promise.resolve({ error: null });
+        return {
+          eq: vi.fn(() => Promise.resolve({ error: null })),
+        };
       }),
     };
 
-    membershipTiersUpdateMock = vi.fn(() => Promise.resolve({ error: null }));
+    membershipTiersUpdateMock = vi.fn(() => ({
+      eq: vi.fn(() => Promise.resolve({ error: null })),
+    }));
 
     const membershipTiersTable: any = {
       select: vi.fn(() => membershipTiersTable),
@@ -161,6 +165,14 @@ describe('syncMembershipFromSubscription', () => {
         if (table === 'memberships') return membershipTable;
         if (table === 'membership_tiers') return membershipTiersTable;
         if (table === 'system_logs') return systemLogsTable;
+        if (table === 'fan_subscriptions')
+          return {
+            update: vi.fn((payload: any) => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => Promise.resolve({ error: null })),
+              })),
+            })),
+          };
         throw new Error(`Unexpected table ${table}`);
       }),
       functions: {
@@ -208,7 +220,14 @@ describe('syncMembershipFromSubscription', () => {
 
     const result = await syncMembershipFromSubscription(supabaseClient, subscription, logger);
 
-    expect(result).toMatchObject({ processed: true, status: 'active', tierId: 'tier-1', userId: 'fan-123' });
+    expect(result).toMatchObject({
+      processed: true,
+      status: 'active',
+      tierId: 'tier-1',
+      userId: 'fan-123',
+      creatorId: 'creator-1',
+    });
+    expect(result.currentPeriodStart).toBeTruthy();
     expect(membershipInsertPayloads).toHaveLength(1);
     expect(membershipInsertPayloads[0]).toMatchObject({
       tier_id: 'tier-1',
@@ -264,7 +283,13 @@ describe('syncMembershipFromSubscription', () => {
 
     const result = await syncMembershipFromSubscription(supabaseClient, subscription, logger);
 
-    expect(result).toMatchObject({ processed: true, status: 'cancelled', tierId: 'tier-1', userId: 'fan-123' });
+    expect(result).toMatchObject({
+      processed: true,
+      status: 'cancelled',
+      tierId: 'tier-1',
+      userId: 'fan-123',
+      creatorId: 'creator-1',
+    });
     expect(membershipUpdatePayloads).toHaveLength(1);
     expect(membershipUpdatePayloads[0]).toMatchObject({
       status: 'cancelled',

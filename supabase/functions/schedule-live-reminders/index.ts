@@ -1,146 +1,76 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-type ScheduleRequest = {
-  room_id?: string;
-  scheduled_for?: string | null;
-};
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const jsonResponse = (status: number, body: Record<string, unknown>) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
+interface ScheduleReminderRequest {
+  sessionId: string;
+  hostId: string;
+  title: string;
+  scheduledAt: string;
+  durationMinutes?: number;
+  maxParticipants?: number | null;
+  priceCents?: number | null;
+  mode?: "schedule" | "cancel";
+}
 
-const getServiceClient = () =>
+const REMINDER_DELTAS: Array<{ type: "24h" | "1h"; minutes: number }> = [
+  { type: "24h", minutes: 24 * 60 },
+  { type: "1h", minutes: 60 },
+];
+
+const createAdminClient = () =>
   createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     {
-      auth: {
-        persistSession: false,
-      },
+      auth: { persistSession: false },
     },
   );
 
-const authenticateRequest = async (req: Request, serviceClient: ReturnType<typeof createClient>) => {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    throw new Error("Missing authorization header");
-  }
+const jsonResponse = (status: number, body: Record<string, unknown>) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
+  });
 
-  const token = authHeader.replace("Bearer ", "");
-  if (!token) {
-    throw new Error("Invalid authorization token");
-  }
+const buildIcs = (payload: ScheduleReminderRequest) => {
+  const start = new Date(payload.scheduledAt);
+  const durationMinutes = payload.durationMinutes ?? 60;
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
 
-  const {
-    data: { user },
-    error,
-  } = await serviceClient.auth.getUser(token);
+  const toUtcString = (date: Date) =>
+    `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}` +
+    `T${String(date.getUTCHours()).padStart(2, "0")}${String(date.getUTCMinutes()).padStart(2, "0")}${String(date.getUTCSeconds()).padStart(2, "0")}Z`;
 
-  if (error || !user) {
-    throw new Error(error?.message || "Unable to authenticate request");
-  }
-
-  return user;
+  return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Pluggd//Live Session//EN\nCALSCALE:GREGORIAN\n` +
+    `BEGIN:VEVENT\nUID:${payload.sessionId}@pluggd.com\nDTSTAMP:${toUtcString(new Date())}\nDTSTART:${toUtcString(start)}\nDTEND:${toUtcString(end)}\n` +
+    `SUMMARY:${payload.title}\nDESCRIPTION:Join ${payload.title} on Pluggd\nLOCATION:Pluggd Live\nEND:VEVENT\nEND:VCALENDAR`;
 };
 
-const getReminderSettings = async (
-  serviceClient: ReturnType<typeof createClient>,
-  userId: string,
-) => {
-  const { data, error } = await serviceClient
-    .from("user_preferences")
-    .select("locale_settings")
-    .eq("user_id", userId)
-    .maybeSingle();
+const uploadIcs = async (supabaseAdmin: ReturnType<typeof createAdminClient>, sessionId: string, ics: string) => {
+  const bucket = "session-files";
+  const path = `reminders/${sessionId}.ics`;
+  const bytes = new TextEncoder().encode(ics);
+  const { error: uploadError } = await supabaseAdmin.storage.from(bucket).upload(path, bytes, {
+    cacheControl: "86400",
+    contentType: "text/calendar",
+    upsert: true,
+  });
 
-  if (error) {
-    console.error("[schedule-live-reminders] Failed to fetch reminder settings", error);
-    return { lead_minutes: 30, auto_notify: true };
+  if (uploadError) {
+    console.error("[schedule-live-reminders] Failed to upload ICS", uploadError);
+    throw new Error(uploadError.message);
   }
 
-  const preferences = data?.locale_settings?.live_session_reminders as
-    | { lead_minutes?: number; auto_notify?: boolean }
-    | undefined;
-
-  return {
-    lead_minutes: preferences?.lead_minutes ?? 30,
-    auto_notify: preferences?.auto_notify ?? true,
-  };
-};
-
-const scheduleReminder = async (
-  serviceClient: ReturnType<typeof createClient>,
-  roomId: string,
-  hostId: string,
-  scheduledFor: string,
-  leadMinutes: number,
-) => {
-  const reminderAt = new Date(new Date(scheduledFor).getTime() - leadMinutes * 60 * 1000);
-  if (Number.isNaN(reminderAt.getTime())) {
-    throw new Error("Invalid scheduled time");
-  }
-
-  try {
-    const { error } = await serviceClient
-      .from("live_session_reminders")
-      .upsert(
-        {
-          room_id: roomId,
-          host_id: hostId,
-          scheduled_for: scheduledFor,
-          reminder_at: reminderAt.toISOString(),
-        },
-        { onConflict: "room_id" },
-      );
-
-    if (error) {
-      throw error;
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("does not exist")) {
-      console.warn(
-        "[schedule-live-reminders] live_session_reminders table missing, skipping persistent schedule",
-      );
-      return;
-    }
-
-    throw error;
-  }
-};
-
-const clearReminder = async (serviceClient: ReturnType<typeof createClient>, roomId: string) => {
-  try {
-    const { error } = await serviceClient
-      .from("live_session_reminders")
-      .delete()
-      .eq("room_id", roomId);
-
-    if (error) {
-      throw error;
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("does not exist")) {
-      console.warn(
-        "[schedule-live-reminders] live_session_reminders table missing, skipping reminder cleanup",
-      );
-      return;
-    }
-
-    throw error;
-  }
+  const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
+  return data?.publicUrl ?? null;
 };
 
 serve(async (req) => {
@@ -148,60 +78,142 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return jsonResponse(405, { error: "Method not allowed" });
-  }
-
-  const serviceClient = getServiceClient();
-
   try {
-    const user = await authenticateRequest(req, serviceClient);
-    const body: ScheduleRequest = await req.json().catch(() => ({}));
-
-    if (!body.room_id) {
-      throw new Error("room_id is required");
+    const payload = (await req.json()) as ScheduleReminderRequest;
+    if (!payload.sessionId || !payload.hostId || !payload.title || !payload.scheduledAt) {
+      return jsonResponse(400, { error: "Missing required fields" });
     }
 
-    const { data: room, error: roomError } = await serviceClient
-      .from("session_rooms")
-      .select("id, host_id")
-      .eq("id", body.room_id)
-      .maybeSingle();
+    const supabaseAdmin = createAdminClient();
 
-    if (roomError) {
-      throw new Error(`Failed to load session room: ${roomError.message}`);
+    if (payload.mode === "cancel") {
+      await supabaseAdmin
+        .from("live_session_reminders")
+        .delete()
+        .eq("session_id", payload.sessionId);
+
+      await supabaseAdmin.from("notifications").insert({
+        user_id: payload.hostId,
+        type: "live_session",
+        title: `Reminders cancelled for ${payload.title}`,
+        message: "All pending reminders were removed after the session was cancelled.",
+        related_id: payload.sessionId,
+        related_type: "session",
+      });
+
+      return jsonResponse(200, { cancelled: true });
     }
 
-    if (!room) {
-      throw new Error("Session room not found");
+    const start = new Date(payload.scheduledAt);
+    if (Number.isNaN(start.getTime())) {
+      return jsonResponse(400, { error: "Invalid scheduledAt" });
     }
 
-    if (room.host_id !== user.id) {
-      throw new Error("You do not have permission to schedule reminders for this session");
+    const upcomingReminders = REMINDER_DELTAS.map((delta) => ({
+      type: delta.type,
+      sendAt: new Date(start.getTime() - delta.minutes * 60 * 1000),
+    })).filter((reminder) => reminder.sendAt.getTime() > Date.now());
+
+    const { data: ticketRows, error: ticketsError } = await supabaseAdmin
+      .from("live_tickets")
+      .select("user_id")
+      .eq("session_id", payload.sessionId)
+      .neq("status", "refunded");
+
+    if (ticketsError) {
+      console.error("[schedule-live-reminders] Unable to fetch ticket holders", ticketsError);
+      return jsonResponse(500, { error: ticketsError.message });
     }
 
-    if (!body.scheduled_for) {
-      await clearReminder(serviceClient, body.room_id);
-      return jsonResponse(200, { success: true, cleared: true });
+    const userIds = new Set<string>();
+    userIds.add(payload.hostId);
+    for (const ticket of ticketRows ?? []) {
+      if (ticket.user_id) {
+        userIds.add(ticket.user_id);
+      }
     }
 
-    const settings = await getReminderSettings(serviceClient, user.id);
+    const ics = buildIcs(payload);
+    const icsUrl = await uploadIcs(supabaseAdmin, payload.sessionId, ics);
 
-    if (!settings.auto_notify) {
-      await clearReminder(serviceClient, body.room_id);
-      return jsonResponse(200, { success: true, skipped: true, reason: "auto_notify_disabled" });
+    await supabaseAdmin
+      .from("live_session_reminders")
+      .delete()
+      .eq("session_id", payload.sessionId);
+
+    const rows = [] as Array<{
+      session_id: string;
+      user_id: string;
+      reminder_type: "24h" | "1h";
+      send_at: string;
+      ics_url: string | null;
+      title: string;
+    }>;
+
+    for (const userId of userIds) {
+      for (const reminder of upcomingReminders) {
+        rows.push({
+          session_id: payload.sessionId,
+          user_id: userId,
+          reminder_type: reminder.type,
+          send_at: reminder.sendAt.toISOString(),
+          ics_url: icsUrl,
+          title: payload.title,
+        });
+      }
     }
 
-    await scheduleReminder(serviceClient, body.room_id, room.host_id, body.scheduled_for, settings.lead_minutes);
+    if (rows.length) {
+      const { error: insertError } = await supabaseAdmin.from("live_session_reminders").insert(rows);
+      if (insertError) {
+        console.error("[schedule-live-reminders] Unable to queue reminders", insertError);
+        return jsonResponse(500, { error: insertError.message });
+      }
+    }
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: payload.hostId,
+      type: "live_session",
+      title: `Reminders scheduled for ${payload.title}`,
+      message: upcomingReminders.length
+        ? `We'll notify attendees ${upcomingReminders.map((r) => r.type).join(" & ")}.`
+        : "Session is too close for automated reminders, but the ICS file has been refreshed.",
+      related_id: payload.sessionId,
+      related_type: "session",
+      data: {
+        reminder_count: rows.length,
+        ics_url: icsUrl,
+        scheduled_at: payload.scheduledAt,
+      },
+    });
+
+    const attendees = Array.from(userIds);
+    for (const reminder of upcomingReminders) {
+      for (const attendee of attendees) {
+        await supabaseAdmin.functions.invoke("send-lifecycle-emails", {
+          body: {
+            user_id: attendee,
+            email_type: "live_session_reminder",
+            user_data: {
+              reminder_type: reminder.type,
+              session_title: payload.title,
+              scheduled_at: payload.scheduledAt,
+              ics_url: icsUrl,
+              send_at: reminder.sendAt.toISOString(),
+            },
+          },
+        });
+      }
+    }
 
     return jsonResponse(200, {
-      success: true,
-      reminder_at: new Date(new Date(body.scheduled_for).getTime() - settings.lead_minutes * 60 * 1000).toISOString(),
+      scheduled: true,
+      reminders: rows.length,
+      attendees: attendees.length,
+      ics_url: icsUrl,
     });
   } catch (error) {
-    console.error("[schedule-live-reminders]", error);
-    return jsonResponse(400, {
-      error: error instanceof Error ? error.message : "Unexpected error",
-    });
+    console.error("[schedule-live-reminders] Unexpected error", error);
+    return jsonResponse(500, { error: error instanceof Error ? error.message : "Unexpected error" });
   }
 });

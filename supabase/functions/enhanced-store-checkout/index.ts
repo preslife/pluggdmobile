@@ -26,11 +26,13 @@ serve(async (req) => {
       cartItems = [],
       shippingAddress,
       manualAmountCredits,
-      paymentMetadata = {}
+      paymentMetadata = {},
+      crowdfundingContribution
     } = await req.json();
     logStep('Parsed request body', {
       cartItemsCount: cartItems?.length,
-      manualAmountCredits
+      manualAmountCredits,
+      crowdfundingContribution: crowdfundingContribution ? 'present' : 'absent'
     });
 
     // Create Supabase client for user authentication
@@ -73,6 +75,70 @@ serve(async (req) => {
       });
       customerId = customer.id;
       logStep('Created new Stripe customer', { customerId });
+    }
+
+    if (crowdfundingContribution) {
+      const { campaignId, rewardId, amountCents, note, campaignSlug } = crowdfundingContribution;
+      if (!campaignId || typeof amountCents !== 'number' || amountCents <= 0) {
+        throw new Error('Invalid crowdfunding contribution payload');
+      }
+
+      const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
+      const metadata: Record<string, string> = {
+        user_id: user.id,
+        transaction_type: 'crowdfunding_contribution',
+        campaign_id: campaignId,
+        amount_cents: String(amountCents),
+      };
+
+      if (rewardId) {
+        metadata['reward_id'] = rewardId;
+      }
+
+      if (note) {
+        metadata['supporter_note'] = note;
+      }
+
+      if (campaignSlug) {
+        metadata['campaign_slug'] = campaignSlug;
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'gbp',
+              product_data: {
+                name: 'Crowdfunding contribution',
+                description: 'Support a creator campaign on PLUGGD',
+                metadata: {
+                  campaign_id: campaignId,
+                  reward_id: rewardId ?? '',
+                },
+              },
+              unit_amount: amountCents,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${origin}/campaigns/${campaignSlug ?? campaignId}?support=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/campaigns/${campaignSlug ?? campaignId}?support=cancelled`,
+        metadata,
+      });
+
+      logStep('Created crowdfunding checkout session', { sessionId: session.id, amountCents });
+
+      return new Response(JSON.stringify({
+        url: session.url,
+        sessionId: session.id,
+        paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
     if (manualAmountCredits && manualAmountCredits > 0) {
