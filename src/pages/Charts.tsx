@@ -329,13 +329,13 @@ const Charts = () => {
         playerActions.addToQueue(playerTrack);
         toast({
           title: "Added to queue",
-          description: `${item.title} was added to your queue."
+          description: `${item.title} was added to your queue.`,
         });
       } else {
         playerActions.playNext(playerTrack);
         toast({
           title: "Up next",
-          description: `${item.title} will play next."
+          description: `${item.title} will play next.`,
         });
       }
 

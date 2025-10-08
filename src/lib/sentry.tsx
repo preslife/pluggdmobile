@@ -2,6 +2,12 @@ import React from 'react';
 import * as Sentry from '@sentry/react';
 import { BrowserTracing } from '@sentry/tracing';
 import { logger } from './logger';
+import {
+  useLocation,
+  useNavigationType,
+  createRoutesFromChildren,
+  matchRoutes,
+} from 'react-router-dom';
 
 interface SentryConfig {
   dsn?: string;
@@ -79,7 +85,6 @@ class SentryService {
           }),
         ],
         tracesSampleRate: finalConfig.tracesSampleRate,
-        beforeSend: finalConfig.beforeSend,
         beforeBreadcrumb: finalConfig.beforeBreadcrumb,
         
         // Additional configuration
@@ -268,15 +273,6 @@ class SentryService {
     return this.initialized;
   }
 }
-
-// React Router v6 imports for Sentry integration
-import React, { useEffect } from 'react';
-import { 
-  useLocation, 
-  useNavigationType,
-  createRoutesFromChildren,
-  matchRoutes
-} from 'react-router-dom';
 
 // Create and export singleton instance
 export const sentry = new SentryService();

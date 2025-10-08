@@ -58,6 +58,8 @@ export const useKeyboardShortcuts = ({
         } else if (altKey) {
           event.preventDefault();
           onRandomize?.();
+        } else if (!isModifierPressed && !altKey) {
+          onPadPress?.(3);
         }
         break;
       
@@ -65,6 +67,8 @@ export const useKeyboardShortcuts = ({
         if (isModifierPressed && shiftKey) {
           event.preventDefault();
           onClear?.();
+        } else if (!isModifierPressed && !altKey && !shiftKey) {
+          onPadPress?.(10);
         }
         break;
       
@@ -72,6 +76,8 @@ export const useKeyboardShortcuts = ({
         if (altKey) {
           event.preventDefault();
           onFill?.();
+        } else if (!isModifierPressed && !altKey) {
+          onPadPress?.(7);
         }
         break;
       
@@ -105,9 +111,6 @@ export const useKeyboardShortcuts = ({
       case 'e':
         if (!isModifierPressed) onPadPress?.(2);
         break;
-      case 'r':
-        if (!isModifierPressed) onPadPress?.(3);
-        break;
       case 'a':
         if (!isModifierPressed) onPadPress?.(4);
         break;
@@ -117,17 +120,11 @@ export const useKeyboardShortcuts = ({
       case 'd':
         if (!isModifierPressed) onPadPress?.(6);
         break;
-      case 'f':
-        if (!isModifierPressed) onPadPress?.(7);
-        break;
       case 'z':
         if (!isModifierPressed) onPadPress?.(8);
         break;
       case 'x':
         if (!isModifierPressed) onPadPress?.(9);
-        break;
-      case 'c':
-        if (!isModifierPressed) onPadPress?.(10);
         break;
       case 'v':
         if (!isModifierPressed) onPadPress?.(11);

@@ -192,3 +192,5 @@ export const FeaturedBeatsCarousel = () => {
     </section>
   );
 };
+
+export default FeaturedBeatsCarousel;
