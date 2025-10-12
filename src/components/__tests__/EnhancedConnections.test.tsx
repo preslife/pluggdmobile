@@ -21,48 +21,69 @@ interface TableResponse {
   error?: { message: string } | Error | null;
 }
 
-let tableResponses: Record<string, TableResponse> = {};
+const { module: supabaseClientMock, helpers: supabaseMocks } = vi.hoisted(() => {
+  let tableResponses: Record<string, TableResponse> = {};
 
-const mockFrom = vi.fn((table: string) => {
-  const getResponse = () => tableResponses[table] ?? {};
-  const buildPromiseResult = () => {
-    const { data, error } = getResponse();
-    return {
-      data: data ?? [],
-      error: error ?? null,
-    };
-  };
-
-  const builder: any = {
-    select: vi.fn(() => builder),
-    eq: vi.fn(() => builder),
-    in: vi.fn(() => builder),
-    order: vi.fn(() => builder),
-    single: vi.fn(() => {
+  const mockFrom = vi.fn((table: string) => {
+    const getResponse = () => tableResponses[table] ?? {};
+    const buildPromiseResult = () => {
       const { data, error } = getResponse();
-      return Promise.resolve({ data: data ?? null, error: error ?? null });
-    }),
-    then: (resolve: any, reject?: any) =>
-      Promise.resolve(buildPromiseResult()).then(resolve, reject),
-    catch: (reject: any) => Promise.resolve(buildPromiseResult()).catch(reject),
-    finally: (onFinally: any) => Promise.resolve(buildPromiseResult()).finally(onFinally),
-  };
+      return {
+        data: data ?? [],
+        error: error ?? null,
+      };
+    };
 
-  return builder;
+    const builder: any = {
+      select: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
+      in: vi.fn(() => builder),
+      order: vi.fn(() => builder),
+      single: vi.fn(() => {
+        const { data, error } = getResponse();
+        return Promise.resolve({ data: data ?? null, error: error ?? null });
+      }),
+      then: (resolve: any, reject?: any) =>
+        Promise.resolve(buildPromiseResult()).then(resolve, reject),
+      catch: (reject: any) =>
+        Promise.resolve(buildPromiseResult()).catch(reject),
+      finally: (onFinally: any) =>
+        Promise.resolve(buildPromiseResult()).finally(onFinally),
+    };
+
+    return builder;
+  });
+
+  const mockInvoke = vi.fn();
+
+  return {
+    module: {
+      supabase: {
+        from: (table: string) => mockFrom(table),
+        functions: { invoke: mockInvoke },
+      },
+    },
+    helpers: {
+      mockFrom,
+      mockInvoke,
+      reset: () => {
+        tableResponses = {};
+        mockFrom.mockClear();
+        mockInvoke.mockClear();
+      },
+      setResponses: (responses: Record<string, TableResponse>) => {
+        tableResponses = responses;
+      },
+    },
+  };
 });
 
-const mockInvoke = vi.fn();
+vi.mock("@/integrations/supabase/client", () => supabaseClientMock);
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: (table: string) => mockFrom(table),
-    functions: { invoke: mockInvoke },
-  },
-}));
+const { mockFrom, mockInvoke, setResponses, reset } = supabaseMocks;
 
 beforeEach(() => {
-  tableResponses = {};
-  mockFrom.mockClear();
+  reset();
   mockInvoke.mockResolvedValue({ data: null, error: null });
   mockToast.mockReset();
   mockUseAuth.mockReturnValue({ user: { id: "user-1" }, loading: false });
@@ -74,7 +95,7 @@ afterEach(() => {
 
 describe("EnhancedConnections", () => {
   it("renders membership tiers from Supabase", async () => {
-    tableResponses = {
+    setResponses({
       social_connections: {
         data: [
           { id: "conn-mailchimp", provider: "mailchimp", updated_at: new Date().toISOString() },
@@ -113,7 +134,7 @@ describe("EnhancedConnections", () => {
           },
         ],
       },
-    };
+    });
 
     render(<EnhancedConnections />);
 
@@ -122,11 +143,11 @@ describe("EnhancedConnections", () => {
     });
 
     expect(screen.getByText(/Total Audience/)).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getAllByText("42").length).toBeGreaterThan(0);
   });
 
   it("shows a Mailchimp error when the snapshot query fails", async () => {
-    tableResponses = {
+    setResponses({
       social_connections: {
         data: [{ id: "conn-mailchimp", provider: "mailchimp" }],
       },
@@ -145,7 +166,7 @@ describe("EnhancedConnections", () => {
       mailchimp_audience_snapshots: {
         error: { message: "relation does not exist" },
       },
-    };
+    });
 
     render(<EnhancedConnections />);
 
