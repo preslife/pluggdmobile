@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CheckoutModal } from '../CheckoutModal';
+import {
+  CheckoutModal,
+  PURCHASE_TYPE_CONFIG,
+  getPurchaseTypeConfig,
+} from '../CheckoutModal';
 import type { PurchaseItem, PurchaseItemType } from '@/services/credits/credit-system';
 
 const hoistedMocks = vi.hoisted(() => ({
@@ -62,8 +66,10 @@ vi.mock('@/components/ui/slider', () => ({
 }));
 
 const originalLocation = window.location;
+let openSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
   toastMock.mockReset();
   getBalanceSummaryMock.mockReset();
   processPurchaseMock.mockReset();
@@ -113,6 +119,10 @@ afterAll(() => {
     value: originalLocation,
     configurable: true,
   });
+});
+
+afterEach(() => {
+  openSpy?.mockRestore();
 });
 
 describe('CheckoutModal hybrid checkout flow', () => {

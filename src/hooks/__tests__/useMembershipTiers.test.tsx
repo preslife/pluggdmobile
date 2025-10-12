@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, expect, it, beforeEach, beforeAll, vi } from "vitest";
 
 import { useMembershipTiers } from "@/hooks/useMembershipTiers";
 import type { UpsertMembershipTierInput } from "@/hooks/useMembershipTiers";
@@ -94,11 +94,19 @@ interface SupabaseTierRow {
 }
 
 describe("useMembershipTiers", () => {
-  const supabaseModule = (await import("@/integrations/supabase/client")) as any;
-  const { setSelectResponse, rpcMock } = supabaseModule.supabaseMockUtils as {
-    setSelectResponse: (data: any[]) => void;
-    rpcMock: ReturnType<typeof vi.fn>;
-  };
+  let setSelectResponse: (data: any[]) => void;
+  let rpcMock: ReturnType<typeof vi.fn>;
+
+  beforeAll(async () => {
+    const supabaseModule = (await import("@/integrations/supabase/client")) as any;
+    ({
+      setSelectResponse,
+      rpcMock,
+    } = supabaseModule.supabaseMockUtils as {
+      setSelectResponse: (data: any[]) => void;
+      rpcMock: ReturnType<typeof vi.fn>;
+    });
+  });
 
   beforeEach(() => {
     setSelectResponse([]);
@@ -178,7 +186,7 @@ describe("useMembershipTiers", () => {
   it("reverts optimistic create on error and exposes the message", async () => {
     rpcMock.mockImplementation((fn: string) => {
       if (fn === "create_membership_tier") {
-        return Promise.resolve({ data: null, error: { message: "Stripe failure" } });
+        return Promise.resolve({ data: null, error: new Error("Stripe failure") });
       }
       return Promise.resolve(createResponse(null));
     });
@@ -188,13 +196,10 @@ describe("useMembershipTiers", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     const payload = createInput();
-    let createPromise: Promise<void>;
 
     await act(async () => {
-      createPromise = result.current.createTier(payload);
+      await expect(result.current.createTier(payload)).rejects.toThrow("Stripe failure");
     });
-
-    await expect(createPromise).rejects.toThrow("Stripe failure");
 
     await waitFor(() => expect(result.current.tiers).toHaveLength(0));
     expect(result.current.error).toBe("Stripe failure");
