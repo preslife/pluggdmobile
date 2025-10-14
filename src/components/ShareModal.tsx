@@ -37,9 +37,12 @@ type Beat = {
 interface ShareModalProps {
   beat: Beat;
   children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerless?: boolean;
 }
 
-const ShareModal = ({ beat, children }: ShareModalProps) => {
+const ShareModal = ({ beat, children, open, onOpenChange, triggerless = false }: ShareModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [embedWidth, setEmbedWidth] = useState(400);
   const [embedHeight, setEmbedHeight] = useState(200);
@@ -82,15 +85,27 @@ const ShareModal = ({ beat, children }: ShareModalProps) => {
     copyToClipboard(embedCode);
   };
 
+  const isControlled = typeof open === 'boolean';
+  const dialogOpen = isControlled ? open : isOpen;
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!isControlled) {
+      setIsOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button variant="ghost" size="sm">
-            <Share2 className="w-4 h-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+      {!triggerless && (
+        <DialogTrigger asChild>
+          {children || (
+            <Button variant="ghost" size="sm">
+              <Share2 className="w-4 h-4" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

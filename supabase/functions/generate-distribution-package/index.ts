@@ -11,6 +11,59 @@ const logStep = (step: string, details?: any) => {
   console.log(`[DISTRIBUTION-PACKAGE] ${step}${detailsStr}`);
 };
 
+const sanitizeFileName = (value: string) =>
+  value?.replace(/[^a-zA-Z0-9]/g, '_') || 'track';
+
+const getFileExtension = (value: string | null) => {
+  if (!value) return '.mp3';
+  const withoutQuery = value.split('?')[0] || value;
+  const match = withoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+  return match ? `.${match[1]}` : '.mp3';
+};
+
+type StorageLocation = {
+  bucket: string;
+  path: string;
+  isPublic: boolean;
+};
+
+const extractStorageLocation = (input: string | null): StorageLocation | null => {
+  if (!input) return null;
+
+  try {
+    const url = new URL(input);
+    const parts = url.pathname.split('/');
+    const objectIndex = parts.findIndex(part => part === 'object');
+    if (objectIndex !== -1) {
+      const mode = parts[objectIndex + 1];
+      const bucket = parts[objectIndex + 2];
+      const path = parts.slice(objectIndex + 3).join('/');
+      return { bucket, path, isPublic: mode === 'public' };
+    }
+  } catch {
+    // Not a full storage URL
+  }
+
+  const normalized = input.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\//, '');
+  const directMatch = normalized.match(/^(public|sign)\/([a-zA-Z0-9-]+)\/(.+)$/);
+  if (directMatch) {
+    const [, mode, bucket, path] = directMatch;
+    return { bucket, path, isPublic: mode === 'public' };
+  }
+
+  const releaseAudioMatch = input.match(/^release-audio\/(.+)$/);
+  if (releaseAudioMatch) {
+    return { bucket: 'release-audio', path: releaseAudioMatch[1], isPublic: false };
+  }
+
+  const releaseArtworkMatch = input.match(/^release-artwork\/(.+)$/);
+  if (releaseArtworkMatch) {
+    return { bucket: 'release-artwork', path: releaseArtworkMatch[1], isPublic: false };
+  }
+
+  return null;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -64,6 +117,61 @@ serve(async (req) => {
 
     logStep("Release fetched", { title: release.title, artist: release.artist });
 
+    type ReleaseTrack = {
+      track_number: number | null;
+      title: string | null;
+      duration: number | null;
+      audio_url: string | null;
+    };
+
+    const { data: releaseTracks, error: releaseTracksError } = await supabaseService
+      .from('release_tracks')
+      .select('track_number, title, duration, audio_url')
+      .eq('release_id', release_id)
+      .order('track_number', { ascending: true });
+
+    if (releaseTracksError) {
+      logStep('Failed to fetch release tracks', { error: releaseTracksError.message });
+    }
+
+    const typedTracks = (releaseTracks as ReleaseTrack[] | null) ?? [];
+    const hasTrackData = typedTracks.length > 0;
+
+    const trackAssetEntries: { trackNumber: number; audioUrl: string | null; localPath: string | null }[] = [];
+
+    const tracksMetadata = (hasTrackData
+      ? typedTracks
+      : [{
+          track_number: 1,
+          title: release.title,
+          duration: null,
+          audio_url: release.download_url ?? null,
+        } as ReleaseTrack]
+    ).map((track, index) => {
+      const trackNumber = track.track_number ?? index + 1;
+      const title = track.title || `Track ${trackNumber}`;
+      const effectiveAudioUrl = track.audio_url ?? (!hasTrackData ? release.download_url ?? null : null);
+      const extension = getFileExtension(effectiveAudioUrl);
+      const sanitizedTitle = sanitizeFileName(title);
+      const localPath = effectiveAudioUrl
+        ? `tracks/${String(trackNumber).padStart(2, '0')}_${sanitizedTitle}${extension}`
+        : null;
+
+      trackAssetEntries.push({
+        trackNumber,
+        audioUrl: effectiveAudioUrl,
+        localPath,
+      });
+
+      return {
+        track_number: trackNumber,
+        title,
+        artist: release.artist,
+        duration: typeof track.duration === 'number' ? track.duration : null,
+        file_path: localPath,
+      };
+    });
+
     // Create distribution metadata
     const distributionMetadata = {
       release: {
@@ -88,15 +196,7 @@ serve(async (req) => {
         download_price: release.download_price,
         created_at: release.created_at
       },
-      tracks: [
-        {
-          track_number: 1,
-          title: release.title,
-          artist: release.artist,
-          duration: null, // TODO: Extract from audio file if available
-          file_path: release.download_url ? `tracks/${release.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3` : null
-        }
-      ],
+      tracks: tracksMetadata,
       package_info: {
         generated_at: new Date().toISOString(),
         generated_by: user.id,
@@ -110,44 +210,93 @@ serve(async (req) => {
     // Generate signed URLs for assets
     const packageAssets = {
       metadata: distributionMetadata,
-      files: []
+      files: [] as Array<{
+        type: string;
+        original_filename: string;
+        download_url: string;
+        local_path: string;
+      }>
     };
 
-    // Add audio file reference if available
-    if (release.download_url) {
-      const audioFileName = release.download_url.split('/').pop();
-      if (audioFileName) {
-        const { data: audioSignedUrl } = await supabaseService.storage
-          .from('release-audio')
-          .createSignedUrl(audioFileName, 3600);
+    for (const entry of trackAssetEntries) {
+      if (!entry.audioUrl || !entry.localPath) continue;
 
-        if (audioSignedUrl?.signedUrl) {
-          packageAssets.files.push({
-            type: 'audio',
-            original_filename: audioFileName,
-            download_url: audioSignedUrl.signedUrl,
-            local_path: `tracks/${release.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`
-          });
+      const storageLocation = extractStorageLocation(entry.audioUrl);
+      let downloadUrl = entry.audioUrl;
+      let originalFilename = entry.localPath.split('/').pop() || entry.localPath;
+
+      if (storageLocation) {
+        originalFilename = storageLocation.path.split('/').pop() || originalFilename;
+
+        if (storageLocation.isPublic) {
+          const { data } = supabaseService.storage
+            .from(storageLocation.bucket)
+            .getPublicUrl(storageLocation.path);
+
+          downloadUrl = data?.publicUrl ?? entry.audioUrl;
+        } else {
+          const { data, error } = await supabaseService.storage
+            .from(storageLocation.bucket)
+            .createSignedUrl(storageLocation.path, 3600);
+
+          if (error) {
+            logStep('Failed to sign audio file', { error: error.message, path: storageLocation.path });
+            continue;
+          }
+
+          downloadUrl = data?.signedUrl ?? entry.audioUrl;
         }
       }
+
+      packageAssets.files.push({
+        type: 'audio',
+        original_filename: originalFilename,
+        download_url: downloadUrl,
+        local_path: entry.localPath,
+      });
     }
 
-    // Add cover art reference if available
     if (release.cover_art_url) {
-      const artworkFileName = release.cover_art_url.split('/').pop();
-      if (artworkFileName) {
-        const { data: artworkSignedUrl } = await supabaseService.storage
-          .from('release-artwork')
-          .createSignedUrl(artworkFileName, 3600);
+      const artworkLocation = extractStorageLocation(release.cover_art_url);
+      const artworkExtension = getFileExtension(release.cover_art_url);
+      const artworkLocalPath = `artwork/cover${artworkExtension}`;
 
-        if (artworkSignedUrl?.signedUrl) {
+      if (artworkLocation) {
+        let artworkUrl: string | null = null;
+
+        if (artworkLocation.isPublic) {
+          const { data } = supabaseService.storage
+            .from(artworkLocation.bucket)
+            .getPublicUrl(artworkLocation.path);
+
+          artworkUrl = data?.publicUrl ?? release.cover_art_url;
+        } else {
+          const { data, error } = await supabaseService.storage
+            .from(artworkLocation.bucket)
+            .createSignedUrl(artworkLocation.path, 3600);
+
+          if (error) {
+            logStep('Failed to sign artwork file', { error: error.message, path: artworkLocation.path });
+          } else {
+            artworkUrl = data?.signedUrl ?? release.cover_art_url;
+          }
+        }
+
+        if (artworkUrl) {
           packageAssets.files.push({
             type: 'artwork',
-            original_filename: artworkFileName,
-            download_url: artworkSignedUrl.signedUrl,
-            local_path: 'artwork/cover.jpg'
+            original_filename: artworkLocation.path.split('/').pop() || `cover${artworkExtension}`,
+            download_url: artworkUrl,
+            local_path: artworkLocalPath,
           });
         }
+      } else {
+        packageAssets.files.push({
+          type: 'artwork',
+          original_filename: `cover${artworkExtension}`,
+          download_url: release.cover_art_url,
+          local_path: artworkLocalPath,
+        });
       }
     }
 

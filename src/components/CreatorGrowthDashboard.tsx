@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, ExternalLink, TrendingUp, Users, DollarSign, Share2 } from "lucide-react";
+import { Copy, ExternalLink, Users, DollarSign, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,9 +35,14 @@ export const CreatorGrowthDashboard = () => {
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchReferralStats();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchReferralStats();
+    }
+  }, [user, profile?.referral_code]);
 
   const fetchProfile = async () => {
     try {
@@ -63,22 +68,46 @@ export const CreatorGrowthDashboard = () => {
 
   const fetchReferralStats = async () => {
     try {
-      // Fetch orders with referrer code
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('referrer_code', profile?.referral_code || '');
+      const referralCode = profile?.referral_code || customReferralCode || '';
 
-      if (ordersError) throw ordersError;
+      let orders: any[] = [];
+
+      if (referralCode) {
+        const { data: orderResults, error: ordersError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('referrer_code', referralCode);
+
+        if (ordersError) throw ordersError;
+        orders = orderResults || [];
+      }
 
       // Calculate stats
-      const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+
+      let totalSubscriptions = 0;
+      let subscriptionRevenue = 0;
+
+      if (user?.id) {
+        const { data: subscriptions, error: subscriptionsError } = await supabase
+          .from('fan_subscriptions')
+          .select('id, price_cents, status')
+          .eq('creator_id', user.id)
+          .eq('status', 'active');
+
+        if (subscriptionsError) throw subscriptionsError;
+
+        totalSubscriptions = subscriptions?.length || 0;
+        subscriptionRevenue = (subscriptions || []).reduce((sum, subscription) => {
+          return sum + (subscription.price_cents ?? 0);
+        }, 0);
+      }
 
       setReferralStats({
-        total_orders: orders?.length || 0,
-        total_revenue: totalRevenue,
-        total_subscriptions: 0, // TODO: Add subscription tracking
-        recent_referrals: orders?.slice(0, 10) || []
+        total_orders: orders.length,
+        total_revenue: totalRevenue + subscriptionRevenue / 100,
+        total_subscriptions: totalSubscriptions,
+        recent_referrals: orders.slice(0, 10)
       });
     } catch (error) {
       console.error('Error fetching referral stats:', error);
@@ -241,7 +270,7 @@ export const CreatorGrowthDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Share2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{referralStats.total_orders}</div>
@@ -256,18 +285,18 @@ export const CreatorGrowthDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">£{referralStats.total_revenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Total value of referred orders</p>
+            <p className="text-xs text-muted-foreground">From referrals and active subscriptions</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+12%</div>
-            <p className="text-xs text-muted-foreground">This month vs last</p>
+            <div className="text-2xl font-bold">{referralStats.total_subscriptions}</div>
+            <p className="text-xs text-muted-foreground">Fans subscribed to your tiers</p>
           </CardContent>
         </Card>
       </div>
