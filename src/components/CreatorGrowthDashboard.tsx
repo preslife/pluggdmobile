@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ReferralEarnings } from "@/components/ReferralEarnings";
+import { logger } from "@/lib/logger";
 
 interface ReferralStats {
   total_orders: number;
@@ -31,6 +32,7 @@ export const CreatorGrowthDashboard = () => {
   const [customReferralCode, setCustomReferralCode] = useState('');
   const [isUpdatingCode, setIsUpdatingCode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
   useEffect(() => {
     if (user) {
@@ -46,6 +48,7 @@ export const CreatorGrowthDashboard = () => {
 
   const fetchProfile = async () => {
     try {
+      void logger.info('creator_growth_profile_fetch_start', { user_id: user?.id });
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -60,14 +63,23 @@ export const CreatorGrowthDashboard = () => {
       // Generate referral code if it doesn't exist
       if (!data.referral_code) {
         await generateReferralCode();
+      } else {
+        void logger.info('creator_growth_profile_fetch_success', {
+          user_id: user?.id,
+          has_referral_code: true
+        });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      void logger.error('creator_growth_profile_fetch_failed', {
+        user_id: user?.id
+      }, toError(error));
     }
   };
 
   const fetchReferralStats = async () => {
     try {
+      void logger.info('creator_growth_stats_fetch_start', { user_id: user?.id });
       const referralCode = profile?.referral_code || customReferralCode || '';
 
       let orders: any[] = [];
@@ -109,8 +121,16 @@ export const CreatorGrowthDashboard = () => {
         total_subscriptions: totalSubscriptions,
         recent_referrals: orders.slice(0, 10)
       });
+      void logger.info('creator_growth_stats_fetch_success', {
+        user_id: user?.id,
+        total_orders: orders.length,
+        total_subscriptions: totalSubscriptions
+      });
     } catch (error) {
       console.error('Error fetching referral stats:', error);
+      void logger.error('creator_growth_stats_fetch_failed', {
+        user_id: user?.id
+      }, toError(error));
     } finally {
       setLoading(false);
     }
@@ -118,6 +138,9 @@ export const CreatorGrowthDashboard = () => {
 
   const generateReferralCode = async () => {
     try {
+      void logger.userAction('generate_referral_code_attempt', 'CreatorGrowthDashboard', {
+        user_id: user?.id
+      });
       // Generate based on username or email
       const baseCode = profile?.username || 
                       user?.email?.split('@')[0] || 
@@ -155,6 +178,10 @@ export const CreatorGrowthDashboard = () => {
         title: "Referral code generated",
         description: `Your referral code is: ${referralCode}`
       });
+      void logger.info('generate_referral_code_success', {
+        user_id: user?.id,
+        referral_code: referralCode
+      });
     } catch (error) {
       console.error('Error generating referral code:', error);
       toast({
@@ -162,6 +189,9 @@ export const CreatorGrowthDashboard = () => {
         description: "Failed to generate referral code",
         variant: "destructive"
       });
+      void logger.error('generate_referral_code_failed', {
+        user_id: user?.id
+      }, toError(error));
     }
   };
 
@@ -170,6 +200,10 @@ export const CreatorGrowthDashboard = () => {
 
     setIsUpdatingCode(true);
     try {
+      void logger.userAction('update_referral_code_attempt', 'CreatorGrowthDashboard', {
+        user_id: user?.id,
+        requested_code: customReferralCode
+      });
       // Check if code is available
       const { data: existing } = await supabase
         .from('profiles')
@@ -179,6 +213,10 @@ export const CreatorGrowthDashboard = () => {
         .single();
 
       if (existing) {
+        void logger.warn('update_referral_code_conflict', {
+          user_id: user?.id,
+          requested_code: customReferralCode
+        });
         toast({
           title: "Code taken",
           description: "This referral code is already in use",
@@ -201,6 +239,10 @@ export const CreatorGrowthDashboard = () => {
         title: "Referral code updated",
         description: `Your new referral code is: ${customReferralCode}`
       });
+      void logger.info('update_referral_code_success', {
+        user_id: user?.id,
+        referral_code: customReferralCode
+      });
     } catch (error) {
       console.error('Error updating referral code:', error);
       toast({
@@ -208,6 +250,10 @@ export const CreatorGrowthDashboard = () => {
         description: "Failed to update referral code",
         variant: "destructive"
       });
+      void logger.error('update_referral_code_failed', {
+        user_id: user?.id,
+        requested_code: customReferralCode
+      }, toError(error));
     } finally {
       setIsUpdatingCode(false);
     }
@@ -218,6 +264,10 @@ export const CreatorGrowthDashboard = () => {
     
     const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
     navigator.clipboard.writeText(referralLink);
+    void logger.userAction('copy_referral_link', 'CreatorGrowthDashboard', {
+      user_id: user?.id,
+      referral_code: profile.referral_code
+    });
     
     toast({
       title: "Link copied",
@@ -230,6 +280,11 @@ export const CreatorGrowthDashboard = () => {
 
     const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
     const text = `Check out Pluggd - the ultimate platform for music creators! ${referralLink}`;
+    void logger.userAction('share_referral_link_attempt', 'CreatorGrowthDashboard', {
+      user_id: user?.id,
+      referral_code: profile.referral_code,
+      supports_web_share: !!navigator.share
+    });
 
     if (navigator.share) {
       navigator.share({
@@ -237,9 +292,15 @@ export const CreatorGrowthDashboard = () => {
         text,
         url: referralLink
       });
+      void logger.info('share_referral_link_success', {
+        user_id: user?.id
+      });
     } else {
       // Fallback to copying
       copyReferralLink();
+      void logger.info('share_referral_link_fallback_copy', {
+        user_id: user?.id
+      });
     }
   };
 

@@ -84,8 +84,13 @@ class Logger {
   }
 
   private async getCurrentUser() {
+    const auth = (supabase as any)?.auth;
+    if (!auth || typeof auth.getUser !== 'function') {
+      return null;
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await auth.getUser();
       return user;
     } catch {
       return null;
@@ -180,7 +185,7 @@ class Logger {
   }
 
   private queueForRemote(entry: LogEntry): void {
-    if (!this.config.enableRemote) return;
+    if (!this.config.enableRemote || !this.canSendToRemote()) return;
 
     this.logQueue.push(entry);
 
@@ -190,7 +195,16 @@ class Logger {
   }
 
   private async sendLogsToRemote(entries: LogEntry[]): Promise<void> {
+    if (!this.canSendToRemote()) {
+      return;
+    }
+
     try {
+      const table = (supabase as any)?.from?.('system_logs');
+      if (!table || typeof table.insert !== 'function') {
+        return;
+      }
+
       const logsForSupabase = entries.map(entry => ({
         level: entry.level,
         message: entry.message,
@@ -211,14 +225,17 @@ class Logger {
         }
       }));
 
-      await supabase
-        .from('system_logs')
-        .insert(logsForSupabase);
+      await table.insert(logsForSupabase);
     } catch (error) {
       console.warn('Failed to send logs to remote:', error);
       // Re-queue the entries for retry
       this.logQueue.unshift(...entries);
     }
+  }
+
+  private canSendToRemote(): boolean {
+    const client = supabase as any;
+    return !!client && typeof client.from === 'function';
   }
 
   private startFlushTimer(): void {
