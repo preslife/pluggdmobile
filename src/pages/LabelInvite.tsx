@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, Building, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { logger } from "@/lib/logger";
 
 type InviteStatus = "loading" | "valid" | "expired" | "invalid" | "already_member" | "accepted";
 
@@ -24,10 +25,14 @@ export default function LabelInvite() {
   const [status, setStatus] = useState<InviteStatus>("loading");
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const tokenPrefix = token ? token.slice(0, 8) : null;
+
+  const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
   useEffect(() => {
     if (!token) {
       setStatus("invalid");
+      void logger.warn("label_invite_missing_token", {});
       return;
     }
 
@@ -36,6 +41,9 @@ export default function LabelInvite() {
     if (!user) {
       // Redirect to auth with return URL
       navigate(`/auth?redirect=/labels/invite/${token}`);
+      void logger.info("label_invite_redirect_to_auth", {
+        token_prefix: tokenPrefix,
+      });
       return;
     }
 
@@ -46,6 +54,10 @@ export default function LabelInvite() {
     if (!token || !user) return;
 
     try {
+      void logger.info("label_invite_check_start", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      });
       // Check invitation details
       const { data, error } = await supabase.rpc("get_label_invitation_details", {
         p_token: token
@@ -54,11 +66,19 @@ export default function LabelInvite() {
       if (error) {
         console.error("Error checking invitation:", error);
         setStatus("invalid");
+      void logger.error("label_invite_check_failed", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      }, toError(error));
         return;
       }
 
       if (!data || data.length === 0) {
         setStatus("invalid");
+      void logger.warn("label_invite_not_found", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      });
         return;
       }
 
@@ -73,6 +93,10 @@ export default function LabelInvite() {
           role: invite.role,
           invited_by_name: invite.invited_by_name || "Team Admin"
         });
+      void logger.warn("label_invite_expired", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      });
         return;
       }
 
@@ -85,6 +109,10 @@ export default function LabelInvite() {
           role: invite.current_role || invite.role,
           invited_by_name: invite.invited_by_name || "Team Admin"
         });
+      void logger.info("label_invite_already_member", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      });
         return;
       }
 
@@ -95,9 +123,18 @@ export default function LabelInvite() {
         role: invite.role,
         invited_by_name: invite.invited_by_name || "Team Admin"
       });
+      void logger.info("label_invite_valid", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+        role: invite.role,
+      });
     } catch (error) {
       console.error("Error checking invitation:", error);
       setStatus("invalid");
+      void logger.error("label_invite_check_threw", {
+        token_prefix: tokenPrefix,
+        user_id: user?.id,
+      }, toError(error));
     }
   };
 
@@ -105,6 +142,10 @@ export default function LabelInvite() {
     if (!token || !user) return;
 
     setAccepting(true);
+    void logger.userAction("label_invite_accept_attempt", "LabelInvitePage", {
+      token_prefix: tokenPrefix,
+      user_id: user.id,
+    });
     try {
       const { data, error } = await supabase.rpc("accept_label_invite", {
         p_token: token
@@ -115,17 +156,33 @@ export default function LabelInvite() {
         if (error.message.includes("expired")) {
           setStatus("expired");
           toast.error("This invitation has expired");
+        void logger.warn("label_invite_accept_expired", {
+          token_prefix: tokenPrefix,
+          user_id: user.id,
+        });
         } else if (error.message.includes("already_member")) {
           setStatus("already_member");
           toast.info("You're already a member of this label");
+        void logger.info("label_invite_accept_already_member", {
+          token_prefix: tokenPrefix,
+          user_id: user.id,
+        });
         } else {
           toast.error("Failed to accept invitation");
+        void logger.error("label_invite_accept_failed", {
+          token_prefix: tokenPrefix,
+          user_id: user.id,
+        }, toError(error));
         }
         return;
       }
 
       setStatus("accepted");
       toast.success("Invitation accepted successfully!");
+      void logger.info("label_invite_accept_success", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      });
 
       // Redirect after a short delay
       setTimeout(() => {
@@ -134,6 +191,10 @@ export default function LabelInvite() {
     } catch (error) {
       console.error("Error accepting invitation:", error);
       toast.error("Failed to accept invitation");
+      void logger.error("label_invite_accept_exception", {
+        token_prefix: tokenPrefix,
+        user_id: user.id,
+      }, toError(error));
     } finally {
       setAccepting(false);
     }
@@ -142,6 +203,10 @@ export default function LabelInvite() {
   const handleDecline = () => {
     navigate("/");
     toast.info("Invitation declined");
+    void logger.userAction("label_invite_declined", "LabelInvitePage", {
+      token_prefix: tokenPrefix,
+      user_id: user?.id,
+    });
   };
 
   const renderContent = () => {

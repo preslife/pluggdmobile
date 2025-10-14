@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, AlertTriangle, Eye, Check, X, Flag, Music, MessageSquare, Users } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 type ModerationItem = {
   id: string;
@@ -38,6 +39,7 @@ const ModerationDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('releases');
+  const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
   useEffect(() => {
     if (user) {
@@ -47,6 +49,9 @@ const ModerationDashboard = () => {
 
   const fetchModerationData = async () => {
     try {
+      void logger.info('moderation_dashboard_fetch_start', {
+        user_id: user?.id,
+      });
       // Fetch moderation items
       const { data: moderationData, error: moderationError } = await supabase
         .from('moderation_items')
@@ -55,6 +60,9 @@ const ModerationDashboard = () => {
 
       if (moderationError) {
         console.error('Error fetching moderation items:', moderationError);
+        void logger.error('moderation_dashboard_items_fetch_failed', {
+          user_id: user?.id,
+        }, toError(moderationError));
       }
 
       // Fetch content reports separately
@@ -66,6 +74,9 @@ const ModerationDashboard = () => {
 
       if (reportsError) {
         console.error('Error fetching reports:', reportsError);
+        void logger.error('moderation_dashboard_reports_fetch_failed', {
+          user_id: user?.id,
+        }, toError(reportsError));
       }
 
       // Transform data to match component format
@@ -186,8 +197,18 @@ const ModerationDashboard = () => {
         pending_reports: pendingReports,
         total_actions_today: actionsToday || 0
       });
+      void logger.info('moderation_dashboard_fetch_success', {
+        user_id: user?.id,
+        pending_releases: pendingReleases,
+        pending_comments: pendingComments,
+        pending_reports: pendingReports,
+        actions_today: actionsToday || 0,
+      });
     } catch (error) {
       console.error('Error fetching moderation data:', error);
+      void logger.error('moderation_dashboard_fetch_failed', {
+        user_id: user?.id,
+      }, toError(error));
     } finally {
       setLoading(false);
     }
@@ -195,8 +216,13 @@ const ModerationDashboard = () => {
 
   const handleModerationAction = async (itemId: string, action: 'approve' | 'reject', reason?: string) => {
     try {
+      void logger.userAction('moderation_action_attempt', 'ModerationDashboard', {
+        item_id: itemId,
+        action,
+        user_id: user?.id,
+      });
       const status = action === 'approve' ? 'approved' : 'rejected';
-      
+
       // Update moderation item status
       const { error: updateError } = await supabase
         .from('moderation_items')
@@ -251,6 +277,12 @@ const ModerationDashboard = () => {
         title: `Content ${action}d`,
         description: `Moderation action completed successfully.`
       });
+      void logger.info('moderation_action_success', {
+        item_id: itemId,
+        action,
+        user_id: user?.id,
+        reason,
+      });
 
       // Update local state
       setModerationItems(prev =>
@@ -270,6 +302,12 @@ const ModerationDashboard = () => {
         description: "Failed to process moderation action.",
         variant: "destructive"
       });
+      void logger.error('moderation_action_failed', {
+        item_id: itemId,
+        action,
+        user_id: user?.id,
+        reason,
+      }, toError(error));
     }
   };
 
