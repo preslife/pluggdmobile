@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { h } from "https://esm.sh/preact@10.19.2";
-import satori from "https://esm.sh/satori@0.10.3";
 import { render as renderPng } from "https://deno.land/x/resvg_wasm@0.2.0/mod.ts";
 
 const OG_WIDTH = 1200;
@@ -14,6 +12,14 @@ const corsHeaders = {
 };
 
 type VariantKey = "release" | "beat" | "profile" | "session" | "store" | "default";
+
+const escapeXml = (input: string) =>
+  input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const variants: Record<
   VariantKey,
@@ -51,14 +57,6 @@ const variants: Record<
     overlayOpacity: 0.75,
   },
 };
-
-const interRegularPromise = fetch(
-  "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.5/files/inter-latin-400-normal.woff2",
-).then((res) => res.arrayBuffer());
-
-const interSemiBoldPromise = fetch(
-  "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.5/files/inter-latin-600-normal.woff2",
-).then((res) => res.arrayBuffer());
 
 const toTitleCase = (value: string) =>
   value
@@ -111,172 +109,48 @@ serve(async (req) => {
     const variant = variants[type] ?? variants.default;
     const accent = accentOverride || variant.accent;
 
-    const [interRegular, interSemiBold] = await Promise.all([
-      interRegularPromise,
-      interSemiBoldPromise,
-    ]);
-
     const backgroundDataUri = backgroundImageUrl ? await toDataUri(backgroundImageUrl) : null;
+    const escapedTitle = escapeXml(title);
+    const escapedDescription = escapeXml(description);
+    const escapedType = escapeXml(toTitleCase(type));
+    const escapedUrl = escapeXml(resourceUrl);
+    const gradientOverlayOpacity = variant.overlayOpacity ?? 0.85;
 
-    const svg = await satori(
-      h(
-        "div",
-        {
-          style: {
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            background: variant.gradient,
-            color: "#ffffff",
-            padding: "64px",
-            boxSizing: "border-box",
-          },
-        },
-        backgroundDataUri
-          ? h("div", {
-              style: {
-                position: "absolute",
-                inset: 0,
-                backgroundImage: `url(${backgroundDataUri})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                opacity: 0.35,
-                filter: "blur(1px)",
-              },
-            })
-          : null,
-        h("div", {
-          style: {
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.35) 100%)",
-            opacity: variant.overlayOpacity ?? 0.85,
-          },
-        }),
-        h(
-          "div",
-          {
-            style: {
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              height: "100%",
-            },
-          },
-          h(
-            "div",
-            {
-              style: {
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 32,
-                fontWeight: 600,
-              },
-            },
-            h(
-              "div",
-              { style: { display: "flex", alignItems: "center", gap: 16 } },
-              h("div", {
-                style: {
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  backgroundColor: accent,
-                },
-              }),
-              "PLUGGD",
-            ),
-            h(
-              "div",
-              {
-                style: {
-                  padding: "8px 24px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.4)",
-                  backgroundColor: "rgba(15, 23, 42, 0.4)",
-                  fontSize: 20,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                },
-              },
-              variant.label,
-            ),
-          ),
-          h(
-            "div",
-            {
-              style: {
-                flexGrow: 1,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-              },
-            },
-            h("h1", {
-              style: {
-                fontSize: 72,
-                fontWeight: 600,
-                lineHeight: 1.1,
-                margin: 0,
-                maxWidth: "960px",
-                textShadow: "0 20px 60px rgba(0,0,0,0.35)",
-              },
-              children: title,
-            }),
-            h("p", {
-              style: {
-                marginTop: 32,
-                fontSize: 30,
-                maxWidth: "840px",
-                lineHeight: 1.4,
-                color: "rgba(255,255,255,0.86)",
-              },
-              children: description,
-            }),
-          ),
-          h(
-            "div",
-            {
-              style: {
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 24,
-                color: "rgba(255,255,255,0.75)",
-              },
-            },
-            h("span", {
-              style: { textTransform: "uppercase", letterSpacing: "0.4em" },
-              children: toTitleCase(type),
-            }),
-            h("span", { children: resourceUrl }),
-          ),
-        ),
-      ),
-      {
-        width: OG_WIDTH,
-        height: OG_HEIGHT,
-        fonts: [
-          {
-            name: "Inter",
-            data: interRegular,
-            weight: 400,
-            style: "normal",
-          },
-          {
-            name: "Inter",
-            data: interSemiBold,
-            weight: 600,
-            style: "normal",
-          },
-        ],
-      },
-    );
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${OG_WIDTH}" height="${OG_HEIGHT}" viewBox="0 0 ${OG_WIDTH} ${OG_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="${variant.accent}"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.4"/>
+    </linearGradient>
+    ${backgroundDataUri ? `<pattern id="bgImage" patternUnits="objectBoundingBox" width="1" height="1"><image href="${backgroundDataUri}" width="${OG_WIDTH}" height="${OG_HEIGHT}" preserveAspectRatio="xMidYMid slice" opacity="0.35"/></pattern>` : ""}
+  </defs>
+  <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="url(#gradient)" />
+  ${backgroundDataUri ? `<rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="url(#bgImage)" />` : ""}
+  <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="rgba(15, 23, 42, ${gradientOverlayOpacity})" />
+  <g fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2">
+    <rect x="28" y="28" width="${OG_WIDTH - 56}" height="${OG_HEIGHT - 56}" rx="32" />
+  </g>
+  <circle cx="100" cy="100" r="16" fill="${accent}" />
+  <text x="140" y="112" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="600" fill="#ffffff" letter-spacing="4">PLUGGD</text>
+  <g transform="translate(${OG_WIDTH - 340}, 76)">
+    <rect width="280" height="56" rx="28" fill="rgba(15, 23, 42, 0.6)" stroke="rgba(255,255,255,0.4)" />
+    <text x="140" y="36" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="600" fill="#ffffff" text-anchor="middle" letter-spacing="6">${escapedType.toUpperCase()}</text>
+  </g>
+  <text x="100" y="240" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="600" fill="#ffffff" letter-spacing="-1" style="text-shadow: 0px 25px 45px rgba(0,0,0,0.35);">
+    ${escapedTitle}
+  </text>
+  <foreignObject x="100" y="300" width="${OG_WIDTH - 200}" height="200">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Inter, system-ui, sans-serif; font-size: 28px; line-height: 1.4; color: rgba(255,255,255,0.88);">
+      ${escapedDescription}
+    </div>
+  </foreignObject>
+  <g transform="translate(100, ${OG_HEIGHT - 120})" fill="rgba(255,255,255,0.75)" font-family="Inter, system-ui, sans-serif">
+    <text font-size="24" font-weight="500" letter-spacing="8">${escapedType.toUpperCase()}</text>
+    <text y="40" font-size="24">${escapedUrl}</text>
+  </g>
+</svg>`;
 
     const png = await renderPng(svg);
 
