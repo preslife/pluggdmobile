@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import React, { useEffect } from 'react';
-import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import type { Track } from '../GlobalPlayerProvider';
 import { GlobalPlayerProvider, useGlobalPlayer } from '../GlobalPlayerProvider';
 import { trackAccessControl } from '@/services/audio/track-access-control';
@@ -32,6 +32,21 @@ vi.mock('@/services/library', () => ({
   fetchLibraryItems: vi.fn(async () => ({ items: [] })),
   useLibrary: () => ({ items: [], loading: false, error: null, refresh: vi.fn() }),
 }));
+
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('act(...)')) {
+      return;
+    }
+    originalConsoleError(...args);
+  });
+});
+
+afterAll(() => {
+  (console.error as any).mockRestore?.();
+});
 
 const createQueryStub = () => {
   const query: Record<string, any> = {};
@@ -72,13 +87,17 @@ type GatedConsumerProps = {
   track: Track;
 };
 
+const harnessControls: { play?: (track: Track) => Promise<void> } = {};
+
 const GatedConsumer: React.FC<GatedConsumerProps> = ({ track }) => {
   const { state, actions, audioRef } = useGlobalPlayer();
 
   useEffect(() => {
-    void actions.play(track);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    harnessControls.play = actions.play;
+    return () => {
+      harnessControls.play = undefined;
+    };
+  }, [actions]);
 
   const status = state.isPlaying ? 'playing' : state.isPaused ? 'paused' : 'idle';
 
@@ -221,11 +240,22 @@ describe('Global player access gating', () => {
     });
     maxPlaybackMock.mockImplementation(() => 30);
 
-    render(
-      <GlobalPlayerProvider>
-        <GatedConsumer track={baseTrack} />
-      </GlobalPlayerProvider>
-    );
+    await act(async () => {
+      render(
+        <GlobalPlayerProvider>
+          <GatedConsumer track={baseTrack} />
+        </GlobalPlayerProvider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(harnessControls.play).toBeDefined();
+    });
+
+    await act(async () => {
+      await harnessControls.play?.(baseTrack);
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('streamable').textContent).toBe('preview');
@@ -258,11 +288,22 @@ describe('Global player access gating', () => {
     });
     maxPlaybackMock.mockImplementation(() => null);
 
-    render(
-      <GlobalPlayerProvider>
-        <GatedConsumer track={baseTrack} />
-      </GlobalPlayerProvider>
-    );
+    await act(async () => {
+      render(
+        <GlobalPlayerProvider>
+          <GatedConsumer track={baseTrack} />
+        </GlobalPlayerProvider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(harnessControls.play).toBeDefined();
+    });
+
+    await act(async () => {
+      await harnessControls.play?.(baseTrack);
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('streamable').textContent).toBe('full');

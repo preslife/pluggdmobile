@@ -1,5 +1,9 @@
-const DEFAULT_DESCRIPTION = 'Pluggd helps creators sell releases, beats, memberships, and more while fans discover the next wave of sound.';
-const DEFAULT_OG_IMAGE = (import.meta as any).env?.VITE_OG_DEFAULT_IMAGE || '/placeholder.svg';
+import { buildOgImageUrl } from './og';
+
+const DEFAULT_DESCRIPTION =
+  'Pluggd helps creators sell releases, beats, memberships, and more while fans discover the next wave of sound.';
+const DEFAULT_OG_IMAGE =
+  (import.meta as any).env?.VITE_OG_DEFAULT_IMAGE || '/placeholder.svg';
 
 const ensureMeta = (selector: string, attr: 'name' | 'property', value: string) => {
   let meta = document.querySelector(selector) as HTMLMetaElement | null;
@@ -30,7 +34,34 @@ export const getCanonicalUrl = (path?: string) => {
   }
 };
 
-export const setMeta = (title: string, description = DEFAULT_DESCRIPTION, path?: string, image = DEFAULT_OG_IMAGE) => {
+const resolveOgImage = (
+  title: string,
+  description: string,
+  path?: string,
+  provided?: string,
+) => {
+  if (provided && provided !== DEFAULT_OG_IMAGE) {
+    return provided;
+  }
+
+  try {
+    const canonical = getCanonicalUrl(path);
+    return buildOgImageUrl({
+      title,
+      description,
+      resourceUrl: canonical,
+    });
+  } catch {
+    return provided || DEFAULT_OG_IMAGE;
+  }
+};
+
+export const setMeta = (
+  title: string,
+  description = DEFAULT_DESCRIPTION,
+  path?: string,
+  image = DEFAULT_OG_IMAGE,
+) => {
   if (title) document.title = title;
 
   const metaDescription = ensureMeta('meta[name="description"]', 'name', 'description');
@@ -39,7 +70,8 @@ export const setMeta = (title: string, description = DEFAULT_DESCRIPTION, path?:
   const canonicalHref = getCanonicalUrl(path);
   ensureCanonical(canonicalHref);
 
-  setOGMeta(title, description, image, 'website', canonicalHref);
+  const ogImage = resolveOgImage(title, description, path, image);
+  setOGMeta(title, description, ogImage, 'website', canonicalHref);
 };
 
 export const setOGMeta = (

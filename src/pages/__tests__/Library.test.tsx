@@ -43,18 +43,24 @@ vi.mock("@/components/ui/badge", async () => {
 
 vi.mock("@/components/ui/button", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
-  return {
-    Button: ({ children, ...props }: any) => React.createElement("button", props, children),
-  };
+  const Button = React.forwardRef<HTMLButtonElement, any>(
+    ({ children, asChild, variant, size, ...props }, ref) =>
+      React.createElement("button", { ...props, ref }, children)
+  );
+  Button.displayName = "MockButton";
+  return { Button };
 });
 
 vi.mock("@/components/ui/card", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
-  const div = (props: any) => React.createElement("div", props, props.children);
+  const Div = React.forwardRef<HTMLDivElement, any>((props, ref) =>
+    React.createElement("div", { ...props, ref }, props.children)
+  );
+  Div.displayName = "MockCardDiv";
   return {
-    Card: div,
-    CardContent: div,
-    CardHeader: div,
+    Card: Div,
+    CardContent: Div,
+    CardHeader: Div,
     CardTitle: ({ children, ...props }: any) => React.createElement("h3", props, children),
   };
 });
@@ -68,28 +74,62 @@ vi.mock("@/components/ui/input", async () => {
 
 vi.mock("@/components/ui/scroll-area", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
-  return {
-    ScrollArea: ({ children, ...props }: any) => React.createElement("div", props, children),
-  };
+  const ScrollArea = React.forwardRef<HTMLDivElement, any>(
+    ({ children, ...props }, ref) => React.createElement("div", { ...props, ref }, children)
+  );
+  ScrollArea.displayName = "MockScrollArea";
+  return { ScrollArea };
 });
 
 vi.mock("@/components/ui/tabs", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
+  const Tabs = React.forwardRef<HTMLDivElement, any>(
+    ({ children, onValueChange, value, defaultValue, ...props }, ref) =>
+      React.createElement("div", { ...props, ref }, children)
+  );
+  Tabs.displayName = "MockTabs";
+  const TabsContent = React.forwardRef<HTMLDivElement, any>(
+    ({ children, value, ...props }, ref) => React.createElement("div", { ...props, ref }, children)
+  );
+  TabsContent.displayName = "MockTabsContent";
+  const TabsList = React.forwardRef<HTMLDivElement, any>(
+    ({ children, ...props }, ref) => React.createElement("div", { ...props, ref }, children)
+  );
+  TabsList.displayName = "MockTabsList";
+  const TabsTrigger = React.forwardRef<HTMLButtonElement, any>(
+    ({ children, value, ...props }, ref) => React.createElement("button", { ...props, ref }, children)
+  );
+  TabsTrigger.displayName = "MockTabsTrigger";
   return {
-    Tabs: ({ children, ...props }: any) => React.createElement("div", props, children),
-    TabsContent: ({ children, ...props }: any) => React.createElement("div", props, children),
-    TabsList: ({ children, ...props }: any) => React.createElement("div", props, children),
-    TabsTrigger: ({ children, ...props }: any) => React.createElement("button", props, children),
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
   };
 });
 
 vi.mock("@/components/ui/tooltip", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
+  const Passthrough = React.forwardRef<HTMLDivElement, any>(({ children, ...props }, ref) =>
+    React.createElement("div", { ...props, ref }, children)
+  );
+  Passthrough.displayName = "MockTooltipDiv";
+
+  const TooltipTrigger = React.forwardRef<any, any>(({ children, asChild, ...props }, ref) => {
+    if (asChild) {
+      return React.isValidElement(children)
+        ? React.cloneElement(children, { ...props })
+        : React.createElement(React.Fragment, null, children);
+    }
+    return React.createElement("button", { ...props, ref }, children);
+  });
+  TooltipTrigger.displayName = "MockTooltipTrigger";
+
   return {
-    Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
-    TooltipContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Tooltip: Passthrough,
+    TooltipContent: Passthrough,
     TooltipProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-    TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+    TooltipTrigger,
   };
 });
 
