@@ -1,8 +1,7 @@
-/** @jsxImportSource https://esm.sh/preact@10.19.2 */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { h } from "https://esm.sh/preact@10.19.2";
 import satori from "https://esm.sh/satori@0.10.3";
-import initWasm, { Resvg } from "https://esm.sh/@resvg/resvg-wasm@2.4.1?target=deno";
-import wasm from "https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.4.1/index_bg.wasm?module";
+import { render as renderPng } from "https://deno.land/x/resvg_wasm@0.2.0/mod.ts";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
@@ -61,14 +60,6 @@ const interSemiBoldPromise = fetch(
   "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.5/files/inter-latin-600-normal.woff2",
 ).then((res) => res.arrayBuffer());
 
-let resvgInitialized = false;
-const ensureResvg = async () => {
-  if (!resvgInitialized) {
-    await initWasm(wasm);
-    resvgInitialized = true;
-  }
-};
-
 const toTitleCase = (value: string) =>
   value
     .split(" ")
@@ -120,7 +111,6 @@ serve(async (req) => {
     const variant = variants[type] ?? variants.default;
     const accent = accentOverride || variant.accent;
 
-    await ensureResvg();
     const [interRegular, interSemiBold] = await Promise.all([
       interRegularPromise,
       interSemiBoldPromise,
@@ -129,9 +119,10 @@ serve(async (req) => {
     const backgroundDataUri = backgroundImageUrl ? await toDataUri(backgroundImageUrl) : null;
 
     const svg = await satori(
-      (
-        <div
-          style={{
+      h(
+        "div",
+        {
+          style: {
             width: "100%",
             height: "100%",
             display: "flex",
@@ -141,11 +132,11 @@ serve(async (req) => {
             color: "#ffffff",
             padding: "64px",
             boxSizing: "border-box",
-          }}
-        >
-          {backgroundDataUri && (
-            <div
-              style={{
+          },
+        },
+        backgroundDataUri
+          ? h("div", {
+              style: {
                 position: "absolute",
                 inset: 0,
                 backgroundImage: `url(${backgroundDataUri})`,
@@ -153,50 +144,57 @@ serve(async (req) => {
                 backgroundPosition: "center",
                 opacity: 0.35,
                 filter: "blur(1px)",
-              }}
-            />
-          )}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.35) 100%)",
-              opacity: variant.overlayOpacity ?? 0.85,
-            }}
-          />
-
-          <div
-            style={{
+              },
+            })
+          : null,
+        h("div", {
+          style: {
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.35) 100%)",
+            opacity: variant.overlayOpacity ?? 0.85,
+          },
+        }),
+        h(
+          "div",
+          {
+            style: {
               position: "relative",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
               height: "100%",
-            }}
-          >
-            <div
-              style={{
+            },
+          },
+          h(
+            "div",
+            {
+              style: {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 fontSize: 32,
                 fontWeight: 600,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: "50%",
-                    backgroundColor: accent,
-                  }}
-                />
-                <span>PLUGGD</span>
-              </div>
-              <div
-                style={{
+              },
+            },
+            h(
+              "div",
+              { style: { display: "flex", alignItems: "center", gap: 16 } },
+              h("div", {
+                style: {
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  backgroundColor: accent,
+                },
+              }),
+              "PLUGGD",
+            ),
+            h(
+              "div",
+              {
+                style: {
                   padding: "8px 24px",
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.4)",
@@ -204,54 +202,61 @@ serve(async (req) => {
                   fontSize: 20,
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
-                }}
-              >
-                {variant.label}
-              </div>
-            </div>
-
-            <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <h1
-                style={{
-                  fontSize: 72,
-                  fontWeight: 600,
-                  lineHeight: 1.1,
-                  margin: 0,
-                  maxWidth: "960px",
-                  textShadow: "0 20px 60px rgba(0,0,0,0.35)",
-                }}
-              >
-                {title}
-              </h1>
-              <p
-                style={{
-                  marginTop: 32,
-                  fontSize: 30,
-                  maxWidth: "840px",
-                  lineHeight: 1.4,
-                  color: "rgba(255,255,255,0.86)",
-                }}
-              >
-                {description}
-              </p>
-            </div>
-
-            <div
-              style={{
+                },
+              },
+              variant.label,
+            ),
+          ),
+          h(
+            "div",
+            {
+              style: {
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+              },
+            },
+            h("h1", {
+              style: {
+                fontSize: 72,
+                fontWeight: 600,
+                lineHeight: 1.1,
+                margin: 0,
+                maxWidth: "960px",
+                textShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              },
+              children: title,
+            }),
+            h("p", {
+              style: {
+                marginTop: 32,
+                fontSize: 30,
+                maxWidth: "840px",
+                lineHeight: 1.4,
+                color: "rgba(255,255,255,0.86)",
+              },
+              children: description,
+            }),
+          ),
+          h(
+            "div",
+            {
+              style: {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 fontSize: 24,
                 color: "rgba(255,255,255,0.75)",
-              }}
-            >
-              <span style={{ textTransform: "uppercase", letterSpacing: "0.4em" }}>
-                {toTitleCase(type)}
-              </span>
-              <span>{resourceUrl}</span>
-            </div>
-          </div>
-        </div>
+              },
+            },
+            h("span", {
+              style: { textTransform: "uppercase", letterSpacing: "0.4em" },
+              children: toTitleCase(type),
+            }),
+            h("span", { children: resourceUrl }),
+          ),
+        ),
       ),
       {
         width: OG_WIDTH,
@@ -273,11 +278,7 @@ serve(async (req) => {
       },
     );
 
-    const resvg = new Resvg(svg, {
-      fitTo: { mode: "width", value: OG_WIDTH },
-      background: "transparent",
-    });
-    const png = resvg.render().asPng();
+    const png = await renderPng(svg);
 
     return new Response(png, {
       headers: {
