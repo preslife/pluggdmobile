@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 
 interface StreamingAudioPlayerProps {
   audioFileId?: string;
+  releaseId?: string;
+  releaseTrackId?: string;
   streamUrl?: string;
   title?: string;
   artist?: string;
@@ -25,6 +27,8 @@ interface StreamingAudioPlayerProps {
 
 export const StreamingAudioPlayer = ({
   audioFileId,
+  releaseId,
+  releaseTrackId,
   streamUrl,
   title = 'Untitled',
   artist = 'Unknown Artist',
@@ -132,8 +136,10 @@ export const StreamingAudioPlayer = ({
         onPause?.();
       } else {
         // Track play if this is the first play
-        if (!hasPlayed && audioFileId && user) {
-          await trackPlay();
+        if (!hasPlayed) {
+          if (releaseId && user) {
+            await trackPlay();
+          }
           setHasPlayed(true);
         }
         
@@ -152,16 +158,24 @@ export const StreamingAudioPlayer = ({
   };
 
   const trackPlay = async () => {
-    if (!audioFileId || !user) return;
+    if (!releaseId || !user) return;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       await supabase.functions.invoke('track-release-play', {
         body: {
-          audioFileId,
-          userId: user.id,
-          playDuration: Math.floor(currentTime),
+          releaseId,
+          trackId: releaseTrackId,
+          playDuration: Math.floor(currentTime) || Math.round(totalDuration),
           deviceType: 'web'
-        }
+        },
+        headers,
       });
     } catch (error) {
       console.error('Error tracking play:', error);

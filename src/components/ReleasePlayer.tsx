@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -20,6 +20,7 @@ interface ReleasePlayerProps {
 }
 
 export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: ReleasePlayerProps) => {
+  const PLAY_THRESHOLD_SECONDS = 30;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -27,6 +28,7 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
   const [volume, setVolume] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const playRecordedRef = useRef(false);
 
   const currentTrackData = tracks[currentTrack];
 
@@ -34,9 +36,14 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime);
+      void maybeTrackPlay();
+    };
     const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => {
+      void maybeTrackPlay(true);
+
       if (currentTrack < tracks.length - 1) {
         setCurrentTrack(prev => prev + 1);
       } else {
@@ -54,7 +61,7 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [currentTrack, tracks.length]);
+  }, [currentTrack, tracks.length, maybeTrackPlay]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -62,11 +69,12 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
     }
   }, [volume]);
 
-  const trackPlay = async (trackId: string, playDuration: number) => {
+  const trackPlay = useCallback(async (trackId: string, playDuration: number) => {
+    if (!releaseId) return;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Prepare headers - include auth token if available
+
       const headers: Record<string, string> = {};
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`;
@@ -84,7 +92,36 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
     } catch (error) {
       console.error('Error tracking play:', error);
     }
-  };
+  }, [releaseId]);
+
+  const maybeTrackPlay = useCallback(async (force = false) => {
+    if (playRecordedRef.current) return;
+    if (!currentTrackData) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const currentSeconds = force ? (audio.duration || audio.currentTime || 0) : audio.currentTime;
+    const trackDuration = audio.duration || currentTrackData.duration || 0;
+    const threshold = trackDuration > 0 ? Math.min(PLAY_THRESHOLD_SECONDS, trackDuration * 0.7) : PLAY_THRESHOLD_SECONDS;
+
+    const qualifies = force || currentSeconds >= threshold || (trackDuration > 0 && currentSeconds >= trackDuration - 2);
+    if (!qualifies) return;
+
+    playRecordedRef.current = true;
+    try {
+      await trackPlay(currentTrackData.id, Math.round(currentSeconds || trackDuration || PLAY_THRESHOLD_SECONDS));
+    } catch (error) {
+      playRecordedRef.current = false;
+      console.error('Failed to record release play:', error);
+    }
+  }, [currentTrackData, trackPlay]);
+
+  useEffect(() => {
+    playRecordedRef.current = false;
+    setCurrentTime(0);
+    setDuration(0);
+  }, [currentTrack]);
 
   const togglePlay = async () => {
     if (!hasAccess || !currentTrackData?.audio_url) return;
@@ -97,9 +134,7 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
     try {
       if (isPlaying) {
         audio.pause();
-        if (currentTime > 30) { // Track play if listened for more than 30 seconds
-          await trackPlay(currentTrackData.id, currentTime);
-        }
+        await maybeTrackPlay();
       } else {
         await audio.play();
         onPlayStart?.();
@@ -114,9 +149,12 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
 
   const selectTrack = (index: number) => {
     if (!hasAccess) return;
+
+    void maybeTrackPlay();
     
     setCurrentTrack(index);
     setCurrentTime(0);
+    playRecordedRef.current = false;
     if (isPlaying) {
       // Audio will auto-play when src changes due to useEffect
       setTimeout(() => {
@@ -133,6 +171,7 @@ export const ReleasePlayer = ({ releaseId, tracks, hasAccess, onPlayStart }: Rel
 
   const nextTrack = () => {
     if (currentTrack < tracks.length - 1) {
+      void maybeTrackPlay();
       selectTrack(currentTrack + 1);
     }
   };
