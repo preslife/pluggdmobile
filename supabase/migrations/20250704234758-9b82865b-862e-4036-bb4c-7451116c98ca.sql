@@ -3,10 +3,10 @@ DO $$
 DECLARE
     admin_user_id uuid;
 BEGIN
-    -- Get the user ID for admin@9xmusic.com
+    -- Get the user ID for admin@pluggd.fm
     SELECT id INTO admin_user_id 
     FROM auth.users 
-    WHERE email = 'admin@9xmusic.com';
+    WHERE email = 'admin@pluggd.fm';
     
     -- Only proceed if user exists
     IF admin_user_id IS NOT NULL THEN
@@ -15,8 +15,8 @@ BEGIN
         VALUES (admin_user_id, 'admin')
         ON CONFLICT (user_id, role) DO NOTHING;
         
-        RAISE NOTICE 'Admin role assigned to user admin@9xmusic.com';
+        RAISE NOTICE 'Admin role assigned to user admin@pluggd.fm';
     ELSE
-        RAISE NOTICE 'User admin@9xmusic.com not found. Please sign up first with these credentials.';
+        RAISE NOTICE 'User admin@pluggd.fm not found. Please sign up first with these credentials.';
     END IF;
 END $$;

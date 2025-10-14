@@ -56,7 +56,7 @@ export const ShareToEarnModal = ({ children, shareUrl, shareTitle, shareDescript
 
       switch (platform) {
         case 'twitter':
-          shareText = `🎵 Check out ${shareTitle} on 9X Music Hub! ${shareDescription}`;
+          shareText = `🎵 Check out ${shareTitle} on Pluggd! ${shareDescription}`;
           fullUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(trackedUrl)}`;
           break;
         

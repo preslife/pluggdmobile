@@ -194,10 +194,10 @@ const Label = () => {
     <div className="min-h-screen bg-black text-white">
       <SEOHelmet
         config={{
-          title: '9X Music Label — Pluggd',
-          description: 'Explore exclusive releases, featured artists, videos, and merchandise from the 9X Music collective on Pluggd.',
+          title: 'Pluggd Label — Pluggd',
+          description: 'Explore exclusive releases, featured artists, videos, and merchandise from the Pluggd collective.',
           canonical: '/label',
-          keywords: ['9X Music', 'label', 'collective', 'beats', 'releases', 'artists'],
+          keywords: ['Pluggd', 'label', 'collective', 'beats', 'releases', 'artists'],
           ogType: 'music.group',
         }}
       />
@@ -210,7 +210,7 @@ const Label = () => {
           <div className="flex items-center">
             <img 
               src="/lovable-uploads/212db52d-c929-4ab8-bd60-8522a6391187.png" 
-              alt="9X Music Logo" 
+              alt="Pluggd Logo" 
               className="h-8 w-auto"
             />
           </div>
@@ -255,7 +255,7 @@ const Label = () => {
                         The Legacy of Now.
                       </h2>
                       <p className="text-xl md:text-2xl mb-8 text-white/90">
-                        Step inside the official label home of 9X — where game-changing music, global culture, and next-gen talent collide.
+                        Step inside the official label home of Pluggd — where game-changing music, global culture, and next-gen talent collide.
                       </p>
                       <div className="flex items-center gap-4">
                         <Button 
@@ -393,7 +393,7 @@ const Label = () => {
       <section id="artists" className="py-16 px-6 bg-black">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">The 9X Roster</h2>
+            <h2 className="text-4xl font-bold mb-4">The Pluggd Roster</h2>
             <p className="text-xl text-zinc-300">Meet the innovators behind the music. From chart-ready icons to breakout stars — these are the artists shaping the next wave.</p>
           </div>
           {artists.length > 0 ? (
@@ -417,7 +417,7 @@ const Label = () => {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold mb-4">🎥 The Vision in Motion</h2>
-              <p className="text-xl text-zinc-300">Watch official videos, behind-the-scenes content, and exclusive visuals from the world of 9X.</p>
+              <p className="text-xl text-zinc-300">Watch official videos, behind-the-scenes content, and exclusive visuals from the world of Pluggd.</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {videos.filter(video => video.is_featured).map((video) => {
@@ -554,7 +554,7 @@ const Label = () => {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-6">🚀 Our Mission</h2>
           <p className="text-xl text-zinc-300 mb-12 leading-relaxed">
-            9X is more than a label — we're a movement. Built on collaboration, culture, and creativity, we give power back to artists while launching careers that echo worldwide.
+            Pluggd is more than a label — we're a movement. Built on collaboration, culture, and creativity, we give power back to artists while launching careers that echo worldwide.
           </p>
           
           <div className="space-y-6 mb-12">
@@ -598,7 +598,7 @@ const Label = () => {
                 </p>
                 <div className="space-y-2">
                   <p className="text-zinc-400">
-                    <strong>Email:</strong> info@9xmusic.com
+                    <strong>Email:</strong> support@pluggd.fm
                   </p>
                   <p className="text-zinc-400">
                     <strong>Phone:</strong> +1 (555) 123-4567

@@ -1734,7 +1734,7 @@ function getMockHubDataEpic(): HubData {
     events: [
       { id: "e1", title: "Live Mixing: The FaNaTiX Studio", cover: "https://images.unsplash.com/photo-1520975922284-7b29d3f11f4f?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(1), url: "/live/e1", host: "The FaNaTiX", viewers: 1243, is_live: true },
       { id: "e2", title: "Masterclass: Afro-Fusion Drums", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(26), url: "/live/e2", host: "DJ Xena", viewers: 312, is_live: false },
-      { id: "e3", title: "A&R Hotseat — Pitch Your Record", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(54), url: "/live/e3", host: "9X Records", viewers: 698, is_live: false },
+      { id: "e3", title: "A&R Hotseat — Pitch Your Record", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1400&auto=format&fit=crop", start_at: addHoursISO(54), url: "/live/e3", host: "Pluggd Records", viewers: 698, is_live: false },
     ],
     threads: [
       { id: "t1", title: "Looking for a female vocalist (Afro R&B)", slug: "vocalist-afro-rnb", tag: "collab", reply_count: 12, updated_at: new Date().toISOString(), author: { username: "AyoBeats", avatar: "https://i.pravatar.cc/100?img=40" } },

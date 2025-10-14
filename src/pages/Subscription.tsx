@@ -18,7 +18,7 @@ const Subscription = () => {
 
   useEffect(() => {
     setMeta(
-      'Beat Marketplace Tiers — 9X Exclusive Music Hub',
+      'Beat Marketplace Tiers — Pluggd',
       'Compare Free, Creator, and Pro plans for beat producers.',
       '/subscription'
     );

@@ -115,7 +115,7 @@ export const OnboardingFlow = ({ isOpen, onComplete }: { isOpen: boolean; onComp
       localStorage.setItem('onboarding_completed', 'true');
       
       toast({
-        title: "Welcome to 9X Music!",
+        title: "Welcome to Pluggd!",
         description: "Your profile has been set up successfully."
       });
 
@@ -137,7 +137,7 @@ export const OnboardingFlow = ({ isOpen, onComplete }: { isOpen: boolean; onComp
           <div className="space-y-6">
             <div className="text-center">
               <Music className="w-16 h-16 mx-auto mb-4 text-primary" />
-              <h2 className="text-2xl font-bold mb-2">Welcome to 9X Music!</h2>
+              <h2 className="text-2xl font-bold mb-2">Welcome to Pluggd!</h2>
               <p className="text-muted-foreground">Choose your path to get started</p>
             </div>
             

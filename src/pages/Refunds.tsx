@@ -5,7 +5,7 @@ import { setMeta } from "@/lib/seo";
 const Refunds = () => {
   useEffect(() => {
     setMeta(
-      'Refund Policy — 9X Exclusive Music Hub',
+      'Refund Policy — Pluggd',
       'Refund terms for subscriptions, beats, courses, and store purchases.',
       '/refunds'
     );

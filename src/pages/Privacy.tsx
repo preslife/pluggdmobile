@@ -5,8 +5,8 @@ import { setMeta } from "@/lib/seo";
 const Privacy = () => {
   useEffect(() => {
     setMeta(
-      'Privacy Policy — 9X Exclusive Music Hub',
-      'How 9X Exclusive Music Hub collects, uses, and protects your data.',
+      'Privacy Policy — Pluggd',
+      'How Pluggd collects, uses, and protects your data.',
       '/privacy'
     );
   }, []);

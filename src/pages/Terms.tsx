@@ -5,8 +5,8 @@ import { setMeta } from "@/lib/seo";
 const Terms = () => {
   useEffect(() => {
     setMeta(
-      'Terms of Service — 9X Exclusive Music Hub',
-      'Terms governing the use of 9X Exclusive Music Hub services and content.',
+      'Terms of Service — Pluggd',
+      'Terms governing the use of Pluggd services and content.',
       '/terms'
     );
   }, []);
@@ -26,7 +26,7 @@ const Terms = () => {
           <section>
             <h2>1. Acceptance of Terms</h2>
             <p>
-              By accessing or using 9X Exclusive Music Hub, you agree to be bound by these Terms of Service and all applicable laws.
+              By accessing or using Pluggd, you agree to be bound by these Terms of Service and all applicable laws.
             </p>
           </section>
 

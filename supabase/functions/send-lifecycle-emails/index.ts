@@ -256,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
     const subject = typeof template.subject === 'function' ? template.subject(emailData) : template.subject;
 
     const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: "9X Music Hub <no-reply@resend.dev>",
+      from: "Pluggd <no-reply@resend.dev>",
       to: [recipientEmail],
       subject,
       html: template.html(emailData),

@@ -54,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Email to client (confirmation)
     const clientEmailResponse = await resend.emails.send({
-      from: "9X Records <bookings@9xrecords.com>",
+      from: "Pluggd <bookings@pluggd.fm>",
       to: [client.client_email],
       subject: `Booking Confirmation - ${booking.project_title}`,
       html: `
@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <p style="text-align: center; color: #666; font-size: 14px;">
             Best regards,<br>
-            The 9X Records Team
+            The Pluggd Team
           </p>
         </div>
       `,
@@ -128,8 +128,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Email to admin
     const adminEmailResponse = await resend.emails.send({
-      from: "9X Records <bookings@9xrecords.com>",
-      to: ["admin@9xrecords.com"], // Replace with actual admin email
+      from: "Pluggd <bookings@pluggd.fm>",
+      to: ["admin@pluggd.fm"], // Replace with actual admin email
       subject: `New Booking Request - ${booking.project_title}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

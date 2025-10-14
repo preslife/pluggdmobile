@@ -110,7 +110,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            9X Exclusive Music Hub
+            Pluggd
           </CardTitle>
           <CardDescription>
             {isSignUp ? 'Create your account' : 'Sign in to your account'}
