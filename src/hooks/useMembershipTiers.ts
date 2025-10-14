@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptionalStudioContext } from "@/contexts/StudioContext";
+import { logger } from "@/lib/logger";
 
 type OwnerType = "profile" | "label";
 
@@ -79,6 +80,8 @@ const centsFromAmount = (value?: number | null) => {
   if (value == null || Number.isNaN(value)) return null;
   return Math.max(0, Math.round(value * 100));
 };
+
+const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
 const normaliseFeatures = (value: any): string[] => {
   if (Array.isArray(value)) {
@@ -204,6 +207,10 @@ export function useMembershipTiers(): MembershipTiersHook {
 
     setLoading(true);
     setError(null);
+    void logger.info("membership_tiers_fetch_start", {
+      owner_type: ownerType,
+      owner_id: ownerId,
+    });
 
     const { data, error } = await supabase
       .from("membership_tiers")
@@ -217,11 +224,20 @@ export function useMembershipTiers(): MembershipTiersHook {
       setError(error.message);
       setTiers([]);
       setLoading(false);
+      void logger.error("membership_tiers_fetch_failed", {
+        owner_type: ownerType,
+        owner_id: ownerId,
+      }, toError(error));
       return;
     }
 
     setTiers((data ?? []).map(mapTier));
     setLoading(false);
+    void logger.info("membership_tiers_fetch_success", {
+      owner_type: ownerType,
+      owner_id: ownerId,
+      tier_count: data?.length ?? 0,
+    });
   }, [authLoading, ownerId, ownerType]);
 
   useEffect(() => {
@@ -282,28 +298,49 @@ export function useMembershipTiers(): MembershipTiersHook {
         image_url: input.imageUrl || null,
       };
 
-      await runMutation(async () => {
-        const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(-6)}`;
-        const optimisticTier = buildOptimisticTier(optimisticId, payload);
-
-        setTiers((prev) => [...prev, optimisticTier]);
-
-        try {
-          const { data, error } = await supabase.rpc("create_membership_tier", {
-            p_input: payload,
-          });
-          if (error) throw error;
-
-          if (data) {
-            setTiers((prev) =>
-              prev.map((tier) => (tier.id === optimisticId ? mapTier(data) : tier))
-            );
-          }
-        } catch (err) {
-          setTiers((prev) => prev.filter((tier) => tier.id !== optimisticId));
-          throw err;
-        }
+      void logger.userAction("membership_tier_create_attempt", "useMembershipTiers", {
+        owner_type: ownerType,
+        owner_id: ownerId,
+        input_name: input.name,
       });
+
+      try {
+        await runMutation(async () => {
+          const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(-6)}`;
+          const optimisticTier = buildOptimisticTier(optimisticId, payload);
+
+          setTiers((prev) => [...prev, optimisticTier]);
+
+          try {
+            const { data, error } = await supabase.rpc("create_membership_tier", {
+              p_input: payload,
+            });
+            if (error) throw error;
+
+            if (data) {
+              setTiers((prev) =>
+                prev.map((tier) => (tier.id === optimisticId ? mapTier(data) : tier))
+              );
+            }
+          } catch (err) {
+            setTiers((prev) => prev.filter((tier) => tier.id !== optimisticId));
+            throw err;
+          }
+        });
+
+        void logger.info("membership_tier_create_success", {
+          owner_type: ownerType,
+          owner_id: ownerId,
+          input_name: input.name,
+        });
+      } catch (err) {
+        void logger.error("membership_tier_create_failed", {
+          owner_type: ownerType,
+          owner_id: ownerId,
+          input_name: input.name,
+        }, toError(err));
+        throw err;
+      }
     },
     [ownerId, ownerType, runMutation, tiers.length]
   );
@@ -334,48 +371,69 @@ export function useMembershipTiers(): MembershipTiersHook {
         payload.tier_order = input.order;
       }
 
-      await runMutation(async () => {
-        const optimisticTier: MembershipTier = {
-          ...existing,
-          name: payload.name,
-          description: payload.description,
-          price_monthly: payload.price_monthly,
-          price_yearly: payload.price_yearly,
-          price_lifetime: payload.price_lifetime,
-          currency: payload.currency,
-          status: payload.status,
-          features: payload.features,
-          color: payload.color,
-          emoji: payload.emoji,
-          max_members: payload.max_members,
-          image_url: payload.image_url,
-          tier_order: payload.tier_order ?? existing.tier_order,
-          updated_at: new Date().toISOString(),
-        };
-
-        setTiers((prev) =>
-          prev.map((tier) => (tier.id === tierId ? optimisticTier : tier))
-        );
-
-        try {
-          const { data, error } = await supabase.rpc("update_membership_tier", {
-            p_tier_id: tierId,
-            p_input: payload,
-          });
-          if (error) throw error;
-
-          if (data) {
-            setTiers((prev) =>
-              prev.map((tier) => (tier.id === tierId ? mapTier(data) : tier))
-            );
-          }
-        } catch (err) {
-          setTiers((prev) =>
-            prev.map((tier) => (tier.id === tierId ? existing : tier))
-          );
-          throw err;
-        }
+      void logger.userAction("membership_tier_update_attempt", "useMembershipTiers", {
+        tier_id: tierId,
+        owner_type: existing.owner_type,
+        owner_id: existing.owner_id,
       });
+
+      try {
+        await runMutation(async () => {
+          const optimisticTier: MembershipTier = {
+            ...existing,
+            name: payload.name,
+            description: payload.description,
+            price_monthly: payload.price_monthly,
+            price_yearly: payload.price_yearly,
+            price_lifetime: payload.price_lifetime,
+            currency: payload.currency,
+            status: payload.status,
+            features: payload.features,
+            color: payload.color,
+            emoji: payload.emoji,
+            max_members: payload.max_members,
+            image_url: payload.image_url,
+            tier_order: payload.tier_order ?? existing.tier_order,
+            updated_at: new Date().toISOString(),
+          };
+
+          setTiers((prev) =>
+            prev.map((tier) => (tier.id === tierId ? optimisticTier : tier))
+          );
+
+          try {
+            const { data, error } = await supabase.rpc("update_membership_tier", {
+              p_tier_id: tierId,
+              p_input: payload,
+            });
+            if (error) throw error;
+
+            if (data) {
+              setTiers((prev) =>
+                prev.map((tier) => (tier.id === tierId ? mapTier(data) : tier))
+              );
+            }
+          } catch (err) {
+            setTiers((prev) =>
+              prev.map((tier) => (tier.id === tierId ? existing : tier))
+            );
+            throw err;
+          }
+        });
+
+        void logger.info("membership_tier_update_success", {
+          tier_id: tierId,
+          owner_type: existing.owner_type,
+          owner_id: existing.owner_id,
+        });
+      } catch (err) {
+        void logger.error("membership_tier_update_failed", {
+          tier_id: tierId,
+          owner_type: existing.owner_type,
+          owner_id: existing.owner_id,
+        }, toError(err));
+        throw err;
+      }
     },
     [runMutation, tiers]
   );
@@ -389,19 +447,40 @@ export function useMembershipTiers(): MembershipTiersHook {
 
       const previousTiers = tiers.slice();
 
-      await runMutation(async () => {
-        setTiers((prev) => prev.filter((tier) => tier.id !== tierId));
-
-        try {
-          const { error } = await supabase.rpc("delete_membership_tier", {
-            p_tier_id: tierId,
-          });
-          if (error) throw error;
-        } catch (err) {
-          setTiers(previousTiers);
-          throw err;
-        }
+      void logger.userAction("membership_tier_delete_attempt", "useMembershipTiers", {
+        tier_id: tierId,
+        owner_type: existing.owner_type,
+        owner_id: existing.owner_id,
       });
+
+      try {
+        await runMutation(async () => {
+          setTiers((prev) => prev.filter((tier) => tier.id !== tierId));
+
+          try {
+            const { error } = await supabase.rpc("delete_membership_tier", {
+              p_tier_id: tierId,
+            });
+            if (error) throw error;
+          } catch (err) {
+            setTiers(previousTiers);
+            throw err;
+          }
+        });
+
+        void logger.info("membership_tier_delete_success", {
+          tier_id: tierId,
+          owner_type: existing.owner_type,
+          owner_id: existing.owner_id,
+        });
+      } catch (err) {
+        void logger.error("membership_tier_delete_failed", {
+          tier_id: tierId,
+          owner_type: existing.owner_type,
+          owner_id: existing.owner_id,
+        }, toError(err));
+        throw err;
+      }
     },
     [runMutation, tiers]
   );
