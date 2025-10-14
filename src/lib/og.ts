@@ -1,3 +1,5 @@
+import { SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
+
 const DEFAULT_OG_ENDPOINT =
   (import.meta as any).env?.VITE_OG_IMAGE_ENDPOINT || "https://qkwvqmubhyondemhasjp.supabase.co/functions/v1/generate-og-image";
 
@@ -63,6 +65,9 @@ export const buildOgImageUrl = ({
     url.searchParams.set("url", resourceUrl);
   } else if (typeof window !== "undefined") {
     url.searchParams.set("url", window.location.hostname);
+  }
+  if (SUPABASE_ANON_KEY) {
+    url.searchParams.set("apikey", SUPABASE_ANON_KEY);
   }
   return url.toString();
 };
