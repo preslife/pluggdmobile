@@ -54,6 +54,8 @@ const Marketplace = () => {
   const [filteredBeats, setFilteredBeats] = useState<Beat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shareBeat, setShareBeat] = useState<Beat | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [filters, setFilters] = useState<MarketplaceFilters>({
     searchTerm: '',
     timeFilter: 'all',
@@ -338,6 +340,11 @@ const Marketplace = () => {
     !trendingBeats.some(trending => trending.id === beat.id)
   );
 
+  const handleShareBeat = (beat: Beat) => {
+    setShareBeat(beat);
+    setShareModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -488,6 +495,7 @@ const Marketplace = () => {
                     onPlay={() => handlePlayBeat(beat)}
                     onFavorite={() => toggleFavorite(beat.id)}
                     isFavorited={isFavorited(beat.id)}
+                    onShare={() => handleShareBeat(beat)}
                   />
                 ))}
               </div>
@@ -517,7 +525,7 @@ const Marketplace = () => {
                       onPlay={() => handlePlayBeat(beat)}
                       onFavorite={() => toggleFavorite(beat.id)}
                       isFavorited={isFavorited(beat.id)}
-                      onShare={() => {}} // TODO: Implement share functionality
+                      onShare={() => handleShareBeat(beat)}
                     />
                   ))}
                 </div>
@@ -532,7 +540,7 @@ const Marketplace = () => {
                       onPlay={() => handlePlayBeat(beat)}
                       onFavorite={() => toggleFavorite(beat.id)}
                       isFavorited={isFavorited(beat.id)}
-                      onShare={() => {}} // TODO: Implement share functionality
+                      onShare={() => handleShareBeat(beat)}
                     />
                   ))}
                 </div>
@@ -624,7 +632,19 @@ const Marketplace = () => {
           </div>
         </div>
       </div>
-
+      {shareBeat && (
+        <ShareModal
+          beat={shareBeat}
+          open={shareModalOpen}
+          onOpenChange={(open) => {
+            setShareModalOpen(open);
+            if (!open) {
+              setShareBeat(null);
+            }
+          }}
+          triggerless
+        />
+      )}
     </div>
   );
 };

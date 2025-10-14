@@ -134,12 +134,33 @@ const Profile = () => {
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
+      // Fetch fan funding contributions for this creator
+      const { data: fanFundingData, error: fanFundingError } = await supabase
+        .from('campaign_supporters')
+        .select(`
+          contribution_amount_cents,
+          status,
+          campaigns!inner(creator_id)
+        `)
+        .eq('campaigns.creator_id', userId)
+        .in('status', ['pledged', 'fulfilled']);
+
+      if (fanFundingError) {
+        throw fanFundingError;
+      }
+
       // Calculate stats
       const totalPlays = (beatsData || []).reduce((sum, beat) => sum + (beat.play_count || 0), 0) +
                         (releasesData || []).reduce((sum, release) => sum + (release.play_count || 0), 0);
-      
+
       const totalSales = (beatsData || []).reduce((sum, beat) => sum + (beat.purchase_count || 0), 0) +
                         (releasesData || []).reduce((sum, release) => sum + (release.purchase_count || 0), 0);
+
+      type FanFundingRecord = { contribution_amount_cents: number | null };
+      const totalFanFundingEntries = (fanFundingData as FanFundingRecord[] | null) ?? [];
+      const totalFanFundingCents = totalFanFundingEntries.reduce((sum, supporter) => {
+        return sum + (supporter.contribution_amount_cents ?? 0);
+      }, 0);
 
       setProfile(profileData);
       setBeats(beatsData || []);
@@ -148,7 +169,7 @@ const Profile = () => {
         total_plays: totalPlays,
         total_sales: totalSales,
         monthly_listeners: Math.floor(totalPlays * 0.3), // Estimate
-        fan_funding_raised: 0 // TODO: Implement fan funding
+        fan_funding_raised: totalFanFundingCents / 100
       });
     } catch (error) {
       console.error('Error fetching user data:', error);
