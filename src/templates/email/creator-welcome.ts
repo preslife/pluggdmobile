@@ -2,7 +2,7 @@ export const creatorWelcomeTemplate = {
   subject: "Welcome to Pluggd - Start Earning with Your Music! 🎵",
   html: (data: any) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #2563eb;">Welcome to Pluggd Exclusive Music Hub!</h1>
+      <h1 style="color: #2563eb;">Welcome to Pluggd!</h1>
       <p>Hi ${data.name || 'Creator'},</p>
       
       <p>Congratulations on joining the Pluggd community! As a creator, you now have access to our powerful platform where you can:</p>
