@@ -36,10 +36,17 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { releaseId, amount, payWhatYouWant } = await req.json();
+    const {
+      releaseId,
+      amount,
+      payWhatYouWant,
+      giftRecipientEmail,
+      giftRecipientName,
+      giftMessage
+    } = await req.json();
     if (!releaseId) throw new Error("Release ID is required");
     
-    logStep("Request data", { releaseId, amount, payWhatYouWant });
+    logStep("Request data", { releaseId, amount, payWhatYouWant, giftRecipientEmail: Boolean(giftRecipientEmail) });
 
     // Get release info
     const { data: release, error: releaseError } = await supabaseClient
@@ -54,6 +61,39 @@ serve(async (req) => {
 
     logStep("Release found", { release: release.title, artist: release.artist });
 
+    const releasePrice = typeof release.price === 'number' ? release.price : Number(release.price ?? 0);
+    const releaseMinimumPrice = typeof release.minimum_price === 'number'
+      ? release.minimum_price
+      : Number(release.minimum_price ?? 0);
+
+    const releaseDigitalDate = release.digital_release_date ? new Date(release.digital_release_date) : null;
+    const releaseDate = release.release_date ? new Date(release.release_date) : null;
+    const preorderAvailableAt = release.preorder_available_at
+      ? new Date(release.preorder_available_at)
+      : releaseDigitalDate ?? releaseDate;
+
+    const now = new Date();
+    const isPreorder = Boolean(
+      release.preorder_enabled &&
+        preorderAvailableAt &&
+        preorderAvailableAt.getTime() > now.getTime()
+    );
+
+    const availabilityDate = preorderAvailableAt ?? releaseDigitalDate ?? releaseDate ?? now;
+    const availabilityIso = availabilityDate.toISOString();
+
+    const isGift = Boolean(giftRecipientEmail);
+    const claimToken = isGift ? crypto.randomUUID().replace(/-/g, "") : null;
+    if (isGift && !release.allow_gifting) {
+      throw new Error("Gifting is not enabled for this release.");
+    }
+    if (isGift && typeof giftRecipientEmail === 'string') {
+      const trimmed = giftRecipientEmail.trim();
+      if (!trimmed.includes('@')) {
+        throw new Error("Enter a valid recipient email address.");
+      }
+    }
+
     // Check if user already purchased this release
     const { data: existingPurchase, error: existingPurchaseError } = await supabaseClient
       .from('release_purchases')
@@ -66,21 +106,21 @@ serve(async (req) => {
       throw new Error(`Failed to check existing purchases: ${existingPurchaseError.message}`);
     }
 
-    if (existingPurchase?.status === 'completed') {
+    if (existingPurchase?.status === 'completed' && !isGift && !isPreorder) {
       throw new Error("You have already purchased this release");
     }
 
     // Determine price
-    let finalAmount = release.price || 0;
+    let finalAmount = releasePrice || 0;
     if (payWhatYouWant && amount) {
-      const minPrice = release.minimum_price || 0;
+      const minPrice = releaseMinimumPrice || 0;
       if (amount < minPrice) {
         throw new Error(`Minimum price is ${minPrice / 100} ${release.currency || 'GBP'}`);
       }
       finalAmount = amount;
     } else if (release.pay_what_you_want && amount) {
       // Also handle PWYW validation when amount is provided
-      const minPrice = release.minimum_price || 0;
+      const minPrice = releaseMinimumPrice || 0;
       if (amount < minPrice) {
         throw new Error(`Minimum price is ${minPrice / 100} ${release.currency || 'GBP'}`);
       }
@@ -125,7 +165,13 @@ serve(async (req) => {
       metadata: {
         userId: user.id,
         releaseId: releaseId,
-        type: 'release_purchase'
+        type: 'release_purchase',
+        is_preorder: isPreorder ? 'true' : 'false',
+        available_at: availabilityIso,
+        is_gift: isGift ? 'true' : 'false',
+        gift_recipient_email: giftRecipientEmail ?? '',
+        gift_recipient_name: giftRecipientName ?? '',
+        gift_claim_token: claimToken ?? ''
       }
     });
 
@@ -140,6 +186,7 @@ serve(async (req) => {
 
     const purchasePayload = {
       user_id: user.id,
+      purchaser_id: user.id,
       release_id: releaseId,
       amount_paid: finalAmount,
       status: 'pending' as const,
@@ -148,36 +195,74 @@ serve(async (req) => {
       purchased_at: new Date().toISOString(),
       paid_at: null,
       download_expires_at: null,
+      is_preorder: isPreorder,
+      available_at: availabilityIso,
+      gift_recipient_email: isGift ? (giftRecipientEmail?.trim() ?? null) : null,
+      gift_recipient_name: isGift ? (giftRecipientName?.trim() ?? null) : null,
+      gift_message: isGift ? (giftMessage?.trim() ?? null) : null
     };
 
-    let purchaseError = null;
+    let purchaseRecordId: string | null = null;
 
-    if (existingPurchase) {
-      const { error } = await supabaseService
+    const reuseExisting = existingPurchase && existingPurchase.status !== 'completed' && !isGift && !isPreorder;
+
+    if (reuseExisting) {
+      const { data: updated, error } = await supabaseService
         .from('release_purchases')
         .update({
           ...purchasePayload,
           downloads_used: 0,
           last_download_at: null,
         })
-        .eq('id', existingPurchase.id);
+        .eq('id', existingPurchase!.id)
+        .select('id')
+        .maybeSingle();
 
-      purchaseError = error;
+      if (error) {
+        logStep("Purchase record creation failed", { error });
+      } else {
+        purchaseRecordId = updated?.id ?? existingPurchase!.id;
+        logStep("Purchase record refreshed", {
+          purchaseId: purchaseRecordId,
+          status: purchasePayload.status,
+        });
+      }
     } else {
-      const { error } = await supabaseService
+      const { data: inserted, error } = await supabaseService
         .from('release_purchases')
-        .insert(purchasePayload);
+        .insert(purchasePayload)
+        .select('id')
+        .maybeSingle();
 
-      purchaseError = error;
+      if (error) {
+        logStep("Purchase record creation failed", { error });
+      } else {
+        purchaseRecordId = inserted?.id ?? null;
+        logStep("Purchase record created", {
+          purchaseId: purchaseRecordId,
+          status: purchasePayload.status,
+        });
+      }
     }
 
-    if (purchaseError) {
-      logStep("Purchase record creation failed", { error: purchaseError });
-    } else {
-      logStep(existingPurchase ? "Purchase record refreshed" : "Purchase record created", {
-        purchaseId: existingPurchase?.id,
-        status: purchasePayload.status,
-      });
+    if (isGift) {
+      try {
+        await supabaseService
+          .from('release_gift_queue')
+          .insert({
+            release_id: releaseId,
+            purchase_id: purchaseRecordId,
+            purchaser_id: user.id,
+            recipient_email: giftRecipientEmail?.trim() ?? '',
+            recipient_name: giftRecipientName?.trim() || null,
+            gift_message: giftMessage?.trim() || null,
+            status: 'pending',
+            deliver_at: availabilityIso,
+            claim_token: claimToken
+          });
+      } catch (giftError) {
+        logStep("Gift queue insert failed", { error: giftError });
+      }
     }
 
     return new Response(JSON.stringify({ url: session.url }), {

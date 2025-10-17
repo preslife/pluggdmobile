@@ -410,7 +410,7 @@ serve(async (req) => {
 
             const { data: purchaseBySession, error: purchaseBySessionError } = await supabaseClient
               .from('release_purchases')
-              .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at')
+              .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at, is_preorder, available_at, gift_recipient_email, gift_recipient_name, gift_message')
               .eq('stripe_session_id', session.id)
               .maybeSingle();
 
@@ -422,8 +422,8 @@ serve(async (req) => {
 
             if (!purchase && paymentIntentId) {
               const { data: purchaseByIntent, error: purchaseByIntentError } = await supabaseClient
-                .from('release_purchases')
-                .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at')
+              .from('release_purchases')
+                .select('id, user_id, release_id, amount_paid, status, stripe_session_id, stripe_payment_intent_id, purchased_at, download_expires_at, is_preorder, available_at, gift_recipient_email, gift_recipient_name, gift_message')
                 .eq('stripe_payment_intent_id', paymentIntentId)
                 .maybeSingle();
 
@@ -512,6 +512,22 @@ serve(async (req) => {
               updatePayload['stripe_payment_intent_id'] = paymentIntentId;
             }
 
+            if (session.metadata?.available_at) {
+              updatePayload['available_at'] = session.metadata.available_at;
+            }
+
+            if (session.metadata?.is_preorder === 'true') {
+              updatePayload['is_preorder'] = true;
+            }
+
+            if (!updatePayload['available_at'] && purchase.available_at) {
+              updatePayload['available_at'] = purchase.available_at;
+            }
+
+            if (updatePayload['is_preorder'] === undefined && purchase.is_preorder) {
+              updatePayload['is_preorder'] = purchase.is_preorder;
+            }
+
             const { error: purchaseUpdateError } = await supabaseClient
               .from('release_purchases')
               .update(updatePayload)
@@ -521,6 +537,21 @@ serve(async (req) => {
               logStep('Release purchase update error', { error: purchaseUpdateError.message, purchaseId: purchase.id });
             } else {
               logStep('Release purchase marked as completed', { purchaseId: purchase.id, sessionId: session.id });
+
+              if (purchase.gift_recipient_email) {
+                try {
+                  await supabaseClient
+                    .from('release_gift_queue')
+                    .update({
+                      status: 'scheduled',
+                      deliver_at: updatePayload['available_at'] ?? purchase.available_at ?? new Date().toISOString(),
+                      purchase_id: purchase.id,
+                    })
+                    .eq('purchase_id', purchase.id);
+                } catch (giftUpdateError) {
+                  logStep('Gift queue update failed', { error: giftUpdateError });
+                }
+              }
             }
           } else if (session.metadata?.type === 'store_purchase') {
             const sessionTotal = session.amount_total ? session.amount_total / 100 : null;

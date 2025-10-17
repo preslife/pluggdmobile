@@ -96,7 +96,7 @@ export const ReleaseCard = ({
       // Call the edge function to create a purchase
       const { data, error } = await supabase.functions.invoke('create-release-purchase', {
         body: {
-          release_id: release.id,
+          releaseId: release.id,
           amount: finalAmount
         }
       });

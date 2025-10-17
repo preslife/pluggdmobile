@@ -68,6 +68,8 @@ serve(async (req) => {
     let hasPurchased = false;
     let latestPurchaseId: string | null = null;
     let latestPurchaseType: string | null = null;
+    let latestPurchaseAvailableAt: string | null = null;
+    let latestPurchaseIsPreorder = false;
     if (hasAccess && userId) {
       const { data: purchaseData, error: purchaseError } = await supabaseService
         .rpc('has_purchased_release', {
@@ -84,7 +86,7 @@ serve(async (req) => {
       if (hasPurchased) {
         const { data: latestPurchase, error: latestPurchaseError } = await supabaseService
           .from('release_purchases')
-          .select('id, purchased_at')
+          .select('id, purchased_at, available_at, is_preorder')
           .eq('user_id', userId)
           .eq('release_id', releaseId)
           .order('purchased_at', { ascending: false })
@@ -96,6 +98,8 @@ serve(async (req) => {
         } else if (latestPurchase?.id) {
           latestPurchaseId = latestPurchase.id;
           latestPurchaseType = 'release';
+          latestPurchaseAvailableAt = latestPurchase.available_at ?? null;
+          latestPurchaseIsPreorder = Boolean(latestPurchase.is_preorder);
         }
       }
     }
@@ -116,15 +120,24 @@ serve(async (req) => {
     const isPublished = release.approval_status === 'approved' || release.approval_status === 'auto_approved';
     const isScheduled = release.scheduled_publish_date && new Date(release.scheduled_publish_date) > new Date();
 
+    const preorderPending = Boolean(
+      latestPurchaseAvailableAt && new Date(latestPurchaseAvailableAt).getTime() > Date.now()
+    );
+
+    const finalHasAccess = hasAccess && isPublished && !isScheduled && !preorderPending;
+
     return new Response(JSON.stringify({ 
-      hasAccess: hasAccess && isPublished && !isScheduled,
+      hasAccess: finalHasAccess,
       hasPurchased,
       latestPurchaseId,
       latestPurchaseType,
       needsPurchase: release.price > 0 && !hasPurchased,
       isPremium: release.is_premium_content,
       isScheduled,
-      isPublished
+      isPublished,
+      isPreorder: latestPurchaseIsPreorder,
+      availableAt: latestPurchaseAvailableAt,
+      preorderPending,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

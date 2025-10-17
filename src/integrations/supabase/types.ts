@@ -285,6 +285,7 @@ export type Database = {
           message: string | null
           paid_at: string | null
           release_id: string | null
+          purchaser_id: string | null
           status: string | null
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
@@ -298,6 +299,7 @@ export type Database = {
           message?: string | null
           paid_at?: string | null
           release_id?: string | null
+          purchaser_id?: string | null
           status?: string | null
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
@@ -311,6 +313,7 @@ export type Database = {
           message?: string | null
           paid_at?: string | null
           release_id?: string | null
+          purchaser_id?: string | null
           status?: string | null
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
@@ -6076,7 +6079,11 @@ export type Database = {
           amount_paid: number
           download_expires_at: string | null
           downloads_used: number | null
+          gift_message: string | null
+          gift_recipient_email: string | null
+          gift_recipient_name: string | null
           id: string
+          is_preorder: boolean | null
           last_download_at: string | null
           paid_at: string | null
           purchased_at: string
@@ -6085,13 +6092,18 @@ export type Database = {
           status: string
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
+          available_at: string | null
           user_id: string | null
         }
         Insert: {
           amount_paid: number
           download_expires_at?: string | null
           downloads_used?: number | null
+          gift_message?: string | null
+          gift_recipient_email?: string | null
+          gift_recipient_name?: string | null
           id?: string
+          is_preorder?: boolean | null
           last_download_at?: string | null
           paid_at?: string | null
           purchased_at?: string
@@ -6100,13 +6112,18 @@ export type Database = {
           status?: string
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
+          available_at?: string | null
           user_id?: string | null
         }
         Update: {
           amount_paid?: number
           download_expires_at?: string | null
           downloads_used?: number | null
+          gift_message?: string | null
+          gift_recipient_email?: string | null
+          gift_recipient_name?: string | null
           id?: string
+          is_preorder?: boolean | null
           last_download_at?: string | null
           paid_at?: string | null
           purchased_at?: string
@@ -6115,6 +6132,7 @@ export type Database = {
           status?: string
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
+          available_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -6127,6 +6145,195 @@ export type Database = {
           },
         ]
       }
+      release_split_documents: {
+        Row: {
+          file_name: string
+          id: string
+          notes: string | null
+          release_id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          notes?: string | null
+          release_id: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          notes?: string | null
+          release_id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_split_documents_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      release_gift_queue: {
+        Row: {
+          claim_token: string
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          deliver_at: string | null
+          delivered_at: string | null
+          gift_message: string | null
+          id: string
+          purchase_id: string | null
+          purchaser_id: string | null
+          recipient_email: string
+          recipient_name: string | null
+          release_id: string
+          status: string
+        }
+        Insert: {
+          claim_token?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          deliver_at?: string | null
+          delivered_at?: string | null
+          gift_message?: string | null
+          id?: string
+          purchase_id?: string | null
+          purchaser_id?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          release_id: string
+          status?: string
+        }
+        Update: {
+          claim_token?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          deliver_at?: string | null
+          delivered_at?: string | null
+          gift_message?: string | null
+          id?: string
+          purchase_id?: string | null
+          purchaser_id?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          release_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_gift_queue_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "release_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "release_gift_queue_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merch_variants: {
+        Row: {
+          barcode: string | null
+          created_at: string
+          id: string
+          inventory_quantity: number
+          low_stock_threshold: number | null
+          option_values: Json
+          price_override_cents: number | null
+          product_id: string
+          sku: string
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          inventory_quantity?: number
+          low_stock_threshold?: number | null
+          option_values?: Json
+          price_override_cents?: number | null
+          product_id: string
+          sku: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          created_at?: string
+          id?: string
+          inventory_quantity?: number
+          low_stock_threshold?: number | null
+          option_values?: Json
+          price_override_cents?: number | null
+          product_id?: string
+          sku?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merch_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merch_inventory_adjustments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          quantity_delta: number
+          reason: string | null
+          reference: string | null
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          quantity_delta: number
+          reason?: string | null
+          reference?: string | null
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          quantity_delta?: number
+          reason?: string | null
+          reference?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merch_inventory_adjustments_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "merch_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       releases: {
         Row: {
           additional_credits: Json | null
@@ -6134,6 +6341,8 @@ export type Database = {
           approval_status: string | null
           approved: boolean | null
           artist: string
+          allow_gifting?: boolean | null
+          allow_gifting: boolean | null
           contributors: Json | null
           composer: string | null
           composers: string[] | null
@@ -6180,6 +6389,9 @@ export type Database = {
           presskit_url: string | null
           preview_url: string | null
           price: number | null
+          preorder_available_at: string | null
+          preorder_enabled: boolean | null
+          preorder_inventory: number | null
           primary_genre: string | null
           producer: string | null
           producers: string[] | null
@@ -6202,6 +6414,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           youtube_url: string | null
+          gift_message_template: string | null
         }
         Insert: {
           additional_credits?: Json | null
@@ -6255,6 +6468,9 @@ export type Database = {
           presskit_url?: string | null
           preview_url?: string | null
           price?: number | null
+          preorder_available_at?: string | null
+          preorder_enabled?: boolean | null
+          preorder_inventory?: number | null
           primary_genre?: string | null
           producer?: string | null
           producers?: string[] | null
@@ -6277,6 +6493,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           youtube_url?: string | null
+          gift_message_template?: string | null
         }
         Update: {
           additional_credits?: Json | null
@@ -6284,6 +6501,7 @@ export type Database = {
           approval_status?: string | null
           approved?: boolean | null
           artist?: string
+          allow_gifting?: boolean | null
           contributors?: Json | null
           composer?: string | null
           composers?: string[] | null
@@ -6330,6 +6548,9 @@ export type Database = {
           presskit_url?: string | null
           preview_url?: string | null
           price?: number | null
+          preorder_available_at?: string | null
+          preorder_enabled?: boolean | null
+          preorder_inventory?: number | null
           primary_genre?: string | null
           producer?: string | null
           producers?: string[] | null
@@ -6352,6 +6573,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           youtube_url?: string | null
+          gift_message_template?: string | null
         }
         Relationships: [
           {

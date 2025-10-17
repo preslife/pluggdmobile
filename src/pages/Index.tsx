@@ -2,10 +2,16 @@
 
 import React, { useEffect, useMemo, useRef, useState, useContext, createContext } from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause } from "lucide-react";
+import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause, Sparkles, Disc, Handshake, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { setMeta } from "@/lib/seo";
 import { HomeStudioPreview } from "@/components/HomeStudioPreview";
+import { warmRoute } from "@/lib/warmRoute";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Link } from "react-router-dom";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -205,13 +211,13 @@ export default function PluggdHomepage() {
     () =>
       role === "fans"
         ? [
-            { key: "releases", label: "Music", helper: "Songs, EPs & albums" },
+            { key: "music", label: "Music", helper: "Songs, EPs & albums" },
             { key: "creators", label: "Creators", helper: "Follow & support" },
             { key: "beats", label: "Beats", helper: "Instrumentals to license" },
           ]
         : [
             { key: "beats", label: "Beats", helper: "Instrumentals to license" },
-            { key: "releases", label: "Music", helper: "Tracks, EPs & albums" },
+            { key: "music", label: "Music", helper: "Tracks, EPs & albums" },
             { key: "creators", label: "Creators", helper: "Artists, producers, vocalists" },
           ],
     [role]
@@ -369,6 +375,8 @@ export default function PluggdHomepage() {
               role={role}
             />
           </section>
+
+          <HomeRecommendations role={role} activeGenre={activeGenre} />
 
           <section className="py-12">
             <HeaderRow title="Active Collaborations" cta="Browse all projects" ctaLink="/collaborate" />
@@ -590,6 +598,7 @@ function HeroBackdrop({
         href={slides[idx]?.href ?? '#'}
         aria-label={slides[idx]?.title ? `Open ${slides[idx]?.title}` : 'Open'}
         className="absolute inset-0 z-10 block"
+        onMouseEnter={() => warmRoute(slides[idx]?.href, slides[idx]?.src)}
       />
             {/* Arrows, above the click overlay */}
       <div className="pointer-events-auto relative z-20">
@@ -625,15 +634,25 @@ function SearchBlock({
 }) {
   const [active, setActive] = useState(labels[0].key);
   const [q, setQ] = useState("");
+  useEffect(() => {
+    if (!labels.length) return;
+    setActive((prev) => (labels.some((label) => label.key === prev) ? prev : labels[0].key));
+  }, [labels]);
   const submit = () => {
-    const term = q.trim();
-    if (!term) return;
-    const type = active;
-    try {
-      // Navigate to /search?q=...&type=...
-      window.location.href = `/search?q=${encodeURIComponent(term)}&type=${encodeURIComponent(String(type))}`;
-    } catch {}
-  };
+      const term = q.trim();
+      if (!term) return;
+      const type = active;
+      try {
+        // Navigate to /search?q=...&tab=... (include legacy ?type for compatibility)
+        const searchParams = new URLSearchParams({
+          q: term,
+          tab: String(type)
+        });
+        // Preserve older ?type consumers until everything converges on ?tab
+        searchParams.set("type", String(type));
+        window.location.href = `/search?${searchParams.toString()}`;
+      } catch {}
+    };
   return (
     <div className="mt-5">
       <div className="rounded-2xl border border-white/10 bg-white/10 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -688,6 +707,460 @@ function SearchBlock({
         {labels.find((l) => l.key === active)?.helper}
       </div>
     </div>
+  );
+}
+
+type ReleaseRecommendation = {
+  id: string;
+  title: string;
+  artist: string;
+  genre?: string | null;
+  imageUrl?: string | null;
+  price?: number | null;
+};
+
+type CreatorRecommendation = {
+  id: string;
+  name: string;
+  username?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean | null;
+  bio?: string | null;
+};
+
+type BeatRecommendation = {
+  id: string;
+  title: string;
+  producer: string;
+  genre?: string | null;
+  imageUrl?: string | null;
+  price?: number | null;
+};
+
+type CollabRecommendation = {
+  id: string;
+  title: string;
+  genre?: string | null;
+  budget?: string | null;
+  description?: string | null;
+};
+
+function HomeRecommendations({
+  role,
+  activeGenre,
+}: {
+  role: "fans" | "creators";
+  activeGenre?: string | null;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [fanRecs, setFanRecs] = useState<{
+    releases: ReleaseRecommendation[];
+    creators: CreatorRecommendation[];
+  }>({ releases: [], creators: [] });
+  const [creatorRecs, setCreatorRecs] = useState<{
+    beats: BeatRecommendation[];
+    collabs: CollabRecommendation[];
+  }>({ beats: [], collabs: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        if (role === "fans") {
+          let releaseQuery = supabase
+            .from("releases")
+            .select("id,title,artist,cover_art_url,genre,price,total_plays")
+            .eq("status", "live")
+            .eq("approved", true)
+            .order("total_plays", { ascending: false })
+            .limit(6);
+
+          if (activeGenre) {
+            releaseQuery = releaseQuery.eq("genre", activeGenre);
+          }
+
+          const [{ data: releaseData }, { data: creatorData }] = await Promise.all([
+            releaseQuery,
+            supabase
+              .from("profiles")
+              .select("user_id,username,full_name,avatar_url,is_verified,bio")
+              .eq("is_creator", true)
+              .order("is_verified", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(6),
+          ]);
+
+          if (!cancelled) {
+            setFanRecs({
+              releases:
+                releaseData?.map((release) => ({
+                  id: release.id,
+                  title: release.title,
+                  artist: release.artist,
+                  genre: release.genre,
+                  imageUrl: release.cover_art_url,
+                  price: release.price,
+                })) ?? [],
+              creators:
+                creatorData?.map((creator) => ({
+                  id: creator.user_id,
+                  name: creator.full_name || creator.username || "Creator",
+                  username: creator.username,
+                  avatarUrl: creator.avatar_url,
+                  verified: creator.is_verified,
+                  bio: creator.bio,
+                })) ?? [],
+            });
+          }
+        } else {
+          let beatsQuery = supabase
+            .from("beats")
+            .select("id,title,producer_name,genre,image_url,price,created_at")
+            .eq("is_published", true)
+            .order("created_at", { ascending: false })
+            .limit(6);
+
+          if (activeGenre) {
+            beatsQuery = beatsQuery.eq("genre", activeGenre);
+          }
+
+          const [{ data: beatData }, { data: collabData }] = await Promise.all([
+            beatsQuery,
+            supabase
+              .from("collaboration_projects")
+              .select("id,title,genre,budget_range,description,status")
+              .eq("status", "open")
+              .order("created_at", { ascending: false })
+              .limit(6),
+          ]);
+
+          if (!cancelled) {
+            setCreatorRecs({
+              beats:
+                beatData?.map((beat) => ({
+                  id: beat.id,
+                  title: beat.title,
+                  producer: beat.producer_name || "Producer",
+                  genre: beat.genre,
+                  imageUrl: beat.image_url,
+                  price: beat.price,
+                })) ?? [],
+              collabs:
+                collabData?.map((collab) => ({
+                  id: collab.id,
+                  title: collab.title,
+                  genre: collab.genre,
+                  budget: collab.budget_range,
+                  description: collab.description,
+                })) ?? [],
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error loading recommendations:", error);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [role, activeGenre]);
+
+  const title = role === "fans" ? "For you" : "Opportunities for you";
+  const cta = role === "fans" ? "Open search" : "Browse marketplace";
+  const ctaLink = role === "fans" ? "/search" : "/marketplace";
+
+  if (loading) {
+    return (
+      <section className="py-12">
+        <HeaderRow title={title} cta={cta} ctaLink={ctaLink} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[0, 1].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-6 w-1/3 bg-muted rounded" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[0, 1, 2, 3].map((j) => (
+                  <div key={j} className="h-12 bg-muted/80 rounded-lg" />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (role === "fans") {
+    const { releases, creators } = fanRecs;
+    if (!releases.length && !creators.length) {
+      return null;
+    }
+
+    return (
+      <section className="py-12">
+        <HeaderRow title={title} cta={cta} ctaLink={ctaLink} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {releases.length > 0 && (
+            <Card className="border-border/60 bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Fresh drops in your lane
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {releases.slice(0, 4).map((release) => {
+                  const releasePath = `/release/${release.id}`;
+                  return (
+                    <Link
+                      key={release.id}
+                      to={releasePath}
+                      onMouseEnter={() => warmRoute(releasePath, release.imageUrl)}
+                      className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-all hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <Avatar className="h-11 w-11 rounded-lg">
+                        {release.imageUrl ? (
+                          <AvatarImage src={release.imageUrl} alt={release.title} />
+                        ) : (
+                          <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+                          <Music2 className="w-4 h-4" />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{release.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {release.genre && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {release.genre}
+                        </Badge>
+                      )}
+                      {typeof release.price === "number" && (
+                        <span className="text-xs text-muted-foreground">
+                          £{release.price.toFixed(2)}
+                        </span>
+                      )}
+                      </div>
+                    </Link>
+                  );
+                })}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between"
+                  asChild
+                  onMouseEnter={() => warmRoute("/releases")}
+                >
+                  <Link to="/releases">
+                    Explore all releases
+                    <TrendingUp className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {creators.length > 0 && (
+            <Card className="border-border/60 bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="w-5 h-5 text-primary" />
+                  Creators to follow
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {creators.slice(0, 4).map((creator) => {
+                  const creatorPath = `/creator/${creator.username ?? creator.id}`;
+                  return (
+                    <Link
+                      key={creator.id}
+                      to={creatorPath}
+                      onMouseEnter={() => warmRoute(creatorPath, creator.avatarUrl)}
+                      className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-all hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <Avatar className="h-11 w-11">
+                        {creator.avatarUrl ? (
+                          <AvatarImage src={creator.avatarUrl} alt={creator.name} />
+                        ) : (
+                          <AvatarFallback>
+                          {creator.name
+                            .split(" ")
+                            .map((part) => part[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase() || "C"}
+                        </AvatarFallback>
+                      )}
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{creator.name}</p>
+                        {creator.username && (
+                          <p className="text-xs text-muted-foreground truncate">@{creator.username}</p>
+                      )}
+                    </div>
+                    {creator.verified && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Verified
+                      </Badge>
+                      )}
+                    </Link>
+                  );
+                })}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between"
+                  asChild
+                  onMouseEnter={() => warmRoute("/directory")}
+                >
+                  <Link to="/directory">
+                    Discover more creators
+                    <Sparkles className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  const { beats, collabs } = creatorRecs;
+  if (!beats.length && !collabs.length) {
+    return null;
+  }
+
+  return (
+    <section className="py-12">
+      <HeaderRow title={title} cta={cta} ctaLink={ctaLink} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {beats.length > 0 && (
+          <Card className="border-border/60 bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Disc className="w-5 h-5 text-primary" />
+                Beats fans are buying
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {beats.slice(0, 4).map((beat) => {
+                const beatPath = `/beat/${beat.id}`;
+                return (
+                  <Link
+                    key={beat.id}
+                    to={beatPath}
+                    onMouseEnter={() => warmRoute(beatPath, beat.imageUrl)}
+                    className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-all hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <Avatar className="h-11 w-11 rounded-lg">
+                      {beat.imageUrl ? (
+                        <AvatarImage src={beat.imageUrl} alt={beat.title} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+                        <Disc className="w-4 h-4" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{beat.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{beat.producer}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {beat.genre && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {beat.genre}
+                      </Badge>
+                    )}
+                    {typeof beat.price === "number" && (
+                      <span className="text-xs text-muted-foreground">
+                        £{beat.price.toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                  </Link>
+                );
+              })}
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                asChild
+                onMouseEnter={() => warmRoute("/marketplace")}
+              >
+                <Link to="/marketplace">
+                  Browse all beats
+                  <TrendingUp className="w-4 h-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {collabs.length > 0 && (
+          <Card className="border-border/60 bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Handshake className="w-5 h-5 text-primary" />
+                Open collaboration briefs
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {collabs.slice(0, 4).map((collab) => {
+                const collabPath = `/collaborate/${collab.id}`;
+                return (
+                  <Link
+                    key={collab.id}
+                    to={collabPath}
+                    onMouseEnter={() => warmRoute(collabPath)}
+                    className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-all hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Handshake className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{collab.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {collab.description ?? "Bring your sound to this project"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {collab.genre && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {collab.genre}
+                      </Badge>
+                    )}
+                    {collab.budget && (
+                      <span className="text-xs text-muted-foreground">{collab.budget}</span>
+                    )}
+                  </div>
+                </Link>
+              );
+              })}
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+                asChild
+                onMouseEnter={() => warmRoute("/collaborate")}
+              >
+                <Link to="/collaborate">
+                  View all briefs
+                  <Sparkles className="w-4 h-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1212,15 +1685,6 @@ function formatWhen(iso: string) {
 }
 
 // Utility: prefetch route & image to feel snappy
-function warmRoute(href: string, image?: string) {
-  try {
-    if (typeof window !== "undefined") {
-      if (image) { const img = new Image(); (img as any).decoding = 'async'; img.src = image; }
-      fetch(href, { mode: 'no-cors' }).catch(() => {});
-    }
-  } catch {}
-}
-
 // -----------------------------------------------------------------------------
 // END
 // -----------------------------------------------------------------------------

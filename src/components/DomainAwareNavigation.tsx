@@ -143,6 +143,7 @@ const DomainAwareNavigation = () => {
         { name: "Home", href: "/" },
         { name: "Releases", href: "/releases" },
         { name: "Marketplace", href: "/marketplace" },
+        { name: "Directory", href: "/directory" },
         { name: "Community", href: "/community" },
         { name: "Live", href: "/live" },
       ];
@@ -153,6 +154,7 @@ const DomainAwareNavigation = () => {
       { name: "Home", href: "/" },
       { name: "Releases", href: "/releases" },
       { name: "Marketplace", href: "/marketplace" },
+      { name: "Directory", href: "/directory" },
       { name: "Community", href: "/community" },
       { name: "Live", href: "/live" },
     ];

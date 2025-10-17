@@ -75,11 +75,17 @@ verify_jwt = true
 [functions.integrations-health]
 verify_jwt = true
 
+[functions.claim-release-gift]
+verify_jwt = true
+
 [functions.create-commission-funding]
 verify_jwt = true
 
 [functions.process-referral-rewards]
 verify_jwt = false
+
+[functions.creator-merch-variants]
+verify_jwt = true
 
 [functions.track-share-signup]
 verify_jwt = false

@@ -128,7 +128,7 @@ serve(async (req) => {
         const { data: purchase, error } = await supabaseService
           .from("release_purchases")
           .select(
-            `id, user_id, status, downloads_used, download_expires_at, purchased_at, release_id,
+            `id, user_id, purchaser_id, status, downloads_used, download_expires_at, purchased_at, release_id, is_preorder, available_at,
              releases:release_id (download_limit, download_url, download_expires_days)`,
           )
           .eq("id", purchaseId)
@@ -149,12 +149,22 @@ serve(async (req) => {
           );
         }
 
-        if (purchase.user_id !== user.id) {
+        if (purchase.user_id !== user.id && purchase.purchaser_id !== user.id) {
           await logSystemEvent(supabaseService, user.id, "release_access_denied", metadata, 3);
           return new Response(
             JSON.stringify({ error: "Access denied" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
+        }
+
+        if (purchase.is_preorder && purchase.available_at) {
+          const availableAtDate = new Date(purchase.available_at);
+          if (availableAtDate.getTime() > Date.now()) {
+            return new Response(
+              JSON.stringify({ error: "Release is not available to download yet." }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
         }
 
         const release = purchase.releases;

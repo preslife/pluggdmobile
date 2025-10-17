@@ -30,6 +30,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Instagram, Twitter, Youtube } from 'lucide-react';
+import { MerchInventoryManager } from './MerchInventoryManager';
 
 interface StorefrontSettings {
   theme: 'light' | 'dark' | 'custom';
@@ -246,12 +247,13 @@ export const EnhancedStorefrontModule = () => {
       </Card>
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex flex-wrap">
           <TabsTrigger value="profile">Profile Info</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="sections">Page Sections</TabsTrigger>
           <TabsTrigger value="links">Links & Social</TabsTrigger>
           <TabsTrigger value="seo">SEO & Meta</TabsTrigger>
+          <TabsTrigger value="inventory">Merch & Inventory</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -689,6 +691,10 @@ export const EnhancedStorefrontModule = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="inventory" className="space-y-4">
+          <MerchInventoryManager />
         </TabsContent>
       </Tabs>
     </div>

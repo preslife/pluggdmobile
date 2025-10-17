@@ -47,6 +47,7 @@ interface Release {
   download_price?: number;
   pay_what_you_want: boolean;
   minimum_price: number;
+  currency?: string | null;
   total_plays: number;
   total_revenue: number;
   is_premium_content: boolean;
@@ -60,6 +61,12 @@ interface Release {
   user_id?: string; // Creator of the release
   contributors?: unknown;
   lyrics?: string | null;
+  digital_release_date?: string | null;
+  preorder_enabled?: boolean | null;
+  preorder_available_at?: string | null;
+  preorder_inventory?: number | null;
+  allow_gifting?: boolean | null;
+  gift_message_template?: string | null;
 }
 
 interface ReleaseContributor {
@@ -136,6 +143,9 @@ const ReleaseDetail = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [credits, setCredits] = useState<ReleaseCredit[]>([]);
   const [contributors, setContributors] = useState<ReleaseContributor[]>([]);
+  const [preorderPending, setPreorderPending] = useState(false);
+  const [availableAt, setAvailableAt] = useState<string | null>(null);
+  const [isPreorderPurchase, setIsPreorderPurchase] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -219,6 +229,9 @@ const ReleaseDetail = () => {
 
       setHasAccess(access);
       setHasPurchased(purchased);
+      setPreorderPending(Boolean(data.preorderPending));
+      setAvailableAt(data.availableAt ?? null);
+      setIsPreorderPurchase(Boolean(data.isPreorder));
 
       if (purchased && data.latestPurchaseId && data.latestPurchaseType) {
         setPurchaseMetadata({
@@ -246,6 +259,15 @@ const ReleaseDetail = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const formatDateTime = (dateString: string) =>
+    new Date(dateString).toLocaleString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
   const totalDuration = tracks.reduce((sum, track) => sum + (track.duration || 0), 0);
 
@@ -394,44 +416,70 @@ const ReleaseDetail = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <ReleasePurchaseButton
-                  releaseId={release.id}
-                  price={release.price}
-                  download_price={release.download_price}
-                  payWhatYouWant={release.pay_what_you_want}
-                  minimumPrice={release.minimum_price}
-                  title={release.title}
-                  artist={release.artist}
-                  hasPurchased={hasPurchased}
-                  onSuccess={handlePurchaseSuccess}
-                />
-
-                <ArtistTipButton
-                  artistId={user?.id || ''} // This should be the actual artist's user ID
-                  artistName={release.artist}
-                  releaseId={release.id}
-                />
-
-                {purchaseMetadata && (
-                  <SecureDownloadButton
-                    releaseId={release.id}
-                    purchaseId={purchaseMetadata.id}
-                    purchaseType={purchaseMetadata.type}
-                    title={release.title}
-                    disabled={tracks.length === 0}
-                    className="gap-2"
-                  />
+              <div className="flex flex-col gap-4">
+                {release.preorder_enabled && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {preorderPending
+                      ? `You pre-ordered this release. It unlocks on ${
+                          availableAt ? formatDateTime(availableAt) : formatDate(release.release_date)
+                        }.`
+                      : `Pre-order now to reserve your copy.${
+                          availableAt ? ` Unlocks on ${formatDateTime(availableAt)}.` : ""
+                        }`}
+                  </div>
                 )}
 
-                <Button
-                  variant="outline"
-                  onClick={() => setShareModalOpen(true)}
-                  className="gap-2"
-                >
-                  <Share className="h-4 w-4" />
-                  Share
-                </Button>
+                {release.allow_gifting && (
+                  <div className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-4 py-3 text-xs text-fuchsia-100">
+                    Want to surprise someone? Choose “Send as Gift” at checkout and we’ll deliver it on your behalf.
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  <ReleasePurchaseButton
+                    releaseId={release.id}
+                    price={release.price}
+                    download_price={release.download_price}
+                    payWhatYouWant={release.pay_what_you_want}
+                    minimumPrice={release.minimum_price}
+                    title={release.title}
+                    artist={release.artist}
+                    hasPurchased={hasPurchased}
+                    allowGifting={Boolean(release.allow_gifting)}
+                    giftMessageTemplate={release.gift_message_template}
+                    preorderEnabled={Boolean(release.preorder_enabled)}
+                    preorderAvailableAt={release.preorder_available_at}
+                    preorderPending={preorderPending}
+                    currency={release.currency ?? 'GBP'}
+                    onSuccess={handlePurchaseSuccess}
+                  />
+
+                  <ArtistTipButton
+                    artistId={user?.id || ''} // This should be the actual artist's user ID
+                    artistName={release.artist}
+                    releaseId={release.id}
+                  />
+
+                  {purchaseMetadata && hasAccess && (
+                    <SecureDownloadButton
+                      releaseId={release.id}
+                      purchaseId={purchaseMetadata.id}
+                      purchaseType={purchaseMetadata.type}
+                      title={release.title}
+                      disabled={tracks.length === 0}
+                      className="gap-2"
+                    />
+                  )}
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setShareModalOpen(true)}
+                    className="gap-2"
+                  >
+                    <Share className="h-4 w-4" />
+                    Share
+                  </Button>
+                </div>
               </div>
 
               {/* Streaming Links */}

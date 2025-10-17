@@ -84,6 +84,11 @@ export const EnhancedReleaseBuilder = () => {
   const [isrc, setIsrc] = useState('');
   const [payWhatYouWant, setPayWhatYouWant] = useState(false);
   const [minimumPrice, setMinimumPrice] = useState(0);
+  const [preorderEnabled, setPreorderEnabled] = useState(false);
+  const [preorderAvailableAt, setPreorderAvailableAt] = useState<Date | undefined>();
+  const [preorderInventory, setPreorderInventory] = useState<string>('');
+  const [allowGifting, setAllowGifting] = useState(false);
+  const [giftMessageTemplate, setGiftMessageTemplate] = useState('');
   
   // Release scheduling
   const [releaseDate, setReleaseDate] = useState<Date>();
@@ -144,6 +149,24 @@ export const EnhancedReleaseBuilder = () => {
   const [allowedTierIds, setAllowedTierIds] = useState<string[]>([]);
   const [previewText, setPreviewText] = useState('');
   const [previewDuration, setPreviewDuration] = useState('');
+
+  useEffect(() => {
+    if (preorderEnabled && !preorderAvailableAt && releaseDate) {
+      setPreorderAvailableAt(releaseDate);
+    }
+  }, [preorderEnabled, preorderAvailableAt, releaseDate]);
+
+  useEffect(() => {
+    if (!preorderEnabled) {
+      setPreorderInventory('');
+    }
+  }, [preorderEnabled]);
+
+  useEffect(() => {
+    if (!allowGifting) {
+      setGiftMessageTemplate('');
+    }
+  }, [allowGifting]);
 
   const stages = [
     { id: 1, title: 'Basic Information', description: 'Release title, artist, and genre' },
@@ -374,6 +397,21 @@ export const EnhancedReleaseBuilder = () => {
         setIsrc(release.isrc_code || '');
         setPayWhatYouWant(release.pay_what_you_want || false);
         setMinimumPrice(release.minimum_price || 0);
+        setPreorderEnabled(Boolean(release.preorder_enabled));
+        setPreorderAvailableAt(
+          release.preorder_available_at
+            ? new Date(release.preorder_available_at)
+            : release.release_date
+            ? new Date(release.release_date)
+            : undefined
+        );
+        setPreorderInventory(
+          typeof release.preorder_inventory === 'number'
+            ? String(release.preorder_inventory)
+            : ''
+        );
+        setAllowGifting(Boolean(release.allow_gifting));
+        setGiftMessageTemplate(release.gift_message_template || '');
         setCoverUrl(release.cover_art_url || '');
         setReleaseId(release.id);
         await loadGatingRules(release.id);
@@ -735,6 +773,13 @@ export const EnhancedReleaseBuilder = () => {
     }
   };
 
+  const formatDateTimeLocal = (date?: Date) => {
+    if (!date) return '';
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return localISOTime;
+  };
+
   const validateRelease = (): string[] => {
     const errors: string[] = [];
     
@@ -745,7 +790,25 @@ export const EnhancedReleaseBuilder = () => {
     if (tracks.filter(t => t.title.trim()).length === 0) errors.push('At least one track is required');
     if (releaseType === 'Album' && tracks.length < 7) errors.push('Albums require at least 7 tracks');
     if (releaseType === 'EP' && (tracks.length < 3 || tracks.length > 6)) errors.push('EPs require 3-6 tracks');
-    
+
+    if (preorderEnabled) {
+      if (releaseDate) {
+        const releaseDay = new Date(releaseDate);
+        if (releaseDay <= new Date()) {
+          errors.push('Pre-orders require a future release date');
+        }
+      } else {
+        errors.push('Choose a release date before enabling pre-orders');
+      }
+
+      if (preorderInventory.trim()) {
+        const parsed = parseInt(preorderInventory.trim(), 10);
+        if (Number.isNaN(parsed) || parsed < 0) {
+          errors.push('Pre-order inventory must be a positive number');
+        }
+      }
+    }
+
     return errors;
   };
 
@@ -774,6 +837,22 @@ export const EnhancedReleaseBuilder = () => {
         user_id: user.id
       });
       
+      const preorderDateIso = preorderEnabled
+        ? (preorderAvailableAt
+            ? preorderAvailableAt.toISOString()
+            : releaseDate
+            ? releaseDate.toISOString()
+            : null)
+        : null;
+
+      const parsedInventory = preorderInventory.trim()
+        ? parseInt(preorderInventory.trim(), 10)
+        : null;
+
+      const normalizedPreorderInventory = preorderEnabled && parsedInventory !== null && !Number.isNaN(parsedInventory)
+        ? Math.max(0, parsedInventory)
+        : null;
+
       if (releaseId) {
         // Update existing draft in unified releases table
         const ownerData = getOwnerData();
@@ -799,6 +878,11 @@ export const EnhancedReleaseBuilder = () => {
               apple_music: distributeToApple,
               youtube_music: distributeToYoutube
             },
+            preorder_enabled: preorderEnabled,
+            preorder_available_at: preorderDateIso,
+            preorder_inventory: normalizedPreorderInventory,
+            allow_gifting: allowGifting,
+            gift_message_template: allowGifting ? giftMessageTemplate || null : null,
             // Ownership data
             owner_type: ownerData.owner_type,
             owner_id: ownerData.owner_id,
@@ -860,6 +944,11 @@ export const EnhancedReleaseBuilder = () => {
               apple_music: distributeToApple,
               youtube_music: distributeToYoutube
             },
+            preorder_enabled: preorderEnabled,
+            preorder_available_at: preorderDateIso,
+            preorder_inventory: normalizedPreorderInventory,
+            allow_gifting: allowGifting,
+            gift_message_template: allowGifting ? giftMessageTemplate || null : null,
             // Ownership data
             owner_type: ownerData.owner_type,
             owner_id: ownerData.owner_id,
@@ -1419,6 +1508,148 @@ export const EnhancedReleaseBuilder = () => {
 
   const renderPricingDistributionStage = () => (
     <div className="space-y-4">
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="space-y-1">
+          <div className="font-medium">Release schedule</div>
+          <p className="text-xs text-muted-foreground">
+            Pick when the drop goes live and optionally open up pre-orders ahead of launch.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Release date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${!releaseDate ? 'text-muted-foreground' : ''}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {releaseDate ? format(releaseDate, 'PPP') : 'Select release date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={releaseDate}
+                  onSelect={(date) => setReleaseDate(date ?? undefined)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Digital release date (optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${!digitalReleaseDate ? 'text-muted-foreground' : ''}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {digitalReleaseDate ? format(digitalReleaseDate, 'PPP') : 'Match release date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={digitalReleaseDate}
+                  onSelect={(date) => setDigitalReleaseDate(date ?? undefined)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {digitalReleaseDate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-2 text-xs text-muted-foreground"
+                onClick={() => setDigitalReleaseDate(undefined)}
+              >
+                Clear digital release date
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="font-medium">Enable pre-orders</div>
+              <p className="text-xs text-muted-foreground">
+                Let fans reserve the release now and deliver it automatically at launch.
+              </p>
+            </div>
+            <Switch checked={preorderEnabled} onCheckedChange={setPreorderEnabled} />
+          </div>
+
+          {preorderEnabled ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Available to download at</Label>
+                <Input
+                  type="datetime-local"
+                  value={formatDateTimeLocal(preorderAvailableAt)}
+                  min={formatDateTimeLocal(new Date())}
+                  onChange={(event) =>
+                    setPreorderAvailableAt(event.target.value ? new Date(event.target.value) : undefined)
+                  }
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Defaults to the release date if left blank.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Pre-order inventory (optional)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={preorderInventory}
+                  onChange={(event) => setPreorderInventory(event.target.value)}
+                  placeholder="Unlimited"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Leave empty for unlimited reservations.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5" />
+              <span>Toggle on to collect revenue before your release drops.</span>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="font-medium">Allow gifting</div>
+              <p className="text-xs text-muted-foreground">
+                Purchasers can send the release to someone else with a personalised note.
+              </p>
+            </div>
+            <Switch checked={allowGifting} onCheckedChange={setAllowGifting} />
+          </div>
+
+          {allowGifting && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Gift message template</Label>
+              <Textarea
+                value={giftMessageTemplate}
+                onChange={(event) => setGiftMessageTemplate(event.target.value)}
+                placeholder="Hey {recipient_name}, enjoy this release!"
+                rows={3}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Use placeholders like {'{recipient_name}'} to personalise automated emails.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div>
         <Label htmlFor="price">Price (USD)</Label>
         <Input id="price" type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(parseFloat(e.target.value || '0'))} />

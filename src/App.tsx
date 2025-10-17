@@ -38,6 +38,7 @@ import ReleaseBuilder from "./pages/ReleaseBuilder";
 import PlaylistPage from "./pages/Playlist";
 import Store from "./pages/Store";
 import StoreSuccess from "./pages/StoreSuccess";
+import GiftClaim from "./pages/GiftClaim";
 import AccountOrders from "./pages/AccountOrders";
 import Admin from "./pages/Admin";
 import BetaProgram from "./pages/BetaProgram";
@@ -244,6 +245,7 @@ const AppContent = () => {
         <Route path="/playlist/:id" element={<PlaylistPage />} />
         <Route path="/store" element={<Store />} />
         <Route path="/store/success" element={<ProtectedRoute><StoreSuccess /></ProtectedRoute>} />
+        <Route path="/gift/claim" element={<GiftClaim />} />
         <Route
           path="/orders"
           element={

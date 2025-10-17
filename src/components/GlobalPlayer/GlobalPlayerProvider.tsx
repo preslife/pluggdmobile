@@ -30,6 +30,13 @@ export interface Track {
   requiresPurchase?: boolean;
 }
 
+type CrossfadeStage = 'fadingOut' | 'waitingForNewTrack' | 'fadingIn';
+
+interface CrossfadeState {
+  stage: CrossfadeStage;
+  targetVolume: number;
+}
+
 interface PlaybackState {
   currentTrack: Track | null;
   queue: Track[];
@@ -46,6 +53,8 @@ interface PlaybackState {
   crossfadeEnabled: boolean;
   gaplessEnabled: boolean;
   quality: 'auto' | 'high' | 'medium' | 'low';
+  shuffleOrder: number[];
+  history: number[];
 }
 
 type PlayerAction = 
@@ -71,7 +80,9 @@ type PlayerAction =
   | { type: 'UPDATE_TIME'; payload: { currentTime: number; duration: number } }
   | { type: 'SET_CROSSFADE'; payload: boolean }
   | { type: 'SET_GAPLESS'; payload: boolean }
-  | { type: 'SET_QUALITY'; payload: 'auto' | 'high' | 'medium' | 'low' };
+  | { type: 'SET_QUALITY'; payload: 'auto' | 'high' | 'medium' | 'low' }
+  | { type: 'SET_SHUFFLE_ORDER'; payload: number[] }
+  | { type: 'SET_HISTORY'; payload: number[] };
 
 const initialState: PlaybackState = {
   currentTrack: null,
@@ -88,7 +99,9 @@ const initialState: PlaybackState = {
   isExpanded: false,
   crossfadeEnabled: false,
   gaplessEnabled: true,
-  quality: 'auto'
+  quality: 'auto',
+  shuffleOrder: [],
+  history: []
 };
 
 interface PersistedPreferences {
@@ -107,6 +120,8 @@ interface PersistedPlayerState {
   currentIndex: number;
   currentTime: number;
   preferences: PersistedPreferences;
+  shuffleOrder?: number[];
+  history?: number[];
 }
 
 const defaultPreferences: PersistedPreferences = {
@@ -125,6 +140,71 @@ const isValidTrack = (track: any): track is Track =>
       typeof track.id === 'string' &&
       typeof track.src === 'string'
   );
+
+const SHUFFLE_HISTORY_LIMIT = 200;
+const PREFETCH_TTL = 60 * 1000;
+const CROSSFADE_DURATION_SECONDS = 3;
+const CROSSFADE_DURATION_MS = CROSSFADE_DURATION_SECONDS * 1000;
+
+const buildShuffleOrder = (queueLength: number, excludeIndex: number): number[] => {
+  const indices: number[] = [];
+  for (let i = 0; i < queueLength; i += 1) {
+    if (i !== excludeIndex) {
+      indices.push(i);
+    }
+  }
+
+  for (let i = indices.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  return indices;
+};
+
+const removeIndexFromOrder = (order: number[], index: number): number[] =>
+  order.filter((value) => value !== index);
+
+const clampHistory = (history: number[]): number[] =>
+  history.slice(Math.max(0, history.length - SHUFFLE_HISTORY_LIMIT));
+
+const cancelAnimation = (ref: React.MutableRefObject<number | null>) => {
+  if (ref.current !== null) {
+    cancelAnimationFrame(ref.current);
+    ref.current = null;
+  }
+};
+
+const fadeAudioVolume = (
+  audio: HTMLAudioElement,
+  from: number,
+  to: number,
+  durationMs: number,
+  rafRef: React.MutableRefObject<number | null>,
+  onComplete?: () => void
+) => {
+  cancelAnimation(rafRef);
+  const start = performance.now();
+  const startVolume = Math.max(0, Math.min(1, from));
+  const delta = Math.max(-1, Math.min(1, to)) - startVolume;
+
+  const step = (now: number) => {
+    const elapsed = now - start;
+    const progress = durationMs <= 0 ? 1 : Math.min(1, elapsed / durationMs);
+    const nextVolume = startVolume + delta * progress;
+    audio.volume = Math.max(0, Math.min(1, nextVolume));
+
+    if (progress >= 1) {
+      rafRef.current = null;
+      onComplete?.();
+      return;
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+  };
+
+  rafRef.current = requestAnimationFrame(step);
+};
 
 const clearPersistedPlayerState = () => {
   if (typeof window === 'undefined') return;
@@ -196,7 +276,15 @@ const loadPersistedPlayerState = (): PersistedPlayerState | null => {
       currentTrack: currentTrack ? { ...currentTrack } : null,
       currentIndex,
       currentTime,
-      preferences
+      preferences,
+      shuffleOrder: Array.isArray(parsed.shuffleOrder)
+        ? parsed.shuffleOrder.filter((value: unknown) => typeof value === 'number').map((value: number) => Math.max(0, Math.floor(value)))
+        : [],
+      history: Array.isArray(parsed.history)
+        ? parsed.history
+            .filter((value: unknown) => typeof value === 'number')
+            .map((value: number) => Math.max(0, Math.floor(value)))
+        : []
     };
   } catch (error) {
     console.warn('Clearing persisted player state due to parse error:', error);
@@ -221,7 +309,9 @@ const persistPlayerState = (state: PlaybackState) => {
       crossfadeEnabled: state.crossfadeEnabled,
       gaplessEnabled: state.gaplessEnabled,
       quality: state.quality
-    }
+    },
+    shuffleOrder: state.shuffleOrder.slice(0, 200),
+    history: state.history.slice(-200)
   };
 
   try {
@@ -236,17 +326,35 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
     case 'PLAY_TRACK':
       const { track, queue = [], index } = action.payload;
       const newQueue = queue.length > 0 ? queue : [track];
-      const trackIndex = index !== undefined ? index : newQueue.findIndex(t => t.id === track.id);
-      
+      const resolvedIndex =
+        index !== undefined && index >= 0
+          ? index
+          : newQueue.findIndex(t => t.id === track.id);
+      const nextIndex = resolvedIndex >= 0 ? resolvedIndex : 0;
+
+      const nextHistory =
+        state.currentIndex >= 0 && state.currentIndex < state.queue.length && state.currentTrack
+          ? clampHistory([...state.history, state.currentIndex])
+          : clampHistory(state.history);
+
+      const shouldResetShuffle = queue.length > 0 || newQueue.length !== state.queue.length;
+      const nextShuffleOrder = state.shuffle
+        ? shouldResetShuffle
+          ? buildShuffleOrder(newQueue.length, nextIndex)
+          : removeIndexFromOrder(state.shuffleOrder, nextIndex)
+        : [];
+
       return {
         ...state,
         currentTrack: track,
         queue: newQueue,
-        currentIndex: Math.max(0, trackIndex),
+        currentIndex: Math.max(0, nextIndex),
         isPlaying: true,
         isPaused: false,
         currentTime: 0,
-        duration: 0
+        duration: 0,
+        history: state.shuffle ? nextHistory : clampHistory(state.history),
+        shuffleOrder: state.shuffle ? nextShuffleOrder : []
       };
 
     case 'PAUSE':
@@ -271,9 +379,44 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         currentTime: 0
       };
 
-    case 'NEXT':
+    case 'NEXT': {
       if (state.queue.length === 0) return state;
-      
+
+      if (state.shuffle) {
+        let shuffleOrder = state.shuffleOrder.slice();
+
+        if (shuffleOrder.length === 0) {
+          shuffleOrder = buildShuffleOrder(state.queue.length, state.currentIndex);
+        }
+
+        if (shuffleOrder.length === 0) {
+          if (state.repeat === 'all') {
+            shuffleOrder = buildShuffleOrder(state.queue.length, state.currentIndex);
+          } else {
+            return { ...state, isPlaying: false, isPaused: false };
+          }
+        }
+
+        const nextIndex = shuffleOrder.shift();
+        if (nextIndex === undefined) {
+          return state;
+        }
+
+        const nextHistory = clampHistory([...state.history, state.currentIndex]);
+
+        return {
+          ...state,
+          currentTrack: state.queue[nextIndex],
+          currentIndex: nextIndex,
+          currentTime: 0,
+          duration: 0,
+          isPlaying: true,
+          isPaused: false,
+          shuffleOrder,
+          history: nextHistory
+        };
+      }
+
       let nextIndex = state.currentIndex + 1;
       if (nextIndex >= state.queue.length) {
         if (state.repeat === 'all') {
@@ -282,7 +425,7 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
           return { ...state, isPlaying: false, isPaused: false };
         }
       }
-      
+
       return {
         ...state,
         currentTrack: state.queue[nextIndex],
@@ -290,8 +433,11 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         currentTime: 0,
         duration: 0,
         isPlaying: true,
-        isPaused: false
+        isPaused: false,
+        history: state.shuffle ? clampHistory([...state.history, state.currentIndex]) : state.history,
+        shuffleOrder: state.shuffle ? state.shuffleOrder : []
       };
+    }
 
     case 'PREVIOUS':
       if (state.queue.length === 0) return state;
@@ -301,6 +447,63 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         return {
           ...state,
           currentTime: 0
+        };
+      }
+
+      if (state.shuffle) {
+        if (state.history.length === 0) {
+          if (state.repeat === 'all' && state.queue.length > 1) {
+            const regeneratedOrder = buildShuffleOrder(state.queue.length, state.currentIndex);
+            const lastIndex = regeneratedOrder.shift();
+            if (lastIndex === undefined) {
+              return {
+                ...state,
+                currentTime: 0
+              };
+            }
+
+            return {
+              ...state,
+              currentTrack: state.queue[lastIndex],
+              currentIndex: lastIndex,
+              currentTime: 0,
+              duration: 0,
+              isPlaying: true,
+              isPaused: false,
+              shuffleOrder: regeneratedOrder,
+              history: clampHistory([...state.history, state.currentIndex])
+            };
+          }
+
+          return {
+            ...state,
+            currentTime: 0
+          };
+        }
+
+        const history = state.history.slice();
+        const previousIndex = history.pop();
+
+        if (previousIndex === undefined || !state.queue[previousIndex]) {
+          return {
+            ...state,
+            currentTime: 0,
+            history
+          };
+        }
+
+        const shuffleOrder = [state.currentIndex, ...state.shuffleOrder];
+
+        return {
+          ...state,
+          currentTrack: state.queue[previousIndex],
+          currentIndex: previousIndex,
+          currentTime: 0,
+          duration: 0,
+          isPlaying: true,
+          isPaused: false,
+          shuffleOrder,
+          history: clampHistory(history)
         };
       }
       
@@ -320,7 +523,9 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         currentTime: 0,
         duration: 0,
         isPlaying: true,
-        isPaused: false
+        isPaused: false,
+        history: state.shuffle ? state.history : [],
+        shuffleOrder: state.shuffle ? state.shuffleOrder : []
       };
 
     case 'SEEK':
@@ -342,17 +547,29 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         isMuted: !state.isMuted
       };
 
-    case 'TOGGLE_SHUFFLE':
+    case 'TOGGLE_SHUFFLE': {
+      const nextShuffle = !state.shuffle;
       return {
         ...state,
-        shuffle: !state.shuffle
+        shuffle: nextShuffle,
+        shuffleOrder: nextShuffle
+          ? buildShuffleOrder(state.queue.length, state.currentIndex >= 0 ? state.currentIndex : -1)
+          : [],
+        history: nextShuffle ? [] : []
       };
+    }
 
-    case 'SET_SHUFFLE':
+    case 'SET_SHUFFLE': {
+      const enabled = action.payload;
       return {
         ...state,
-        shuffle: action.payload
+        shuffle: enabled,
+        shuffleOrder: enabled
+          ? buildShuffleOrder(state.queue.length, state.currentIndex >= 0 ? state.currentIndex : -1)
+          : [],
+        history: enabled ? [] : []
       };
+    }
 
     case 'TOGGLE_REPEAT':
       const nextRepeat = state.repeat === 'none' ? 'all' : state.repeat === 'all' ? 'one' : 'none';
@@ -374,9 +591,13 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
       };
 
     case 'ADD_TO_QUEUE':
+      const appendedQueue = [...state.queue, action.payload];
       return {
         ...state,
-        queue: [...state.queue, action.payload]
+        queue: appendedQueue,
+        shuffleOrder: state.shuffle
+          ? [...state.shuffleOrder, appendedQueue.length - 1]
+          : state.shuffleOrder
       };
 
     case 'PLAY_NEXT':
@@ -386,7 +607,16 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
       
       return {
         ...state,
-        queue: newQueueWithNext
+        queue: newQueueWithNext,
+        shuffleOrder: state.shuffle
+          ? [
+              insertIndex,
+              ...removeIndexFromOrder(
+                state.shuffleOrder.map(index => (index >= insertIndex ? index + 1 : index)),
+                insertIndex
+              )
+            ]
+          : state.shuffleOrder
       };
 
     case 'REMOVE_FROM_QUEUE':
@@ -394,12 +624,27 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
       const adjustedIndex = action.payload <= state.currentIndex && state.currentIndex > 0 
         ? state.currentIndex - 1 
         : state.currentIndex;
+
+      const removedIndex = action.payload;
+      const adjustedShuffleOrder = state.shuffle
+        ? state.shuffleOrder
+            .filter(index => index !== removedIndex)
+            .map(index => (index > removedIndex ? index - 1 : index))
+        : state.shuffleOrder;
+
+      const adjustedHistory = state.shuffle
+        ? state.history
+            .filter(index => index !== removedIndex)
+            .map(index => (index > removedIndex ? index - 1 : index))
+        : state.history;
       
       return {
         ...state,
         queue: filteredQueue,
         currentIndex: Math.min(adjustedIndex, filteredQueue.length - 1),
-        currentTrack: filteredQueue[adjustedIndex] || null
+        currentTrack: filteredQueue[adjustedIndex] || null,
+        shuffleOrder: state.shuffle ? adjustedShuffleOrder : [],
+        history: state.shuffle ? clampHistory(adjustedHistory) : []
       };
 
     case 'SET_QUEUE':
@@ -408,7 +653,9 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         ...state,
         queue: tracks,
         currentIndex: startIndex,
-        currentTrack: tracks[startIndex] || null
+        currentTrack: tracks[startIndex] || null,
+        shuffleOrder: state.shuffle ? buildShuffleOrder(tracks.length, startIndex) : [],
+        history: state.shuffle ? [] : state.history
       };
 
     case 'CLEAR_QUEUE':
@@ -420,7 +667,9 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
         isPlaying: false,
         isPaused: false,
         currentTime: 0,
-        duration: 0
+        duration: 0,
+        shuffleOrder: [],
+        history: []
       };
 
     case 'UPDATE_TIME':
@@ -446,6 +695,18 @@ function playerReducer(state: PlaybackState, action: PlayerAction): PlaybackStat
       return {
         ...state,
         quality: action.payload
+      };
+
+    case 'SET_SHUFFLE_ORDER':
+      return {
+        ...state,
+        shuffleOrder: action.payload.slice(0, SHUFFLE_HISTORY_LIMIT)
+      };
+
+    case 'SET_HISTORY':
+      return {
+        ...state,
+        history: clampHistory(action.payload)
       };
 
     default:
@@ -498,6 +759,46 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
   const pendingSeekRef = useRef<number | null>(null);
+  const prefetchedNextRef = useRef<{ trackId: string; src: string; updatedAt: number } | null>(null);
+  const crossfadeStateRef = useRef<CrossfadeState | null>(null);
+  const fadeOutRafRef = useRef<number | null>(null);
+  const fadeInRafRef = useRef<number | null>(null);
+
+  const determineUpcomingIndex = () => {
+    if (state.queue.length === 0) return null;
+
+    if (state.repeat === 'one') {
+      return null;
+    }
+
+    if (state.shuffle) {
+      if (state.shuffleOrder.length > 0) {
+        return state.shuffleOrder[0];
+      }
+
+      const generated = buildShuffleOrder(state.queue.length, state.currentIndex >= 0 ? state.currentIndex : -1);
+      if (generated.length > 0) {
+        return generated[0];
+      }
+
+      if (state.repeat === 'all' && state.queue.length > 1) {
+        return buildShuffleOrder(state.queue.length, state.currentIndex >= 0 ? state.currentIndex : -1)[0] ?? null;
+      }
+
+      return null;
+    }
+
+    let nextIndex = state.currentIndex + 1;
+    if (nextIndex >= state.queue.length) {
+      if (state.repeat === 'all' && state.queue.length > 0) {
+        nextIndex = 0;
+      } else {
+        return null;
+      }
+    }
+
+    return nextIndex;
+  };
 
   // Initialize analytics session
   useEffect(() => {
@@ -508,18 +809,47 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
     };
   }, []);
 
+  useEffect(() => {
+    if (!state.crossfadeEnabled) {
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      const audio = audioRef.current;
+      if (audio) {
+        audio.volume = state.isMuted ? 0 : state.volume;
+      }
+    }
+  }, [state.crossfadeEnabled, state.isMuted, state.volume]);
+
   const actions = {
     play: async (track: Track, queue?: Track[], index?: number) => {
       // Enhance track with access control
       const enhancedTrack = await trackAccessControl.enhanceTrackWithAccess(track);
       // Resolve playable URL (refresh signed URLs for private audio-files)
-      const resolvedSrc = await resolvePlayableUrl(enhancedTrack.src);
+      let resolvedSrc: string;
+      const cached = prefetchedNextRef.current;
+      if (
+        cached &&
+        cached.trackId === enhancedTrack.id &&
+        Date.now() - cached.updatedAt < PREFETCH_TTL
+      ) {
+        resolvedSrc = cached.src;
+      } else {
+        resolvedSrc = await resolvePlayableUrl(enhancedTrack.src, { quality: state.quality });
+      }
       const finalTrack = { ...enhancedTrack, src: resolvedSrc };
       
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      prefetchedNextRef.current = null;
+
       dispatch({ 
         type: 'PLAY_TRACK', 
         payload: { track: finalTrack, queue, index } 
       });
+
+      prefetchedNextRef.current = null;
       
       // Track play event for analytics
       await playerAnalytics.trackPlayEvent({
@@ -532,9 +862,27 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
 
     pause: () => dispatch({ type: 'PAUSE' }),
     resume: () => dispatch({ type: 'RESUME' }),
-    stop: () => dispatch({ type: 'STOP' }),
-    next: () => dispatch({ type: 'NEXT' }),
-    previous: () => dispatch({ type: 'PREVIOUS' }),
+    stop: () => {
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      prefetchedNextRef.current = null;
+      dispatch({ type: 'STOP' });
+    },
+    next: () => {
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      prefetchedNextRef.current = null;
+      dispatch({ type: 'NEXT' });
+    },
+    previous: () => {
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      prefetchedNextRef.current = null;
+      dispatch({ type: 'PREVIOUS' });
+    },
     seek: (time: number) => dispatch({ type: 'SEEK', payload: time }),
     setVolume: (volume: number) => dispatch({ type: 'SET_VOLUME', payload: volume }),
     toggleMute: () => dispatch({ type: 'TOGGLE_MUTE' }),
@@ -545,11 +893,121 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
     playNext: (track: Track) => dispatch({ type: 'PLAY_NEXT', payload: track }),
     removeFromQueue: (index: number) => dispatch({ type: 'REMOVE_FROM_QUEUE', payload: index }),
     setQueue: (tracks: Track[], index?: number) => dispatch({ type: 'SET_QUEUE', payload: { tracks, index } }),
-    clearQueue: () => dispatch({ type: 'CLEAR_QUEUE' }),
+    clearQueue: () => {
+      crossfadeStateRef.current = null;
+      cancelAnimation(fadeOutRafRef);
+      cancelAnimation(fadeInRafRef);
+      prefetchedNextRef.current = null;
+      dispatch({ type: 'CLEAR_QUEUE' });
+    },
     setCrossfade: (enabled: boolean) => dispatch({ type: 'SET_CROSSFADE', payload: enabled }),
     setGapless: (enabled: boolean) => dispatch({ type: 'SET_GAPLESS', payload: enabled }),
     setQuality: (quality: 'auto' | 'high' | 'medium' | 'low') => dispatch({ type: 'SET_QUALITY', payload: quality })
   };
+
+  const startCrossfade = (audio: HTMLAudioElement) => {
+    if (!state.crossfadeEnabled || crossfadeStateRef.current) {
+      return;
+    }
+
+    const upcomingIndex = determineUpcomingIndex();
+    if (upcomingIndex === null) {
+      return;
+    }
+
+    const targetVolume = state.isMuted ? 0 : state.volume;
+    if (targetVolume <= 0) {
+      return;
+    }
+
+    crossfadeStateRef.current = {
+      stage: 'fadingOut',
+      targetVolume
+    };
+
+    fadeAudioVolume(
+      audio,
+      audio.volume,
+      0,
+      CROSSFADE_DURATION_MS,
+      fadeOutRafRef,
+      () => {
+        if (!state.crossfadeEnabled) {
+          crossfadeStateRef.current = null;
+          return;
+        }
+
+        crossfadeStateRef.current = {
+          stage: 'waitingForNewTrack',
+          targetVolume: state.isMuted ? 0 : state.volume
+        };
+
+        dispatch({ type: 'NEXT' });
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (!state.gaplessEnabled && !state.crossfadeEnabled) {
+      prefetchedNextRef.current = null;
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const prefetch = async () => {
+      const upcomingIndex = determineUpcomingIndex();
+      if (upcomingIndex === null) {
+        prefetchedNextRef.current = null;
+        return;
+      }
+
+      const upcomingTrack = state.queue[upcomingIndex];
+      if (!upcomingTrack) {
+        prefetchedNextRef.current = null;
+        return;
+      }
+
+      const cached = prefetchedNextRef.current;
+      if (
+        cached &&
+        cached.trackId === upcomingTrack.id &&
+        Date.now() - cached.updatedAt < PREFETCH_TTL
+      ) {
+        return;
+      }
+
+      try {
+        const resolvedSrc = await resolvePlayableUrl(upcomingTrack.src, { quality: state.quality });
+        if (!controller.signal.aborted) {
+          prefetchedNextRef.current = {
+            trackId: upcomingTrack.id,
+            src: resolvedSrc,
+            updatedAt: Date.now()
+          };
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.warn('Failed to prefetch upcoming track:', error);
+        }
+      }
+    };
+
+    void prefetch();
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    state.queue,
+    state.currentIndex,
+    state.shuffle,
+    state.shuffleOrder,
+    state.crossfadeEnabled,
+    state.gaplessEnabled,
+    state.repeat,
+    state.quality
+  ]);
 
   // Audio element event handlers
   useEffect(() => {
@@ -571,6 +1029,20 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
         if (maxTime && currentTime >= maxTime) {
           audio.pause();
           dispatch({ type: 'PAUSE' });
+        }
+      }
+
+      if (
+        state.crossfadeEnabled &&
+        !state.isMuted &&
+        state.isPlaying &&
+        !crossfadeStateRef.current
+      ) {
+        if (Number.isFinite(duration) && duration > CROSSFADE_DURATION_SECONDS) {
+          const timeRemaining = duration - currentTime;
+          if (timeRemaining > 0 && timeRemaining <= CROSSFADE_DURATION_SECONDS) {
+            startCrossfade(audio);
+          }
         }
       }
 
@@ -614,6 +1086,29 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
           );
           audio.currentTime = clampedTime;
         }
+      }
+
+      const pendingCrossfade = crossfadeStateRef.current;
+      if (pendingCrossfade?.stage === 'waitingForNewTrack') {
+        cancelAnimation(fadeInRafRef);
+        const targetVolume = state.isMuted ? 0 : pendingCrossfade.targetVolume;
+        audio.volume = 0;
+        crossfadeStateRef.current = { stage: 'fadingIn', targetVolume };
+        fadeAudioVolume(
+          audio,
+          0,
+          targetVolume,
+          CROSSFADE_DURATION_MS,
+          fadeInRafRef,
+          () => {
+            crossfadeStateRef.current = null;
+            if (state.isMuted) {
+              audio.volume = 0;
+            } else {
+              audio.volume = state.volume;
+            }
+          }
+        );
       }
     };
 
@@ -674,7 +1169,9 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
     state.repeat,
     state.crossfadeEnabled,
     state.gaplessEnabled,
-    state.quality
+    state.quality,
+    state.shuffleOrder,
+    state.history
   ]);
 
   // Restore player state from localStorage
@@ -754,6 +1251,14 @@ export const GlobalPlayerProvider: React.FC<GlobalPlayerProviderProps> = ({ chil
 
         if (preferences.quality) {
           dispatch({ type: 'SET_QUALITY', payload: preferences.quality });
+        }
+
+        if (savedState.shuffleOrder && savedState.shuffleOrder.length > 0) {
+          dispatch({ type: 'SET_SHUFFLE_ORDER', payload: savedState.shuffleOrder });
+        }
+
+        if (savedState.history && savedState.history.length > 0) {
+          dispatch({ type: 'SET_HISTORY', payload: savedState.history });
         }
       } catch (error) {
         console.error('Error hydrating player state:', error);

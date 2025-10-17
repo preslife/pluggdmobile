@@ -49,7 +49,7 @@ export const DirectBuyButton = ({
 
       const { data, error } = await supabase.functions.invoke('create-release-purchase', {
         body: {
-          release_id: releaseId,
+          releaseId,
           amount: price,
           referrer_code: referrerCode
         }

@@ -125,7 +125,20 @@ const filtersAreEqual = (a: SearchFilters, b: SearchFilters) => JSON.stringify(a
 export const SearchPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') as FilterTab) || 'music';
+  const rawTab = searchParams.get('tab') || searchParams.get('type');
+  const normalizedTab = useMemo<FilterTab>(() => {
+    switch (rawTab) {
+      case 'beats':
+      case 'creators':
+      case 'music':
+        return rawTab;
+      case 'releases':
+        return 'music';
+      default:
+        return 'music';
+    }
+  }, [rawTab]);
+  const initialTab = normalizedTab;
   const initialSortParam = searchParams.get('sort');
   const allowedInitialSort = initialSortParam && SORT_OPTIONS[initialTab].some((option) => option.value === initialSortParam)
     ? initialSortParam

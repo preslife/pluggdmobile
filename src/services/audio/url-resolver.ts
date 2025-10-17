@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+type AudioQuality = 'auto' | 'high' | 'medium' | 'low';
+
 function extractBucketAndPathFromStorageUrl(url: string): { bucket: string | null; path: string | null; mode: 'sign' | 'public' | null } {
   try {
     const u = new URL(url);
@@ -34,7 +36,26 @@ function extractBucketAndPathFromString(input: string): { bucket: string | null;
   return { bucket: null, path: null };
 }
 
-export async function resolvePlayableUrl(originalSrc: string): Promise<string> {
+const applyQualityParam = (url: string, quality?: AudioQuality): string => {
+  if (!quality || quality === 'auto') {
+    return url;
+  }
+
+  try {
+    const urlObj = new URL(url);
+    urlObj.searchParams.set('quality', quality);
+    return urlObj.toString();
+  } catch {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}quality=${encodeURIComponent(quality)}`;
+  }
+};
+
+interface ResolveOptions {
+  quality?: AudioQuality;
+}
+
+export async function resolvePlayableUrl(originalSrc: string, options: ResolveOptions = {}): Promise<string> {
   if (!originalSrc) return originalSrc;
 
   // Check if it's a Supabase storage URL (signed or public)
@@ -57,20 +78,20 @@ export async function resolvePlayableUrl(originalSrc: string): Promise<string> {
           .createSignedUrl(info.path, 60 * 60);
 
         if (!error && data?.signedUrl) {
-          return data.signedUrl;
+          return applyQualityParam(data.signedUrl, options.quality);
         }
 
         console.warn('Failed to refresh signed URL:', error, 'for path:', info.path);
-        return originalSrc; // Fallback to original
+        return applyQualityParam(originalSrc, options.quality); // Fallback to original
 
       } catch (err) {
         console.error('Error refreshing signed URL:', err, 'for path:', info.path);
-        return originalSrc; // Fallback to original
+        return applyQualityParam(originalSrc, options.quality); // Fallback to original
       }
     }
 
     // Public buckets or other patterns - return as-is
-    return originalSrc;
+    return applyQualityParam(originalSrc, options.quality);
   }
 
   // Handle path-only formats (legacy support)
@@ -82,24 +103,24 @@ export async function resolvePlayableUrl(originalSrc: string): Promise<string> {
         .createSignedUrl(guessed.path, 60 * 60);
 
       if (!error && data?.signedUrl) {
-        return data.signedUrl;
+        return applyQualityParam(data.signedUrl, options.quality);
       }
 
       console.warn('Failed to refresh signed URL from path:', error, 'for path:', guessed.path);
-      return originalSrc;
+      return applyQualityParam(originalSrc, options.quality);
 
     } catch (err) {
       console.error('Error refreshing signed URL from path:', err, 'for path:', guessed.path);
-      return originalSrc;
+      return applyQualityParam(originalSrc, options.quality);
     }
   }
 
   if ((guessed.bucket === 'release-audio' || guessed.bucket === 'battle-audio') && guessed.path) {
     const { data } = supabase.storage.from(guessed.bucket).getPublicUrl(guessed.path);
-    return data.publicUrl || originalSrc;
+    const targetUrl = data.publicUrl || originalSrc;
+    return applyQualityParam(targetUrl, options.quality);
   }
 
-  return originalSrc;
+  return applyQualityParam(originalSrc, options.quality);
 }
-
 
