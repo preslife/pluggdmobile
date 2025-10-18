@@ -8,15 +8,92 @@ import {
   type Logger,
 } from "./helpers.ts";
 
-const logStep: Logger = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
+
+const LEVEL_TO_NUMBER: Record<SystemLogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  critical: 4,
 };
 
-// Handle split attribution for digital purchases
-const handleSplitAttribution = async (session: any, supabaseClient: any, stripe: any) => {
+interface SystemLoggerContext {
+  component: string;
+  requestId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface SystemLogger extends Logger {
+  with: (metadata: Record<string, unknown>) => Logger;
+}
+
+const emitSystemLog = async (
+  client: any,
+  context: SystemLoggerContext,
+  level: SystemLogLevel,
+  event: string,
+  metadata?: Record<string, unknown>,
+) => {
+  const payload = {
+    level: LEVEL_TO_NUMBER[level],
+    message: event,
+    action: event,
+    component: context.component,
+    session_id: context.requestId ?? null,
+    timestamp: new Date().toISOString(),
+    metadata,
+  };
+  console.log(JSON.stringify({ source: 'system_logs', ...payload }));
   try {
-    logStep("Processing split attribution", { sessionId: session.id });
+    await client.from('system_logs').insert([payload]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[system_logs] insert_failed', { event, message });
+  }
+};
+
+const createSystemLogger = (client: any, context: SystemLoggerContext): SystemLogger => {
+  const baseMetadata = context.metadata ?? {};
+  const emit = (level: SystemLogLevel, event: string, extra?: Record<string, unknown>) =>
+    emitSystemLog(client, context, level, event, { ...baseMetadata, ...(extra ?? {}) });
+
+  const logger: SystemLogger = {
+    info: (event, details) => emit('info', event, details),
+    warn: (event, details) => emit('warn', event, details),
+    error: (event, details) => emit('error', event, details),
+    with: (metadata: Record<string, unknown>) =>
+      createSystemLogger(client, {
+        ...context,
+        metadata: { ...baseMetadata, ...metadata },
+      }),
+  };
+
+  return logger;
+};
+
+
+const normalizeEventName = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const scopeLogger = (logger: Logger, metadata: Record<string, unknown>): Logger => ({
+  info: (event: string, details?: Record<string, unknown>) => logger.info(event, { ...metadata, ...(details ?? {}) }),
+  warn: (event: string, details?: Record<string, unknown>) => logger.warn(event, { ...metadata, ...(details ?? {}) }),
+  error: (event: string, details?: Record<string, unknown>) => logger.error(event, { ...metadata, ...(details ?? {}) }),
+});
+
+// Handle split attribution for digital purchases
+const handleSplitAttribution = async (
+  session: any,
+  supabaseClient: any,
+  stripe: any,
+  logger: Logger,
+) => {
+  try {
+    await logger.info('split_attribution_processing', { sessionId: session.id });
 
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
       expand: ['data.price.product'],
@@ -54,7 +131,7 @@ const handleSplitAttribution = async (session: any, supabaseClient: any, stripe:
 
       if (!splits || splits.length === 0) {
         if (!fallbackCreator) {
-          logStep("No splits or fallback creator available", { contentType, contentId });
+          await logger.warn('split_attribution_missing_recipient', { contentType, contentId, sessionId: session.id });
           continue;
         }
 
@@ -79,7 +156,12 @@ const handleSplitAttribution = async (session: any, supabaseClient: any, stripe:
           });
 
         if (statementError) {
-          logStep("Error creating fallback statement", { error: statementError.message });
+          await logger.error('split_attribution_fallback_statement_failed', {
+            error: statementError.message,
+            contentType,
+            contentId,
+            sessionId: session.id,
+          });
         }
 
         continue;
@@ -112,7 +194,11 @@ const handleSplitAttribution = async (session: any, supabaseClient: any, stripe:
           });
 
         if (statementError) {
-          logStep("Error creating creator statement", { error: statementError.message, split });
+          await logger.error('split_attribution_statement_failed', {
+            error: statementError.message,
+            split,
+            sessionId: session.id,
+          });
         }
 
         const { error: payoutError } = await supabaseClient
@@ -128,24 +214,29 @@ const handleSplitAttribution = async (session: any, supabaseClient: any, stripe:
           });
 
         if (payoutError) {
-          logStep("Error creating split payout", { error: payoutError.message, split });
+          await logger.error('split_payout_create_failed', {
+            error: payoutError.message,
+            split,
+            sessionId: session.id,
+          });
         } else {
-          logStep("Created split payout", {
+          await logger.info('split_payout_created', {
             payeeId: split.payee_user_id,
             percent,
             amount: netShare,
+            sessionId: session.id,
           });
         }
       }
     }
   } catch (error: any) {
-    logStep("Error in split attribution", { error: error.message });
+    await logger.error('split_attribution_failed', { error: error.message, sessionId: session.id });
   }
 };
 
 serve(async (req) => {
   try {
-    logStep("Webhook received");
+    await logStep("Webhook received");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
@@ -155,6 +246,19 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    const requestId = crypto.randomUUID();
+    const requestUrl = new URL(req.url);
+    const baseLogger = createSystemLogger(supabaseClient, {
+      component: 'supabase.stripe-webhook',
+      requestId,
+      metadata: { path: requestUrl.pathname, method: req.method },
+    });
+    let currentLogger: Logger = baseLogger;
+    const logStep = (message: string, details?: Record<string, unknown>) =>
+      currentLogger.info(normalizeEventName(message), { message, ...(details ?? {}) });
+
+    await logStep('Webhook received');
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const body = await req.text();
@@ -170,12 +274,13 @@ serve(async (req) => {
     }
 
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    logStep("Event verified", { type: event.type, id: event.id });
+    currentLogger = baseLogger.with({ eventId: event.id, eventType: event.type });
+    await logStep("Event verified", { type: event.type, id: event.id });
 
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        logStep("Checkout session completed", { sessionId: session.id });
+        await logStep("Checkout session completed", { sessionId: session.id });
 
         if (session.metadata?.transaction_type === 'crowdfunding_contribution') {
           const campaignId = session.metadata.campaign_id;
@@ -187,7 +292,7 @@ serve(async (req) => {
           const amountCents = session.amount_total ?? Number(session.metadata.amount_cents ?? 0);
 
           if (!campaignId || !amountCents) {
-            logStep('Crowdfunding contribution missing campaign or amount metadata', { sessionId: session.id });
+            await logStep('Crowdfunding contribution missing campaign or amount metadata', { sessionId: session.id });
             break;
           }
 
@@ -214,37 +319,26 @@ serve(async (req) => {
             .single();
 
           if (supporterError) {
-            logStep('Failed to record crowdfunding contribution', { error: supporterError.message, sessionId: session.id });
+            await logStep('Failed to record crowdfunding contribution', { error: supporterError.message, sessionId: session.id });
             break;
           }
 
-          logStep('Crowdfunding contribution recorded', {
+          await logStep('Crowdfunding contribution recorded', {
             supporterId: supporterRecord?.supporter_id,
             campaignId,
             amountCents,
           });
 
-          try {
-            await supabaseClient
-              .from('system_logs')
-              .insert({
-                level: 2,
-                message: 'Crowdfunding contribution completed',
-                user_id: supporterId ?? null,
-                session_id: session.id,
-                component: 'crowdfunding.checkout',
-                action: 'contribution_completed',
-                metadata: {
-                  campaign_id: campaignId,
-                  reward_id: rewardId,
-                  amount_cents: amountCents,
-                  payment_intent: paymentIntentId,
-                },
-              });
-          } catch (logError) {
-            const errorMessage = logError instanceof Error ? logError.message : String(logError);
-            logStep('Failed to insert crowdfunding contribution log', { error: errorMessage });
-          }
+          await scopeLogger(currentLogger, { scope: 'crowdfunding', sessionId: session.id }).info(
+            'crowdfunding_contribution_completed',
+            {
+              supporterId: supporterRecord?.supporter_id,
+              campaignId,
+              rewardId,
+              amountCents,
+              paymentIntentId,
+            },
+          );
 
           try {
             await supabaseClient.functions.invoke('generate-receipt', {
@@ -260,7 +354,7 @@ serve(async (req) => {
               },
             });
           } catch (receiptError: any) {
-            logStep('Crowdfunding receipt generation failed', { error: receiptError.message });
+            await logStep('Crowdfunding receipt generation failed', { error: receiptError.message });
           }
 
           break;
@@ -272,7 +366,7 @@ serve(async (req) => {
           const creditsAmount = parseInt(session.metadata.credits_amount);
 
           if (userId && creditsAmount) {
-            logStep("Processing credits top-up", { userId, creditsAmount });
+            await logStep("Processing credits top-up", { userId, creditsAmount });
             
             // Create ledger entry for credits top-up
             const { error: ledgerError } = await supabaseClient
@@ -291,9 +385,9 @@ serve(async (req) => {
               });
             
             if (ledgerError) {
-              logStep("Error creating credits ledger entry", { error: ledgerError.message });
+              await logStep("Error creating credits ledger entry", { error: ledgerError.message });
             } else {
-              logStep("Credits top-up completed successfully", { userId, creditsAmount });
+              await logStep("Credits top-up completed successfully", { userId, creditsAmount });
             }
           }
           break;
@@ -309,21 +403,32 @@ serve(async (req) => {
               purchaseItems = JSON.parse(purchaseItemsRaw);
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
-              logStep('Failed to parse hybrid purchase items', { sessionId: session.id, error: message });
+              await logStep('Failed to parse hybrid purchase items', { sessionId: session.id, error: message });
             }
           }
 
           if (userId) {
-            await createDownloadRecords(supabaseClient, userId, purchaseItems, session.id, logStep);
+            await createDownloadRecords(
+              supabaseClient,
+              userId,
+              purchaseItems,
+              session.id,
+              scopeLogger(currentLogger, { scope: 'download_records', sessionId: session.id, userId }),
+            );
           } else {
-            logStep('Hybrid purchase missing user metadata', { sessionId: session.id });
+            await logStep('Hybrid purchase missing user metadata', { sessionId: session.id });
           }
 
           break;
         }
 
         // Handle split attribution for purchases
-        await handleSplitAttribution(session, supabaseClient, stripe);
+        await handleSplitAttribution(
+          session,
+          supabaseClient,
+          stripe,
+          scopeLogger(currentLogger, { scope: 'split_attribution', sessionId: session.id }),
+        );
         
         if (session.mode === 'subscription' && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
@@ -358,7 +463,7 @@ serve(async (req) => {
                   updated_at: new Date().toISOString(),
                 }, { onConflict: 'user_id' });
 
-                logStep("Subscription created in database", { userId, tier, subscriptionId: subscription.id });
+                await logStep("Subscription created in database", { userId, tier, subscriptionId: subscription.id });
 
                 // Trigger Discord role sync for new subscription
                 try {
@@ -370,7 +475,7 @@ serve(async (req) => {
                     }
                   });
                 } catch (discordError: any) {
-                  logStep("Discord sync failed", { error: discordError.message });
+                  await logStep("Discord sync failed", { error: discordError.message });
                 }
 
                 // Send welcome email
@@ -386,7 +491,7 @@ serve(async (req) => {
           }
         } else if (session.mode === 'payment') {
           // Handle one-time payments (beats, courses, store)
-          logStep("Processing one-time payment", { sessionId: session.id, type: session.metadata?.type });
+          await logStep("Processing one-time payment", { sessionId: session.id, type: session.metadata?.type });
           
           if (session.metadata?.type === 'course_purchase') {
             // Handle course purchase
@@ -400,9 +505,9 @@ serve(async (req) => {
               });
 
             if (purchaseError) {
-              logStep("Course purchase error", { error: purchaseError.message });
+              await logStep("Course purchase error", { error: purchaseError.message });
             } else {
-              logStep("Course purchase recorded successfully");
+              await logStep("Course purchase recorded successfully");
             }
           } else if (session.metadata?.type === 'release_purchase') {
             const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
@@ -415,7 +520,7 @@ serve(async (req) => {
               .maybeSingle();
 
             if (purchaseBySessionError) {
-              logStep('Release purchase lookup by session failed', { error: purchaseBySessionError.message, sessionId: session.id });
+              await logStep('Release purchase lookup by session failed', { error: purchaseBySessionError.message, sessionId: session.id });
             }
 
             let purchase = purchaseBySession ?? null;
@@ -428,25 +533,25 @@ serve(async (req) => {
                 .maybeSingle();
 
               if (purchaseByIntentError) {
-                logStep('Release purchase lookup by intent failed', { error: purchaseByIntentError.message, paymentIntentId });
+                await logStep('Release purchase lookup by intent failed', { error: purchaseByIntentError.message, paymentIntentId });
               }
 
               purchase = purchaseByIntent ?? null;
             }
 
             if (!purchase) {
-              logStep('Release purchase record not found for session', { sessionId: session.id, paymentIntentId });
+              await logStep('Release purchase record not found for session', { sessionId: session.id, paymentIntentId });
               break;
             }
 
             if (purchase.status === 'completed') {
-              logStep('Release purchase already completed', { purchaseId: purchase.id, sessionId: session.id });
+              await logStep('Release purchase already completed', { purchaseId: purchase.id, sessionId: session.id });
               break;
             }
 
             const storedAmountCents = Math.round(Number(purchase.amount_paid ?? 0) * 100);
             if (sessionTotal !== null && Math.abs(storedAmountCents - sessionTotal) > 1) {
-              logStep('Release purchase amount mismatch', {
+              await logStep('Release purchase amount mismatch', {
                 purchaseId: purchase.id,
                 storedAmountCents,
                 sessionTotal,
@@ -462,7 +567,7 @@ serve(async (req) => {
                 .maybeSingle();
 
               if (releaseLookupError) {
-                logStep('Release lookup failed during purchase completion', { error: releaseLookupError.message, releaseId: purchase.release_id });
+                await logStep('Release lookup failed during purchase completion', { error: releaseLookupError.message, releaseId: purchase.release_id });
               }
 
               if (releaseDetails?.download_expires_days) {
@@ -471,30 +576,19 @@ serve(async (req) => {
                 downloadExpiresAt = baseDate.toISOString();
               }
 
-              try {
-                await supabaseClient
-                  .from('system_logs')
-                  .insert({
-                    level: 2,
-                    message: 'Release purchase completed',
-                    user_id: purchase.user_id ?? session.metadata?.userId ?? null,
-                    session_id: session.id,
-                    component: 'releases.checkout',
-                    action: 'release_purchase_completed',
-                    metadata: {
-                      purchase_id: purchase.id,
-                      release_id: purchase.release_id,
-                      release_title: releaseDetails?.title,
-                      release_artist: releaseDetails?.artist,
-                      amount_paid: sessionTotal !== null ? sessionTotal / 100 : purchase.amount_paid,
-                      currency: session.currency,
-                      download_preparation: 'queued',
-                    },
-                  });
-              } catch (logError) {
-                const errorMessage = logError instanceof Error ? logError.message : String(logError);
-                logStep('Release purchase log insert failed', { error: errorMessage, purchaseId: purchase.id });
-              }
+              await scopeLogger(currentLogger, {
+                scope: 'release_purchase',
+                sessionId: session.id,
+                purchaseId: purchase.id,
+              }).info('release_purchase_completed', {
+                userId: purchase.user_id ?? session.metadata?.userId ?? null,
+                releaseId: purchase.release_id,
+                releaseTitle: releaseDetails?.title,
+                releaseArtist: releaseDetails?.artist,
+                amountPaid: sessionTotal !== null ? sessionTotal / 100 : purchase.amount_paid,
+                currency: session.currency,
+                downloadPreparation: 'queued',
+              });
             }
 
             const updatePayload: Record<string, unknown> = {
@@ -534,9 +628,9 @@ serve(async (req) => {
               .eq('id', purchase.id);
 
             if (purchaseUpdateError) {
-              logStep('Release purchase update error', { error: purchaseUpdateError.message, purchaseId: purchase.id });
+              await logStep('Release purchase update error', { error: purchaseUpdateError.message, purchaseId: purchase.id });
             } else {
-              logStep('Release purchase marked as completed', { purchaseId: purchase.id, sessionId: session.id });
+              await logStep('Release purchase marked as completed', { purchaseId: purchase.id, sessionId: session.id });
 
               if (purchase.gift_recipient_email) {
                 try {
@@ -549,7 +643,7 @@ serve(async (req) => {
                     })
                     .eq('purchase_id', purchase.id);
                 } catch (giftUpdateError) {
-                  logStep('Gift queue update failed', { error: giftUpdateError });
+                  await logStep('Gift queue update failed', { error: giftUpdateError });
                 }
               }
             }
@@ -573,13 +667,13 @@ serve(async (req) => {
                 .maybeSingle();
 
               if (legacyError) {
-                logStep('Legacy order lookup failed', { error: legacyError.message, sessionId: session.id });
+                await logStep('Legacy order lookup failed', { error: legacyError.message, sessionId: session.id });
               }
               orderRecord = legacyOrder ?? null;
             }
 
             if (!orderRecord) {
-              logStep('Order not found for session', { sessionId: session.id });
+              await logStep('Order not found for session', { sessionId: session.id });
             } else {
               const updatePayload: Record<string, unknown> = {
                 status: 'completed',
@@ -599,31 +693,20 @@ serve(async (req) => {
                 .eq('id', orderRecord.id);
 
               if (orderUpdateError) {
-                logStep('Order update error', { error: orderUpdateError.message, orderId: orderRecord.id });
+                await logStep('Order update error', { error: orderUpdateError.message, orderId: orderRecord.id });
               } else {
-                logStep('Store order completed', { sessionId: session.id, orderId: orderRecord.id });
+                await logStep('Store order completed', { sessionId: session.id, orderId: orderRecord.id });
 
-                try {
-                  await supabaseClient
-                    .from('system_logs')
-                    .insert({
-                      level: 2,
-                      message: 'Store order completed',
-                      user_id: orderRecord.user_id,
-                      session_id: session.id,
-                      component: 'store.checkout',
-                      action: 'order_completed',
-                      metadata: {
-                        order_id: orderRecord.id,
-                        amount: sessionTotal ?? orderRecord.total_amount,
-                        payment_intent: paymentIntentId,
-                        currency: session.currency,
-                      },
-                    });
-                } catch (logError) {
-                  const errorMessage = logError instanceof Error ? logError.message : String(logError);
-                  logStep('System log insert failed', { error: errorMessage, orderId: orderRecord.id });
-                }
+                await scopeLogger(currentLogger, {
+                  scope: 'store_order',
+                  sessionId: session.id,
+                  orderId: orderRecord.id,
+                }).info('store_order_completed', {
+                  userId: orderRecord.user_id,
+                  amount: sessionTotal ?? orderRecord.total_amount,
+                  paymentIntent: paymentIntentId,
+                  currency: session.currency,
+                });
               }
             }
           } else if (session.metadata?.type === 'artist_tip') {
@@ -646,13 +729,13 @@ serve(async (req) => {
                 .maybeSingle();
 
               if (tipIntentError) {
-                logStep('Artist tip lookup by payment intent failed', { error: tipIntentError.message });
+                await logStep('Artist tip lookup by payment intent failed', { error: tipIntentError.message });
               }
               tip = tipByIntent ?? null;
             }
 
             if (!tip) {
-              logStep('Artist tip record not found', { sessionId: session.id, paymentIntentId });
+              await logStep('Artist tip record not found', { sessionId: session.id, paymentIntentId });
             } else {
               const updatePayload: Record<string, unknown> = {
                 status: 'succeeded',
@@ -673,9 +756,9 @@ serve(async (req) => {
                 .eq('id', tip.id);
 
               if (tipUpdateError) {
-                logStep('Artist tip update error', { error: tipUpdateError.message, tipId: tip.id });
+                await logStep('Artist tip update error', { error: tipUpdateError.message, tipId: tip.id });
               } else {
-                logStep('Artist tip settled', { tipId: tip.id, sessionId: session.id });
+                await logStep('Artist tip settled', { tipId: tip.id, sessionId: session.id });
 
                 const siteUrl = Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
 
@@ -726,29 +809,18 @@ serve(async (req) => {
                   await Promise.allSettled(emailPromises);
                 } catch (emailError) {
                   const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-                  logStep('Artist tip email notification failed', { error: errorMessage, tipId: tip.id });
+                  await logStep('Artist tip email notification failed', { error: errorMessage, tipId: tip.id });
                 }
 
-                try {
-                  await supabaseClient
-                    .from('system_logs')
-                    .insert({
-                      level: 2,
-                      message: 'Artist tip completed',
-                      user_id: tip.artist_id,
-                      session_id: session.id,
-                      component: 'tips.checkout',
-                      action: 'tip_completed',
-                      metadata: {
-                        tip_id: tip.id,
-                        fan_id: tip.fan_id,
-                        amount: tipTotal ?? tip.amount,
-                      },
-                    });
-                } catch (logError) {
-                  const errorMessage = logError instanceof Error ? logError.message : String(logError);
-                  logStep('Artist tip log insert failed', { error: errorMessage, tipId: tip.id });
-                }
+                await scopeLogger(currentLogger, {
+                  scope: 'artist_tip',
+                  sessionId: session.id,
+                  tipId: tip.id,
+                }).info('artist_tip_completed', {
+                  artistId: tip.artist_id,
+                  fanId: tip.fan_id,
+                  amount: tipTotal ?? tip.amount,
+                });
               }
             }
           } else if (session.metadata?.type === 'commission_funding') {
@@ -765,9 +837,9 @@ serve(async (req) => {
                 .eq('id', commissionId);
 
               if (updateError) {
-                logStep("Commission update error", { error: updateError.message });
+                await logStep("Commission update error", { error: updateError.message });
               } else {
-                logStep("Commission funded", { commissionId });
+                await logStep("Commission funded", { commissionId });
               }
             }
           } else if (session.metadata?.beatId) {
@@ -784,7 +856,7 @@ serve(async (req) => {
               .single();
 
             if (beatError || !beat) {
-              logStep("Beat not found", { beatId, error: beatError?.message });
+              await logStep("Beat not found", { beatId, error: beatError?.message });
             } else {
               // Record the purchase
               const { data: purchase, error: purchaseError } = await supabaseClient
@@ -817,20 +889,20 @@ serve(async (req) => {
                       .update({ license_pdf_url: receiptResponse.data.pdf_url })
                       .eq('id', purchase.id);
                     
-                    logStep("Receipt PDF generated", { 
+                    await logStep("Receipt PDF generated", { 
                       purchaseId: purchase.id, 
                       pdfUrl: receiptResponse.data.pdf_url 
                     });
                   }
                 } catch (receiptError: any) {
-                  logStep("Receipt generation failed", { error: receiptError.message });
+                  await logStep("Receipt generation failed", { error: receiptError.message });
                 }
               }
 
               if (purchaseError) {
-                logStep("Purchase recording error", { error: purchaseError.message });
+                await logStep("Purchase recording error", { error: purchaseError.message });
               } else {
-                logStep("Purchase recorded", { purchaseId: purchase.id });
+                await logStep("Purchase recorded", { purchaseId: purchase.id });
 
                 // Check if producer has Stripe Connect account
                 const { data: stripeAccount, error: stripeError } = await supabaseClient
@@ -875,14 +947,14 @@ serve(async (req) => {
                         processed_at: new Date().toISOString()
                       });
 
-                    logStep("Automatic Stripe transfer completed", { 
+                    await logStep("Automatic Stripe transfer completed", { 
                       transferId: transfer.id,
                       producerId: beat.user_id, 
                       netAmount 
                     });
 
                   } catch (transferError: any) {
-                    logStep("Stripe transfer failed, creating PayPal payout record", { 
+                    await logStep("Stripe transfer failed, creating PayPal payout record", { 
                       error: transferError.message 
                     });
                     
@@ -913,7 +985,7 @@ serve(async (req) => {
                       payout_status: 'pending'
                     });
 
-                  logStep("Created PayPal payout record (no Stripe Connect)", { 
+                  await logStep("Created PayPal payout record (no Stripe Connect)", { 
                     producerId: beat.user_id, 
                     netAmount 
                   });
@@ -922,7 +994,7 @@ serve(async (req) => {
             }
           } else if (session.metadata?.type === 'beat_license') {
             // Handle new beat licensing system
-            logStep("Processing beat license sale", { sessionId: session.id });
+            await logStep("Processing beat license sale", { sessionId: session.id });
             
             const beatId = session.metadata.beat_id;
             const producerId = session.metadata.producer_id;
@@ -948,9 +1020,9 @@ serve(async (req) => {
               });
 
             if (beatSaleError) {
-              logStep("Error creating beat sale record", { error: beatSaleError });
+              await logStep("Error creating beat sale record", { error: beatSaleError });
             } else {
-              logStep("Beat sale recorded successfully");
+              await logStep("Beat sale recorded successfully");
 
               // Get producer's Stripe account for payout
               const { data: stripeAccount } = await supabaseClient
@@ -995,9 +1067,9 @@ serve(async (req) => {
                       processed_at: new Date().toISOString()
                     });
 
-                  logStep("Stripe transfer created", { transferId: transfer.id });
+                  await logStep("Stripe transfer created", { transferId: transfer.id });
                 } catch (transferError: any) {
-                  logStep("Stripe transfer failed, marking as pending", { error: transferError.message });
+                  await logStep("Stripe transfer failed, marking as pending", { error: transferError.message });
                   
                   // Create pending payout record
                   await supabaseClient
@@ -1022,7 +1094,7 @@ serve(async (req) => {
                     payout_status: 'pending'
                   });
 
-                logStep("Payout marked as pending (no Stripe Connect)", { producerId });
+                await logStep("Payout marked as pending (no Stripe Connect)", { producerId });
               }
             }
           }
@@ -1032,7 +1104,7 @@ serve(async (req) => {
       case 'customer.subscription.created':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        logStep('Processing subscription lifecycle event', {
+        await logStep('Processing subscription lifecycle event', {
           subscriptionId: subscription.id,
           status: subscription.status,
           type: event.type,
@@ -1067,7 +1139,7 @@ serve(async (req) => {
             .eq('creator_id', membershipResult.creatorId);
 
           if (fanSubscriptionError) {
-            logStep('Failed to reconcile fan_subscriptions entry', {
+            await logStep('Failed to reconcile fan_subscriptions entry', {
               error: fanSubscriptionError.message,
               fanId: membershipResult.userId,
               creatorId: membershipResult.creatorId,
@@ -1079,7 +1151,7 @@ serve(async (req) => {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        logStep('Processing subscription lifecycle event', {
+        await logStep('Processing subscription lifecycle event', {
           subscriptionId: subscription.id,
           status: subscription.status,
           type: event.type,
@@ -1111,7 +1183,7 @@ serve(async (req) => {
               .eq('creator_id', membershipResult.creatorId);
 
             if (fanSubscriptionError) {
-              logStep('Failed to reconcile fan_subscriptions entry', {
+              await logStep('Failed to reconcile fan_subscriptions entry', {
                 error: fanSubscriptionError.message,
                 fanId: membershipResult.userId,
                 creatorId: membershipResult.creatorId,
@@ -1121,7 +1193,7 @@ serve(async (req) => {
           break;
         }
 
-        logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
+        await logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
 
         const customerId = subscription.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
@@ -1142,7 +1214,7 @@ serve(async (req) => {
               updated_at: new Date().toISOString(),
             }).eq("stripe_subscription_id", subscription.id);
 
-            logStep("Subscription updated in database", { subscriptionId: subscription.id });
+            await logStep("Subscription updated in database", { subscriptionId: subscription.id });
 
             // Trigger Discord role sync for subscription update
             try {
@@ -1154,7 +1226,7 @@ serve(async (req) => {
                 }
               });
             } catch (discordError: any) {
-              logStep("Discord sync failed", { error: discordError.message });
+              await logStep("Discord sync failed", { error: discordError.message });
             }
           }
         }
@@ -1163,7 +1235,7 @@ serve(async (req) => {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        logStep("Subscription cancelled", { subscriptionId: subscription.id });
+        await logStep("Subscription cancelled", { subscriptionId: subscription.id });
         
         const customerId = subscription.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
@@ -1186,7 +1258,7 @@ serve(async (req) => {
               updated_at: new Date().toISOString(),
             }).eq("stripe_subscription_id", subscription.id);
 
-            logStep("Subscription cancelled in database", { subscriptionId: subscription.id });
+            await logStep("Subscription cancelled in database", { subscriptionId: subscription.id });
 
             // Trigger Discord role revoke for cancelled subscription
             try {
@@ -1198,7 +1270,7 @@ serve(async (req) => {
                 }
               });
             } catch (discordError: any) {
-              logStep("Discord sync failed", { error: discordError.message });
+              await logStep("Discord sync failed", { error: discordError.message });
             }
 
             // Send cancellation email
@@ -1216,20 +1288,32 @@ serve(async (req) => {
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
-        logStep('Charge refunded', { chargeId: charge.id, amount_refunded: charge.amount_refunded });
-        await handleChargeReversal(supabaseClient, charge, event.id, 'refund', logStep);
+        await logStep('Charge refunded', { chargeId: charge.id, amount_refunded: charge.amount_refunded });
+        await handleChargeReversal(
+          supabaseClient,
+          charge,
+          event.id,
+          'refund',
+          scopeLogger(currentLogger, { scope: 'charge_reversal', eventId: event.id, chargeId: charge.id, reason: 'refund' }),
+        );
         break;
       }
 
       case 'charge.failed': {
         const charge = event.data.object as Stripe.Charge;
-        logStep('Charge failed', { chargeId: charge.id });
-        await handleChargeReversal(supabaseClient, charge, event.id, 'failure', logStep);
+        await logStep('Charge failed', { chargeId: charge.id });
+        await handleChargeReversal(
+          supabaseClient,
+          charge,
+          event.id,
+          'failure',
+          scopeLogger(currentLogger, { scope: 'charge_reversal', eventId: event.id, chargeId: charge.id, reason: 'failure' }),
+        );
         break;
       }
 
       default:
-        logStep("Unhandled event type", { type: event.type });
+        await logStep("Unhandled event type", { type: event.type });
     }
 
     return new Response(JSON.stringify({ received: true }), {
@@ -1238,7 +1322,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in stripe-webhook", { message: errorMessage });
+    await logStep("ERROR in stripe-webhook", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { "Content-Type": "application/json" },
       status: 500,
