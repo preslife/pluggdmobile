@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,9 +9,14 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
-import { useIntl } from "react-intl";
+import { telemetry } from "@/services/analytics/telemetry";
 import { useLocalization } from "@/contexts/LocalizationContext";
-import { useLogger } from "@/hooks/useLogger";
+import { logger } from "@/lib/logger";
+
+const RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY = 750;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type OrderItemSummary = {
   id: string;
@@ -47,7 +52,6 @@ const StoreSuccess: React.FC = () => {
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const { toast } = useToast();
-  const intl = useIntl();
   const { settings } = useLocalization();
 
   const [loading, setLoading] = useState(true);
@@ -56,33 +60,29 @@ const StoreSuccess: React.FC = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
-  const loggerMetadata = useMemo(() => ({ sessionId }), [sessionId]);
-  const { logEvent, logError, logUserAction } = useLogger({
-    component: 'StoreSuccessPage',
-    feature: 'commerce',
-    view: 'store-success',
-    metadata: loggerMetadata,
-  });
-
-  useEffect(() => {
+  const fetchOrderWithRetry = useCallback(async () => {
     if (!sessionId) {
-      setError(intl.formatMessage({ id: "store.success.missingSession", defaultMessage: "Missing session identifier. Please check your confirmation email for your receipt." }));
-      setLoading(false);
-      void logError('store_success_missing_session', new Error('missing_session_id'), {
-        searchParams: Object.fromEntries(searchParams.entries()),
-      });
       return;
     }
 
-    const fetchOrder = async () => {
-      let resolvedOrderId: string | null = null;
-      let resolvedHasOrder = false;
+    setLoading(true);
+    setError(null);
+
+    let attempt = 0;
+    let lastError: string | null = null;
+    let success = false;
+
+    while (attempt < RETRY_ATTEMPTS && !success) {
+      attempt += 1;
+      telemetry.store("success.fetch_attempt", { attempt, sessionId });
+      void logger.info("storeSuccess:fetch_attempt", { sessionId, attempt });
+
       try {
-        setLoading(true);
-        void logEvent('store_success_order_fetch_start', { sessionId });
         const { data, error: fetchError } = await supabase
           .from("orders")
-          .select("id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))")
+          .select(
+            "id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))"
+          )
           .eq("payment_id", sessionId)
           .maybeSingle();
 
@@ -91,51 +91,99 @@ const StoreSuccess: React.FC = () => {
         }
 
         if (!data) {
-          setError(intl.formatMessage({ id: "store.success.notFound", defaultMessage: "We could not find your order. If you were charged, contact support with your Stripe receipt." }));
-          setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
-          void logEvent('store_success_order_not_found', { sessionId });
-          return;
+          lastError = "We could not find your order. If you were charged, contact support with your Stripe receipt.";
+          telemetry.store("success.order_missing", { attempt, sessionId });
+          void logger.warn("storeSuccess:order_missing", { sessionId, attempt });
+
+          if (attempt < RETRY_ATTEMPTS) {
+            await wait(RETRY_BASE_DELAY * attempt);
+            continue;
+          }
+
+          setError(lastError);
+          toast({ title: "Order lookup failed", description: lastError, variant: "destructive" });
+          break;
         }
 
         const orderSummary = data as unknown as OrderSummary;
-        resolvedOrderId = orderSummary.id;
-        resolvedHasOrder = true;
         setOrder(orderSummary);
-        void logEvent('store_success_order_fetch_success', {
+        setError(null);
+        telemetry.store("success.fetch_success", {
+          attempt,
           sessionId,
           orderId: orderSummary.id,
           status: orderSummary.status,
-          total: orderSummary.total_amount,
+        });
+        void logger.info("storeSuccess:fetch_success", {
+          sessionId,
+          attempt,
+          orderId: orderSummary.id,
+          status: orderSummary.status,
         });
 
         if (!cartCleared) {
           clearCart();
           setCartCleared(true);
-          void logEvent('store_success_cart_cleared', {
+          telemetry.checkout("cart_cleared", {
             sessionId,
             orderId: orderSummary.id,
+            reason: "store.success",
           });
+          void logger.info("storeSuccess:cart_cleared", { sessionId, orderId: orderSummary.id });
         }
-      } catch (err: any) {
-        const fallback = intl.formatMessage({ id: "store.success.unableToLoad", defaultMessage: "Unable to load your order summary." });
-        const message = err?.message || fallback;
-        setError(message);
-        toast({ title: intl.formatMessage({ id: "store.success.lookupFailed", defaultMessage: "Order lookup failed" }), description: message, variant: "destructive" });
-        toast({ title: "Order lookup failed", description: message, variant: "destructive" });
-        void logError('store_success_order_fetch_failed', err, { sessionId });
-      } finally {
-        setLoading(false);
-        void logEvent('store_success_order_fetch_complete', {
-          sessionId,
-          orderId: resolvedOrderId,
-          hasOrder: resolvedHasOrder,
-        });
-      }
-    };
 
-    fetchOrder();
-  }, [sessionId, clearCart, toast, cartCleared, intl]);
-  }, [sessionId, clearCart, toast, cartCleared, logEvent, logError, searchParams]);
+        success = true;
+      } catch (err: any) {
+        const message = err?.message || "Unable to load your order summary.";
+        lastError = message;
+        telemetry.store("success.fetch_error", {
+          attempt,
+          sessionId,
+          message,
+        });
+        void logger.error(
+          "storeSuccess:fetch_error",
+          { sessionId, attempt, message },
+          err instanceof Error ? err : undefined
+        );
+
+        if (attempt < RETRY_ATTEMPTS) {
+          await wait(RETRY_BASE_DELAY * attempt);
+        } else {
+          setError(message);
+          toast({ title: "Order lookup failed", description: message, variant: "destructive" });
+        }
+      }
+    }
+
+    telemetry.store("success.fetch_complete", {
+      sessionId,
+      attempts: attempt,
+      success,
+      lastError,
+    });
+    void logger.info("storeSuccess:fetch_complete", {
+      sessionId,
+      attempts: attempt,
+      success,
+      lastError,
+    });
+
+    setLoading(false);
+  }, [sessionId, clearCart, cartCleared, toast]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      const message = "Missing session identifier. Please check your confirmation email for your receipt.";
+      setError(message);
+      telemetry.store("success.missing_session", { search: searchParams.toString() || undefined });
+      void logger.warn("storeSuccess:missing_session", { search: searchParams.toString() || undefined });
+      setLoading(false);
+      return;
+    }
+
+    void fetchOrderWithRetry();
+  }, [sessionId, searchParams, fetchOrderWithRetry]);
 
   const heading = useMemo(() => {
     if (loading) return intl.formatMessage({ id: "store.success.heading.processing", defaultMessage: "Processing your order" });
@@ -159,24 +207,37 @@ const StoreSuccess: React.FC = () => {
       try {
         const parsed = JSON.parse(storedReceipt) as ReleaseReceiptContext;
         const timestampMs = parsed.timestamp ? Date.parse(parsed.timestamp) : Date.now();
-        const within24Hours = !Number.isNaN(timestampMs) ? Date.now() - timestampMs < 1000 * 60 * 60 * 24 : true;
+        const within24Hours = !Number.isNaN(timestampMs)
+          ? Date.now() - timestampMs < 1000 * 60 * 60 * 24
+          : true;
 
         if (within24Hours) {
           setReleaseReceipt((current) => current ?? parsed);
-          void logEvent('store_success_release_receipt_restored', {
+          telemetry.store("success.receipt_restored", {
             releaseId: parsed.releaseId,
-            source: 'sessionStorage',
+            source: "sessionStorage",
+          });
+          void logger.info("storeSuccess:receipt_restored", {
+            releaseId: parsed.releaseId,
+            source: "sessionStorage",
           });
         } else {
-          void logEvent('store_success_release_receipt_discarded', {
+          telemetry.store("success.receipt_discarded", {
             releaseId: parsed.releaseId,
-            reason: 'stale',
-            source: 'sessionStorage',
+            reason: "stale",
+          });
+          void logger.info("storeSuccess:receipt_discarded", {
+            releaseId: parsed.releaseId,
+            reason: "stale",
           });
         }
       } catch (parseError) {
-        console.warn("Failed to parse stored release receipt context", parseError);
-        void logError('store_success_release_receipt_parse_failed', parseError, { source: 'sessionStorage' });
+        telemetry.store("success.receipt_parse_error", { source: "sessionStorage" });
+        void logger.error(
+          "storeSuccess:receipt_parse_error",
+          { source: "sessionStorage" },
+          parseError instanceof Error ? parseError : undefined
+        );
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
         void logEvent('store_success_release_receipt_cleared', { source: 'sessionStorage' });
@@ -189,9 +250,19 @@ const StoreSuccess: React.FC = () => {
         releaseId: releaseIdParam,
         title: intl.formatMessage({ id: "store.success.releaseTitle", defaultMessage: "Your release" }),
       });
-      void logEvent('store_success_release_receipt_from_query', { releaseId: releaseIdParam });
+      telemetry.store("success.receipt_from_query", { releaseId: releaseIdParam });
+      void logger.info("storeSuccess:receipt_from_query", { releaseId: releaseIdParam });
     }
   }, [searchParams, releaseReceipt, logEvent, logError]);
+
+  const formatOrderDate = useCallback(
+    (value: string) =>
+      new Intl.DateTimeFormat(settings.locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value)),
+    [settings.locale]
+  );
 
   return (
     <div className="min-h-[60vh] px-4 py-16 flex flex-col items-center bg-background">
@@ -226,7 +297,7 @@ const StoreSuccess: React.FC = () => {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
                 {releaseReceipt.title}
-                {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ''}
+                {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ""}
               </p>
               <p className="text-xs">
                 {intl.formatMessage({ id: "store.success.instantUnlock", defaultMessage: "Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download." })}
@@ -267,7 +338,7 @@ const StoreSuccess: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.orderNumber", defaultMessage: "Order #" })}</span>
+                    <span className="text-muted-foreground">Order #</span>
                     <span className="font-mono text-xs">{order.id}</span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -275,11 +346,11 @@ const StoreSuccess: React.FC = () => {
                     <span className="capitalize font-medium">{order.status}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.placed", defaultMessage: "Placed" })}</span>
-                    <span>{intl.formatDate(new Date(order.created_at), { dateStyle: "medium", timeStyle: "short" })}</span>
+                    <span className="text-muted-foreground">Placed</span>
+                    <span>{formatOrderDate(order.created_at)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.totalCharged", defaultMessage: "Total charged" })}</span>
+                    <span className="text-muted-foreground">Total charged</span>
                     <span className="font-semibold">{formatCurrency(order.total_amount, settings.currency, settings.locale)}</span>
                   </div>
                 </div>
@@ -309,7 +380,7 @@ const StoreSuccess: React.FC = () => {
                           </div>
                           <div className="text-right text-sm">
                             <p className="font-medium">{formatCurrency(item.price, settings.currency, settings.locale)}</p>
-                            <p className="text-xs text-muted-foreground">{intl.formatMessage({ id: "store.success.quantity", defaultMessage: "Qty {count}" }, { count: item.quantity })}</p>
+                            <p className="text-xs text-muted-foreground">Qty {item.quantity}</p>
                           </div>
                         </div>
                       ))
@@ -324,9 +395,9 @@ const StoreSuccess: React.FC = () => {
         </Card>
 
         <div className="flex flex-wrap gap-3 justify-center">
-          <Button variant="secondary" onClick={() => navigate("/store")}>{intl.formatMessage({ id: "store.success.return", defaultMessage: "Return to store" })}</Button>
-          <Button variant="outline" onClick={() => navigate("/account/orders")}>{intl.formatMessage({ id: "store.success.viewOrders", defaultMessage: "View order history" })}</Button>
-          <Button onClick={() => navigate("/library")}>{intl.formatMessage({ id: "store.success.goToLibrary", defaultMessage: "Go to library" })}</Button>
+          <Button variant="secondary" onClick={() => navigate("/store")}>Return to store</Button>
+          <Button variant="outline" onClick={() => navigate("/account/orders")}>View order history</Button>
+          <Button onClick={() => navigate("/library")}>Go to library</Button>
         </div>
       </div>
     </div>

@@ -1,48 +1,52 @@
-# Commerce & Wallet Reconciliation Procedures
+# Commerce & Stripe Integration
 
-This document outlines how the commerce team verifies wallet balances, reconciles them against payment processors, and documents any manual adjustments. These procedures assume familiarity with Supabase SQL tools and Stripe dashboards.
+This document explains how our storefront checkout works, the metadata we attach to Stripe sessions, and how webhook events remain idempotent across multiple commerce surfaces.
 
-## Daily reconciliation checklist
+## Checkout Flow Overview
 
-1. **Confirm the ledger integrity triggers are healthy.**
-   - Run `SELECT tgname FROM pg_trigger WHERE tgname LIKE 'wallet_ledger_enforce_balance%';` in the analytics database. The trigger created in `20250926020000_wallet_ledger_balance_integrity.sql` must be enabled. If it is disabled, re-enable it with `ALTER TABLE public.wallet_ledger ENABLE TRIGGER wallet_ledger_enforce_balance_trigger;` and notify the engineering team.
-   - Inspect the `wallet_ledger_balance_non_negative` constraint via `\\d public.wallet_ledger` to ensure it remains in place.
+1. The client prepares cart context via `useCheckout` and calls the Supabase `create-store-checkout` function to create a Stripe Checkout session.【F:src/hooks/useCheckout.ts†L1-L160】【F:src/services/checkout/storeCheckout.ts†L1-L65】
+2. Supabase loads product data, builds a Stripe session with metadata, persists an `orders` row, and returns the hosted checkout URL to the client.【F:supabase/functions/create-store-checkout/index.ts†L19-L201】
+3. The customer completes payment on Stripe and returns to the `StoreSuccess` page, which re-fetches the order with retry logic and emits telemetry for observability.【F:src/pages/StoreSuccess.tsx†L1-L207】
+4. Stripe sends webhook events to Supabase where we finalize orders, unlock digital goods, and log activity in `system_logs` for auditing.【F:supabase/functions/stripe-webhook/index.ts†L172-L680】
 
-2. **Reconcile credits sold vs. Stripe payouts.**
-   - Export a CSV of Stripe credit top ups for the previous day, grouped by customer and checkout session.
-   - Query Supabase for matching rows: `SELECT * FROM public.wallet_ledger WHERE kind = 'topup' AND created_at::date = CURRENT_DATE - INTERVAL '1 day';`
-   - Differences must be noted in the reconciliation log and investigated before end-of-day sign-off.
+## Checkout Session Metadata
 
-3. **Check pending vs. available credits.**
-   - Use `SELECT * FROM public.v_wallet_balances ORDER BY pending_credits DESC LIMIT 50;` to inspect large pending balances. Pending credits should age out after 48 hours. Escalate anything older than three days.
-   - For any discrepancy, cross-reference Stripe dispute or refund reports to confirm whether a manual reversal is required.
+The checkout hook enriches every request with aggregate metadata so Stripe webhooks can reconcile orders even if line items change client-side.【F:src/hooks/useCheckout.ts†L40-L109】 Metadata contains:
 
-4. **Validate refunds and clawbacks.**
-   - Run `SELECT * FROM public.wallet_ledger WHERE meta->>'reason' IN ('refund', 'chargeback') AND created_at::date = CURRENT_DATE - INTERVAL '1 day';`
-   - Ensure every reversing entry has a matching original `ref_id` and `counterparty_user_id`. Missing references indicate a failed webhook that requires manual repair.
+- `itemCount`, `totalQuantity`, and `totalAmount` summarizing the cart.【F:src/hooks/useCheckout.ts†L74-L96】
+- `itemIds` for deduplicating server-side fulfillment.【F:src/hooks/useCheckout.ts†L74-L96】
+- `lineItems` including product IDs, normalized quantities, and optional prices for analytics.【F:src/hooks/useCheckout.ts†L61-L83】
+- Optional custom metadata (e.g., attribution channel) merged from the caller after removing undefined fields.【F:src/hooks/useCheckout.ts†L84-L96】
 
-5. **Sign off and archive.**
-   - Summarise the day's findings in the shared reconciliation Google Sheet (tab: `Wallet Ledger`). Include columns for date, reviewer, total credits sold, total refunds, and outstanding investigations.
-   - Archive supporting exports (Stripe CSV, Supabase query results) in the `s3://pluggd-ops-reports/<YYYY-MM-DD>/` bucket.
+The checkout service ensures only defined values reach the edge function and logs both the request and normalized response for traceability.【F:src/services/checkout/storeCheckout.ts†L23-L63】
 
-## Handling exceptions
+## Stripe Webhook Payloads
 
-- **Trigger violation:** If an insert fails with `Insufficient credits`, confirm whether the user attempted to overspend. If the failure stems from manual intervention, recreate the ledger entry via the `process-credits-transaction` function so balance columns remain correct.
-- **Manual adjustments:** Any direct SQL `INSERT` into `wallet_ledger` must include a support ticket reference in `meta->>'case_id'` and be approved by finance. After insertion, verify `balance_before` and `balance_after` against the user's historical ledger.
-- **Chargebacks:** When Stripe notifies us of a chargeback, run the `handleChargeReversal` function manually if the webhook was missed. Document the charge ID, ledger IDs affected, and communication with the customer.
+Supabase handles multiple commerce scenarios inside `stripe-webhook`:
 
-## Reporting cadence
+- **Crowdfunding contributions** leverage metadata fields such as `campaign_id`, `reward_id`, `supporter_note`, and `campaign_slug`. Contributions are upserted on `stripe_payment_intent_id` to avoid duplicates and a receipt generation function runs asynchronously.【F:supabase/functions/stripe-webhook/index.ts†L186-L280】
+- **Credits top-ups** consume `metadata.user_id` and `metadata.credits_amount` to credit the wallet ledger with a `topup` entry linked to the Stripe session.【F:supabase/functions/stripe-webhook/index.ts†L282-L335】
+- **Hybrid purchases** parse `metadata.purchase_items` to unlock digital downloads immediately after Stripe confirms payment.【F:supabase/functions/stripe-webhook/index.ts†L336-L366】
+- **Store orders** look up the pre-created `orders` row by `payment_id` or legacy `stripe_session_id`, update totals, stamp `paid_at`, and write a `system_logs` entry with the Stripe payment intent for observability.【F:supabase/functions/stripe-webhook/index.ts†L566-L638】
+- **Artist tips** update `artist_tips` records, ensuring the final amount, payment intent, and status are persisted before triggering fan/artist notifications.【F:supabase/functions/stripe-webhook/index.ts†L639-L720】
 
-- **Weekly:** Produce a report summarising total credits sold, spent, and refunded. Use the ledger snapshot query:
-  ```sql
-  SELECT
-    date_trunc('week', created_at) AS week,
-    SUM(CASE WHEN amount_credits > 0 THEN amount_credits ELSE 0 END) AS credits_in,
-    SUM(CASE WHEN amount_credits < 0 THEN amount_credits ELSE 0 END) AS credits_out
-  FROM public.wallet_ledger
-  GROUP BY 1
-  ORDER BY 1 DESC;
-  ```
-- **Monthly:** Reconcile cumulative wallet balances against deferred revenue accounts in the general ledger. Export `v_wallet_balances` and compare to accounting system balances. Differences greater than £50 require an incident ticket.
+Each branch inspects `session.metadata.type` (e.g., `store_purchase`, `artist_tip`, `crowdfunding_contribution`) so new commerce surfaces should namespace metadata accordingly.【F:supabase/functions/stripe-webhook/index.ts†L562-L640】
 
-Maintaining these routines keeps wallet liabilities in line with processor settlements and ensures that support, finance, and engineering teams have a shared, auditable source of truth.
+## Idempotency Guarantees
+
+We rely on several layers to keep webhook processing idempotent:
+
+- Stripe emits unique `event.id` values, and our handler simply exits early when records already exist (e.g., upserting crowdfunding supporters on `stripe_payment_intent_id`).【F:supabase/functions/stripe-webhook/index.ts†L212-L240】
+- Store orders are fetched by the Stripe session ID and only updated if the row exists, preventing duplicate inserts on webhook retries.【F:supabase/functions/stripe-webhook/index.ts†L566-L614】
+- Artist tips and hybrid purchase fulfillment perform secondary lookups on the payment intent to guard against out-of-order events.【F:supabase/functions/stripe-webhook/index.ts†L639-L693】
+- The checkout hook’s metadata includes `itemIds` and totals, giving webhook code deterministic signals to verify the cart that generated the session.【F:src/hooks/useCheckout.ts†L61-L109】
+
+When adding new event handlers, prefer `upsert` or `update` statements scoped by Stripe IDs, avoid mutating state when the target row is already finalized, and capture a `system_logs` entry so operations have an audit trail.【F:supabase/functions/stripe-webhook/index.ts†L566-L638】
+
+## Testing & Observability
+
+- `useCheckout` has Vitest coverage for metadata construction, redirect behavior, and error propagation using mocked Stripe session responses.【F:src/hooks/__tests__/useCheckout.test.ts†L1-L120】
+- `createStoreCheckoutSession` is tested against mocked Supabase responses to validate success, error, and missing URL scenarios.【F:src/services/checkout/__tests__/storeCheckout.test.ts†L1-L69】
+- `StoreSuccess` retries order lookups up to three times, logging telemetry for every attempt so dashboards can distinguish transient Supabase latency from genuine failures.【F:src/pages/StoreSuccess.tsx†L9-L207】
+
+These tests, combined with telemetry emitted during checkout and post-payment reconciliation, provide defense-in-depth to detect integration regressions quickly.
