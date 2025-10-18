@@ -63,6 +63,37 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
       return copy;
     });
 
+    const [schema, tableName] = this.parseTable();
+
+    if (schema === 'public' && tableName === 'wallet_ledger') {
+      for (const row of normalizedRows) {
+        const { user_id, amount_credits } = row;
+        if (!user_id) {
+          continue;
+        }
+
+        const { balance_after: latestBalance } =
+          (await this.pg.oneOrNone(
+            `SELECT balance_after FROM public.wallet_ledger WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
+            [user_id],
+          )) ?? { balance_after: 0 };
+
+        const previousBalance = Number(latestBalance ?? 0);
+        const delta = Number(amount_credits ?? 0);
+        const nextBalance = previousBalance + delta;
+
+        if (nextBalance < 0) {
+          return {
+            data: null,
+            error: { message: `Insufficient credits for user ${user_id}, balance would be ${nextBalance}` },
+          };
+        }
+
+        row.balance_before = previousBalance;
+        row.balance_after = nextBalance;
+      }
+    }
+
     const columns = Array.from(
       normalizedRows.reduce((set, row) => {
         Object.keys(row).forEach((key) => set.add(key));
@@ -70,11 +101,15 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
       }, new Set<string>()),
     );
 
-    const [schema, tableName] = this.parseTable();
     const table = new this.pgp.helpers.TableName({ table: tableName, schema });
     const cs = new this.pgp.helpers.ColumnSet(columns, { table });
     const query = this.pgp.helpers.insert(normalizedRows, cs);
-    await this.pg.none(query);
+    try {
+      await this.pg.none(query);
+    } catch (error: any) {
+      return { data: null, error: { message: error.message } };
+    }
+
     return { data: normalizedRows, error: null };
   }
 
@@ -128,19 +163,19 @@ class TestSupabaseClient {
     }
 
     const { p_user_id } = params;
-    const result = await this.harness.pg.one(
+    const result = await this.harness.pg.oneOrNone(
       `
       SELECT
-        COALESCE(SUM(amount_credits), 0) AS balance_credits,
-        COALESCE(SUM(CASE WHEN kind = 'topup' AND created_at > NOW() - INTERVAL '48 hours' THEN amount_credits ELSE 0 END), 0) AS pending_credits
-      FROM public.wallet_ledger
+        balance_credits,
+        pending_credits
+      FROM public.v_wallet_balances
       WHERE user_id = $1
     `,
       [p_user_id],
     );
 
-    const balanceCredits = Number(result.balance_credits ?? 0);
-    const pendingCredits = Number(result.pending_credits ?? 0);
+    const balanceCredits = Number(result?.balance_credits ?? 0);
+    const pendingCredits = Number(result?.pending_credits ?? 0);
 
     return {
       data: {
@@ -201,6 +236,8 @@ export class SupabaseTestHarness {
         ref_id text,
         counterparty_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
         meta jsonb DEFAULT '{}'::jsonb,
+        balance_before bigint NOT NULL DEFAULT 0,
+        balance_after bigint NOT NULL DEFAULT 0,
         created_at timestamptz NOT NULL DEFAULT NOW()
       );
     `);
@@ -210,7 +247,15 @@ export class SupabaseTestHarness {
       SELECT
         user_id,
         COALESCE(SUM(amount_credits), 0) AS balance_credits,
-        COALESCE(SUM(CASE WHEN kind = 'topup' AND created_at > NOW() - INTERVAL '48 hours' THEN amount_credits ELSE 0 END), 0) AS pending_credits
+        COALESCE(
+          SUM(
+            CASE
+              WHEN kind = 'topup' AND created_at > NOW() - INTERVAL '48 hours' THEN amount_credits
+              ELSE 0
+            END
+          ),
+          0
+        ) AS pending_credits
       FROM public.wallet_ledger
       GROUP BY user_id;
     `);
@@ -247,6 +292,8 @@ export class SupabaseTestHarness {
     return rows.map((row) => ({
       ...row,
       amount_credits: Number(row.amount_credits),
+      balance_before: Number(row.balance_before ?? 0),
+      balance_after: Number(row.balance_after ?? 0),
     }));
   }
 }

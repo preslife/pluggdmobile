@@ -2,14 +2,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { EventManagement } from "@/components/EventManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Shield } from "lucide-react";
-import { Helmet } from "react-helmet-async";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 export default function AdminEvents() {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  usePageMetadata({
+    title: "Admin Events Management — Pluggd",
+    description: "Create and moderate live events, workshops, and community programming across Pluggd.",
+    path: "/admin/events",
+  });
 
   useEffect(() => {
     const checkAdminRole = async () => {
@@ -49,13 +55,7 @@ export default function AdminEvents() {
   }
 
   return (
-    <>
-      <Helmet>
-        <title>Admin - Events Management</title>
-        <meta name="description" content="Manage community events, workshops, and live sessions. Admin interface for event creation and management." />
-      </Helmet>
-      
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Shield className="h-8 w-8 text-primary" />
@@ -78,6 +78,5 @@ export default function AdminEvents() {
           </CardContent>
         </Card>
       </div>
-    </>
   );
 }

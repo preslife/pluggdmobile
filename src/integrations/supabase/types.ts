@@ -4725,6 +4725,56 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_prefs: {
+        Row: {
+          created_at: string
+          notify_contest_reminders: boolean | null
+          notify_email_marketing: boolean | null
+          notify_follows: boolean | null
+          notify_live_sessions: boolean | null
+          notify_push: boolean | null
+          notify_purchases: boolean | null
+          notify_session_feedback: boolean | null
+          notify_supporters: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notify_contest_reminders?: boolean | null
+          notify_email_marketing?: boolean | null
+          notify_follows?: boolean | null
+          notify_live_sessions?: boolean | null
+          notify_push?: boolean | null
+          notify_purchases?: boolean | null
+          notify_session_feedback?: boolean | null
+          notify_supporters?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notify_contest_reminders?: boolean | null
+          notify_email_marketing?: boolean | null
+          notify_follows?: boolean | null
+          notify_live_sessions?: boolean | null
+          notify_push?: boolean | null
+          notify_purchases?: boolean | null
+          notify_session_feedback?: boolean | null
+          notify_supporters?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -7955,6 +8005,8 @@ export type Database = {
       }
       wallet_ledger: {
         Row: {
+          balance_after: number
+          balance_before: number
           amount_credits: number
           counterparty_user_id: string | null
           created_at: string
@@ -7966,6 +8018,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          balance_after?: number
+          balance_before?: number
           amount_credits: number
           counterparty_user_id?: string | null
           created_at?: string
@@ -7977,6 +8031,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance_after?: number
+          balance_before?: number
           amount_credits?: number
           counterparty_user_id?: string | null
           created_at?: string

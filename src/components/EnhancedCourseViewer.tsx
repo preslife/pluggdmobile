@@ -22,6 +22,7 @@ import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { generateCourseCertificatePdf } from '@/utils/certificates';
 
 interface Course {
   id: string;
@@ -64,13 +65,26 @@ interface CourseViewerProps {
   isOpen: boolean;
   onClose: () => void;
   progress?: any;
+  onProgressUpdated?: () => void;
 }
 
-export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({ 
-  course, 
-  isOpen, 
+interface CourseCertificate {
+  id: string;
+  certificate_data: {
+    course_title?: string;
+    user_name?: string;
+    completion_date?: string;
+    [key: string]: any;
+  };
+  certificate_url?: string | null;
+}
+
+export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
+  course,
+  isOpen,
   onClose,
-  progress 
+  progress,
+  onProgressUpdated
 }) => {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
@@ -81,6 +95,7 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
   const [resources, setResources] = useState<Array<{ name: string; url: string }>>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [certificateId, setCertificateId] = useState<string | null>(null);
+  const [certificateDetails, setCertificateDetails] = useState<CourseCertificate | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -92,6 +107,7 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
       setQuizSubmitted(false);
       setQuizScore(null);
       setCertificateId(null);
+      setCertificateDetails(null);
     }
   }, [course, isOpen, progress]);
 
@@ -101,6 +117,30 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
     setQuizSubmitted(false);
     setQuizScore(null);
   }, [currentLessonIndex]);
+
+  useEffect(() => {
+    const loadCertificate = async () => {
+      if (!course || !user || progress?.completion_percentage !== 100) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('course_certificates')
+          .select('id, certificate_data, certificate_url')
+          .eq('course_id', course.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!error && data) {
+          setCertificateId(data.id);
+          setCertificateDetails(data as CourseCertificate);
+        }
+      } catch (certificateError) {
+        console.error('Error loading certificate details:', certificateError);
+      }
+    };
+
+    loadCertificate();
+  }, [course?.id, progress?.completion_percentage, user?.id]);
 
   useEffect(() => {
     const loadResources = async () => {
@@ -169,6 +209,14 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
         });
         if (!certError && certData) {
           setCertificateId(certData as string);
+          const { data: certificateRecord } = await supabase
+            .from('course_certificates')
+            .select('id, certificate_data, certificate_url')
+            .eq('id', certData as string)
+            .maybeSingle();
+          if (certificateRecord) {
+            setCertificateDetails(certificateRecord as CourseCertificate);
+          }
         }
       }
 
@@ -176,6 +224,8 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
         title: "Progress Saved",
         description: "Lesson marked as complete",
       });
+
+      onProgressUpdated?.();
     } catch (err) {
       console.error('Error updating progress:', err);
       toast({
@@ -193,6 +243,18 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
       case 'quiz': return <CheckCircle className="w-4 h-4" />;
       default: return <FileText className="w-4 h-4" />;
     }
+  };
+
+  const handleDownloadCertificate = () => {
+    if (!certificateDetails) return;
+
+    const certificateData = certificateDetails.certificate_data || {};
+    generateCourseCertificatePdf({
+      courseTitle: certificateData.course_title || course?.title || 'Course',
+      userName: certificateData.user_name || user?.user_metadata?.full_name || 'Student',
+      completionDate: certificateData.completion_date || new Date().toISOString(),
+      certificateId: certificateDetails.id
+    });
   };
 
   const handleQuizAnswer = (questionId: string, answerIndex: number) => {
@@ -834,14 +896,29 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
 
                 {Math.round(progressPercentage) === 100 && (
                   <Card className="p-6 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold mb-1">Certificate</h3>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold">Certificate</h3>
                         <p className="text-sm text-muted-foreground">
-                          {certificateId ? 'Your certificate has been issued.' : 'Certificate is being generated.'}
+                          {certificateDetails
+                            ? 'Download your certificate of completion.'
+                            : certificateId
+                              ? 'Your certificate has been issued.'
+                              : 'Certificate is being generated.'}
                         </p>
                       </div>
-                      <Badge variant="outline">Issued</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">Issued</Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleDownloadCertificate}
+                          disabled={!certificateDetails}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 )}

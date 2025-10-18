@@ -5,9 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Helmet } from "react-helmet-async";
 import { Calendar, Clock, DollarSign, Users, ExternalLink, ArrowLeft, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Event {
   id: string;
@@ -31,6 +31,18 @@ export default function EventDetail() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRSVP, setUserRSVP] = useState<string | null>(null);
+
+  const metaTitle = event ? `${event.title} — Pluggd Event` : 'Event Details — Pluggd';
+  const metaDescription = event?.description
+    ? event.description.slice(0, 160)
+    : 'Discover live shows, community sessions, and creator events on Pluggd.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: id ? `/events/${id}` : '/events',
+    image: event?.cover_image_url ?? undefined,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -157,11 +169,6 @@ export default function EventDetail() {
 
   return (
     <>
-      <Helmet>
-        <title>{event.title} - Event Details</title>
-        <meta name="description" content={event.description || `Join ${event.title} - community event`} />
-      </Helmet>
-
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">

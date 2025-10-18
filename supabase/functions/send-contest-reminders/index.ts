@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+import { createPreferenceCache, shouldSendNotification } from "../_shared/notificationPreferences.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     let totalNotificationsSent = 0;
+    const preferenceCache = createPreferenceCache();
 
     // Process each contest
     for (const contest of contestsStartingToday) {
@@ -92,6 +94,18 @@ const handler = async (req: Request): Promise<Response> => {
       // Send notifications to each user
       for (const reminder of reminders) {
         try {
+          const enabled = await shouldSendNotification(
+            supabase as any,
+            preferenceCache,
+            reminder.user_id,
+            'notify_contest_reminders',
+          );
+
+          if (!enabled) {
+            console.log(`Skipping contest reminder for user ${reminder.user_id} due to preferences`);
+            continue;
+          }
+
           // Create database notification
           const { error: notificationError } = await supabase
             .from('notifications')
