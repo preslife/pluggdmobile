@@ -59,7 +59,8 @@ serve(async (req) => {
       .from('membership_tiers')
       .select(
         `id, owner_id, owner_type, status, price_monthly, price_yearly, price_lifetime, currency,
-         stripe_product_id, stripe_price_monthly_id, stripe_price_yearly_id, stripe_price_lifetime_id`
+         stripe_product_id, stripe_price_monthly_id, stripe_price_yearly_id, stripe_price_lifetime_id,
+         stripe_sync_status, stripe_sync_error`
       )
       .eq('id', membershipTierId)
       .maybeSingle();
@@ -71,6 +72,14 @@ serve(async (req) => {
     }
     if (tierRow.status !== 'active') {
       throw new Error('This membership tier is not published yet.');
+    }
+
+    if (tierRow.stripe_sync_status && tierRow.stripe_sync_status !== 'synced') {
+      throw new Error(
+        tierRow.stripe_sync_status === 'error'
+          ? tierRow.stripe_sync_error || 'Membership tier sync failed. Please retry syncing this tier in the Studio before selling subscriptions.'
+          : 'Membership tier is syncing with Stripe. Please wait a moment and try again.'
+      );
     }
 
     const tierPriceCents =
@@ -94,7 +103,13 @@ serve(async (req) => {
       tierRow.stripe_price_lifetime_id;
 
     if (!stripePriceId || typeof stripePriceId !== 'string') {
-      throw new Error('Membership tier is missing a Stripe price.');
+      throw new Error(
+        'Membership tier is missing a Stripe price. Please run the Stripe sync from the Studio memberships page.'
+      );
+    }
+
+    if (!tierRow.stripe_product_id) {
+      throw new Error('Membership tier is not connected to a Stripe product yet. Sync the tier before selling it.');
     }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {

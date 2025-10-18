@@ -35,6 +35,9 @@ export interface MembershipTier {
   stripe_price_monthly_id: string | null;
   stripe_price_yearly_id: string | null;
   stripe_price_lifetime_id: string | null;
+  stripe_synced_at: string | null;
+  stripe_sync_status: string | null;
+  stripe_sync_error: string | null;
 }
 
 export interface UpsertMembershipTierInput {
@@ -127,6 +130,9 @@ const mapTier = (row: any): MembershipTier => ({
   stripe_price_monthly_id: row.stripe_price_monthly_id ?? null,
   stripe_price_yearly_id: row.stripe_price_yearly_id ?? null,
   stripe_price_lifetime_id: row.stripe_price_lifetime_id ?? null,
+  stripe_synced_at: row.stripe_synced_at ?? null,
+  stripe_sync_status: row.stripe_sync_status ?? null,
+  stripe_sync_error: row.stripe_sync_error ?? null,
 });
 
 type TierInsertPayload = {
@@ -178,6 +184,9 @@ const buildOptimisticTier = (
     stripe_price_monthly_id: null,
     stripe_price_yearly_id: null,
     stripe_price_lifetime_id: null,
+    stripe_synced_at: null,
+    stripe_sync_status: "pending",
+    stripe_sync_error: null,
   };
 };
 
