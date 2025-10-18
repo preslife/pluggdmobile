@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,11 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EnhancedCourseCard } from "@/components/EnhancedCourseCard";
 import { EnhancedCourseViewer } from "@/components/EnhancedCourseViewer";
 import { EnhancedAdminCourseManager } from "@/components/EnhancedAdminCourseManager";
 import { CourseUpgradeModal } from "@/components/CourseUpgradeModal";
+import { generateCourseCertificatePdf } from "@/utils/certificates";
 
 import { 
   BookOpen, 
@@ -56,6 +60,29 @@ interface UserStats {
   currentStreak: number;
 }
 
+interface CourseCertificate {
+  id: string;
+  course_id: string;
+  certificate_data: {
+    course_title?: string;
+    user_name?: string;
+    completion_date?: string;
+    [key: string]: any;
+  };
+  certificate_url?: string | null;
+  created_at: string;
+  courses?: {
+    title: string;
+  } | null;
+}
+
+const DEFAULT_USER_STATS: UserStats = {
+  activeCourses: 0,
+  completedCourses: 0,
+  hoursLearned: 0,
+  currentStreak: 0
+};
+
 export default function Education() {
   const { user } = useAuth();
   const { subscription, usage, checkCourseLimit, getTierLimits } = useSubscription();
@@ -68,19 +95,56 @@ export default function Education() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [coursePricing, setCoursePricing] = useState<{[key: string]: {isProOnly: boolean, oneTimePrice?: number}}>({});
-  const [userStats, setUserStats] = useState<UserStats>({
-    activeCourses: 0,
-    completedCourses: 0,
-    hoursLearned: 0,
-    currentStreak: 0
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
+  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [showOnlyEnrolled, setShowOnlyEnrolled] = useState(false);
+  const [courseCertificates, setCourseCertificates] = useState<CourseCertificate[]>([]);
+  const [isFetchingCertificates, setIsFetchingCertificates] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats>(DEFAULT_USER_STATS);
+  const [activeTab, setActiveTab] = useState<string>('progress');
 
   useEffect(() => {
     fetchCourses();
     fetchCoursePricing();
-    if (user) {
-      fetchUserProgress();
-      calculateUserStats();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['progress', 'browse', 'certificates'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUserProgress([]);
+      setCourseCertificates([]);
+      setUserStats(DEFAULT_USER_STATS);
+      return;
+    }
+
+    refreshLearningState();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      toast({
+        title: "Course unlocked",
+        description: "Your purchase has been confirmed. You now have access to the course.",
+      });
+
+      refreshLearningState();
+
+      params.delete('payment');
+      params.delete('course');
+      const newQuery = params.toString();
+      const newUrl = `${window.location.pathname}${newQuery ? `?${newQuery}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
     }
   }, [user]);
 
@@ -127,6 +191,29 @@ export default function Education() {
     }
   };
 
+  const fetchUserCertificates = async () => {
+    if (!user) {
+      setCourseCertificates([]);
+      return;
+    }
+
+    try {
+      setIsFetchingCertificates(true);
+      const { data, error } = await supabase
+        .from('course_certificates')
+        .select('id, course_id, certificate_data, certificate_url, created_at, courses!inner(title)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCourseCertificates(data || []);
+    } catch (error) {
+      console.error('Error fetching certificates:', error);
+    } finally {
+      setIsFetchingCertificates(false);
+    }
+  };
+
   const fetchUserProgress = async () => {
     if (!user) return;
 
@@ -138,6 +225,7 @@ export default function Education() {
 
       if (error) throw error;
       setUserProgress(data || []);
+      await fetchUserCertificates();
     } catch (error) {
       console.error('Error fetching progress:', error);
     }
@@ -171,9 +259,66 @@ export default function Education() {
     }
   };
 
+  const enrolledCourseIds = useMemo(() => userProgress.map(p => p.course_id), [userProgress]);
+
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    courses.forEach(course => {
+      (course.tags || []).forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [courses]);
+
+  const filteredCourses = useMemo(() => {
+    let filtered = [...courses];
+
+    if (showOnlyEnrolled) {
+      filtered = filtered.filter(course => enrolledCourseIds.includes(course.id));
+    }
+
+    if (selectedDifficulty !== 'all') {
+      filtered = filtered.filter(course => course.difficulty_level?.toLowerCase() === selectedDifficulty.toLowerCase());
+    }
+
+    if (selectedTag !== 'all') {
+      filtered = filtered.filter(course => course.tags?.includes(selectedTag));
+    }
+
+    if (searchTerm) {
+      const query = searchTerm.toLowerCase();
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(query) ||
+        course.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [courses, enrolledCourseIds, selectedDifficulty, selectedTag, showOnlyEnrolled, searchTerm]);
+
+  const enrolledCourses = useMemo(() => {
+    return courses.filter(course => enrolledCourseIds.includes(course.id));
+  }, [courses, enrolledCourseIds]);
+
+  const handleDownloadCertificate = (certificate: CourseCertificate) => {
+    const certificateData = certificate.certificate_data || {};
+
+    generateCourseCertificatePdf({
+      courseTitle: certificateData.course_title || certificate.courses?.title || 'Course',
+      userName: certificateData.user_name || user?.user_metadata?.full_name || 'Student',
+      completionDate: certificateData.completion_date || certificate.created_at,
+      certificateId: certificate.id
+    });
+  };
+
+  const refreshLearningState = () => {
+    if (!user) return;
+    fetchUserProgress();
+    calculateUserStats();
+  };
+
   const checkCourseAccess = async (courseId: string) => {
     if (!user) return false;
-    
+
     // Check if course is Pro-only
     const courseSettings = coursePricing[courseId];
     if (!courseSettings?.isProOnly) return true;
@@ -245,8 +390,7 @@ export default function Education() {
         description: "You can now start learning!",
       });
 
-      fetchUserProgress();
-      calculateUserStats();
+      refreshLearningState();
     } catch (error) {
       console.error('Error enrolling in course:', error);
       toast({
@@ -263,15 +407,6 @@ export default function Education() {
       setSelectedCourse(course);
       setIsCourseViewerOpen(true);
     }
-  };
-
-  const getFilteredCourses = () => {
-    return courses;
-  };
-
-  const getEnrolledCourses = () => {
-    const enrolledCourseIds = userProgress.map(p => p.course_id);
-    return courses.filter(course => enrolledCourseIds.includes(course.id));
   };
 
   const getProgressForCourse = (courseId: string) => {
@@ -392,7 +527,7 @@ export default function Education() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="progress" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
             <TabsTrigger value="progress">My Progress</TabsTrigger>
             <TabsTrigger value="browse">Browse Courses</TabsTrigger>
@@ -412,9 +547,9 @@ export default function Education() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {getEnrolledCourses().length > 0 ? (
+                {enrolledCourses.length > 0 ? (
                   <div className="space-y-4">
-                    {getEnrolledCourses().slice(0, 3).map((course) => {
+                    {enrolledCourses.slice(0, 3).map((course) => {
                       const progress = getProgressForCourse(course.id);
                       return (
                         <div key={course.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -447,8 +582,7 @@ export default function Education() {
                       Start your learning journey by browsing our course catalog
                     </p>
                     <Button onClick={() => {
-                      const browseTab = document.querySelector('[value="browse"]') as HTMLButtonElement;
-                      browseTab?.click();
+                      setActiveTab('browse');
                     }}>
                       Browse Courses
                     </Button>
@@ -460,23 +594,79 @@ export default function Education() {
 
           <TabsContent value="browse" className="space-y-6">
             {/* Recommended Courses */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommended For You</CardTitle>
-                <CardDescription>
-                  Courses tailored to your learning path
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {getFilteredCourses().map((course) => (
-                    <EnhancedCourseCard
-                      key={course.id}
-                      course={course}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recommended For You</CardTitle>
+              <CardDescription>
+                Courses tailored to your learning path
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                <div className="flex flex-1 flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="Search courses"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="sm:max-w-sm"
+                  />
+                  <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                    <SelectTrigger className="sm:w-40">
+                      <SelectValue placeholder="Difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedTag} onValueChange={setSelectedTag}>
+                    <SelectTrigger className="sm:w-48">
+                      <SelectValue placeholder="Tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Topics</SelectItem>
+                      {availableTags.map(tag => (
+                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="show-enrolled"
+                    checked={showOnlyEnrolled}
+                    onCheckedChange={(checked) => setShowOnlyEnrolled(!!checked)}
+                  />
+                  <label htmlFor="show-enrolled" className="text-sm text-muted-foreground">
+                    Only show my courses
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setSelectedDifficulty("all");
+                      setSelectedTag("all");
+                      setShowOnlyEnrolled(false);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredCourses.map((course) => (
+                  <EnhancedCourseCard
+                    key={course.id}
+                    course={course}
                       progress={getProgressForCourse(course.id)}
                       onEnroll={handleEnrollCourse}
                       onContinue={handleContinueCourse}
                       showProgress={!!getProgressForCourse(course.id)}
+                      isProOnly={coursePricing[course.id]?.isProOnly}
+                      oneTimePrice={coursePricing[course.id]?.oneTimePrice}
                     />
                   ))}
                 </div>
@@ -491,27 +681,59 @@ export default function Education() {
                   <Award className="w-5 h-5" />
                   Your Certificates
                 </CardTitle>
-                <CardDescription>
-                  Download and share your achievements
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Complete courses to earn certificates
-                  </p>
-                  <Button variant="outline">
-                    <Download className="w-4 h-4 mr-2" />
-                    View Sample Certificate
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+              <CardDescription>
+                Download and share your achievements
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isFetchingCertificates ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Loading certificates...
+                  </div>
+                ) : courseCertificates.length > 0 ? (
+                  <div className="space-y-4">
+                    {courseCertificates.map((certificate) => {
+                      const certificateData = certificate.certificate_data || {};
+                      return (
+                        <Card key={certificate.id} className="border shadow-sm">
+                          <CardContent className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                              <h3 className="font-semibold text-lg mb-1">
+                                {certificateData.course_title || certificate.courses?.title || 'Course Certificate'}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Awarded to {certificateData.user_name || user?.user_metadata?.full_name || 'you'} on{' '}
+                                {new Date(certificateData.completion_date || certificate.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                ID: {certificate.id.slice(0, 8)}
+                              </Badge>
+                              <Button variant="outline" onClick={() => handleDownloadCertificate(certificate)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Complete courses to earn certificates
+                    </p>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
 
       {/* Course Viewer Modal */}
       <EnhancedCourseViewer
@@ -519,6 +741,7 @@ export default function Education() {
         isOpen={isCourseViewerOpen}
         onClose={() => setIsCourseViewerOpen(false)}
         progress={selectedCourse ? getProgressForCourse(selectedCourse.id) : undefined}
+        onProgressUpdated={refreshLearningState}
       />
 
       {/* Upgrade Modal */}
@@ -533,7 +756,7 @@ export default function Education() {
           onPurchaseComplete={() => {
             setIsUpgradeModalOpen(false);
             setUpgradeModalCourse(null);
-            fetchUserProgress();
+            refreshLearningState();
           }}
         />
       )}

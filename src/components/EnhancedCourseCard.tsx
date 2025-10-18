@@ -56,17 +56,27 @@ const formatDuration = (hours: number) => {
   return `${hours}h`;
 };
 
-export function EnhancedCourseCard({ 
-  course, 
-  progress, 
-  onEnroll, 
-  onContinue, 
+export function EnhancedCourseCard({
+  course,
+  progress,
+  onEnroll,
+  onContinue,
   showProgress = false,
   isProOnly = false,
   oneTimePrice
 }: EnhancedCourseCardProps) {
   const isEnrolled = !!progress;
   const isCompleted = progress?.completion_percentage === 100;
+  const displayPrice = typeof oneTimePrice === 'number' ? oneTimePrice : course.price;
+  const actionLabel = isEnrolled
+    ? isCompleted
+      ? 'Review'
+      : 'Continue'
+    : isProOnly
+      ? 'Unlock Access'
+      : displayPrice > 0
+        ? 'Enroll Now'
+        : 'Start Free';
 
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden border-0 shadow-md">
@@ -217,10 +227,22 @@ export function EnhancedCourseCard({
         {/* Action Section */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            {course.price > 0 ? (
+            {isProOnly ? (
+              <>
+                <span className="text-lg font-bold text-purple-600 flex items-center gap-1">
+                  <Crown className="w-4 h-4" />
+                  Pro Access
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {displayPrice > 0
+                    ? `One-time unlock ${formatCurrency(displayPrice)}`
+                    : 'Included with Pro membership'}
+                </span>
+              </>
+            ) : displayPrice > 0 ? (
               <>
                 <span className="text-lg font-bold text-primary">
-                  {formatCurrency(course.price)}
+                  {formatCurrency(displayPrice)}
                 </span>
                 <span className="text-xs text-muted-foreground">One-time payment</span>
               </>
@@ -240,22 +262,22 @@ export function EnhancedCourseCard({
             )}
             
             {isEnrolled ? (
-              <Button 
+              <Button
                 onClick={() => onContinue?.(course.id)}
                 className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
               >
-                {isCompleted ? 'Review' : 'Continue'}
+                {actionLabel}
               </Button>
             ) : (
-              <Button 
+              <Button
                 onClick={() => onEnroll?.(course.id)}
-                variant={course.price > 0 ? "default" : "outline"}
-                className={course.price > 0 
-                  ? "bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90" 
-                  : ""
+                variant={!isProOnly && displayPrice === 0 ? "outline" : "default"}
+                className={!isProOnly && displayPrice === 0
+                  ? ""
+                  : "bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
                 }
               >
-                {course.price > 0 ? 'Enroll Now' : 'Start Free'}
+                {actionLabel}
               </Button>
             )}
           </div>

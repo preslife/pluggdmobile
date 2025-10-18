@@ -507,6 +507,23 @@ serve(async (req) => {
             if (purchaseError) {
               await logStep("Course purchase error", { error: purchaseError.message });
             } else {
+              logStep("Course purchase recorded successfully");
+
+              const { error: progressError } = await supabaseClient
+                .from('user_course_progress')
+                .upsert({
+                  user_id: session.metadata.userId,
+                  course_id: session.metadata.courseId,
+                  completion_percentage: 0,
+                  progress_data: { completed_lessons: [] },
+                  last_accessed_at: new Date().toISOString(),
+                }, { onConflict: 'user_id,course_id' });
+
+              if (progressError) {
+                logStep("Course enrollment sync failed", { error: progressError.message });
+              } else {
+                logStep("Course enrollment synced to progress table");
+              }
               await logStep("Course purchase recorded successfully");
             }
           } else if (session.metadata?.type === 'release_purchase') {
