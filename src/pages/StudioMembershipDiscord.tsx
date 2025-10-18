@@ -14,6 +14,7 @@ import { useOptionalStudioContext } from "@/contexts/StudioContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { setMeta } from "@/lib/seo";
 
 type DiscordTokenRow = Database["public"]["Tables"]["membership_discord_tokens"]["Row"] & {
   membership: (Database["public"]["Tables"]["memberships"]["Row"] & {
@@ -119,6 +120,14 @@ const StudioMembershipDiscordPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingTokenId, setSyncingTokenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMeta(
+      "Discord Membership Sync — Pluggd Studio",
+      "Monitor Discord membership tokens, troubleshoot syncs, and keep your community roles up to date.",
+      "/dashboard/studio/membership/discord"
+    );
+  }, []);
 
   const fetchTokens = useCallback(async () => {
     if (!ownerType || !ownerId) {
