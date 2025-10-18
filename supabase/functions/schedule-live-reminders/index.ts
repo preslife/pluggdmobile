@@ -94,14 +94,25 @@ serve(async (req) => {
         .delete()
         .eq("session_id", payload.sessionId);
 
-      await supabaseAdmin.from("notifications").insert({
-        user_id: payload.hostId,
-        type: "live_session",
-        title: `Reminders cancelled for ${payload.title}`,
-        message: "All pending reminders were removed after the session was cancelled.",
-        related_id: payload.sessionId,
-        related_type: "session",
-      });
+      const notifyHost = await shouldSendNotification(
+        supabaseAdmin as any,
+        preferenceCache,
+        payload.hostId,
+        "notify_live_sessions",
+      );
+
+      if (notifyHost) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: payload.hostId,
+          type: "live_session",
+          title: `Reminders cancelled for ${payload.title}`,
+          message: "All pending reminders were removed after the session was cancelled.",
+          related_id: payload.sessionId,
+          related_type: "session",
+        });
+      } else {
+        console.log(`Skipping cancellation notification for host ${payload.hostId} due to preferences`);
+      }
 
       return jsonResponse(200, { cancelled: true });
     }
@@ -194,21 +205,32 @@ serve(async (req) => {
       }
     }
 
-    await supabaseAdmin.from("notifications").insert({
-      user_id: payload.hostId,
-      type: "live_session",
-      title: `Reminders scheduled for ${payload.title}`,
-      message: upcomingReminders.length
-        ? `We'll notify attendees ${upcomingReminders.map((r) => r.type).join(" & ")}.`
-        : "Session is too close for automated reminders, but the ICS file has been refreshed.",
-      related_id: payload.sessionId,
-      related_type: "session",
-      data: {
-        reminder_count: rows.length,
-        ics_url: icsUrl,
-        scheduled_at: payload.scheduledAt,
-      },
-    });
+    const notifyHostForSchedule = await shouldSendNotification(
+      supabaseAdmin as any,
+      preferenceCache,
+      payload.hostId,
+      "notify_live_sessions",
+    );
+
+    if (notifyHostForSchedule) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: payload.hostId,
+        type: "live_session",
+        title: `Reminders scheduled for ${payload.title}`,
+        message: upcomingReminders.length
+          ? `We'll notify attendees ${upcomingReminders.map((r) => r.type).join(" & ")}.`
+          : "Session is too close for automated reminders, but the ICS file has been refreshed.",
+        related_id: payload.sessionId,
+        related_type: "session",
+        data: {
+          reminder_count: rows.length,
+          ics_url: icsUrl,
+          scheduled_at: payload.scheduledAt,
+        },
+      });
+    } else {
+      console.log(`Skipping scheduling notification for host ${payload.hostId} due to preferences`);
+    }
 
     const attendees = Array.from(allowedUserIds);
     for (const reminder of upcomingReminders) {

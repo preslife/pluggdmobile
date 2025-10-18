@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGlobalPlayer, type Track as PlayerTrack } from '@/components/GlobalPlayer/GlobalPlayer';
 import { useToast } from '@/hooks/use-toast';
 import { useShare } from '@/hooks/useShare';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 import {
   Avatar,
   AvatarFallback,
@@ -108,6 +109,18 @@ const PlaylistPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
+
+  const playlistTitle = playlist?.name ? `${playlist.name} — Pluggd Playlist` : 'Playlist — Pluggd';
+  const playlistDescription = playlist?.description
+    ? playlist.description.slice(0, 160)
+    : 'Listen to curated playlists from creators on Pluggd.';
+
+  usePageMetadata({
+    title: playlistTitle,
+    description: playlistDescription,
+    path: id ? `/playlist/${id}` : '/playlist',
+    image: playlist?.coverArtUrl ?? undefined,
+  });
 
   const canEdit = useMemo(() => {
     if (!playlist || !user) return false;

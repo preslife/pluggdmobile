@@ -4,9 +4,11 @@ import { NotificationSettings } from "../components/NotificationSettings";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 export const SettingsNotificationsPage = () => {
-  useEffect(() => {
-    document.title = "Notifications — Pluggd";
-  }, []);
+  usePageMetadata({
+    title: "Notification Settings — Pluggd",
+    description: "Choose how Pluggd keeps you informed about new releases, supporters, and account updates.",
+    path: "/settings/notifications",
+  });
 
   return (
     <div className="min-h-screen bg-background">

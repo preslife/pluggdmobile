@@ -6,6 +6,7 @@ import {
   getPurchaseTypeConfig,
 } from '../CheckoutModal';
 import type { PurchaseItem, PurchaseItemType } from '@/services/credits/credit-system';
+import { configureAxe } from 'jest-axe';
 
 const hoistedMocks = vi.hoisted(() => ({
   toastMock: vi.fn(),
@@ -22,6 +23,12 @@ const {
   invokeMock,
   getPolicyMock,
 } = hoistedMocks;
+
+const runAxe = configureAxe({
+  rules: {
+    'scrollable-region-focusable': { enabled: false },
+  },
+});
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-123' } }),
@@ -242,6 +249,31 @@ describe('CheckoutModal hybrid checkout flow', () => {
     expect(toastMock).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Complete Your Payment' })
     );
+  });
+
+  it('has no accessibility violations in default state @a11y', async () => {
+    const checkoutItems: PurchaseItem[] = [
+      {
+        id: 'release-axe',
+        type: 'release',
+        title: 'Accessibility Release',
+        price: 20,
+        metadata: { cover_art: 'cover.jpg' },
+      },
+    ];
+
+    const { container } = render(
+      <CheckoutModal
+        isOpen
+        onClose={() => {}}
+        items={checkoutItems}
+      />
+    );
+
+    await waitFor(() => expect(getBalanceSummaryMock).toHaveBeenCalled());
+
+    const results = await runAxe(container);
+    expect(results.violations).toHaveLength(0);
   });
 });
 

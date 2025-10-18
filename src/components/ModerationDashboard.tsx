@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, AlertTriangle, Eye, Check, X, Flag, Music, MessageSquare, Users } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useLogger } from '@/hooks/useLogger';
 
 type ModerationItem = {
   id: string;
@@ -41,6 +41,13 @@ const ModerationDashboard = () => {
   const [selectedTab, setSelectedTab] = useState('releases');
   const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
+  const loggerMetadata = useMemo(() => ({ userId: user?.id ?? null }), [user?.id]);
+  const { logger: moderationLogger, logUserAction } = useLogger({
+    component: 'ModerationDashboard',
+    feature: 'moderation',
+    metadata: loggerMetadata,
+  });
+
   useEffect(() => {
     if (user) {
       fetchModerationData();
@@ -49,7 +56,7 @@ const ModerationDashboard = () => {
 
   const fetchModerationData = async () => {
     try {
-      void logger.info('moderation_dashboard_fetch_start', {
+      void moderationLogger.info('moderation_dashboard_fetch_start', {
         user_id: user?.id,
       });
       // Fetch moderation items
@@ -60,7 +67,7 @@ const ModerationDashboard = () => {
 
       if (moderationError) {
         console.error('Error fetching moderation items:', moderationError);
-        void logger.error('moderation_dashboard_items_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_items_fetch_failed', {
           user_id: user?.id,
         }, toError(moderationError));
       }
@@ -74,7 +81,7 @@ const ModerationDashboard = () => {
 
       if (reportsError) {
         console.error('Error fetching reports:', reportsError);
-        void logger.error('moderation_dashboard_reports_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_reports_fetch_failed', {
           user_id: user?.id,
         }, toError(reportsError));
       }
@@ -197,7 +204,7 @@ const ModerationDashboard = () => {
         pending_reports: pendingReports,
         total_actions_today: actionsToday || 0
       });
-      void logger.info('moderation_dashboard_fetch_success', {
+      void moderationLogger.info('moderation_dashboard_fetch_success', {
         user_id: user?.id,
         pending_releases: pendingReleases,
         pending_comments: pendingComments,
@@ -206,7 +213,7 @@ const ModerationDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching moderation data:', error);
-      void logger.error('moderation_dashboard_fetch_failed', {
+      void moderationLogger.error('moderation_dashboard_fetch_failed', {
         user_id: user?.id,
       }, toError(error));
     } finally {
@@ -216,7 +223,7 @@ const ModerationDashboard = () => {
 
   const handleModerationAction = async (itemId: string, action: 'approve' | 'reject', reason?: string) => {
     try {
-      void logger.userAction('moderation_action_attempt', 'ModerationDashboard', {
+      void logUserAction('moderation_action_attempt', {
         item_id: itemId,
         action,
         user_id: user?.id,
@@ -277,7 +284,7 @@ const ModerationDashboard = () => {
         title: `Content ${action}d`,
         description: `Moderation action completed successfully.`
       });
-      void logger.info('moderation_action_success', {
+      void moderationLogger.info('moderation_action_success', {
         item_id: itemId,
         action,
         user_id: user?.id,
@@ -302,7 +309,7 @@ const ModerationDashboard = () => {
         description: "Failed to process moderation action.",
         variant: "destructive"
       });
-      void logger.error('moderation_action_failed', {
+      void moderationLogger.error('moderation_action_failed', {
         item_id: itemId,
         action,
         user_id: user?.id,

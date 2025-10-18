@@ -1,20 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, Plug } from "lucide-react";
+import { ChevronDown, Plug, Globe } from "lucide-react";
 import pluggdLogo from "@/assets/pluggdt.png";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AdvancedSearch } from "@/components/AdvancedSearch";
 import { MessagingCenter } from "@/components/MessagingCenter";
 import { CartSidebar } from "@/components/CartSidebar";
+import { useLocalization, SUPPORTED_LOCALES } from "@/contexts/LocalizationContext";
+import { useIntl } from "react-intl";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { settings, updateSettings, getLocaleConfig } = useLocalization();
+  const intl = useIntl();
 
   // Get user profile to determine permissions
   const [profile, setProfile] = useState<any>(null);
@@ -73,55 +84,69 @@ const Navigation = () => {
     }
   };
 
-  const getNavItems = () => {
-    const baseItems = [
-      { name: "Home", href: "/" },
-      { name: "Live", href: "/live" },
-      { 
-        name: "Store", 
-        href: "/store",
-        dropdown: [
-          { name: "Products", href: "/store" },
-          { name: "Sample Packs", href: "/sample-pack-store" },
-        ]
-      },
-      { name: "Releases", href: "/releases" },
-      { name: "Beats", href: "/marketplace" },
-      { name: "Academy", href: "/education" },
-      { 
-        name: "Community", 
-        href: "/community",
-        dropdown: [
-          { name: "Forum", href: "/community" },
-          { name: "Artists", href: "/community?tab=artists" },
-          { name: "Releases", href: "/community?tab=releases" },
-          { name: "Directory", href: "/directory" },
-          { name: "Blog", href: "/blog" },
-          { name: "Tools", href: "/tools" },
-          { name: "Collaborate", href: "/collaborate" },
-          { name: "Terms", href: "/terms" },
-          { name: "Privacy", href: "/privacy" },
-          { name: "Refunds", href: "/refunds" },
-        ]
-      },
-    ];
+  const baseItems = useMemo(() => [
+    { name: intl.formatMessage({ id: "navigation.home", defaultMessage: "Home" }), href: "/" },
+    { name: intl.formatMessage({ id: "navigation.live", defaultMessage: "Live" }), href: "/live" },
+    {
+      name: intl.formatMessage({ id: "navigation.store", defaultMessage: "Store" }),
+      href: "/store",
+      dropdown: [
+        { name: intl.formatMessage({ id: "navigation.store.products", defaultMessage: "Products" }), href: "/store" },
+        { name: intl.formatMessage({ id: "navigation.store.samplePacks", defaultMessage: "Sample Packs" }), href: "/sample-pack-store" },
+      ]
+    },
+    { name: intl.formatMessage({ id: "navigation.releases", defaultMessage: "Releases" }), href: "/releases" },
+    { name: intl.formatMessage({ id: "navigation.beats", defaultMessage: "Beats" }), href: "/marketplace" },
+    { name: intl.formatMessage({ id: "navigation.academy", defaultMessage: "Academy" }), href: "/education" },
+    {
+      name: intl.formatMessage({ id: "navigation.community", defaultMessage: "Community" }),
+      href: "/community",
+      dropdown: [
+        { name: intl.formatMessage({ id: "navigation.community.forum", defaultMessage: "Forum" }), href: "/community" },
+        { name: intl.formatMessage({ id: "navigation.community.artists", defaultMessage: "Artists" }), href: "/community?tab=artists" },
+        { name: intl.formatMessage({ id: "navigation.community.releases", defaultMessage: "Releases" }), href: "/community?tab=releases" },
+        { name: intl.formatMessage({ id: "navigation.community.directory", defaultMessage: "Directory" }), href: "/directory" },
+        { name: intl.formatMessage({ id: "navigation.community.blog", defaultMessage: "Blog" }), href: "/blog" },
+        { name: intl.formatMessage({ id: "navigation.community.tools", defaultMessage: "Tools" }), href: "/tools" },
+        { name: intl.formatMessage({ id: "navigation.community.collaborate", defaultMessage: "Collaborate" }), href: "/collaborate" },
+        { name: intl.formatMessage({ id: "navigation.community.terms", defaultMessage: "Terms" }), href: "/terms" },
+        { name: intl.formatMessage({ id: "navigation.community.privacy", defaultMessage: "Privacy" }), href: "/privacy" },
+        { name: intl.formatMessage({ id: "navigation.community.refunds", defaultMessage: "Refunds" }), href: "/refunds" },
+      ]
+    },
+  ], [intl]);
 
+  const navItems = useMemo(() => {
     if (!user) {
-      return baseItems.filter(item => {
-        // Filter Directory and Collaborate from Community dropdown for non-authenticated users
-        if (item.name === "Community" && item.dropdown) {
-          item.dropdown = item.dropdown.filter(subItem => 
-            subItem.name !== "Directory" && subItem.name !== "Collaborate"
-          );
+      return baseItems.map((item) => {
+        if (item.href === "/community" && item.dropdown) {
+          const filteredDropdown = item.dropdown.filter((subItem) => !["/directory", "/collaborate"].includes(subItem.href));
+          return { ...item, dropdown: filteredDropdown };
         }
-        return true;
+        return item;
       });
     }
 
     return baseItems;
-  };
+  }, [baseItems, user]);
 
-  const navItems = getNavItems();
+  const localeOptions = useMemo(
+    () => Object.entries(SUPPORTED_LOCALES).map(([code, config]) => ({ code, name: config.name, flag: config.flag })),
+    []
+  );
+
+  const handleLocaleChange = (value: string) => {
+    if (!Object.prototype.hasOwnProperty.call(SUPPORTED_LOCALES, value)) {
+      return;
+    }
+
+    const config = getLocaleConfig(value as keyof typeof SUPPORTED_LOCALES);
+    updateSettings({
+      locale: value as keyof typeof SUPPORTED_LOCALES,
+      currency: config.currency,
+      timezone: config.timezone,
+    });
+  };
 
   return (
     <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-lg border-b border-border z-50">
@@ -140,7 +165,7 @@ const Navigation = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:block">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-6">
               {navItems.map((item) => {
                 const isActive = item.href.startsWith('/') ? location.pathname === item.href : false;
                 const isExternal = item.href.startsWith('#');
@@ -203,6 +228,22 @@ const Navigation = () => {
                   </Link>
                 );
               })}
+              <div className="hidden lg:flex items-center gap-2 text-sm text-muted-foreground">
+                <Globe className="h-4 w-4" aria-hidden="true" />
+                <Select value={settings.locale} onValueChange={handleLocaleChange}>
+                  <SelectTrigger className="w-[170px]">
+                    <SelectValue placeholder={intl.formatMessage({ id: "navigation.locale.label", defaultMessage: "Language" })} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {localeOptions.map((option) => (
+                      <SelectItem key={option.code} value={option.code}>
+                        <span className="mr-2" aria-hidden="true">{option.flag}</span>
+                        {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -391,6 +432,22 @@ const Navigation = () => {
                 );
               })}
               <div className="pt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Globe className="h-4 w-4" aria-hidden="true" />
+                  <Select value={settings.locale} onValueChange={(value) => { handleLocaleChange(value); setIsMenuOpen(false); }}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={intl.formatMessage({ id: "navigation.locale.label", defaultMessage: "Language" })} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {localeOptions.map((option) => (
+                        <SelectItem key={option.code} value={option.code}>
+                          <span className="mr-2" aria-hidden="true">{option.flag}</span>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Link to="/live/sessions">
                   <Button variant="secondary" className="w-full">Join the Session</Button>
                 </Link>

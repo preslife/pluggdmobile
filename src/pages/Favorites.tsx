@@ -12,6 +12,7 @@ import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import ShareModal from '@/components/ShareModal';
 import { formatCurrency } from '@/lib/utils';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 type Beat = {
   id: string;
@@ -32,6 +33,12 @@ type Beat = {
 };
 
 const Favorites = () => {
+  usePageMetadata({
+    title: 'Favorites — Pluggd',
+    description: 'Access the beats and releases you have favorited on Pluggd for quick playback and licensing.',
+    path: '/favorites',
+  });
+
   const { user } = useAuth();
   const { favorites, toggleFavorite, isFavorited, loading: favoritesLoading } = useFavorites();
   const { state, actions } = useGlobalPlayer();

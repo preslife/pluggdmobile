@@ -3,6 +3,9 @@ import { SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 const DEFAULT_OG_ENDPOINT =
   (import.meta as any).env?.VITE_OG_IMAGE_ENDPOINT || "https://qkwvqmubhyondemhasjp.supabase.co/functions/v1/generate-og-image";
 
+const DEFAULT_OG_ENTITY_ENDPOINT =
+  (import.meta as any).env?.VITE_OG_ENTITY_ENDPOINT || DEFAULT_OG_ENDPOINT.replace(/generate-og-image$/, "og-entity");
+
 export type OgImageVariant = "release" | "beat" | "profile" | "session" | "store" | "default";
 
 export interface BuildOgImageOptions {
@@ -30,6 +33,23 @@ const getEndpoint = (override?: string) => {
   }
 
   return "/og";
+};
+
+const getEntityEndpoint = (override?: string) => {
+  if (override) {
+    return override;
+  }
+
+  const envEndpoint = DEFAULT_OG_ENTITY_ENDPOINT;
+  if (envEndpoint) {
+    return envEndpoint;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/og`;
+  }
+
+  return "/api/og";
 };
 
 export const buildOgImageUrl = ({
@@ -95,3 +115,42 @@ export const buildProfileOgImageUrl = (
     imageUrl,
     type: "profile",
   });
+
+type EntityIdentifier = "release" | "beat" | "profile";
+
+interface BuildEntityOgOptions {
+  endpoint?: string;
+  resourceUrl?: string;
+  accent?: string | null;
+}
+
+export const buildEntityOgImageUrl = (
+  entity: EntityIdentifier,
+  identifier: string,
+  { endpoint, resourceUrl, accent }: BuildEntityOgOptions = {},
+): string => {
+  const base = getEntityEndpoint(endpoint);
+  const url = base.startsWith("http")
+    ? new URL(base)
+    : new URL(
+        base,
+        typeof window !== "undefined" ? window.location.origin : "https://pluggd.fm",
+      );
+
+  const cleanPath = url.pathname.replace(/\/$/, "");
+  url.pathname = `${cleanPath}/${entity}/${encodeURIComponent(identifier)}`;
+
+  if (resourceUrl) {
+    url.searchParams.set("url", resourceUrl);
+  }
+
+  if (accent) {
+    url.searchParams.set("accent", accent);
+  }
+
+  if (SUPABASE_ANON_KEY) {
+    url.searchParams.set("apikey", SUPABASE_ANON_KEY);
+  }
+
+  return url.toString();
+};

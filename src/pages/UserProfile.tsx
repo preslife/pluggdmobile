@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Settings, MapPin, Calendar, Music } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreatorPerksTab } from "@/components/CreatorPerksTab";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Profile {
   id: string;
@@ -44,13 +45,26 @@ const UserProfile = () => {
 
   const isOwnProfile = profile ? user?.id === profile.user_id : user?.id === userId;
 
+  const profileName = profile?.full_name || profile?.username || 'Pluggd Member';
+  const metaDescription = profile?.bio
+    ? profile.bio.slice(0, 160)
+    : 'View creator profiles, releases, and perks across the Pluggd community.';
+  const canonicalPath = userId ? `/user/${userId}` : username ? `/u/${username}` : '/user';
+
+  usePageMetadata({
+    title: `${profileName} — Pluggd Profile`,
+    description: metaDescription,
+    path: canonicalPath,
+    image: profile?.avatar_url ?? undefined,
+  });
+
   useEffect(() => {
     fetchProfile();
   }, [userId, username]);
 
   const fetchProfile = async () => {
     if (!userId && !username) return;
-    
+
     setLoading(true);
     try {
       // Support both username and userId lookup
@@ -84,6 +98,29 @@ const UserProfile = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const displayName = profile.full_name || profile.username || "Pluggd Creator";
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = username ? `/u/${username}` : `/user/${profile.user_id}`;
+    const identifier = profile.username || profile.user_id;
+    const ogUrl = identifier
+      ? buildEntityOgImageUrl('profile', identifier, {
+          resourceUrl: `${origin}${canonicalPath}`,
+        })
+      : undefined;
+
+    setMeta(
+      `${displayName} | Pluggd`,
+      profile.bio || `Follow ${displayName} on Pluggd for new drops and community activity.`,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [profile, username]);
 
   const handleSave = async () => {
     if (!profile || !user) return;

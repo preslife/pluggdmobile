@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type Item = {
   id: string;
@@ -14,6 +15,12 @@ type Item = {
 };
 
 export default function AdminCatalogModerationPage() {
+  usePageMetadata({
+    title: "Catalog Moderation — Pluggd Admin",
+    description: "Review and approve marketplace submissions across releases, beats, and digital products.",
+    path: "/admin/catalog/moderation",
+  });
+
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);

@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 type AuthFormData = {
   email: string;
@@ -19,6 +20,12 @@ type AuthFormData = {
 };
 
 const Auth = () => {
+  usePageMetadata({
+    title: 'Sign in or Create Account — Pluggd',
+    description: 'Access the Pluggd creator hub and fan tools by signing in or creating a secure account.',
+    path: '/auth',
+  });
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [resending, setResending] = useState(false);
   const { user, session, signUp, signIn, signInWithGoogle, loading } = useAuth();

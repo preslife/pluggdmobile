@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import Barflow from "@/components/Barflow";
 import { MobileBeatMaker } from "@/components/MobileBeatMaker";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 import { Link, useNavigate } from "react-router-dom";
 
@@ -37,6 +38,12 @@ const Tools = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  usePageMetadata({
+    title: "Creator Tools — Pluggd",
+    description: "Access AI music apps, analytics, monetization, and collaboration tools available within Pluggd.",
+    path: "/tools",
+  });
 
   const toolCategories = [
     { id: "all", name: "All Tools", icon: Zap },
