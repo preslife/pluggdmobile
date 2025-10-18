@@ -5,8 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { AdminAnalyticsTiles } from '@/components/AdminAnalyticsTiles';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 const AdminAnalytics = () => {
+  usePageMetadata({
+    title: 'Admin Analytics — Pluggd',
+    description: 'Review high-level platform metrics, creator performance, and growth signals from the Pluggd admin suite.',
+    path: '/admin/analytics',
+  });
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);

@@ -71,6 +71,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIntl, IntlShape } from "react-intl";
 
 interface CreatorStudioLayoutProps {
   children: React.ReactNode;
@@ -78,392 +79,334 @@ interface CreatorStudioLayoutProps {
 
 type StudioMode = "personal" | "label";
 
-const navigationItems = [
+const createNavigationItems = (intl: IntlShape) => [
   {
-    title: "Dashboard",
-    url: "/studio",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.dashboard', defaultMessage: 'Dashboard' }),
+    url: '/studio',
     icon: Home,
   },
   {
-    title: "Catalog",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.catalog', defaultMessage: 'Catalog' }),
     icon: Package,
     items: [
       {
-        title: "Releases",
-        url: "/studio/catalog?tab=releases",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.releases', defaultMessage: 'Releases' }),
+        url: '/studio/catalog?tab=releases',
         icon: Music,
       },
       {
-        title: "Beats",
-        url: "/studio/catalog?tab=beats",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.beats', defaultMessage: 'Beats' }),
+        url: '/studio/catalog?tab=beats',
         icon: HeadphonesIcon,
       },
       {
-        title: "Sound Packs",
-        url: "/studio/catalog?tab=sound-packs",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.soundPacks', defaultMessage: 'Sound Packs' }),
+        url: '/studio/catalog?tab=sound-packs',
         icon: Package,
       },
       {
-        title: "Bundles",
-        url: "/studio/catalog?tab=bundles",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.bundles', defaultMessage: 'Bundles' }),
+        url: '/studio/catalog?tab=bundles',
         icon: ShoppingBag,
       },
       {
-        title: "Merchandise",
-        url: "/studio/catalog?tab=merch",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.merch', defaultMessage: 'Merchandise' }),
+        url: '/studio/catalog?tab=merch',
         icon: Gift,
       },
       {
-        title: "Collectibles",
-        url: "/studio/catalog?tab=collectibles",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.catalog.collectibles', defaultMessage: 'Collectibles' }),
+        url: '/studio/catalog?tab=collectibles',
         icon: TrendingUp,
       },
     ],
   },
   {
-    title: "Plug-ins/Channels",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.plugins', defaultMessage: 'Plug-ins/Channels' }),
     icon: Plug,
     items: [
       {
-        title: "Connect",
-        url: "/studio/plugins/connect",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.connect', defaultMessage: 'Connect' }),
+        url: '/studio/plugins/connect',
         icon: Zap,
       },
       {
-        title: "Composer",
-        url: "/studio/plugins/composer",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.composer', defaultMessage: 'Composer' }),
+        url: '/studio/plugins/composer',
         icon: Music,
       },
       {
-        title: "Scheduler",
-        url: "/studio/plugins/scheduler",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.scheduler', defaultMessage: 'Scheduler' }),
+        url: '/studio/plugins/scheduler',
         icon: Calendar,
       },
       {
-        title: "Inbox",
-        url: "/studio/plugins/inbox",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.inbox', defaultMessage: 'Inbox' }),
+        url: '/studio/plugins/inbox',
         icon: MessageCircle,
       },
       {
-        title: "Analytics",
-        url: "/studio/plugins/analytics",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.analytics', defaultMessage: 'Analytics' }),
+        url: '/studio/plugins/analytics',
         icon: BarChart3,
       },
       {
-        title: "Smart Links",
-        url: "/studio/plugins/smart-links",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.plugins.smartLinks', defaultMessage: 'Smart Links' }),
+        url: '/studio/plugins/smart-links',
         icon: Globe,
       },
     ],
   },
   {
-    title: "Live",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.live', defaultMessage: 'Live' }),
     icon: Radio,
     items: [
       {
-        title: "Sessions",
-        url: "/studio/live/sessions",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.live.sessions', defaultMessage: 'Sessions' }),
+        url: '/studio/live/sessions',
         icon: Radio,
       },
       {
-        title: "Tickets",
-        url: "/studio/live/tickets",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.live.tickets', defaultMessage: 'Tickets' }),
+        url: '/studio/live/tickets',
         icon: FileText,
       },
       {
-        title: "Recordings",
-        url: "/studio/live/recordings",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.live.recordings', defaultMessage: 'Recordings' }),
+        url: '/studio/live/recordings',
         icon: HeadphonesIcon,
       },
     ],
   },
   {
-    title: "Courses",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.courses', defaultMessage: 'Courses' }),
     icon: GraduationCap,
     items: [
       {
-        title: "Builder",
-        url: "/studio/courses/builder",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.courses.builder', defaultMessage: 'Builder' }),
+        url: '/studio/courses/builder',
         icon: Workflow,
       },
       {
-        title: "Pricing",
-        url: "/studio/courses/pricing",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.courses.pricing', defaultMessage: 'Pricing' }),
+        url: '/studio/courses/pricing',
         icon: DollarSign,
       },
       {
-        title: "Enrollments",
-        url: "/studio/courses/enrollments",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.courses.enrollments', defaultMessage: 'Enrollments' }),
+        url: '/studio/courses/enrollments',
         icon: UserPlus,
       },
     ],
   },
   {
-    title: "Memberships",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.memberships', defaultMessage: 'Memberships' }),
     icon: Crown,
     items: [
       {
-        title: "Tiers",
-        url: "/studio/memberships/tiers",
-        icon: Crown,
-      },
-      {
-        title: "Perks",
-        url: "/studio/memberships/perks",
-        icon: Gift,
-      },
-      {
-        title: "Posts",
-        url: "/studio/memberships/posts",
-        icon: FileText,
-      },
-      {
-        title: "Discord Sync",
-        url: "/studio/memberships/discord",
-        icon: MessageCircle,
-      },
-    ],
-  },
-  {
-    title: "Crowdfunding",
-    icon: DollarSign,
-    items: [
-      {
-        title: "Campaigns",
-        url: "/studio/crowdfunding/campaigns",
-        icon: DollarSign,
-      },
-      {
-        title: "Rewards",
-        url: "/studio/crowdfunding/rewards",
-        icon: Gift,
-      },
-      {
-        title: "Updates",
-        url: "/studio/crowdfunding/updates",
-        icon: FileText,
-      },
-      {
-        title: "Risk",
-        url: "/studio/crowdfunding/risk",
-        icon: Shield,
-      },
-    ],
-  },
-  {
-    title: "Collaborations",
-    icon: Users,
-    items: [
-      {
-        title: "Projects",
-        url: "/studio/collaborations/projects",
-        icon: Workflow,
-      },
-      {
-        title: "Applicants",
-        url: "/studio/collaborations/applicants",
-        icon: UserPlus,
-      },
-      {
-        title: "Messages",
-        url: "/studio/collaborations/messages",
-        icon: MessageCircle,
-      },
-      {
-        title: "Milestones/Escrow",
-        url: "/studio/collaborations/milestones",
-        icon: Shield,
-      },
-    ],
-  },
-  {
-    title: "Analytics",
-    icon: TrendingUp,
-    items: [
-      {
-        title: "Sales",
-        url: "/studio/analytics/sales",
-        icon: DollarSign,
-      },
-      {
-        title: "Plays",
-        url: "/studio/analytics/plays",
-        icon: BarChart3,
-      },
-      {
-        title: "Funnels",
-        url: "/studio/analytics/funnels",
-        icon: Workflow,
-      },
-      {
-        title: "Sources/UTM",
-        url: "/studio/analytics/sources",
-        icon: Globe,
-      },
-      {
-        title: "Post ROI",
-        url: "/studio/analytics/post-roi",
-        icon: PieChart,
-      },
-    ],
-  },
-  {
-    title: "CRM & Audience",
-    icon: UserCheck,
-    items: [
-      {
-        title: "Customers",
-        url: "/studio/crm/customers",
-        icon: Users,
-      },
-      {
-        title: "Followers",
-        url: "/studio/crm/followers",
-        icon: UserPlus,
-      },
-      {
-        title: "Members",
-        url: "/studio/crm/members",
-        icon: Crown,
-      },
-      {
-        title: "Segments",
-        url: "/studio/crm/segments",
-        icon: PieChart,
-      },
-      {
-        title: "Exports",
-        url: "/studio/crm/exports",
-        icon: FileText,
-      },
-    ],
-  },
-  {
-    title: "Storefront & Profile",
-    icon: Store,
-    items: [
-      {
-        title: "Theme",
-        url: "/studio/storefront/theme",
-        icon: Lightbulb,
-      },
-      {
-        title: "Featured",
-        url: "/studio/storefront/featured",
-        icon: Crown,
-      },
-      {
-        title: "Navigation",
-        url: "/studio/storefront/navigation",
-        icon: Globe,
-      },
-      {
-        title: "Domain",
-        url: "/studio/storefront/domain",
-        icon: Globe,
-      },
-    ],
-  },
-  {
-    title: "Financials",
-    icon: CreditCard,
-    items: [
-      {
-        title: "Orders",
-        url: "/studio/financials/orders",
-        icon: Receipt,
-      },
-      {
-        title: "Refunds",
-        url: "/studio/financials/refunds",
-        icon: Receipt,
-      },
-      {
-        title: "Payouts/Statements",
-        url: "/studio/financials/payouts",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.memberships.plans', defaultMessage: 'Plans' }),
+        url: '/studio/memberships/plans',
         icon: CreditCard,
       },
       {
-        title: "Splits",
-        url: "/studio/financials/splits",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.memberships.perks', defaultMessage: 'Perks' }),
+        url: '/studio/memberships/perks',
+        icon: Gift,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.memberships.community', defaultMessage: 'Community' }),
+        url: '/studio/memberships/community',
+        icon: Users,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.crowdfunding', defaultMessage: 'Crowdfunding' }),
+    icon: DollarSign,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crowdfunding.campaigns', defaultMessage: 'Campaigns' }),
+        url: '/studio/crowdfunding/campaigns',
         icon: PieChart,
       },
       {
-        title: "Tax/KYC",
-        url: "/studio/financials/tax",
-        icon: Shield,
-      },
-    ],
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    items: [
-      {
-        title: "Account",
-        url: "/studio/settings/account",
-        icon: UserCheck,
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crowdfunding.rewards', defaultMessage: 'Rewards' }),
+        url: '/studio/crowdfunding/rewards',
+        icon: Gift,
       },
       {
-        title: "Team",
-        url: "/studio/settings/team",
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crowdfunding.supporters', defaultMessage: 'Supporters' }),
+        url: '/studio/crowdfunding/supporters',
         icon: Users,
       },
-      {
-        title: "Notifications",
-        url: "/studio/settings/notifications",
-        icon: MessageCircle,
-      },
-      {
-        title: "Integrations",
-        url: "/studio/settings/integrations",
-        icon: Plug,
-      },
-      {
-        title: "Defaults",
-        url: "/studio/settings/defaults",
-        icon: Settings,
-      },
-      {
-        title: "Distribution",
-        url: "/studio/settings/distribution",
-        icon: Globe,
-      },
-      {
-        title: "Legal Vault",
-        url: "/studio/settings/legal",
-        icon: Shield,
-      },
     ],
   },
   {
-    title: "Partnerships & Mentorship",
+    title: intl.formatMessage({ id: 'creatorStudio.nav.collaborations', defaultMessage: 'Collaborations' }),
     icon: Handshake,
     items: [
       {
-        title: "Brand Campaigns",
-        url: "/studio/partnerships/brands",
-        icon: Handshake,
+        title: intl.formatMessage({ id: 'creatorStudio.nav.collaborations.gigs', defaultMessage: 'Gigs' }),
+        url: '/studio/collaborations/gigs',
+        icon: Calendar,
       },
       {
-        title: "1:1 Mentorship",
-        url: "/studio/partnerships/mentorship",
-        icon: GraduationCap,
+        title: intl.formatMessage({ id: 'creatorStudio.nav.collaborations.inbox', defaultMessage: 'Inbox' }),
+        url: '/studio/collaborations/inbox',
+        icon: MessageCircle,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.collaborations.partners', defaultMessage: 'Partners' }),
+        url: '/studio/collaborations/partners',
+        icon: Handshake,
       },
     ],
   },
   {
-    title: "Label Studio",
-    url: "/studio/label",
-    icon: Building,
+    title: intl.formatMessage({ id: 'creatorStudio.nav.analytics', defaultMessage: 'Analytics' }),
+    icon: BarChart3,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.analytics.revenue', defaultMessage: 'Revenue' }),
+        url: '/studio/analytics/revenue',
+        icon: DollarSign,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.analytics.engagement', defaultMessage: 'Engagement' }),
+        url: '/studio/analytics/engagement',
+        icon: Users,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.analytics.audience', defaultMessage: 'Audience' }),
+        url: '/studio/analytics/audience',
+        icon: UserCheck,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.crm', defaultMessage: 'CRM' }),
+    icon: Users,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crm.contacts', defaultMessage: 'Contacts' }),
+        url: '/studio/crm/contacts',
+        icon: Users,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crm.segments', defaultMessage: 'Segments' }),
+        url: '/studio/crm/segments',
+        icon: PieChart,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.crm.automations', defaultMessage: 'Automations' }),
+        url: '/studio/crm/automations',
+        icon: Workflow,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.storefront', defaultMessage: 'Storefront' }),
+    icon: Store,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.storefront.themes', defaultMessage: 'Themes' }),
+        url: '/studio/storefront/themes',
+        icon: Lightbulb,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.storefront.pages', defaultMessage: 'Pages' }),
+        url: '/studio/storefront/pages',
+        icon: FileText,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.storefront.checkout', defaultMessage: 'Checkout' }),
+        url: '/studio/storefront/checkout',
+        icon: Receipt,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.financials', defaultMessage: 'Financials' }),
+    icon: DollarSign,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.financials.payouts', defaultMessage: 'Payouts' }),
+        url: '/studio/financials/payouts',
+        icon: Receipt,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.financials.statements', defaultMessage: 'Statements' }),
+        url: '/studio/financials/statements',
+        icon: FileText,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.financials.taxes', defaultMessage: 'Taxes' }),
+        url: '/studio/financials/taxes',
+        icon: Shield,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.settings', defaultMessage: 'Settings' }),
+    icon: Settings,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.settings.profile', defaultMessage: 'Profile' }),
+        url: '/studio/settings/profile',
+        icon: User,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.settings.team', defaultMessage: 'Team' }),
+        url: '/studio/settings/team',
+        icon: Users,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.settings.integrations', defaultMessage: 'Integrations' }),
+        url: '/studio/settings/integrations',
+        icon: Plug,
+      },
+    ],
+  },
+  {
+    title: intl.formatMessage({ id: 'creatorStudio.nav.partnerships', defaultMessage: 'Partnerships' }),
+    icon: Handshake,
+    items: [
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.partnerships.marketplace', defaultMessage: 'Marketplace' }),
+        url: '/studio/partnerships/marketplace',
+        icon: Store,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.partnerships.requests', defaultMessage: 'Requests' }),
+        url: '/studio/partnerships/requests',
+        icon: MessageCircle,
+      },
+      {
+        title: intl.formatMessage({ id: 'creatorStudio.nav.partnerships.deals', defaultMessage: 'Deals' }),
+        url: '/studio/partnerships/deals',
+        icon: Check,
+      },
+    ],
   },
 ];
 
 export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["Catalog", "Analytics"])); // Default open sections
   const { memberships, loading: labelsLoading, refresh } = useLabelMemberships();
+  const intl = useIntl();
+  const navigationItems = useMemo(() => createNavigationItems(intl), [intl]);
+  const defaultOpenSections = useMemo(
+    () => [
+      intl.formatMessage({ id: 'creatorStudio.nav.catalog', defaultMessage: 'Catalog' }),
+      intl.formatMessage({ id: 'creatorStudio.nav.analytics', defaultMessage: 'Analytics' }),
+    ],
+    [intl]
+  );
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(defaultOpenSections));
+  useEffect(() => {
+    setOpenSections(new Set(defaultOpenSections));
+  }, [defaultOpenSections]);
 
   const getInitialContext = useCallback((): { mode: StudioMode; labelId: string | null } => {
     if (typeof window === "undefined") {
@@ -543,38 +486,38 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
             <>
               <Building className="h-4 w-4" />
               <span className="truncate">
-                {activeLabel.name || activeLabel.slug || "Label workspace"}
+                {activeLabel.name || activeLabel.slug || intl.formatMessage({ id: 'creatorStudio.workspace.label', defaultMessage: 'Label workspace' })}
               </span>
               <Badge variant="secondary" className="text-xs capitalize">
-                {activeLabel.role || "member"}
+                {activeLabel.role || intl.formatMessage({ id: 'creatorStudio.role.member', defaultMessage: 'member' })}
               </Badge>
             </>
           ) : (
             <>
               <User className="h-4 w-4" />
-              <span>Personal workspace</span>
+              <span>{intl.formatMessage({ id: 'creatorStudio.workspace.personal', defaultMessage: 'Personal workspace' })}</span>
             </>
           )}
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => handleSetMode("personal")}> 
+        <DropdownMenuLabel>{intl.formatMessage({ id: 'creatorStudio.workspace.menuTitle', defaultMessage: 'Workspace' })}</DropdownMenuLabel>
+        <DropdownMenuItem onSelect={() => handleSetMode("personal")}>
           <div className="flex w-full items-center justify-between">
             <span className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Personal workspace
+              {intl.formatMessage({ id: 'creatorStudio.workspace.personal', defaultMessage: 'Personal workspace' })}
             </span>
             {mode === "personal" && <Check className="h-4 w-4" />}
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Labels</DropdownMenuLabel>
+        <DropdownMenuLabel>{intl.formatMessage({ id: 'creatorStudio.workspace.labels', defaultMessage: 'Labels' })}</DropdownMenuLabel>
         {labelsLoading ? (
-          <DropdownMenuItem disabled>Loading labels…</DropdownMenuItem>
+          <DropdownMenuItem disabled>{intl.formatMessage({ id: 'creatorStudio.workspace.loading', defaultMessage: 'Loading labels…' })}</DropdownMenuItem>
         ) : memberships.length === 0 ? (
-          <DropdownMenuItem disabled>No labels yet</DropdownMenuItem>
+          <DropdownMenuItem disabled>{intl.formatMessage({ id: 'creatorStudio.workspace.none', defaultMessage: 'No labels yet' })}</DropdownMenuItem>
         ) : (
           memberships.map((membership) => (
             <DropdownMenuItem
@@ -585,12 +528,12 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                 <span className="flex items-center gap-2 truncate">
                   <Building className="h-4 w-4" />
                   <span className="truncate">
-                    {membership.name || membership.slug || "Label"}
+                    {membership.name || membership.slug || intl.formatMessage({ id: 'creatorStudio.workspace.labelFallback', defaultMessage: 'Label' })}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs capitalize">
-                    {membership.role || "member"}
+                    {membership.role || intl.formatMessage({ id: 'creatorStudio.role.member', defaultMessage: 'member' })}
                   </Badge>
                   {mode === "label" && activeLabel?.id === membership.id && (
                     <Check className="h-4 w-4" />
@@ -603,11 +546,11 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/studio/label") }>
           <Building className="h-4 w-4 mr-2" />
-          Open Label Studio
+          {intl.formatMessage({ id: 'creatorStudio.workspace.openLabel', defaultMessage: 'Open Label Studio' })}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate("/studio/label?create=1")}>
           <Plus className="h-4 w-4 mr-2" />
-          Create New Label
+          {intl.formatMessage({ id: 'creatorStudio.workspace.createLabel', defaultMessage: 'Create New Label' })}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -640,16 +583,22 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
   return (
     <StudioContext.Provider value={contextValue}>
       <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <Sidebar className="border-r">
+        <a
+          href="#studio-main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to studio content
+        </a>
+        <div className="min-h-screen w-full bg-background flex flex-col md:flex-row">
+        <Sidebar className="border-r" aria-label="Studio navigation">
           <SidebarHeader>
             <div className="flex items-center gap-2 px-2 py-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Music className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold">Creator Studio</h2>
-                <p className="text-xs text-muted-foreground">Professional Dashboard</p>
+                <h2 className="text-sm font-semibold">{intl.formatMessage({ id: 'creatorStudio.header.title', defaultMessage: 'Creator Studio' })}</h2>
+                <p className="text-xs text-muted-foreground">{intl.formatMessage({ id: 'creatorStudio.header.subtitle', defaultMessage: 'Professional Dashboard' })}</p>
               </div>
             </div>
           </SidebarHeader>
@@ -657,6 +606,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
+                <nav aria-label="Studio sections" className="space-y-1">
                 <SidebarMenu>
                   {navigationItems.map((item) => {
                     if (item.items && item.items.length > 0) {
@@ -669,7 +619,10 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                             <CollapsibleTrigger asChild>
                               <SidebarMenuButton
                                 isActive={hasActive}
-                                className="w-full justify-between"
+                                className={cn(
+                                  "w-full justify-between rounded-md px-2 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                  hasActive && "bg-primary/10"
+                                )}
                               >
                                 <div className="flex items-center gap-2">
                                   <item.icon className="h-4 w-4" />
@@ -688,10 +641,12 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                                     <SidebarMenuSubButton
                                       asChild
                                       isActive={isActive(subItem.url)}
+                                      className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                     >
                                       <button
+                                        type="button"
                                         onClick={() => navigate(subItem.url)}
-                                        className="w-full text-left"
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline-none"
                                       >
                                         <subItem.icon className="h-3 w-3" />
                                         <span>{subItem.title}</span>
@@ -711,10 +666,12 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                         <SidebarMenuButton
                           asChild
                           isActive={item.url ? isActive(item.url) : false}
+                          className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                           <button
+                            type="button"
                             onClick={() => item.url && navigate(item.url)}
-                            className="w-full justify-start"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline-none"
                           >
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
@@ -724,6 +681,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                     );
                   })}
                 </SidebarMenu>
+                </nav>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
@@ -739,13 +697,16 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
         
         <SidebarInset className="flex-1">
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger
+              className="-ml-1 h-11 w-11"
+              aria-label="Toggle studio navigation"
+            />
             <div className="flex-1" />
             {workspaceSwitcher}
             <ThemeToggle />
           </header>
           
-          <main className="flex-1 p-6 creator-studio-scope">
+          <main id="studio-main" className="flex-1 p-6 creator-studio-scope" tabIndex={-1}>
 
             {children}
           </main>

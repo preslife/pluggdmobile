@@ -6,9 +6,12 @@ import DomainAwareNavigation from "@/components/DomainAwareNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import SEOHelmet from "@/components/SEOHelmet";
+import { setMeta } from "@/lib/seo";
+import { buildEntityOgImageUrl } from "@/lib/og";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface UserProfile {
   id: string;
@@ -77,6 +80,19 @@ const Profile = () => {
     total_sales: 0,
     monthly_listeners: 0,
     fan_funding_raised: 0
+  });
+
+  const metaName = profile?.full_name || profile?.username;
+  const metaTitle = metaName ? `${metaName} — Pluggd Creator` : 'Creator Profile — Pluggd';
+  const metaDescription = profile?.bio
+    ? profile.bio.slice(0, 160)
+    : 'Discover creator storefronts, releases, and beats on Pluggd.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: userId ? `/profile/${userId}` : '/profile',
+    image: profile?.avatar_url ?? undefined,
   });
   const [loading, setLoading] = useState(true);
 
@@ -182,6 +198,29 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const displayName = profile.full_name || profile.username || "Pluggd Creator";
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/profile/${profile.user_id}`;
+    const identifier = profile.username || profile.user_id;
+    const ogUrl = identifier
+      ? buildEntityOgImageUrl('profile', identifier, {
+          resourceUrl: `${origin}${canonicalPath}`,
+        })
+      : undefined;
+
+    setMeta(
+      `${displayName} | Pluggd`,
+      profile.bio || `Explore ${displayName}'s releases, beats, and community updates on Pluggd.`,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [profile]);
 
   if (!userId) {
     return <Navigate to="/directory" replace />;

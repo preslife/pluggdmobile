@@ -44,6 +44,13 @@ const ModerationDashboard = () => {
   const [processing, setProcessing] = useState(false);
   const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
+  const loggerMetadata = useMemo(() => ({ userId: user?.id ?? null }), [user?.id]);
+  const { logger: moderationLogger, logUserAction } = useLogger({
+    component: 'ModerationDashboard',
+    feature: 'moderation',
+    metadata: loggerMetadata,
+  });
+
   useEffect(() => {
     if (user) {
       fetchModerationData();
@@ -52,7 +59,7 @@ const ModerationDashboard = () => {
 
   const fetchModerationData = async () => {
     try {
-      void logger.info('moderation_dashboard_fetch_start', {
+      void moderationLogger.info('moderation_dashboard_fetch_start', {
         user_id: user?.id,
       });
       // Fetch moderation items
@@ -63,7 +70,7 @@ const ModerationDashboard = () => {
 
       if (moderationError) {
         console.error('Error fetching moderation items:', moderationError);
-        void logger.error('moderation_dashboard_items_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_items_fetch_failed', {
           user_id: user?.id,
         }, toError(moderationError));
       }
@@ -77,7 +84,7 @@ const ModerationDashboard = () => {
 
       if (reportsError) {
         console.error('Error fetching reports:', reportsError);
-        void logger.error('moderation_dashboard_reports_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_reports_fetch_failed', {
           user_id: user?.id,
         }, toError(reportsError));
       }
@@ -201,7 +208,7 @@ const ModerationDashboard = () => {
         pending_reports: pendingReports,
         total_actions_today: actionsToday || 0
       });
-      void logger.info('moderation_dashboard_fetch_success', {
+      void moderationLogger.info('moderation_dashboard_fetch_success', {
         user_id: user?.id,
         pending_releases: pendingReleases,
         pending_comments: pendingComments,
@@ -210,7 +217,7 @@ const ModerationDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching moderation data:', error);
-      void logger.error('moderation_dashboard_fetch_failed', {
+      void moderationLogger.error('moderation_dashboard_fetch_failed', {
         user_id: user?.id,
       }, toError(error));
     } finally {

@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Building, Trash2, ExternalLink, Users, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type LabelRow = {
   id: string;
@@ -34,6 +35,12 @@ type LabelRow = {
 };
 
 export default function AdminLabelsPage() {
+  usePageMetadata({
+    title: "Label Management — Pluggd Admin",
+    description: "Audit label storefronts, manage owners, and oversee invitations for Pluggd collectives.",
+    path: "/admin/labels",
+  });
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const [labels, setLabels] = useState<LabelRow[]>([]);

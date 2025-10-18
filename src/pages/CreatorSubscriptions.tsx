@@ -8,8 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { HeartHandshake, DollarSign, Users, Settings, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 export default function CreatorSubscriptions() {
+  usePageMetadata({
+    title: 'Creator Subscriptions — Pluggd',
+    description: 'Configure membership tiers, manage benefits, and grow recurring revenue from your Pluggd community.',
+    path: '/creator/subscriptions',
+  });
+
   const { user } = useAuth();
 
   if (!user) {

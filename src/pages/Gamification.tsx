@@ -11,8 +11,15 @@ import { useGamification } from '@/hooks/useGamification';
 import { useBadges } from '@/hooks/useBadges';
 import { Trophy, Star, Target, Zap, Award, Medal } from 'lucide-react';
 import LeaderboardWidget from '@/components/LeaderboardWidget';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 const Gamification = () => {
+  usePageMetadata({
+    title: 'Gamification — Pluggd',
+    description: 'Track achievements, climb leaderboards, and unlock rewards as you grow within the Pluggd ecosystem.',
+    path: '/gamification',
+  });
+
   const { user } = useAuth();
   const { achievements, userStats, getLevelProgress } = useGamification();
   const { allBadges } = useBadges();

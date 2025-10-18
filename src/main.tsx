@@ -7,6 +7,7 @@ import { WalletProvider } from './hooks/useWallet.tsx'
 import { SubscriptionProvider } from './hooks/useSubscription.tsx'
 import { HelmetProvider } from 'react-helmet-async'
 import { CookiesProvider } from 'react-cookie'
+import { I18nProvider } from './i18n/I18nProvider'
 
 // Register service worker for PWA (disable in local dev to avoid caching issues)
 if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
@@ -25,11 +26,13 @@ createRoot(document.getElementById("root")!).render(
   <HelmetProvider>
     <CookiesProvider>
       <AuthProvider>
-        <WalletProvider>
-          <SubscriptionProvider>
-            <App />
-          </SubscriptionProvider>
-        </WalletProvider>
+        <I18nProvider>
+          <WalletProvider>
+            <SubscriptionProvider>
+              <App />
+            </SubscriptionProvider>
+          </WalletProvider>
+        </I18nProvider>
       </AuthProvider>
     </CookiesProvider>
   </HelmetProvider>

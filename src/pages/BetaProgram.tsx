@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 
 type BetaFormData = {
@@ -18,6 +19,12 @@ type BetaFormData = {
 };
 
 const BetaProgram = () => {
+  usePageMetadata({
+    title: "Pluggd Beta Program",
+    description: "Apply to test upcoming Pluggd creator tools, AI features, and collaborative studio workflows before they launch.",
+    path: "/beta-program",
+  });
+
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const form = useForm<BetaFormData>();

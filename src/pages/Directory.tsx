@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BookingForm } from "@/components/BookingForm";
 import { FollowButton } from "@/components/FollowButton";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type DirectoryEntry = {
   id: string;
@@ -47,6 +48,12 @@ type BookingProfessional = {
 };
 
 const Directory = () => {
+  usePageMetadata({
+    title: "Creator Directory — Pluggd",
+    description: "Book trusted producers, vocalists, and industry professionals from the Pluggd creator marketplace.",
+    path: "/directory",
+  });
+
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");

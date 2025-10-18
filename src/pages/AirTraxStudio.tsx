@@ -3,7 +3,15 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 const AirTraxStudio = () => {
+  usePageMetadata({
+    title: "AirTraX Studio — Pluggd",
+    description:
+      "Launch the AirTraX gesture-controlled studio to create music with motion capture tools and AI-powered assistance.",
+    path: "/airtrax-studio",
+  });
+
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const handleIframeLoad = () => {

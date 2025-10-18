@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -23,8 +23,10 @@ export const useSessionRooms = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchRooms = async () => {
-    setLoading(true);
+  const fetchRooms = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('session_rooms')
@@ -64,9 +66,11 @@ export const useSessionRooms = () => {
     } catch (error) {
       console.error('Error fetching rooms:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   const createRoom = async (title: string) => {
     if (!user) {
@@ -183,7 +187,27 @@ export const useSessionRooms = () => {
 
   useEffect(() => {
     fetchRooms();
-  }, []);
+  }, [fetchRooms]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('session-rooms')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'session_rooms' },
+        () => fetchRooms(false)
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'session_participants' },
+        () => fetchRooms(false)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRooms]);
 
   return {
     rooms,
