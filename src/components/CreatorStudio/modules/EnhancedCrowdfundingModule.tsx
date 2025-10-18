@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
 type RewardRow = Database['public']['Tables']['campaign_rewards']['Row'];
@@ -125,6 +126,7 @@ const defaultRewardForm: RewardFormState = {
 export const EnhancedCrowdfundingModule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<CampaignWithRelations[]>([]);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
@@ -137,12 +139,13 @@ export const EnhancedCrowdfundingModule = () => {
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
   const [supporterActionId, setSupporterActionId] = useState<string | null>(null);
   const [publishingCampaignId, setPublishingCampaignId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      fetchCampaigns();
-    }
-  }, [user]);
+  const [page, setPage] = useState(0);
+  const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [summary, setSummary] = useState({
+    totalRaised: 0,
+    supporterCount: 0,
+    liveCampaigns: 0
+  });
 
   const activeCampaign = useMemo(() => {
     if (!campaigns.length) return null;
@@ -158,44 +161,104 @@ export const EnhancedCrowdfundingModule = () => {
     return campaigns[0];
   }, [campaigns, activeCampaignId]);
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          campaign_rewards(*),
-          campaign_supporters(*, supporter:profiles!campaign_supporters_supporter_id_fkey(full_name, username, avatar_url)),
-          campaign_status_history(*)
-        `)
-        .eq('creator_id', user.id)
-        .order('created_at', { ascending: false });
+      void logger.info('crowdfunding_campaigns_fetch_start', {
+        creatorId: user.id,
+        page,
+        limit: pageSize
+      });
+
+      const { data, error } = await supabase.rpc('crowdfunding_list_campaigns', {
+        p_creator_id: user.id,
+        p_actor_id: user.id,
+        p_limit: pageSize,
+        p_offset: page * pageSize
+      });
 
       if (error) throw error;
 
-      const sorted = (data ?? []).map((campaign) => ({
-        ...campaign,
-        campaign_rewards: [...(campaign.campaign_rewards ?? [])].sort(
-          (a, b) => a.contribution_amount_cents - b.contribution_amount_cents
-        ),
-        campaign_supporters: [...(campaign.campaign_supporters ?? [])].sort(
-          (a, b) => new Date(b.contributed_at).getTime() - new Date(a.contributed_at).getTime()
-        ),
-        campaign_status_history: [...(campaign.campaign_status_history ?? [])].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ),
-      })) as CampaignWithRelations[];
+      const payload = (data ?? {}) as {
+        items?: any[];
+        total_count?: number;
+        summary?: Record<string, any>;
+      };
 
-      setCampaigns(sorted);
-      if (!activeCampaignId && sorted.length) {
-        const preferred = sorted.find((campaign) => campaign.status === 'live') ?? sorted[0];
-        setActiveCampaignId(preferred.id);
-      }
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const normalized: CampaignWithRelations[] = items.map((item: any) => {
+        const rewards = Array.isArray(item.rewards) ? item.rewards : [];
+        const supporters = Array.isArray(item.supporters) ? item.supporters : [];
+        const statusHistory = Array.isArray(item.status_history) ? item.status_history : [];
+
+        return {
+          ...(item as CampaignRow),
+          campaign_rewards: rewards
+            .map((reward: any) => ({ ...reward }))
+            .sort(
+              (a: any, b: any) =>
+                (a.contribution_amount_cents ?? 0) - (b.contribution_amount_cents ?? 0)
+            ),
+          campaign_supporters: supporters
+            .map((supporter: any) => ({
+              ...supporter,
+              supporter: supporter.supporter ?? null,
+            }))
+            .sort(
+              (a: any, b: any) =>
+                new Date(b.contributed_at).getTime() - new Date(a.contributed_at).getTime()
+            ),
+          campaign_status_history: statusHistory
+            .map((history: any) => ({ ...history }))
+            .sort(
+              (a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            ),
+        } as CampaignWithRelations;
+      });
+
+      const totalCount = Number(payload.total_count ?? normalized.length);
+      const summaryData = payload.summary ?? {};
+      const totalRaised = Number(summaryData.totalRaised ?? 0);
+      const supporterCount = Number(summaryData.supporterCount ?? 0);
+      const liveCampaigns = Number(summaryData.liveCampaigns ?? 0);
+
+      setCampaigns(normalized);
+      setTotalCampaigns(totalCount);
+      setSummary({
+        totalRaised: Number.isFinite(totalRaised) ? totalRaised : 0,
+        supporterCount: Number.isFinite(supporterCount) ? supporterCount : 0,
+        liveCampaigns: Number.isFinite(liveCampaigns) ? liveCampaigns : 0,
+      });
+
+      setActiveCampaignId((current) => {
+        if (!normalized.length) {
+          return null;
+        }
+
+        if (current && normalized.some((campaign) => campaign.id === current)) {
+          return current;
+        }
+
+        const preferred = normalized.find((campaign) => campaign.status === 'live') ?? normalized[0];
+        return preferred.id;
+      });
+
+      void logger.info('crowdfunding_campaigns_fetch_success', {
+        creatorId: user.id,
+        page,
+        limit: pageSize,
+        returned: normalized.length,
+        total: totalCount
+      });
     } catch (error: any) {
-      console.error('Error fetching campaigns:', error);
+      void logger.error(
+        'crowdfunding_campaigns_fetch_error',
+        { creatorId: user?.id ?? null, page, limit: pageSize },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Error loading campaigns',
         description: error.message,
@@ -204,7 +267,17 @@ export const EnhancedCrowdfundingModule = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, toast, user]);
+
+  useEffect(() => {
+    if (user) {
+      void fetchCampaigns();
+    }
+  }, [fetchCampaigns, user]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [user?.id]);
 
   const openCampaignModal = (campaign?: CampaignWithRelations) => {
     if (campaign) {
@@ -228,6 +301,10 @@ export const EnhancedCrowdfundingModule = () => {
 
     try {
       setSavingCampaign(true);
+      void logger.info('crowdfunding_campaign_save_start', {
+        creatorId: user.id,
+        campaignId: editingCampaignId,
+      });
       const goalCents = Math.max(0, Math.round((campaignForm.goalAmount || 0) * 100));
       const existing = editingCampaignId
         ? campaigns.find((campaign) => campaign.id === editingCampaignId)?.metadata
@@ -252,6 +329,11 @@ export const EnhancedCrowdfundingModule = () => {
 
         if (error) throw error;
         toast({ title: 'Campaign updated', description: 'Your changes have been saved.' });
+        void logger.info('crowdfunding_campaign_save_success', {
+          creatorId: user.id,
+          campaignId: editingCampaignId ?? null,
+          mode: 'update',
+        });
       } else {
         const { error } = await supabase
           .from('campaigns')
@@ -263,11 +345,21 @@ export const EnhancedCrowdfundingModule = () => {
 
         if (error) throw error;
         toast({ title: 'Campaign created', description: 'Your crowdfunding campaign has been created.' });
+        void logger.info('crowdfunding_campaign_save_success', {
+          creatorId: user.id,
+          campaignId: editingCampaignId ?? null,
+          mode: 'create',
+        });
       }
 
       setShowCampaignModal(false);
-      fetchCampaigns();
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_campaign_save_error',
+        { creatorId: user.id, campaignId: editingCampaignId },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: editingCampaignId ? 'Error updating campaign' : 'Error creating campaign',
         description: error.message,
@@ -300,6 +392,11 @@ export const EnhancedCrowdfundingModule = () => {
     if (!activeCampaign) return;
 
     try {
+      void logger.info('crowdfunding_reward_save_start', {
+        creatorId: user?.id ?? null,
+        campaignId: activeCampaign.id,
+        rewardId: editingRewardId,
+      });
       const amountCents = Math.max(0, Math.round((rewardForm.amount || 0) * 100));
       const quantityLimit = rewardForm.quantityLimit ? parseInt(rewardForm.quantityLimit, 10) : null;
       const payload: Partial<RewardRow> = {
@@ -319,6 +416,12 @@ export const EnhancedCrowdfundingModule = () => {
           .eq('campaign_id', activeCampaign.id);
         if (error) throw error;
         toast({ title: 'Reward updated', description: 'Reward details have been saved.' });
+        void logger.info('crowdfunding_reward_save_success', {
+          creatorId: user?.id ?? null,
+          campaignId: activeCampaign.id,
+          rewardId: editingRewardId,
+          mode: 'update',
+        });
       } else {
         const { error } = await supabase
           .from('campaign_rewards')
@@ -328,11 +431,22 @@ export const EnhancedCrowdfundingModule = () => {
           });
         if (error) throw error;
         toast({ title: 'Reward created', description: 'New reward tier added to your campaign.' });
+        void logger.info('crowdfunding_reward_save_success', {
+          creatorId: user?.id ?? null,
+          campaignId: activeCampaign.id,
+          rewardId: editingRewardId,
+          mode: 'create',
+        });
       }
 
       setShowRewardModal(false);
-      fetchCampaigns();
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_reward_save_error',
+        { creatorId: user?.id ?? null, campaignId: activeCampaign.id, rewardId: editingRewardId },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: editingRewardId ? 'Error updating reward' : 'Error creating reward',
         description: error.message,
@@ -344,6 +458,11 @@ export const EnhancedCrowdfundingModule = () => {
   const handlePublishCampaign = async (campaign: CampaignWithRelations, goLive: boolean) => {
     try {
       setPublishingCampaignId(campaign.id);
+      void logger.info('crowdfunding_campaign_publish_start', {
+        creatorId: user?.id ?? null,
+        campaignId: campaign.id,
+        goLive,
+      });
       const { error } = await supabase.rpc('crowdfunding_publish_campaign', {
         p_campaign_id: campaign.id,
         p_go_live: goLive,
@@ -358,8 +477,19 @@ export const EnhancedCrowdfundingModule = () => {
           : 'We will review your campaign before it goes live.',
       });
 
-      fetchCampaigns();
+      void logger.info('crowdfunding_campaign_publish_success', {
+        creatorId: user?.id ?? null,
+        campaignId: campaign.id,
+        goLive,
+      });
+
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_campaign_publish_error',
+        { creatorId: user?.id ?? null, campaignId: campaign.id, goLive },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to update campaign status',
         description: error.message,
@@ -372,6 +502,11 @@ export const EnhancedCrowdfundingModule = () => {
 
   const handleFinalizeCampaign = async (campaign: CampaignWithRelations, status: 'success' | 'failed' | 'fulfilled') => {
     try {
+      void logger.info('crowdfunding_campaign_finalize_start', {
+        creatorId: user?.id ?? null,
+        campaignId: campaign.id,
+        status,
+      });
       const { error } = await supabase
         .from('campaigns')
         .update({ status })
@@ -381,8 +516,18 @@ export const EnhancedCrowdfundingModule = () => {
         title: 'Campaign status updated',
         description: `Campaign marked as ${statusConfig[status].label.toLowerCase()}.`,
       });
-      fetchCampaigns();
+      void logger.info('crowdfunding_campaign_finalize_success', {
+        creatorId: user?.id ?? null,
+        campaignId: campaign.id,
+        status,
+      });
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_campaign_finalize_error',
+        { creatorId: user?.id ?? null, campaignId: campaign.id, status },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to update campaign',
         description: error.message,
@@ -395,14 +540,30 @@ export const EnhancedCrowdfundingModule = () => {
     try {
       setSupporterActionId(supporter.id);
       const note = window.prompt('Add a note for this fulfillment (optional)') ?? null;
+      void logger.info('crowdfunding_supporter_mark_fulfilled_start', {
+        creatorId: user?.id ?? null,
+        campaignId: supporter.campaign_id,
+        supporterId: supporter.id,
+        noteProvided: Boolean(note && note.trim().length > 0),
+      });
       const { error } = await supabase.rpc('crowdfunding_mark_supporter_fulfilled', {
         p_supporter_entry: supporter.id,
         p_note: note,
       });
       if (error) throw error;
       toast({ title: 'Reward fulfilled', description: 'Supporter has been notified.' });
-      fetchCampaigns();
+      void logger.info('crowdfunding_supporter_mark_fulfilled_success', {
+        creatorId: user?.id ?? null,
+        campaignId: supporter.campaign_id,
+        supporterId: supporter.id,
+      });
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_supporter_mark_fulfilled_error',
+        { creatorId: user?.id ?? null, campaignId: supporter.campaign_id, supporterId: supporter.id },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to mark fulfilled',
         description: error.message,
@@ -418,6 +579,13 @@ export const EnhancedCrowdfundingModule = () => {
       const reason = window.prompt('Enter refund reason');
       if (reason === null) return;
       setSupporterActionId(supporter.id);
+      void logger.info('crowdfunding_supporter_refund_start', {
+        creatorId: user?.id ?? null,
+        campaignId: supporter.campaign_id,
+        supporterId: supporter.id,
+        reasonProvided: Boolean(reason && reason.trim().length > 0),
+        refundCents: supporter.contribution_amount_cents,
+      });
       const { error } = await supabase.rpc('crowdfunding_refund_supporter', {
         p_supporter_entry: supporter.id,
         p_reason: reason,
@@ -425,8 +593,19 @@ export const EnhancedCrowdfundingModule = () => {
       });
       if (error) throw error;
       toast({ title: 'Supporter refunded', description: 'Contribution has been refunded.' });
-      fetchCampaigns();
+      void logger.info('crowdfunding_supporter_refund_success', {
+        creatorId: user?.id ?? null,
+        campaignId: supporter.campaign_id,
+        supporterId: supporter.id,
+        refundCents: supporter.contribution_amount_cents,
+      });
+      await fetchCampaigns();
     } catch (error: any) {
+      void logger.error(
+        'crowdfunding_supporter_refund_error',
+        { creatorId: user?.id ?? null, campaignId: supporter.campaign_id, supporterId: supporter.id },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to refund supporter',
         description: error.message,
@@ -488,6 +667,10 @@ export const EnhancedCrowdfundingModule = () => {
     );
   };
 
+  const pageStart = totalCampaigns === 0 ? 0 : page * pageSize + 1;
+  const pageEnd = Math.min(totalCampaigns, page * pageSize + campaigns.length);
+  const canGoNext = (page + 1) * pageSize < totalCampaigns;
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -519,6 +702,45 @@ export const EnhancedCrowdfundingModule = () => {
           <Plus className="w-4 h-4 mr-2" />
           New Campaign
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Raised</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{currencyFormatter.format(summary.totalRaised)}</div>
+            <p className="text-xs text-muted-foreground">Across all campaigns</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Supporters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summary.supporterCount.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Total backers recorded</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Live Campaigns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summary.liveCampaigns}</div>
+            <p className="text-xs text-muted-foreground">Currently accepting pledges</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCampaigns}</div>
+            <p className="text-xs text-muted-foreground">Historical view</p>
+          </CardContent>
+        </Card>
       </div>
 
       {activeCampaign ? (
@@ -862,26 +1084,53 @@ export const EnhancedCrowdfundingModule = () => {
                   <p className="text-muted-foreground">No campaigns yet.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {campaigns.map((campaign) => (
-                    <div key={campaign.id} className="border rounded-lg p-4">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                          <h3 className="font-semibold">{campaign.title}</h3>
-                          <p className="text-sm text-muted-foreground">{campaign.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <span>{formatCurrency(campaign.current_amount_cents)} raised</span>
-                            <span>{campaign.supporter_count} supporters</span>
-                            <span>Created {formatDate(campaign.created_at)}</span>
+                <>
+                  <div className="space-y-4">
+                    {campaigns.map((campaign) => (
+                      <div key={campaign.id} className="border rounded-lg p-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div>
+                            <h3 className="font-semibold">{campaign.title}</h3>
+                            <p className="text-sm text-muted-foreground">{campaign.description}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                              <span>{formatCurrency(campaign.current_amount_cents)} raised</span>
+                              <span>{campaign.supporter_count} supporters</span>
+                              <span>Created {formatDate(campaign.created_at)}</span>
+                            </div>
                           </div>
+                          <Badge variant={statusConfig[campaign.status].variant}>
+                            {statusConfig[campaign.status].label}
+                          </Badge>
                         </div>
-                        <Badge variant={statusConfig[campaign.status].variant}>
-                          {statusConfig[campaign.status].label}
-                        </Badge>
                       </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      {totalCampaigns === 0
+                        ? 'No campaigns to display'
+                        : `Showing ${pageStart}-${pageEnd} of ${totalCampaigns}`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(Math.max(0, page - 1))}
+                        disabled={page === 0 || loading}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page + 1)}
+                        disabled={!canGoNext || loading || campaigns.length === 0}
+                      >
+                        Next
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

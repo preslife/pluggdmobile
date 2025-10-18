@@ -8402,6 +8402,15 @@ export type Database = {
         Args: { p_campaign_id: string; p_go_live?: boolean | null; p_note?: string | null }
         Returns: Database['public']['Tables']['campaigns']['Row']
       }
+      crowdfunding_list_campaigns: {
+        Args: {
+          p_creator_id: string
+          p_actor_id: string
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
       crowdfunding_refund_supporter: {
         Args: {
           p_supporter_entry: string
@@ -8409,6 +8418,19 @@ export type Database = {
           p_refund_cents?: number | null
         }
         Returns: Database['public']['Tables']['campaign_supporters']['Row']
+      }
+      catalog_list_items: {
+        Args: {
+          p_actor_id: string
+          p_owner_user_id?: string | null
+          p_owner_label_id?: string | null
+          p_types?: string[] | null
+          p_status?: string[] | null
+          p_search?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
       }
       delete_label_as_owner: {
         Args: { p_label_id: string }
@@ -8471,6 +8493,18 @@ export type Database = {
       get_content_split_status: {
         Args: { p_content_id: string; p_content_type: string }
         Returns: string
+      }
+      crm_list_contacts: {
+        Args: {
+          p_creator_id: string
+          p_actor_id: string
+          p_limit?: number | null
+          p_offset?: number | null
+          p_query?: string | null
+          p_tags?: string[] | null
+          p_segment_id?: string | null
+        }
+        Returns: Json
       }
       get_crm_contacts: {
         Args: { p_creator_id?: string }
