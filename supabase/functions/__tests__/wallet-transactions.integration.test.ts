@@ -8,7 +8,7 @@ import type { SupabaseHarnessClient } from './helpers/supabaseTestHarness';
 const harness = new SupabaseTestHarness();
 
 async function seedTopup(client: SupabaseHarnessClient, userId: string, amount: number) {
-  await client
+  const { error } = await client
     .from('wallet_ledger')
     .insert({
       user_id: userId,
@@ -17,6 +17,10 @@ async function seedTopup(client: SupabaseHarnessClient, userId: string, amount: 
       created_at: new Date(Date.now() - 1000 * 60 * 60 * 72),
       meta: { seed: true },
     } as any);
+
+  if (error) {
+    throw new Error(`Failed to seed topup: ${error.message}`);
+  }
 }
 
 describe('wallet transactions integration', () => {
@@ -189,5 +193,97 @@ describe('wallet transactions integration', () => {
     const sellerEntries = ledger.filter((entry) => entry.user_id === sellerId);
     expect(sellerEntries).toHaveLength(1);
     expect(sellerEntries[0].amount_credits).toBe(200);
+  });
+
+  it('tracks running balances for credit purchase, spend, and refund lifecycle', async () => {
+    const supabase = harness.createClient();
+    const buyerId = await harness.createUser();
+    const sellerId = await harness.createUser();
+    const orderId = await harness.createOrder({ userId: buyerId, totalAmount: 300 });
+
+    await seedTopup(supabase, buyerId, 1000);
+
+    let balance = await supabase.rpc('get_wallet_balance', { p_user_id: buyerId });
+    expect(balance.data?.balance_credits).toBe(1000);
+    expect(balance.data?.pending_credits).toBe(0);
+    expect(balance.data?.available_credits).toBe(1000);
+
+    await processCreditsTransaction(supabase as any, buyerId, {
+      amount_credits: -300,
+      kind: 'spend_purchase',
+      ref_type: 'order',
+      ref_id: orderId,
+      counterparty_user_id: sellerId,
+      meta: { order_number: 'ORD-RUN-1' },
+    });
+
+    balance = await supabase.rpc('get_wallet_balance', { p_user_id: buyerId });
+    expect(balance.data?.balance_credits).toBe(700);
+    expect(balance.data?.pending_credits).toBe(0);
+    expect(balance.data?.available_credits).toBe(700);
+
+    const logger = vi.fn();
+    await handleChargeReversal(
+      supabase as any,
+      {
+        id: 'ch_run_1',
+        metadata: {
+          user_id: buyerId,
+          credits_applied: '300',
+          manual_amount_credits: '300',
+        },
+      } as any,
+      'evt_run_refund',
+      'refund',
+      logger,
+    );
+
+    const buyerEntries = (await harness.getLedgerEntries()).filter((entry) => entry.user_id === buyerId);
+    expect(buyerEntries).toHaveLength(3);
+
+    const [topup, spend, refund] = buyerEntries;
+    expect(topup.balance_before).toBe(0);
+    expect(topup.balance_after).toBe(1000);
+    expect(spend.balance_before).toBe(1000);
+    expect(spend.balance_after).toBe(700);
+    expect(refund.balance_before).toBe(700);
+    expect(refund.balance_after).toBe(1000);
+
+    expect(logger).toHaveBeenCalledWith('Recredited wallet after charge reversal', {
+      chargeId: 'ch_run_1',
+      creditsApplied: 300,
+      reason: 'refund',
+    });
+
+    balance = await supabase.rpc('get_wallet_balance', { p_user_id: buyerId });
+    expect(balance.data?.balance_credits).toBe(1000);
+    expect(balance.data?.pending_credits).toBe(0);
+    expect(balance.data?.available_credits).toBe(1000);
+  });
+
+  it('rejects direct ledger inserts that would violate balance integrity', async () => {
+    const supabase = harness.createClient();
+    const userId = await harness.createUser();
+
+    const { error: topupError } = await supabase.from('wallet_ledger').insert({
+      user_id: userId,
+      kind: 'topup',
+      amount_credits: 150,
+    } as any);
+
+    expect(topupError).toBeNull();
+
+    const { error: overspendError } = await supabase.from('wallet_ledger').insert({
+      user_id: userId,
+      kind: 'spend_purchase',
+      amount_credits: -300,
+      ref_type: 'manual_test',
+    } as any);
+
+    expect(overspendError?.message).toContain('Insufficient credits');
+
+    const entries = await harness.getLedgerEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].balance_after).toBe(150);
   });
 });
