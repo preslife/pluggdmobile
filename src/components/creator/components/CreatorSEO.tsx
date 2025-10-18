@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { buildEntityOgImageUrl } from '@/lib/og';
 
 interface CreatorProfile {
   username: string;
@@ -40,6 +41,9 @@ interface CreatorSEOProps {
 export const CreatorSEO = ({ profile, stats }: CreatorSEOProps) => {
   const baseUrl = window.location.origin;
   const creatorUrl = `${baseUrl}/creator/${profile.username}`;
+  const ogImage = profile.username
+    ? buildEntityOgImageUrl('profile', profile.username, { resourceUrl: creatorUrl })
+    : profile.cover_image_url || profile.avatar_url || `${baseUrl}/og-default.png`;
   
   // Build Person/MusicGroup schema
   const structuredData = {
@@ -98,7 +102,7 @@ export const CreatorSEO = ({ profile, stats }: CreatorSEOProps) => {
   const ogTags = {
     title: `${profile.full_name} (@${profile.username}) | Pluggd`,
     description: profile.bio || `Check out ${profile.full_name}'s music, beats, and exclusive content on Pluggd`,
-    image: profile.cover_image_url || profile.avatar_url || `${baseUrl}/og-default.png`,
+    image: ogImage,
     url: creatorUrl,
     type: 'profile'
   };

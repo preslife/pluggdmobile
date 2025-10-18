@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
 import { useIntl } from "react-intl";
 import { useLocalization } from "@/contexts/LocalizationContext";
+import { useLogger } from "@/hooks/useLogger";
 
 type OrderItemSummary = {
   id: string;
@@ -55,16 +56,30 @@ const StoreSuccess: React.FC = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
+  const loggerMetadata = useMemo(() => ({ sessionId }), [sessionId]);
+  const { logEvent, logError, logUserAction } = useLogger({
+    component: 'StoreSuccessPage',
+    feature: 'commerce',
+    view: 'store-success',
+    metadata: loggerMetadata,
+  });
+
   useEffect(() => {
     if (!sessionId) {
       setError(intl.formatMessage({ id: "store.success.missingSession", defaultMessage: "Missing session identifier. Please check your confirmation email for your receipt." }));
       setLoading(false);
+      void logError('store_success_missing_session', new Error('missing_session_id'), {
+        searchParams: Object.fromEntries(searchParams.entries()),
+      });
       return;
     }
 
     const fetchOrder = async () => {
+      let resolvedOrderId: string | null = null;
+      let resolvedHasOrder = false;
       try {
         setLoading(true);
+        void logEvent('store_success_order_fetch_start', { sessionId });
         const { data, error: fetchError } = await supabase
           .from("orders")
           .select("id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))")
@@ -77,26 +92,50 @@ const StoreSuccess: React.FC = () => {
 
         if (!data) {
           setError(intl.formatMessage({ id: "store.success.notFound", defaultMessage: "We could not find your order. If you were charged, contact support with your Stripe receipt." }));
+          setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
+          void logEvent('store_success_order_not_found', { sessionId });
           return;
         }
 
-        setOrder(data as unknown as OrderSummary);
+        const orderSummary = data as unknown as OrderSummary;
+        resolvedOrderId = orderSummary.id;
+        resolvedHasOrder = true;
+        setOrder(orderSummary);
+        void logEvent('store_success_order_fetch_success', {
+          sessionId,
+          orderId: orderSummary.id,
+          status: orderSummary.status,
+          total: orderSummary.total_amount,
+        });
+
         if (!cartCleared) {
           clearCart();
           setCartCleared(true);
+          void logEvent('store_success_cart_cleared', {
+            sessionId,
+            orderId: orderSummary.id,
+          });
         }
       } catch (err: any) {
         const fallback = intl.formatMessage({ id: "store.success.unableToLoad", defaultMessage: "Unable to load your order summary." });
         const message = err?.message || fallback;
         setError(message);
         toast({ title: intl.formatMessage({ id: "store.success.lookupFailed", defaultMessage: "Order lookup failed" }), description: message, variant: "destructive" });
+        toast({ title: "Order lookup failed", description: message, variant: "destructive" });
+        void logError('store_success_order_fetch_failed', err, { sessionId });
       } finally {
         setLoading(false);
+        void logEvent('store_success_order_fetch_complete', {
+          sessionId,
+          orderId: resolvedOrderId,
+          hasOrder: resolvedHasOrder,
+        });
       }
     };
 
     fetchOrder();
   }, [sessionId, clearCart, toast, cartCleared, intl]);
+  }, [sessionId, clearCart, toast, cartCleared, logEvent, logError, searchParams]);
 
   const heading = useMemo(() => {
     if (loading) return intl.formatMessage({ id: "store.success.heading.processing", defaultMessage: "Processing your order" });
@@ -124,11 +163,23 @@ const StoreSuccess: React.FC = () => {
 
         if (within24Hours) {
           setReleaseReceipt((current) => current ?? parsed);
+          void logEvent('store_success_release_receipt_restored', {
+            releaseId: parsed.releaseId,
+            source: 'sessionStorage',
+          });
+        } else {
+          void logEvent('store_success_release_receipt_discarded', {
+            releaseId: parsed.releaseId,
+            reason: 'stale',
+            source: 'sessionStorage',
+          });
         }
       } catch (parseError) {
         console.warn("Failed to parse stored release receipt context", parseError);
+        void logError('store_success_release_receipt_parse_failed', parseError, { source: 'sessionStorage' });
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
+        void logEvent('store_success_release_receipt_cleared', { source: 'sessionStorage' });
       }
     }
 
@@ -138,8 +189,9 @@ const StoreSuccess: React.FC = () => {
         releaseId: releaseIdParam,
         title: intl.formatMessage({ id: "store.success.releaseTitle", defaultMessage: "Your release" }),
       });
+      void logEvent('store_success_release_receipt_from_query', { releaseId: releaseIdParam });
     }
-  }, [searchParams, releaseReceipt]);
+  }, [searchParams, releaseReceipt, logEvent, logError]);
 
   return (
     <div className="min-h-[60vh] px-4 py-16 flex flex-col items-center bg-background">

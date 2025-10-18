@@ -22,7 +22,7 @@ import {
 import { creditPolicyService } from '@/services/credits/credit-policy';
 import { Slider } from '@/components/ui/slider';
 import { formatCurrency } from '@/lib/utils';
-import { logger } from '@/lib/logger';
+import { useLogger } from '@/hooks/useLogger';
 import {
   ShoppingCart,
   CreditCard,
@@ -194,6 +194,14 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
   const pollAbortRef = useRef(false);
   const paymentWindowOpenedRef = useRef(false);
 
+  const loggerMetadata = useMemo(() => ({ itemCount: items.length }), [items.length]);
+  const { logger: checkoutLogger, logUserAction } = useLogger({
+    component: 'CheckoutModal',
+    feature: 'checkout',
+    view: 'modal',
+    metadata: loggerMetadata,
+  });
+
   const checkoutItems = useMemo<PurchaseItem[]>(() => {
     return items.map((item) => {
       const config = getPurchaseTypeConfig(item.type);
@@ -219,7 +227,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       return;
     }
 
-    void logger.userAction('checkout_modal_opened', 'CheckoutModal', {
+    void logUserAction('checkout_modal_opened', {
       item_count: checkoutItems.length,
       total_cost_credits: totalCost,
       has_authenticated_user: Boolean(user?.id),
@@ -255,7 +263,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       let loggedTaxError = false;
 
       try {
-        void logger.info('checkout_tax_estimate_start', {
+        void checkoutLogger.info('checkout_tax_estimate_start', {
           cash_due_credits: cashDueCredits,
           amount_minor: amountMinor,
         });
@@ -267,7 +275,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         });
 
         if (error) {
-          void logger.error('checkout_tax_estimate_failed', {
+          void checkoutLogger.error('checkout_tax_estimate_failed', {
             cash_due_credits: cashDueCredits,
           }, toError(error));
           loggedTaxError = true;
@@ -285,7 +293,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
         setTaxQuote(normalized);
         setLiveMessage('Tax estimate ready.');
-        void logger.info('checkout_tax_estimate_success', {
+        void checkoutLogger.info('checkout_tax_estimate_success', {
           cash_due_credits: cashDueCredits,
           currency: normalized.currency,
           subtotal_minor: normalized.subtotalMinor,
@@ -300,7 +308,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         setLiveMessage('Unable to load the tax estimate automatically.');
         setTaxQuote(null);
         if (!loggedTaxError) {
-          void logger.error('checkout_tax_estimate_unhandled_failure', {
+          void checkoutLogger.error('checkout_tax_estimate_unhandled_failure', {
             cash_due_credits: cashDueCredits,
           }, toError(error));
         }
@@ -382,20 +390,20 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     if (!user) return;
 
     setLoading(true);
-    void logger.info('checkout_balance_fetch_start', {
+    void checkoutLogger.info('checkout_balance_fetch_start', {
       user_id: user.id,
     });
     try {
       const balance = await creditSystem.getBalanceSummary(user.id);
       setBalanceSummary(balance);
-      void logger.info('checkout_balance_fetch_success', {
+      void checkoutLogger.info('checkout_balance_fetch_success', {
         user_id: user.id,
         available_credits: balance.available_credits,
         held_credits: balance.held_credits,
       });
     } catch (error) {
       console.error('Error fetching balance:', error);
-      void logger.error('checkout_balance_fetch_failed', {
+      void checkoutLogger.error('checkout_balance_fetch_failed', {
         user_id: user.id,
       }, toError(error));
       toast({
@@ -410,24 +418,24 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
   const fetchPolicy = async () => {
     setPolicyLoading(true);
-    void logger.info('checkout_credit_policy_fetch_start', {});
+    void checkoutLogger.info('checkout_credit_policy_fetch_start', {});
     try {
       const policy = await creditPolicyService.getCurrentPolicy();
       if (policy?.maxCartPercent && Number.isFinite(policy.maxCartPercent)) {
         setMaxCartPercent(Math.min(Math.max(policy.maxCartPercent, 0), 1));
-        void logger.info('checkout_credit_policy_fetch_success', {
+        void checkoutLogger.info('checkout_credit_policy_fetch_success', {
           max_cart_percent: policy.maxCartPercent,
         });
       } else {
         setMaxCartPercent(DEFAULT_MAX_CART_PERCENT);
-        void logger.warn('checkout_credit_policy_missing', {
+        void checkoutLogger.warn('checkout_credit_policy_missing', {
           received_value: policy?.maxCartPercent,
         });
       }
     } catch (error) {
       console.error('Error fetching credit policy:', error);
       setMaxCartPercent(DEFAULT_MAX_CART_PERCENT);
-      void logger.error('checkout_credit_policy_fetch_failed', {}, toError(error));
+      void checkoutLogger.error('checkout_credit_policy_fetch_failed', {}, toError(error));
     } finally {
       setPolicyLoading(false);
     }
@@ -503,7 +511,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         },
       };
 
-      void logger.info('checkout_hybrid_session_request', {
+      void checkoutLogger.info('checkout_hybrid_session_request', {
         user_id: user.id,
         session_cash_due_credits: cashDueCredits,
         items: checkoutItems.map((item) => ({
@@ -518,7 +526,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       });
 
       if (error) {
-        void logger.error('checkout_hybrid_session_failed', {
+        void checkoutLogger.error('checkout_hybrid_session_failed', {
           user_id: user.id,
           session_cash_due_credits: cashDueCredits,
         }, toError(error));
@@ -526,7 +534,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       }
 
       if (data) {
-        void logger.info('checkout_hybrid_session_success', {
+        void checkoutLogger.info('checkout_hybrid_session_success', {
           user_id: user.id,
           session_cash_due_credits: cashDueCredits,
           has_payment_intent: Boolean((data as { paymentIntentId?: string | null })?.paymentIntentId),
@@ -547,7 +555,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       setPollMessage('Starting payment status checks...');
       setLiveMessage('Waiting for payment confirmation from Stripe...');
 
-      void logger.info('checkout_payment_poll_start', {
+      void checkoutLogger.info('checkout_payment_poll_start', {
         session_id: sessionId,
         initial_payment_intent_id: paymentIntentId ?? null,
       });
@@ -559,7 +567,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (pollAbortRef.current) {
           setPolling(false);
-          void logger.warn('checkout_payment_poll_cancelled', {
+          void checkoutLogger.warn('checkout_payment_poll_cancelled', {
             session_id: sessionId,
             latest_payment_intent_id: latestPaymentIntentId,
             attempt,
@@ -578,7 +586,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
           if (pollAbortRef.current) {
             setPolling(false);
-            void logger.warn('checkout_payment_poll_cancelled', {
+            void checkoutLogger.warn('checkout_payment_poll_cancelled', {
               session_id: sessionId,
               latest_payment_intent_id: latestPaymentIntentId,
             });
@@ -588,7 +596,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           if (error) {
             console.error('Checkout polling error:', error);
             setPollError('Unable to reach Stripe. Retrying...');
-            void logger.error('checkout_payment_poll_attempt_failed', {
+            void checkoutLogger.error('checkout_payment_poll_attempt_failed', {
               session_id: sessionId,
               attempt,
             }, toError(error));
@@ -602,7 +610,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
               setPolling(false);
               setPollError(null);
               setPollMessage('Payment confirmed! Finalizing...');
-              void logger.info('checkout_payment_poll_success', {
+              void checkoutLogger.info('checkout_payment_poll_success', {
                 session_id: sessionId,
                 payment_intent_id: latestPaymentIntentId,
                 attempts: attempt,
@@ -614,7 +622,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
               setPollError('The checkout session expired before completion.');
               setPolling(false);
               setLiveMessage('Payment session expired before completion.');
-              void logger.warn('checkout_payment_poll_expired', {
+              void checkoutLogger.warn('checkout_payment_poll_expired', {
                 session_id: sessionId,
                 payment_intent_id: latestPaymentIntentId,
                 attempts: attempt,
@@ -629,7 +637,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         } catch (error) {
           console.error('Unexpected polling error:', error);
           setPollError('An unexpected error occurred while checking payment status.');
-          void logger.error('checkout_payment_poll_unexpected_error', {
+          void checkoutLogger.error('checkout_payment_poll_unexpected_error', {
             session_id: sessionId,
             attempt,
           }, toError(error));
@@ -642,7 +650,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
       setPolling(false);
       setLiveMessage('Timed out while waiting for payment confirmation.');
-      void logger.warn('checkout_payment_poll_timeout', {
+      void checkoutLogger.warn('checkout_payment_poll_timeout', {
         session_id: sessionId,
         payment_intent_id: latestPaymentIntentId,
         attempts: maxAttempts,
@@ -676,7 +684,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     setCompletedPaymentIntentId(null);
     setReceiptUrl(null);
 
-    void logger.userAction('checkout_purchase_attempt', 'CheckoutModal', {
+    void checkoutLogger.userAction('checkout_purchase_attempt', 'CheckoutModal', {
       user_id: user.id,
       item_count: checkoutItems.length,
       total_cost_credits: totalCost,
@@ -722,7 +730,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         stripeCheckoutSessionId: checkoutSession?.sessionId ?? undefined,
       });
 
-      void logger.info('checkout_purchase_processed', {
+      void checkoutLogger.info('checkout_purchase_processed', {
         user_id: user.id,
         item_count: checkoutItems.length,
         requested_credits: desiredCredits,
@@ -744,7 +752,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           setStep('payment');
           setPurchasing(false);
 
-          void logger.info('checkout_purchase_waiting_for_stripe', {
+          void checkoutLogger.info('checkout_purchase_waiting_for_stripe', {
             user_id: user.id,
             session_id: checkoutSession.sessionId,
             payment_intent_id: checkoutSession.paymentIntentId ?? null,
@@ -762,7 +770,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
             setLiveMessage('Purchase complete. Downloads are ready.');
             await fetchBalance();
             onSuccess?.();
-            void logger.info('checkout_purchase_completed', {
+            void checkoutLogger.info('checkout_purchase_completed', {
               user_id: user.id,
               session_id: checkoutSession.sessionId,
               payment_intent_id: pollResult.paymentIntentId ?? null,
@@ -770,7 +778,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
             });
           } else if (pollResult.status === 'cancelled') {
             setLiveMessage('Payment polling cancelled.');
-            void logger.warn('checkout_purchase_polling_cancelled', {
+            void checkoutLogger.warn('checkout_purchase_polling_cancelled', {
               user_id: user.id,
               session_id: checkoutSession.sessionId,
               payment_intent_id: pollResult.paymentIntentId ?? null,
@@ -782,7 +790,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                 : pollResult.status === 'timeout'
                 ? pollResult.message
                 : pollResult.message || 'Unable to confirm payment.';
-            void logger.error('checkout_purchase_polling_failed', {
+            void checkoutLogger.error('checkout_purchase_polling_failed', {
               user_id: user.id,
               session_id: checkoutSession.sessionId,
               payment_intent_id: pollResult.paymentIntentId ?? null,
@@ -791,7 +799,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
             throw new Error(errorMessage);
           }
         } else {
-          void logger.error('checkout_purchase_missing_session', {
+          void checkoutLogger.error('checkout_purchase_missing_session', {
             user_id: user.id,
             checkout_session_present: Boolean(checkoutSession),
           });
@@ -806,7 +814,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         setLiveMessage('Purchase complete. Downloads are ready.');
         await fetchBalance();
         onSuccess?.();
-        void logger.info('checkout_purchase_completed', {
+        void checkoutLogger.info('checkout_purchase_completed', {
           user_id: user.id,
           session_id: null,
           payment_intent_id: null,
@@ -822,7 +830,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         variant: 'destructive',
       });
       setLiveMessage('Purchase failed. Please review the errors and try again.');
-      void logger.error('checkout_purchase_failed', {
+      void checkoutLogger.error('checkout_purchase_failed', {
         user_id: user?.id,
         item_count: checkoutItems.length,
       }, toError(error));
@@ -835,7 +843,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
   const handleDownloadReceipt = async () => {
     if (!completedPaymentIntentId) {
-      void logger.warn('checkout_receipt_missing_payment_reference', {
+      void checkoutLogger.warn('checkout_receipt_missing_payment_reference', {
         user_id: user?.id,
       });
       toast({
@@ -848,7 +856,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
     if (receiptUrl) {
       window.open(receiptUrl, '_blank');
-      void logger.info('checkout_receipt_opened_from_cache', {
+      void checkoutLogger.info('checkout_receipt_opened_from_cache', {
         user_id: user?.id,
         payment_intent_id: completedPaymentIntentId,
       });
@@ -857,7 +865,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
     setReceiptLoading(true);
     setLiveMessage('Preparing your receipt for download...');
-    void logger.info('checkout_receipt_generation_start', {
+    void checkoutLogger.info('checkout_receipt_generation_start', {
       user_id: user?.id,
       payment_intent_id: completedPaymentIntentId,
     });
@@ -878,7 +886,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         setReceiptUrl(data.pdf_url);
         window.open(data.pdf_url, '_blank');
         setLiveMessage('Receipt ready. Opened in a new tab.');
-        void logger.info('checkout_receipt_generation_success', {
+        void checkoutLogger.info('checkout_receipt_generation_success', {
           user_id: user?.id,
           payment_intent_id: completedPaymentIntentId,
         });
@@ -893,7 +901,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         variant: 'destructive',
       });
       setLiveMessage('Receipt generation failed.');
-      void logger.error('checkout_receipt_generation_failed', {
+      void checkoutLogger.error('checkout_receipt_generation_failed', {
         user_id: user?.id,
         payment_intent_id: completedPaymentIntentId,
       }, toError(error));
@@ -912,7 +920,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     setReceiptUrl(null);
     setPollMessage('');
     setPollIntroMessage('');
-    void logger.userAction('checkout_modal_closed', 'CheckoutModal', {
+    void logUserAction('checkout_modal_closed', {
       user_id: user?.id,
       item_count: checkoutItems.length,
       step,
