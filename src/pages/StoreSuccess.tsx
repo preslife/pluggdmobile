@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,12 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
+import { telemetry } from "@/services/analytics/telemetry";
+
+const RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY = 750;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type OrderItemSummary = {
   id: string;
@@ -51,16 +57,23 @@ const StoreSuccess: React.FC = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
-  useEffect(() => {
+  const fetchOrderWithRetry = useCallback(async () => {
     if (!sessionId) {
-      setError("Missing session identifier. Please check your confirmation email for your receipt.");
-      setLoading(false);
       return;
     }
 
-    const fetchOrder = async () => {
+    setLoading(true);
+    setError(null);
+
+    let attempt = 0;
+    let lastError: string | null = null;
+    let success = false;
+
+    while (attempt < RETRY_ATTEMPTS && !success) {
+      attempt += 1;
+      telemetry.store("success.fetch_attempt", { attempt, sessionId });
+
       try {
-        setLoading(true);
         const { data, error: fetchError } = await supabase
           .from("orders")
           .select("id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))")
@@ -72,26 +85,76 @@ const StoreSuccess: React.FC = () => {
         }
 
         if (!data) {
-          setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
-          return;
+          lastError = "We could not find your order. If you were charged, contact support with your Stripe receipt.";
+          telemetry.store("success.order_missing", { attempt, sessionId });
+
+          if (attempt < RETRY_ATTEMPTS) {
+            await wait(RETRY_BASE_DELAY * attempt);
+            continue;
+          }
+
+          setError(lastError);
+          toast({ title: "Order lookup failed", description: lastError, variant: "destructive" });
+          break;
         }
 
         setOrder(data as unknown as OrderSummary);
+        setError(null);
+        telemetry.store("success.fetch_success", {
+          attempt,
+          sessionId,
+          orderId: (data as { id?: string })?.id ?? null,
+        });
+
         if (!cartCleared) {
           clearCart();
           setCartCleared(true);
+          telemetry.checkout("cart_cleared", {
+            sessionId,
+            orderId: (data as { id?: string })?.id ?? null,
+            reason: "store.success",
+          });
         }
+
+        success = true;
       } catch (err: any) {
         const message = err?.message || "Unable to load your order summary.";
-        setError(message);
-        toast({ title: "Order lookup failed", description: message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
+        lastError = message;
+        telemetry.store("success.fetch_error", {
+          attempt,
+          sessionId,
+          message,
+        });
 
-    fetchOrder();
-  }, [sessionId, clearCart, toast, cartCleared]);
+        if (attempt < RETRY_ATTEMPTS) {
+          await wait(RETRY_BASE_DELAY * attempt);
+        } else {
+          setError(message);
+          toast({ title: "Order lookup failed", description: message, variant: "destructive" });
+        }
+      }
+    }
+
+    telemetry.store("success.fetch_complete", {
+      sessionId,
+      attempts: attempt,
+      success,
+      lastError,
+    });
+
+    setLoading(false);
+  }, [sessionId, clearCart, cartCleared, toast]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setError("Missing session identifier. Please check your confirmation email for your receipt.");
+      telemetry.store("success.missing_session", { search: searchParams.toString() || undefined });
+      setLoading(false);
+      return;
+    }
+
+    void fetchOrderWithRetry();
+  }, [sessionId, searchParams, fetchOrderWithRetry]);
 
   const heading = useMemo(() => {
     if (loading) return "Processing your order";
