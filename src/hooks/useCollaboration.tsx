@@ -19,6 +19,7 @@ export interface CollaborationProject {
   requirements?: string;
   project_type?: string;
   is_featured?: boolean;
+  applications_count?: number;
 }
 
 export interface ProjectApplication {
@@ -154,6 +155,42 @@ export const useCollaboration = (options?: { autoFetch?: boolean }) => {
     }
   };
 
+  const updateProjectBudget = async (projectId: string, budgetRange: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to update project budgets",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('collaboration_projects')
+        .update({ budget_range: budgetRange })
+        .eq('id', projectId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Budget updated",
+        description: "Your project budget has been saved."
+      });
+
+      await fetchProjects();
+      return true;
+    } catch (err: any) {
+      toast({
+        title: "Error updating budget",
+        description: err.message,
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   const hasUserApplied = async (projectId: string) => {
     if (!user) return false;
     try {
@@ -235,6 +272,7 @@ export const useCollaboration = (options?: { autoFetch?: boolean }) => {
     applyToProject,
     hasUserApplied,
     getUserProjects,
-    getUserApplications
+    getUserApplications,
+    updateProjectBudget
   };
 };
