@@ -30,6 +30,7 @@ import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
 import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
+import { fetchMembershipAccessRules } from '@/services/memberships/accessRules';
 
 type Beat = {
   id: string;
@@ -113,6 +114,16 @@ const BeatDetail = () => {
         ...beatData,
         profiles: profileData
       };
+
+      try {
+        const accessRule = await fetchMembershipAccessRules('beat', id);
+        if (accessRule) {
+          beatWithProfile.owner_id = accessRule.owner_id ?? beatData.owner_id ?? beatData.user_id ?? null;
+          beatWithProfile.owner_type = accessRule.owner_type ?? beatData.owner_type ?? null;
+        }
+      } catch (lookupError) {
+        console.error('Failed to load membership access rules', lookupError);
+      }
 
       setBeat(beatWithProfile);
 
@@ -372,7 +383,7 @@ const BeatDetail = () => {
             {/* Licensing Options */}
             <SubscriptionGatedContent
               contentId={beat.id}
-              contentType="track"
+              contentType="beat"
               creatorId={membershipCreatorId}
               ctaHref={membershipCtaHref}
               fallbackText="Become a member to unlock licensing, stems, and full downloads."
