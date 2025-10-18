@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, ExternalLink, Heart, Download } from "lucide-react";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Release {
   id: string;
@@ -24,6 +25,18 @@ export default function EmbedRelease() {
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  const title = release ? `${release.title} — ${release.artist} | Pluggd` : 'Embedded Release Player — Pluggd';
+  const description = release
+    ? `Stream "${release.title}" by ${release.artist} and support the artist directly on Pluggd.`
+    : 'Preview music releases directly within the Pluggd embeddable player.';
+
+  usePageMetadata({
+    title,
+    description,
+    path: slug ? `/embed/release/${slug}` : '/embed/release',
+    image: release?.cover_art_url ?? undefined,
+  });
 
   useEffect(() => {
     if (!slug) return;

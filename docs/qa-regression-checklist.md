@@ -23,3 +23,7 @@ _Last updated: 2025-10-14_
 ## Manual Smoke
 - [ ] Start dev server (`npm run dev`) and validate Agora call join still works in live session room.
 - [ ] Confirm Library downloads still function with tooltip/share interactions after mock adjustments.
+
+## Sitemap & SEO Metadata
+- [ ] `npm run lint` (fails if any route is missing `setMeta`/`usePageMetadata` coverage).
+- [ ] `npm run sitemap:generate` and confirm playlists, label storefronts, and crowdfunding campaigns appear in the XML payload.

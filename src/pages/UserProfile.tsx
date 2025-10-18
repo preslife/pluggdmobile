@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Settings, MapPin, Calendar, Music } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreatorPerksTab } from "@/components/CreatorPerksTab";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Profile {
   id: string;
@@ -43,6 +44,19 @@ const UserProfile = () => {
   });
 
   const isOwnProfile = profile ? user?.id === profile.user_id : user?.id === userId;
+
+  const profileName = profile?.full_name || profile?.username || 'Pluggd Member';
+  const metaDescription = profile?.bio
+    ? profile.bio.slice(0, 160)
+    : 'View creator profiles, releases, and perks across the Pluggd community.';
+  const canonicalPath = userId ? `/user/${userId}` : username ? `/u/${username}` : '/user';
+
+  usePageMetadata({
+    title: `${profileName} — Pluggd Profile`,
+    description: metaDescription,
+    path: canonicalPath,
+    image: profile?.avatar_url ?? undefined,
+  });
 
   useEffect(() => {
     fetchProfile();

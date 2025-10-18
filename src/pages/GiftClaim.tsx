@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Gift, LogIn, ArrowRight } from "lucide-react";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type ClaimState = "idle" | "loading" | "success" | "error" | "missing-token";
 
@@ -32,6 +33,12 @@ export const GiftClaim = () => {
   const [expectedEmail, setExpectedEmail] = useState<string | null>(null);
   const [release, setRelease] = useState<ClaimResponse["release"] | null>(null);
   const [libraryUrl, setLibraryUrl] = useState<string | null>(null);
+
+  usePageMetadata({
+    title: "Claim Your Gift — Pluggd",
+    description: "Redeem gifted releases instantly and add them to your Pluggd library.",
+    path: "/gift/claim",
+  });
 
   useEffect(() => {
     let canceled = false;

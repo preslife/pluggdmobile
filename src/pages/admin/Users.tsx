@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type Profile = {
   user_id: string;
@@ -12,6 +13,12 @@ type Profile = {
 };
 
 export default function AdminUsersPage() {
+  usePageMetadata({
+    title: "User Directory — Pluggd Admin",
+    description: "Search, audit, and promote community members with administrative permissions across Pluggd.",
+    path: "/admin/users",
+  });
+
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");

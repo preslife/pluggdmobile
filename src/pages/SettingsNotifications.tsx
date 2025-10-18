@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Bell, Settings } from "lucide-react";
 import { NotificationSettings } from "../components/NotificationSettings";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 export const SettingsNotificationsPage = () => {
-  useEffect(() => {
-    document.title = "Notifications — Pluggd";
-  }, []);
+  usePageMetadata({
+    title: "Notification Settings — Pluggd",
+    description: "Choose how Pluggd keeps you informed about new releases, supporters, and account updates.",
+    path: "/settings/notifications",
+  });
 
   return (
     <div className="min-h-screen bg-background">

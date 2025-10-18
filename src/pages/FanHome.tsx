@@ -10,6 +10,7 @@ import { Heart, Play, Download, Headphones, TrendingUp, Users } from "lucide-rea
 import { formatCredits } from "@/hooks/useWallet";
 import { TipModal } from "@/components/TipModal";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Activity {
   id: string;
@@ -43,6 +44,12 @@ export default function FanHome() {
   const [followFeed, setFollowFeed] = useState<Activity[]>([]);
   const [trending, setTrending] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  usePageMetadata({
+    title: "Fan Home — Pluggd",
+    description: "Follow your favorite creators, discover trending releases, and support artists directly on Pluggd.",
+    path: "/home",
+  });
 
   useEffect(() => {
     if (user) {

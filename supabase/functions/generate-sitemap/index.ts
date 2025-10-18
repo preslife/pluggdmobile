@@ -118,6 +118,67 @@ serve(async (req) => {
       }
     }
 
+    // Add public playlists
+    const { data: playlists } = await supabaseService
+      .from('playlists')
+      .select('id, updated_at, is_public, visibility')
+      .limit(1000);
+
+    if (playlists) {
+      for (const playlist of playlists) {
+        const isPublic = playlist?.is_public ?? playlist?.visibility === 'public';
+        if (!isPublic) continue;
+        sitemap += `  <url>
+    <loc>${baseUrl}/playlist/${playlist.id}</loc>
+    <lastmod>${new Date(playlist.updated_at).toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.55</priority>
+  </url>
+`;
+      }
+    }
+
+    // Add label storefronts
+    const { data: labels } = await supabaseService
+      .from('labels')
+      .select('slug, updated_at')
+      .not('slug', 'is', null)
+      .limit(500);
+
+    if (labels) {
+      for (const label of labels) {
+        sitemap += `  <url>
+    <loc>${baseUrl}/label/${label.slug}</loc>
+    <lastmod>${new Date(label.updated_at).toISOString().split('T')[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+`;
+      }
+    }
+
+    // Add active crowdfunding campaigns
+    const { data: campaigns } = await supabaseService
+      .from('campaigns')
+      .select('id, slug, updated_at, published_at')
+      .not('published_at', 'is', null)
+      .limit(500);
+
+    if (campaigns) {
+      for (const campaign of campaigns) {
+        const campaignPath = campaign.slug
+          ? `/studio/crowdfunding?campaign=${encodeURIComponent(campaign.slug)}`
+          : `/studio/crowdfunding?campaign=${campaign.id}`;
+        sitemap += `  <url>
+    <loc>${baseUrl}${campaignPath}</loc>
+    <lastmod>${new Date((campaign.updated_at || campaign.published_at) ?? new Date()).toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+`;
+      }
+    }
+
     sitemap += `</urlset>`;
 
     return new Response(sitemap, {

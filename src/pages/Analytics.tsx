@@ -17,6 +17,7 @@ import {
 import { AnalyticsSettings } from "@/components/AnalyticsSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface AnalyticsData {
   kpis: {
@@ -50,6 +51,12 @@ interface AnalyticsData {
 }
 
 const Analytics = () => {
+  usePageMetadata({
+    title: "Creator Analytics — Pluggd",
+    description: "Monitor streaming trends, audience engagement, and platform performance across your connected creator accounts.",
+    path: "/analytics",
+  });
+
   const [loading, setLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [artistIds, setArtistIds] = useState<{ spotifyArtistId: string; youtubeChannelId: string } | null>(null);
