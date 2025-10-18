@@ -45,6 +45,7 @@ export { CatalogRouter as CatalogModule } from './CatalogRouter';
 export { PluginsModule } from './PluginsModule';
 export { LiveModule } from './LiveModule';
 export { AnalyticsModule } from './AnalyticsModule';
+export { InsightsModule } from './InsightsModule';
 
 // Placeholder modules (to be implemented)
 // Import the enhanced courses module

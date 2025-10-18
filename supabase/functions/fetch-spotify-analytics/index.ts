@@ -23,6 +23,12 @@ serve(async (req) => {
       }
     );
 
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
     // Get user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
@@ -63,8 +69,11 @@ serve(async (req) => {
 
     const artist = await artistResponse.json();
     const analytics = [];
+    let totalStreams = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
     // Create or update artist analytics
-    const { data: artistAnalytics, error: artistError } = await supabaseClient
+    const { data: artistAnalytics, error: artistError } = await supabaseService
       .from('artist_analytics')
       .upsert({
         user_id: user.id,
@@ -97,7 +106,11 @@ serve(async (req) => {
         const comments = Math.floor(streams * 0.01);
         const shares = Math.floor(streams * 0.02);
 
-        await supabaseClient
+        totalStreams += streams;
+        totalLikes += likes;
+        totalComments += comments;
+
+        await supabaseService
           .from('track_analytics')
           .upsert({
             artist_analytics_id: artistAnalytics.id,
@@ -119,7 +132,7 @@ serve(async (req) => {
     
     for (const ageRange of ageRanges) {
       for (const country of countries) {
-        await supabaseClient
+        await supabaseService
           .from('audience_analytics')
           .upsert({
             artist_analytics_id: artistAnalytics.id,
@@ -138,6 +151,53 @@ serve(async (req) => {
       followers: artist.followers.total,
       popularity: artist.popularity,
     });
+
+    const metricDate = new Date().toISOString().split('T')[0];
+    const kpiRows = [
+      { key: 'total_streams', value: totalStreams },
+      { key: 'total_likes', value: totalLikes },
+      { key: 'total_comments', value: totalComments },
+      { key: 'total_followers', value: Number(artist.followers?.total ?? 0) },
+    ].filter(entry => Number.isFinite(entry.value));
+
+    if (kpiRows.length > 0) {
+      const periodStart = `${metricDate}T00:00:00Z`;
+      const periodEnd = `${metricDate}T23:59:59.999Z`;
+
+      const { error: deleteError } = await supabaseService
+        .from('creator_kpi_events')
+        .delete()
+        .eq('creator_id', user.id)
+        .eq('source', 'fetch-spotify-analytics')
+        .gte('occurred_at', periodStart)
+        .lte('occurred_at', periodEnd);
+
+      if (deleteError) {
+        console.error('Failed to prune existing Spotify KPI events', deleteError);
+      }
+
+      const { error: insertError } = await supabaseService
+        .from('creator_kpi_events')
+        .insert(
+          kpiRows.map(entry => ({
+            creator_id: user.id,
+            event_name: 'spotify_sync',
+            source: 'fetch-spotify-analytics',
+            occurred_at: `${metricDate}T23:59:59Z`,
+            metric_date: metricDate,
+            kpi_key: entry.key,
+            kpi_value: entry.value,
+            metadata: {
+              artist_id: artist.id,
+              metric_date: metricDate,
+            },
+          }))
+        );
+
+      if (insertError) {
+        console.error('Failed to store Spotify KPI events', insertError);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, analytics }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

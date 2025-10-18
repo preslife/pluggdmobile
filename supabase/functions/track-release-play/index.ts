@@ -110,6 +110,33 @@ serve(async (req) => {
         });
     }
 
+    // Emit KPI event for downstream analytics rollups
+    const occurredAt = new Date().toISOString();
+    const metricDate = occurredAt.split('T')[0];
+
+    const { error: kpiError } = await supabaseService
+      .from('creator_kpi_events')
+      .insert({
+        creator_id: release.user_id,
+        event_name: 'release_play',
+        source: 'track-release-play',
+        occurred_at: occurredAt,
+        metric_date: metricDate,
+        kpi_key: 'total_streams',
+        kpi_value: 1,
+        metadata: {
+          release_id: releaseId,
+          listener_id: userId,
+          play_duration: playDuration || null,
+          device_type: deviceType || null,
+          country_code: countryCode || null,
+        }
+      });
+
+    if (kpiError) {
+      console.error('Failed to store KPI event for release play', kpiError);
+    }
+
     // Award XP to the release owner if it's not their own play (and user is authenticated)
     if (userId && release.user_id !== userId) {
       const { data: currentStats } = await supabaseService
