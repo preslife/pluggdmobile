@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
+import { useIntl, FormattedMessage } from "react-intl";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -190,6 +191,7 @@ import FeaturesPreview from "@/components/FeaturesPreview";
 // Pluggd — Homepage (X3)
 // -----------------------------------------------------------------------------
 export default function PluggdHomepage() {
+  const intl = useIntl();
   const [role, setRole] = useState<"fans" | "creators">("fans");
   const [activeGenre, setActiveGenre] = useState<string | null>(null);
   const [beats, setBeats] = useState<BeatRow[]>([]);
@@ -397,13 +399,13 @@ export default function PluggdHomepage() {
 
           {/* Why Pluggd — credibility + conversion */}
           <section className="py-12">
-            <HeaderRow title="Why Pluggd" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.why" defaultMessage="Why Pluggd" />} />
             <FeatureBand />
           </section>
 
           {/* How it works — role aware */}
           <section className="py-12">
-            <HeaderRow title="How it works" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.how" defaultMessage="How it works" />} />
             <HowItWorks role={role} />
           </section>
 
@@ -412,12 +414,16 @@ export default function PluggdHomepage() {
 
           {/* FAQ */}
           <section className="py-12">
-            <HeaderRow title="FAQ" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.faq" defaultMessage="FAQ" />} />
             <FAQ />
           </section>
 
           <section className="py-12">
-            <HeaderRow title="Made with Pluggd" cta="See placements" ctaLink="/directory" />
+            <HeaderRow
+              title={<FormattedMessage id="homepage.section.madeWith" defaultMessage="Made with Pluggd" />}
+              cta={<FormattedMessage id="homepage.section.madeWithCta" defaultMessage="See placements" />}
+              ctaLink="/directory"
+            />
             <PlacementsRow />
           </section>
 
@@ -437,11 +443,11 @@ export default function PluggdHomepage() {
                         setCollabs(c);
                         setLive(l);
                       })
-                      .catch((e) => setError(e?.message ?? "Failed again"))
+                      .catch((e) => setError(e?.message ?? intl.formatMessage({ id: "homepage.error.again", defaultMessage: "Failed again" })))
                       .finally(() => setLoading(false));
                   }}
                 >
-                  Retry
+                  {intl.formatMessage({ id: "homepage.retry", defaultMessage: "Retry" })}
                 </button>
               </div>
             </div>
@@ -463,6 +469,7 @@ function Header({
   role: "fans" | "creators";
   setRole: (r: "fans" | "creators") => void;
 }) {
+  const intl = useIntl();
   // Minimal sticky sub-bar: only the Fan/Creator toggle
   return (
     <header className="sticky top-[var(--masthead-h)] z-40">
@@ -470,7 +477,7 @@ function Header({
         <div className="mx-auto flex h-12 w-full items-center justify-center">
           <div
             role="group"
-            aria-label="Audience mode"
+            aria-label={intl.formatMessage({ id: "homepage.audienceLabel", defaultMessage: "Audience mode" })}
             className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-background/40 px-1 py-1 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.4)] dark:bg-black/40"
           >
             <button
@@ -480,7 +487,7 @@ function Header({
               }`}
               aria-pressed={role === "fans"}
             >
-              I’m a Fan
+              {intl.formatMessage({ id: "homepage.hero.toggle.fans", defaultMessage: "I’m a Fan" })}
             </button>
             <button
               onClick={() => setRole("creators")}
@@ -489,7 +496,7 @@ function Header({
               }`}
               aria-pressed={role === "creators"}
             >
-              I’m a Creator
+              {intl.formatMessage({ id: "homepage.hero.toggle.creators", defaultMessage: "I’m a Creator" })}
             </button>
           </div>
         </div>
@@ -508,6 +515,7 @@ function Hero({
   labels: { key: string; label: string; helper: string }[];
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
 }) {
+  const intl = useIntl();
   return (
     <section className="relative overflow-visible pt-10">
       {/* subtle brand gradient behind the whole hero */}
@@ -520,19 +528,19 @@ function Hero({
         <div className="md:col-span-7 px-4">
           <h1 className="text-5xl md:text-[72px] font-extrabold leading-[1.06] tracking-tight">
             {role === "fans"
-              ? "Discover & support the artists you love"
-              : "Build, release, and get paid — in one hub"}
+              ? intl.formatMessage({ id: "homepage.hero.fanHeadline", defaultMessage: "Discover & support the artists you love" })
+              : intl.formatMessage({ id: "homepage.hero.creatorHeadline", defaultMessage: "Build, release, and get paid — in one hub" })}
           </h1>
           <p className="mt-3 max-w-2xl text-lg text-zinc-200">
             {role === "fans"
-              ? "Stream releases, buy digital music, tip creators, and join live sessions."
-              : "Sell beats & sound packs, license music, and book collaborations."}
+              ? intl.formatMessage({ id: "homepage.hero.fanSubheadline", defaultMessage: "Stream releases, buy digital music, tip creators, and join live sessions." })
+              : intl.formatMessage({ id: "homepage.hero.creatorSubheadline", defaultMessage: "Sell beats & sound packs, license music, and book collaborations." })}
           </p>
           <SearchBlock labels={labels} role={role} />
           <div className="mt-5 flex flex-wrap items-center gap-5 px-1 text-xs text-zinc-200/90">
-            <span>✅ Secure checkout</span>
-            <span>🪙 Credits never expire</span>
-            <span>🔕 No spam</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.secureCheckout", defaultMessage: "✅ Secure checkout" })}</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.credits", defaultMessage: "🪙 Credits never expire" })}</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.noSpam", defaultMessage: "🔕 No spam" })}</span>
           </div>
         </div>
         <div className="md:col-span-5" />
@@ -547,6 +555,7 @@ function HeroBackdrop({
 }: {
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
 }) {
+  const intl = useIntl();
   const [idx, setIdx] = useState(0);
   const [errorMap, setErrorMap] = useState<Record<number, boolean>>({});
   const timerRef = useRef<number | null>(null);
@@ -573,7 +582,7 @@ function HeroBackdrop({
           "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 55%)",
       }}
       aria-roledescription="carousel"
-      aria-label="Spotlight covers"
+      aria-label={intl.formatMessage({ id: "homepage.hero.carouselLabel", defaultMessage: "Spotlight covers" })}
     >
       {slides.map((s, i) => {
         const active = i === idx;
@@ -596,7 +605,10 @@ function HeroBackdrop({
       {/* Full-image click-through to detail page */}
       <a
         href={slides[idx]?.href ?? '#'}
-        aria-label={slides[idx]?.title ? `Open ${slides[idx]?.title}` : 'Open'}
+        aria-label={(() => {
+          const label = intl.formatMessage({ id: "homepage.hero.open", defaultMessage: "Open" });
+          return slides[idx]?.title ? `${label} ${slides[idx]?.title}` : label;
+        })()}
         className="absolute inset-0 z-10 block"
         onMouseEnter={() => warmRoute(slides[idx]?.href, slides[idx]?.src)}
       />
@@ -1426,7 +1438,7 @@ function LiveCard({ item }: { item: LiveSession }) {
 // -----------------------------------------------------------------------------
 // Grids / Bands / Footer (kept from X3 visual language)
 // -----------------------------------------------------------------------------
-function HeaderRow({ title, cta, ctaLink }: { title: string; cta?: string; ctaLink?: string }) {
+function HeaderRow({ title, cta, ctaLink }: { title: React.ReactNode; cta?: React.ReactNode; ctaLink?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
@@ -1476,11 +1488,28 @@ function GenreGrid({
 }
 
 function FeatureBand() {
+  const intl = useIntl();
   const feats = [
-    { icon: UploadCloud, t: "Upload once", d: "One hub for beats, releases, and packs." },
-    { icon: FileKey2, t: "Own your store", d: "Set pricing, licenses, and bundles." },
-    { icon: Coins, t: "Get paid fast", d: "Transparent payouts. No nonsense." },
-    { icon: Rocket, t: "Grow", d: "Contests, collabs & live sessions built-in." },
+    {
+      icon: UploadCloud,
+      t: intl.formatMessage({ id: "homepage.features.uploadOnce", defaultMessage: "Upload once" }),
+      d: intl.formatMessage({ id: "homepage.features.uploadDescription", defaultMessage: "One hub for beats, releases, and packs." }),
+    },
+    {
+      icon: FileKey2,
+      t: intl.formatMessage({ id: "homepage.features.ownStore", defaultMessage: "Own your store" }),
+      d: intl.formatMessage({ id: "homepage.features.ownStoreDescription", defaultMessage: "Set pricing, licenses, and bundles." }),
+    },
+    {
+      icon: Coins,
+      t: intl.formatMessage({ id: "homepage.features.getPaid", defaultMessage: "Get paid fast" }),
+      d: intl.formatMessage({ id: "homepage.features.getPaidDescription", defaultMessage: "Transparent payouts. No nonsense." }),
+    },
+    {
+      icon: Rocket,
+      t: intl.formatMessage({ id: "homepage.features.grow", defaultMessage: "Grow" }),
+      d: intl.formatMessage({ id: "homepage.features.growDescription", defaultMessage: "Contests, collabs & live sessions built-in." }),
+    },
   ];
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

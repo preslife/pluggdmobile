@@ -9,6 +9,8 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
+import { useIntl } from "react-intl";
+import { useLocalization } from "@/contexts/LocalizationContext";
 import { useLogger } from "@/hooks/useLogger";
 
 type OrderItemSummary = {
@@ -45,6 +47,8 @@ const StoreSuccess: React.FC = () => {
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const { toast } = useToast();
+  const intl = useIntl();
+  const { settings } = useLocalization();
 
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<OrderSummary | null>(null);
@@ -62,7 +66,7 @@ const StoreSuccess: React.FC = () => {
 
   useEffect(() => {
     if (!sessionId) {
-      setError("Missing session identifier. Please check your confirmation email for your receipt.");
+      setError(intl.formatMessage({ id: "store.success.missingSession", defaultMessage: "Missing session identifier. Please check your confirmation email for your receipt." }));
       setLoading(false);
       void logError('store_success_missing_session', new Error('missing_session_id'), {
         searchParams: Object.fromEntries(searchParams.entries()),
@@ -87,6 +91,7 @@ const StoreSuccess: React.FC = () => {
         }
 
         if (!data) {
+          setError(intl.formatMessage({ id: "store.success.notFound", defaultMessage: "We could not find your order. If you were charged, contact support with your Stripe receipt." }));
           setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
           void logEvent('store_success_order_not_found', { sessionId });
           return;
@@ -112,8 +117,10 @@ const StoreSuccess: React.FC = () => {
           });
         }
       } catch (err: any) {
-        const message = err?.message || "Unable to load your order summary.";
+        const fallback = intl.formatMessage({ id: "store.success.unableToLoad", defaultMessage: "Unable to load your order summary." });
+        const message = err?.message || fallback;
         setError(message);
+        toast({ title: intl.formatMessage({ id: "store.success.lookupFailed", defaultMessage: "Order lookup failed" }), description: message, variant: "destructive" });
         toast({ title: "Order lookup failed", description: message, variant: "destructive" });
         void logError('store_success_order_fetch_failed', err, { sessionId });
       } finally {
@@ -127,21 +134,22 @@ const StoreSuccess: React.FC = () => {
     };
 
     fetchOrder();
+  }, [sessionId, clearCart, toast, cartCleared, intl]);
   }, [sessionId, clearCart, toast, cartCleared, logEvent, logError, searchParams]);
 
   const heading = useMemo(() => {
-    if (loading) return "Processing your order";
-    if (error) return "We couldn't confirm your purchase";
-    return "Your order is confirmed";
-  }, [loading, error]);
+    if (loading) return intl.formatMessage({ id: "store.success.heading.processing", defaultMessage: "Processing your order" });
+    if (error) return intl.formatMessage({ id: "store.success.heading.error", defaultMessage: "We couldn't confirm your purchase" });
+    return intl.formatMessage({ id: "store.success.heading.success", defaultMessage: "Your order is confirmed" });
+  }, [loading, error, intl]);
 
   useEffect(() => {
     setMeta(
-      "Order Confirmed — Pluggd Store",
-      "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases.",
+      intl.formatMessage({ id: "store.success.metaTitle", defaultMessage: "Order Confirmed — Pluggd Store" }),
+      intl.formatMessage({ id: "store.success.metaDescription", defaultMessage: "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases." }),
       "/store/success"
     );
-  }, []);
+  }, [intl]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -179,7 +187,7 @@ const StoreSuccess: React.FC = () => {
     if (releaseIdParam && !releaseReceipt) {
       setReleaseReceipt({
         releaseId: releaseIdParam,
-        title: "Your release",
+        title: intl.formatMessage({ id: "store.success.releaseTitle", defaultMessage: "Your release" }),
       });
       void logEvent('store_success_release_receipt_from_query', { releaseId: releaseIdParam });
     }
@@ -200,20 +208,20 @@ const StoreSuccess: React.FC = () => {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">{heading}</h1>
           <p className="text-muted-foreground">
-            {loading && "Hang tight while we confirm your payment with Stripe."}
+            {loading && intl.formatMessage({ id: "store.success.processingMessage", defaultMessage: "Hang tight while we confirm your payment with Stripe." })}
             {!loading && !error && (
               releaseReceipt
-                ? "We've emailed your receipt. Use the download shortcut below or visit your library anytime."
-                : "We've emailed your receipt. Download links unlock immediately in your library."
+                ? intl.formatMessage({ id: "store.success.successWithReceipt", defaultMessage: "We've emailed your receipt. Use the download shortcut below or visit your library anytime." })
+                : intl.formatMessage({ id: "store.success.successNoReceipt", defaultMessage: "We've emailed your receipt. Download links unlock immediately in your library." })
             )}
-            {!loading && error && "Refresh the page or reach out to support if the charge completed."}
+            {!loading && error && intl.formatMessage({ id: "store.success.errorMessage", defaultMessage: "Refresh the page or reach out to support if the charge completed." })}
           </p>
         </div>
 
         {releaseReceipt && (
           <Card>
             <CardHeader>
-              <CardTitle>Access your download</CardTitle>
+              <CardTitle>{intl.formatMessage({ id: "store.success.accessDownload", defaultMessage: "Access your download" })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
@@ -221,16 +229,16 @@ const StoreSuccess: React.FC = () => {
                 {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ''}
               </p>
               <p className="text-xs">
-                Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download.
+                {intl.formatMessage({ id: "store.success.instantUnlock", defaultMessage: "Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download." })}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
                   <a href={`/release/${releaseReceipt.releaseId}?purchased=true`}>
-                    Go to release download
+                    {intl.formatMessage({ id: "store.success.goToRelease", defaultMessage: "Go to release download" })}
                   </a>
                 </Button>
                 <Button variant="outline" onClick={() => navigate(`/release/${releaseReceipt.releaseId}?purchased=true`)}>
-                  View in this window
+                  {intl.formatMessage({ id: "store.success.viewInWindow", defaultMessage: "View in this window" })}
                 </Button>
               </div>
             </CardContent>
@@ -239,13 +247,13 @@ const StoreSuccess: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Order details</CardTitle>
+            <CardTitle>{intl.formatMessage({ id: "store.success.orderDetails", defaultMessage: "Order details" })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {loading && (
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Verifying payment…</span>
+                <span>{intl.formatMessage({ id: "store.success.verifying", defaultMessage: "Verifying payment…" })}</span>
               </div>
             )}
 
@@ -259,27 +267,27 @@ const StoreSuccess: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Order ID</span>
+                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.orderNumber", defaultMessage: "Order #" })}</span>
                     <span className="font-mono text-xs">{order.id}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
+                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.status", defaultMessage: "Status" })}</span>
                     <span className="capitalize font-medium">{order.status}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Placed</span>
-                    <span>{new Date(order.created_at).toLocaleString()}</span>
+                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.placed", defaultMessage: "Placed" })}</span>
+                    <span>{intl.formatDate(new Date(order.created_at), { dateStyle: "medium", timeStyle: "short" })}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total charged</span>
-                    <span className="font-semibold">{formatCurrency(order.total_amount)}</span>
+                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.totalCharged", defaultMessage: "Total charged" })}</span>
+                    <span className="font-semibold">{formatCurrency(order.total_amount, settings.currency, settings.locale)}</span>
                   </div>
                 </div>
 
                 <Separator />
 
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Items</h2>
+                  <h2 className="text-lg font-semibold">{intl.formatMessage({ id: "store.success.itemsHeading", defaultMessage: "Items" })}</h2>
                   <div className="space-y-3">
                     {order.order_items?.length ? (
                       order.order_items.map((item) => (
@@ -287,7 +295,7 @@ const StoreSuccess: React.FC = () => {
                           {item.store_products?.image_url ? (
                             <img
                               src={item.store_products.image_url}
-                              alt={item.store_products.title ?? "Product thumbnail"}
+                              alt={item.store_products.title ?? intl.formatMessage({ id: "store.success.productThumbnail", defaultMessage: "Product thumbnail" })}
                               className="h-14 w-14 rounded-md object-cover border"
                             />
                           ) : (
@@ -296,17 +304,17 @@ const StoreSuccess: React.FC = () => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{item.store_products?.title ?? "Store item"}</p>
-                            <p className="text-xs text-muted-foreground uppercase">{item.product_type ?? "digital"}</p>
+                            <p className="font-medium truncate">{item.store_products?.title ?? intl.formatMessage({ id: "store.success.genericItem", defaultMessage: "Store item" })}</p>
+                            <p className="text-xs text-muted-foreground uppercase">{item.product_type ?? intl.formatMessage({ id: "store.success.digital", defaultMessage: "digital" })}</p>
                           </div>
                           <div className="text-right text-sm">
-                            <p className="font-medium">{formatCurrency(item.price)}</p>
-                            <p className="text-xs text-muted-foreground">Qty {item.quantity}</p>
+                            <p className="font-medium">{formatCurrency(item.price, settings.currency, settings.locale)}</p>
+                            <p className="text-xs text-muted-foreground">{intl.formatMessage({ id: "store.success.quantity", defaultMessage: "Qty {count}" }, { count: item.quantity })}</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-muted-foreground">No line items recorded yet. This can take a few seconds.</div>
+                      <div className="text-sm text-muted-foreground">{intl.formatMessage({ id: "store.success.noItems", defaultMessage: "No line items recorded yet. This can take a few seconds." })}</div>
                     )}
                   </div>
                 </div>
@@ -316,9 +324,9 @@ const StoreSuccess: React.FC = () => {
         </Card>
 
         <div className="flex flex-wrap gap-3 justify-center">
-          <Button variant="secondary" onClick={() => navigate("/store")}>Return to Store</Button>
-          <Button variant="outline" onClick={() => navigate("/account/orders")}>View Order History</Button>
-          <Button onClick={() => navigate("/library")}>Go to Library</Button>
+          <Button variant="secondary" onClick={() => navigate("/store")}>{intl.formatMessage({ id: "store.success.return", defaultMessage: "Return to store" })}</Button>
+          <Button variant="outline" onClick={() => navigate("/account/orders")}>{intl.formatMessage({ id: "store.success.viewOrders", defaultMessage: "View order history" })}</Button>
+          <Button onClick={() => navigate("/library")}>{intl.formatMessage({ id: "store.success.goToLibrary", defaultMessage: "Go to library" })}</Button>
         </div>
       </div>
     </div>
