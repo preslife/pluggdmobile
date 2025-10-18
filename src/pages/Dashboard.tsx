@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Music, User, Upload, DollarSign, Eye, Play, EyeOff, Crown, Zap, UserCheck, Package, Wallet } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 // import Navigation from '@/components/Navigation';
 import BeatUploadForm from '@/components/BeatUploadForm';
 import { ProfileManager } from '@/components/ProfileManager';
@@ -56,6 +57,12 @@ type Beat = {
 };
 
 const Dashboard = () => {
+  usePageMetadata({
+    title: 'Producer Dashboard — Pluggd',
+    description: 'Manage beats, releases, supporters, and monetization tools from the Pluggd producer control center.',
+    path: '/producer',
+  });
+
   const { user, loading } = useAuth();
   const { subscription, checkCourseLimit, refreshData } = useSubscription();
   const { toast } = useToast();

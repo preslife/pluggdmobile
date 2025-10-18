@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+import { createPreferenceCache, shouldSendNotification } from "../_shared/notificationPreferences.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,6 +41,25 @@ serve(async (req) => {
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const preferenceCache = createPreferenceCache();
+    const pushEnabled = await shouldSendNotification(
+      supabase as any,
+      preferenceCache,
+      userId,
+      'notify_push'
+    );
+
+    if (!pushEnabled) {
+      console.log(`Skipping push notification for ${userId} due to opt-out`);
+      return new Response(
+        JSON.stringify({ message: 'User has disabled push notifications' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }

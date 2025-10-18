@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { setMeta } from '@/lib/seo';
+import { buildEntityOgImageUrl } from '@/lib/og';
 import { formatCurrency } from '@/lib/utils';
 
 // UI Components
@@ -242,9 +243,14 @@ export const WorldClassCreatorPage = () => {
 
     const title = `${profile.full_name || profile.username} — Creator Storefront`;
     const description = profile.bio || `Explore ${profile.full_name || profile.username}'s music, courses, and exclusive content. Support their journey as a creator.`;
-    const imageUrl = profile.avatar_url || '/default-creator-cover.jpg';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/creator/${profile.username}`;
+    const identifier = profile.username || profile.user_id;
+    const ogUrl = buildEntityOgImageUrl('profile', identifier, {
+      resourceUrl: `${origin}${canonicalPath}`,
+    });
 
-    setMeta(title, description, `/creator/${profile.username}`, imageUrl);
+    setMeta(title, description, canonicalPath, ogUrl);
 
     // Add structured data
     const structuredData = {

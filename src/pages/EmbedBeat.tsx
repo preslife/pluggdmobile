@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, ExternalLink, Heart } from "lucide-react";
 import { formatCredits } from "@/hooks/useWallet";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Beat {
   id: string;
@@ -26,6 +27,18 @@ export default function EmbedBeat() {
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  const title = beat ? `${beat.title} — ${beat.producer_name ?? 'Pluggd Producer'}` : 'Embedded Beat Player — Pluggd';
+  const description = beat
+    ? `Stream and license "${beat.title}" directly from the Pluggd beat marketplace.`
+    : 'Preview and license beats from the Pluggd marketplace.';
+
+  usePageMetadata({
+    title,
+    description,
+    path: id ? `/embed/beat/${id}` : '/embed/beat',
+    image: beat?.image_url ?? undefined,
+  });
 
   useEffect(() => {
     if (!id) return;

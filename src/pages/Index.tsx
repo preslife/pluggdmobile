@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState, useContext, createContext } from "react";
+import React, { useEffect, useMemo, useRef, useState, useContext, createContext, useId } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause, Sparkles, Disc, Handshake, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
+import { useIntl, FormattedMessage } from "react-intl";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -190,6 +191,7 @@ import FeaturesPreview from "@/components/FeaturesPreview";
 // Pluggd — Homepage (X3)
 // -----------------------------------------------------------------------------
 export default function PluggdHomepage() {
+  const intl = useIntl();
   const [role, setRole] = useState<"fans" | "creators">("fans");
   const [activeGenre, setActiveGenre] = useState<string | null>(null);
   const [beats, setBeats] = useState<BeatRow[]>([]);
@@ -397,13 +399,13 @@ export default function PluggdHomepage() {
 
           {/* Why Pluggd — credibility + conversion */}
           <section className="py-12">
-            <HeaderRow title="Why Pluggd" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.why" defaultMessage="Why Pluggd" />} />
             <FeatureBand />
           </section>
 
           {/* How it works — role aware */}
           <section className="py-12">
-            <HeaderRow title="How it works" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.how" defaultMessage="How it works" />} />
             <HowItWorks role={role} />
           </section>
 
@@ -412,12 +414,16 @@ export default function PluggdHomepage() {
 
           {/* FAQ */}
           <section className="py-12">
-            <HeaderRow title="FAQ" cta="" />
+            <HeaderRow title={<FormattedMessage id="homepage.section.faq" defaultMessage="FAQ" />} />
             <FAQ />
           </section>
 
           <section className="py-12">
-            <HeaderRow title="Made with Pluggd" cta="See placements" ctaLink="/directory" />
+            <HeaderRow
+              title={<FormattedMessage id="homepage.section.madeWith" defaultMessage="Made with Pluggd" />}
+              cta={<FormattedMessage id="homepage.section.madeWithCta" defaultMessage="See placements" />}
+              ctaLink="/directory"
+            />
             <PlacementsRow />
           </section>
 
@@ -437,11 +443,11 @@ export default function PluggdHomepage() {
                         setCollabs(c);
                         setLive(l);
                       })
-                      .catch((e) => setError(e?.message ?? "Failed again"))
+                      .catch((e) => setError(e?.message ?? intl.formatMessage({ id: "homepage.error.again", defaultMessage: "Failed again" })))
                       .finally(() => setLoading(false));
                   }}
                 >
-                  Retry
+                  {intl.formatMessage({ id: "homepage.retry", defaultMessage: "Retry" })}
                 </button>
               </div>
             </div>
@@ -463,6 +469,7 @@ function Header({
   role: "fans" | "creators";
   setRole: (r: "fans" | "creators") => void;
 }) {
+  const intl = useIntl();
   // Minimal sticky sub-bar: only the Fan/Creator toggle
   return (
     <header className="sticky top-[var(--masthead-h)] z-40">
@@ -470,26 +477,26 @@ function Header({
         <div className="mx-auto flex h-12 w-full items-center justify-center">
           <div
             role="group"
-            aria-label="Audience mode"
+            aria-label={intl.formatMessage({ id: "homepage.audienceLabel", defaultMessage: "Audience mode" })}
             className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-background/40 px-1 py-1 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.4)] dark:bg-black/40"
           >
             <button
               onClick={() => setRole("fans")}
-              className={`px-3 py-1.5 rounded-full text-sm transition ${
+              className={`rounded-full px-4 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 role === "fans" ? "bg-white text-black" : "text-zinc-300 hover:text-white"
               }`}
               aria-pressed={role === "fans"}
             >
-              I’m a Fan
+              {intl.formatMessage({ id: "homepage.hero.toggle.fans", defaultMessage: "I’m a Fan" })}
             </button>
             <button
               onClick={() => setRole("creators")}
-              className={`px-3 py-1.5 rounded-full text-sm transition ${
+              className={`rounded-full px-4 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 role === "creators" ? "bg-white text-black" : "text-zinc-300 hover:text-white"
               }`}
               aria-pressed={role === "creators"}
             >
-              I’m a Creator
+              {intl.formatMessage({ id: "homepage.hero.toggle.creators", defaultMessage: "I’m a Creator" })}
             </button>
           </div>
         </div>
@@ -508,6 +515,7 @@ function Hero({
   labels: { key: string; label: string; helper: string }[];
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
 }) {
+  const intl = useIntl();
   return (
     <section className="relative overflow-visible pt-10">
       {/* subtle brand gradient behind the whole hero */}
@@ -516,26 +524,30 @@ function Hero({
       </div>
       {/* Blended artwork backdrop */}
       <HeroBackdrop slides={slides} />
-      <div className="relative z-10 mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-0 pb-12 md:grid-cols-12">
-        <div className="md:col-span-7 px-4">
-          <h1 className="text-5xl md:text-[72px] font-extrabold leading-[1.06] tracking-tight">
+      <div className="relative z-10 mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-12 md:grid md:grid-cols-12 md:gap-8 md:px-6">
+        <div className="md:col-span-7">
+          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-[72px]">
             {role === "fans"
-              ? "Discover & support the artists you love"
-              : "Build, release, and get paid — in one hub"}
+              ? intl.formatMessage({ id: "homepage.hero.fanHeadline", defaultMessage: "Discover & support the artists you love" })
+              : intl.formatMessage({ id: "homepage.hero.creatorHeadline", defaultMessage: "Build, release, and get paid — in one hub" })}
           </h1>
-          <p className="mt-3 max-w-2xl text-lg text-zinc-200">
+          <p className="mt-3 max-w-2xl text-base text-zinc-200 sm:text-lg">
             {role === "fans"
-              ? "Stream releases, buy digital music, tip creators, and join live sessions."
-              : "Sell beats & sound packs, license music, and book collaborations."}
+              ? intl.formatMessage({ id: "homepage.hero.fanSubheadline", defaultMessage: "Stream releases, buy digital music, tip creators, and join live sessions." })
+              : intl.formatMessage({ id: "homepage.hero.creatorSubheadline", defaultMessage: "Sell beats & sound packs, license music, and book collaborations." })}
           </p>
           <SearchBlock labels={labels} role={role} />
           <div className="mt-5 flex flex-wrap items-center gap-5 px-1 text-xs text-zinc-200/90">
-            <span>✅ Secure checkout</span>
-            <span>🪙 Credits never expire</span>
-            <span>🔕 No spam</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.secureCheckout", defaultMessage: "✅ Secure checkout" })}</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.credits", defaultMessage: "🪙 Credits never expire" })}</span>
+            <span>{intl.formatMessage({ id: "homepage.hero.bullet.noSpam", defaultMessage: "🔕 No spam" })}</span>
           </div>
         </div>
-        <div className="md:col-span-5" />
+        <div className="md:col-span-5">
+          <div className="md:sticky md:top-28">
+            <HeroBackdrop slides={slides} variant="panel" />
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -544,9 +556,12 @@ function Hero({
 // [HERO_BACKDROP:START]
 function HeroBackdrop({
   slides,
+  variant,
 }: {
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
+  variant?: "background" | "panel";
 }) {
+  const intl = useIntl();
   const [idx, setIdx] = useState(0);
   const [errorMap, setErrorMap] = useState<Record<number, boolean>>({});
   const timerRef = useRef<number | null>(null);
@@ -563,9 +578,62 @@ function HeroBackdrop({
 
   const go = (dir: number) => setIdx((i) => (i + dir + slides.length) % slides.length);
 
+  if (variant === "panel") {
+    return (
+      <div className="relative mt-4 h-64 overflow-hidden rounded-3xl border border-white/10 bg-background/70 shadow-xl backdrop-blur md:mt-0 md:h-[420px]">
+        {slides.map((s, i) => {
+          const active = i === idx;
+          const uri = errorMap[i]
+            ? coverDataUri(s.fallbackSeed, s.title, "Pluggd")
+            : s.src;
+          return (
+            <img
+              key={`${s.src}-${i}`}
+              src={uri}
+              onError={() => setErrorMap((m) => ({ ...m, [i]: true }))}
+              alt={s.title}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ${
+                active ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          );
+        })}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/40 dark:from-black/70" />
+        <a
+          href={slides[idx]?.href ?? "#"}
+          aria-label={slides[idx]?.title ? `Open ${slides[idx]?.title}` : "Open"}
+          className="absolute inset-0 z-10 block"
+          onMouseEnter={() => warmRoute(slides[idx]?.href, slides[idx]?.src)}
+        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 text-sm text-white/90">
+          <div className="font-semibold">{slides[idx]?.title ?? "Featured release"}</div>
+          {slides[idx]?.artist && <div className="text-xs text-white/80">{slides[idx]?.artist}</div>}
+        </div>
+        <div className="pointer-events-auto absolute inset-x-0 bottom-5 flex justify-between px-5">
+          <button
+            type="button"
+            aria-label="Previous slide"
+            onClick={() => go(-1)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-background/80 text-lg text-white transition hover:bg-background/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Next slide"
+            onClick={() => go(1)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-background/80 text-lg text-white transition hover:bg-background/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="absolute right-0 top-[50px] md:top-[44px] z-0 h-[360px] md:h-[400px] w-[50%] min-w-[480px] overflow-hidden rounded-none border-0 bg-transparent shadow-none"
+      className="absolute right-0 top-[50px] z-0 hidden h-[360px] w-[50%] min-w-[480px] overflow-hidden rounded-none border-0 bg-transparent shadow-none md:block md:top-[44px] md:h-[400px]"
       style={{
         WebkitMaskImage:
           "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 55%)",
@@ -573,7 +641,7 @@ function HeroBackdrop({
           "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 55%)",
       }}
       aria-roledescription="carousel"
-      aria-label="Spotlight covers"
+      aria-label={intl.formatMessage({ id: "homepage.hero.carouselLabel", defaultMessage: "Spotlight covers" })}
     >
       {slides.map((s, i) => {
         const active = i === idx;
@@ -593,26 +661,27 @@ function HeroBackdrop({
         );
       })}
       <div className="pointer-events-none absolute top-0 bottom-0 right-0 left-[-45%] bg-gradient-to-r from-background/70 via-background/40 to-transparent dark:from-black/70 dark:via-black/40" />
-      {/* Full-image click-through to detail page */}
       <a
         href={slides[idx]?.href ?? '#'}
-        aria-label={slides[idx]?.title ? `Open ${slides[idx]?.title}` : 'Open'}
+        aria-label={(() => {
+          const label = intl.formatMessage({ id: "homepage.hero.open", defaultMessage: "Open" });
+          return slides[idx]?.title ? `${label} ${slides[idx]?.title}` : label;
+        })()}
         className="absolute inset-0 z-10 block"
         onMouseEnter={() => warmRoute(slides[idx]?.href, slides[idx]?.src)}
       />
-            {/* Arrows, above the click overlay */}
       <div className="pointer-events-auto relative z-20">
         <button
           aria-label="Prev"
           onClick={() => go(-1)}
-          className="absolute left-6 top-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-background/55 p-2 backdrop-blur hover:bg-background/70 dark:bg-black/55 dark:hover:bg-black/70"
+          className="absolute left-6 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-background/55 text-lg backdrop-blur transition hover:bg-background/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white dark:bg-black/55 dark:hover:bg-black/70"
         >
           ‹
         </button>
         <button
           aria-label="Next"
           onClick={() => go(1)}
-          className="absolute right-6 top-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-background/55 p-2 backdrop-blur hover:bg-background/70 dark:bg-black/55 dark:hover:bg-black/70"
+          className="absolute right-6 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-background/55 text-lg backdrop-blur transition hover:bg-background/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white dark:bg-black/55 dark:hover:bg-black/70"
         >
           ›
         </button>
@@ -634,34 +703,40 @@ function SearchBlock({
 }) {
   const [active, setActive] = useState(labels[0].key);
   const [q, setQ] = useState("");
+  const searchInputId = useId();
+  const helperId = `${searchInputId}-helper`;
   useEffect(() => {
     if (!labels.length) return;
     setActive((prev) => (labels.some((label) => label.key === prev) ? prev : labels[0].key));
   }, [labels]);
   const submit = () => {
-      const term = q.trim();
-      if (!term) return;
-      const type = active;
-      try {
-        // Navigate to /search?q=...&tab=... (include legacy ?type for compatibility)
-        const searchParams = new URLSearchParams({
-          q: term,
-          tab: String(type)
-        });
-        // Preserve older ?type consumers until everything converges on ?tab
-        searchParams.set("type", String(type));
-        window.location.href = `/search?${searchParams.toString()}`;
-      } catch {}
-    };
+    const term = q.trim();
+    if (!term) return;
+    const type = active;
+    try {
+      const searchParams = new URLSearchParams({
+        q: term,
+        tab: String(type),
+      });
+      searchParams.set("type", String(type));
+      window.location.href = `/search?${searchParams.toString()}`;
+    } catch {}
+  };
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    submit();
+  };
+  const helperText = labels.find((l) => l.key === active)?.helper;
   return (
-    <div className="mt-5">
+    <form className="mt-5" onSubmit={handleSubmit} noValidate>
       <div className="rounded-2xl border border-white/10 bg-white/10 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 rounded-xl border border-white/10 bg-black/40 p-1">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/40 p-1 md:flex-nowrap">
           {labels.map((l) => (
             <button
               key={l.key}
+              type="button"
               onClick={() => setActive(l.key)}
-              className={`px-3 py-2 rounded-lg text-sm transition ${
+              className={`min-h-[44px] min-w-[44px] rounded-lg px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 active === l.key
                   ? "bg-white text-black"
                   : "text-zinc-200 hover:text-white"
@@ -671,7 +746,10 @@ function SearchBlock({
               {l.label}
             </button>
           ))}
-          <div className="ml-auto flex flex-1 items-center rounded-lg border border-white/10 bg-black/60 pl-3 pr-2">
+          <div className="ml-auto flex w-full flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/60 pl-3 pr-2">
+            <label htmlFor={searchInputId} className="sr-only">
+              Search Pluggd catalog
+            </label>
             <svg
               aria-hidden
               className="h-5 w-5 text-zinc-400"
@@ -685,7 +763,9 @@ function SearchBlock({
               />
             </svg>
             <input
-              className="w-full bg-transparent px-3 py-4 text-base outline-none placeholder:text-zinc-500"
+              id={searchInputId}
+              aria-describedby={helperText ? helperId : undefined}
+              className="w-full bg-transparent px-3 py-3 text-base outline-none placeholder:text-zinc-400"
               placeholder={
                 role === "fans"
                   ? "Search music, creators, or beats…"
@@ -694,19 +774,27 @@ function SearchBlock({
               value={q}
               onChange={(e) => setQ(e.currentTarget.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") submit();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
               }}
             />
-            <button className="rounded-lg bg-[#7C3AED] px-5 py-3 text-base" onClick={submit}>
+            <button
+              type="submit"
+              className="min-h-[44px] rounded-lg bg-[#7C3AED] px-5 py-3 text-base font-semibold text-white transition hover:bg-[#6d34d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
               Search
             </button>
           </div>
         </div>
       </div>
-      <div className="mt-2 text-xs text-zinc-300">
-        {labels.find((l) => l.key === active)?.helper}
-      </div>
-    </div>
+      {helperText && (
+        <div id={helperId} className="mt-2 text-xs text-zinc-300">
+          {helperText}
+        </div>
+      )}
+    </form>
   );
 }
 
@@ -1426,7 +1514,7 @@ function LiveCard({ item }: { item: LiveSession }) {
 // -----------------------------------------------------------------------------
 // Grids / Bands / Footer (kept from X3 visual language)
 // -----------------------------------------------------------------------------
-function HeaderRow({ title, cta, ctaLink }: { title: string; cta?: string; ctaLink?: string }) {
+function HeaderRow({ title, cta, ctaLink }: { title: React.ReactNode; cta?: React.ReactNode; ctaLink?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
@@ -1476,11 +1564,28 @@ function GenreGrid({
 }
 
 function FeatureBand() {
+  const intl = useIntl();
   const feats = [
-    { icon: UploadCloud, t: "Upload once", d: "One hub for beats, releases, and packs." },
-    { icon: FileKey2, t: "Own your store", d: "Set pricing, licenses, and bundles." },
-    { icon: Coins, t: "Get paid fast", d: "Transparent payouts. No nonsense." },
-    { icon: Rocket, t: "Grow", d: "Contests, collabs & live sessions built-in." },
+    {
+      icon: UploadCloud,
+      t: intl.formatMessage({ id: "homepage.features.uploadOnce", defaultMessage: "Upload once" }),
+      d: intl.formatMessage({ id: "homepage.features.uploadDescription", defaultMessage: "One hub for beats, releases, and packs." }),
+    },
+    {
+      icon: FileKey2,
+      t: intl.formatMessage({ id: "homepage.features.ownStore", defaultMessage: "Own your store" }),
+      d: intl.formatMessage({ id: "homepage.features.ownStoreDescription", defaultMessage: "Set pricing, licenses, and bundles." }),
+    },
+    {
+      icon: Coins,
+      t: intl.formatMessage({ id: "homepage.features.getPaid", defaultMessage: "Get paid fast" }),
+      d: intl.formatMessage({ id: "homepage.features.getPaidDescription", defaultMessage: "Transparent payouts. No nonsense." }),
+    },
+    {
+      icon: Rocket,
+      t: intl.formatMessage({ id: "homepage.features.grow", defaultMessage: "Grow" }),
+      d: intl.formatMessage({ id: "homepage.features.growDescription", defaultMessage: "Contests, collabs & live sessions built-in." }),
+    },
   ];
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

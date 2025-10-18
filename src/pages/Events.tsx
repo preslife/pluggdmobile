@@ -3,19 +3,19 @@ import { EventsListing } from "@/components/EventsListing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Plus } from "lucide-react";
-import { Helmet } from "react-helmet-async";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 export default function Events() {
   const { user } = useAuth();
 
+  usePageMetadata({
+    title: "Community Events — Pluggd",
+    description: "Discover upcoming workshops, live sessions, and community events hosted by creators on Pluggd.",
+    path: "/events",
+  });
+
   return (
-    <>
-      <Helmet>
-        <title>Events - Community Calendar</title>
-        <meta name="description" content="Discover upcoming events, workshops, and live sessions in the music community. Join or create events to connect with fellow creators." />
-      </Helmet>
-      
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -47,6 +47,5 @@ export default function Events() {
           </CardContent>
         </Card>
       </div>
-    </>
   );
 }

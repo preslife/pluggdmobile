@@ -5,7 +5,7 @@ import { Loader2, Lock, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ContentGateType, ContentType } from "@/types/memberships";
-import { logger } from "@/lib/logger";
+import { useLogger } from "@/hooks/useLogger";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type OwnerType = "profile" | "label";
@@ -71,6 +71,13 @@ export const SubscriptionGatedContent = ({
   const [impressionLogged, setImpressionLogged] = useState(false);
   const [unlockLogged, setUnlockLogged] = useState(false);
 
+  const loggerMetadata = useMemo(() => ({ contentId, contentType, creatorId }), [contentId, contentType, creatorId]);
+  const { logger: gatingLogger } = useLogger({
+    component: 'SubscriptionGatedContent',
+    feature: 'membership',
+    metadata: loggerMetadata,
+  });
+
   // Fetch gate configuration for the content
   useEffect(() => {
     let isMounted = true;
@@ -94,7 +101,7 @@ export const SubscriptionGatedContent = ({
 
         if (error) {
           console.error("Failed to load gate configuration", error);
-          void logger.error("gate_config_load_failed", {
+          void gatingLogger.error("gate_config_load_failed", {
             contentId,
             contentType,
             error: error.message,
@@ -107,7 +114,7 @@ export const SubscriptionGatedContent = ({
       } catch (error: any) {
         if (!isMounted) return;
         console.error("Unexpected error loading gate configuration", error);
-        void logger.error("gate_config_load_failed", {
+        void gatingLogger.error("gate_config_load_failed", {
           contentId,
           contentType,
           error: error?.message ?? String(error),
@@ -149,7 +156,7 @@ export const SubscriptionGatedContent = ({
 
       if (error) {
         console.error("Failed to load membership tiers", error);
-        void logger.warn("membership_tier_lookup_failed", {
+        void gatingLogger.warn("membership_tier_lookup_failed", {
           contentId,
           contentType,
           ownerId: gateConfig.owner_id,
@@ -232,7 +239,7 @@ export const SubscriptionGatedContent = ({
     });
 
     const duration = performance.now() - started;
-    void logger.apiCall(
+    void gatingLogger.apiCall(
       "rpc",
       "check_content_access",
       duration,
@@ -246,7 +253,7 @@ export const SubscriptionGatedContent = ({
 
     if (error) {
       console.error("Failed to verify gated content access", error);
-      void logger.error("gate_access_check_failed", {
+      void gatingLogger.error("gate_access_check_failed", {
         contentId,
         contentType,
         gateType: gateConfig.gate_type,
@@ -321,7 +328,7 @@ export const SubscriptionGatedContent = ({
     if (!gateConfig || checkingAccess) return;
     if (hasAccess || impressionLogged) return;
 
-    void logger.info("membership_gate_impression", {
+    void gatingLogger.info("membership_gate_impression", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,
@@ -335,7 +342,7 @@ export const SubscriptionGatedContent = ({
   useEffect(() => {
     if (!gateConfig || !hasAccess || unlockLogged) return;
 
-    void logger.info("membership_gate_unlocked", {
+    void gatingLogger.info("membership_gate_unlocked", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,

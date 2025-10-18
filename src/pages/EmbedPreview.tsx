@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, ExternalLink } from "lucide-react";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface EmbedContent {
   id: string;
@@ -25,6 +26,20 @@ export default function EmbedPreview() {
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  const metaTitle = content
+    ? `${content.title}${content.artist ? ` — ${content.artist}` : ''} | Pluggd`
+    : 'Embedded Preview — Pluggd';
+  const metaDescription = content
+    ? `Preview ${content.type === 'beat' ? 'beat' : 'release'} "${content.title}" directly from Pluggd.`
+    : 'Preview releases and beats using the Pluggd embeddable player.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: type && id ? `/embed/${type}/${id}` : '/embed',
+    image: content?.image_url || content?.cover_art_url || undefined,
+  });
   
   // Parse settings from URL
   const urlParams = new URLSearchParams(window.location.search);
