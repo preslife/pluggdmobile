@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useDropzone } from 'react-dropzone';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
 
 interface AudioFile {
   file: File;
@@ -43,6 +48,32 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [audioElements, setAudioElements] = useState<{ [key: string]: HTMLAudioElement }>({});
+
+  const resolveOwner = useCallback(() => ({
+    ownerType: 'profile' as const,
+    ownerId: user?.id ?? null,
+  }), [user?.id]);
+
+  const {
+    availableTiers,
+    tiersLoading,
+    gateEnabled,
+    setGateEnabled,
+    gateType,
+    setGateType,
+    minimumTierId,
+    setMinimumTierId,
+    allowedTierIds,
+    setAllowedTierIds,
+    previewText,
+    setPreviewText,
+    previewDuration,
+    setPreviewDuration,
+    saveRulesFor,
+  } = useMembershipAccessRuleEditor({
+    contentType: 'sample_pack',
+    resolveOwner,
+  });
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -202,7 +233,7 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
       // Convert price to pence for GBP
       const pricePence = Math.round(price * 100);
 
-      const { error } = await supabase
+      const { data: samplePack, error } = await supabase
         .from('sample_packs')
         .insert({
           user_id: user.id,
@@ -218,9 +249,18 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
           tags,
           is_active: false, // Needs approval
           approval_status: 'pending'
-        });
+        })
+        .select()
+        .maybeSingle();
 
       if (error) throw error;
+      if (!samplePack) throw new Error('Sample pack insert failed');
+
+      try {
+        await saveRulesFor(samplePack.id);
+      } catch (syncError) {
+        console.error('[EnhancedSamplePackUploader] Failed to sync membership gating', syncError);
+      }
 
       setUploadProgress(100);
       toast({ 
@@ -349,17 +389,172 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
             </Button>
           </div>
           
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                {tag}
-                <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(tag)} />
-              </Badge>
-            ))}
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+              {tag}
+              <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(tag)} />
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Membership Gating */}
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold">Membership Access</h3>
+            <p className="text-sm text-muted-foreground">
+              Lock this pack behind your membership tiers.
+            </p>
           </div>
+          <Switch
+            checked={gateEnabled}
+            onCheckedChange={(checked) => setGateEnabled(checked)}
+            disabled={tiersLoading || availableTiers.length === 0}
+          />
         </div>
 
-        {/* Cover Art Upload */}
+        {tiersLoading ? (
+          <div className="rounded-lg border border-dashed border-muted-foreground/40 p-4 text-sm text-muted-foreground">
+            Loading membership tiers...
+          </div>
+        ) : availableTiers.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-muted-foreground/40 p-4 text-sm text-muted-foreground">
+            Publish at least one active membership tier to enable supporter-only access.
+          </div>
+        ) : gateEnabled ? (
+          <div className="space-y-4 rounded-lg border p-4">
+            <div>
+              <Label className="text-sm font-medium">Access requirement</Label>
+              <RadioGroup
+                value={gateType}
+                onValueChange={(value) => setGateType(value as typeof gateType)}
+                className="mt-2 grid gap-2 md:grid-cols-3"
+              >
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="tier_or_higher" id="pack-gate-tier-or-higher" />
+                  <div>
+                    <Label htmlFor="pack-gate-tier-or-higher" className="text-sm font-medium">
+                      Tier or higher
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Members at or above the chosen tier can download the pack.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="specific_tier" id="pack-gate-specific" />
+                  <div>
+                    <Label htmlFor="pack-gate-specific" className="text-sm font-medium">
+                      Specific tiers
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Select exact tiers allowed to access this pack.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="any_tier" id="pack-gate-any" />
+                  <div>
+                    <Label htmlFor="pack-gate-any" className="text-sm font-medium">
+                      Any tier
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Every active supporter unlocks the download.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {gateType === 'tier_or_higher' && (
+              <div className="space-y-2">
+                <Label>Minimum tier</Label>
+                <Select
+                  value={minimumTierId ?? undefined}
+                  onValueChange={(value) => setMinimumTierId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTiers.map((tier) => (
+                      <SelectItem key={tier.id} value={tier.id}>
+                        {tier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {gateType === 'specific_tier' && (
+              <div className="space-y-3">
+                <Label>Allowed tiers</Label>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {availableTiers.map((tier) => {
+                    const checked = allowedTierIds.includes(tier.id);
+                    return (
+                      <label
+                        key={tier.id}
+                        className="flex items-center gap-2 rounded-lg border p-3 text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => {
+                            setAllowedTierIds((prev) => {
+                              if (value) {
+                                return Array.from(new Set([...prev, tier.id]));
+                              }
+                              return prev.filter((id) => id !== tier.id);
+                            });
+                          }}
+                        />
+                        <div>
+                          <span className="font-medium">{tier.name}</span>
+                          <p className="text-xs text-muted-foreground">Tier {tier.tier_order + 1}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Preview message (optional)</Label>
+                <Textarea
+                  placeholder="Describe what members get with this pack"
+                  value={previewText}
+                  onChange={(event) => setPreviewText(event.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Preview duration (seconds)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={previewDuration}
+                  onChange={(event) => setPreviewDuration(event.target.value)}
+                  placeholder="e.g. 20"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Control how much of the audio preview non-members hear.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <Separator />
+
+      {/* Cover Art Upload */}
         <div className="space-y-2">
           <Label>Cover Art</Label>
           <div

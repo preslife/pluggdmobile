@@ -1,5 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { X, Upload, Crown, Music, AudioLines, FileText, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -17,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FileUpload } from '@/components/FileUpload';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
 
 type BeatFormData = {
   title: string;
@@ -74,6 +78,32 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
   const [artworkUrl, setArtworkUrl] = useState<string>('');
   const [artworkFileName, setArtworkFileName] = useState<string>('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const resolveOwner = useCallback(() => ({
+    ownerType: 'profile' as const,
+    ownerId: user?.id ?? null,
+  }), [user?.id]);
+
+  const {
+    availableTiers,
+    tiersLoading,
+    gateEnabled,
+    setGateEnabled,
+    gateType,
+    setGateType,
+    minimumTierId,
+    setMinimumTierId,
+    allowedTierIds,
+    setAllowedTierIds,
+    previewText,
+    setPreviewText,
+    previewDuration,
+    setPreviewDuration,
+    saveRulesFor,
+  } = useMembershipAccessRuleEditor({
+    contentType: 'beat',
+    resolveOwner,
+  });
   
   // Enhanced upload fields
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -264,7 +294,13 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
         if (licensingError) throw licensingError;
       }
 
-      
+      try {
+        await saveRulesFor(beatData.id);
+      } catch (error) {
+        console.error('[BeatUploadForm] Failed to sync membership gating', error);
+      }
+
+
 
       // Increment usage count
       await incrementUsage('beats_uploaded_month');
@@ -684,6 +720,163 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
                   </div>
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            {/* Membership Gating */}
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Membership Access</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Restrict licensing and downloads to members of selected tiers.
+                  </p>
+                </div>
+                <Switch
+                  checked={gateEnabled}
+                  onCheckedChange={(checked) => setGateEnabled(checked)}
+                  disabled={tiersLoading || availableTiers.length === 0}
+                />
+              </div>
+
+              {tiersLoading ? (
+                <div className="rounded-lg border border-dashed border-muted-foreground/40 p-4 text-sm text-muted-foreground">
+                  Loading membership tiers...
+                </div>
+              ) : availableTiers.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-muted-foreground/40 p-4 text-sm text-muted-foreground">
+                  Publish at least one active membership tier to enable supporter-only access.
+                </div>
+              ) : gateEnabled ? (
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div>
+                    <FormLabel className="text-sm font-medium">Access requirement</FormLabel>
+                    <RadioGroup
+                      value={gateType}
+                      onValueChange={(value) => setGateType(value as typeof gateType)}
+                      className="mt-2 grid gap-2 md:grid-cols-3"
+                    >
+                      <div className="flex items-start gap-3 rounded-lg border p-3">
+                        <RadioGroupItem value="tier_or_higher" id="beat-gate-tier-or-higher" />
+                        <div>
+                          <Label htmlFor="beat-gate-tier-or-higher" className="text-sm font-medium">
+                            Tier or higher
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Members at the selected tier or higher unlock this beat.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-lg border p-3">
+                        <RadioGroupItem value="specific_tier" id="beat-gate-specific" />
+                        <div>
+                          <Label htmlFor="beat-gate-specific" className="text-sm font-medium">
+                            Specific tiers
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Limit access to specific membership tiers.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-lg border p-3">
+                        <RadioGroupItem value="any_tier" id="beat-gate-any" />
+                        <div>
+                          <Label htmlFor="beat-gate-any" className="text-sm font-medium">
+                            Any tier
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Any active supporter can unlock this beat.
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {gateType === 'tier_or_higher' && (
+                    <div className="space-y-2">
+                      <FormLabel>Minimum tier</FormLabel>
+                      <Select
+                        value={minimumTierId ?? undefined}
+                        onValueChange={(value) => setMinimumTierId(value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select tier" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableTiers.map((tier) => (
+                            <SelectItem key={tier.id} value={tier.id}>
+                              {tier.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {gateType === 'specific_tier' && (
+                    <div className="space-y-3">
+                      <FormLabel>Allowed tiers</FormLabel>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {availableTiers.map((tier) => {
+                          const checked = allowedTierIds.includes(tier.id);
+                          return (
+                            <label
+                              key={tier.id}
+                              className="flex items-center gap-2 rounded-lg border p-3 text-sm"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(value) => {
+                                  setAllowedTierIds((prev) => {
+                                    if (value) {
+                                      return Array.from(new Set([...prev, tier.id]));
+                                    }
+                                    return prev.filter((id) => id !== tier.id);
+                                  });
+                                }}
+                              />
+                              <div>
+                                <span className="font-medium">{tier.name}</span>
+                                <p className="text-xs text-muted-foreground">
+                                  Tier {tier.tier_order + 1}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <FormLabel>Preview message (optional)</FormLabel>
+                      <Textarea
+                        placeholder="Let fans know what they'll unlock as members"
+                        value={previewText}
+                        onChange={(event) => setPreviewText(event.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <FormLabel>Preview duration (seconds)</FormLabel>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={previewDuration}
+                        onChange={(event) => setPreviewDuration(event.target.value)}
+                        placeholder="e.g. 30"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Useful for sharing a short tagged preview with non-members.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <Separator />
