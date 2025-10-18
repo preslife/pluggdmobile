@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import SEOHelmet from "@/components/SEOHelmet";
 import { SecureDownloadButton } from "@/components/SecureDownloadButton";
+import { setMeta } from "@/lib/seo";
+import { buildEntityOgImageUrl } from "@/lib/og";
 
 type PurchaseMetadata = {
   id: string;
@@ -213,6 +215,28 @@ const ReleaseDetail = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!release) {
+      return;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/release/${release.id}`;
+    const shareDescription =
+      release.description?.trim() ||
+      `Listen to "${release.title}" by ${release.artist} on Pluggd.`;
+    const ogUrl = buildEntityOgImageUrl('release', release.id, {
+      resourceUrl: `${origin}${canonicalPath}`,
+    });
+
+    setMeta(
+      `${release.title} by ${release.artist} | Pluggd`,
+      shareDescription,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [release]);
 
   const checkAccess = async () => {
     if (!id) return;
