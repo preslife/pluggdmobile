@@ -12,6 +12,7 @@ import { Users, Clock } from "lucide-react";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { CreateRoomModal } from "@/components/CreateRoomModal";
 import { formatDistanceToNow } from "date-fns";
+import useNow from "@/hooks/useNow";
 
 const LiveSessions = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const LiveSessions = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { rooms, loading, joinRoom } = useSessionRooms();
+  const now = useNow(60_000);
   const redirectParam = encodeURIComponent(location.pathname + location.search);
 
   useEffect(() => {
@@ -71,41 +73,57 @@ const LiveSessions = () => {
               </CardContent>
             </Card>
           ) : (
-            rooms.map((room) => (
-              <Card key={room.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">{room.title}</CardTitle>
-                    <Badge variant={room.status === 'live' ? 'default' : 'secondary'}>
-                      {room.status === 'live' ? 'Live' : 'Idle'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-1" />
-                      {room.participant_count} participants
+            rooms.map((room) => {
+              const timingLabel = room.status === 'live'
+                ? `Live for ${formatDistanceToNow(new Date(room.created_at), { addSuffix: true })}`
+                : room.scheduled_for
+                  ? new Date(room.scheduled_for).getTime() <= now.getTime()
+                    ? 'Starting soon'
+                    : `Starts ${formatDistanceToNow(new Date(room.scheduled_for), { addSuffix: true })}`
+                  : `Created ${formatDistanceToNow(new Date(room.created_at), { addSuffix: true })}`;
+
+              return (
+                <Card key={room.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl">{room.title}</CardTitle>
+                      <Badge
+                        variant={room.status === 'live' ? 'default' : 'secondary'}
+                        className="flex items-center gap-1"
+                      >
+                        {room.status === 'live' && (
+                          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                        )}
+                        {room.status === 'live' ? 'Live' : 'Idle'}
+                      </Badge>
                     </div>
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {formatDistanceToNow(new Date(room.created_at), { addSuffix: true })}
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1" />
+                        {room.participant_count} participants
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {timingLabel}
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Hosted by {room.host_name}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button onClick={() => handleJoinRoom(room.id)}>
-                      Join Session
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <Link to={`/live/sessions/${room.id}`}>View</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Hosted by {room.host_name}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button onClick={() => handleJoinRoom(room.id)}>
+                        {room.status === 'live' ? 'Join Live Room' : 'RSVP & Join'}
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link to={`/live/sessions/${room.id}`}>View</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
 

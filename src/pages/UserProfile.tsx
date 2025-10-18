@@ -64,7 +64,7 @@ const UserProfile = () => {
 
   const fetchProfile = async () => {
     if (!userId && !username) return;
-    
+
     setLoading(true);
     try {
       // Support both username and userId lookup
@@ -98,6 +98,29 @@ const UserProfile = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const displayName = profile.full_name || profile.username || "Pluggd Creator";
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = username ? `/u/${username}` : `/user/${profile.user_id}`;
+    const identifier = profile.username || profile.user_id;
+    const ogUrl = identifier
+      ? buildEntityOgImageUrl('profile', identifier, {
+          resourceUrl: `${origin}${canonicalPath}`,
+        })
+      : undefined;
+
+    setMeta(
+      `${displayName} | Pluggd`,
+      profile.bio || `Follow ${displayName} on Pluggd for new drops and community activity.`,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [profile, username]);
 
   const handleSave = async () => {
     if (!profile || !user) return;

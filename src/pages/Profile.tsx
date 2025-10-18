@@ -6,6 +6,8 @@ import DomainAwareNavigation from "@/components/DomainAwareNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import SEOHelmet from "@/components/SEOHelmet";
+import { setMeta } from "@/lib/seo";
+import { buildEntityOgImageUrl } from "@/lib/og";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -196,6 +198,29 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const displayName = profile.full_name || profile.username || "Pluggd Creator";
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/profile/${profile.user_id}`;
+    const identifier = profile.username || profile.user_id;
+    const ogUrl = identifier
+      ? buildEntityOgImageUrl('profile', identifier, {
+          resourceUrl: `${origin}${canonicalPath}`,
+        })
+      : undefined;
+
+    setMeta(
+      `${displayName} | Pluggd`,
+      profile.bio || `Explore ${displayName}'s releases, beats, and community updates on Pluggd.`,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [profile]);
 
   if (!userId) {
     return <Navigate to="/directory" replace />;

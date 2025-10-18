@@ -161,6 +161,27 @@ const BeatDetail = () => {
     }
   };
 
+  useEffect(() => {
+    if (!beat) {
+      return;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/beat/${beat.id}`;
+    const byline = beat.producer_name ? ` by ${beat.producer_name}` : '';
+    const description = beat.description?.trim() || `Discover the beat "${beat.title}"${byline} on Pluggd.`;
+    const ogUrl = buildEntityOgImageUrl('beat', beat.id, {
+      resourceUrl: `${origin}${canonicalPath}`,
+    });
+
+    setMeta(
+      `${beat.title}${byline} | Pluggd`,
+      description,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [beat]);
+
   const handlePlayBeat = () => {
     if (!beat?.audio_url) return;
     

@@ -27,35 +27,12 @@ export const SettingsNotificationsPage = () => {
             </p>
           </div>
           
+          <NotificationPreferences />
+
           <NotificationSettings />
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Notifications</CardTitle>
-              <CardDescription>
-                Configure email notification preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="email-weekly">Weekly Summary</Label>
-                  <p className="text-sm text-muted-foreground">Get a weekly summary of your activity</p>
-                </div>
-                <Switch id="email-weekly" defaultChecked />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="email-marketing">Marketing Updates</Label>
-                  <p className="text-sm text-muted-foreground">Receive updates about new features and promotions</p>
-                </div>
-                <Switch id="email-marketing" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
   );
 };
+

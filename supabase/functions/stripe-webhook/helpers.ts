@@ -1,4 +1,8 @@
-export type Logger = (message: string, details?: any) => void;
+export interface Logger {
+  info: (event: string, details?: Record<string, unknown>) => Promise<void> | void;
+  warn: (event: string, details?: Record<string, unknown>) => Promise<void> | void;
+  error: (event: string, details?: Record<string, unknown>) => Promise<void> | void;
+}
 
 const mapStripeStatusToMembershipStatus = (
   status: string | null | undefined
@@ -49,7 +53,7 @@ export const syncMembershipFromSubscription = async (
   options: SyncMembershipOptions = {}
 ) => {
   if (!subscription) {
-    logger('Membership sync skipped - missing subscription object');
+    await logger.warn('membership_sync_missing_subscription', { subscriptionId: subscription?.id ?? null });
     return { processed: false };
   }
 
@@ -61,7 +65,7 @@ export const syncMembershipFromSubscription = async (
     null;
 
   if (!tierId) {
-    logger('Membership sync skipped - missing tier metadata', { subscriptionId: subscription.id });
+    await logger.warn('membership_sync_missing_tier_metadata', { subscriptionId: subscription.id });
     return { processed: false };
   }
 
@@ -115,12 +119,12 @@ export const syncMembershipFromSubscription = async (
     .maybeSingle();
 
   if (tierError) {
-    logger('Membership sync failed - tier lookup error', { error: tierError.message, tierId });
+    await logger.error('membership_sync_tier_lookup_error', { error: tierError.message, tierId });
     return { processed: false, error: tierError };
   }
 
   if (!tierRow) {
-    logger('Membership sync skipped - tier not found', { tierId });
+    await logger.warn('membership_sync_missing_tier', { tierId });
     return { processed: false };
   }
 
@@ -144,7 +148,7 @@ export const syncMembershipFromSubscription = async (
     .maybeSingle();
 
   if (membershipLookupError) {
-    logger('Membership lookup error', { error: membershipLookupError.message, subscriptionId: subscription.id });
+    await logger.error('membership_lookup_error', { error: membershipLookupError.message, subscriptionId: subscription.id });
     return { processed: false, error: membershipLookupError };
   }
 
@@ -160,7 +164,7 @@ export const syncMembershipFromSubscription = async (
       .maybeSingle();
 
     if (membershipByUserError) {
-      logger('Membership user lookup error', { error: membershipByUserError.message, tierId, fanId });
+      await logger.error('membership_user_lookup_error', { error: membershipByUserError.message, tierId, fanId });
       return { processed: false, error: membershipByUserError };
     }
 
@@ -181,7 +185,7 @@ export const syncMembershipFromSubscription = async (
       .eq('id', membershipId);
 
     if (updateError) {
-      logger('Failed to update membership', { error: updateError.message, membershipId });
+      await logger.error('membership_update_failed', { error: updateError.message, membershipId });
       return { processed: false, error: updateError };
     }
   } else if (fanId) {
@@ -200,16 +204,17 @@ export const syncMembershipFromSubscription = async (
       .maybeSingle();
 
     if (insertError) {
-      logger('Failed to create membership', { error: insertError.message, tierId, fanId });
+      await logger.error('membership_create_failed', { error: insertError.message, tierId, fanId });
       return { processed: false, error: insertError };
     }
 
     membershipId = insertResult?.id ?? null;
     membershipUserId = insertResult?.user_id ?? fanId;
   } else {
-    logger('Membership sync skipped - unable to resolve fan user', {
+    await logger.warn('membership_sync_missing_fan', {
       subscriptionId: subscription.id,
       tierId,
+      fanId,
     });
     return { processed: false };
   }
@@ -221,7 +226,7 @@ export const syncMembershipFromSubscription = async (
     .eq('status', 'active');
 
   if (countError) {
-    logger('Failed to count active memberships', { error: countError.message, tierId });
+    await logger.error('membership_active_count_failed', { error: countError.message, tierId });
   } else {
     const { error: tierUpdateError } = await supabaseClient
       .from('membership_tiers')
@@ -229,7 +234,7 @@ export const syncMembershipFromSubscription = async (
       .eq('id', tierId);
 
     if (tierUpdateError) {
-      logger('Failed to update membership tier count', { error: tierUpdateError.message, tierId });
+      await logger.error('membership_tier_count_update_failed', { error: tierUpdateError.message, tierId });
     }
   }
 
@@ -253,7 +258,7 @@ export const syncMembershipFromSubscription = async (
         },
       });
   } catch (logError: any) {
-    logger('Failed to record membership log', { error: logError.message, tierId });
+    await logger.error('membership_log_insert_failed', { error: logError.message, tierId });
   }
 
   const creatorId = creatorIdFromMetadata || tierRow.owner_id;
@@ -282,7 +287,7 @@ export const syncMembershipFromSubscription = async (
         });
       }
     } catch (discordError: any) {
-      logger('Discord sync failed', { error: discordError.message, creatorId, membershipId });
+      await logger.warn('membership_discord_sync_failed', { error: discordError.message, creatorId, membershipId });
     }
   }
 
@@ -327,9 +332,9 @@ export const createDownloadRecords = async (
     .insert(downloadRecords);
 
   if (error) {
-    logger('Failed to create download records', { error: error.message, userId, sessionId });
+    await logger.error('download_record_create_failed', { error: error.message, userId, sessionId });
   } else {
-    logger('Created download records for hybrid purchase', { count: downloadRecords.length, userId, sessionId });
+    await logger.info('download_records_created', { count: downloadRecords.length, userId, sessionId });
   }
 };
 
@@ -341,20 +346,20 @@ export const handleChargeReversal = async (
   logger: Logger
 ) => {
   if (!charge) {
-    logger('Charge reversal skipped - missing charge object', { eventId });
+    await logger.warn('charge_reversal_missing_charge', { eventId });
     return;
   }
 
   const metadata = charge.metadata || {};
   const userId = metadata.user_id;
   if (!userId) {
-    logger('Charge reversal skipped - no user metadata', { chargeId: charge.id });
+    await logger.warn('charge_reversal_missing_user_metadata', { chargeId: charge.id });
     return;
   }
 
   const creditsApplied = metadata.credits_applied ? parseInt(metadata.credits_applied) : 0;
   if (!creditsApplied || Number.isNaN(creditsApplied) || creditsApplied <= 0) {
-    logger('Charge reversal skipped - no credits to return', { chargeId: charge.id, creditsApplied });
+    await logger.warn('charge_reversal_no_credits', { chargeId: charge.id, creditsApplied });
     return;
   }
 
@@ -366,7 +371,7 @@ export const handleChargeReversal = async (
     .maybeSingle();
 
   if (existingEntry) {
-    logger('Charge reversal already processed', { chargeId: charge.id, eventId });
+    await logger.info('charge_reversal_already_processed', { chargeId: charge.id, eventId });
     return;
   }
 
@@ -388,8 +393,8 @@ export const handleChargeReversal = async (
     });
 
   if (error) {
-    logger('Failed to recredit wallet on charge reversal', { error: error.message, chargeId: charge.id });
+    await logger.error('charge_reversal_recredit_failed', { error: error.message, chargeId: charge.id });
   } else {
-    logger('Recredited wallet after charge reversal', { chargeId: charge.id, creditsApplied, reason });
+    await logger.info('charge_reversal_recredited', { chargeId: charge.id, creditsApplied, reason });
   }
 };
