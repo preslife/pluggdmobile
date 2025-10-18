@@ -6,13 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
 import { formatCurrency } from "@/lib/utils";
-import { 
-  Play, 
-  Pause, 
-  Music, 
-  ShoppingCart, 
-  Heart, 
-  Share2, 
+import {
+  Play,
+  Pause,
+  Music,
+  ShoppingCart,
+  Heart,
+  Share2,
   Download,
   ExternalLink,
   MapPin,
@@ -24,6 +24,7 @@ import {
   Headphones,
   TrendingUp
 } from "lucide-react";
+import { ActivityTab } from "./Storefront/ActivityTab";
 
 interface StorefrontProps {
   userId: string;
@@ -450,12 +451,7 @@ export const StorefrontLayout = ({ userId, profile, beats, releases, stats }: St
               </TabsContent>
               
               <TabsContent value="activity" className="space-y-8 mt-6">
-                <Card>
-                  <CardContent className="text-center py-12">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Activity feed coming soon</p>
-                  </CardContent>
-                </Card>
+                <ActivityTab userId={userId} />
               </TabsContent>
             </Tabs>
           </div>
