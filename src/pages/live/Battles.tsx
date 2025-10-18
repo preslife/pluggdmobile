@@ -1,22 +1,34 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Clock, Users, Music } from "lucide-react";
 import { useBattles } from "@/hooks/useBattles";
-import { getContestStatus, getTimeRemaining } from "@/utils/contests";
+import type { Battle } from "@/hooks/useBattles";
 import SEOHelmet from "@/components/SEOHelmet";
 import { CreateBattleModal } from "@/components/live/CreateBattleModal";
 import { useAuth } from "@/hooks/useAuth";
+import useNow from "@/hooks/useNow";
+import { formatDistanceToNow } from "date-fns";
 
 const LiveBattles = () => {
-  const { battles, loading } = useBattles();
+  const { battles, loading, advanceBattleRounds } = useBattles();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const now = useNow(60_000);
 
-  const upcomingBattles = battles.filter(battle => battle.status === 'upcoming');
-  const liveBattles = battles.filter(battle => battle.status === 'live');
-  const finishedBattles = battles.filter(battle => battle.status === 'finished');
+  const upcomingBattles = useMemo(
+    () => battles.filter(battle => battle.status === 'upcoming'),
+    [battles]
+  );
+  const liveBattles = useMemo(
+    () => battles.filter(battle => battle.status === 'live'),
+    [battles]
+  );
+  const finishedBattles = useMemo(
+    () => battles.filter(battle => battle.status === 'finished'),
+    [battles]
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -27,9 +39,26 @@ const LiveBattles = () => {
     }
   };
 
-  const BattleCard = ({ battle }: { battle: any }) => {
-    const timeRemaining = getTimeRemaining(battle);
-    
+  const getBattleTiming = (battle: Battle) => {
+    if (battle.status === 'live' && battle.ends_at) {
+      const diff = new Date(battle.ends_at).getTime() - now.getTime();
+      if (diff <= 0) return 'Ending soon';
+      return `Ends ${formatDistanceToNow(new Date(battle.ends_at), { addSuffix: true })}`;
+    }
+
+    if (battle.status === 'upcoming' && battle.starts_at) {
+      const start = new Date(battle.starts_at).getTime();
+      if (start <= now.getTime()) return 'Starting soon';
+      return `Starts ${formatDistanceToNow(new Date(battle.starts_at), { addSuffix: true })}`;
+    }
+
+    if (battle.status === 'finished') return 'Ended';
+    return 'Schedule TBA';
+  };
+
+  const BattleCard = ({ battle, isOwner }: { battle: Battle; isOwner: boolean }) => {
+    const timingLabel = getBattleTiming(battle);
+
     return (
       <Card className="group hover:shadow-lg transition-all duration-200">
         <CardHeader>
@@ -39,7 +68,10 @@ const LiveBattles = () => {
                 {battle.title}
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Badge className={getStatusColor(battle.status)}>
+                <Badge className={`${getStatusColor(battle.status)} flex items-center gap-1 uppercase`}>
+                  {battle.status === 'live' && (
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                  )}
                   {battle.status}
                 </Badge>
                 {battle.is_featured && (
@@ -58,18 +90,18 @@ const LiveBattles = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{timeRemaining}</span>
+              <span>{timingLabel}</span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span>0 entries</span>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             {battle.status === 'upcoming' && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="flex-1"
                 onClick={() => window.location.href = `/live/battles/${battle.id}`}
               >
@@ -77,8 +109,8 @@ const LiveBattles = () => {
               </Button>
             )}
             {battle.status === 'live' && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="flex-1"
                 onClick={() => window.location.href = `/live/battles/${battle.id}`}
               >
@@ -86,13 +118,22 @@ const LiveBattles = () => {
               </Button>
             )}
             {battle.status === 'finished' && (
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 className="flex-1"
                 onClick={() => window.location.href = `/live/battles/${battle.id}`}
               >
                 View Results
+              </Button>
+            )}
+            {isOwner && battle.status === 'live' && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => advanceBattleRounds(battle.id)}
+              >
+                Advance Round
               </Button>
             )}
           </div>
@@ -134,7 +175,7 @@ const LiveBattles = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {liveBattles.map(battle => (
-              <BattleCard key={battle.id} battle={battle} />
+              <BattleCard key={battle.id} battle={battle} isOwner={user?.id === battle.created_by} />
             ))}
           </div>
         </section>
@@ -146,7 +187,7 @@ const LiveBattles = () => {
           <h2 className="text-xl font-semibold">Upcoming</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {upcomingBattles.map(battle => (
-              <BattleCard key={battle.id} battle={battle} />
+              <BattleCard key={battle.id} battle={battle} isOwner={user?.id === battle.created_by} />
             ))}
           </div>
         </section>
@@ -158,7 +199,7 @@ const LiveBattles = () => {
           <h2 className="text-xl font-semibold">Recent Results</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {finishedBattles.slice(0, 6).map(battle => (
-              <BattleCard key={battle.id} battle={battle} />
+              <BattleCard key={battle.id} battle={battle} isOwner={user?.id === battle.created_by} />
             ))}
           </div>
         </section>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Music, Calendar, ArrowLeft, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
 import { SubscriptionGatedContent } from "@/components/SubscriptionGatedContent";
@@ -16,6 +17,7 @@ import spotifyIcon from "@/assets/spotify-icon.svg";
 import appleMusicIcon from "@/assets/apple-music-icon.svg";
 import youtubeIcon from "@/assets/youtube-icon.svg";
 import soundcloudIcon from "@/assets/soundcloud-icon.svg";
+import { fetchMembershipAccessRules } from "@/services/memberships/accessRules";
 
 interface Release {
   id: string;
@@ -55,9 +57,21 @@ const Release = () => {
   const [release, setRelease] = useState<Release | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [previewPlayingId, setPreviewPlayingId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const metaTitle = release ? `${release.title} — ${release.artist} | Pluggd` : 'Release — Pluggd';
+  const metaDescription = release?.description
+    ? release.description.slice(0, 160)
+    : 'Discover exclusive music releases and support creators on Pluggd.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: id ? `/release/${id}` : '/release',
+    image: release?.cover_art_url ?? undefined,
+  });
   const { user } = useAuth();
 
   const handlePreviewPlay = (releaseId: string) => {
@@ -117,7 +131,22 @@ const Release = () => {
 
        if (error) throw error;
        if (!data) throw new Error('Release not found');
-       setRelease(data);
+
+      let releaseWithGate = data;
+      try {
+        const accessRule = await fetchMembershipAccessRules('release', releaseId);
+        if (accessRule) {
+          releaseWithGate = {
+            ...data,
+            owner_id: accessRule.owner_id ?? data.owner_id ?? data.user_id ?? null,
+            owner_type: accessRule.owner_type ?? data.owner_type ?? null,
+          };
+        }
+      } catch (lookupError) {
+        console.error('Failed to load membership access rules', lookupError);
+      }
+
+      setRelease(releaseWithGate);
     } catch (error) {
       toast({
         title: "Error",

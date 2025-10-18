@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,13 @@ import { AdminVerificationTab } from "@/components/AdminVerificationTab";
 import { AdminAnalyticsTiles } from "@/components/AdminAnalyticsTiles";
 import { AdminContestManager } from "@/components/AdminContestManager";
 const Admin = () => {
+  usePageMetadata({
+    title: "Admin Control Center — Pluggd",
+    description:
+      "Moderate catalog submissions, manage creators, and oversee payouts, products, and platform operations across Pluggd.",
+    path: "/admin",
+  });
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();

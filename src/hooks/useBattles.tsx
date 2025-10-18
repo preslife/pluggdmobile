@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,8 +39,10 @@ export const useBattles = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchBattles = async () => {
-    setLoading(true);
+  const fetchBattles = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('battles')
@@ -57,9 +59,11 @@ export const useBattles = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
-  };
+  }, [toast]);
 
   const createBattle = async (battleData: {
     title: string;
@@ -171,7 +175,52 @@ export const useBattles = () => {
 
   useEffect(() => {
     fetchBattles();
-  }, []);
+  }, [fetchBattles]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('live-battles')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'battles' },
+        () => fetchBattles(false)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchBattles]);
+
+  const advanceBattleRounds = useCallback(
+    async (battleId?: string) => {
+      try {
+        const options = battleId ? { body: { battleId } } : undefined;
+        const { data, error } = await supabase.functions.invoke('advance-battle-rounds', options);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Rounds advanced',
+          description: data?.processed
+            ? `${data.processed} battle${data.processed === 1 ? '' : 's'} processed.`
+            : 'Battle rounds processed successfully.'
+        });
+
+        await fetchBattles(false);
+        return data;
+      } catch (error: any) {
+        console.error('Error advancing battle rounds:', error);
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to advance rounds',
+          variant: 'destructive'
+        });
+        throw error;
+      }
+    },
+    [fetchBattles, toast]
+  );
 
   return {
     battles,
@@ -179,6 +228,7 @@ export const useBattles = () => {
     createBattle,
     submitEntry,
     vote,
-    refetch: fetchBattles
+    refetch: fetchBattles,
+    advanceBattleRounds
   };
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, AlertTriangle, Eye, Check, X, Flag, Music, MessageSquare, Users } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type ModerationItem = {
   id: string;
@@ -39,7 +40,16 @@ const ModerationDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('releases');
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [processing, setProcessing] = useState(false);
   const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+
+  const loggerMetadata = useMemo(() => ({ userId: user?.id ?? null }), [user?.id]);
+  const { logger: moderationLogger, logUserAction } = useLogger({
+    component: 'ModerationDashboard',
+    feature: 'moderation',
+    metadata: loggerMetadata,
+  });
 
   useEffect(() => {
     if (user) {
@@ -49,7 +59,7 @@ const ModerationDashboard = () => {
 
   const fetchModerationData = async () => {
     try {
-      void logger.info('moderation_dashboard_fetch_start', {
+      void moderationLogger.info('moderation_dashboard_fetch_start', {
         user_id: user?.id,
       });
       // Fetch moderation items
@@ -60,7 +70,7 @@ const ModerationDashboard = () => {
 
       if (moderationError) {
         console.error('Error fetching moderation items:', moderationError);
-        void logger.error('moderation_dashboard_items_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_items_fetch_failed', {
           user_id: user?.id,
         }, toError(moderationError));
       }
@@ -74,7 +84,7 @@ const ModerationDashboard = () => {
 
       if (reportsError) {
         console.error('Error fetching reports:', reportsError);
-        void logger.error('moderation_dashboard_reports_fetch_failed', {
+        void moderationLogger.error('moderation_dashboard_reports_fetch_failed', {
           user_id: user?.id,
         }, toError(reportsError));
       }
@@ -178,6 +188,7 @@ const ModerationDashboard = () => {
       }
 
       setModerationItems(transformedItems);
+      setSelectedItems(new Set());
       
       // Calculate real stats
       const pendingReleases = transformedItems.filter(item => item.type === 'release' && item.status === 'pending').length;
@@ -197,7 +208,7 @@ const ModerationDashboard = () => {
         pending_reports: pendingReports,
         total_actions_today: actionsToday || 0
       });
-      void logger.info('moderation_dashboard_fetch_success', {
+      void moderationLogger.info('moderation_dashboard_fetch_success', {
         user_id: user?.id,
         pending_releases: pendingReleases,
         pending_comments: pendingComments,
@@ -206,7 +217,7 @@ const ModerationDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching moderation data:', error);
-      void logger.error('moderation_dashboard_fetch_failed', {
+      void moderationLogger.error('moderation_dashboard_fetch_failed', {
         user_id: user?.id,
       }, toError(error));
     } finally {
@@ -214,102 +225,154 @@ const ModerationDashboard = () => {
     }
   };
 
-  const handleModerationAction = async (itemId: string, action: 'approve' | 'reject', reason?: string) => {
+  const updateStatsFromItems = (items: ModerationItem[]) => {
+    const pendingReleases = items.filter(item => item.type === 'release' && item.status === 'pending').length;
+    const pendingComments = items.filter(item => item.type === 'comment' && item.status === 'pending').length;
+    const pendingReports = items.filter(item => item.type === 'report' && item.status === 'pending').length;
+
+    setStats(prev => ({
+      ...prev,
+      pending_releases: pendingReleases,
+      pending_comments: pendingComments,
+      pending_reports: pendingReports,
+    }));
+  };
+
+  const handleBatchModerationAction = async (itemIds: string[], action: 'approve' | 'close', reason?: string) => {
+    if (!itemIds.length) {
+      return;
+    }
+
+    setProcessing(true);
+
     try {
-      void logger.userAction('moderation_action_attempt', 'ModerationDashboard', {
-        item_id: itemId,
+      void logger.userAction('moderation_batch_action_attempt', 'ModerationDashboard', {
+        item_ids: itemIds,
         action,
         user_id: user?.id,
       });
-      const status = action === 'approve' ? 'approved' : 'rejected';
 
-      // Update moderation item status
-      const { error: updateError } = await supabase
-        .from('moderation_items')
-        .update({
-          status,
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-          admin_notes: reason
-        })
-        .eq('id', itemId);
+      const { data, error } = await supabase.functions.invoke('moderation-review', {
+        body: {
+          action,
+          itemIds,
+          reason,
+        },
+      });
 
-      if (updateError) {
-        throw updateError;
+      if (error) {
+        throw error;
       }
 
-      // Record the moderation action
-      const item = moderationItems.find(i => i.id === itemId);
-      if (item) {
-        const { error: actionError } = await supabase
-          .from('moderation_actions')
-          .insert({
-            moderator_id: user?.id,
-            target_type: item.type,
-            target_id: item.type === 'report' ? itemId : item.id,
-            action,
-            reason
-          });
+      if (data?.error) {
+        throw new Error(data.error as string);
+      }
 
-        if (actionError) {
-          console.error('Error recording moderation action:', actionError);
-        }
+      const results = (data?.results as { itemId: string; status?: ModerationItem['status']; reportStatus?: string; success: boolean }[] | undefined) || [];
+      const successfulIds = results.filter(result => result.success && result.status).map(result => result.itemId);
 
-        // If it's a content report, update its status too
-        if (item.type === 'report') {
-          const { error: reportError } = await supabase
-            .from('content_reports')
-            .update({
-              status: status === 'approved' ? 'resolved' : 'dismissed',
-              resolved_by: user?.id,
-              resolved_at: new Date().toISOString(),
-              resolution_notes: reason
-            })
-            .eq('id', itemId);
+      if (!successfulIds.length) {
+        throw new Error('No moderation items were updated');
+      }
 
-          if (reportError) {
-            console.error('Error updating report status:', reportError);
+      setModerationItems(prev => {
+        const updated = prev.map(item => {
+          const result = results.find(r => r.itemId === item.id);
+          if (!result || !result.status) {
+            return item;
           }
-        }
-      }
+
+          return {
+            ...item,
+            status: result.status,
+            content: {
+              ...item.content,
+              report_status: result.reportStatus ?? item.content?.report_status,
+            },
+          };
+        });
+
+        updateStatsFromItems(updated);
+        return updated;
+      });
+
+      setSelectedItems(new Set());
 
       toast({
-        title: `Content ${action}d`,
-        description: `Moderation action completed successfully.`
+        title: `Action complete`,
+        description: `${successfulIds.length} item${successfulIds.length > 1 ? 's' : ''} ${action === 'approve' ? 'approved' : 'closed'} successfully.`,
       });
-      void logger.info('moderation_action_success', {
-        item_id: itemId,
+
+      void logger.info('moderation_batch_action_success', {
+        item_ids: successfulIds,
         action,
         user_id: user?.id,
         reason,
       });
 
-      // Update local state
-      setModerationItems(prev =>
-        prev.map(item =>
-          item.id === itemId
-            ? { ...item, status }
-            : item
-        )
-      );
-
-      // Refresh stats
-      fetchModerationData();
     } catch (error) {
       console.error('Error processing moderation action:', error);
       toast({
-        title: "Error",
-        description: "Failed to process moderation action.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to process moderation action.',
+        variant: 'destructive',
       });
-      void logger.error('moderation_action_failed', {
-        item_id: itemId,
+      void logger.error('moderation_batch_action_failed', {
+        item_ids: itemIds,
         action,
         user_id: user?.id,
         reason,
       }, toError(error));
+    } finally {
+      setProcessing(false);
     }
   };
+
+  const handleModerationAction = async (itemId: string, action: 'approve' | 'close', reason?: string) => {
+    await handleBatchModerationAction([itemId], action, reason);
+  };
+
+  const toggleSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const clearSelections = () => setSelectedItems(new Set());
+
+  const selectVisible = () => {
+    const ids = visibleItems
+      .filter(item => item.status === 'pending')
+      .map(item => item.id);
+
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const visibleItems = useMemo(() => {
+    switch (selectedTab) {
+      case 'releases':
+        return moderationItems.filter(item => item.type === 'release');
+      case 'comments':
+        return moderationItems.filter(item => item.type === 'comment');
+      case 'reports':
+        return moderationItems.filter(item => item.type === 'report');
+      case 'all':
+      default:
+        return moderationItems.filter(item => item.status === 'pending');
+    }
+  }, [moderationItems, selectedTab]);
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
@@ -343,10 +406,19 @@ const ModerationDashboard = () => {
     <Card key={item.id} className="bg-gradient-card border-border">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
+          <div className="pt-1">
+            <Checkbox
+              data-testid={`moderation-select-${item.id}`}
+              aria-label={`Select ${item.type} ${item.id}`}
+              checked={selectedItems.has(item.id)}
+              disabled={item.status !== 'pending'}
+              onCheckedChange={() => toggleSelection(item.id)}
+            />
+          </div>
           <div className="flex-shrink-0">
             {getItemIcon(item.type)}
           </div>
-          
+
           <div className="flex-1 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -395,6 +467,7 @@ const ModerationDashboard = () => {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={processing}
                   onClick={() => handleModerationAction(item.id, 'approve')}
                 >
                   <Check className="w-4 h-4 mr-1" />
@@ -403,10 +476,11 @@ const ModerationDashboard = () => {
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => handleModerationAction(item.id, 'reject')}
+                  disabled={processing}
+                  onClick={() => handleModerationAction(item.id, 'close')}
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Reject
+                  Close
                 </Button>
                 <Button size="sm" variant="ghost">
                   <Eye className="w-4 h-4 mr-1" />
@@ -417,7 +491,7 @@ const ModerationDashboard = () => {
 
             {item.status !== 'pending' && (
               <Badge variant={item.status === 'approved' ? 'default' : 'destructive'} className="capitalize">
-                {item.status}
+                {item.status === 'rejected' ? 'closed' : item.status}
               </Badge>
             )}
           </div>
@@ -460,6 +534,37 @@ const ModerationDashboard = () => {
         </h1>
         <p className="text-muted-foreground">Review and moderate platform content</p>
       </div>
+
+      {selectedItems.size > 0 && (
+        <Card className="border-border">
+          <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4">
+            <div className="text-sm text-muted-foreground">
+              {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={processing}
+                onClick={() => handleBatchModerationAction(Array.from(selectedItems), 'approve')}
+              >
+                <Check className="w-4 h-4 mr-1" /> Approve Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={processing}
+                onClick={() => handleBatchModerationAction(Array.from(selectedItems), 'close')}
+              >
+                <X className="w-4 h-4 mr-1" /> Close Selected
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearSelections}>
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -520,6 +625,12 @@ const ModerationDashboard = () => {
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="all">All Pending</TabsTrigger>
         </TabsList>
+
+        <div className="flex justify-end py-2">
+          <Button size="sm" variant="ghost" onClick={selectVisible} disabled={processing || visibleItems.length === 0}>
+            Select Visible
+          </Button>
+        </div>
 
         <TabsContent value="releases" className="space-y-4">
           {moderationItems

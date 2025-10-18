@@ -1,6 +1,6 @@
 # Regression & QA Checklist (2025-10)
 
-_Last updated: 2025-10-14_
+_Last updated: 2025-10-17_
 
 ## Dynamic OG Image Service
 - [ ] Hit `https://qkwvqmubhyondemhasjp.supabase.co/functions/v1/generate-og-image?title=Test&description=Example&type=release` and confirm PNG renders with correct badge and gradients.

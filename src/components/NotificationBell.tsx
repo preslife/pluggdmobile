@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,8 +19,8 @@ interface Notification {
   data: any;
   read: boolean;
   created_at: string;
-  related_id?: string;
-  related_type?: string;
+  related_id?: string | null;
+  related_type?: string | null;
 }
 
 export const NotificationBell = () => {
@@ -32,101 +32,129 @@ export const NotificationBell = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const handler = () => setIsOpen(true);
-    window.addEventListener('open-notifications', handler);
-    return () => window.removeEventListener('open-notifications', handler);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      
-      // Subscribe to real-time notifications
-      const channel = supabase
-        .channel('notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            // Show toast for new notification
-            toast({
-              title: newNotification.title,
-              description: newNotification.message,
-            });
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+  const refreshUnreadCount = useCallback(async () => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
     }
-  }, [user, toast]);
-
-  const fetchNotifications = async () => {
-    if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('dismissed_at', null)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
+      const { data, error } = await supabase.rpc('notifications_unread_count');
       if (error) throw error;
-      
-      const notificationList = data || [];
+      setUnreadCount(data ?? 0);
+    } catch (error) {
+      console.error('Error fetching unread notifications:', error);
+    }
+  }, [user]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('notifications_list_recent', { p_limit: 20 });
+      if (error) throw error;
+
+      const notificationList = (data as Notification[]) || [];
       setNotifications(notificationList);
-      setUnreadCount(notificationList.length);
+      await refreshUnreadCount();
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, refreshUnreadCount]);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsOpen(true);
+      fetchNotifications();
+    };
+    window.addEventListener('open-notifications', handler);
+    return () => window.removeEventListener('open-notifications', handler);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
+    fetchNotifications();
+
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        async (payload) => {
+          const newNotification = payload.new as Notification;
+          setNotifications(prev => {
+            const filtered = prev.filter(notification => notification.id !== newNotification.id);
+            return [newNotification, ...filtered];
+          });
+
+          toast({
+            title: newNotification.title,
+            description: newNotification.message,
+          });
+
+          await refreshUnreadCount();
+          await fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, toast, fetchNotifications, refreshUnreadCount]);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setIsOpen(nextOpen);
+      if (nextOpen) {
+        fetchNotifications();
+      } else {
+        refreshUnreadCount();
+      }
+    },
+    [fetchNotifications, refreshUnreadCount]
+  );
 
   const markAsRead = async (notificationId: string) => {
-    // Optimistically update UI first
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true, dismissed_at: new Date().toISOString() })
-        .eq('id', notificationId)
-        .eq('user_id', user!.id);
+      await supabase.rpc('notifications_mark_read', { p_notification_id: notificationId });
     } catch (error) {
-      await fetchNotifications();
       console.error('Error marking notification as read:', error);
+    } finally {
+      await refreshUnreadCount();
+      await fetchNotifications();
     }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
-    // Optimistic UI
     setNotifications([]);
-    setUnreadCount(0);
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true, dismissed_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .is('dismissed_at', null);
+      await supabase.rpc('notifications_mark_all_read');
     } catch (error) {
-      await fetchNotifications();
       console.error('Error marking all notifications as read:', error);
+    } finally {
+      await refreshUnreadCount();
+      await fetchNotifications();
     }
   };
 
@@ -150,7 +178,7 @@ export const NotificationBell = () => {
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
           {unreadCount > 0 ? (

@@ -117,7 +117,6 @@ import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { GlobalPlayer } from "./components/GlobalPlayer/GlobalPlayer";
 import { ScrollAnimationProvider } from "./components/ScrollAnimationProvider";
-import { LocalizationProvider } from "./contexts/LocalizationContext";
 import { WalletProvider } from "./hooks/useWallet";
 import CreatorDashboardPage from "./pages/CreatorDashboard";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -379,20 +378,18 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <LocalizationProvider>
-              <WalletProvider>
-                <DomainProvider>
-                  <ThemeProvider>
-                    <ScrollAnimationProvider>
-                      <GlobalPlayer>
-                        <AppContent />
-                        <PWAInstallPrompt />
-                      </GlobalPlayer>
-                    </ScrollAnimationProvider>
-                  </ThemeProvider>
-                </DomainProvider>
-              </WalletProvider>
-            </LocalizationProvider>
+            <WalletProvider>
+              <DomainProvider>
+                <ThemeProvider>
+                  <ScrollAnimationProvider>
+                    <GlobalPlayer>
+                      <AppContent />
+                      <PWAInstallPrompt />
+                    </GlobalPlayer>
+                  </ScrollAnimationProvider>
+                </ThemeProvider>
+              </DomainProvider>
+            </WalletProvider>
           </AuthProvider>
         </BrowserRouter>
       </BrandConsistencyProvider>

@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Bell, Settings } from "lucide-react";
+import { useEffect } from "react";
+import { Settings } from "lucide-react";
 import { NotificationSettings } from "../components/NotificationSettings";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 export const SettingsNotificationsPage = () => {
-  useEffect(() => {
-    document.title = "Notifications — Pluggd";
-  }, []);
+  usePageMetadata({
+    title: "Notification Settings — Pluggd",
+    description: "Choose how Pluggd keeps you informed about new releases, supporters, and account updates.",
+    path: "/settings/notifications",
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -24,35 +24,12 @@ export const SettingsNotificationsPage = () => {
             </p>
           </div>
           
+          <NotificationPreferences />
+
           <NotificationSettings />
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Notifications</CardTitle>
-              <CardDescription>
-                Configure email notification preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="email-weekly">Weekly Summary</Label>
-                  <p className="text-sm text-muted-foreground">Get a weekly summary of your activity</p>
-                </div>
-                <Switch id="email-weekly" defaultChecked />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="email-marketing">Marketing Updates</Label>
-                  <p className="text-sm text-muted-foreground">Receive updates about new features and promotions</p>
-                </div>
-                <Switch id="email-marketing" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
   );
 };
+

@@ -2,15 +2,88 @@ import { setMeta } from "@/lib/seo";
 import { useEffect } from "react";
 import LiveCTA from "@/components/LiveCTA";
 import { useSessionRooms } from "@/hooks/useSessionRooms";
+import { useLiveSchedule } from "@/hooks/useLiveSchedule";
+import useNow from "@/hooks/useNow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Calendar, Trophy, Plug } from "lucide-react";
+import { Users, Calendar, Trophy, Plug, Clock } from "lucide-react";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
+
+import type { LiveScheduleItem } from "@/hooks/useLiveSchedule";
+
+const ScheduleItemCard = ({ item, now }: { item: LiveScheduleItem; now: Date }) => {
+  const nowTime = now.getTime();
+  let statusLabel = "";
+  if (item.status === "live") {
+    statusLabel = item.endsAt
+      ? `Ends ${formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}`
+      : "Live now";
+  } else if (item.scheduledFor) {
+    const startTime = new Date(item.scheduledFor).getTime();
+    statusLabel = startTime <= nowTime
+      ? "Starting soon"
+      : `Starts ${formatDistanceToNow(new Date(item.scheduledFor), { addSuffix: true })}`;
+  } else {
+    statusLabel = "Schedule TBA";
+  }
+
+  const actionLabel = item.type === "session"
+    ? item.status === "live" ? "Join Session" : "View Session"
+    : item.status === "live" ? "Watch Battle" : "View Battle";
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg leading-tight">{item.title}</CardTitle>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary" className="uppercase tracking-wide">{item.type}</Badge>
+              {item.status === "live" ? (
+                <span className="inline-flex items-center gap-2 font-semibold text-red-500">
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                  Live now
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <Clock className="h-3 w-3" aria-hidden />
+                  {statusLabel}
+                </span>
+              )}
+            </div>
+          </div>
+          {item.scheduledFor && (
+            <div className="text-right text-sm text-muted-foreground">
+              <div className="flex items-center justify-end gap-1">
+                <Calendar className="h-4 w-4" aria-hidden />
+                {new Date(item.scheduledFor).toLocaleString()}
+              </div>
+            </div>
+          )}
+        </div>
+        {item.status === "live" && item.endsAt && (
+          <p className="text-sm text-muted-foreground">Ends {formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}</p>
+        )}
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">{statusLabel}</div>
+          <Button size="sm" asChild>
+            <Link to={item.actionHref}>{actionLabel}</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function LiveIndex() {
   const { rooms, loading } = useSessionRooms();
+  const { schedule, loading: scheduleLoading } = useLiveSchedule();
+  const now = useNow(60_000);
 
   useEffect(() => {
     setMeta("Live Sessions & Events", "Join live music sessions, battles, and events with fellow creators");
@@ -43,6 +116,34 @@ export default function LiveIndex() {
             </div>
           </div>
         </header>
+
+        {/* Live Schedule Section */}
+        <section className="py-12 md:py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Live Schedule</h2>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/live/sessions">View Sessions</Link>
+              </Button>
+            </div>
+
+            {scheduleLoading && schedule.length === 0 ? (
+              <LoadingSkeleton />
+            ) : schedule.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {schedule.map((item) => (
+                  <ScheduleItemCard key={`${item.type}-${item.id}`} item={item} now={now} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  <p>No live events scheduled yet. Check back soon!</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </section>
 
         {/* Live Rooms Section */}
         <section className="py-12 md:py-16">

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileManager } from "@/components/ProfileManager";
@@ -6,11 +5,14 @@ import { NotificationSettings } from "@/components/NotificationSettings";
 import SettingsConnectionsPage from "./SettingsConnections";
 import SettingsFavNicknamesPage from "./SettingsFavNicknames";
 import DomainAwareNavigation from "@/components/DomainAwareNavigation";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 const Settings = () => {
-  useEffect(() => {
-    document.title = "Settings — Pluggd";
-  }, []);
+  usePageMetadata({
+    title: "Settings — Pluggd",
+    description: "Manage your account details, notification preferences, connections, and saved favorites.",
+    path: "/settings",
+  });
 
   return (
     <div className="min-h-screen bg-background">

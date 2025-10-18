@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { logger } from '@/lib/logger';
 
 type PurchaseType = "release" | "beat" | "sample_pack";
 
@@ -76,6 +77,13 @@ export const SecureDownloadButton = ({
           purchase_id: purchaseId,
           purchase_type: purchaseType,
         });
+
+        void logger.userAction('secure_download_triggered', 'SecureDownloadButton', {
+          purchaseId,
+          purchaseType,
+          releaseId,
+          title,
+        });
       }
     } catch (error: any) {
       console.error('Download error:', error);
@@ -87,6 +95,14 @@ export const SecureDownloadButton = ({
         title: 'Download Failed',
         description,
         variant: 'destructive',
+      });
+
+      void logger.error('secure_download_failed', {
+        purchaseId,
+        purchaseType,
+        releaseId,
+        title,
+        error: error?.message ?? String(error),
       });
     } finally {
       setDownloading(false);

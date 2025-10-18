@@ -1,8 +1,15 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 const NotFound = () => {
   const location = useLocation();
+
+  usePageMetadata({
+    title: "Page Not Found — Pluggd",
+    description: "The page you were looking for could not be found on Pluggd.",
+    path: location.pathname,
+  });
 
   useEffect(() => {
     console.error(

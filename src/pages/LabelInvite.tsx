@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Building, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { logger } from "@/lib/logger";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 type InviteStatus = "loading" | "valid" | "expired" | "invalid" | "already_member" | "accepted";
 
@@ -26,6 +27,14 @@ export default function LabelInvite() {
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const [accepting, setAccepting] = useState(false);
   const tokenPrefix = token ? token.slice(0, 8) : null;
+
+  usePageMetadata({
+    title: inviteData ? `Join ${inviteData.label_name} on Pluggd` : 'Label Invitation — Pluggd',
+    description: inviteData
+      ? `Accept your invitation to collaborate with ${inviteData.label_name} on Pluggd.`
+      : 'Accept label invitations and collaborate with your team on Pluggd.',
+    path: token ? `/labels/invite/${token}` : '/labels/invite',
+  });
 
   const toError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 

@@ -17,11 +17,31 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get all live battles
-    const { data: liveBattles, error: battlesError } = await supabase
+    let targetBattleId: string | undefined;
+    if (req.headers.get('content-type')?.includes('application/json')) {
+      try {
+        const body = await req.json();
+        if (body && typeof body.battleId === 'string') {
+          targetBattleId = body.battleId;
+        }
+      } catch (parseError) {
+        if (!(parseError instanceof SyntaxError)) {
+          console.warn('Failed to parse request body for advance-battle-rounds:', parseError);
+        }
+      }
+    }
+
+    // Get all live battles (optionally filtered to a single battle)
+    let battlesQuery = supabase
       .from('battles')
       .select('id, title')
       .eq('status', 'live');
+
+    if (targetBattleId) {
+      battlesQuery = battlesQuery.eq('id', targetBattleId);
+    }
+
+    const { data: liveBattles, error: battlesError } = await battlesQuery;
 
     if (battlesError) {
       console.error('Error fetching live battles:', battlesError);

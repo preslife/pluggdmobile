@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Music, Calendar, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SEOHelmet from "@/components/SEOHelmet";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 import { ArtistCard } from "@/components/ArtistCard";
 import { VideoCard } from "@/components/VideoCard";
@@ -71,6 +72,12 @@ interface StoreProduct {
 }
 
 const Label = () => {
+  usePageMetadata({
+    title: "Pluggd Label — Pluggd",
+    description: "Explore exclusive releases, featured artists, videos, and merchandise from the Pluggd collective.",
+    path: "/label",
+  });
+
   const navigate = useNavigate();
   const [releases, setReleases] = useState<Release[]>([]);
   const [featuredReleases, setFeaturedReleases] = useState<Release[]>([]);
