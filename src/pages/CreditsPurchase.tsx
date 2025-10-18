@@ -150,12 +150,25 @@ const CreditsPurchase = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#credits-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
       <DomainAwareNavigation />
-      
-      <div className="container mx-auto px-4 py-8 pt-24 max-w-7xl">
+
+      <main
+        id="credits-content"
+        className="container mx-auto max-w-7xl px-4 py-8 pt-24"
+        aria-labelledby="credits-heading"
+      >
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+          <h1
+            id="credits-heading"
+            className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent"
+          >
             Buy Credits
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -166,12 +179,15 @@ const CreditsPurchase = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Credit packages */}
           <div className="lg:col-span-2">
+            <h2 className="text-2xl font-semibold text-left mb-6">Choose your credit package</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {creditPackages.map((pkg) => (
-                <Card 
+                <Card
                   key={pkg.id}
-                  className={`relative transition-all duration-300 hover:shadow-lg ${
-                    pkg.popular ? 'border-primary shadow-lg scale-105' : 'hover:scale-105'
+                  className={`relative transition-transform duration-300 focus-within:shadow-lg focus-within:outline focus-within:outline-2 focus-within:outline-primary/60 ${
+                    pkg.popular
+                      ? 'border-primary shadow-lg md:scale-[1.02]'
+                      : 'md:hover:shadow-lg md:hover:scale-[1.02]'
                   }`}
                 >
                   {pkg.popular && (
@@ -197,7 +213,7 @@ const CreditsPurchase = () => {
                     
                     {pkg.bonus && (
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
+                        <Badge variant="secondary" className="bg-emerald-200 text-emerald-950">
                           <Gift className="h-3 w-3 mr-1" />
                           +{pkg.bonus} Bonus
                         </Badge>
@@ -223,8 +239,9 @@ const CreditsPurchase = () => {
                       ))}
                     </ul>
                     
-                    <Button 
-                      className="w-full"
+                    <Button
+                      type="button"
+                      className="w-full min-h-[48px]"
                       size="lg"
                       onClick={() => handlePurchase(pkg)}
                       disabled={purchasing === pkg.id}
@@ -248,35 +265,37 @@ const CreditsPurchase = () => {
             </div>
 
             {/* Features section */}
-            <Card>
+            <Card aria-labelledby="credits-benefits-heading">
               <CardHeader>
-                <CardTitle>What You Can Do With Credits</CardTitle>
+                <h2 id="credits-benefits-heading" className="text-2xl font-semibold leading-none tracking-tight">
+                  What You Can Do With Credits
+                </h2>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Coins className="h-8 w-8 text-blue-600" />
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Coins className="h-8 w-8 text-blue-700" />
                     </div>
                     <h3 className="font-semibold mb-2">Download Beats</h3>
                     <p className="text-sm text-muted-foreground">
                       Access thousands of high-quality beats and instrumentals
                     </p>
                   </div>
-                  
+
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Crown className="h-8 w-8 text-green-600" />
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Crown className="h-8 w-8 text-emerald-700" />
                     </div>
                     <h3 className="font-semibold mb-2">Premium Content</h3>
                     <p className="text-sm text-muted-foreground">
                       Get exclusive tracks and early access to new releases
                     </p>
                   </div>
-                  
+
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Star className="h-8 w-8 text-purple-600" />
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Star className="h-8 w-8 text-purple-700" />
                     </div>
                     <h3 className="font-semibold mb-2">Support Creators</h3>
                     <p className="text-sm text-muted-foreground">
@@ -289,49 +308,51 @@ const CreditsPurchase = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <CreditBalance showTransactions={true} />
-          </div>
+          <aside className="lg:col-span-1" aria-label="Credit balance and history">
+            <CreditBalance showTransactions={true} className="w-full" />
+          </aside>
         </div>
 
         {/* FAQ Section */}
-        <Card className="mt-12">
+        <Card className="mt-12" aria-labelledby="credits-faq-heading">
           <CardHeader>
-            <CardTitle>Frequently Asked Questions</CardTitle>
+            <h2 id="credits-faq-heading" className="text-2xl font-semibold leading-none tracking-tight">
+              Frequently Asked Questions
+            </h2>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-semibold mb-2">How do credits work?</h4>
+              <h3 className="font-semibold mb-2 text-lg">How do credits work?</h3>
               <p className="text-sm text-muted-foreground">
-                Credits are our platform currency. Use them to purchase beats, tracks, and exclusive content. 
+                Credits are our platform currency. Use them to purchase beats, tracks, and exclusive content.
                 Each item shows its credit cost upfront.
               </p>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-2">Do credits expire?</h4>
+              <h3 className="font-semibold mb-2 text-lg">Do credits expire?</h3>
               <p className="text-sm text-muted-foreground">
                 No! Your credits never expire. Purchase once and use them whenever you're ready.
               </p>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-2">Can I get a refund?</h4>
+              <h3 className="font-semibold mb-2 text-lg">Can I get a refund?</h3>
               <p className="text-sm text-muted-foreground">
-                Unused credits can be refunded within 30 days. Once you've used credits to purchase content, 
+                Unused credits can be refunded within 30 days. Once you've used credits to purchase content,
                 those specific credits cannot be refunded.
               </p>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-2">What payment methods do you accept?</h4>
+              <h3 className="font-semibold mb-2 text-lg">What payment methods do you accept?</h3>
               <p className="text-sm text-muted-foreground">
                 We accept all major credit cards, debit cards, and PayPal through our secure Stripe integration.
               </p>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };
