@@ -7955,6 +7955,8 @@ export type Database = {
       }
       wallet_ledger: {
         Row: {
+          balance_after: number
+          balance_before: number
           amount_credits: number
           counterparty_user_id: string | null
           created_at: string
@@ -7966,6 +7968,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          balance_after?: number
+          balance_before?: number
           amount_credits: number
           counterparty_user_id?: string | null
           created_at?: string
@@ -7977,6 +7981,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance_after?: number
+          balance_before?: number
           amount_credits?: number
           counterparty_user_id?: string | null
           created_at?: string
