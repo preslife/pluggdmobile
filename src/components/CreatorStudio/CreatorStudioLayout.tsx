@@ -640,8 +640,14 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
   return (
     <StudioContext.Provider value={contextValue}>
       <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <Sidebar className="border-r">
+        <a
+          href="#studio-main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to studio content
+        </a>
+        <div className="min-h-screen w-full bg-background flex flex-col md:flex-row">
+        <Sidebar className="border-r" aria-label="Studio navigation">
           <SidebarHeader>
             <div className="flex items-center gap-2 px-2 py-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -657,6 +663,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
+                <nav aria-label="Studio sections" className="space-y-1">
                 <SidebarMenu>
                   {navigationItems.map((item) => {
                     if (item.items && item.items.length > 0) {
@@ -669,7 +676,10 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                             <CollapsibleTrigger asChild>
                               <SidebarMenuButton
                                 isActive={hasActive}
-                                className="w-full justify-between"
+                                className={cn(
+                                  "w-full justify-between rounded-md px-2 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                  hasActive && "bg-primary/10"
+                                )}
                               >
                                 <div className="flex items-center gap-2">
                                   <item.icon className="h-4 w-4" />
@@ -688,10 +698,12 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                                     <SidebarMenuSubButton
                                       asChild
                                       isActive={isActive(subItem.url)}
+                                      className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                     >
                                       <button
+                                        type="button"
                                         onClick={() => navigate(subItem.url)}
-                                        className="w-full text-left"
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline-none"
                                       >
                                         <subItem.icon className="h-3 w-3" />
                                         <span>{subItem.title}</span>
@@ -711,10 +723,12 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                         <SidebarMenuButton
                           asChild
                           isActive={item.url ? isActive(item.url) : false}
+                          className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                           <button
+                            type="button"
                             onClick={() => item.url && navigate(item.url)}
-                            className="w-full justify-start"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline-none"
                           >
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
@@ -724,6 +738,7 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                     );
                   })}
                 </SidebarMenu>
+                </nav>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
@@ -739,13 +754,16 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
         
         <SidebarInset className="flex-1">
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger
+              className="-ml-1 h-11 w-11"
+              aria-label="Toggle studio navigation"
+            />
             <div className="flex-1" />
             {workspaceSwitcher}
             <ThemeToggle />
           </header>
           
-          <main className="flex-1 p-6 creator-studio-scope">
+          <main id="studio-main" className="flex-1 p-6 creator-studio-scope" tabIndex={-1}>
 
             {children}
           </main>
