@@ -91,6 +91,9 @@ interface SupabaseTierRow {
   stripe_price_monthly_id: string | null;
   stripe_price_yearly_id: string | null;
   stripe_price_lifetime_id: string | null;
+  stripe_synced_at: string | null;
+  stripe_sync_status: string | null;
+  stripe_sync_error: string | null;
 }
 
 describe("useMembershipTiers", () => {
@@ -138,6 +141,9 @@ describe("useMembershipTiers", () => {
     stripe_price_monthly_id: "price_monthly_123",
     stripe_price_yearly_id: null,
     stripe_price_lifetime_id: null,
+    stripe_synced_at: new Date().toISOString(),
+    stripe_sync_status: "synced",
+    stripe_sync_error: null,
   });
 
   const createInput = (): UpsertMembershipTierInput => ({

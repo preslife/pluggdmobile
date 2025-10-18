@@ -64,6 +64,7 @@ import CreditsPurchase from "./pages/CreditsPurchase";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import { SettingsNotificationsPage } from "./pages/SettingsNotifications";
 import CreatorAutomations from "./pages/CreatorAutomations";
+import StudioMembershipDiscord from "./pages/StudioMembershipDiscord";
 import DashboardRouter from "./components/DashboardRouter";
 
 // Lazy load additional pages
@@ -290,6 +291,14 @@ const AppContent = () => {
         {/* Producer and Creator Dashboard Routes */}
         <Route path="/producer" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
+        <Route
+          path="/studio/memberships/discord"
+          element={
+            <ProtectedRoute>
+              <StudioMembershipDiscord />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/studio/*" element={<ProtectedRoute><CreatorStudioPage /></ProtectedRoute>} />
         <Route
           path="/studio/label"

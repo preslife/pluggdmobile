@@ -4338,6 +4338,65 @@ export type Database = {
           },
         ]
       }
+      membership_tier_sync_queue: {
+        Row: {
+          action: string
+          actor_id: string | null
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          payload: Json
+          previous: Json | null
+          scheduled_at: string
+          status: string
+          tier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          payload: Json
+          previous?: Json | null
+          scheduled_at?: string
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          payload?: Json
+          previous?: Json | null
+          scheduled_at?: string
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_tier_sync_queue_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       membership_metrics: {
         Row: {
           churned_members: number
@@ -4446,6 +4505,9 @@ export type Database = {
           stripe_price_monthly_id: string | null
           stripe_price_yearly_id: string | null
           stripe_product_id: string | null
+          stripe_synced_at: string | null
+          stripe_sync_error: string | null
+          stripe_sync_status: string
           updated_at: string
         }
         Insert: {
@@ -4472,6 +4534,9 @@ export type Database = {
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
+          stripe_synced_at?: string | null
+          stripe_sync_error?: string | null
+          stripe_sync_status?: string
           updated_at?: string
         }
         Update: {
@@ -4498,6 +4563,9 @@ export type Database = {
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
+          stripe_synced_at?: string | null
+          stripe_sync_error?: string | null
+          stripe_sync_status?: string
           updated_at?: string
         }
         Relationships: []
