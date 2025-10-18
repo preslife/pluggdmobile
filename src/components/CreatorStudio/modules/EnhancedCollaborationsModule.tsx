@@ -1,28 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useCollaboration } from '@/hooks/useCollaboration';
+import { useCollaboration, type CollaborationProject } from '@/hooks/useCollaboration';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Calendar, 
-  DollarSign, 
+import {
+  Users,
+  Plus,
+  Calendar,
+  DollarSign,
   CheckCircle,
   Clock,
   X,
   MessageSquare,
-  Star
+  Star,
+  AlertCircle,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import ProjectSubmissionForm from '@/components/ProjectSubmissionForm';
-import { ProjectCard } from '@/components/ProjectCard';
 
 /**
  * EnhancedCollaborationsModule - Connects to existing collaboration system
@@ -31,20 +30,23 @@ import { ProjectCard } from '@/components/ProjectCard';
 export const EnhancedCollaborationsModule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { 
-    projects, 
-    loading, 
-    fetchProjects, 
+  const {
+    projects,
+    loading,
+    fetchProjects,
     createProject,
     applyToProject,
     getUserProjects,
-    getUserApplications 
+    getUserApplications,
+    updateProjectBudget
   } = useCollaboration();
-  
-  const [myProjects, setMyProjects] = useState([]);
+
+  const [myProjects, setMyProjects] = useState<CollaborationProject[]>([]);
   const [myApplications, setMyApplications] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState('browse');
+  const [budgetInputs, setBudgetInputs] = useState<Record<string, string>>({});
+  const [savingBudgetFor, setSavingBudgetFor] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -52,13 +54,119 @@ export const EnhancedCollaborationsModule = () => {
 
   const fetchData = async () => {
     if (!user) return;
-    
+
     await fetchProjects();
     const userProjects = await getUserProjects();
     const userApplications = await getUserApplications();
-    
-    setMyProjects(userProjects || []);
+
+    setMyProjects((userProjects || []) as CollaborationProject[]);
     setMyApplications(userApplications || []);
+  };
+
+  useEffect(() => {
+    setBudgetInputs(prev => {
+      const next = { ...prev };
+      const activeIds = new Set<string>();
+
+      myProjects.forEach(project => {
+        if (!project.budget_range) {
+          activeIds.add(project.id);
+          if (!(project.id in next)) {
+            next[project.id] = '';
+          }
+        }
+      });
+
+      Object.keys(next).forEach(projectId => {
+        if (!activeIds.has(projectId)) {
+          delete next[projectId];
+        }
+      });
+
+      return next;
+    });
+  }, [myProjects]);
+
+  const missingBudgetCount = useMemo(
+    () => myProjects.filter(project => !project.budget_range).length,
+    [myProjects]
+  );
+
+  const budgetSuggestions = useMemo(() => {
+    const suggestions: Record<string, string> = {};
+    const referenceProjects = [...projects, ...myProjects].filter(
+      (project): project is CollaborationProject => Boolean(project?.budget_range)
+    );
+
+    const budgetsByGenre = referenceProjects.reduce<Record<string, string[]>>((acc, project) => {
+      if (!project.genre || !project.budget_range) return acc;
+      if (!acc[project.genre]) {
+        acc[project.genre] = [];
+      }
+      acc[project.genre].push(project.budget_range);
+      return acc;
+    }, {});
+
+    const fallbackBudget = referenceProjects[0]?.budget_range || "£250-500";
+
+    myProjects.forEach(project => {
+      if (!project.budget_range) {
+        const genreSuggestion = project.genre ? budgetsByGenre[project.genre]?.[0] : undefined;
+        const suggestion = genreSuggestion || fallbackBudget;
+        if (suggestion) {
+          suggestions[project.id] = suggestion;
+        }
+      }
+    });
+
+    return suggestions;
+  }, [myProjects, projects]);
+
+  const handleBudgetInputChange = (projectId: string, value: string) => {
+    setBudgetInputs(prev => ({
+      ...prev,
+      [projectId]: value
+    }));
+  };
+
+  const handleUseSuggestedBudget = (projectId: string) => {
+    const suggestion = budgetSuggestions[projectId];
+    if (suggestion) {
+      setBudgetInputs(prev => ({
+        ...prev,
+        [projectId]: suggestion
+      }));
+    }
+  };
+
+  const handleSaveBudget = async (projectId: string) => {
+    const value = (budgetInputs[projectId] ?? budgetSuggestions[projectId] ?? "").trim();
+
+    if (!value) {
+      toast({
+        title: "Budget required",
+        description: "Please provide a budget range before saving.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSavingBudgetFor(projectId);
+
+    try {
+      const success = await updateProjectBudget(projectId, value);
+
+      if (success) {
+        await fetchData();
+        setBudgetInputs(prev => {
+          const next = { ...prev };
+          delete next[projectId];
+          return next;
+        });
+      }
+    } finally {
+      setSavingBudgetFor(null);
+    }
   };
 
   const handleCreateProject = async (projectData: any) => {
@@ -142,13 +250,16 @@ export const EnhancedCollaborationsModule = () => {
             <p className="text-xs text-muted-foreground">Available to apply</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={missingBudgetCount > 0 ? 'border-amber-500/50 bg-amber-50 dark:bg-amber-900/20' : ''}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Budgets Needed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">Project completion rate</p>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              {missingBudgetCount}
+            </div>
+            <p className="text-xs text-muted-foreground">Projects missing a budget range</p>
           </CardContent>
         </Card>
       </div>
@@ -243,7 +354,7 @@ export const EnhancedCollaborationsModule = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {myProjects.map((project: any) => (
+                  {myProjects.map((project) => (
                     <div key={project.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
@@ -264,6 +375,64 @@ export const EnhancedCollaborationsModule = () => {
                           Created {new Date(project.created_at).toLocaleDateString()}
                         </span>
                       </div>
+                      <div className="flex items-center gap-2 mt-4 text-sm">
+                        <DollarSign className="w-4 h-4 text-muted-foreground" />
+                        {project.budget_range ? (
+                          <span className="font-medium">{project.budget_range}</span>
+                        ) : (
+                          <span className="italic text-muted-foreground">Budget range not set</span>
+                        )}
+                      </div>
+                      {!project.budget_range && (
+                        <div
+                          data-testid={`budget-prompt-${project.id}`}
+                          className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-900/20"
+                        >
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium">Budget range needed</div>
+                              <p className="text-xs text-muted-foreground">
+                                Add a budget range so collaborators understand compensation expectations. We'll
+                                suggest a range based on similar projects if you're unsure.
+                              </p>
+                              <Input
+                                value={budgetInputs[project.id] ?? ""}
+                                onChange={(e) => handleBudgetInputChange(project.id, e.target.value)}
+                                placeholder={budgetSuggestions[project.id] || "e.g., £250-500"}
+                              />
+                              <div className="flex flex-col gap-2 sm:flex-row">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => handleUseSuggestedBudget(project.id)}
+                                  disabled={!budgetSuggestions[project.id]}
+                                >
+                                  <Sparkles className="mr-2 h-4 w-4" />
+                                  Use suggested range
+                                  {budgetSuggestions[project.id] ? ` (${budgetSuggestions[project.id]})` : ''}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => handleSaveBudget(project.id)}
+                                  disabled={savingBudgetFor === project.id}
+                                >
+                                  {savingBudgetFor === project.id ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                  )}
+                                  Save budget
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex gap-2 mt-4">
                         <Button size="sm" variant="outline">View Applicants</Button>
                         <Button size="sm" variant="outline">Edit</Button>
