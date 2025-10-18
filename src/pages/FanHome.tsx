@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, Play, Headphones, TrendingUp, Users, BookOpen, Award, Clock } from "lucide-react";
 import { formatCredits } from "@/hooks/useWallet";
 import { TipModal } from "@/components/TipModal";
-import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface Activity {
   id: string;
@@ -69,6 +70,12 @@ export default function FanHome() {
   const [loading, setLoading] = useState(true);
   const [learningProgress, setLearningProgress] = useState<CourseProgressItem[]>([]);
   const [learningCertificates, setLearningCertificates] = useState<CourseCertificateItem[]>([]);
+
+  usePageMetadata({
+    title: "Fan Home — Pluggd",
+    description: "Follow your favorite creators, discover trending releases, and support artists directly on Pluggd.",
+    path: "/home",
+  });
 
   useEffect(() => {
     if (user) {

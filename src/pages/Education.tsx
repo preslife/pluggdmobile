@@ -16,6 +16,7 @@ import { EnhancedCourseCard } from "@/components/EnhancedCourseCard";
 import { EnhancedCourseViewer } from "@/components/EnhancedCourseViewer";
 import { EnhancedAdminCourseManager } from "@/components/EnhancedAdminCourseManager";
 import { CourseUpgradeModal } from "@/components/CourseUpgradeModal";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 import { generateCourseCertificatePdf } from "@/utils/certificates";
 
 import { 
@@ -84,6 +85,12 @@ const DEFAULT_USER_STATS: UserStats = {
 };
 
 export default function Education() {
+  usePageMetadata({
+    title: "Education — Pluggd",
+    description: "Stream courses, track progress, and level up your music business and production skills with Pluggd education.",
+    path: "/education",
+  });
+
   const { user } = useAuth();
   const { subscription, usage, checkCourseLimit, getTierLimits } = useSubscription();
   const [courses, setCourses] = useState<Course[]>([]);

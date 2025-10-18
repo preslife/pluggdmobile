@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Music, Calendar, ArrowLeft, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
 import { SubscriptionGatedContent } from "@/components/SubscriptionGatedContent";
@@ -55,9 +56,21 @@ const Release = () => {
   const [release, setRelease] = useState<Release | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [previewPlayingId, setPreviewPlayingId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const metaTitle = release ? `${release.title} — ${release.artist} | Pluggd` : 'Release — Pluggd';
+  const metaDescription = release?.description
+    ? release.description.slice(0, 160)
+    : 'Discover exclusive music releases and support creators on Pluggd.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: id ? `/release/${id}` : '/release',
+    image: release?.cover_art_url ?? undefined,
+  });
   const { user } = useAuth();
 
   const handlePreviewPlay = (releaseId: string) => {

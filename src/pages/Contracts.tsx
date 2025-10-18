@@ -1,8 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import ContractsHistory from '@/components/ContractsHistory';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 const Contracts = () => {
+  usePageMetadata({
+    title: 'Contract Management — Pluggd',
+    description: 'Track licensing agreements, access contract history, and review deliverables for your beat deals.',
+    path: '/contracts',
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <div className="px-4 sm:px-6 lg:px-8">

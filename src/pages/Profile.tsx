@@ -11,6 +11,7 @@ import { buildEntityOgImageUrl } from "@/lib/og";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface UserProfile {
   id: string;
@@ -79,6 +80,19 @@ const Profile = () => {
     total_sales: 0,
     monthly_listeners: 0,
     fan_funding_raised: 0
+  });
+
+  const metaName = profile?.full_name || profile?.username;
+  const metaTitle = metaName ? `${metaName} — Pluggd Creator` : 'Creator Profile — Pluggd';
+  const metaDescription = profile?.bio
+    ? profile.bio.slice(0, 160)
+    : 'Discover creator storefronts, releases, and beats on Pluggd.';
+
+  usePageMetadata({
+    title: metaTitle,
+    description: metaDescription,
+    path: userId ? `/profile/${userId}` : '/profile',
+    image: profile?.avatar_url ?? undefined,
   });
   const [loading, setLoading] = useState(true);
 

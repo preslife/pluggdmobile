@@ -24,15 +24,6 @@ _Last updated: 2025-10-17_
 - [ ] Start dev server (`npm run dev`) and validate Agora call join still works in live session room.
 - [ ] Confirm Library downloads still function with tooltip/share interactions after mock adjustments.
 
-## Lighthouse Snapshots (2025-10-17)
-- [x] Capture desktop Lighthouse audits for the primary landing, credits checkout, and studio dashboards.
-- [x] Track follow-up items called out in the reports below.
-
-| Page | Performance | Accessibility | Best Practices | SEO | Key Findings |
-|------|-------------|---------------|----------------|-----|--------------|
-| Landing (`/`) | 0.71 | 0.95 | 0.96 | 0.92 | Largest bundle still 5.8 MB; next pass should target code-splitting the hero and Magenta audio helpers. |
-| Credits checkout (`/credits/purchase`) | 0.94 | 0.94 | 0.96 | 1.00 | New heading structure and tap targets resolved previous heading-order and contrast violations. |
-| Studio (`/studio`) | 0.90 | 0.94 | 0.96 | 1.00 | Sidebar skip link works; consider lazy-loading analytics widgets to claw back perf headroom. |
-
-- [ ] Re-run the Lighthouse set after the next round of bundle optimisations (goal: landing performance ≥ 0.80).
-- [x] Document resolved a11y items: hero audience toggle now focus-visible, checkout FAQ uses consistent heading levels, and studio navigation exposes skip link/ARIA labels.
+## Sitemap & SEO Metadata
+- [ ] `npm run lint` (fails if any route is missing `setMeta`/`usePageMetadata` coverage).
+- [ ] `npm run sitemap:generate` and confirm playlists, label storefronts, and crowdfunding campaigns appear in the XML payload.

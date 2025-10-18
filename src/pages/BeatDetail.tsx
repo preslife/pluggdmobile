@@ -30,8 +30,7 @@ import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
 import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
-import { setMeta } from '@/lib/seo';
-import { buildEntityOgImageUrl } from '@/lib/og';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 type Beat = {
   id: string;
@@ -82,6 +81,21 @@ const BeatDetail = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [relatedBeats, setRelatedBeats] = useState<Beat[]>([]);
   const [isLicensingModalOpen, setIsLicensingModalOpen] = useState(false);
+
+  const resolvedArtistName = beat
+    ? beat.uploaded_by_admin
+      ? beat.producer_name || 'Internal Producer'
+      : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist'
+    : undefined;
+  const beatDescription = beat?.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+  const canonicalPath = beat ? `/beat/${beat.id}` : '/beat';
+
+  usePageMetadata({
+    title: beat ? `${beat.title} — ${resolvedArtistName ?? 'Pluggd Creator'} | Pluggd` : 'Beat Detail — Pluggd',
+    description: beatDescription,
+    path: canonicalPath,
+    image: beat?.image_url ?? undefined,
+  });
 
 
   useEffect(() => {
@@ -231,10 +245,7 @@ const BeatDetail = () => {
     );
   }
 
-  const artistName = beat.uploaded_by_admin
-    ? beat.producer_name || 'Internal Producer'
-    : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist';
-  const beatDescription = beat.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+  const artistName = resolvedArtistName ?? 'Pluggd Creator';
   const membershipCreatorId = beat.owner_id || beat.user_id || 'unknown';
   const membershipCtaHref = beat.owner_id
     ? `/creator/${beat.owner_id}#membership`
