@@ -23,6 +23,12 @@ serve(async (req) => {
       }
     );
 
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
     // Get user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
@@ -45,6 +51,9 @@ serve(async (req) => {
 
     const searchData = await searchResponse.json();
     const analytics = [];
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
 
     // Get channel information
     const channelResponse = await fetch(
@@ -59,7 +68,7 @@ serve(async (req) => {
     const channel = channelData.items[0];
 
     // Create or update artist analytics for YouTube
-    const { data: artistAnalytics, error: artistError } = await supabaseClient
+    const { data: artistAnalytics, error: artistError } = await supabaseService
       .from('artist_analytics')
       .upsert({
         user_id: user.id,
@@ -87,26 +96,34 @@ serve(async (req) => {
 
         if (stats) {
           // Store track analytics
-          await supabaseClient
+          const views = parseInt(stats.viewCount || '0');
+          const likes = parseInt(stats.likeCount || '0');
+          const comments = parseInt(stats.commentCount || '0');
+
+          totalViews += views;
+          totalLikes += likes;
+          totalComments += comments;
+
+          await supabaseService
             .from('track_analytics')
             .upsert({
               artist_analytics_id: artistAnalytics.id,
               track_id: video.id.videoId,
               track_name: video.snippet.title,
               streams: 0, // YouTube doesn't have streams
-              likes: parseInt(stats.likeCount || '0'),
-              comments: parseInt(stats.commentCount || '0'),
+              likes,
+              comments,
               shares: 0, // Not available in basic API
-              views: parseInt(stats.viewCount || '0'),
+              views,
               date_recorded: new Date().toISOString().split('T')[0],
             });
 
           analytics.push({
             title: video.snippet.title,
             channel: channel.snippet.title,
-            views: parseInt(stats.viewCount || '0'),
-            likes: parseInt(stats.likeCount || '0'),
-            comments: parseInt(stats.commentCount || '0'),
+            views,
+            likes,
+            comments,
           });
         }
       }
@@ -118,7 +135,7 @@ serve(async (req) => {
     
     for (const ageRange of ageRanges) {
       for (const country of countries) {
-        await supabaseClient
+        await supabaseService
           .from('audience_analytics')
           .upsert({
             artist_analytics_id: artistAnalytics.id,
@@ -129,6 +146,53 @@ serve(async (req) => {
             listener_count: Math.floor(Math.random() * 8000) + 200,
             date_recorded: new Date().toISOString().split('T')[0],
           });
+      }
+    }
+
+    const metricDate = new Date().toISOString().split('T')[0];
+    const kpiRows = [
+      { key: 'total_views', value: totalViews },
+      { key: 'total_likes', value: totalLikes },
+      { key: 'total_comments', value: totalComments },
+      { key: 'total_subscribers', value: Number(channel.statistics?.subscriberCount ?? 0) },
+    ].filter(entry => Number.isFinite(entry.value));
+
+    if (kpiRows.length > 0) {
+      const periodStart = `${metricDate}T00:00:00Z`;
+      const periodEnd = `${metricDate}T23:59:59.999Z`;
+
+      const { error: deleteError } = await supabaseService
+        .from('creator_kpi_events')
+        .delete()
+        .eq('creator_id', user.id)
+        .eq('source', 'fetch-youtube-analytics')
+        .gte('occurred_at', periodStart)
+        .lte('occurred_at', periodEnd);
+
+      if (deleteError) {
+        console.error('Failed to prune existing YouTube KPI events', deleteError);
+      }
+
+      const { error: insertError } = await supabaseService
+        .from('creator_kpi_events')
+        .insert(
+          kpiRows.map(entry => ({
+            creator_id: user.id,
+            event_name: 'youtube_sync',
+            source: 'fetch-youtube-analytics',
+            occurred_at: `${metricDate}T23:59:59Z`,
+            metric_date: metricDate,
+            kpi_key: entry.key,
+            kpi_value: entry.value,
+            metadata: {
+              channel_id: channelId,
+              metric_date: metricDate,
+            },
+          }))
+        );
+
+      if (insertError) {
+        console.error('Failed to store YouTube KPI events', insertError);
       }
     }
 

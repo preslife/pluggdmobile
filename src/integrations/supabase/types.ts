@@ -3104,6 +3104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_kpi_events: {
+        Row: {
+          created_at: string
+          creator_id: string
+          event_name: string | null
+          id: string
+          kpi_key: string
+          kpi_value: number
+          metadata: Json | null
+          metric_date: string
+          occurred_at: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          event_name?: string | null
+          id?: string
+          kpi_key: string
+          kpi_value: number
+          metadata?: Json | null
+          metric_date?: string
+          occurred_at?: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          event_name?: string | null
+          id?: string
+          kpi_key?: string
+          kpi_value?: number
+          metadata?: Json | null
+          metric_date?: string
+          occurred_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       creator_metrics: {
         Row: {
           audience_geo: Json | null
@@ -8122,6 +8161,28 @@ export type Database = {
       }
     }
     Views: {
+      creator_kpi_daily: {
+        Row: {
+          creator_id: string | null
+          event_count: number | null
+          kpi_key: string | null
+          last_occurred_at: string | null
+          metric_date: string | null
+          total_value: number | null
+        }
+        Relationships: []
+      }
+      creator_kpi_daily_personal: {
+        Row: {
+          creator_id: string | null
+          event_count: number | null
+          kpi_key: string | null
+          last_occurred_at: string | null
+          metric_date: string | null
+          total_value: number | null
+        }
+        Relationships: []
+      }
       live_gift_room_totals: {
         Row: {
           events_count: number | null

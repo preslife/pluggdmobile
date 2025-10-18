@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { InsightsModule } from "./InsightsModule";
 
 interface LiveAnalyticsMetrics {
   ticketRevenue: number;
@@ -127,10 +128,12 @@ export const AnalyticsModule: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Analytics & Insights</h1>
           <p className="text-muted-foreground">
-            Track ticketing performance, reminder coverage, and recording publishing in one view.
+            Monitor key audience KPIs alongside live session performance, reminders, and recordings in one place.
           </p>
-        </div>
       </div>
+    </div>
+
+      <InsightsModule />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

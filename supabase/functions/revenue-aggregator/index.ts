@@ -6,6 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type SupabaseClient = ReturnType<typeof createClient>;
+
+const recordKpiSnapshot = async (
+  client: SupabaseClient,
+  creatorId: string,
+  metricDate: string,
+  source: string,
+  metrics: Array<{ key: string; value: number }>,
+  metadata: Record<string, unknown> = {}
+) => {
+  if (!metrics.length) return;
+
+  const periodStart = `${metricDate}T00:00:00Z`;
+  const periodEnd = `${metricDate}T23:59:59.999Z`;
+
+  const { error: deleteError } = await client
+    .from('creator_kpi_events')
+    .delete()
+    .eq('creator_id', creatorId)
+    .eq('source', source)
+    .gte('occurred_at', periodStart)
+    .lte('occurred_at', periodEnd);
+
+  if (deleteError) {
+    console.error('Failed to prune prior KPI snapshots', { creatorId, source, metricDate, error: deleteError });
+  }
+
+  const rows = metrics.map(metric => ({
+    creator_id: creatorId,
+    event_name: `${source}_daily_snapshot`,
+    source,
+    occurred_at: `${metricDate}T23:59:59Z`,
+    metric_date: metricDate,
+    kpi_key: metric.key,
+    kpi_value: metric.value,
+    metadata: {
+      ...metadata,
+      metric_date: metricDate,
+    },
+  }));
+
+  const { error: insertError } = await client
+    .from('creator_kpi_events')
+    .insert(rows);
+
+  if (insertError) {
+    console.error('Failed to record KPI snapshot', { creatorId, source, metricDate, error: insertError });
+  }
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[REVENUE-AGGREGATOR] ${step}${detailsStr}`);
@@ -82,7 +132,7 @@ serve(async (req) => {
   }
 });
 
-async function aggregateCreatorRevenue(supabaseClient: any, creatorId: string, date: string) {
+async function aggregateCreatorRevenue(supabaseClient: SupabaseClient, creatorId: string, date: string) {
   // Calculate battle revenue
   const { data: battleRevenue } = await supabaseClient
     .from('battle_transactions')
@@ -135,10 +185,27 @@ async function aggregateCreatorRevenue(supabaseClient: any, creatorId: string, d
     throw new Error(`Failed to update creator metrics: ${error.message}`);
   }
 
-  logStep("Updated creator metrics", { 
-    creatorId, 
+  logStep("Updated creator metrics", {
+    creatorId,
     battleRevenue: battleRevenueCents,
     eventRevenue: eventRevenueCents,
     fanSubRevenue: fanSubRevenueCents
   });
+
+  await recordKpiSnapshot(
+    supabaseClient,
+    creatorId,
+    date,
+    'revenue-aggregator',
+    [
+      { key: 'battle_revenue_cents', value: battleRevenueCents },
+      { key: 'event_revenue_cents', value: eventRevenueCents },
+      { key: 'fan_revenue_cents', value: fanSubRevenueCents },
+    ],
+    {
+      battle_revenue_cents: battleRevenueCents,
+      event_revenue_cents: eventRevenueCents,
+      fan_subscription_revenue_cents: fanSubRevenueCents,
+    }
+  );
 }
