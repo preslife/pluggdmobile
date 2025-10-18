@@ -154,6 +154,27 @@ serve(async (req) => {
       .delete()
       .eq("session_id", payload.sessionId);
 
+    const allowedUserIds: string[] = [];
+    for (const userId of userIds) {
+      if (userId === payload.hostId) {
+        allowedUserIds.push(userId);
+        continue;
+      }
+
+      const notifyAttendee = await shouldSendNotification(
+        supabaseAdmin as any,
+        preferenceCache,
+        userId,
+        "notify_live_sessions",
+      );
+
+      if (notifyAttendee) {
+        allowedUserIds.push(userId);
+      } else {
+        console.log(`Skipping live session reminders for ${userId} due to preferences`);
+      }
+    }
+
     const rows = [] as Array<{
       session_id: string;
       user_id: string;
@@ -163,7 +184,7 @@ serve(async (req) => {
       title: string;
     }>;
 
-    for (const userId of userIds) {
+    for (const userId of allowedUserIds) {
       for (const reminder of upcomingReminders) {
         rows.push({
           session_id: payload.sessionId,
@@ -211,7 +232,7 @@ serve(async (req) => {
       console.log(`Skipping scheduling notification for host ${payload.hostId} due to preferences`);
     }
 
-    const attendees = Array.from(userIds);
+    const attendees = Array.from(allowedUserIds);
     for (const reminder of upcomingReminders) {
       for (const attendee of attendees) {
         await supabaseAdmin.functions.invoke("send-lifecycle-emails", {

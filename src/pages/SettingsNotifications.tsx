@@ -1,10 +1,7 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Bell, Settings } from "lucide-react";
+import { useEffect } from "react";
+import { Settings } from "lucide-react";
 import { NotificationSettings } from "../components/NotificationSettings";
-import { usePageMetadata } from "@/hooks/usePageMetadata";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 export const SettingsNotificationsPage = () => {
   usePageMetadata({
