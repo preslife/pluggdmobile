@@ -210,48 +210,21 @@ export const useContracts = () => {
 
     setLoading(true);
     try {
-      // Record the signature
-      const { error: sigError } = await supabase
-        .from('contract_signatures')
-        .insert({
-          contract_id: contractId,
-          signer_id: user.id,
-          signer_type: signerType,
-          signature_data: signature,
-          ip_address: 'placeholder', // Would get real IP in production
-          user_agent: navigator.userAgent
-        });
+      const { data, error: functionError } = await supabase.functions.invoke('contract-execution', {
+        body: {
+          contractId,
+          signature,
+          signerType,
+        },
+      });
 
-      if (sigError) throw sigError;
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to sign contract');
+      }
 
-      // Update the contract with signature
-      const updateData = signerType === 'producer' 
-        ? { producer_signature: signature }
-        : { artist_signature: signature };
-
-      const { error: contractError } = await supabase
-        .from('licensing_contracts')
-        .update(updateData)
-        .eq('id', contractId);
-
-      if (contractError) throw contractError;
-
-      // Check if both parties have signed
-      const { data: contract } = await supabase
-        .from('licensing_contracts')
-        .select('producer_signature, artist_signature')
-        .eq('id', contractId)
-        .maybeSingle();
-
-      if (contract?.producer_signature && contract?.artist_signature) {
-        // Both parties signed - mark as complete
-        await supabase
-          .from('licensing_contracts')
-          .update({ 
-            status: 'signed',
-            signed_at: new Date().toISOString()
-          })
-          .eq('id', contractId);
+      if (!data?.success) {
+        const errorMessage = typeof data?.error === 'string' ? data.error : 'Failed to sign contract';
+        throw new Error(errorMessage);
       }
 
       toast({
