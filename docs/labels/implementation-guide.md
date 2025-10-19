@@ -15,12 +15,22 @@ select
   price_cents,
   sales_count,
   revenue_cents,
-  last_transaction_at
+  last_transaction_at,
+  inventory_status,
+  media_url,
+  created_at
 from analytics.label_catalog_items
 where label_id = :label_id
+  and coalesce(status, 'live') = any(:status_filter)
 order by coalesce(last_transaction_at, created_at) desc
 limit :page_size offset :offset;
 ```
+
+Key columns:
+
+- `inventory_status` surfaces the publish state derived from underlying release/merch tables so the UI can badge items that still need work.
+- `media_url` is the canonical artwork/cover to render in the grid; the RPC excludes heavy metadata blobs so thumbnails stay fast.
+- `created_at` and `last_transaction_at` determine sorting and help the dashboard highlight dormant SKUs.
 
 ```ts
 // Studio > Catalog module
@@ -28,12 +38,13 @@ const { data, error } = await supabase.rpc("catalog_list_items", {
   p_actor_id: session.user.id,
   p_owner_label_id: activeLabel.id,
   p_types: ["release", "beat", "bundle", "merch", "collectible"],
+  p_status: ["live", "draft"],
   p_limit: 20,
   p_offset: 0,
 });
 ```
 
-The RPC internally hits `analytics.label_catalog_items` so we do not duplicate join logic client side; refer to the Studio contracts for the complete payload shape.【F:docs/studio.md†L23-L47】
+The RPC internally hits `analytics.label_catalog_items` so we do not duplicate join logic client side; refer to the Studio contracts for the complete payload shape.【F:docs/studio.md†L23-L47】 The optional `p_status` argument surfaces as the `status_filter` bind parameter in the SQL snippet above.
 
 ## Sales and revenue cards
 
@@ -45,6 +56,7 @@ select
   sum(sales_count)            as total_sales,
   sum(gross_revenue_cents)    as lifetime_gross_cents,
   sum(net_revenue_cents)      as lifetime_net_cents,
+  sum(refund_cents)           as lifetime_refund_cents,
   sum(gross_revenue_cents) / nullif(sum(sales_count), 0) as average_order_value_cents
 from analytics.label_sales_summary
 where label_id = :label_id
@@ -66,9 +78,16 @@ where label_id = :label_id
 ```ts
 const { data: summary } = await supabase
   .from("label_sales_summary")
-  .select("period, sales_count, gross_revenue_cents, net_revenue_cents")
+  .select("period, sales_count, gross_revenue_cents, net_revenue_cents, refund_cents")
   .eq("label_id", activeLabel.id)
   .in("period", ["lifetime", "30d", "7d"]);
+```
+
+```ts
+// Admin task: keep the lifetime materialized view fresh on demand
+const { data, error } = await serviceClient.rpc("refresh_label_sales_summary", {
+  p_label_id: activeLabel.id,
+});
 ```
 
 ## Revenue breakdown and charting
