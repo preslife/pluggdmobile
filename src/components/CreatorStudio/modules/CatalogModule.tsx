@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useStudioContext } from "@/contexts/StudioContext";
+import { ConnectionsModule } from "./ConnectionsModule";
 
 interface CatalogItem {
   id: string;
@@ -570,6 +571,8 @@ export const CatalogModule: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <ConnectionsModule />
 
       <Tabs value={activeTab} onValueChange={(v) => {
         try {
