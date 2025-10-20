@@ -1,0 +1,134 @@
+{
+  "info": {
+    "name": "PLUGGD API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Reference collection for PLUGGD public APIs including commerce, memberships, and messaging endpoints."
+  },
+  "item": [
+    {
+      "name": "Healthcheck",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/functions/v1/healthz",
+          "host": ["{{baseUrl}}"],
+          "path": ["functions", "v1", "healthz"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Store Checkout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "apikey",
+            "value": "{{serviceRoleKey}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{serviceRoleKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"line_items\": [{\n    \"sku\": \"release_123\",\n    \"quantity\": 1\n  }],\n  \"buyer_email\": \"fan@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/functions/v1/create-store-checkout",
+          "host": ["{{baseUrl}}"],
+          "path": ["functions", "v1", "create-store-checkout"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fetch Subscription Analytics",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{serviceRoleKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"metrics\",\n  \"ownerId\": \"{{creatorId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/functions/v1/membership-tier-sync",
+          "host": ["{{baseUrl}}"],
+          "path": ["functions", "v1", "membership-tier-sync"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trigger Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{serviceRoleKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event\": \"test.event\",\n  \"payload\": {\n    \"message\": \"Ping from Postman\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/functions/v1/trigger-webhook",
+          "host": ["{{baseUrl}}"],
+          "path": ["functions", "v1", "trigger-webhook"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://your-project.supabase.co"
+    },
+    {
+      "key": "serviceRoleKey",
+      "value": ""
+    },
+    {
+      "key": "creatorId",
+      "value": ""
+    }
+  ]
+}

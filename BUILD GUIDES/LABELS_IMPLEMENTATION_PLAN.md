@@ -258,7 +258,11 @@ const [releases, beats, packs] = await Promise.all([
 ]);
 
 // REPLACE WITH (add 3 new content type queries):
-const [releases, beats, packs, merch, bundles, collectibles] = await Promise.all([
+const [{ data: catalogMetrics }, releases, beats, packs, merch, bundles, collectibles] = await Promise.all([
+  supabase
+    .from('label_catalog_items')
+    .select('item_id, sales_count, net_revenue_cents')
+    .eq('label_id', activeLabel.id),
   supabase.from('releases').select('*').eq('user_id', user.id),
   supabase.from('beats').select('*').eq('user_id', user.id),
   supabase.from('sample_packs').select('*').eq('user_id', user.id),
@@ -268,30 +272,39 @@ const [releases, beats, packs, merch, bundles, collectibles] = await Promise.all
 ]);
 
 // UPDATE the catalogItems mapping (around line 190):
+const metricsById = new Map<string, { sales_count: number; net_revenue_cents: number }>();
+
+(catalogMetrics?.data || []).forEach(metric => {
+  metricsById.set(metric.item_id, {
+    sales_count: metric.sales_count ?? 0,
+    net_revenue_cents: metric.net_revenue_cents ?? 0,
+  });
+});
+
 const allItems: CatalogItem[] = [
   ...(releases?.data || []).map(item => ({
     ...item,
     type: 'release' as const,
     cover_art_url: item.cover_art_url,
     price: item.price || 0,
-    sales: 0, // TODO: fetch actual sales
-    revenue: 0, // TODO: fetch actual revenue
+    sales: metricsById.get(item.id)?.sales_count ?? 0,
+    revenue: (metricsById.get(item.id)?.net_revenue_cents ?? 0) / 100,
   })),
   ...(beats?.data || []).map(item => ({
     ...item,
     type: 'beat' as const,
     image_url: item.image_url,
     price: item.price || 0,
-    sales: 0,
-    revenue: 0,
+    sales: metricsById.get(item.id)?.sales_count ?? 0,
+    revenue: (metricsById.get(item.id)?.net_revenue_cents ?? 0) / 100,
   })),
   ...(packs?.data || []).map(item => ({
     ...item,
     type: 'pack' as const,
     image_url: item.cover_image_url,
     price: item.price || 0,
-    sales: 0,
-    revenue: 0,
+    sales: metricsById.get(item.id)?.sales_count ?? 0,
+    revenue: (metricsById.get(item.id)?.net_revenue_cents ?? 0) / 100,
   })),
   // ADD NEW MAPPINGS:
   ...(merch?.data || []).map(item => ({

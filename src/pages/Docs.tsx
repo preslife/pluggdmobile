@@ -385,12 +385,14 @@ app.post('/webhook', (req, res) => {
                     </a>
                   </Button>
                   
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2" disabled>
-                    <Zap className="h-5 w-5" />
-                    <div className="text-left">
-                      <div className="font-medium">Postman Collection</div>
-                      <div className="text-xs text-muted-foreground">Coming soon</div>
-                    </div>
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2" asChild>
+                    <a href="/postman/pluggd-api.postman_collection.json" download>
+                      <Zap className="h-5 w-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Postman Collection</div>
+                        <div className="text-xs text-muted-foreground">Download API reference workspace</div>
+                      </div>
+                    </a>
                   </Button>
                   
                   <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2" asChild>

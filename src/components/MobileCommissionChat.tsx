@@ -6,16 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Send, 
-  Paperclip, 
-  Mic, 
-  Phone, 
-  Video, 
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Send,
+  Paperclip,
+  Mic,
+  Phone,
+  Video,
   MoreVertical,
   Check,
   CheckCheck,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 
 interface Message {
@@ -46,13 +48,27 @@ export const MobileCommissionChat = ({
   const [newMessage, setNewMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const activeStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      activeStreamRef.current?.getTracks().forEach(track => track.stop());
+      activeStreamRef.current = null;
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -117,10 +133,142 @@ export const MobileCommissionChat = ({
     toast({ title: 'File shared', description: `${file.name} has been shared` });
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      toast({ title: 'Voice recording', description: 'Voice recording feature coming soon!' });
+  const uploadAudioBlob = async (blob: Blob) => {
+    const path = `${commissionId}/${crypto.randomUUID()}.webm`;
+    const { error } = await supabase.storage
+      .from('commission-audio')
+      .upload(path, blob, { contentType: 'audio/webm' });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from('commission-audio')
+      .getPublicUrl(path);
+
+    return data?.publicUrl ?? null;
+  };
+
+  const handleAudioMessage = async (blob: Blob) => {
+    if (!user) {
+      toast({
+        title: 'Sign in required',
+        description: 'Log in to send voice notes.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsUploadingAudio(true);
+
+    try {
+      const publicUrl = await uploadAudioBlob(blob);
+      const fallbackUrl = publicUrl ?? URL.createObjectURL(blob);
+      const messageId = crypto.randomUUID();
+      const message: Message = {
+        id: messageId,
+        content: 'Voice message',
+        sender_id: user.id,
+        sender_name: user.email || 'You',
+        timestamp: new Date().toISOString(),
+        type: 'audio',
+        status: 'sent',
+        file_url: fallbackUrl
+      };
+
+      setMessages(prev => [...prev, message]);
+      setTimeout(() => {
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status: 'delivered' } : m));
+      }, 1000);
+
+      toast({
+        title: 'Voice message sent',
+        description: publicUrl
+          ? 'Audio saved to Supabase storage.'
+          : 'Shared locally from this device.'
+      });
+
+      if (!publicUrl) {
+        setTimeout(() => URL.revokeObjectURL(fallbackUrl), 60_000);
+      }
+    } catch (error: any) {
+      console.error('Failed to upload voice note', error);
+      toast({
+        title: 'Upload failed',
+        description: error?.message ?? 'Unable to send your voice message right now.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
+  const startRecording = async () => {
+    if (isRecording || typeof window === 'undefined') {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast({
+        title: 'Recording unavailable',
+        description: 'This device does not support audio recording.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      activeStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+        recordedChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        activeStreamRef.current?.getTracks().forEach(track => track.stop());
+        activeStreamRef.current = null;
+        if (blob.size > 0) {
+          await handleAudioMessage(blob);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      toast({ title: 'Recording', description: 'Tap the mic again to finish.' });
+    } catch (error: any) {
+      console.error('Unable to start recording', error);
+      toast({
+        title: 'Recording failed',
+        description: error?.message ?? 'We could not access the microphone.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const stopRecording = async () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
     }
   };
 
@@ -218,7 +366,16 @@ export const MobileCommissionChat = ({
                         <span className="text-sm">File attachment</span>
                       </div>
                     )}
-                    
+
+                    {message.type === 'audio' && message.file_url && (
+                      <audio
+                        className="w-full mt-1"
+                        src={message.file_url}
+                        controls
+                        preload="metadata"
+                      />
+                    )}
+
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     
                     <div className={`flex items-center justify-end gap-1 text-xs ${
@@ -263,10 +420,11 @@ export const MobileCommissionChat = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={toggleRecording}
+                onClick={() => { void toggleRecording(); }}
                 className={`absolute right-1 top-1/2 -translate-y-1/2 rounded-full ${
                   isRecording ? 'text-red-500' : ''
                 }`}
+                disabled={isUploadingAudio}
               >
                 <Mic className="w-4 h-4" />
               </Button>
@@ -288,6 +446,12 @@ export const MobileCommissionChat = ({
               <div className="flex items-center gap-1 text-red-500">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 <span>Recording...</span>
+              </div>
+            )}
+            {!isRecording && isUploadingAudio && (
+              <div className="flex items-center gap-1 text-primary">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Uploading voice note…</span>
               </div>
             )}
           </div>

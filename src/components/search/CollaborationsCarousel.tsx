@@ -6,6 +6,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Users, Clock, DollarSign, Calendar, TrendingUp, ArrowRight, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { buildBudgetBenchmarks, estimateBudgetForProject, type BudgetBenchmarks } from "@/lib/collaborationBudget";
 
 interface Collaboration {
   id: string;
@@ -22,6 +23,7 @@ interface Collaboration {
 export const CollaborationsCarousel = () => {
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [budgetBenchmarks, setBudgetBenchmarks] = useState<BudgetBenchmarks>({ perGenre: {} });
 
   useEffect(() => {
     fetchActiveCollaborations();
@@ -38,10 +40,27 @@ export const CollaborationsCarousel = () => {
 
       if (error) throw error;
       setCollaborations(data || []);
+      await fetchBudgetBenchmarks();
     } catch (error) {
       console.error('Error fetching collaborations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBudgetBenchmarks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('collaboration_projects')
+        .select('budget_range, genre')
+        .not('budget_range', 'is', null)
+        .limit(200);
+
+      if (error) throw error;
+
+      setBudgetBenchmarks(buildBudgetBenchmarks(data || []));
+    } catch (error) {
+      console.error('Error preparing budget benchmarks:', error);
     }
   };
 
@@ -95,82 +114,99 @@ export const CollaborationsCarousel = () => {
 
       <Carousel className="w-full">
         <CarouselContent className="-ml-2 md:-ml-4">
-          {collaborations.map((collab) => (
-            <CarouselItem key={collab.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
-              <Card className="group h-full hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20 bg-gradient-to-br from-background to-muted/20">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary group-hover:bg-primary group-hover:text-white transition-all">
-                      <Zap className="w-3 h-3 mr-1" />
-                      {collab.status}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>{getTimeAgo(collab.created_at)}</span>
+          {collaborations.map((collab) => {
+            const budgetEstimate = estimateBudgetForProject(budgetBenchmarks, collab);
+
+            return (
+              <CarouselItem key={collab.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+                <Card className="group h-full hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20 bg-gradient-to-br from-background to-muted/20">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between mb-2">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary group-hover:bg-primary group-hover:text-white transition-all">
+                        <Zap className="w-3 h-3 mr-1" />
+                        {collab.status}
+                      </Badge>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{getTimeAgo(collab.created_at)}</span>
+                      </div>
                     </div>
-                  </div>
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
-                    {collab.title}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {collab.genre}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      Hot
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {collab.description}
-                  </p>
-                  
-                  {/* Skills Needed */}
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Skills Needed:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {collab.skills_needed.slice(0, 2).map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                      {collab.skills_needed.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{collab.skills_needed.length - 2}
-                        </Badge>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
+                      {collab.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {collab.genre}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        Hot
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {collab.description}
+                    </p>
+
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Skills Needed:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {collab.skills_needed.slice(0, 2).map((skill) => (
+                          <Badge key={skill} variant="outline" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {collab.skills_needed.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{collab.skills_needed.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between text-xs">
+                      <div className="flex items-start gap-1 text-muted-foreground">
+                        <DollarSign className="w-3 h-3 mt-0.5" />
+                        <div>
+                          {collab.budget_range ? (
+                            <span className="font-medium text-foreground">{collab.budget_range}</span>
+                          ) : (
+                            <div className="space-y-1">
+                              <span>{budgetEstimate ? `Estimated ${budgetEstimate}` : 'Budget pending'}</span>
+                              {budgetEstimate && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Est. {budgetEstimate}
+                                </Badge>
+                              )}
+                              <p className="text-[10px] text-muted-foreground">
+                                Join the project to message the owner and confirm the budget.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {collab.deadline && (
+                        <div className={`flex items-center gap-1 ${getUrgencyColor(collab.deadline)}`}>
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(collab.deadline).toLocaleDateString()}</span>
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Project Details */}
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <DollarSign className="w-3 h-3" />
-                      <span>{collab.budget_range || 'Budget TBD'}</span>
+                    <div className="pt-2">
+                      <Link to={`/collaborate/${collab.id}`}>
+                        <Button className="w-full group-hover:shadow-lg transition-all bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90">
+                          <Users className="w-4 h-4 mr-2" />
+                          Join Project
+                        </Button>
+                      </Link>
                     </div>
-                    {collab.deadline && (
-                      <div className={`flex items-center gap-1 ${getUrgencyColor(collab.deadline)}`}>
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(collab.deadline).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Button */}
-                  <div className="pt-2">
-                    <Link to={`/collaborate/${collab.id}`}>
-                      <Button className="w-full group-hover:shadow-lg transition-all bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90">
-                        <Users className="w-4 h-4 mr-2" />
-                        Join Project
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            </CarouselItem>
-          ))}
+                  </CardContent>
+                </Card>
+              </CarouselItem>
+            );
+          })}
         </CarouselContent>
         <CarouselPrevious className="hidden md:flex -left-12" />
         <CarouselNext className="hidden md:flex -right-12" />
