@@ -132,6 +132,32 @@ describe("SubscriptionAnalyticsModule", () => {
     expect(loggerInfo).toHaveBeenCalledWith("subscription_analytics.fetch_success", expect.any(Object));
   });
 
+  it("displays churn metrics even when revenue and active subscriptions are zero", async () => {
+    orderMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          { metric_date: "2024-03-01", kpi_key: "churned_fans", total_value: 4 },
+          { metric_date: "2024-03-02", kpi_key: "churned_fans", total_value: 1 },
+          { metric_date: "2024-03-02", kpi_key: "active_subscriptions", total_value: 0 },
+          { metric_date: "2024-03-02", kpi_key: "fan_revenue_cents", total_value: 0 },
+        ],
+        error: null,
+      })
+    );
+
+    render(<SubscriptionAnalyticsModule />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("subscription-analytics-churned_fans")).toHaveTextContent("5")
+    );
+
+    expect(screen.getByTestId("subscription-analytics-active_subscriptions")).toHaveTextContent("0");
+    expect(screen.getByTestId("subscription-analytics-fan_revenue_cents")).toHaveTextContent("$0");
+    expect(
+      screen.queryByText(/Subscription analytics will appear soon/i)
+    ).not.toBeInTheDocument();
+  });
+
   it("falls back to the next analytics table when the first candidate has no data", async () => {
     orderMock
       .mockImplementationOnce(() => Promise.resolve({ data: [], error: null }))

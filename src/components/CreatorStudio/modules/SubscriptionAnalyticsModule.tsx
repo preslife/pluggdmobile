@@ -39,6 +39,8 @@ interface KpiRow {
 
 type MetricKey = "active_subscriptions" | "churned_fans" | "fan_revenue_cents";
 
+const METRIC_KEYS: MetricKey[] = ["active_subscriptions", "churned_fans", "fan_revenue_cents"];
+
 type TableCandidate = {
   name: string;
   label: string;
@@ -208,6 +210,10 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
 
     for (const row of rows) {
       if (!row.metric_date || !row.kpi_key) continue;
+
+      const metricKey = row.kpi_key as MetricKey;
+      if (!METRIC_KEYS.includes(metricKey)) continue;
+
       if (!byDate.has(row.metric_date)) {
         byDate.set(row.metric_date, {
           date: row.metric_date,
@@ -220,7 +226,7 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
       const bucket = byDate.get(row.metric_date)!;
       const value = getMetricValue(row);
 
-      switch (row.kpi_key as MetricKey) {
+      switch (metricKey) {
         case "active_subscriptions":
           bucket.activeSubscribers = value;
           break;
@@ -272,7 +278,9 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
     };
   }, [chartData]);
 
-  const hasData = chartData.length > 0 && chartData.some((entry) => entry.gmvCents > 0 || entry.activeSubscribers > 0);
+  const hasData =
+    chartData.length > 0 &&
+    chartData.some((entry) => entry.gmvCents > 0 || entry.activeSubscribers > 0 || entry.churnedFans > 0);
 
   const renderTrend = (summary: TrendSummary) => {
     const Icon = summary.trend === "down" ? ArrowDownRight : summary.trend === "up" ? ArrowUpRight : null;
@@ -344,7 +352,7 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(Object.keys(METRIC_LABELS) as MetricKey[]).map((metricKey) => {
+            {METRIC_KEYS.map((metricKey) => {
               const Icon = METRIC_ICONS[metricKey];
               const summary =
                 metricKey === "active_subscriptions"
