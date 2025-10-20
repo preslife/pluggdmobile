@@ -57,9 +57,15 @@ TWITTER_CLIENT_SECRET=your_client_secret
 ```env
 VITE_TIKTOK_CLIENT_KEY=your_client_key
 TIKTOK_CLIENT_SECRET=your_client_secret
+TIKTOK_CONNECTOR_VALIDATION_PREFIX=optional_manual_key_prefix
+TIKTOK_TEST_ACCESS_TOKEN=optional_sandbox_key
 ```
 - Go to: https://developers.tiktok.com
 - Apply for TikTok for Business
+- If your workspace relies on manual API key linking, configure `TIKTOK_CONNECTOR_VALIDATION_PREFIX`
+  to control which keys are accepted and optionally set `TIKTOK_TEST_ACCESS_TOKEN` for sandbox
+  environments. Creators can then paste the generated key inside the Catalog → TikTok Connector
+  card to link their account without running a full OAuth flow.
 
 #### **Discord**
 ```env
@@ -108,6 +114,8 @@ TWITTER_CLIENT_ID=your_twitter_client_id
 TWITTER_CLIENT_SECRET=your_twitter_client_secret
 TIKTOK_CLIENT_KEY=your_tiktok_client_key
 TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
+TIKTOK_CONNECTOR_VALIDATION_PREFIX=optional_manual_key_prefix
+TIKTOK_TEST_ACCESS_TOKEN=optional_sandbox_key
 DISCORD_CLIENT_ID=your_discord_client_id
 DISCORD_CLIENT_SECRET=your_discord_client_secret
 SOUNDCLOUD_CLIENT_ID=your_soundcloud_client_id
