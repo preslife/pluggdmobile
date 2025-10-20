@@ -1,90 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-
-// Supported locales with their display names and configurations
-export const SUPPORTED_LOCALES = {
-  'en-US': {
-    name: 'English (US)',
-    currency: 'USD',
-    timezone: 'America/New_York',
-    dateFormat: 'MM/dd/yyyy',
-    flag: '🇺🇸'
-  },
-  'en-GB': {
-    name: 'English (UK)',
-    currency: 'GBP',
-    timezone: 'Europe/London',
-    dateFormat: 'dd/MM/yyyy',
-    flag: '🇬🇧'
-  },
-  'en-CA': {
-    name: 'English (Canada)',
-    currency: 'CAD',
-    timezone: 'America/Toronto',
-    dateFormat: 'yyyy-MM-dd',
-    flag: '🇨🇦'
-  },
-  'en-AU': {
-    name: 'English (Australia)',
-    currency: 'AUD',
-    timezone: 'Australia/Sydney',
-    dateFormat: 'dd/MM/yyyy',
-    flag: '🇦🇺'
-  },
-  'de-DE': {
-    name: 'Deutsch (Deutschland)',
-    currency: 'EUR',
-    timezone: 'Europe/Berlin',
-    dateFormat: 'dd.MM.yyyy',
-    flag: '🇩🇪'
-  },
-  'fr-FR': {
-    name: 'Français (France)',
-    currency: 'EUR',
-    timezone: 'Europe/Paris',
-    dateFormat: 'dd/MM/yyyy',
-    flag: '🇫🇷'
-  },
-  'es-ES': {
-    name: 'Español (España)',
-    currency: 'EUR',
-    timezone: 'Europe/Madrid',
-    dateFormat: 'dd/MM/yyyy',
-    flag: '🇪🇸'
-  },
-  'it-IT': {
-    name: 'Italiano (Italia)',
-    currency: 'EUR',
-    timezone: 'Europe/Rome',
-    dateFormat: 'dd/MM/yyyy',
-    flag: '🇮🇹'
-  },
-  'ja-JP': {
-    name: '日本語 (日本)',
-    currency: 'JPY',
-    timezone: 'Asia/Tokyo',
-    dateFormat: 'yyyy/MM/dd',
-    flag: '🇯🇵'
-  },
-  'ko-KR': {
-    name: '한국어 (대한민국)',
-    currency: 'KRW',
-    timezone: 'Asia/Seoul',
-    dateFormat: 'yyyy.MM.dd',
-    flag: '🇰🇷'
-  }
-} as const;
-
-export type LocaleCode = keyof typeof SUPPORTED_LOCALES;
-
-export interface LocaleConfig {
-  name: string;
-  currency: string;
-  timezone: string;
-  dateFormat: string;
-  flag: string;
-}
+import {
+  DEFAULT_LOCALE,
+  LocaleCode,
+  LocaleConfig,
+  SUPPORTED_LOCALES
+} from '@/lib/locales';
+export { SUPPORTED_LOCALES, LocaleCode, LocaleConfig } from '@/lib/locales';
+import i18n from '@/lib/i18n';
 
 export interface LocalizationSettings {
   locale: LocaleCode;
@@ -106,8 +30,8 @@ interface LocalizationContextType {
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
 const DEFAULT_SETTINGS: LocalizationSettings = {
-  locale: 'en-GB', // Default to UK locale as per existing app
-  currency: 'GBP',
+  locale: DEFAULT_LOCALE, // Default to UK locale as per existing app
+  currency: SUPPORTED_LOCALES[DEFAULT_LOCALE].currency,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
   dateFormat: 'auto',
   timeFormat: '24h'
@@ -120,7 +44,11 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
 
   // Detect user's locale based on browser settings
   const detectUserLocale = (): LocaleCode => {
-    const browserLocale = navigator.language || navigator.languages?.[0] || 'en-GB';
+    if (typeof navigator === 'undefined') {
+      return DEFAULT_LOCALE;
+    }
+
+    const browserLocale = navigator.language || navigator.languages?.[0] || DEFAULT_LOCALE;
     
     // Try exact match first
     if (browserLocale in SUPPORTED_LOCALES) {
@@ -150,11 +78,16 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
   const loadUserSettings = async () => {
     if (!user) {
       // For non-authenticated users, use detected locale with localStorage fallback
-      const stored = localStorage.getItem('pluggd_locale_settings');
+      const stored = typeof window !== 'undefined'
+        ? localStorage.getItem('pluggd_locale_settings')
+        : null;
       if (stored) {
         try {
           const parsedSettings = JSON.parse(stored);
           setSettings({ ...DEFAULT_SETTINGS, ...parsedSettings });
+          if (parsedSettings.locale) {
+            void i18n.changeLanguage(parsedSettings.locale);
+          }
         } catch (error) {
           console.warn('Failed to parse stored locale settings:', error);
         }
@@ -169,7 +102,10 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || detectedConfig.timezone
         };
         setSettings(detectedSettings);
-        localStorage.setItem('pluggd_locale_settings', JSON.stringify(detectedSettings));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('pluggd_locale_settings', JSON.stringify(detectedSettings));
+        }
+        void i18n.changeLanguage(detectedLocale);
       }
       setLoading(false);
       return;
@@ -189,6 +125,9 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
       if (data?.locale_settings) {
         const userSettings = data.locale_settings as LocalizationSettings;
         setSettings({ ...DEFAULT_SETTINGS, ...userSettings });
+        if (userSettings.locale) {
+          void i18n.changeLanguage(userSettings.locale);
+        }
       } else {
         // First time user - detect and save their locale
         const detectedLocale = detectUserLocale();
@@ -202,6 +141,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
         
         await updateUserSettings(detectedSettings);
         setSettings(detectedSettings);
+        void i18n.changeLanguage(detectedLocale);
       }
     } catch (error) {
       console.error('Error loading user locale settings:', error);
@@ -213,6 +153,7 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
         locale: detectedLocale,
         currency: detectedConfig.currency
       });
+      void i18n.changeLanguage(detectedLocale);
     } finally {
       setLoading(false);
     }
@@ -221,7 +162,9 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
   // Save settings to database or localStorage
   const updateUserSettings = async (newSettings: LocalizationSettings) => {
     if (!user) {
-      localStorage.setItem('pluggd_locale_settings', JSON.stringify(newSettings));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pluggd_locale_settings', JSON.stringify(newSettings));
+      }
       return;
     }
 
@@ -246,6 +189,9 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
     try {
       await updateUserSettings(updatedSettings);
       setSettings(updatedSettings);
+      if (updatedSettings.locale) {
+        void i18n.changeLanguage(updatedSettings.locale);
+      }
     } catch (error) {
       console.error('Error updating locale settings:', error);
       throw error;

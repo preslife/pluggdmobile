@@ -1,12 +1,10 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-import { AuthProvider } from './hooks/useAuth.tsx'
-import { WalletProvider } from './hooks/useWallet.tsx'
-import { SubscriptionProvider } from './hooks/useSubscription.tsx'
-import { HelmetProvider } from 'react-helmet-async'
-import { CookiesProvider } from 'react-cookie'
+import App from "./App.tsx"
+import "./index.css"
+import "./lib/i18n"
+import { HelmetProvider } from "react-helmet-async"
+import { CookiesProvider } from "react-cookie"
 
 // Register service worker for PWA (disable in local dev to avoid caching issues)
 if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
@@ -24,13 +22,8 @@ if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>
     <CookiesProvider>
-      <AuthProvider>
-        <WalletProvider>
-          <SubscriptionProvider>
-            <App />
-          </SubscriptionProvider>
-        </WalletProvider>
-      </AuthProvider>
+      {/* App composes the full provider stack (Auth, Subscription, Localization, etc.) */}
+      <App />
     </CookiesProvider>
   </HelmetProvider>
 );

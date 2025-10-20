@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLocalization } from '@/contexts/LocalizationContext';
-import { t as translate, hasTranslation, plural } from '@/lib/translations';
+import { useTranslation as useI18nextTranslation } from 'react-i18next';
 
 /**
  * Hook for handling translations with automatic locale detection
@@ -8,6 +8,13 @@ import { t as translate, hasTranslation, plural } from '@/lib/translations';
  */
 export const useTranslation = () => {
   const { settings } = useLocalization();
+  const { t: i18nTranslate, i18n } = useI18nextTranslation();
+
+  useEffect(() => {
+    if (settings.locale && i18n.language !== settings.locale) {
+      void i18n.changeLanguage(settings.locale);
+    }
+  }, [i18n, settings.locale]);
 
   /**
    * Get translation for a given key
@@ -18,15 +25,15 @@ export const useTranslation = () => {
     key: string, 
     params?: Record<string, string | number>
   ): string => {
-    return translate(key, settings.locale, params);
-  }, [settings.locale]);
+    return i18nTranslate(key, params);
+  }, [i18nTranslate]);
 
   /**
    * Check if a translation exists for a given key
    */
   const exists = useCallback((key: string): boolean => {
-    return hasTranslation(key, settings.locale);
-  }, [settings.locale]);
+    return i18n.exists(key, { lng: settings.locale });
+  }, [i18n, settings.locale]);
 
   /**
    * Pluralization helper with automatic locale detection
@@ -36,20 +43,28 @@ export const useTranslation = () => {
     singular: string,
     pluralForm: string
   ): string => {
-    return plural(count, singular, pluralForm, settings.locale);
+    try {
+      const rule = new Intl.PluralRules(settings.locale).select(count);
+      return rule === 'one' ? singular : pluralForm;
+    } catch (error) {
+      console.warn('Pluralization fallback triggered:', error);
+      return count === 1 ? singular : pluralForm;
+    }
   }, [settings.locale]);
 
   /**
    * Format a number with locale-appropriate formatting
    */
+  const resolvedLocale = settings.locale || i18n.language || 'en-GB';
+
   const formatNumber = useCallback((value: number): string => {
     try {
-      return new Intl.NumberFormat(settings.locale).format(value);
+      return new Intl.NumberFormat(resolvedLocale).format(value);
     } catch (error) {
       console.warn('Number formatting error:', error);
       return value.toString();
     }
-  }, [settings.locale]);
+  }, [resolvedLocale]);
 
   /**
    * Format a date with locale-appropriate formatting
@@ -60,12 +75,12 @@ export const useTranslation = () => {
   ): string => {
     try {
       const dateObj = date instanceof Date ? date : new Date(date);
-      return new Intl.DateTimeFormat(settings.locale, options).format(dateObj);
+      return new Intl.DateTimeFormat(resolvedLocale, options).format(dateObj);
     } catch (error) {
       console.warn('Date formatting error:', error);
       return 'Invalid date';
     }
-  }, [settings.locale]);
+  }, [resolvedLocale]);
 
   /**
    * Format currency with locale-appropriate formatting
@@ -77,7 +92,7 @@ export const useTranslation = () => {
   ): string => {
     try {
       const currencyCode = currency || settings.currency;
-      return new Intl.NumberFormat(settings.locale, {
+      return new Intl.NumberFormat(resolvedLocale, {
         style: 'currency',
         currency: currencyCode,
         ...options
@@ -87,12 +102,12 @@ export const useTranslation = () => {
       const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
       return `${symbol}${amount.toFixed(2)}`;
     }
-  }, [settings.locale, settings.currency]);
+  }, [resolvedLocale, settings.currency]);
 
   /**
    * Get the current locale
    */
-  const locale = settings.locale;
+  const locale = resolvedLocale;
 
   /**
    * Get the current currency

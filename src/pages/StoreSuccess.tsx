@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
+import { logger } from "@/lib/logger";
 
 type OrderItemSummary = {
   id: string;
@@ -51,8 +52,28 @@ const StoreSuccess: React.FC = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
+  const handleInlineReleaseOpen = useCallback(() => {
+    if (!releaseReceipt) return;
+    void logger.userAction("store_success_open_release", "StoreSuccessPage", {
+      releaseId: releaseReceipt.releaseId,
+      source: "inline_button",
+    });
+    navigate(`/release/${releaseReceipt.releaseId}?purchased=true`);
+  }, [navigate, releaseReceipt]);
+
+  const handleExternalReleaseOpen = useCallback(() => {
+    if (!releaseReceipt) return;
+    void logger.userAction("store_success_open_release", "StoreSuccessPage", {
+      releaseId: releaseReceipt.releaseId,
+      source: "external_link",
+    });
+  }, [releaseReceipt]);
+
   useEffect(() => {
     if (!sessionId) {
+      void logger.warn("store_success_missing_session", {
+        component: "StoreSuccessPage",
+      });
       setError("Missing session identifier. Please check your confirmation email for your receipt.");
       setLoading(false);
       return;
@@ -61,6 +82,10 @@ const StoreSuccess: React.FC = () => {
     const fetchOrder = async () => {
       try {
         setLoading(true);
+        void logger.info("store_success_fetch_start", {
+          component: "StoreSuccessPage",
+          sessionId,
+        });
         const { data, error: fetchError } = await supabase
           .from("orders")
           .select("id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))")
@@ -72,20 +97,45 @@ const StoreSuccess: React.FC = () => {
         }
 
         if (!data) {
+          void logger.warn("store_success_order_missing", {
+            component: "StoreSuccessPage",
+            sessionId,
+          });
           setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
           return;
         }
 
+        void logger.info("store_success_fetch_success", {
+          component: "StoreSuccessPage",
+          sessionId,
+          orderId: data.id,
+          status: data.status,
+          totalAmount: data.total_amount,
+        });
         setOrder(data as unknown as OrderSummary);
         if (!cartCleared) {
+          void logger.info("store_success_cart_cleared", {
+            component: "StoreSuccessPage",
+            sessionId,
+            orderId: data.id,
+          });
           clearCart();
           setCartCleared(true);
         }
       } catch (err: any) {
         const message = err?.message || "Unable to load your order summary.";
+        const errorObject = err instanceof Error ? err : new Error(message);
+        void logger.error("store_success_fetch_failed", {
+          component: "StoreSuccessPage",
+          sessionId,
+        }, errorObject);
         setError(message);
         toast({ title: "Order lookup failed", description: message, variant: "destructive" });
       } finally {
+        void logger.info("store_success_fetch_complete", {
+          component: "StoreSuccessPage",
+          sessionId,
+        });
         setLoading(false);
       }
     };
@@ -105,6 +155,9 @@ const StoreSuccess: React.FC = () => {
       "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases.",
       "/store/success"
     );
+    void logger.info("store_success_meta_initialized", {
+      component: "StoreSuccessPage",
+    });
   }, []);
 
   useEffect(() => {
@@ -117,11 +170,20 @@ const StoreSuccess: React.FC = () => {
         const timestampMs = parsed.timestamp ? Date.parse(parsed.timestamp) : Date.now();
         const within24Hours = !Number.isNaN(timestampMs) ? Date.now() - timestampMs < 1000 * 60 * 60 * 24 : true;
 
-        if (within24Hours) {
-          setReleaseReceipt((current) => current ?? parsed);
+        if (within24Hours && !releaseReceipt) {
+          setReleaseReceipt(parsed);
+          void logger.info("store_success_release_receipt_loaded", {
+            component: "StoreSuccessPage",
+            releaseId: parsed.releaseId,
+            source: "session_storage",
+          });
         }
       } catch (parseError) {
         console.warn("Failed to parse stored release receipt context", parseError);
+        const errorObject = parseError instanceof Error ? parseError : new Error('Failed to parse release receipt');
+        void logger.error("store_success_release_receipt_parse_failed", {
+          component: "StoreSuccessPage",
+        }, errorObject);
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
       }
@@ -132,6 +194,11 @@ const StoreSuccess: React.FC = () => {
       setReleaseReceipt({
         releaseId: releaseIdParam,
         title: "Your release",
+      });
+      void logger.info("store_success_release_receipt_loaded", {
+        component: "StoreSuccessPage",
+        releaseId: releaseIdParam,
+        source: "query_param",
       });
     }
   }, [searchParams, releaseReceipt]);
@@ -176,11 +243,14 @@ const StoreSuccess: React.FC = () => {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
-                  <a href={`/release/${releaseReceipt.releaseId}?purchased=true`}>
+                  <a
+                    href={`/release/${releaseReceipt.releaseId}?purchased=true`}
+                    onClick={handleExternalReleaseOpen}
+                  >
                     Go to release download
                   </a>
                 </Button>
-                <Button variant="outline" onClick={() => navigate(`/release/${releaseReceipt.releaseId}?purchased=true`)}>
+                <Button variant="outline" onClick={handleInlineReleaseOpen}>
                   View in this window
                 </Button>
               </div>
