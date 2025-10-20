@@ -232,7 +232,7 @@ export const MobileBeatMaker = () => {
 
     const { error: uploadError } = await supabase.storage
       .from('beat-exports')
-      .upload(filePath, blob, { contentType: 'audio/wav' });
+      .upload(filePath, blob, { contentType: 'audio/wav', upsert: true });
 
     if (uploadError) {
       throw uploadError;
@@ -252,12 +252,17 @@ export const MobileBeatMaker = () => {
     if (isExporting || isSharing) return;
     setIsExporting(true);
     const exportToast = toast({
-      title: 'Exporting beat...',
-      description: 'Rendering audio and uploading to Supabase storage.',
+      title: 'Preparing export...',
+      description: 'Rendering audio and packaging your beat.',
     });
 
     try {
       const blob = generateBeatBlob();
+      exportToast.update({
+        id: exportToast.id,
+        title: 'Uploading beat...',
+        description: 'Saving your beat to Supabase storage.',
+      });
       const { publicUrl } = await uploadBeatBlob(blob, 'exports');
 
       const objectUrl = URL.createObjectURL(blob);
@@ -294,36 +299,64 @@ export const MobileBeatMaker = () => {
     setIsSharing(true);
     const shareToast = toast({
       title: 'Preparing share link...',
-      description: 'Rendering audio and creating a public link.',
+      description: 'Rendering audio for sharing.',
     });
 
     try {
       const blob = generateBeatBlob();
+      shareToast.update({
+        id: shareToast.id,
+        title: 'Uploading beat...',
+        description: 'Saving your beat and generating a share link.',
+      });
       const { publicUrl } = await uploadBeatBlob(blob, 'shares');
 
       if (!publicUrl) {
         throw new Error('Unable to generate a public share link.');
       }
 
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Check out my beat',
-          text: 'I just created this beat on PLUGGd.',
-          url: publicUrl,
-        });
-        shareToast.update({
-          id: shareToast.id,
-          title: 'Beat shared',
-          description: 'Your beat was shared using your device share menu.',
-        });
-      } else if (navigator.clipboard?.writeText) {
+      const attemptNativeShare = async () => {
+        if (!navigator.share) return false;
+
+        try {
+          await navigator.share({
+            title: 'Check out my beat',
+            text: 'I just created this beat on PLUGGd.',
+            url: publicUrl,
+          });
+          shareToast.update({
+            id: shareToast.id,
+            title: 'Beat shared',
+            description: 'Your beat was shared using your device share menu.',
+          });
+          return true;
+        } catch (shareError: any) {
+          if (shareError?.name === 'AbortError') {
+            shareToast.update({
+              id: shareToast.id,
+              title: 'Share cancelled',
+              description: 'Sharing was cancelled before completion.',
+            });
+            return true;
+          }
+          throw shareError;
+        }
+      };
+
+      const attemptClipboard = async () => {
+        if (!navigator.clipboard?.writeText) return false;
         await navigator.clipboard.writeText(publicUrl);
         shareToast.update({
           id: shareToast.id,
           title: 'Link copied',
           description: 'Share link copied to clipboard. Send it to your collaborators!',
         });
-      } else {
+        return true;
+      };
+
+      const handled = await attemptNativeShare() || await attemptClipboard();
+
+      if (!handled) {
         shareToast.update({
           id: shareToast.id,
           title: 'Share link ready',
@@ -490,6 +523,7 @@ export const MobileBeatMaker = () => {
               size="sm"
               onClick={exportBeat}
               disabled={isExporting || isSharing}
+              aria-busy={isExporting}
             >
               <Download className="w-4 h-4 mr-1" />
               {isExporting ? 'Exporting...' : 'Export'}
@@ -499,6 +533,7 @@ export const MobileBeatMaker = () => {
               size="sm"
               onClick={shareBeat}
               disabled={isExporting || isSharing}
+              aria-busy={isSharing}
             >
               <Share2 className="w-4 h-4 mr-1" />
               {isSharing ? 'Sharing...' : 'Share'}

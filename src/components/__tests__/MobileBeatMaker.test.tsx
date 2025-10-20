@@ -12,6 +12,9 @@ const fromMock = vi.fn(() => ({
   upload: uploadMock,
   getPublicUrl: getPublicUrlMock,
 }));
+const createObjectURLMock = vi.fn(() => 'blob:mock-url');
+const revokeObjectURLMock = vi.fn();
+const anchorClickMock = vi.fn();
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -41,18 +44,22 @@ describe('MobileBeatMaker mobile actions', () => {
   const originalRevokeObjectURL = (globalThis.URL as any)?.revokeObjectURL;
   const originalShare = (navigator as any).share;
   const originalClipboard = (navigator as any).clipboard;
+  const originalAnchorClick = HTMLAnchorElement.prototype.click;
   let restoreCrypto: (() => void) | undefined;
 
   beforeEach(() => {
     restoreCrypto = undefined;
     toastInvocations.length = 0;
+    uploadMock.mockReset();
+    getPublicUrlMock.mockReset();
+    shareMock.mockReset();
+    fromMock.mockClear();
+
     uploadMock.mockResolvedValue({ data: { path: 'test.wav' }, error: null });
     getPublicUrlMock.mockReturnValue({ data: { publicUrl: 'https://storage.test/test.wav' } });
-    fromMock.mockClear();
-    uploadMock.mockClear();
-    getPublicUrlMock.mockClear();
     shareMock.mockResolvedValue(undefined);
     clipboardMock.writeText.mockResolvedValue(undefined);
+    anchorClickMock.mockClear();
 
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
@@ -92,14 +99,22 @@ describe('MobileBeatMaker mobile actions', () => {
       restoreCrypto = () => spy.mockRestore();
     }
 
+    createObjectURLMock.mockClear();
+    revokeObjectURLMock.mockClear();
+
     Object.defineProperty(globalThis.URL as any, 'createObjectURL', {
       configurable: true,
-      value: vi.fn(() => 'blob:mock-url'),
+      value: createObjectURLMock,
     });
 
     Object.defineProperty(globalThis.URL as any, 'revokeObjectURL', {
       configurable: true,
-      value: vi.fn(),
+      value: revokeObjectURLMock,
+    });
+
+    Object.defineProperty(HTMLAnchorElement.prototype, 'click', {
+      configurable: true,
+      value: anchorClickMock,
     });
   });
 
@@ -145,6 +160,10 @@ describe('MobileBeatMaker mobile actions', () => {
     } else {
       delete (window.navigator as any).clipboard;
     }
+    Object.defineProperty(HTMLAnchorElement.prototype, 'click', {
+      configurable: true,
+      value: originalAnchorClick,
+    });
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       value: originalInnerWidth,
@@ -162,16 +181,25 @@ describe('MobileBeatMaker mobile actions', () => {
 
     expect(fromMock).toHaveBeenCalledWith('beat-exports');
     expect(uploadMock.mock.calls[0][0]).toMatch(/exports\//);
-    expect(uploadMock.mock.calls[0][2]).toEqual({ contentType: 'audio/wav' });
+    expect(uploadMock.mock.calls[0][2]).toEqual({ contentType: 'audio/wav', upsert: true });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Export' })).toBeEnabled());
-
-    expect(toastInvocations[0]?.options.title).toMatch(/Exporting beat/i);
+    await waitFor(() =>
+      expect(toastInvocations[0]?.update).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Uploading beat...' })
+      )
+    );
     await waitFor(() =>
       expect(toastInvocations[0]?.update).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Beat exported' })
       )
     );
+
+    expect(createObjectURLMock).toHaveBeenCalled();
+    expect(anchorClickMock).toHaveBeenCalled();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Export' })).toBeEnabled());
+
+    expect(toastInvocations[0]?.options.title).toMatch(/Preparing export/i);
   });
 
   it('shares the beat using the Web Share API on mobile', async () => {
@@ -190,12 +218,39 @@ describe('MobileBeatMaker mobile actions', () => {
       })
     );
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled());
-
-    expect(toastInvocations[0]?.options.title).toMatch(/Preparing share link/i);
+    await waitFor(() =>
+      expect(toastInvocations[0]?.update).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Uploading beat...' })
+      )
+    );
     await waitFor(() =>
       expect(toastInvocations[0]?.update).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Beat shared' })
+      )
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled());
+
+    expect(toastInvocations[0]?.options.title).toMatch(/Preparing share link/i);
+  });
+
+  it('falls back to copying the share link when the Web Share API is unavailable', async () => {
+    Object.defineProperty(window.navigator, 'share', {
+      configurable: true,
+      value: undefined,
+    });
+
+    render(<MobileBeatMaker />);
+
+    const shareButton = screen.getByRole('button', { name: /Share/i });
+    await userEvent.click(shareButton);
+
+    await waitFor(() => expect(uploadMock).toHaveBeenCalled());
+
+    expect(clipboardMock.writeText).toHaveBeenCalledWith('https://storage.test/test.wav');
+    await waitFor(() =>
+      expect(toastInvocations[0]?.update).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Link copied' })
       )
     );
   });
