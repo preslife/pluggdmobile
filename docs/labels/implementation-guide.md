@@ -44,7 +44,7 @@ const { data, error } = await supabase.rpc("catalog_list_items", {
 });
 ```
 
-The RPC internally hits `analytics.label_catalog_items` so we do not duplicate join logic client side; refer to the Studio contracts for the complete payload shape.【F:docs/studio.md†L23-L47】 The optional `p_status` argument surfaces as the `status_filter` bind parameter in the SQL snippet above.
+The RPC internally hits `analytics.label_catalog_items` so we do not duplicate join logic client side; refer to the Studio contracts for the complete payload shape.【F:docs/studio.md†L23-L44】 The optional `p_status` argument surfaces as the `status_filter` bind parameter in the SQL snippet above.
 
 ## Sales and revenue cards
 
@@ -90,6 +90,8 @@ const { data, error } = await serviceClient.rpc("refresh_label_sales_summary", {
 });
 ```
 
+The admin script uses the same service-role Supabase client that powers the nightly aggregators so the refresh runs inside a single transaction.【F:supabase/functions/metrics-aggregator/index.ts†L59-L118】
+
 ## Revenue breakdown and charting
 
 Trend visualisations and breakdown chips read directly from daily rollups so that the front end can render charts without additional aggregation.
@@ -124,16 +126,16 @@ order by net_revenue_cents desc;
 ## Refresh cadence
 
 - **Streaming upserts** – Commerce webhooks write into `orders`/`order_items`; triggers update `analytics.label_catalog_items` and append the `label_daily_sales` fact rows.
-- **Nightly cron** – The `metrics-aggregator` and `revenue-aggregator` edge functions run via pg_cron to re-sync KPIs and refresh the materialized summaries every midnight UTC, ensuring long-running dashboards pick up reconciled payouts.【F:supabase/functions/metrics-aggregator/index.ts†L48-L82】【F:supabase/functions/revenue-aggregator/index.ts†L48-L87】
+- **Nightly cron** – The `metrics-aggregator` and `revenue-aggregator` edge functions run via pg_cron to re-sync KPIs and refresh the materialized summaries every midnight UTC, ensuring long-running dashboards pick up reconciled payouts.【F:supabase/functions/metrics-aggregator/index.ts†L59-L158】【F:supabase/functions/revenue-aggregator/index.ts†L64-L181】
 - **Manual refresh** – Running `select refresh_label_sales_summary(:label_id)` (service role only) performs a synchronous `REFRESH MATERIALIZED VIEW CONCURRENTLY analytics.label_sales_summary` for incident response.
 
 ## Environment variables
 
 The following settings must exist in Supabase and any worker that touches the label dashboards:
 
-- `SUPABASE_URL` – Required by the scheduled aggregators to connect to the project before refreshing metrics.【F:supabase/functions/metrics-aggregator/index.ts†L48-L60】
-- `SUPABASE_SERVICE_ROLE_KEY` – Grants the aggregators service-level access to refresh materialized views and upsert KPI snapshots.【F:supabase/functions/revenue-aggregator/index.ts†L48-L59】
+- `SUPABASE_URL` – Required by the scheduled aggregators to connect to the project before refreshing metrics.【F:supabase/functions/metrics-aggregator/index.ts†L65-L118】
+- `SUPABASE_SERVICE_ROLE_KEY` – Grants the aggregators service-level access to refresh materialized views and upsert KPI snapshots.【F:supabase/functions/revenue-aggregator/index.ts†L72-L170】
 - `LABELS_ENABLED` – Feature flag that toggles label routes and protects dashboard entry points in each environment.【F:supabase/specs/labels_migration_and_rollout.md†L4-L28】
 - `LABEL_DASHBOARD_REFRESH_SECRET` – Shared secret used by the internal admin task that calls `refresh_label_sales_summary` (set in the Supabase config store).
 
-Rotate the service role key alongside the cron secrets whenever label ownership changes, and verify the aggregators complete successfully by checking `creator_kpi_events` for the daily snapshots they insert.【F:supabase/functions/metrics-aggregator/index.ts†L20-L47】
+Rotate the service role key alongside the cron secrets whenever label ownership changes, and verify the aggregators complete successfully by checking `creator_kpi_events` for the daily snapshots they insert.【F:supabase/functions/metrics-aggregator/index.ts†L11-L55】
