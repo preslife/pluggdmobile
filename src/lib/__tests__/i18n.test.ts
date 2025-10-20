@@ -4,7 +4,7 @@ import { t } from '@/lib/translations';
 
 const DEFAULT_LOCALE = 'en-GB';
 
-describe('i18n translations (compat)', () => {
+describe('i18n translations', () => {
   beforeAll(async () => {
     await i18n.changeLanguage(DEFAULT_LOCALE);
   });

@@ -1,4 +1,4 @@
-import { LocaleCode, SUPPORTED_LOCALES } from '@/contexts/LocalizationContext';
+import { LocaleCode, SUPPORTED_LOCALES } from '@/lib/locales';
 
 // ====== DATE FORMATTING ======
 

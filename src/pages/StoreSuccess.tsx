@@ -9,14 +9,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
-import { telemetry } from "@/services/analytics/telemetry";
-import { useLocalization } from "@/contexts/LocalizationContext";
 import { logger } from "@/lib/logger";
-
-const RETRY_ATTEMPTS = 3;
-const RETRY_BASE_DELAY = 750;
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type OrderItemSummary = {
   id: string;
@@ -60,8 +53,30 @@ const StoreSuccess: React.FC = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const [releaseReceipt, setReleaseReceipt] = useState<ReleaseReceiptContext | null>(null);
 
-  const fetchOrderWithRetry = useCallback(async () => {
+  const handleInlineReleaseOpen = useCallback(() => {
+    if (!releaseReceipt) return;
+    void logger.userAction("store_success_open_release", "StoreSuccessPage", {
+      releaseId: releaseReceipt.releaseId,
+      source: "inline_button",
+    });
+    navigate(`/release/${releaseReceipt.releaseId}?purchased=true`);
+  }, [navigate, releaseReceipt]);
+
+  const handleExternalReleaseOpen = useCallback(() => {
+    if (!releaseReceipt) return;
+    void logger.userAction("store_success_open_release", "StoreSuccessPage", {
+      releaseId: releaseReceipt.releaseId,
+      source: "external_link",
+    });
+  }, [releaseReceipt]);
+
+  useEffect(() => {
     if (!sessionId) {
+      void logger.warn("store_success_missing_session", {
+        component: "StoreSuccessPage",
+      });
+      setError("Missing session identifier. Please check your confirmation email for your receipt.");
+      setLoading(false);
       return;
     }
 
@@ -78,6 +93,11 @@ const StoreSuccess: React.FC = () => {
       void logger.info("storeSuccess:fetch_attempt", { sessionId, attempt });
 
       try {
+        setLoading(true);
+        void logger.info("store_success_fetch_start", {
+          component: "StoreSuccessPage",
+          sessionId,
+        });
         const { data, error: fetchError } = await supabase
           .from("orders")
           .select(
@@ -91,37 +111,28 @@ const StoreSuccess: React.FC = () => {
         }
 
         if (!data) {
-          lastError = "We could not find your order. If you were charged, contact support with your Stripe receipt.";
-          telemetry.store("success.order_missing", { attempt, sessionId });
-          void logger.warn("storeSuccess:order_missing", { sessionId, attempt });
-
-          if (attempt < RETRY_ATTEMPTS) {
-            await wait(RETRY_BASE_DELAY * attempt);
-            continue;
-          }
-
-          setError(lastError);
-          toast({ title: "Order lookup failed", description: lastError, variant: "destructive" });
-          break;
+          void logger.warn("store_success_order_missing", {
+            component: "StoreSuccessPage",
+            sessionId,
+          });
+          setError("We could not find your order. If you were charged, contact support with your Stripe receipt.");
+          return;
         }
 
-        const orderSummary = data as unknown as OrderSummary;
-        setOrder(orderSummary);
-        setError(null);
-        telemetry.store("success.fetch_success", {
-          attempt,
+        void logger.info("store_success_fetch_success", {
+          component: "StoreSuccessPage",
           sessionId,
-          orderId: orderSummary.id,
-          status: orderSummary.status,
+          orderId: data.id,
+          status: data.status,
+          totalAmount: data.total_amount,
         });
-        void logger.info("storeSuccess:fetch_success", {
-          sessionId,
-          attempt,
-          orderId: orderSummary.id,
-          status: orderSummary.status,
-        });
-
+        setOrder(data as unknown as OrderSummary);
         if (!cartCleared) {
+          void logger.info("store_success_cart_cleared", {
+            component: "StoreSuccessPage",
+            sessionId,
+            orderId: data.id,
+          });
           clearCart();
           setCartCleared(true);
           telemetry.checkout("cart_cleared", {
@@ -135,24 +146,19 @@ const StoreSuccess: React.FC = () => {
         success = true;
       } catch (err: any) {
         const message = err?.message || "Unable to load your order summary.";
-        lastError = message;
-        telemetry.store("success.fetch_error", {
-          attempt,
+        const errorObject = err instanceof Error ? err : new Error(message);
+        void logger.error("store_success_fetch_failed", {
+          component: "StoreSuccessPage",
           sessionId,
-          message,
+        }, errorObject);
+        setError(message);
+        toast({ title: "Order lookup failed", description: message, variant: "destructive" });
+      } finally {
+        void logger.info("store_success_fetch_complete", {
+          component: "StoreSuccessPage",
+          sessionId,
         });
-        void logger.error(
-          "storeSuccess:fetch_error",
-          { sessionId, attempt, message },
-          err instanceof Error ? err : undefined
-        );
-
-        if (attempt < RETRY_ATTEMPTS) {
-          await wait(RETRY_BASE_DELAY * attempt);
-        } else {
-          setError(message);
-          toast({ title: "Order lookup failed", description: message, variant: "destructive" });
-        }
+        setLoading(false);
       }
     }
 
@@ -197,7 +203,10 @@ const StoreSuccess: React.FC = () => {
       intl.formatMessage({ id: "store.success.metaDescription", defaultMessage: "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases." }),
       "/store/success"
     );
-  }, [intl]);
+    void logger.info("store_success_meta_initialized", {
+      component: "StoreSuccessPage",
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -211,33 +220,20 @@ const StoreSuccess: React.FC = () => {
           ? Date.now() - timestampMs < 1000 * 60 * 60 * 24
           : true;
 
-        if (within24Hours) {
-          setReleaseReceipt((current) => current ?? parsed);
-          telemetry.store("success.receipt_restored", {
+        if (within24Hours && !releaseReceipt) {
+          setReleaseReceipt(parsed);
+          void logger.info("store_success_release_receipt_loaded", {
+            component: "StoreSuccessPage",
             releaseId: parsed.releaseId,
-            source: "sessionStorage",
-          });
-          void logger.info("storeSuccess:receipt_restored", {
-            releaseId: parsed.releaseId,
-            source: "sessionStorage",
-          });
-        } else {
-          telemetry.store("success.receipt_discarded", {
-            releaseId: parsed.releaseId,
-            reason: "stale",
-          });
-          void logger.info("storeSuccess:receipt_discarded", {
-            releaseId: parsed.releaseId,
-            reason: "stale",
+            source: "session_storage",
           });
         }
       } catch (parseError) {
-        telemetry.store("success.receipt_parse_error", { source: "sessionStorage" });
-        void logger.error(
-          "storeSuccess:receipt_parse_error",
-          { source: "sessionStorage" },
-          parseError instanceof Error ? parseError : undefined
-        );
+        console.warn("Failed to parse stored release receipt context", parseError);
+        const errorObject = parseError instanceof Error ? parseError : new Error('Failed to parse release receipt');
+        void logger.error("store_success_release_receipt_parse_failed", {
+          component: "StoreSuccessPage",
+        }, errorObject);
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
         void logEvent('store_success_release_receipt_cleared', { source: 'sessionStorage' });
@@ -250,8 +246,11 @@ const StoreSuccess: React.FC = () => {
         releaseId: releaseIdParam,
         title: intl.formatMessage({ id: "store.success.releaseTitle", defaultMessage: "Your release" }),
       });
-      telemetry.store("success.receipt_from_query", { releaseId: releaseIdParam });
-      void logger.info("storeSuccess:receipt_from_query", { releaseId: releaseIdParam });
+      void logger.info("store_success_release_receipt_loaded", {
+        component: "StoreSuccessPage",
+        releaseId: releaseIdParam,
+        source: "query_param",
+      });
     }
   }, [searchParams, releaseReceipt, logEvent, logError]);
 
@@ -304,12 +303,15 @@ const StoreSuccess: React.FC = () => {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
-                  <a href={`/release/${releaseReceipt.releaseId}?purchased=true`}>
-                    {intl.formatMessage({ id: "store.success.goToRelease", defaultMessage: "Go to release download" })}
+                  <a
+                    href={`/release/${releaseReceipt.releaseId}?purchased=true`}
+                    onClick={handleExternalReleaseOpen}
+                  >
+                    Go to release download
                   </a>
                 </Button>
-                <Button variant="outline" onClick={() => navigate(`/release/${releaseReceipt.releaseId}?purchased=true`)}>
-                  {intl.formatMessage({ id: "store.success.viewInWindow", defaultMessage: "View in this window" })}
+                <Button variant="outline" onClick={handleInlineReleaseOpen}>
+                  View in this window
                 </Button>
               </div>
             </CardContent>
