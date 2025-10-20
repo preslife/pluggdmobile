@@ -5,8 +5,8 @@ import React from "react";
 import { SubscriptionAnalyticsModule } from "../SubscriptionAnalyticsModule";
 
 vi.mock("recharts", () => ({
-  AreaChart: ({ children }: { children: React.ReactNode }) => <div data-testid="area-chart">{children}</div>,
-  Area: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AreaChart: () => <div data-testid="area-chart" />, 
+  Area: () => <div data-testid="area" />, 
   CartesianGrid: () => <div data-testid="grid" />,
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Tooltip: () => <div data-testid="tooltip" />,
@@ -99,6 +99,7 @@ describe("SubscriptionAnalyticsModule", () => {
     gteMock.mockClear();
     fromMock.mockClear();
     fromMock.mockReturnValue(queryBuilder);
+    orderMock.mockImplementation(() => Promise.resolve({ data: null, error: null }));
   });
 
   afterEach(() => {
@@ -106,17 +107,19 @@ describe("SubscriptionAnalyticsModule", () => {
   });
 
   it("renders KPI summaries when analytics rows are available", async () => {
-    orderMock.mockResolvedValueOnce({
-      data: [
-        { metric_date: "2024-01-01", kpi_key: "active_subscriptions", total_value: 12 },
-        { metric_date: "2024-01-01", kpi_key: "churned_fans", total_value: 1 },
-        { metric_date: "2024-01-01", kpi_key: "fan_revenue_cents", total_value: 5000 },
-        { metric_date: "2024-01-02", kpi_key: "active_subscriptions", total_value: 15 },
-        { metric_date: "2024-01-02", kpi_key: "churned_fans", total_value: 2 },
-        { metric_date: "2024-01-02", kpi_key: "fan_revenue_cents", total_value: 7000 },
-      ],
-      error: null,
-    });
+    orderMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          { metric_date: "2024-01-01", kpi_key: "active_subscriptions", total_value: 12 },
+          { metric_date: "2024-01-01", kpi_key: "churned_fans", total_value: 1 },
+          { metric_date: "2024-01-01", kpi_key: "fan_revenue_cents", total_value: 5000 },
+          { metric_date: "2024-01-02", kpi_key: "active_subscriptions", total_value: 15 },
+          { metric_date: "2024-01-02", kpi_key: "churned_fans", total_value: 2 },
+          { metric_date: "2024-01-02", kpi_key: "fan_revenue_cents", total_value: 7000 },
+        ],
+        error: null,
+      })
+    );
 
     render(<SubscriptionAnalyticsModule />);
 
@@ -129,8 +132,40 @@ describe("SubscriptionAnalyticsModule", () => {
     expect(loggerInfo).toHaveBeenCalledWith("subscription_analytics.fetch_success", expect.any(Object));
   });
 
+  it("falls back to the next analytics table when the first candidate has no data", async () => {
+    orderMock
+      .mockImplementationOnce(() => Promise.resolve({ data: [], error: null }))
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          data: [
+            { metric_date: "2024-02-01", kpi_key: "active_subscriptions", total_value: 20 },
+            { metric_date: "2024-02-01", kpi_key: "fan_revenue_cents", total_value: 9000 },
+          ],
+          error: null,
+        })
+      );
+
+    render(<SubscriptionAnalyticsModule />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("subscription-analytics-active_subscriptions")).toHaveTextContent("20")
+    );
+
+    expect(orderMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, "creator_subscription_kpi_daily_personal");
+    expect(fromMock).toHaveBeenNthCalledWith(2, "creator_subscription_kpi_daily");
+    expect(loggerInfo).toHaveBeenCalledWith(
+      "subscription_analytics.table_empty",
+      expect.objectContaining({ table: "creator_subscription_kpi_daily_personal" })
+    );
+    expect(loggerInfo).toHaveBeenCalledWith(
+      "subscription_analytics.table_selected",
+      expect.objectContaining({ table: "creator_subscription_kpi_daily" })
+    );
+  });
+
   it("surfaces an error and shows retry when all tables fail", async () => {
-    orderMock.mockResolvedValue({ data: null, error: { message: "missing view" } });
+    orderMock.mockImplementation(() => Promise.resolve({ data: null, error: { message: "missing view" } }));
 
     render(<SubscriptionAnalyticsModule />);
 

@@ -63,6 +63,8 @@ const TABLE_CANDIDATES: TableCandidate[] = [
   { name: "creator_kpi_daily_personal", label: "legacy_personal" },
 ];
 
+type KpiTableName = (typeof TABLE_CANDIDATES)[number]["name"];
+
 const METRIC_LABELS: Record<MetricKey, string> = {
   active_subscriptions: "Active Subscribers",
   churned_fans: "Churned Fans (30d)",
@@ -123,10 +125,10 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
       let latestRows: KpiRow[] | null = null;
       let lastError: { message: string } | null = null;
 
-      for (const candidate of TABLE_CANDIDATES) {
+      for (const [candidateIndex, candidate] of TABLE_CANDIDATES.entries()) {
         try {
           const { data, error: queryError } = await supabase
-            .from(candidate.name as any)
+            .from(candidate.name as KpiTableName)
             .select("creator_id, metric_date, kpi_key, total_value, event_count")
             .eq("creator_id", user.id)
             .gte("metric_date", startDateIso)
@@ -142,13 +144,26 @@ export const SubscriptionAnalyticsModule: React.FC = () => {
             continue;
           }
 
-          latestRows = data ?? [];
-          void logger.info("subscription_analytics.table_selected", {
+          const candidateRows = data ?? [];
+          const hasRows = candidateRows.length > 0;
+          const isLastCandidate = candidateIndex === TABLE_CANDIDATES.length - 1;
+
+          if (hasRows || isLastCandidate) {
+            latestRows = candidateRows;
+            void logger.info("subscription_analytics.table_selected", {
+              component: "creatorStudio.subscriptionAnalytics",
+              table: candidate.name,
+              rows: candidateRows.length,
+              fallbackApplied: !hasRows && isLastCandidate,
+            });
+            break;
+          }
+
+          void logger.info("subscription_analytics.table_empty", {
             component: "creatorStudio.subscriptionAnalytics",
             table: candidate.name,
-            rows: latestRows.length,
+            nextTable: TABLE_CANDIDATES[candidateIndex + 1]?.name,
           });
-          break;
         } catch (candidateError: any) {
           lastError = { message: candidateError?.message ?? "Unknown error" };
           void logger.error("subscription_analytics.table_exception", {
