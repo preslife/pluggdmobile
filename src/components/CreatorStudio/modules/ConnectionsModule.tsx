@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Hash, Link2, Loader2, ShieldCheck, Unplug } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CircleAlert, CircleCheck, Clock3, Hash, Link2, Loader2, ShieldCheck, Unplug } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ interface TikTokConnectionMeta {
   expiresAt: string | null;
   scope: string | null;
   sandbox: boolean;
+  lastValidatedAt: string | null;
 }
 
 type ConnectorStatus = "connected" | "disconnected" | "error" | "loading";
@@ -29,6 +31,27 @@ const statusCopy: Record<Exclude<ConnectorStatus, "loading">, { label: string; b
   connected: { label: "Connected", badgeClass: "border-green-600 text-green-600" },
   disconnected: { label: "Not Connected", badgeClass: "border-muted-foreground text-muted-foreground" },
   error: { label: "Connection Error", badgeClass: "border-destructive text-destructive" },
+};
+
+const statusAlerts: Record<Exclude<ConnectorStatus, "loading">, { icon: ReactNode; title: string; description: string }> = {
+  connected: {
+    icon: <CircleCheck className="h-4 w-4 text-emerald-500" aria-hidden />,
+    title: "TikTok is ready",
+    description:
+      "Campaign exports will include TikTok-ready assets. You can relink at any time if your credentials rotate.",
+  },
+  disconnected: {
+    icon: <CircleAlert className="h-4 w-4 text-muted-foreground" aria-hidden />,
+    title: "TikTok not linked",
+    description:
+      "Link a business account with OAuth or paste an API key issued from TikTok Business Center to automate exports.",
+  },
+  error: {
+    icon: <CircleAlert className="h-4 w-4 text-destructive" aria-hidden />,
+    title: "TikTok connection failed",
+    description:
+      "We could not verify the saved credentials. Retry the link process or confirm the client keys in your workspace settings.",
+  },
 };
 
 export const ConnectionsModule = () => {
@@ -78,18 +101,27 @@ export const ConnectionsModule = () => {
     });
   }, [user?.id]);
 
-  const formattedUpdatedAt = useMemo(() => {
-    if (!connection?.updatedAt) return null;
+  const formatTimestamp = (value?: string | null) => {
+    if (!value) return null;
     try {
       return new Intl.DateTimeFormat("en", {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(new Date(connection.updatedAt));
+      }).format(new Date(value));
     } catch (error) {
       console.error("Failed to format TikTok timestamp", error);
       return null;
     }
-  }, [connection?.updatedAt]);
+  };
+
+  const formattedUpdatedAt = useMemo(() => formatTimestamp(connection?.updatedAt), [connection?.updatedAt]);
+  const formattedLastValidatedAt = useMemo(
+    () => formatTimestamp(connection?.lastValidatedAt),
+    [connection?.lastValidatedAt]
+  );
+
+  const statusKey: Exclude<ConnectorStatus, "loading"> =
+    status === "connected" ? "connected" : status === "error" ? "error" : "disconnected";
 
   const handleApiKeyConnect = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -222,6 +254,15 @@ export const ConnectionsModule = () => {
         {renderStatusBadge()}
       </CardHeader>
       <CardContent className="space-y-6">
+        {status !== "loading" && (
+          <Alert data-testid="tiktok-status-banner" className="flex items-start gap-3">
+            {statusAlerts[statusKey].icon}
+            <div className="space-y-1">
+              <AlertTitle>{statusAlerts[statusKey].title}</AlertTitle>
+              <AlertDescription>{statusAlerts[statusKey].description}</AlertDescription>
+            </div>
+          </Alert>
+        )}
         {connection && (
           <div className="grid gap-2 text-sm">
             <div className="flex items-center gap-2 font-medium">
@@ -240,6 +281,11 @@ export const ConnectionsModule = () => {
                 <span>Scope: {connection.scope}</span>
               )}
               {formattedUpdatedAt && <span>Last updated {formattedUpdatedAt}</span>}
+              {formattedLastValidatedAt && (
+                <span className="flex items-center gap-1">
+                  <Clock3 className="h-3 w-3" aria-hidden /> Validated {formattedLastValidatedAt}
+                </span>
+              )}
             </div>
           </div>
         )}

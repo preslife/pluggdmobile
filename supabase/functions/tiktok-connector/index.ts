@@ -167,6 +167,7 @@ async function getConnection(userId: string) {
     expiresAt: data.expires_at,
     scope: connectionData.scope ?? null,
     sandbox: connectionData.sandbox ?? false,
+    lastValidatedAt: connectionData.lastValidatedAt ?? null,
   };
 }
 
@@ -236,6 +237,8 @@ async function handleOAuthConnect(userId: string, body: ConnectorRequestBody) {
     ? new Date(Date.now() + tokenData.data.expires_in * 1000).toISOString()
     : null;
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase
     .from("social_connections")
     .upsert(
@@ -252,9 +255,9 @@ async function handleOAuthConnect(userId: string, body: ConnectorRequestBody) {
           avatarUrl: userData.data?.user?.avatar_url ?? null,
           method: "oauth",
           scope: tokenData.data?.scope ?? null,
-          lastValidatedAt: new Date().toISOString(),
+          lastValidatedAt: now,
         },
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       },
       { onConflict: "user_id,provider" }
     );
@@ -287,6 +290,8 @@ async function handleApiKeyConnect(userId: string, body: ConnectorRequestBody) {
       body.apiKey === Deno.env.get("TIKTOK_TEST_ACCESS_TOKEN")
   );
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase
     .from("social_connections")
     .upsert(
@@ -302,9 +307,9 @@ async function handleApiKeyConnect(userId: string, body: ConnectorRequestBody) {
           accountName: body.accountName,
           method: "apiKey",
           sandbox: isSandboxKey,
-          lastValidatedAt: new Date().toISOString(),
+          lastValidatedAt: now,
         },
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       },
       { onConflict: "user_id,provider" }
     );
