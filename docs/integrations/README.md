@@ -24,3 +24,18 @@ This guide covers the refreshed Mailchimp and Discord panels in the **Enhanced C
 - **Discord role errors** – Check that the bot’s role sits above the roles you are trying to manage and that the target user is a member of the guild. The manual sync output will show the Discord API status when something fails.
 
 See `/docs/webhooks` for information about automated triggers that run after Stripe subscription events.
+
+## TikTok Catalog Connector
+
+1. **Check status** – Open **Catalog → TikTok Connector** to load the live status banner. The badge mirrors the result of the
+   `tiktok-connector` edge function and immediately surfaces credential errors.
+2. **OAuth linking** – Select **Use TikTok OAuth** to redirect to TikTok for Business. The callback stores the access and
+   refresh tokens in `social_connections`, and the UI confirms the account handle plus the validation timestamp.
+3. **Manual API key linking** – Choose **Use API key** to reveal the manual entry form. Provide the display name, Business
+   Account ID, and generated API key. The edge function enforces the optional
+   `TIKTOK_CONNECTOR_VALIDATION_PREFIX` and can mark sandbox keys with `TIKTOK_TEST_ACCESS_TOKEN` so the UI labels them.
+4. **Disconnecting** – Use **Disconnect** to revoke the stored credentials. The banner switches back to the "not linked"
+   message, and the Supabase record is removed.
+
+> **Environment variables:** set `VITE_TIKTOK_CLIENT_KEY` for the client-side OAuth prompt. On the Supabase project, configure
+> `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, and optional validation variables to enable the edge function.

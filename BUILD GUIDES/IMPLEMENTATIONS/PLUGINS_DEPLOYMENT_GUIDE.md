@@ -65,7 +65,8 @@ TIKTOK_TEST_ACCESS_TOKEN=optional_sandbox_key
 - If your workspace relies on manual API key linking, configure `TIKTOK_CONNECTOR_VALIDATION_PREFIX`
   to control which keys are accepted and optionally set `TIKTOK_TEST_ACCESS_TOKEN` for sandbox
   environments. Creators can then paste the generated key inside the Catalog → TikTok Connector
-  card to link their account without running a full OAuth flow.
+  card to link their account without running a full OAuth flow. The connector banner highlights the
+  connection status along with the last validation timestamp pulled from Supabase.
 
 #### **Discord**
 ```env

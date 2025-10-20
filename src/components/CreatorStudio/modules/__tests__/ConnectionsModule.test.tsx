@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { ConnectionsModule } from "../ConnectionsModule";
@@ -32,10 +32,20 @@ vi.mock("@/services/plugins/oauth-service", () => ({
 }));
 
 describe("ConnectionsModule", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     invokeMock.mockReset();
     toastMock.mockReset();
     getAuthorizationUrlMock.mockClear();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockClear();
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it("renders a disconnected state when no connection is present", async () => {
@@ -46,10 +56,15 @@ describe("ConnectionsModule", () => {
       return { data: null, error: null };
     });
 
-    render(<ConnectionsModule />);
+    await act(async () => {
+      render(<ConnectionsModule />);
+      await Promise.resolve();
+    });
 
     const badge = await screen.findByTestId("tiktok-connection-status");
     expect(badge).toHaveTextContent(/Not Connected/i);
+    const banner = await screen.findByTestId("tiktok-status-banner");
+    expect(banner).toHaveTextContent(/TikTok not linked/i);
     expect(invokeMock).toHaveBeenCalledWith("tiktok-connector", { body: { action: "status" } });
   });
 
@@ -79,6 +94,7 @@ describe("ConnectionsModule", () => {
               expiresAt: null,
               scope: null,
               sandbox: false,
+              lastValidatedAt: new Date().toISOString(),
             },
           },
           error: null,
@@ -88,7 +104,10 @@ describe("ConnectionsModule", () => {
       return { data: null, error: null };
     });
 
-    render(<ConnectionsModule />);
+    await act(async () => {
+      render(<ConnectionsModule />);
+      await Promise.resolve();
+    });
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /use api key/i }));
@@ -102,6 +121,8 @@ describe("ConnectionsModule", () => {
     await waitFor(() => {
       expect(screen.getByText(/Connected as Creator/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByTestId("tiktok-status-banner")).toHaveTextContent(/TikTok is ready/i);
 
     expect(toastMock).toHaveBeenCalled();
   });
@@ -123,6 +144,7 @@ describe("ConnectionsModule", () => {
               expiresAt: null,
               scope: null,
               sandbox: false,
+              lastValidatedAt: new Date().toISOString(),
             },
           },
           error: null,
@@ -136,7 +158,10 @@ describe("ConnectionsModule", () => {
       return { data: null, error: null };
     });
 
-    render(<ConnectionsModule />);
+    await act(async () => {
+      render(<ConnectionsModule />);
+      await Promise.resolve();
+    });
 
     await screen.findByText(/Connected as Creator/i);
 
@@ -146,6 +171,8 @@ describe("ConnectionsModule", () => {
     await waitFor(() => {
       expect(screen.getByTestId("tiktok-connection-status")).toHaveTextContent(/Not Connected/i);
     });
+
+    expect(screen.getByTestId("tiktok-status-banner")).toHaveTextContent(/TikTok not linked/i);
 
     expect(invokeMock).toHaveBeenCalledWith("tiktok-connector", { body: { action: "disconnect" } });
     expect(toastMock).toHaveBeenCalled();
