@@ -5,7 +5,14 @@ export type TierStatus = 'draft' | 'active' | 'paused' | 'archived';
 export type MembershipStatus = 'active' | 'cancelled' | 'expired' | 'past_due';
 export type ContentGateType = 'tier_or_higher' | 'specific_tier' | 'any_tier';
 export type OwnerType = 'profile' | 'label';
-export type ContentType = 'post' | 'track' | 'release' | 'video' | 'livestream';
+export type ContentType =
+  | 'post'
+  | 'track'
+  | 'release'
+  | 'video'
+  | 'livestream'
+  | 'beat'
+  | 'sample_pack';
 
 export type PerkType =
   | 'discord_role'

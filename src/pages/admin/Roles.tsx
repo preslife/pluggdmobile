@@ -3,8 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 export default function AdminRolesPage() {
+  usePageMetadata({
+    title: "Roles & Permissions — Pluggd Admin",
+    description: "Assign advanced roles and manage privileged access across the Pluggd platform.",
+    path: "/admin/roles",
+  });
+
   const { toast } = useToast();
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("");

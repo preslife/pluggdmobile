@@ -9,8 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Music, Users, DollarSign, Star } from "lucide-react";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 const CreatorSetup = () => {
+  usePageMetadata({
+    title: "Creator Setup — Pluggd",
+    description: "Claim your Pluggd creator profile, configure your bio, and unlock tools for releases, beats, and memberships.",
+    path: "/creator/setup",
+  });
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();

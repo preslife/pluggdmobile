@@ -21,6 +21,9 @@ import Community from "./pages/Community";
 import Blog from "./pages/Blog";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import OrdersPurchasesPage from "./pages/dashboard/OrdersPurchases";
+import WalletPayoutsPage from "./pages/dashboard/WalletPayouts";
+import ConnectionsPage from "./pages/dashboard/Connections";
 import Marketplace from "./pages/Marketplace";
 import Library from "./pages/Library";
 import Charts from "./pages/Charts";
@@ -64,6 +67,7 @@ import CreditsPurchase from "./pages/CreditsPurchase";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import { SettingsNotificationsPage } from "./pages/SettingsNotifications";
 import CreatorAutomations from "./pages/CreatorAutomations";
+import StudioMembershipDiscord from "./pages/StudioMembershipDiscord";
 import DashboardRouter from "./components/DashboardRouter";
 
 // Lazy load additional pages
@@ -117,7 +121,6 @@ import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { GlobalPlayer } from "./components/GlobalPlayer/GlobalPlayer";
 import { ScrollAnimationProvider } from "./components/ScrollAnimationProvider";
-import { LocalizationProvider } from "./contexts/LocalizationContext";
 import { WalletProvider } from "./hooks/useWallet";
 import { SubscriptionProvider } from "./hooks/useSubscription";
 import CreatorDashboardPage from "./pages/CreatorDashboard";
@@ -292,6 +295,14 @@ const AppContent = () => {
         {/* Producer and Creator Dashboard Routes */}
         <Route path="/producer" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/creator/dashboard" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
+        <Route
+          path="/studio/memberships/discord"
+          element={
+            <ProtectedRoute>
+              <StudioMembershipDiscord />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/studio/*" element={<ProtectedRoute><CreatorStudioPage /></ProtectedRoute>} />
         <Route
           path="/studio/label"
@@ -333,9 +344,9 @@ const AppContent = () => {
         <Route path="/help/contact" element={<HelpContact />} />
         {/* Dropdown-linked pages (lightweight placeholders if full pages not built yet) */}
         <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
-        <Route path="/dashboard/orders" element={<ProtectedRoute><div className="min-h-screen pt-24 px-4"><h1 className="text-2xl font-bold">Orders & Purchases</h1><p className="text-muted-foreground">Coming soon</p></div></ProtectedRoute>} />
-        <Route path="/dashboard/payouts" element={<ProtectedRoute><div className="min-h-screen pt-24 px-4"><h1 className="text-2xl font-bold">Wallet & Payouts</h1><p className="text-muted-foreground">Coming soon</p></div></ProtectedRoute>} />
-        <Route path="/dashboard/connections" element={<ProtectedRoute><div className="min-h-screen pt-24 px-4"><h1 className="text-2xl font-bold">Connections</h1><p className="text-muted-foreground">Coming soon</p></div></ProtectedRoute>} />
+        <Route path="/dashboard/orders" element={<ProtectedRoute><OrdersPurchasesPage /></ProtectedRoute>} />
+        <Route path="/dashboard/payouts" element={<ProtectedRoute><WalletPayoutsPage /></ProtectedRoute>} />
+        <Route path="/dashboard/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/dashboard/settings/developer" element={<ProtectedRoute><div className="min-h-screen pt-24 px-4"><h1 className="text-2xl font-bold">Developer Settings</h1><p className="text-muted-foreground">Moved here from menu</p></div></ProtectedRoute>} />
         <Route path="/settings/connections" element={<ProtectedRoute><SettingsConnectionsPage /></ProtectedRoute>} />

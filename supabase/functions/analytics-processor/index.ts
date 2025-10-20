@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     if (req.method === 'POST') {
       const events: AnalyticsEvent[] = await req.json();
-      
+
       // Process multiple events in batch
       const processedEvents = events.map(event => ({
         user_id: event.userId,
@@ -43,11 +43,96 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (error) throw error;
 
+      // Fan out KPI rows for downstream analytics if present in the payload
+      const kpiEvents = events.flatMap((event, index) => {
+        const props = event.properties || {};
+        const creatorId = event.userId || props.creator_id || props.creatorId;
+        if (!creatorId) {
+          return [];
+        }
+
+        const occurredAt = event.timestamp
+          ? new Date(event.timestamp).toISOString()
+          : new Date().toISOString();
+        const metricDate = occurredAt.split('T')[0];
+
+        const metrics: Array<{ key: string; value: number }> = [];
+
+        if (Array.isArray(props.kpis)) {
+          for (const entry of props.kpis) {
+            if (!entry) continue;
+            const key = entry.key || entry.kpi || entry.metric;
+            const numericValue = Number(entry.value ?? entry.kpi_value ?? entry.metric_value);
+            if (key && Number.isFinite(numericValue)) {
+              metrics.push({ key, value: numericValue });
+            }
+          }
+        }
+
+        if (props.metrics && typeof props.metrics === 'object' && !Array.isArray(props.metrics)) {
+          for (const [key, rawValue] of Object.entries(props.metrics)) {
+            const numericValue = Number(rawValue);
+            if (key && Number.isFinite(numericValue)) {
+              metrics.push({ key, value: numericValue });
+            }
+          }
+        }
+
+        const singleKey = props.kpi_key || props.metric || props.kpi;
+        const singleValue = props.kpi_value ?? props.metric_value ?? props.value;
+        if (singleKey && Number.isFinite(Number(singleValue))) {
+          metrics.push({ key: singleKey, value: Number(singleValue) });
+        }
+
+        // Provide basic defaults for known events when no explicit metrics are supplied
+        if (metrics.length === 0) {
+          switch (event.eventName) {
+            case 'release_play':
+              metrics.push({ key: 'total_streams', value: 1 });
+              break;
+            case 'video_view':
+              metrics.push({ key: 'total_views', value: 1 });
+              break;
+            case 'post_like':
+              metrics.push({ key: 'total_likes', value: 1 });
+              break;
+            case 'post_comment':
+              metrics.push({ key: 'total_comments', value: 1 });
+              break;
+          }
+        }
+
+        return metrics.map(metric => ({
+          creator_id: creatorId,
+          event_name: event.eventName,
+          source: 'analytics-processor',
+          occurred_at: occurredAt,
+          kpi_key: metric.key,
+          kpi_value: metric.value,
+          metric_date: metricDate,
+          metadata: {
+            ...props,
+            session_id: event.sessionId ?? null,
+            batch_index: index,
+          },
+        }));
+      });
+
+      if (kpiEvents.length > 0) {
+        const { error: kpiError } = await supabase
+          .from('creator_kpi_events')
+          .insert(kpiEvents);
+
+        if (kpiError) {
+          console.error('Failed to insert KPI events', kpiError);
+        }
+      }
+
       console.log('Analytics events processed:', processedEvents.length);
 
-      return new Response(JSON.stringify({ 
-        success: true, 
-        processed: processedEvents.length 
+      return new Response(JSON.stringify({
+        success: true,
+        processed: processedEvents.length
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

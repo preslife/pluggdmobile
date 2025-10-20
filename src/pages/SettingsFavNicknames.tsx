@@ -9,6 +9,7 @@ import DomainAwareNavigation from "../components/DomainAwareNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 interface UserFavNickname {
   nickname: string;
@@ -23,8 +24,13 @@ export const SettingsFavNicknamesPage = () => {
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
 
+  usePageMetadata({
+    title: "FAV Nickname Settings — Pluggd",
+    description: "Customize the nicknames shown to your supporters and manage fan-facing personalization on Pluggd.",
+    path: "/settings/fav-nicknames",
+  });
+
   useEffect(() => {
-    document.title = "FAV Nicknames Settings — Pluggd";
     if (user) {
       fetchCurrentNicknames();
     }

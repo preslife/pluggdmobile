@@ -5,20 +5,13 @@ import { Loader2, Lock, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ContentGateType, ContentType } from "@/types/memberships";
-import { logger } from "@/lib/logger";
+import { useLogger } from "@/hooks/useLogger";
 import { cn, formatCurrency } from "@/lib/utils";
+import { fetchMembershipAccessRules } from "@/services/memberships/accessRules";
 
 type OwnerType = "profile" | "label";
 
-interface GateRecord {
-  gate_type: ContentGateType;
-  minimum_tier_id: string | null;
-  allowed_tier_ids: string[] | null;
-  preview_text: string | null;
-  preview_duration: number | null;
-  owner_id: string | null;
-  owner_type: OwnerType | null;
-}
+type GateRecord = Awaited<ReturnType<typeof fetchMembershipAccessRules>>;
 
 interface TierSummary {
   id: string;
@@ -64,12 +57,20 @@ export const SubscriptionGatedContent = ({
   minimalWrapper = false,
 }: SubscriptionGatedContentProps) => {
   const { user } = useAuth();
-  const [gateConfig, setGateConfig] = useState<GateRecord | null | undefined>(undefined);
+  const [gateConfig, setGateConfig] = useState<GateRecord | undefined>(undefined);
   const [tiers, setTiers] = useState<TierSummary[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [impressionLogged, setImpressionLogged] = useState(false);
   const [unlockLogged, setUnlockLogged] = useState(false);
+  const [denialLogged, setDenialLogged] = useState(false);
+
+  const loggerMetadata = useMemo(() => ({ contentId, contentType, creatorId }), [contentId, contentType, creatorId]);
+  const { logger: gatingLogger } = useLogger({
+    component: 'SubscriptionGatedContent',
+    feature: 'membership',
+    metadata: loggerMetadata,
+  });
 
   // Fetch gate configuration for the content
   useEffect(() => {
@@ -81,33 +82,15 @@ export const SubscriptionGatedContent = ({
       }
 
       try {
-        const { data, error } = await supabase
-          .from("gated_content")
-          .select(
-            "gate_type, minimum_tier_id, allowed_tier_ids, preview_text, preview_duration, owner_id, owner_type"
-          )
-          .eq("content_type", contentType)
-          .eq("content_id", contentId)
-          .maybeSingle();
+        const rule = await fetchMembershipAccessRules(contentType, contentId);
 
         if (!isMounted) return;
 
-        if (error) {
-          console.error("Failed to load gate configuration", error);
-          void logger.error("gate_config_load_failed", {
-            contentId,
-            contentType,
-            error: error.message,
-          });
-          setGateConfig(null);
-          return;
-        }
-
-        setGateConfig(data ?? null);
+        setGateConfig(rule ?? null);
       } catch (error: any) {
         if (!isMounted) return;
         console.error("Unexpected error loading gate configuration", error);
-        void logger.error("gate_config_load_failed", {
+        void gatingLogger.error("gate_config_load_failed", {
           contentId,
           contentType,
           error: error?.message ?? String(error),
@@ -132,10 +115,10 @@ export const SubscriptionGatedContent = ({
   useEffect(() => {
     let active = true;
     const loadTiers = async () => {
-      if (!gateConfig || !gateConfig.owner_id || !gateConfig.owner_type) {
-        if (active) setTiers([]);
-        return;
-      }
+    if (!gateConfig || !gateConfig.owner_id || !gateConfig.owner_type) {
+      if (active) setTiers([]);
+      return;
+    }
 
       const { data, error } = await supabase
         .from("membership_tiers")
@@ -149,7 +132,7 @@ export const SubscriptionGatedContent = ({
 
       if (error) {
         console.error("Failed to load membership tiers", error);
-        void logger.warn("membership_tier_lookup_failed", {
+        void gatingLogger.warn("membership_tier_lookup_failed", {
           contentId,
           contentType,
           ownerId: gateConfig.owner_id,
@@ -232,7 +215,7 @@ export const SubscriptionGatedContent = ({
     });
 
     const duration = performance.now() - started;
-    void logger.apiCall(
+    void gatingLogger.apiCall(
       "rpc",
       "check_content_access",
       duration,
@@ -246,7 +229,7 @@ export const SubscriptionGatedContent = ({
 
     if (error) {
       console.error("Failed to verify gated content access", error);
-      void logger.error("gate_access_check_failed", {
+      void gatingLogger.error("gate_access_check_failed", {
         contentId,
         contentType,
         gateType: gateConfig.gate_type,
@@ -321,7 +304,7 @@ export const SubscriptionGatedContent = ({
     if (!gateConfig || checkingAccess) return;
     if (hasAccess || impressionLogged) return;
 
-    void logger.info("membership_gate_impression", {
+    void gatingLogger.info("membership_gate_impression", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,
@@ -335,7 +318,7 @@ export const SubscriptionGatedContent = ({
   useEffect(() => {
     if (!gateConfig || !hasAccess || unlockLogged) return;
 
-    void logger.info("membership_gate_unlocked", {
+    void gatingLogger.info("membership_gate_unlocked", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,
@@ -345,6 +328,35 @@ export const SubscriptionGatedContent = ({
     });
     setUnlockLogged(true);
   }, [gateConfig, hasAccess, unlockLogged, contentId, contentType, user?.id]);
+
+  useEffect(() => {
+    if (!gateConfig || checkingAccess) return;
+    if (hasAccess || denialLogged) return;
+
+    void logger.userAction("membership_gate_denied", "SubscriptionGatedContent", {
+      contentId,
+      contentType,
+      gateType: gateConfig.gate_type,
+      ownerId: gateConfig.owner_id,
+      ownerType: gateConfig.owner_type,
+      viewerId: user?.id,
+    });
+    setDenialLogged(true);
+  }, [gateConfig, hasAccess, checkingAccess, denialLogged, contentId, contentType, user?.id]);
+
+  useEffect(() => {
+    if (gateConfig === null) {
+      setDenialLogged(false);
+      setImpressionLogged(false);
+      setUnlockLogged(false);
+    }
+  }, [gateConfig]);
+
+  useEffect(() => {
+    if (hasAccess) {
+      setDenialLogged(false);
+    }
+  }, [hasAccess]);
 
   const isLoading = gateConfig === undefined || (gateConfig !== null && checkingAccess);
   const gateActive = gateConfig !== null;

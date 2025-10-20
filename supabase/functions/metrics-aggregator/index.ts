@@ -6,6 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type SupabaseClient = ReturnType<typeof createClient>;
+
+const recordKpiSnapshot = async (
+  client: SupabaseClient,
+  creatorId: string,
+  metricDate: string,
+  source: string,
+  metrics: Array<{ key: string; value: number }>,
+  metadata: Record<string, unknown> = {}
+) => {
+  if (!metrics.length) return;
+
+  const periodStart = `${metricDate}T00:00:00Z`;
+  const periodEnd = `${metricDate}T23:59:59.999Z`;
+
+  const { error: deleteError } = await client
+    .from('creator_kpi_events')
+    .delete()
+    .eq('creator_id', creatorId)
+    .eq('source', source)
+    .gte('occurred_at', periodStart)
+    .lte('occurred_at', periodEnd);
+
+  if (deleteError) {
+    console.error('Failed to prune prior KPI snapshots', { creatorId, source, metricDate, error: deleteError });
+  }
+
+  const rows = metrics.map(metric => ({
+    creator_id: creatorId,
+    event_name: `${source}_daily_snapshot`,
+    source,
+    occurred_at: `${metricDate}T23:59:59Z`,
+    metric_date: metricDate,
+    kpi_key: metric.key,
+    kpi_value: metric.value,
+    metadata: {
+      ...metadata,
+      metric_date: metricDate,
+    },
+  }));
+
+  const { error: insertError } = await client
+    .from('creator_kpi_events')
+    .insert(rows);
+
+  if (insertError) {
+    console.error('Failed to record KPI snapshot', { creatorId, source, metricDate, error: insertError });
+  }
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -142,6 +192,30 @@ serve(async (req) => {
         console.error(`Error upserting metrics for creator ${creatorId}:`, upsertError);
       } else {
         console.log(`Updated metrics for creator ${creatorId}: subs=${subsCount}, revenue=${revenueCents}, likes=${likesCount}, comments=${commentsCount}, battles=${battlesEntriesCount}`);
+        await recordKpiSnapshot(
+          supabaseClient,
+          creatorId,
+          today,
+          'metrics-aggregator',
+          [
+            { key: 'active_subscriptions', value: subsCount || 0 },
+            { key: 'fan_revenue_cents', value: revenueCents },
+            { key: 'total_likes', value: likesCount || 0 },
+            { key: 'total_comments', value: commentsCount || 0 },
+            { key: 'battle_entries', value: battlesEntriesCount || 0 },
+            { key: 'new_fans', value: newFans30d || 0 },
+            { key: 'churned_fans', value: churn30d || 0 },
+          ],
+          {
+            subs_count: subsCount || 0,
+            revenue_cents: revenueCents,
+            likes_count: likesCount || 0,
+            comments_count: commentsCount || 0,
+            battles_entries_count: battlesEntriesCount || 0,
+            new_fans_30d: newFans30d || 0,
+            churn_30d: churn30d || 0,
+          }
+        );
       }
     }
 

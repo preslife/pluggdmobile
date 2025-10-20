@@ -20,6 +20,7 @@ import { CalendarIcon, Upload, Check, X, Music, Image, FileAudio, Users, Award, 
 import { format } from 'date-fns';
 import { GenreSelector } from './GenreSelector';
 import { PublishAsSelector, usePublishAs } from './PublishAsSelector';
+import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
 
 interface ReleaseTrack {
   id: string;
@@ -48,18 +49,6 @@ interface Split {
   percentage: number;
   description?: string;
 }
-
-type SimpleMembershipTier = {
-  id: string;
-  name: string;
-  tier_order: number;
-  status: string;
-  price_monthly: number | null;
-  price_yearly: number | null;
-  price_lifetime: number | null;
-  currency: string;
-  features: string[];
-};
 
 const mapOwnerTypeForMembership = (ownerType?: string | null) => {
   if (!ownerType) return null;
@@ -140,16 +129,6 @@ export const EnhancedReleaseBuilder = () => {
   const [currentStage, setCurrentStage] = useState(1);
   const [showAdditionalCredits, setShowAdditionalCredits] = useState(false);
 
-  // Membership gating
-  const [availableTiers, setAvailableTiers] = useState<SimpleMembershipTier[]>([]);
-  const [tiersLoading, setTiersLoading] = useState(false);
-  const [gateEnabled, setGateEnabled] = useState(false);
-  const [gateType, setGateType] = useState<'any_tier' | 'tier_or_higher' | 'specific_tier'>('tier_or_higher');
-  const [minimumTierId, setMinimumTierId] = useState<string | null>(null);
-  const [allowedTierIds, setAllowedTierIds] = useState<string[]>([]);
-  const [previewText, setPreviewText] = useState('');
-  const [previewDuration, setPreviewDuration] = useState('');
-
   useEffect(() => {
     if (preorderEnabled && !preorderAvailableAt && releaseDate) {
       setPreorderAvailableAt(releaseDate);
@@ -195,66 +174,28 @@ export const EnhancedReleaseBuilder = () => {
     return { ownerType: resolvedType, ownerId: resolvedId };
   }, [getOwnerData, publishAs, user?.id]);
 
-  const loadMembershipTiers = useCallback(async () => {
-    const { ownerType, ownerId } = resolveMembershipOwner();
-
-    if (!ownerType || !ownerId) {
-      setAvailableTiers([]);
-      setGateEnabled(false);
-      return;
-    }
-
-    setTiersLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('membership_tiers')
-        .select('id, name, tier_order, status, price_monthly, price_yearly, price_lifetime, currency, features')
-        .eq('owner_type', ownerType)
-        .eq('owner_id', ownerId)
-        .eq('status', 'active')
-        .order('tier_order', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      const tiers = (data ?? []).map((tier) => ({
-        id: tier.id,
-        name: tier.name,
-        tier_order: tier.tier_order ?? 0,
-        status: tier.status ?? 'active',
-        price_monthly: tier.price_monthly ?? null,
-        price_yearly: tier.price_yearly ?? null,
-        price_lifetime: tier.price_lifetime ?? null,
-        currency: tier.currency ?? 'USD',
-        features: Array.isArray(tier.features) ? tier.features : [],
-      })) as SimpleMembershipTier[];
-
-      setAvailableTiers(tiers);
-
-      if (!tiers.length) {
-        setGateEnabled(false);
-        setMinimumTierId(null);
-        setAllowedTierIds([]);
-      } else {
-        if (gateType === 'tier_or_higher') {
-          if (!minimumTierId || !tiers.some((tier) => tier.id === minimumTierId)) {
-            setMinimumTierId(tiers[0].id);
-          }
-        } else if (gateType === 'specific_tier') {
-          setAllowedTierIds((prev) => prev.filter((id) => tiers.some((tier) => tier.id === id)));
-        }
-      }
-    } catch (err) {
-      console.error('[ReleaseBuilder] Failed to load membership tiers', err);
-      setAvailableTiers([]);
-    } finally {
-      setTiersLoading(false);
-    }
-  }, [gateType, minimumTierId, resolveMembershipOwner]);
-
-  useEffect(() => {
-    loadMembershipTiers();
-  }, [loadMembershipTiers]);
+  // Membership gating
+  const {
+    availableTiers,
+    tiersLoading,
+    gateEnabled,
+    setGateEnabled,
+    gateType,
+    setGateType,
+    minimumTierId,
+    setMinimumTierId,
+    allowedTierIds,
+    setAllowedTierIds,
+    previewText,
+    setPreviewText,
+    previewDuration,
+    setPreviewDuration,
+    loadRulesFor,
+    saveRulesFor,
+  } = useMembershipAccessRuleEditor({
+    contentType: 'release',
+    resolveOwner: resolveMembershipOwner,
+  });
 
   useEffect(() => {
     if (!gateEnabled) return;
@@ -271,96 +212,6 @@ export const EnhancedReleaseBuilder = () => {
       });
     }
   }, [gateEnabled, gateType, availableTiers, minimumTierId]);
-
-  const loadGatingRules = useCallback(
-    async (releaseUuid: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('gated_content')
-          .select('gate_type, minimum_tier_id, allowed_tier_ids, preview_text, preview_duration')
-          .eq('content_type', 'release')
-          .eq('content_id', releaseUuid)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') throw error;
-
-        if (data) {
-          setGateEnabled(true);
-          setGateType((data.gate_type as typeof gateType) ?? 'tier_or_higher');
-          setMinimumTierId(data.minimum_tier_id ?? null);
-          setAllowedTierIds(Array.isArray(data.allowed_tier_ids) ? data.allowed_tier_ids : []);
-          setPreviewText(data.preview_text ?? '');
-          setPreviewDuration(data.preview_duration ? String(data.preview_duration) : '');
-        } else {
-          setGateEnabled(false);
-          setGateType('tier_or_higher');
-          setMinimumTierId(null);
-          setAllowedTierIds([]);
-          setPreviewText('');
-          setPreviewDuration('');
-        }
-      } catch (err) {
-        console.error('[ReleaseBuilder] Failed to load gating rules', err);
-      }
-    },
-    []
-  );
-
-  const syncGatingForRelease = useCallback(
-    async (releaseUuid: string) => {
-      const { ownerType, ownerId } = resolveMembershipOwner();
-
-      if (!ownerType || !ownerId || !releaseUuid) {
-        return;
-      }
-
-      if (!gateEnabled || availableTiers.length === 0) {
-        await supabase
-          .from('gated_content')
-          .delete()
-          .eq('content_type', 'release')
-          .eq('content_id', releaseUuid);
-        return;
-      }
-
-      let resolvedMinimumId = minimumTierId;
-      if (gateType === 'tier_or_higher') {
-        if (!resolvedMinimumId || !availableTiers.some((tier) => tier.id === resolvedMinimumId)) {
-          resolvedMinimumId = availableTiers[0]?.id ?? null;
-        }
-        if (!resolvedMinimumId) {
-          return;
-        }
-      }
-
-      const filteredAllowed = gateType === 'specific_tier'
-        ? allowedTierIds.filter((id) => availableTiers.some((tier) => tier.id === id))
-        : null;
-
-      const previewDurationNumber = previewDuration.trim()
-        ? Math.max(0, parseInt(previewDuration.trim(), 10) || 0)
-        : null;
-
-      const payload = {
-        content_type: 'release' as const,
-        content_id: releaseUuid,
-        owner_type: ownerType,
-        owner_id: ownerId,
-        gate_type: gateType,
-        minimum_tier_id: gateType === 'tier_or_higher' ? resolvedMinimumId : null,
-        allowed_tier_ids: gateType === 'specific_tier' ? filteredAllowed : null,
-        preview_text: previewText.trim() || null,
-        preview_duration: previewDurationNumber,
-      };
-
-      const { error } = await supabase
-        .from('gated_content')
-        .upsert(payload, { onConflict: 'content_type,content_id' });
-
-      if (error) throw error;
-    },
-    [allowedTierIds, availableTiers, gateEnabled, gateType, minimumTierId, previewDuration, previewText, resolveMembershipOwner]
-  );
 
   // Load existing release data when in edit mode
   useEffect(() => {
@@ -414,7 +265,7 @@ export const EnhancedReleaseBuilder = () => {
         setGiftMessageTemplate(release.gift_message_template || '');
         setCoverUrl(release.cover_art_url || '');
         setReleaseId(release.id);
-        await loadGatingRules(release.id);
+        await loadRulesFor(release.id);
 
         // Load credits - use array fields
         setLabel(release.label || '');
@@ -904,7 +755,7 @@ export const EnhancedReleaseBuilder = () => {
         if (error) throw error;
 
         try {
-          await syncGatingForRelease(releaseId);
+          await saveRulesFor(releaseId);
         } catch (err) {
           console.error('[ReleaseBuilder] Failed to sync gating (draft update)', err);
         }
@@ -976,11 +827,11 @@ export const EnhancedReleaseBuilder = () => {
         setReleaseId(release.id);
 
         try {
-          await syncGatingForRelease(release.id);
+          await saveRulesFor(release.id);
         } catch (err) {
           console.error('[ReleaseBuilder] Failed to sync gating (new draft)', err);
         }
-        await loadGatingRules(release.id);
+        await loadRulesFor(release.id);
         // Notify creator of successful draft save
         try {
           await supabase.from('notifications').insert({
@@ -1185,7 +1036,7 @@ export const EnhancedReleaseBuilder = () => {
       setReleaseId(release.id);
 
       try {
-        await syncGatingForRelease(release.id);
+        await saveRulesFor(release.id);
       } catch (err) {
         console.error('[ReleaseBuilder] Failed to sync gating (submit)', err);
         toast({

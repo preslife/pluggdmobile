@@ -26,6 +26,7 @@ import {
   CloudUpload,
   Loader2
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface Contact {
   id: string;
@@ -76,6 +77,7 @@ interface SupporterEvent {
 export const EnhancedCRMModule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const pageSize = 25;
   const [contactsLoading, setContactsLoading] = useState(true);
   const [segmentsLoading, setSegmentsLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -86,6 +88,8 @@ export const EnhancedCRMModule = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState('all');
   const [selectedSegmentId, setSelectedSegmentId] = useState<string>('all');
+  const [page, setPage] = useState(0);
+  const [totalContactsCount, setTotalContactsCount] = useState(0);
   const [segmentDraft, setSegmentDraft] = useState({
     name: '',
     description: '',
@@ -98,6 +102,16 @@ export const EnhancedCRMModule = () => {
   const [mailchimpSyncing, setMailchimpSyncing] = useState(false);
   const [substackSyncing, setSubstackSyncing] = useState(false);
   const [refreshingSegmentId, setRefreshingSegmentId] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalContacts: 0,
+    activeContacts: 0,
+    vipContacts: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0,
+    emailSubscribers: 0,
+    crowdfundingRaised: 0,
+    crowdfundingSupporters: 0
+  });
 
   const selectedSegment = useMemo(() => {
     if (selectedSegmentId === 'all') {
@@ -112,47 +126,98 @@ export const EnhancedCRMModule = () => {
 
     try {
       setContactsLoading(true);
-      const { data, error } = await supabase.rpc('get_crm_contacts', { p_creator_id: user.id });
+      void logger.info('crm_contacts_fetch_start', {
+        creatorId: user.id,
+        page,
+        limit: pageSize,
+        query: searchQuery || undefined,
+        tag: filterTag !== 'all' ? filterTag : undefined,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
+
+      const { data, error } = await supabase.rpc('crm_list_contacts', {
+        p_creator_id: user.id,
+        p_actor_id: user.id,
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+        p_query: searchQuery ? searchQuery.trim() : null,
+        p_tags: filterTag !== 'all' ? [filterTag] : null,
+        p_segment_id: selectedSegmentId !== 'all' ? selectedSegmentId : null
+      });
 
       if (error) {
         throw error;
       }
 
-      const normalized: Contact[] = (data || []).map((contact: any) => {
-        const sourceTags = Array.isArray(contact.sources) ? contact.sources : [];
-        const tags = new Set<string>(sourceTags);
+      const payload = (data ?? {}) as {
+        items?: any[];
+        total_count?: number;
+        summary?: Record<string, any>;
+      };
+
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const normalized: Contact[] = items.map((contact: any) => {
+        const computedTags = Array.isArray(contact.tags)
+          ? contact.tags
+          : Array.isArray(contact.sources)
+          ? contact.sources
+          : [];
         const totalSpend = Number(contact.total_spend ?? 0);
-
-        if (totalSpend >= 100) {
-          tags.add('vip');
-        }
-
-        if ((contact.membership_status || '').toLowerCase() === 'active') {
-          tags.add('active_member');
-        }
 
         return {
           id: contact.contact_id,
           email: contact.email ?? '',
           username: contact.username ?? undefined,
           full_name: contact.full_name ?? undefined,
-          tags: Array.from(tags),
+          tags: computedTags,
           total_spent: totalSpend,
           lifetime_value: Number(contact.lifetime_value ?? totalSpend),
-          last_interaction: contact.last_interaction,
-          first_interaction: contact.first_interaction,
+          last_interaction: contact.last_interaction ?? null,
+          first_interaction: contact.first_interaction ?? null,
           order_count: contact.order_count ?? 0,
           membership_status: contact.membership_status ?? null,
           membership_value: contact.membership_value ? Number(contact.membership_value) : 0,
           membership_since: contact.membership_since ?? null,
           student_value: contact.student_value ? Number(contact.student_value) : 0,
           student_since: contact.student_since ?? null
-        } as Contact;
+        };
       });
 
+      const totalCount = Number(payload.total_count ?? normalized.length);
+      const summary = payload.summary ?? {};
+      const totalRevenue = Number(summary.totalRevenue ?? 0);
+      const salesCount = Number(summary.salesCount ?? 0);
+
       setContacts(normalized);
+      setTotalContactsCount(totalCount);
+      setStats({
+        totalContacts: Number(summary.totalContacts ?? totalCount),
+        activeContacts: Number(summary.activeContacts ?? 0),
+        vipContacts: Number(summary.vipContacts ?? 0),
+        totalRevenue,
+        avgOrderValue: salesCount > 0 ? totalRevenue / salesCount : 0,
+        emailSubscribers: Number(summary.emailSubscribers ?? 0),
+        crowdfundingRaised: Number(summary.crowdfundingRaised ?? 0),
+        crowdfundingSupporters: Number(summary.crowdfundingSupporters ?? 0)
+      });
+
+      void logger.info('crm_contacts_fetch_success', {
+        creatorId: user.id,
+        page,
+        limit: pageSize,
+        returned: normalized.length,
+        total: totalCount
+      });
     } catch (error: any) {
-      console.error('Error fetching CRM contacts:', error);
+      void logger.error(
+        'crm_contacts_fetch_error',
+        {
+          creatorId: user?.id ?? null,
+          page,
+          limit: pageSize
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Error loading contacts',
         description: error.message,
@@ -161,13 +226,14 @@ export const EnhancedCRMModule = () => {
     } finally {
       setContactsLoading(false);
     }
-  }, [toast, user]);
+  }, [filterTag, page, pageSize, searchQuery, selectedSegmentId, toast, user]);
 
   const fetchSegments = useCallback(async () => {
     if (!user) return;
 
     try {
       setSegmentsLoading(true);
+      void logger.info('crm_segments_fetch_start', { creatorId: user.id });
       const { data, error } = await supabase
         .from('crm_segments')
         .select('*')
@@ -189,8 +255,13 @@ export const EnhancedCRMModule = () => {
       }));
 
       setSegments(mapped);
+      void logger.info('crm_segments_fetch_success', { creatorId: user.id, count: mapped.length });
     } catch (error: any) {
-      console.error('Error fetching CRM segments:', error);
+      void logger.error(
+        'crm_segments_fetch_error',
+        { creatorId: user?.id ?? null },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Error loading segments',
         description: error.message,
@@ -206,6 +277,7 @@ export const EnhancedCRMModule = () => {
 
     try {
       setSegmentMembersLoading(true);
+      void logger.info('crm_segment_members_fetch_start', { creatorId: user.id, segmentId });
       const { data, error } = await supabase
         .from('crm_segment_members')
         .select('contact_id')
@@ -219,8 +291,17 @@ export const EnhancedCRMModule = () => {
         ...prev,
         [segmentId]: new Set((data || []).map((row) => row.contact_id))
       }));
+      void logger.info('crm_segment_members_fetch_success', {
+        creatorId: user.id,
+        segmentId,
+        count: (data || []).length
+      });
     } catch (error: any) {
-      console.error('Error loading segment members:', error);
+      void logger.error(
+        'crm_segment_members_fetch_error',
+        { creatorId: user?.id ?? null, segmentId },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to load segment members',
         description: error.message,
@@ -243,26 +324,9 @@ export const EnhancedCRMModule = () => {
     }
   }, [loadSegmentMembers, selectedSegmentId]);
 
-  const stats = useMemo(() => {
-    const totalRevenue = contacts.reduce((sum, contact) => sum + (contact.total_spent ?? 0), 0);
-    const customerCount = contacts.filter((contact) => contact.tags.includes('customer')).length;
-    const vipContacts = contacts.filter((contact) => contact.tags.includes('vip')).length;
-    const activeThreshold = Date.now() - 60 * 24 * 60 * 60 * 1000; // 60 days
-    const activeContacts = contacts.filter((contact) => {
-      if (!contact.last_interaction) return false;
-      return new Date(contact.last_interaction).getTime() >= activeThreshold;
-    }).length;
-    const emailSubscribers = contacts.filter((contact) => !!contact.email).length;
-
-    return {
-      totalContacts: contacts.length,
-      activeContacts,
-      vipContacts,
-      totalRevenue,
-      avgOrderValue: customerCount > 0 ? totalRevenue / customerCount : 0,
-      emailSubscribers
-    };
-  }, [contacts]);
+  useEffect(() => {
+    setPage(0);
+  }, [filterTag, searchQuery, selectedSegmentId]);
 
   const describeFilters = useCallback((filters: Record<string, any>) => {
     if (!filters) return 'All contacts';
@@ -303,6 +367,11 @@ export const EnhancedCRMModule = () => {
     }
 
     try {
+      void logger.userAction('crm_bulk_email_attempt', 'EnhancedCRMModule', {
+        creatorId: user?.id ?? null,
+        selectedContacts: selectedContacts.length,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
       if (user && selectedContacts.length >= 100) {
         await supabase.rpc('log_system_event', {
           p_level: 1,
@@ -320,7 +389,21 @@ export const EnhancedCRMModule = () => {
         title: 'Email campaign queued',
         description: `Sending to ${selectedContacts.length} contacts`
       });
+      void logger.info('crm_bulk_email_success', {
+        creatorId: user?.id ?? null,
+        selectedContacts: selectedContacts.length,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_bulk_email_error',
+        {
+          creatorId: user?.id ?? null,
+          selectedContacts: selectedContacts.length,
+          segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to queue email',
         description: error.message,
@@ -341,6 +424,13 @@ export const EnhancedCRMModule = () => {
       if (searchQuery) {
         filters.query = searchQuery;
       }
+
+      void logger.userAction('crm_export_contacts_attempt', 'EnhancedCRMModule', {
+        creatorId: user.id,
+        filterTag: filterTag !== 'all' ? filterTag : undefined,
+        hasSearch: Boolean(searchQuery),
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
 
       const { data, error } = await supabase.functions.invoke('crm-export-contacts', {
         body: {
@@ -375,7 +465,22 @@ export const EnhancedCRMModule = () => {
         title: 'Contacts exported',
         description: `Exported ${count ?? contacts.length} contacts to CSV`
       });
+      void logger.info('crm_export_contacts_success', {
+        creatorId: user.id,
+        exported: count ?? contacts.length,
+        filterTag: filterTag !== 'all' ? filterTag : undefined,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_export_contacts_error',
+        {
+          creatorId: user?.id ?? null,
+          filterTag: filterTag !== 'all' ? filterTag : undefined,
+          segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Export failed',
         description: error.message ?? 'Unable to export contacts',
@@ -391,6 +496,10 @@ export const EnhancedCRMModule = () => {
 
     try {
       setMailchimpSyncing(true);
+      void logger.userAction('crm_mailchimp_sync_attempt', 'EnhancedCRMModule', {
+        creatorId: user.id,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
       const { data, error } = await supabase.functions.invoke('mailchimp-export-audience', {
         body: {
           creator_id: user.id,
@@ -432,7 +541,21 @@ export const EnhancedCRMModule = () => {
           ? `Processed ${data?.processed ?? 0} contacts for ${targetSegmentName}`
           : `Processed ${data?.processed ?? 0} contacts`
       });
+      void logger.info('crm_mailchimp_sync_success', {
+        creatorId: user.id,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined,
+        processed: data?.processed ?? 0,
+        totalAudience: data?.total_audience ?? null
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_mailchimp_sync_error',
+        {
+          creatorId: user?.id ?? null,
+          segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Mailchimp sync failed',
         description: error.message ?? 'Unable to sync with Mailchimp',
@@ -448,6 +571,10 @@ export const EnhancedCRMModule = () => {
 
     try {
       setSubstackSyncing(true);
+      void logger.userAction('crm_substack_sync_attempt', 'EnhancedCRMModule', {
+        creatorId: user.id,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+      });
       const { data, error } = await supabase.functions.invoke('substack-sync-audience', {
         body: {
           creator_id: user.id,
@@ -480,7 +607,20 @@ export const EnhancedCRMModule = () => {
         title: 'Substack sync queued',
         description: `Prepared ${data?.prepared_contacts ?? 0} contacts`
       });
+      void logger.info('crm_substack_sync_success', {
+        creatorId: user.id,
+        segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined,
+        prepared: data?.prepared_contacts ?? 0
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_substack_sync_error',
+        {
+          creatorId: user?.id ?? null,
+          segmentId: selectedSegmentId !== 'all' ? selectedSegmentId : undefined
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Substack sync failed',
         description: error.message ?? 'Unable to sync with Substack',
@@ -527,6 +667,12 @@ export const EnhancedCRMModule = () => {
 
       const manualIds = selectedContacts.length > 0 ? selectedContacts : [];
 
+      void logger.userAction('crm_segment_create_attempt', 'EnhancedCRMModule', {
+        creatorId: user.id,
+        hasManualContacts: manualIds.length > 0,
+        filters
+      });
+
       const { data, error } = await supabase
         .from('crm_segments')
         .insert({
@@ -557,7 +703,16 @@ export const EnhancedCRMModule = () => {
 
       setSegmentDraft({ name: '', description: '', source: 'all', minSpend: '', minOrders: '' });
       setSelectedContacts([]);
+      void logger.info('crm_segment_create_success', {
+        creatorId: user.id,
+        segmentId: data?.id ?? null
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_segment_create_error',
+        { creatorId: user?.id ?? null },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to create segment',
         description: error.message ?? 'Please try again',
@@ -571,6 +726,10 @@ export const EnhancedCRMModule = () => {
   const handleRefreshSegment = async (segmentId: string) => {
     try {
       setRefreshingSegmentId(segmentId);
+      void logger.userAction('crm_segment_refresh_attempt', 'EnhancedCRMModule', {
+        creatorId: user?.id ?? null,
+        segmentId
+      });
       await supabase.rpc('refresh_crm_segment', { p_segment_id: segmentId });
       await fetchSegments();
       if (selectedSegmentId === segmentId) {
@@ -580,7 +739,16 @@ export const EnhancedCRMModule = () => {
         title: 'Segment refreshed',
         description: 'Membership counts updated successfully'
       });
+      void logger.info('crm_segment_refresh_success', {
+        creatorId: user?.id ?? null,
+        segmentId
+      });
     } catch (error: any) {
+      void logger.error(
+        'crm_segment_refresh_error',
+        { creatorId: user?.id ?? null, segmentId },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast({
         title: 'Unable to refresh segment',
         description: error.message ?? 'Please try again',
@@ -591,39 +759,10 @@ export const EnhancedCRMModule = () => {
     }
   };
 
-  const filteredContacts = useMemo(() => {
-    if (selectedSegmentId !== 'all' && segmentMembersLoading) {
-      return [];
-    }
-
-    const membershipFilter = selectedSegmentId !== 'all' ? segmentMembers[selectedSegmentId] : null;
-    const loweredSearch = searchQuery.toLowerCase();
-
-    return contacts.filter((contact) => {
-      if (membershipFilter && !membershipFilter.has(contact.id)) {
-        return false;
-      }
-
-      const email = contact.email ? contact.email.toLowerCase() : '';
-      const username = contact.username ? contact.username.toLowerCase() : '';
-      const fullName = contact.full_name ? contact.full_name.toLowerCase() : '';
-
-      const matchesSearch = loweredSearch === '' ||
-        email.includes(loweredSearch) ||
-        username.includes(loweredSearch) ||
-        fullName.includes(loweredSearch);
-
-      if (!matchesSearch) {
-        return false;
-      }
-
-      if (filterTag !== 'all' && !contact.tags.includes(filterTag)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [contacts, filterTag, searchQuery, segmentMembers, selectedSegmentId, segmentMembersLoading]);
+  const isSegmentLoading = selectedSegmentId !== 'all' && segmentMembersLoading;
+  const totalLabelCount = totalContactsCount || contacts.length;
+  const pageStart = totalLabelCount === 0 ? 0 : page * pageSize + 1;
+  const pageEnd = Math.min(totalLabelCount, page * pageSize + contacts.length);
 
   if (contactsLoading) {
     return (
@@ -871,19 +1010,19 @@ export const EnhancedCRMModule = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {selectedSegmentId !== 'all' && segmentMembersLoading ? (
+              {isSegmentLoading ? (
                 <div className="text-center py-12">
                   <Loader2 className="w-6 h-6 mx-auto mb-4 animate-spin text-muted-foreground" />
                   <p className="text-muted-foreground">Loading segment contacts…</p>
                 </div>
-              ) : filteredContacts.length === 0 ? (
+              ) : contacts.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground">No contacts found</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredContacts.map((contact) => {
+                  {contacts.map((contact) => {
                     const displayName = contact.full_name || contact.username || contact.email || 'Contact';
                     const avatarLetter = displayName.charAt(0).toUpperCase();
                     const lastInteraction = contact.last_interaction
@@ -938,6 +1077,31 @@ export const EnhancedCRMModule = () => {
                   })}
                 </div>
               )}
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {totalLabelCount === 0
+                    ? 'No contacts to display'
+                    : `Showing ${pageStart}-${pageEnd} of ${totalLabelCount}`}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(Math.max(0, page - 1))}
+                    disabled={page === 0 || contactsLoading}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page + 1)}
+                    disabled={(page + 1) * pageSize >= totalLabelCount || contactsLoading || contacts.length === 0}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

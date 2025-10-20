@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Bell, BellRing, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationPreferences } from '@/components/NotificationPreferences';
 
 interface Notification {
   id: string;
@@ -142,25 +143,21 @@ export const NotificationCenter = () => {
     return null;
   }
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
+  const notificationCard = loading ? (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Notifications
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </CardContent>
+    </Card>
+  ) : (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -242,4 +239,12 @@ export const NotificationCenter = () => {
       </CardContent>
     </Card>
   );
+
+  return (
+    <div className="space-y-4">
+      <NotificationPreferences variant="compact" />
+      {notificationCard}
+    </div>
+  );
 };
+

@@ -58,6 +58,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { LivePreview, SessionTemplate } from "./LivePreview";
 import { format, formatDistanceToNow } from "date-fns";
 
 const SESSION_PAGE_SIZE = 6;
@@ -72,6 +73,7 @@ interface SessionRow {
   title: string;
   description: string | null;
   scheduled_at: string | null;
+  duration_minutes?: number | null;
   status: SessionStatus;
   is_public: boolean;
   host_id: string;
@@ -253,12 +255,34 @@ export const LiveModule: React.FC = () => {
 
   const [refreshFlag, setRefreshFlag] = useState(0);
 
+  const previewSessions = useMemo(
+    () =>
+      sessions.map((session) => ({
+        id: session.id,
+        title: session.title,
+        scheduledAt: session.scheduled_at,
+        durationMinutes: session.duration_minutes ?? null,
+      })),
+    [sessions],
+  );
+
   const resetForm = () => {
     setSessionForm(emptySessionForm);
   };
 
   const refreshAll = () => {
     setRefreshFlag((flag) => flag + 1);
+  };
+
+  const handleApplyTemplate = (template: SessionTemplate) => {
+    setSessionForm((current) => ({
+      ...current,
+      title: template.title,
+      description: template.description ?? current.description,
+      scheduledAt: template.scheduledAt,
+      durationMinutes: template.durationMinutes,
+    }));
+    setSessionDialogOpen(true);
   };
 
   useEffect(() => {
@@ -820,6 +844,12 @@ export const LiveModule: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              <LivePreview
+                sessions={previewSessions}
+                onApplyTemplate={handleApplyTemplate}
+                onOpenScheduling={() => setSessionDialogOpen(true)}
+              />
+
               {sessionLoading && (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Fetching sessions...

@@ -306,4 +306,38 @@ describe('syncMembershipFromSubscription', () => {
       },
     });
   });
+
+  it('resets member counts when the active tally is unavailable', async () => {
+    membershipMaybeSingleResponses.push(
+      Promise.resolve({ data: null, error: null }),
+      Promise.resolve({ data: null, error: null })
+    );
+    membershipActiveCount = null as any;
+
+    const subscription = {
+      id: 'sub_missing_count',
+      status: 'active',
+      metadata: {
+        membership_tier_id: 'tier-1',
+        fan_id: 'fan-456',
+        creator_id: 'creator-1',
+      },
+      current_period_start: 1704067200,
+      current_period_end: 1706745600,
+      cancel_at_period_end: false,
+      customer: 'cus_789',
+      items: {
+        data: [
+          {
+            price: { id: 'price_123', recurring: { interval: 'month' } },
+            plan: { interval: 'month' },
+          },
+        ],
+      },
+    } as any;
+
+    await syncMembershipFromSubscription(supabaseClient, subscription, logger);
+
+    expect(membershipTiersUpdateMock).toHaveBeenCalledWith({ current_members: 0 });
+  });
 });

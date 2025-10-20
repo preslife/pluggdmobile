@@ -45,6 +45,7 @@ const StoreSuccess: React.FC = () => {
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const { toast } = useToast();
+  const { settings } = useLocalization();
 
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<OrderSummary | null>(null);
@@ -79,7 +80,18 @@ const StoreSuccess: React.FC = () => {
       return;
     }
 
-    const fetchOrder = async () => {
+    setLoading(true);
+    setError(null);
+
+    let attempt = 0;
+    let lastError: string | null = null;
+    let success = false;
+
+    while (attempt < RETRY_ATTEMPTS && !success) {
+      attempt += 1;
+      telemetry.store("success.fetch_attempt", { attempt, sessionId });
+      void logger.info("storeSuccess:fetch_attempt", { sessionId, attempt });
+
       try {
         setLoading(true);
         void logger.info("store_success_fetch_start", {
@@ -88,7 +100,9 @@ const StoreSuccess: React.FC = () => {
         });
         const { data, error: fetchError } = await supabase
           .from("orders")
-          .select("id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))")
+          .select(
+            "id, total_amount, status, created_at, shipping_address, order_items(id, quantity, price, product_type, store_products(title, image_url)))"
+          )
           .eq("payment_id", sessionId)
           .maybeSingle();
 
@@ -121,7 +135,15 @@ const StoreSuccess: React.FC = () => {
           });
           clearCart();
           setCartCleared(true);
+          telemetry.checkout("cart_cleared", {
+            sessionId,
+            orderId: orderSummary.id,
+            reason: "store.success",
+          });
+          void logger.info("storeSuccess:cart_cleared", { sessionId, orderId: orderSummary.id });
         }
+
+        success = true;
       } catch (err: any) {
         const message = err?.message || "Unable to load your order summary.";
         const errorObject = err instanceof Error ? err : new Error(message);
@@ -138,21 +160,47 @@ const StoreSuccess: React.FC = () => {
         });
         setLoading(false);
       }
-    };
+    }
 
-    fetchOrder();
-  }, [sessionId, clearCart, toast, cartCleared]);
+    telemetry.store("success.fetch_complete", {
+      sessionId,
+      attempts: attempt,
+      success,
+      lastError,
+    });
+    void logger.info("storeSuccess:fetch_complete", {
+      sessionId,
+      attempts: attempt,
+      success,
+      lastError,
+    });
+
+    setLoading(false);
+  }, [sessionId, clearCart, cartCleared, toast]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      const message = "Missing session identifier. Please check your confirmation email for your receipt.";
+      setError(message);
+      telemetry.store("success.missing_session", { search: searchParams.toString() || undefined });
+      void logger.warn("storeSuccess:missing_session", { search: searchParams.toString() || undefined });
+      setLoading(false);
+      return;
+    }
+
+    void fetchOrderWithRetry();
+  }, [sessionId, searchParams, fetchOrderWithRetry]);
 
   const heading = useMemo(() => {
-    if (loading) return "Processing your order";
-    if (error) return "We couldn't confirm your purchase";
-    return "Your order is confirmed";
-  }, [loading, error]);
+    if (loading) return intl.formatMessage({ id: "store.success.heading.processing", defaultMessage: "Processing your order" });
+    if (error) return intl.formatMessage({ id: "store.success.heading.error", defaultMessage: "We couldn't confirm your purchase" });
+    return intl.formatMessage({ id: "store.success.heading.success", defaultMessage: "Your order is confirmed" });
+  }, [loading, error, intl]);
 
   useEffect(() => {
     setMeta(
-      "Order Confirmed — Pluggd Store",
-      "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases.",
+      intl.formatMessage({ id: "store.success.metaTitle", defaultMessage: "Order Confirmed — Pluggd Store" }),
+      intl.formatMessage({ id: "store.success.metaDescription", defaultMessage: "We've emailed your receipt and unlocked your downloads. Head to your library or order history to manage purchases." }),
       "/store/success"
     );
     void logger.info("store_success_meta_initialized", {
@@ -168,7 +216,9 @@ const StoreSuccess: React.FC = () => {
       try {
         const parsed = JSON.parse(storedReceipt) as ReleaseReceiptContext;
         const timestampMs = parsed.timestamp ? Date.parse(parsed.timestamp) : Date.now();
-        const within24Hours = !Number.isNaN(timestampMs) ? Date.now() - timestampMs < 1000 * 60 * 60 * 24 : true;
+        const within24Hours = !Number.isNaN(timestampMs)
+          ? Date.now() - timestampMs < 1000 * 60 * 60 * 24
+          : true;
 
         if (within24Hours && !releaseReceipt) {
           setReleaseReceipt(parsed);
@@ -186,6 +236,7 @@ const StoreSuccess: React.FC = () => {
         }, errorObject);
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
+        void logEvent('store_success_release_receipt_cleared', { source: 'sessionStorage' });
       }
     }
 
@@ -193,7 +244,7 @@ const StoreSuccess: React.FC = () => {
     if (releaseIdParam && !releaseReceipt) {
       setReleaseReceipt({
         releaseId: releaseIdParam,
-        title: "Your release",
+        title: intl.formatMessage({ id: "store.success.releaseTitle", defaultMessage: "Your release" }),
       });
       void logger.info("store_success_release_receipt_loaded", {
         component: "StoreSuccessPage",
@@ -201,7 +252,16 @@ const StoreSuccess: React.FC = () => {
         source: "query_param",
       });
     }
-  }, [searchParams, releaseReceipt]);
+  }, [searchParams, releaseReceipt, logEvent, logError]);
+
+  const formatOrderDate = useCallback(
+    (value: string) =>
+      new Intl.DateTimeFormat(settings.locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value)),
+    [settings.locale]
+  );
 
   return (
     <div className="min-h-[60vh] px-4 py-16 flex flex-col items-center bg-background">
@@ -218,28 +278,28 @@ const StoreSuccess: React.FC = () => {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">{heading}</h1>
           <p className="text-muted-foreground">
-            {loading && "Hang tight while we confirm your payment with Stripe."}
+            {loading && intl.formatMessage({ id: "store.success.processingMessage", defaultMessage: "Hang tight while we confirm your payment with Stripe." })}
             {!loading && !error && (
               releaseReceipt
-                ? "We've emailed your receipt. Use the download shortcut below or visit your library anytime."
-                : "We've emailed your receipt. Download links unlock immediately in your library."
+                ? intl.formatMessage({ id: "store.success.successWithReceipt", defaultMessage: "We've emailed your receipt. Use the download shortcut below or visit your library anytime." })
+                : intl.formatMessage({ id: "store.success.successNoReceipt", defaultMessage: "We've emailed your receipt. Download links unlock immediately in your library." })
             )}
-            {!loading && error && "Refresh the page or reach out to support if the charge completed."}
+            {!loading && error && intl.formatMessage({ id: "store.success.errorMessage", defaultMessage: "Refresh the page or reach out to support if the charge completed." })}
           </p>
         </div>
 
         {releaseReceipt && (
           <Card>
             <CardHeader>
-              <CardTitle>Access your download</CardTitle>
+              <CardTitle>{intl.formatMessage({ id: "store.success.accessDownload", defaultMessage: "Access your download" })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
                 {releaseReceipt.title}
-                {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ''}
+                {releaseReceipt.artist ? ` — ${releaseReceipt.artist}` : ""}
               </p>
               <p className="text-xs">
-                Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download.
+                {intl.formatMessage({ id: "store.success.instantUnlock", defaultMessage: "Your purchase is unlocked instantly. Follow the link below to open the release page and start a secure download." })}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
@@ -260,13 +320,13 @@ const StoreSuccess: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Order details</CardTitle>
+            <CardTitle>{intl.formatMessage({ id: "store.success.orderDetails", defaultMessage: "Order details" })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {loading && (
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Verifying payment…</span>
+                <span>{intl.formatMessage({ id: "store.success.verifying", defaultMessage: "Verifying payment…" })}</span>
               </div>
             )}
 
@@ -280,27 +340,27 @@ const StoreSuccess: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Order ID</span>
+                    <span className="text-muted-foreground">Order #</span>
                     <span className="font-mono text-xs">{order.id}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
+                    <span className="text-muted-foreground">{intl.formatMessage({ id: "store.success.status", defaultMessage: "Status" })}</span>
                     <span className="capitalize font-medium">{order.status}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Placed</span>
-                    <span>{new Date(order.created_at).toLocaleString()}</span>
+                    <span>{formatOrderDate(order.created_at)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total charged</span>
-                    <span className="font-semibold">{formatCurrency(order.total_amount)}</span>
+                    <span className="font-semibold">{formatCurrency(order.total_amount, settings.currency, settings.locale)}</span>
                   </div>
                 </div>
 
                 <Separator />
 
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Items</h2>
+                  <h2 className="text-lg font-semibold">{intl.formatMessage({ id: "store.success.itemsHeading", defaultMessage: "Items" })}</h2>
                   <div className="space-y-3">
                     {order.order_items?.length ? (
                       order.order_items.map((item) => (
@@ -308,7 +368,7 @@ const StoreSuccess: React.FC = () => {
                           {item.store_products?.image_url ? (
                             <img
                               src={item.store_products.image_url}
-                              alt={item.store_products.title ?? "Product thumbnail"}
+                              alt={item.store_products.title ?? intl.formatMessage({ id: "store.success.productThumbnail", defaultMessage: "Product thumbnail" })}
                               className="h-14 w-14 rounded-md object-cover border"
                             />
                           ) : (
@@ -317,17 +377,17 @@ const StoreSuccess: React.FC = () => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{item.store_products?.title ?? "Store item"}</p>
-                            <p className="text-xs text-muted-foreground uppercase">{item.product_type ?? "digital"}</p>
+                            <p className="font-medium truncate">{item.store_products?.title ?? intl.formatMessage({ id: "store.success.genericItem", defaultMessage: "Store item" })}</p>
+                            <p className="text-xs text-muted-foreground uppercase">{item.product_type ?? intl.formatMessage({ id: "store.success.digital", defaultMessage: "digital" })}</p>
                           </div>
                           <div className="text-right text-sm">
-                            <p className="font-medium">{formatCurrency(item.price)}</p>
+                            <p className="font-medium">{formatCurrency(item.price, settings.currency, settings.locale)}</p>
                             <p className="text-xs text-muted-foreground">Qty {item.quantity}</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-muted-foreground">No line items recorded yet. This can take a few seconds.</div>
+                      <div className="text-sm text-muted-foreground">{intl.formatMessage({ id: "store.success.noItems", defaultMessage: "No line items recorded yet. This can take a few seconds." })}</div>
                     )}
                   </div>
                 </div>
@@ -337,9 +397,9 @@ const StoreSuccess: React.FC = () => {
         </Card>
 
         <div className="flex flex-wrap gap-3 justify-center">
-          <Button variant="secondary" onClick={() => navigate("/store")}>Return to Store</Button>
-          <Button variant="outline" onClick={() => navigate("/account/orders")}>View Order History</Button>
-          <Button onClick={() => navigate("/library")}>Go to Library</Button>
+          <Button variant="secondary" onClick={() => navigate("/store")}>Return to store</Button>
+          <Button variant="outline" onClick={() => navigate("/account/orders")}>View order history</Button>
+          <Button onClick={() => navigate("/library")}>Go to library</Button>
         </div>
       </div>
     </div>

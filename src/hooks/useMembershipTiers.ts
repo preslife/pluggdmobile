@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptionalStudioContext } from "@/contexts/StudioContext";
-import { logger } from "@/lib/logger";
+import { useLogger } from "@/hooks/useLogger";
 
 type OwnerType = "profile" | "label";
 
@@ -35,6 +35,9 @@ export interface MembershipTier {
   stripe_price_monthly_id: string | null;
   stripe_price_yearly_id: string | null;
   stripe_price_lifetime_id: string | null;
+  stripe_synced_at: string | null;
+  stripe_sync_status: string | null;
+  stripe_sync_error: string | null;
 }
 
 export interface UpsertMembershipTierInput {
@@ -127,6 +130,9 @@ const mapTier = (row: any): MembershipTier => ({
   stripe_price_monthly_id: row.stripe_price_monthly_id ?? null,
   stripe_price_yearly_id: row.stripe_price_yearly_id ?? null,
   stripe_price_lifetime_id: row.stripe_price_lifetime_id ?? null,
+  stripe_synced_at: row.stripe_synced_at ?? null,
+  stripe_sync_status: row.stripe_sync_status ?? null,
+  stripe_sync_error: row.stripe_sync_error ?? null,
 });
 
 type TierInsertPayload = {
@@ -178,6 +184,9 @@ const buildOptimisticTier = (
     stripe_price_monthly_id: null,
     stripe_price_yearly_id: null,
     stripe_price_lifetime_id: null,
+    stripe_synced_at: null,
+    stripe_sync_status: "pending",
+    stripe_sync_error: null,
   };
 };
 
@@ -188,6 +197,13 @@ export function useMembershipTiers(): MembershipTiersHook {
   const activeLabel = studioContext?.mode === "label" ? studioContext.activeLabel : null;
   const ownerType: OwnerType | null = activeLabel ? "label" : user ? "profile" : null;
   const ownerId: string | null = activeLabel ? activeLabel.id : user?.id ?? null;
+
+  const loggerMetadata = useMemo(() => ({ ownerType, ownerId }), [ownerType, ownerId]);
+  const { logger: membershipLogger, logUserAction } = useLogger({
+    component: 'useMembershipTiers',
+    feature: 'membership',
+    metadata: loggerMetadata,
+  });
 
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +223,7 @@ export function useMembershipTiers(): MembershipTiersHook {
 
     setLoading(true);
     setError(null);
-    void logger.info("membership_tiers_fetch_start", {
+    void membershipLogger.info("membership_tiers_fetch_start", {
       owner_type: ownerType,
       owner_id: ownerId,
     });
@@ -224,7 +240,7 @@ export function useMembershipTiers(): MembershipTiersHook {
       setError(error.message);
       setTiers([]);
       setLoading(false);
-      void logger.error("membership_tiers_fetch_failed", {
+      void membershipLogger.error("membership_tiers_fetch_failed", {
         owner_type: ownerType,
         owner_id: ownerId,
       }, toError(error));
@@ -233,7 +249,7 @@ export function useMembershipTiers(): MembershipTiersHook {
 
     setTiers((data ?? []).map(mapTier));
     setLoading(false);
-    void logger.info("membership_tiers_fetch_success", {
+    void membershipLogger.info("membership_tiers_fetch_success", {
       owner_type: ownerType,
       owner_id: ownerId,
       tier_count: data?.length ?? 0,
@@ -298,7 +314,7 @@ export function useMembershipTiers(): MembershipTiersHook {
         image_url: input.imageUrl || null,
       };
 
-      void logger.userAction("membership_tier_create_attempt", "useMembershipTiers", {
+      void logUserAction("membership_tier_create_attempt", {
         owner_type: ownerType,
         owner_id: ownerId,
         input_name: input.name,
@@ -328,13 +344,13 @@ export function useMembershipTiers(): MembershipTiersHook {
           }
         });
 
-        void logger.info("membership_tier_create_success", {
+        void membershipLogger.info("membership_tier_create_success", {
           owner_type: ownerType,
           owner_id: ownerId,
           input_name: input.name,
         });
       } catch (err) {
-        void logger.error("membership_tier_create_failed", {
+        void membershipLogger.error("membership_tier_create_failed", {
           owner_type: ownerType,
           owner_id: ownerId,
           input_name: input.name,
@@ -371,7 +387,7 @@ export function useMembershipTiers(): MembershipTiersHook {
         payload.tier_order = input.order;
       }
 
-      void logger.userAction("membership_tier_update_attempt", "useMembershipTiers", {
+      void logUserAction("membership_tier_update_attempt", {
         tier_id: tierId,
         owner_type: existing.owner_type,
         owner_id: existing.owner_id,
@@ -421,13 +437,13 @@ export function useMembershipTiers(): MembershipTiersHook {
           }
         });
 
-        void logger.info("membership_tier_update_success", {
+        void membershipLogger.info("membership_tier_update_success", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
         });
       } catch (err) {
-        void logger.error("membership_tier_update_failed", {
+        void membershipLogger.error("membership_tier_update_failed", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
@@ -447,7 +463,7 @@ export function useMembershipTiers(): MembershipTiersHook {
 
       const previousTiers = tiers.slice();
 
-      void logger.userAction("membership_tier_delete_attempt", "useMembershipTiers", {
+      void logUserAction("membership_tier_delete_attempt", {
         tier_id: tierId,
         owner_type: existing.owner_type,
         owner_id: existing.owner_id,
@@ -468,13 +484,13 @@ export function useMembershipTiers(): MembershipTiersHook {
           }
         });
 
-        void logger.info("membership_tier_delete_success", {
+        void membershipLogger.info("membership_tier_delete_success", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
         });
       } catch (err) {
-        void logger.error("membership_tier_delete_failed", {
+        void membershipLogger.error("membership_tier_delete_failed", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,

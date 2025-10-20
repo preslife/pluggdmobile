@@ -30,6 +30,7 @@ import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
 import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
+import { fetchMembershipAccessRules } from '@/services/memberships/accessRules';
 
 type Beat = {
   id: string;
@@ -81,6 +82,21 @@ const BeatDetail = () => {
   const [relatedBeats, setRelatedBeats] = useState<Beat[]>([]);
   const [isLicensingModalOpen, setIsLicensingModalOpen] = useState(false);
 
+  const resolvedArtistName = beat
+    ? beat.uploaded_by_admin
+      ? beat.producer_name || 'Internal Producer'
+      : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist'
+    : undefined;
+  const beatDescription = beat?.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+  const canonicalPath = beat ? `/beat/${beat.id}` : '/beat';
+
+  usePageMetadata({
+    title: beat ? `${beat.title} — ${resolvedArtistName ?? 'Pluggd Creator'} | Pluggd` : 'Beat Detail — Pluggd',
+    description: beatDescription,
+    path: canonicalPath,
+    image: beat?.image_url ?? undefined,
+  });
+
 
   useEffect(() => {
     if (id) {
@@ -114,6 +130,16 @@ const BeatDetail = () => {
         profiles: profileData
       };
 
+      try {
+        const accessRule = await fetchMembershipAccessRules('beat', id);
+        if (accessRule) {
+          beatWithProfile.owner_id = accessRule.owner_id ?? beatData.owner_id ?? beatData.user_id ?? null;
+          beatWithProfile.owner_type = accessRule.owner_type ?? beatData.owner_type ?? null;
+        }
+      } catch (lookupError) {
+        console.error('Failed to load membership access rules', lookupError);
+      }
+
       setBeat(beatWithProfile);
 
       // Fetch related beats from same artist
@@ -144,6 +170,27 @@ const BeatDetail = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!beat) {
+      return;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.fm';
+    const canonicalPath = `/beat/${beat.id}`;
+    const byline = beat.producer_name ? ` by ${beat.producer_name}` : '';
+    const description = beat.description?.trim() || `Discover the beat "${beat.title}"${byline} on Pluggd.`;
+    const ogUrl = buildEntityOgImageUrl('beat', beat.id, {
+      resourceUrl: `${origin}${canonicalPath}`,
+    });
+
+    setMeta(
+      `${beat.title}${byline} | Pluggd`,
+      description,
+      canonicalPath,
+      ogUrl,
+    );
+  }, [beat]);
 
   const handlePlayBeat = () => {
     if (!beat?.audio_url) return;
@@ -208,10 +255,7 @@ const BeatDetail = () => {
     );
   }
 
-  const artistName = beat.uploaded_by_admin
-    ? beat.producer_name || 'Internal Producer'
-    : beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist';
-  const beatDescription = beat.description ? beat.description.slice(0, 160) : 'Browse exclusive beats on Pluggd.';
+  const artistName = resolvedArtistName ?? 'Pluggd Creator';
   const membershipCreatorId = beat.owner_id || beat.user_id || 'unknown';
   const membershipCtaHref = beat.owner_id
     ? `/creator/${beat.owner_id}#membership`
@@ -372,7 +416,7 @@ const BeatDetail = () => {
             {/* Licensing Options */}
             <SubscriptionGatedContent
               contentId={beat.id}
-              contentType="track"
+              contentType="beat"
               creatorId={membershipCreatorId}
               ctaHref={membershipCtaHref}
               fallbackText="Become a member to unlock licensing, stems, and full downloads."

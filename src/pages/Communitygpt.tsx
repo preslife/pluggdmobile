@@ -37,6 +37,7 @@ import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
 import BlogGrid from "@/components/BlogGrid"; // reuse your existing grid
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 /**
  * PLUGGD — COMMUNITY HUB (refreshed)
@@ -317,6 +318,12 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function CommunityHubEpic() {
+  usePageMetadata({
+    title: "Community GPT — Pluggd",
+    description: "Discover AI-curated community highlights, trending releases, and creator opportunities across Pluggd.",
+    path: "/community-gpt",
+  });
+
   const [data, setData] = useState<HubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

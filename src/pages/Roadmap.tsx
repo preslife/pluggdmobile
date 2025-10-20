@@ -3,8 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 const Roadmap = () => {
+  usePageMetadata({
+    title: "Product Roadmap — Pluggd",
+    description: "Explore the Pluggd feature roadmap and see what's shipping next for creators and fans.",
+    path: "/roadmap",
+  });
+
   const roadmapItems = [
     {
       quarter: "Q1 2025",

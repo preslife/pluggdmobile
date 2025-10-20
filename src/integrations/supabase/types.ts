@@ -3104,6 +3104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_kpi_events: {
+        Row: {
+          created_at: string
+          creator_id: string
+          event_name: string | null
+          id: string
+          kpi_key: string
+          kpi_value: number
+          metadata: Json | null
+          metric_date: string
+          occurred_at: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          event_name?: string | null
+          id?: string
+          kpi_key: string
+          kpi_value: number
+          metadata?: Json | null
+          metric_date?: string
+          occurred_at?: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          event_name?: string | null
+          id?: string
+          kpi_key?: string
+          kpi_value?: number
+          metadata?: Json | null
+          metric_date?: string
+          occurred_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       creator_metrics: {
         Row: {
           audience_geo: Json | null
@@ -4338,6 +4377,65 @@ export type Database = {
           },
         ]
       }
+      membership_tier_sync_queue: {
+        Row: {
+          action: string
+          actor_id: string | null
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          payload: Json
+          previous: Json | null
+          scheduled_at: string
+          status: string
+          tier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          payload: Json
+          previous?: Json | null
+          scheduled_at?: string
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          payload?: Json
+          previous?: Json | null
+          scheduled_at?: string
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_tier_sync_queue_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       membership_metrics: {
         Row: {
           churned_members: number
@@ -4446,6 +4544,9 @@ export type Database = {
           stripe_price_monthly_id: string | null
           stripe_price_yearly_id: string | null
           stripe_product_id: string | null
+          stripe_synced_at: string | null
+          stripe_sync_error: string | null
+          stripe_sync_status: string
           updated_at: string
         }
         Insert: {
@@ -4472,6 +4573,9 @@ export type Database = {
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
+          stripe_synced_at?: string | null
+          stripe_sync_error?: string | null
+          stripe_sync_status?: string
           updated_at?: string
         }
         Update: {
@@ -4498,6 +4602,9 @@ export type Database = {
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
+          stripe_synced_at?: string | null
+          stripe_sync_error?: string | null
+          stripe_sync_status?: string
           updated_at?: string
         }
         Relationships: []
@@ -4724,6 +4831,56 @@ export type Database = {
           winner_id?: string | null
         }
         Relationships: []
+      }
+      notification_prefs: {
+        Row: {
+          created_at: string
+          notify_contest_reminders: boolean | null
+          notify_email_marketing: boolean | null
+          notify_follows: boolean | null
+          notify_live_sessions: boolean | null
+          notify_push: boolean | null
+          notify_purchases: boolean | null
+          notify_session_feedback: boolean | null
+          notify_supporters: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notify_contest_reminders?: boolean | null
+          notify_email_marketing?: boolean | null
+          notify_follows?: boolean | null
+          notify_live_sessions?: boolean | null
+          notify_push?: boolean | null
+          notify_purchases?: boolean | null
+          notify_session_feedback?: boolean | null
+          notify_supporters?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notify_contest_reminders?: boolean | null
+          notify_email_marketing?: boolean | null
+          notify_follows?: boolean | null
+          notify_live_sessions?: boolean | null
+          notify_push?: boolean | null
+          notify_purchases?: boolean | null
+          notify_session_feedback?: boolean | null
+          notify_supporters?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       notifications: {
         Row: {
@@ -7955,6 +8112,8 @@ export type Database = {
       }
       wallet_ledger: {
         Row: {
+          balance_after: number
+          balance_before: number
           amount_credits: number
           counterparty_user_id: string | null
           created_at: string
@@ -7966,6 +8125,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          balance_after?: number
+          balance_before?: number
           amount_credits: number
           counterparty_user_id?: string | null
           created_at?: string
@@ -7977,6 +8138,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance_after?: number
+          balance_before?: number
           amount_credits?: number
           counterparty_user_id?: string | null
           created_at?: string
@@ -8122,6 +8285,28 @@ export type Database = {
       }
     }
     Views: {
+      creator_kpi_daily: {
+        Row: {
+          creator_id: string | null
+          event_count: number | null
+          kpi_key: string | null
+          last_occurred_at: string | null
+          metric_date: string | null
+          total_value: number | null
+        }
+        Relationships: []
+      }
+      creator_kpi_daily_personal: {
+        Row: {
+          creator_id: string | null
+          event_count: number | null
+          kpi_key: string | null
+          last_occurred_at: string | null
+          metric_date: string | null
+          total_value: number | null
+        }
+        Relationships: []
+      }
       live_gift_room_totals: {
         Row: {
           events_count: number | null
@@ -8402,6 +8587,15 @@ export type Database = {
         Args: { p_campaign_id: string; p_go_live?: boolean | null; p_note?: string | null }
         Returns: Database['public']['Tables']['campaigns']['Row']
       }
+      crowdfunding_list_campaigns: {
+        Args: {
+          p_creator_id: string
+          p_actor_id: string
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
       crowdfunding_refund_supporter: {
         Args: {
           p_supporter_entry: string
@@ -8409,6 +8603,19 @@ export type Database = {
           p_refund_cents?: number | null
         }
         Returns: Database['public']['Tables']['campaign_supporters']['Row']
+      }
+      catalog_list_items: {
+        Args: {
+          p_actor_id: string
+          p_owner_user_id?: string | null
+          p_owner_label_id?: string | null
+          p_types?: string[] | null
+          p_status?: string[] | null
+          p_search?: string | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
       }
       delete_label_as_owner: {
         Args: { p_label_id: string }
@@ -8471,6 +8678,18 @@ export type Database = {
       get_content_split_status: {
         Args: { p_content_id: string; p_content_type: string }
         Returns: string
+      }
+      crm_list_contacts: {
+        Args: {
+          p_creator_id: string
+          p_actor_id: string
+          p_limit?: number | null
+          p_offset?: number | null
+          p_query?: string | null
+          p_tags?: string[] | null
+          p_segment_id?: string | null
+        }
+        Returns: Json
       }
       get_crm_contacts: {
         Args: { p_creator_id?: string }
