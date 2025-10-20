@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { OAuthService } from "@/services/plugins/oauth-service";
 import { formatDistanceToNow } from "date-fns";
-import { Mail, MessageSquare, Zap, Settings, Plug, ExternalLink, Users, Crown, Twitter, Instagram, Hash, RefreshCcw, Clock } from "lucide-react";
+import { Mail, MessageSquare, Zap, Settings, Plug, ExternalLink, Users, Crown, Twitter, Instagram, Hash, RefreshCcw, Clock, Loader2 } from "lucide-react";
 
 interface Connection {
   id: string;
@@ -127,7 +128,7 @@ const SOCIAL_PLATFORMS = [
     description: 'Export content for TikTok posting',
     icon: Hash,
     color: 'bg-black',
-    features: ['Export flow', 'Manual posting', 'Coming soon: API']
+    features: ['Export flow', 'API posting', 'Performance insights']
   },
   {
     id: 'youtube',
@@ -164,6 +165,14 @@ export const EnhancedConnections = () => {
   const [discordSyncing, setDiscordSyncing] = useState<'sync' | 'grant' | 'revoke' | null>(null);
   const [discordResult, setDiscordResult] = useState<DiscordSyncResult | null>(null);
   const [discordError, setDiscordError] = useState<string | null>(null);
+  const [tiktokDialogOpen, setTiktokDialogOpen] = useState(false);
+  const [tiktokMethod, setTiktokMethod] = useState<'oauth' | 'apiKey'>('apiKey');
+  const [tiktokAccountName, setTiktokAccountName] = useState('');
+  const [tiktokAccountId, setTiktokAccountId] = useState('');
+  const [tiktokApiKey, setTiktokApiKey] = useState('');
+  const [tiktokConnecting, setTiktokConnecting] = useState(false);
+  const [tiktokError, setTiktokError] = useState<string | null>(null);
+  const [tiktokStatusMeta, setTiktokStatusMeta] = useState<any | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -173,6 +182,31 @@ export const EnhancedConnections = () => {
     if (Number.isNaN(date.getTime())) return null;
     return formatDistanceToNow(date);
   };
+
+  const connectionMap = useMemo(() => {
+    return connections.reduce<Record<string, Connection>>((acc, connection) => {
+      acc[connection.provider] = connection;
+      return acc;
+    }, {});
+  }, [connections]);
+
+  const refreshTikTokStatus = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('tiktok-connector', {
+        body: { action: 'status' },
+      });
+
+      if (error) throw error;
+
+      if (data?.connection) {
+        setTiktokStatusMeta(data.connection);
+      } else {
+        setTiktokStatusMeta(null);
+      }
+    } catch (error) {
+      console.error('Error fetching TikTok status:', error);
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -209,6 +243,7 @@ export const EnhancedConnections = () => {
 
       const hasMailchimp = (connectionsData || []).some((c) => c.provider === 'mailchimp');
       const hasDiscord = (connectionsData || []).some((c) => c.provider === 'discord');
+      const hasTikTok = (connectionsData || []).some((c) => c.provider === 'tiktok');
 
       if (hasMailchimp) {
         await fetchMailchimpLists();
@@ -216,6 +251,12 @@ export const EnhancedConnections = () => {
 
       if (hasDiscord) {
         await fetchDiscordStatus(connectionsData || []);
+      }
+
+      if (hasTikTok) {
+        await refreshTikTokStatus();
+      } else {
+        setTiktokStatusMeta(null);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -312,6 +353,12 @@ export const EnhancedConnections = () => {
         return;
       }
 
+      if (provider === 'tiktok') {
+        setTiktokError(null);
+        setTiktokDialogOpen(true);
+        return;
+      }
+
       toast({
         title: "Coming Soon",
         description: `${provider} integration will be available soon.`,
@@ -326,17 +373,87 @@ export const EnhancedConnections = () => {
     }
   };
 
-  const handleDisconnect = async (provider: string) => {
+  const resetTikTokForm = () => {
+    setTiktokMethod('apiKey');
+    setTiktokAccountName('');
+    setTiktokAccountId('');
+    setTiktokApiKey('');
+  };
+
+  const handleTikTokApiKeyConnect = async () => {
+    if (!user) {
+      toast({
+        title: 'Sign in required',
+        description: 'You need to sign in before connecting TikTok.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setTiktokConnecting(true);
+    setTiktokError(null);
+
     try {
-      const { error } = await supabase
-        .from('social_connections')
-        .delete()
-        .eq('provider', provider)
-        .eq('user_id', user!.id);
+      const { data, error } = await supabase.functions.invoke('tiktok-connector', {
+        body: {
+          action: 'connect',
+          method: 'apiKey',
+          accountName: tiktokAccountName.trim(),
+          accountId: tiktokAccountId.trim(),
+          apiKey: tiktokApiKey.trim(),
+        },
+      });
 
       if (error) throw error;
 
-      setConnections(connections.filter(c => c.provider !== provider));
+      await refreshTikTokStatus();
+      await fetchData();
+
+      toast({
+        title: 'TikTok connected',
+        description: 'API key saved. You can now export and post directly to TikTok.',
+      });
+
+      setTiktokDialogOpen(false);
+      resetTikTokForm();
+    } catch (error: any) {
+      console.error('TikTok connect failed:', error);
+      setTiktokError(error?.message || 'Unable to connect TikTok right now.');
+    } finally {
+      setTiktokConnecting(false);
+    }
+  };
+
+  const startTikTokOAuth = () => {
+    try {
+      const url = OAuthService.getAuthorizationUrl('tiktok_business');
+      window.location.href = url;
+    } catch (error: any) {
+      console.error('TikTok OAuth launch failed:', error);
+      setTiktokError(error?.message || 'Unable to start the TikTok OAuth flow.');
+    }
+  };
+
+  const handleDisconnect = async (provider: string) => {
+    try {
+      if (provider === 'tiktok') {
+        const { error } = await supabase.functions.invoke('tiktok-connector', {
+          body: { action: 'disconnect' },
+        });
+
+        if (error) throw error;
+        await refreshTikTokStatus();
+      } else {
+        const { error } = await supabase
+          .from('social_connections')
+          .delete()
+          .eq('provider', provider)
+          .eq('user_id', user!.id);
+
+        if (error) throw error;
+      }
+
+      setConnections(prev => prev.filter(c => c.provider !== provider));
       toast({
         title: "Disconnected",
         description: `Successfully disconnected from ${provider}`,
@@ -748,7 +865,13 @@ export const EnhancedConnections = () => {
             {SOCIAL_PLATFORMS.map((platform) => {
               const connected = isConnected(platform.id);
               const Icon = platform.icon;
-              
+              const providerConnection = connectionMap[platform.id];
+              const platformMeta =
+                platform.id === 'tiktok'
+                  ? tiktokStatusMeta || providerConnection?.connection_data
+                  : providerConnection?.connection_data;
+              const connectionMethod = platformMeta?.method;
+
               return (
                 <div key={platform.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
@@ -773,6 +896,16 @@ export const EnhancedConnections = () => {
                         <Badge variant="outline" className="text-green-600 border-green-600">
                           Connected
                         </Badge>
+                        {connectionMethod && (
+                          <Badge variant="outline" className="border-indigo-500 text-indigo-500 capitalize">
+                            {connectionMethod}
+                          </Badge>
+                        )}
+                        {platformMeta?.accountName && (
+                          <span className="text-sm text-muted-foreground hidden sm:inline">
+                            {platformMeta.accountName}
+                          </span>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -786,9 +919,8 @@ export const EnhancedConnections = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleConnect(platform.id)}
-                        disabled={platform.id === 'tiktok'} // TikTok requires special approval
                       >
-                        {platform.id === 'tiktok' ? 'Coming Soon' : 'Connect'}
+                        Connect
                       </Button>
                     )}
                   </div>
@@ -995,6 +1127,122 @@ export const EnhancedConnections = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={tiktokDialogOpen}
+        onOpenChange={(open) => {
+          setTiktokDialogOpen(open);
+          if (!open) {
+            resetTikTokForm();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Connect TikTok</DialogTitle>
+            <DialogDescription>
+              Link your TikTok Business account to schedule exports and push videos directly from Pluggd.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={tiktokMethod === 'oauth' ? 'default' : 'outline'}
+                onClick={() => setTiktokMethod('oauth')}
+              >
+                Use OAuth
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={tiktokMethod === 'apiKey' ? 'default' : 'outline'}
+                onClick={() => setTiktokMethod('apiKey')}
+              >
+                Use API key
+              </Button>
+            </div>
+
+            {tiktokMethod === 'oauth' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  We&apos;ll redirect you to TikTok to approve access. After granting permissions you&apos;ll return here automatically.
+                </p>
+                <Button onClick={startTikTokOAuth} className="w-full" disabled={tiktokConnecting}>
+                  Continue with TikTok
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="tiktok-account-name">Account display name</Label>
+                  <Input
+                    id="tiktok-account-name"
+                    value={tiktokAccountName}
+                    onChange={(event) => setTiktokAccountName(event.target.value)}
+                    placeholder="TikTok Artist Handle"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tiktok-account-id">Business account ID</Label>
+                  <Input
+                    id="tiktok-account-id"
+                    value={tiktokAccountId}
+                    onChange={(event) => setTiktokAccountId(event.target.value)}
+                    placeholder="e.g. 720103918273"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tiktok-api-key">TikTok API key</Label>
+                  <Input
+                    id="tiktok-api-key"
+                    value={tiktokApiKey}
+                    onChange={(event) => setTiktokApiKey(event.target.value)}
+                    placeholder="Paste the generated API key"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Generate keys from the TikTok Business Center and ensure posting scopes are enabled.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {tiktokError && (
+              <Alert variant="destructive">
+                <AlertTitle>Unable to connect TikTok</AlertTitle>
+                <AlertDescription>{tiktokError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setTiktokDialogOpen(false);
+                resetTikTokForm();
+              }}
+            >
+              Cancel
+            </Button>
+            {tiktokMethod === 'apiKey' && (
+              <Button onClick={handleTikTokApiKeyConnect} disabled={tiktokConnecting}>
+                {tiktokConnecting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
+                  </span>
+                ) : (
+                  'Save API key'
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

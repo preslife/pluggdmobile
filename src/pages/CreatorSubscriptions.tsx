@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { HeartHandshake, DollarSign, Users, Settings, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePageMetadata } from '@/hooks/usePageMetadata';
+import { SubscriptionAnalyticsModule } from '@/components/CreatorStudio/modules/SubscriptionAnalyticsModule';
 
 export default function CreatorSubscriptions() {
   usePageMetadata({
@@ -111,25 +112,8 @@ export default function CreatorSubscriptions() {
               <CreatorSubscriptionsEditor />
             </TabsContent>
 
-            <TabsContent value="analytics" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Subscription Analytics
-                  </CardTitle>
-                  <CardDescription>
-                    Track your subscription performance and revenue
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
-                    <p>Detailed subscription analytics will be available once you have active subscribers.</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <TabsContent value="analytics" className="mt-6 space-y-6">
+              <SubscriptionAnalyticsModule />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-6">

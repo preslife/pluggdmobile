@@ -413,9 +413,76 @@ async function handleMailchimpOAuth(code: string, redirectUri: string) {
 }
 
 async function handleSubstackOAuth(code: string, redirectUri: string) {
-  // Note: Substack doesn't have a public OAuth API yet
-  // This is a placeholder implementation
-  throw new Error('Substack OAuth not yet available');
+  const clientId = Deno.env.get('SUBSTACK_CLIENT_ID');
+  const clientSecret = Deno.env.get('SUBSTACK_CLIENT_SECRET');
+  const tokenUrl = Deno.env.get('SUBSTACK_TOKEN_URL') || 'https://substack.com/api/v1/oauth/token';
+  const publicationUrl = Deno.env.get('SUBSTACK_PUBLICATION_URL') || 'https://substack.com/api/v1/publication';
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Substack OAuth credentials are not configured');
+  }
+
+  const tokenResponse = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString(),
+  });
+
+  const tokenData = await tokenResponse.json();
+
+  if (!tokenResponse.ok || !tokenData?.access_token) {
+    const reason = tokenData?.error_description || tokenData?.error || tokenResponse.statusText;
+    throw new Error(`Substack token exchange failed: ${reason}`);
+  }
+
+  const publicationResponse = await fetch(publicationUrl, {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+
+  const publicationData = await publicationResponse.json();
+
+  if (!publicationResponse.ok) {
+    const reason = publicationData?.error_description || publicationData?.error || publicationResponse.statusText;
+    throw new Error(`Substack publication lookup failed: ${reason}`);
+  }
+
+  const publication =
+    publicationData?.publication ||
+    publicationData?.data ||
+    publicationData;
+
+  if (!publication) {
+    throw new Error('Substack publication payload missing expected fields');
+  }
+
+  const publicationId = publication.id || publication.publication_id || publication.slug;
+  const publicationName = publication.name || publication.title || 'Substack Publication';
+  const publicationHandle = publication.handle || publication.slug || undefined;
+  const publicationAvatar = publication.icon_url || publication.logo_url || publication.image_url || undefined;
+
+  const tokens: TokenResponse = {
+    access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token,
+    expires_in: tokenData.expires_in,
+    token_type: tokenData.token_type || 'Bearer',
+    scope: Array.isArray(tokenData.scope) ? tokenData.scope.join(' ') : tokenData.scope,
+  };
+
+  return {
+    tokens,
+    accountInfo: {
+      id: publicationId,
+      name: publicationName,
+      handle: publicationHandle,
+      avatar: publicationAvatar,
+    },
+  };
 }
 
 async function handlePatreonOAuth(code: string, redirectUri: string) {
