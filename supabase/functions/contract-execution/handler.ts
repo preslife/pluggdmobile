@@ -135,24 +135,44 @@ export async function handleContractExecution(
       updatePayload.artist_ip_address = ipAddress;
     }
 
-    const producerSigned = signerType === "producer" ? true : Boolean(contract.producer_signature);
-    const artistSigned = signerType === "artist" ? true : Boolean(contract.artist_signature);
-
-    if (producerSigned && artistSigned) {
-      updatePayload.status = "signed";
-      updatePayload.signed_at = contract.signed_at ?? signedAt;
-    }
-
-    const { error: updateError } = await supabase
+    const {
+      data: updatedContracts,
+      error: updateError,
+    } = await supabase
       .from("licensing_contracts")
       .update(updatePayload)
-      .eq("id", contractId);
+      .eq("id", contractId)
+      .select("id, producer_signature, artist_signature, signed_at, status");
 
-    if (updateError) {
+    if (updateError || !updatedContracts || updatedContracts.length === 0) {
       return new Response(JSON.stringify({ error: "Failed to update contract" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const updatedContract = updatedContracts[0];
+
+    const producerSigned = Boolean(updatedContract.producer_signature);
+    const artistSigned = Boolean(updatedContract.artist_signature);
+
+    if (producerSigned && artistSigned && updatedContract.status !== "signed") {
+      const contractSignedAt = updatedContract.signed_at ?? signedAt;
+      const { error: finalizeError } = await supabase
+        .from("licensing_contracts")
+        .update({
+          status: "signed",
+          signed_at: contractSignedAt,
+          updated_at: contractSignedAt,
+        })
+        .eq("id", contractId);
+
+      if (finalizeError) {
+        return new Response(JSON.stringify({ error: "Failed to finalize contract" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(

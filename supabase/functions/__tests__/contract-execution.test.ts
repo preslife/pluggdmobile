@@ -4,8 +4,27 @@ import { handleContractExecution } from '../contract-execution/handler.ts';
 describe('contract-execution handler', () => {
   const buildSupabaseMock = () => {
     const insertMock = vi.fn().mockResolvedValue({ error: null });
-    const updateEqMock = vi.fn().mockResolvedValue({ error: null });
-    const updateMock = vi.fn(() => ({ eq: updateEqMock }));
+    const finalizeUpdateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const selectAfterUpdateMock = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'contract-1',
+          producer_signature: null,
+          artist_signature: null,
+          signed_at: null,
+          status: 'pending',
+        },
+      ],
+      error: null,
+    });
+    const signatureUpdateEqMock = vi.fn(() => ({ select: selectAfterUpdateMock }));
+    const updateMock = vi.fn((payload: Record<string, unknown>) => {
+      if (payload.status === 'signed') {
+        return { eq: finalizeUpdateEqMock };
+      }
+
+      return { eq: signatureUpdateEqMock };
+    });
     const selectSingleMock = vi.fn().mockResolvedValue({
       data: {
         id: 'contract-1',
@@ -49,7 +68,9 @@ describe('contract-execution handler', () => {
       },
       insertMock,
       updateMock,
-      updateEqMock,
+      finalizeUpdateEqMock,
+      signatureUpdateEqMock,
+      selectAfterUpdateMock,
       selectSingleMock,
     } as const;
   };
@@ -85,12 +106,16 @@ describe('contract-execution handler', () => {
 
     expect(response.status).toBe(200);
 
+    expect(mocks.updateMock).toHaveBeenCalledTimes(1);
     const insertPayload = mocks.insertMock.mock.calls[0][0];
     expect(insertPayload.ip_address).toBe('203.0.113.7');
     expect(insertPayload.user_agent).toBe('Vitest/1.0');
 
-    const updatePayload = mocks.updateMock.mock.calls[0][0];
+    const updatePayload = mocks.updateMock.mock.calls[0][0] as Record<string, unknown>;
     expect(updatePayload.producer_ip_address).toBe('203.0.113.7');
+    expect(mocks.signatureUpdateEqMock).toHaveBeenCalled();
+    expect(mocks.selectAfterUpdateMock).toHaveBeenCalledWith('id, producer_signature, artist_signature, signed_at, status');
+    expect(mocks.finalizeUpdateEqMock).not.toHaveBeenCalled();
 
     const body = await response.json();
     expect(body.metadata).toEqual({
@@ -135,6 +160,19 @@ describe('contract-execution handler', () => {
       }),
     });
 
+    mocks.selectAfterUpdateMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'contract-1',
+          producer_signature: 'signed-producer',
+          artist_signature: 'signed-artist',
+          signed_at: null,
+          status: 'pending',
+        },
+      ],
+      error: null,
+    });
+
     const response = await handleContractExecution(request, { supabase: mocks.supabase });
 
     expect(response.status).toBe(200);
@@ -143,10 +181,15 @@ describe('contract-execution handler', () => {
     expect(insertPayload.ip_address).toBe('198.51.100.5');
     expect(insertPayload.user_agent).toBe('unknown');
 
-    const updatePayload = mocks.updateMock.mock.calls[0][0];
+    const updatePayload = mocks.updateMock.mock.calls[0][0] as Record<string, unknown>;
     expect(updatePayload.artist_ip_address).toBe('198.51.100.5');
-    expect(updatePayload.status).toBe('signed');
-    expect(updatePayload.signed_at).toBe('2024-04-12T15:30:00.000Z');
+    expect(mocks.finalizeUpdateEqMock).toHaveBeenCalledTimes(1);
+    const finalizePayload = mocks.updateMock.mock.calls[1][0] as Record<string, unknown>;
+    expect(finalizePayload).toMatchObject({
+      status: 'signed',
+      signed_at: '2024-04-12T15:30:00.000Z',
+      updated_at: '2024-04-12T15:30:00.000Z',
+    });
 
     const body = await response.json();
     expect(body.metadata).toEqual({
