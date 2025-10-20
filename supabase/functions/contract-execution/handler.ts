@@ -123,6 +123,26 @@ export async function handleContractExecution(
       });
     }
 
+    const auditIpAddress = ipAddress === "unknown" ? null : ipAddress;
+    const { error: auditError } = await supabase
+      .from("security_audit_log")
+      .insert({
+        user_id: userId,
+        table_name: "licensing_contracts",
+        action: `contract_signed_${signerType}`,
+        record_id: contractId,
+        ip_address: auditIpAddress,
+        user_agent: userAgent,
+        created_at: signedAt,
+      });
+
+    if (auditError) {
+      return new Response(JSON.stringify({ error: "Failed to record contract audit" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const updatePayload: Record<string, any> = {
       updated_at: signedAt,
     };
