@@ -189,10 +189,18 @@ describe("useMembershipTiers", () => {
     expect(result.current.tiers[0].stripe_product_id).toBe("prod_123");
   });
 
-  it("reverts optimistic create on error and exposes the message", async () => {
+  it("reverts optimistic create on error and surfaces friendly codes", async () => {
     rpcMock.mockImplementation((fn: string) => {
       if (fn === "create_membership_tier") {
-        return Promise.resolve({ data: null, error: new Error("Stripe failure") });
+        return Promise.resolve({
+          data: null,
+          error: {
+            message: "duplicate_slug",
+            details: JSON.stringify({ code: "duplicate_slug", slug: "gold" }),
+            code: "P0001",
+            hint: null,
+          },
+        });
       }
       return Promise.resolve(createResponse(null));
     });
@@ -204,10 +212,13 @@ describe("useMembershipTiers", () => {
     const payload = createInput();
 
     await act(async () => {
-      await expect(result.current.createTier(payload)).rejects.toThrow("Stripe failure");
+      await expect(result.current.createTier(payload)).rejects.toMatchObject({
+        message: "A membership tier with this slug already exists.",
+        code: "duplicate_slug",
+      });
     });
 
     await waitFor(() => expect(result.current.tiers).toHaveLength(0));
-    expect(result.current.error).toBe("Stripe failure");
+    expect(result.current.error).toBe("A membership tier with this slug already exists.");
   });
 });
