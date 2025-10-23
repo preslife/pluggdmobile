@@ -443,96 +443,33 @@ export const MessagingCenter = () => {
         {
           event: "INSERT",
           schema: "public",
-          table: "inbox_messages",
-        },
-        async (payload) => {
-          const raw = (payload.new as InboxMessageRow | undefined) ?? (payload.record as InboxMessageRow | undefined);
-          if (!raw) return;
-
-          let mapped = mapMessageRow(raw);
-
-          if (!mapped && raw.thread_id) {
-            const { data } = await supabase.rpc("inbox_get_thread_messages", {
-              p_thread_id: raw.thread_id,
-              p_limit: 1,
-            });
-
-            const [fetched] = Array.isArray(data) ? (data as InboxMessageRow[]) : data ? [data as InboxMessageRow] : [];
-            mapped = fetched ? mapMessageRow(fetched) : undefined;
-          }
-
-          if (!mapped) return;
-
-          if (mapped.id) {
-            if (handledRealtimeIds.current.has(mapped.id)) {
-              return;
-            }
-            handledRealtimeIds.current.add(mapped.id);
-            if (handledRealtimeIds.current.size > 200) {
-              handledRealtimeIds.current = new Set(Array.from(handledRealtimeIds.current).slice(-100));
-            }
-          }
-
-          const threadKey = keyFromThread(mapped.threadId, mapped.socialAccountId);
-
-          if (
-            activeThread &&
-            keyFromThread(activeThread.threadId, activeThread.socialAccountId) === threadKey
-          ) {
-            setMessages((prev) => {
-              const exists = prev.some((message) => message.id === mapped!.id);
-              if (exists) {
-                return prev.map((message) =>
-                  message.id === mapped!.id ||
-                  (message.optimistic && message.providerMessageId === mapped!.providerMessageId)
-                    ? { ...mapped!, optimistic: false }
-                    : message
-                );
-              }
-
-              const withoutDupes = prev.filter(
-                (message) => message.providerMessageId !== mapped!.providerMessageId
-              );
-              const merged = [...withoutDupes, mapped!].sort(
-                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-              );
-              return merged;
-            });
-
-            if (mapped.authorId !== user.id) {
-              await supabase.rpc("inbox_mark_thread_read", { p_thread_id: mapped.threadId });
-              await fetchUnreadCount();
-            }
-          }
-
-          const refreshed = await fetchThreads({ threadId: mapped.threadId });
-          if (
-            refreshed &&
-            activeThread &&
-            keyFromThread(activeThread.threadId, activeThread.socialAccountId) ===
-              keyFromThread(refreshed.threadId, refreshed.socialAccountId)
-          ) {
-            setActiveThread(refreshed);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
           table: "inbox_messages_events",
         },
         async (payload) => {
-          const record = (payload.new as { id?: string; thread_id?: string }) ?? {};
-          if (!record.thread_id) return;
+          const record = ((payload.record ?? payload.new) as {
+            id?: string;
+            thread_id?: string;
+            created_at?: string;
+          }) ?? {};
+          if (!record.thread_id || !record.id) return;
 
-          const { data } = await supabase.rpc("inbox_get_thread_messages", {
+          const { data, error } = await supabase.rpc("inbox_get_thread_messages", {
             p_thread_id: record.thread_id,
-            p_limit: 1,
+            p_limit: MESSAGE_PAGE_SIZE,
           });
 
-          const [fetched] = Array.isArray(data) ? (data as InboxMessageRow[]) : data ? [data as InboxMessageRow] : [];
+          if (error) {
+            console.error("Error fetching realtime inbox message:", error);
+            return;
+          }
+
+          const rows: InboxMessageRow[] = Array.isArray(data)
+            ? (data as InboxMessageRow[])
+            : data
+              ? [data as InboxMessageRow]
+              : [];
+
+          const fetched = rows.find((row) => row.id === record.id);
           const mapped = fetched ? mapMessageRow(fetched) : undefined;
           if (!mapped) return;
 
