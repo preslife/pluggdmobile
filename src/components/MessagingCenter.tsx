@@ -25,16 +25,17 @@ interface InboxThreadRow {
     author_handle: string | null;
     author_avatar_url: string | null;
     created_at: string;
-    is_read: boolean;
+    is_read: boolean | null;
     provider_message_id: string | null;
   } | null;
   unread_count: number | null;
   total_messages: number | null;
-  last_message_at: string;
+  last_message_at: string | null;
 }
 
 interface InboxMessageRow {
   id: string;
+  thread_id: string;
   social_account_id: string | null;
   provider_message_id: string | null;
   provider_thread_id: string | null;
@@ -127,7 +128,7 @@ const mapThreadRow = (row: InboxThreadRow): InboxThread | undefined => {
       : undefined,
     unreadCount: row.unread_count ?? 0,
     totalMessages: row.total_messages ?? 0,
-    lastMessageAt: row.last_message_at,
+    lastMessageAt: row.last_message_at ?? new Date().toISOString(),
   };
 };
 
@@ -136,7 +137,7 @@ const mapMessageRow = (row: InboxMessageRow): InboxMessage | undefined => {
     return undefined;
   }
 
-  const threadId = row.provider_thread_id ?? row.provider_message_id;
+  const threadId = row.thread_id ?? row.provider_thread_id ?? row.provider_message_id;
 
   return {
     id: row.id,
@@ -179,6 +180,7 @@ export const MessagingCenter = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const handledRealtimeIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -350,16 +352,18 @@ export const MessagingCenter = () => {
 
         setMessagesHasMore(mapped.length === MESSAGE_PAGE_SIZE);
 
-        await supabase.rpc("inbox_mark_thread_read", { p_thread_id: thread.threadId });
-        setThreads((prev) =>
-          prev.map((existing) =>
-            keyFromThread(existing.threadId, existing.socialAccountId) ===
-            keyFromThread(thread.threadId, thread.socialAccountId)
-              ? { ...existing, unreadCount: 0 }
-              : existing
-          )
-        );
-        await fetchUnreadCount();
+        if (reset) {
+          await supabase.rpc("inbox_mark_thread_read", { p_thread_id: thread.threadId });
+          setThreads((prev) =>
+            prev.map((existing) =>
+              keyFromThread(existing.threadId, existing.socialAccountId) ===
+              keyFromThread(thread.threadId, thread.socialAccountId)
+                ? { ...existing, unreadCount: 0 }
+                : existing
+            )
+          );
+          await fetchUnreadCount();
+        }
       } catch (error) {
         console.error("Error fetching inbox messages:", error);
       } finally {
@@ -439,13 +443,45 @@ export const MessagingCenter = () => {
         {
           event: "INSERT",
           schema: "public",
-          table: "inbox_messages",
-          filter: `user_id=eq.${user.id}`,
+          table: "inbox_messages_events",
         },
         async (payload) => {
-          const row = payload.new as InboxMessageRow;
-          const mapped = mapMessageRow(row);
+          const record = ((payload.record ?? payload.new) as {
+            id?: string;
+            thread_id?: string;
+            created_at?: string;
+          }) ?? {};
+          if (!record.thread_id || !record.id) return;
+
+          const { data, error } = await supabase.rpc("inbox_get_thread_messages", {
+            p_thread_id: record.thread_id,
+            p_limit: MESSAGE_PAGE_SIZE,
+          });
+
+          if (error) {
+            console.error("Error fetching realtime inbox message:", error);
+            return;
+          }
+
+          const rows: InboxMessageRow[] = Array.isArray(data)
+            ? (data as InboxMessageRow[])
+            : data
+              ? [data as InboxMessageRow]
+              : [];
+
+          const fetched = rows.find((row) => row.id === record.id);
+          const mapped = fetched ? mapMessageRow(fetched) : undefined;
           if (!mapped) return;
+
+          if (mapped.id) {
+            if (handledRealtimeIds.current.has(mapped.id)) {
+              return;
+            }
+            handledRealtimeIds.current.add(mapped.id);
+            if (handledRealtimeIds.current.size > 200) {
+              handledRealtimeIds.current = new Set(Array.from(handledRealtimeIds.current).slice(-100));
+            }
+          }
 
           const threadKey = keyFromThread(mapped.threadId, mapped.socialAccountId);
 
@@ -538,6 +574,7 @@ export const MessagingCenter = () => {
         p_thread_id: activeThread.threadId,
         p_social_account_id: activeThread.socialAccountId,
         p_content: optimisticMessage.content,
+        p_media_urls: [],
       });
 
       if (error) throw error;
