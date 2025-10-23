@@ -161,6 +161,7 @@ describe("MessagingCenter", () => {
     const messageRows = [
       {
         id: "msg-new",
+        thread_id: "thread-1",
         social_account_id: "account-1",
         provider_message_id: "provider-2",
         provider_thread_id: "thread-1",
@@ -176,6 +177,7 @@ describe("MessagingCenter", () => {
       },
       {
         id: "msg-old",
+        thread_id: "thread-1",
         social_account_id: "account-1",
         provider_message_id: "provider-3",
         provider_thread_id: "thread-1",
@@ -252,6 +254,7 @@ describe("MessagingCenter", () => {
     const messageRows = [
       {
         id: "msg-1",
+        thread_id: "thread-1",
         social_account_id: "account-1",
         provider_message_id: "provider-1",
         provider_thread_id: "thread-1",
@@ -285,6 +288,7 @@ describe("MessagingCenter", () => {
 
     const insertedRow = {
       id: "msg-2",
+      thread_id: "thread-1",
       social_account_id: "account-1",
       provider_message_id: "provider-user",
       provider_thread_id: "thread-1",
