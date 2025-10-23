@@ -4835,14 +4835,14 @@ export type Database = {
       notification_prefs: {
         Row: {
           created_at: string
-          notify_contest_reminders: boolean | null
-          notify_email_marketing: boolean | null
-          notify_follows: boolean | null
-          notify_live_sessions: boolean | null
-          notify_push: boolean | null
-          notify_purchases: boolean | null
-          notify_session_feedback: boolean | null
-          notify_supporters: boolean | null
+          notify_contest_reminders: boolean
+          notify_email_marketing: boolean
+          notify_follows: boolean
+          notify_live_sessions: boolean
+          notify_push: boolean
+          notify_purchases: boolean
+          notify_session_feedback: boolean
+          notify_supporters: boolean
           updated_at: string
           user_id: string
         }
@@ -8122,6 +8122,7 @@ export type Database = {
           meta: Json | null
           ref_id: string | null
           ref_type: string | null
+          reversal_of_entry_id: string | null
           user_id: string
         }
         Insert: {
@@ -8135,6 +8136,7 @@ export type Database = {
           meta?: Json | null
           ref_id?: string | null
           ref_type?: string | null
+          reversal_of_entry_id?: string | null
           user_id: string
         }
         Update: {
@@ -8148,6 +8150,7 @@ export type Database = {
           meta?: Json | null
           ref_id?: string | null
           ref_type?: string | null
+          reversal_of_entry_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -8738,6 +8741,10 @@ export type Database = {
           role: string
         }[]
       }
+      get_notification_prefs: {
+        Args: { p_user_id?: string | null }
+        Returns: Database['public']['Tables']['notification_prefs']['Row']
+      }
       get_orders_for_user: {
         Args: {
           p_limit?: number
@@ -8985,6 +8992,10 @@ export type Database = {
       revoke_label_invite: {
         Args: { p_invitation_id: string }
         Returns: undefined
+      }
+      set_notification_pref: {
+        Args: { p_key: string; p_user_id?: string | null; p_value: boolean }
+        Returns: Database['public']['Tables']['notification_prefs']['Row']
       }
       slugify: {
         Args: { txt: string }

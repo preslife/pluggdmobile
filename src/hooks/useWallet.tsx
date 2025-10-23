@@ -44,14 +44,56 @@ interface WalletContextType {
     ref_id?: string,
     counterparty_id?: string,
   ) => Promise<{ success: boolean; ledgerEntryId?: string; manualEntryId?: string | null; error?: string }>;
-  cashOutCredits: (amount: number) => Promise<{ success: boolean; error?: string }>;
-  applyCreditsToSubscription: (amount: number) => Promise<{ success: boolean; error?: string }>;
+  cashOutCredits: (
+    amount: number,
+  ) => Promise<{ success: boolean; error?: string; code?: string; complianceBlock?: boolean }>;
+  applyCreditsToSubscription: (
+    amount: number,
+  ) => Promise<{ success: boolean; error?: string; code?: string; complianceBlock?: boolean }>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // Credits to GBP conversion rate
 const CREDITS_PER_GBP = 100;
+
+const parseFunctionsError = async (
+  error: any,
+): Promise<{ message: string; code?: string; complianceBlock?: boolean }> => {
+  const fallback = { message: 'An unexpected error occurred' };
+
+  if (!error) {
+    return fallback;
+  }
+
+  const context = (error as any).context as Response | undefined;
+  if (context && typeof (context as any).clone === 'function') {
+    try {
+      const cloned = context.clone();
+      const data = await cloned.json();
+      return {
+        message: typeof data?.error === 'string' ? data.error : fallback.message,
+        code: typeof data?.code === 'string' ? data.code : undefined,
+        complianceBlock: Boolean(data?.compliance_block),
+      };
+    } catch {
+      try {
+        const text = await context.clone().text();
+        if (text) {
+          return { message: text };
+        }
+      } catch {
+        // ignore fallback
+      }
+    }
+  }
+
+  if (typeof error.message === 'string') {
+    return { message: error.message };
+  }
+
+  return fallback;
+};
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -185,51 +227,85 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const cashOutCredits = async (amount: number) => {
     if (!user) return { success: false, error: 'User not authenticated' };
-    
+
     try {
       const { error } = await supabase.functions.invoke('cash-out-credits', {
         body: { amount_credits: amount }
       });
-      
-      if (error) throw error;
-      
+
+      if (error) {
+        const parsed = await parseFunctionsError(error);
+        console.error('Error cashing out credits:', error);
+
+        toast({
+          title: parsed.complianceBlock ? 'Cash-out Blocked' : 'Error',
+          description: parsed.message,
+          variant: 'destructive'
+        });
+
+        return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
+      }
+
       await refreshBalance();
       await refreshLedger();
-      
+
       toast({
         title: "Cash-out Requested",
         description: "Your cash-out request has been processed. You'll receive payment within 3-5 business days."
       });
-      
+
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error cashing out credits:', error);
-      return { success: false, error: 'Failed to process cash-out' };
+      const parsed = await parseFunctionsError(error);
+      toast({
+        title: 'Error',
+        description: parsed.message,
+        variant: 'destructive'
+      });
+      return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
     }
   };
 
   const applyCreditsToSubscription = async (amount: number) => {
     if (!user) return { success: false, error: 'User not authenticated' };
-    
+
     try {
       const { error } = await supabase.functions.invoke('apply-credits-to-subscription', {
         body: { amount_credits: amount }
       });
-      
-      if (error) throw error;
-      
+
+      if (error) {
+        const parsed = await parseFunctionsError(error);
+        console.error('Error applying credits to subscription:', error);
+
+        toast({
+          title: parsed.complianceBlock ? 'Credits Locked' : 'Error',
+          description: parsed.message,
+          variant: 'destructive'
+        });
+
+        return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
+      }
+
       await refreshBalance();
       await refreshLedger();
-      
+
       toast({
         title: "Credits Applied",
         description: "Credits have been applied to your subscription. They will be used on your next billing cycle."
       });
-      
+
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error applying credits to subscription:', error);
-      return { success: false, error: 'Failed to apply credits' };
+      const parsed = await parseFunctionsError(error);
+      toast({
+        title: 'Error',
+        description: parsed.message,
+        variant: 'destructive'
+      });
+      return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
     }
   };
 

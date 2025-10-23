@@ -10,8 +10,10 @@ describe('handleChargeReversal', () => {
     insertMock.mockReset();
     maybeSingleMock.mockReset();
 
-    const secondEqMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
-    const firstEqMock = vi.fn().mockReturnValue({ eq: secondEqMock });
+    const orderMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+    const thirdEqMock = vi.fn().mockReturnValue({ order: orderMock, maybeSingle: maybeSingleMock });
+    const secondEqMock = vi.fn().mockReturnValue({ eq: thirdEqMock, maybeSingle: maybeSingleMock });
+    const firstEqMock = vi.fn().mockReturnValue({ eq: secondEqMock, maybeSingle: maybeSingleMock });
     const selectMock = vi.fn().mockReturnValue({ eq: firstEqMock });
 
     supabaseClient = {
@@ -35,7 +37,11 @@ describe('handleChargeReversal', () => {
       },
     } as any;
 
-    const logger = vi.fn();
+    const logger = {
+      warn: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+    } as any;
     await handleChargeReversal(supabaseClient, charge, 'evt_1', 'refund', logger);
 
     expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -56,7 +62,11 @@ describe('handleChargeReversal', () => {
       },
     } as any;
 
-    const logger = vi.fn();
+    const logger = {
+      warn: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+    } as any;
     await handleChargeReversal(supabaseClient, charge, 'evt_2', 'failure', logger);
 
     expect(insertMock).not.toHaveBeenCalled();

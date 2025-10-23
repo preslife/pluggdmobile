@@ -5,31 +5,29 @@ import {
   shouldSendNotification,
 } from '../_shared/notificationPreferences.ts';
 
-type MaybeSingleResult = { data: Record<string, boolean> | null; error: { message: string } | null };
+type RpcResult = { data: Record<string, boolean> | null; error: { message: string } | null };
 
-const mockMaybeSingle = vi.fn<[], Promise<MaybeSingleResult>>();
-const mockEq = vi.fn();
-const mockSelect = vi.fn();
-const mockFrom = vi.fn();
+const mockRpc = vi.fn<[
+  string,
+  Record<string, unknown>,
+], Promise<RpcResult>>();
 
 const buildClient = () => ({
-  from: mockFrom,
+  rpc: mockRpc,
 });
 
 beforeEach(() => {
-  mockMaybeSingle.mockReset();
-  mockEq.mockReset();
-  mockSelect.mockReset();
-  mockFrom.mockReset();
-
-  mockEq.mockReturnValue({ maybeSingle: mockMaybeSingle });
-  mockSelect.mockReturnValue({ eq: mockEq });
-  mockFrom.mockReturnValue({ select: mockSelect });
+  mockRpc.mockReset();
 });
 
 describe('notification preference helpers', () => {
   it('skips executing the action when the user opted out', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: { notify_push: false }, error: null });
+    mockRpc.mockImplementation(async (fn) => {
+      if (fn === 'get_notification_prefs') {
+        return { data: { notify_push: false }, error: null };
+      }
+      return { data: null, error: null };
+    });
 
     const cache = createPreferenceCache();
     const client = buildClient();
@@ -42,7 +40,12 @@ describe('notification preference helpers', () => {
   });
 
   it('runs the action when preference is enabled', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: { notify_push: true }, error: null });
+    mockRpc.mockImplementation(async (fn) => {
+      if (fn === 'get_notification_prefs') {
+        return { data: { notify_push: true }, error: null };
+      }
+      return { data: null, error: null };
+    });
 
     const cache = createPreferenceCache();
     const client = buildClient();
@@ -56,7 +59,12 @@ describe('notification preference helpers', () => {
   });
 
   it('caches preferences for repeated checks', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: { notify_contest_reminders: true }, error: null });
+    mockRpc.mockImplementation(async (fn) => {
+      if (fn === 'get_notification_prefs') {
+        return { data: { notify_contest_reminders: true }, error: null };
+      }
+      return { data: null, error: null };
+    });
 
     const cache = createPreferenceCache();
     const client = buildClient();
@@ -66,6 +74,6 @@ describe('notification preference helpers', () => {
 
     expect(first).toBe(true);
     expect(second).toBe(true);
-    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockRpc).toHaveBeenCalledTimes(1);
   });
 });

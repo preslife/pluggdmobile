@@ -19,6 +19,9 @@ const stripe = new Stripe(stripeSecret, {
   apiVersion: "2023-10-16",
 });
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE_MS = 500;
+
 type TierPayload = {
   id: string;
   owner_type: string;
@@ -57,15 +60,27 @@ type SyncPayload = {
       stripe_price_yearly_id?: string | null;
       stripe_price_lifetime_id?: string | null;
     } | null;
+    attempt?: number | null;
+    correlation_id?: string | null;
+    job_id?: string | null;
+    queued_at?: string | null;
+    scheduled_at?: string | null;
   };
 };
 
-const logError = async (message: string, details: Record<string, unknown>) => {
+type LogLevel = "info" | "warn" | "error";
+
+const logEvent = async (
+  level: LogLevel,
+  action: string,
+  message: string,
+  details: Record<string, unknown>
+) => {
   try {
     await supabaseService.from("system_logs").insert({
-      level: "error",
+      level,
       component: "membership_tier_stripe",
-      action: details.action ?? "unknown",
+      action,
       message,
       metadata: details,
       user_id: (details.actor_id as string | null) ?? null,
@@ -74,6 +89,17 @@ const logError = async (message: string, details: Record<string, unknown>) => {
     console.error("[membership-tier-stripe] Failed to write system log", loggingError);
   }
 };
+
+const logError = (message: string, details: Record<string, unknown>) =>
+  logEvent("error", details.action ?? "unknown", message, details);
+
+const logInfo = (action: string, message: string, details: Record<string, unknown>) =>
+  logEvent("info", action, message, details);
+
+const logWarn = (action: string, message: string, details: Record<string, unknown>) =>
+  logEvent("warn", action, message, details);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const deactivatePrice = async (priceId: string | null | undefined) => {
   if (!priceId) return;
@@ -161,7 +187,11 @@ const ensurePrice = async (
   return created.id;
 };
 
-const syncTier = async (input: SyncPayload["payload"], action: SyncPayload["action"]) => {
+const syncTier = async (
+  input: SyncPayload["payload"],
+  action: SyncPayload["action"],
+  _context: { correlationId?: string | null; jobId?: string | null } = {}
+) => {
   const { tier, previous } = input;
   const actorId = input.actor_id ?? null;
 
@@ -227,6 +257,9 @@ serve(async (req) => {
   let action: SyncPayload["action"] | "membership-tier-sync" = "membership-tier-sync";
   let actorId: string | null = null;
   let tierId: string | null = null;
+  let correlationId: string | null = null;
+  let jobId: string | null = null;
+  let queueAttempt: number | null = null;
 
   try {
     const payload = (await req.json()) as SyncPayload;
@@ -240,6 +273,9 @@ serve(async (req) => {
     action = payload.action;
     actorId = payload.payload.actor_id ?? null;
     tierId = payload.payload.tier?.id ?? null;
+    correlationId = payload.payload.correlation_id ?? crypto.randomUUID?.() ?? null;
+    jobId = payload.payload.job_id ?? null;
+    queueAttempt = payload.payload.attempt ?? null;
 
     const { action: actionName, payload: tierPayload } = payload;
     if (!["create", "update", "delete"].includes(actionName)) {
@@ -249,7 +285,55 @@ serve(async (req) => {
       });
     }
 
-    const result = await syncTier(tierPayload, actionName);
+    await logInfo("membership_tier_sync_start", "Stripe sync started", {
+      action: actionName,
+      actor_id: actorId,
+      tier_id: tierId,
+      correlation_id: correlationId,
+      job_id: jobId,
+      queue_attempt: queueAttempt,
+      queued_at: payload.payload.queued_at ?? null,
+      scheduled_at: payload.payload.scheduled_at ?? null,
+    });
+
+    let attempt = 0;
+    const result = await (async () => {
+      let lastError: unknown;
+      while (attempt < MAX_RETRIES) {
+        attempt += 1;
+        try {
+          return await syncTier(tierPayload, actionName, { correlationId, jobId });
+        } catch (error) {
+          lastError = error;
+          if (attempt >= MAX_RETRIES) {
+            throw error;
+          }
+          await logWarn("membership_tier_sync_retry", "Retrying Stripe sync", {
+            action: actionName,
+            actor_id: actorId,
+            tier_id: tierId,
+            attempt,
+            correlation_id: correlationId,
+            job_id: jobId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          const delay = RETRY_DELAY_BASE_MS * Math.pow(2, attempt - 1);
+          await sleep(delay);
+        }
+      }
+      throw lastError ?? new Error("Unknown sync failure");
+    })();
+
+    await logInfo("membership_tier_sync_success", "Stripe sync completed", {
+      action: actionName,
+      actor_id: actorId,
+      tier_id: tierId,
+      correlation_id: correlationId,
+      job_id: jobId,
+      attempts: attempt,
+      queue_attempt: queueAttempt,
+      stripe_product_id: result?.stripe_product_id ?? null,
+    });
 
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -264,6 +348,9 @@ serve(async (req) => {
       tier_id: tierId,
       error: message,
       stack,
+      correlation_id: correlationId,
+      job_id: jobId,
+      queue_attempt: queueAttempt,
     });
 
     return new Response(JSON.stringify({ error: message }), {

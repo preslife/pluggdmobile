@@ -375,6 +375,23 @@ export const handleChargeReversal = async (
     return;
   }
 
+  let reversalOfEntryId: string | null = null;
+
+  const { data: originalEntry } = await supabaseClient
+    .from('wallet_ledger')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('kind', 'spend_purchase')
+    .eq('meta->>stripe_charge_id', charge.id)
+    .order('created_at', { ascending: false })
+    .maybeSingle();
+
+  if (originalEntry?.id) {
+    reversalOfEntryId = originalEntry.id;
+  } else {
+    await logger.warn('charge_reversal_original_entry_missing', { chargeId: charge.id, userId });
+  }
+
   const { error } = await supabaseClient
     .from('wallet_ledger')
     .insert({
@@ -383,6 +400,7 @@ export const handleChargeReversal = async (
       amount_credits: creditsApplied,
       ref_type: 'stripe_charge',
       ref_id: charge.id,
+      reversal_of_entry_id: reversalOfEntryId,
       meta: {
         stripe_charge_id: charge.id,
         stripe_event_id: eventId,

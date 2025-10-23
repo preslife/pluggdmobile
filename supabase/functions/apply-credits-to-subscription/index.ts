@@ -9,6 +9,38 @@ const corsHeaders = {
 
 const CREDITS_PER_GBP = 100;
 
+interface LedgerErrorNormalization {
+  status: number;
+  body: Record<string, unknown>;
+  logMeta: Record<string, unknown>;
+}
+
+const normalizeLedgerError = (
+  message: string | null | undefined,
+  complianceMeta: Record<string, unknown>,
+): LedgerErrorNormalization => {
+  if (message?.includes('WALLET_BALANCE_NEGATIVE')) {
+    return {
+      status: 409,
+      body: {
+        error: 'Credits are locked pending compliance review. Please contact support for assistance.',
+        code: 'WALLET_BALANCE_NEGATIVE',
+        compliance_block: true,
+      },
+      logMeta: { reason: 'balance_negative', message, ...complianceMeta },
+    };
+  }
+
+  return {
+    status: 500,
+    body: {
+      error: 'Unable to record subscription credit application.',
+      code: 'LEDGER_INSERT_FAILED',
+    },
+    logMeta: { reason: 'unknown', message, ...complianceMeta },
+  };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -88,6 +120,18 @@ serve(async (req) => {
     console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] Balance transaction: ${balanceTransaction.id}`);
 
     // Create ledger entry
+    const complianceMeta = {
+      event: 'apply_credits_to_subscription',
+      actor_user_id: user.id,
+      occurred_at: new Date().toISOString(),
+      amount_credits,
+      balance_before: balance.balance_credits,
+      available_before: balance.available_credits,
+      available_after: balance.available_credits - amount_credits,
+    };
+
+    console.info('[APPLY-CREDITS-TO-SUBSCRIPTION] Compliance metadata', complianceMeta);
+
     const { error: ledgerError } = await supabaseClient
       .from('wallet_ledger')
       .insert({
@@ -99,15 +143,23 @@ serve(async (req) => {
         meta: {
           stripe_customer_id: customerId,
           credit_amount_pence: creditAmountPence,
-          balance_transaction_id: balanceTransaction.id
+          balance_transaction_id: balanceTransaction.id,
+          compliance: complianceMeta,
         },
       });
 
-    if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
+    if (ledgerError) {
+      const normalized = normalizeLedgerError(ledgerError.message, complianceMeta);
+      console.warn('[APPLY-CREDITS-TO-SUBSCRIPTION] Ledger insert blocked', normalized.logMeta);
+      return new Response(JSON.stringify(normalized.body), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: normalized.status,
+      });
+    }
 
     console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] Credits applied successfully`);
 
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: true,
       credit_amount_gbp: (creditAmountPence / 100).toFixed(2),
       balance_transaction_id: balanceTransaction.id
@@ -119,8 +171,8 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[APPLY-CREDITS-TO-SUBSCRIPTION] Error: ${errorMessage}`);
-    
-    return new Response(JSON.stringify({ error: errorMessage }), {
+
+    return new Response(JSON.stringify({ error: errorMessage, code: 'UNEXPECTED_ERROR' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
