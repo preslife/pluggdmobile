@@ -44,10 +44,22 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
   const [updating, setUpdating] = useState<Set<NotificationPreferenceKey>>(new Set());
 
   const mergeWithDefaults = useCallback(
-    (values: Partial<NotificationPreferencesState> | null | undefined): NotificationPreferencesState => ({
-      ...DEFAULT_PREFERENCES,
-      ...values,
-    }),
+    (values: Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined): NotificationPreferencesState => {
+      const merged: NotificationPreferencesState = { ...DEFAULT_PREFERENCES };
+
+      if (!values) {
+        return merged;
+      }
+
+      (Object.keys(DEFAULT_PREFERENCES) as NotificationPreferenceKey[]).forEach((key) => {
+        const nextValue = values[key];
+        if (typeof nextValue === 'boolean') {
+          merged[key] = nextValue;
+        }
+      });
+
+      return merged;
+    },
     [],
   );
 
@@ -62,35 +74,13 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('notification_prefs')
-        .select(
-          'notify_push, notify_contest_reminders, notify_live_sessions, notify_purchases, notify_supporters, notify_follows, notify_session_feedback, notify_email_marketing',
-        )
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data, error: fetchError } = await supabase.rpc('get_notification_prefs', {});
 
       if (fetchError) {
         throw fetchError;
       }
 
-      if (!data) {
-        const { data: inserted, error: insertError } = await supabase
-          .from('notification_prefs')
-          .insert({ user_id: user.id })
-          .select(
-            'notify_push, notify_contest_reminders, notify_live_sessions, notify_purchases, notify_supporters, notify_follows, notify_session_feedback, notify_email_marketing',
-          )
-          .single();
-
-        if (insertError) {
-          throw insertError;
-        }
-
-        setPreferences(mergeWithDefaults(inserted));
-      } else {
-        setPreferences(mergeWithDefaults(data));
-      }
+      setPreferences(mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined));
     } catch (fetchErr: any) {
       console.error('Failed to load notification preferences:', fetchErr);
       setError(fetchErr?.message ?? 'Unable to load notification preferences');
@@ -115,10 +105,10 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
       const previous = preferences;
       setPreferences((current) => (current ? { ...current, [key]: value } : current));
 
-      const { error: updateError } = await supabase
-        .from('notification_prefs')
-        .update({ [key]: value })
-        .eq('user_id', user.id);
+      const { data, error: updateError } = await supabase.rpc('set_notification_pref', {
+        p_key: key,
+        p_value: value,
+      });
 
       if (updateError) {
         console.error('Failed to update notification preference', updateError);
@@ -130,6 +120,8 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
           title: 'Update failed',
           description: 'We could not save your notification preference. Please try again.',
         });
+      } else {
+        setPreferences(mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined));
       }
 
       setUpdating((prev) => {

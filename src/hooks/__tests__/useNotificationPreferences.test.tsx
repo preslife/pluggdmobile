@@ -13,18 +13,11 @@ const basePreferences = {
   notify_email_marketing: true,
 };
 
-const mockMaybeSingle = vi.fn();
-const mockSelectEq = vi.fn();
-const mockSelect = vi.fn();
-const mockInsert = vi.fn();
-const mockInsertSelect = vi.fn();
-const mockInsertSingle = vi.fn();
-const mockUpdate = vi.fn();
-const mockUpdateEq = vi.fn();
-const mockFrom = vi.fn();
+const mockRpc = vi.fn();
+const toastMock = vi.fn();
 
 let supabaseClientMock = {
-  from: (...args: unknown[]) => mockFrom(...args),
+  rpc: (...args: unknown[]) => mockRpc(...args),
 };
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -32,67 +25,60 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: toastMock }),
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: (...args: unknown[]) => supabaseClientMock.from(...args),
+    rpc: (...args: unknown[]) => supabaseClientMock.rpc(...args),
   },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockMaybeSingle.mockReset();
-  mockSelectEq.mockReset();
-  mockSelect.mockReset();
-  mockInsert.mockReset();
-  mockInsertSelect.mockReset();
-  mockInsertSingle.mockReset();
-  mockUpdate.mockReset();
-  mockUpdateEq.mockReset();
-  mockFrom.mockReset();
-
-  mockMaybeSingle.mockResolvedValue({ data: { ...basePreferences }, error: null });
-  mockSelectEq.mockReturnValue({ maybeSingle: mockMaybeSingle });
-  mockSelect.mockReturnValue({ eq: mockSelectEq });
-
-  mockInsertSingle.mockResolvedValue({ data: { ...basePreferences }, error: null });
-  mockInsertSelect.mockReturnValue({ single: mockInsertSingle });
-  mockInsert.mockReturnValue({ select: mockInsertSelect });
-
-  mockUpdateEq.mockResolvedValue({ error: null });
-  mockUpdate.mockReturnValue({ eq: mockUpdateEq });
-
-  mockFrom.mockImplementation((table: string) => {
-    if (table === 'notification_prefs') {
-      return {
-        select: mockSelect,
-        insert: mockInsert,
-        update: mockUpdate,
-      };
-    }
-
-    return {
-      select: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn(),
-    } as any;
-  });
+  mockRpc.mockReset();
+  toastMock.mockReset();
 
   supabaseClientMock = {
-    from: (...args: unknown[]) => mockFrom(...args),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   };
 });
 
 describe('useNotificationPreferences', () => {
-  it('updates preferences and persists via Supabase', async () => {
+  it('reverts optimistic updates when Supabase update fails', async () => {
+    mockRpc.mockImplementation(async (fn: string) => {
+      if (fn === 'get_notification_prefs') {
+        return { data: { ...basePreferences }, error: null };
+      }
+
+      if (fn === 'set_notification_pref') {
+        return { data: null, error: { message: 'Update failed' } };
+      }
+
+      return { data: null, error: null };
+    });
+
     const { result } = renderHook(() => useNotificationPreferences());
 
-    await result.current.updatePreference('notify_push', false);
+    await act(async () => {
+      await result.current.refresh();
+    });
 
-    expect(mockUpdate).toHaveBeenCalledWith({ notify_push: false });
-    expect(mockUpdateEq).toHaveBeenCalledWith('user_id', 'user-123');
-    expect(mockMaybeSingle).toHaveBeenCalled();
+    await waitFor(() => expect(result.current.preferences).not.toBeNull());
+    mockRpc.mockClear();
+
+    const previous = result.current.preferences;
+    expect(previous?.notify_push).toBe(true);
+
+    await act(async () => {
+      await result.current.updatePreference('notify_push', false);
+    });
+
+    await waitFor(() => expect(result.current.preferences?.notify_push).toBe(true));
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+      }),
+    );
   });
 });
