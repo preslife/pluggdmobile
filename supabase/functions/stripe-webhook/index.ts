@@ -7,6 +7,7 @@ import {
   syncMembershipFromSubscription,
   type Logger,
 } from "./helpers.ts";
+import { createPreferenceCache, shouldSendNotification } from "../_shared/notificationPreferences.ts";
 
 type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -246,6 +247,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+    const preferenceCache = createPreferenceCache();
 
     const requestId = crypto.randomUUID();
     const requestUrl = new URL(req.url);
@@ -797,33 +799,62 @@ serve(async (req) => {
                   const fanName = fanProfile?.full_name || fanProfile?.username || null;
                   const tipAmount = tipTotal ?? tip.amount ?? 0;
 
-                  const emailPromises = [
-                    supabaseClient.functions.invoke('send-lifecycle-emails', {
-                      body: {
-                        user_id: tip.fan_id,
-                        email_type: 'fan_tip_receipt',
-                        user_data: {
-                          amount: tipAmount,
-                          artist_name: artistName,
-                          artist_url: `${siteUrl}/artist/${tip.artist_id}`,
-                          message: tip.message,
-                        },
-                      },
-                    }),
-                    supabaseClient.functions.invoke('send-lifecycle-emails', {
-                      body: {
-                        user_id: tip.artist_id,
-                        email_type: 'creator_tip_notification',
-                        user_data: {
-                          amount: tipAmount,
-                          fan_name: fanName,
-                          message: tip.message,
-                        },
-                      },
-                    }),
-                  ];
+                  const emailPromises: Array<Promise<unknown>> = [];
 
-                  await Promise.allSettled(emailPromises);
+                  const notifyFan = await shouldSendNotification(
+                    supabaseClient as any,
+                    preferenceCache,
+                    tip.fan_id,
+                    'notify_purchases',
+                  );
+
+                  if (notifyFan) {
+                    emailPromises.push(
+                      supabaseClient.functions.invoke('send-lifecycle-emails', {
+                        body: {
+                          user_id: tip.fan_id,
+                          email_type: 'fan_tip_receipt',
+                          user_data: {
+                            amount: tipAmount,
+                            artist_name: artistName,
+                            artist_url: `${siteUrl}/artist/${tip.artist_id}`,
+                            message: tip.message,
+                          },
+                        },
+                      }),
+                    );
+                  } else {
+                    await logStep('Skipping fan tip receipt email due to preferences', { fanId: tip.fan_id });
+                  }
+
+                  const notifyArtist = await shouldSendNotification(
+                    supabaseClient as any,
+                    preferenceCache,
+                    tip.artist_id,
+                    'notify_supporters',
+                  );
+
+                  if (notifyArtist) {
+                    emailPromises.push(
+                      supabaseClient.functions.invoke('send-lifecycle-emails', {
+                        body: {
+                          user_id: tip.artist_id,
+                          email_type: 'creator_tip_notification',
+                          user_data: {
+                            amount: tipAmount,
+                            fan_name: fanName,
+                            message: tip.message,
+                          },
+                        },
+                      }),
+                    );
+                  } else {
+                    await logStep('Skipping creator tip notification due to preferences', { artistId: tip.artist_id });
+                  }
+
+                  if (emailPromises.length > 0) {
+                    await Promise.allSettled(emailPromises);
+                  }
                 } catch (emailError) {
                   const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
                   await logStep('Artist tip email notification failed', { error: errorMessage, tipId: tip.id });

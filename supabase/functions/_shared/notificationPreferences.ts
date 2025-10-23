@@ -11,17 +11,22 @@ export type NotificationPreferenceKey =
 export type NotificationPreferenceValues = Record<NotificationPreferenceKey, boolean>;
 
 type SupabaseLikeClient = {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        maybeSingle: () => Promise<{ data: Partial<NotificationPreferenceValues> | null; error: { message: string } | null }>;
-      };
-    };
-  };
+  rpc: (
+    fn: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
 };
 
-const SELECT_COLUMNS =
-  'notify_push, notify_contest_reminders, notify_live_sessions, notify_purchases, notify_supporters, notify_follows, notify_session_feedback, notify_email_marketing';
+const PREFERENCE_KEYS: NotificationPreferenceKey[] = [
+  'notify_push',
+  'notify_contest_reminders',
+  'notify_live_sessions',
+  'notify_purchases',
+  'notify_supporters',
+  'notify_follows',
+  'notify_session_feedback',
+  'notify_email_marketing',
+];
 
 const DEFAULT_PREFERENCES: NotificationPreferenceValues = {
   notify_push: true,
@@ -39,11 +44,23 @@ export type NotificationPreferenceCache = Map<string, NotificationPreferenceValu
 export const createPreferenceCache = (): NotificationPreferenceCache => new Map();
 
 export const mergePreferences = (
-  values: Partial<NotificationPreferenceValues> | null | undefined,
-): NotificationPreferenceValues => ({
-  ...DEFAULT_PREFERENCES,
-  ...values,
-});
+  values: Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined,
+): NotificationPreferenceValues => {
+  const merged: NotificationPreferenceValues = { ...DEFAULT_PREFERENCES };
+
+  if (!values) {
+    return merged;
+  }
+
+  for (const key of PREFERENCE_KEYS) {
+    const nextValue = values[key];
+    if (typeof nextValue === 'boolean') {
+      merged[key] = nextValue;
+    }
+  }
+
+  return merged;
+};
 
 export const fetchPreferencesForUser = async (
   client: SupabaseLikeClient,
@@ -55,11 +72,7 @@ export const fetchPreferencesForUser = async (
   }
 
   try {
-    const { data, error } = await client
-      .from('notification_prefs')
-      .select(SELECT_COLUMNS)
-      .eq('user_id', userId)
-      .maybeSingle();
+    const { data, error } = await client.rpc('get_notification_prefs', { p_user_id: userId });
 
     if (error) {
       console.error(`[notificationPreferences] Failed to fetch preferences for user ${userId}`, error);
@@ -67,7 +80,7 @@ export const fetchPreferencesForUser = async (
       return DEFAULT_PREFERENCES;
     }
 
-    const merged = mergePreferences(data ?? undefined);
+    const merged = mergePreferences(data as Partial<NotificationPreferenceValues> | null | undefined);
     cache.set(userId, merged);
     return merged;
   } catch (err) {
