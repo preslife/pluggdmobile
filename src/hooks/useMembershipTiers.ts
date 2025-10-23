@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptionalStudioContext } from "@/contexts/StudioContext";
@@ -78,6 +79,99 @@ const slugify = (value: string) =>
     .slice(0, 64) || "tier";
 
 const withRandomSuffix = (slug: string) => `${slug}-${Math.random().toString(36).slice(-4)}`;
+
+interface MembershipTierError extends Error {
+  code?: string;
+  slug?: string | null;
+  original?: unknown;
+}
+
+const parseErrorDetails = (details?: string | null): Record<string, unknown> | null => {
+  if (!details || typeof details !== "string") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(details);
+  } catch (_error) {
+    if (typeof details === "string" && details.startsWith("{")) {
+      return null;
+    }
+    return null;
+  }
+};
+
+const friendlyMessageForCode = (code: string): string | null => {
+  switch (code) {
+    case "duplicate_slug":
+      return "A membership tier with this slug already exists.";
+    case "tier_has_members":
+      return "You need to move or cancel existing members before deleting this tier.";
+    case "not_authorised":
+      return "You don't have permission to manage this membership tier.";
+    case "not_authenticated":
+      return "You need to sign in to manage membership tiers.";
+    case "invalid_owner_id":
+    case "invalid_owner_type":
+      return "The selected owner is invalid.";
+    case "invalid_price_monthly":
+    case "invalid_price_yearly":
+    case "invalid_price_lifetime":
+    case "invalid_price_format":
+      return "One or more prices are invalid. Please enter whole cents.";
+    case "invalid_currency":
+      return "Currency must be a valid three-letter ISO code.";
+    case "invalid_features":
+      return "Features must be provided as a list of strings.";
+    case "invalid_max_members":
+      return "Maximum members must be zero or a positive number.";
+    case "invalid_tier_order":
+      return "Tier order must be a number.";
+    case "invalid_slug":
+      return "Tier slug must include letters or numbers.";
+    case "name_required":
+      return "Please provide a tier name.";
+    case "tier_not_found":
+      return "This membership tier could not be found.";
+    default:
+      return null;
+  }
+};
+
+const normaliseTierError = (err: unknown): MembershipTierError => {
+  if (err && typeof err === "object" && "message" in err) {
+    const supabaseError = err as PostgrestError & { details?: string | null };
+    const detailPayload = parseErrorDetails(supabaseError.details) ?? {};
+    const code = String(
+      (detailPayload.code as string | undefined) ??
+        supabaseError.message ??
+        supabaseError.code ??
+        "unknown_error"
+    );
+
+    const message =
+      friendlyMessageForCode(code) ??
+      (typeof supabaseError.hint === "string" && supabaseError.hint.trim() ? supabaseError.hint : null) ??
+      (typeof supabaseError.message === "string" && supabaseError.message.trim()
+        ? supabaseError.message
+        : "Unexpected error");
+
+    const error: MembershipTierError = new Error(message);
+    error.code = code;
+    error.slug = typeof detailPayload.slug === "string" ? detailPayload.slug : null;
+    error.original = err;
+    return error;
+  }
+
+  if (err instanceof Error) {
+    return err;
+  }
+
+  const fallback: MembershipTierError = new Error("Unexpected error");
+  fallback.code = "unknown_error";
+  fallback.original = err;
+  return fallback;
+};
 
 const centsFromAmount = (value?: number | null) => {
   if (value == null || Number.isNaN(value)) return null;
@@ -237,13 +331,18 @@ export function useMembershipTiers(): MembershipTiersHook {
       .order("created_at", { ascending: true });
 
     if (error) {
-      setError(error.message);
+      const normalisedError = normaliseTierError(error);
+      setError(normalisedError.message);
       setTiers([]);
       setLoading(false);
-      void membershipLogger.error("membership_tiers_fetch_failed", {
-        owner_type: ownerType,
-        owner_id: ownerId,
-      }, toError(error));
+      void membershipLogger.error(
+        "membership_tiers_fetch_failed",
+        {
+          owner_type: ownerType,
+          owner_id: ownerId,
+        },
+        toError(error)
+      );
       return;
     }
 
@@ -278,9 +377,10 @@ export function useMembershipTiers(): MembershipTiersHook {
       try {
         await fn();
         await fetchTiers();
-      } catch (err: any) {
-        setError(err?.message ?? "Unexpected error");
-        throw err;
+      } catch (err: unknown) {
+        const normalised = normaliseTierError(err);
+        setError(normalised.message ?? "Unexpected error");
+        throw normalised;
       } finally {
         setMutating(false);
       }

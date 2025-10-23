@@ -40,7 +40,7 @@ serve(async (req) => {
 
     const { data: jobs, error: jobsError } = await supabaseService
       .from("membership_tier_sync_queue")
-      .select("id, tier_id, action, payload, previous, attempts, status, actor_id, scheduled_at")
+      .select("id, tier_id, action, payload, previous, attempts, status, actor_id, scheduled_at, created_at")
       .in("status", candidateStatuses)
       .lte("scheduled_at", nowIso)
       .order("created_at", { ascending: true })
@@ -84,6 +84,10 @@ serve(async (req) => {
             .eq("id", lockedJob.tier_id);
         }
 
+        const attempt = lockedJob.attempts ?? 1;
+        const correlationId =
+          lockedJob.payload?.correlation_id ?? lockedJob.id ?? crypto.randomUUID?.() ?? undefined;
+
         const response = await fetch(membershipTierStripeUrl, {
           method: "POST",
           headers: {
@@ -96,6 +100,11 @@ serve(async (req) => {
               tier: tierPayload,
               actor_id: lockedJob.payload?.actor_id ?? lockedJob.actor_id ?? null,
               previous: lockedJob.previous ?? null,
+              attempt,
+              correlation_id: correlationId,
+              job_id: lockedJob.id,
+              queued_at: lockedJob.created_at,
+              scheduled_at: lockedJob.scheduled_at,
             },
           }),
         });
