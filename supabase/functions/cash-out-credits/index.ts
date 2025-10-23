@@ -9,6 +9,38 @@ const corsHeaders = {
 
 const CREDITS_PER_GBP = 100;
 
+interface LedgerErrorNormalization {
+  status: number;
+  body: Record<string, unknown>;
+  logMeta: Record<string, unknown>;
+}
+
+const normalizeLedgerError = (
+  message: string | null | undefined,
+  complianceMeta: Record<string, unknown>,
+): LedgerErrorNormalization => {
+  if (message?.includes('WALLET_BALANCE_NEGATIVE')) {
+    return {
+      status: 409,
+      body: {
+        error: 'Cash-out is blocked because the wallet balance would drop below zero.',
+        code: 'WALLET_BALANCE_NEGATIVE',
+        compliance_block: true,
+      },
+      logMeta: { reason: 'balance_negative', message, ...complianceMeta },
+    };
+  }
+
+  return {
+    status: 500,
+    body: {
+      error: 'Unable to record cash-out request.',
+      code: 'LEDGER_INSERT_FAILED',
+    },
+    logMeta: { reason: 'unknown', message, ...complianceMeta },
+  };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -87,6 +119,20 @@ serve(async (req) => {
     console.log(`[CASH-OUT-CREDITS] Gross: ${grossAmountPence}p, Commission: ${commissionAmountPence}p, Net: ${netAmountPence}p`);
 
     // Create ledger entry for cash-out
+    const complianceMeta = {
+      event: 'cash_out_request',
+      actor_user_id: user.id,
+      occurred_at: new Date().toISOString(),
+      amount_credits,
+      gross_amount_pence: grossAmountPence,
+      commission_amount_pence: commissionAmountPence,
+      net_amount_pence: netAmountPence,
+      available_before: balance.available_credits,
+      available_after: balance.available_credits - amount_credits,
+    };
+
+    console.info('[CASH-OUT-CREDITS] Compliance metadata', complianceMeta);
+
     const { error: ledgerError } = await supabaseClient
       .from('wallet_ledger')
       .insert({
@@ -98,11 +144,19 @@ serve(async (req) => {
           gross_amount_pence: grossAmountPence,
           commission_amount_pence: commissionAmountPence,
           net_amount_pence: netAmountPence,
-          commission_rate: commissionRate
+          commission_rate: commissionRate,
+          compliance: complianceMeta,
         },
       });
 
-    if (ledgerError) throw new Error(`Ledger insert failed: ${ledgerError.message}`);
+    if (ledgerError) {
+      const normalized = normalizeLedgerError(ledgerError.message, complianceMeta);
+      console.warn('[CASH-OUT-CREDITS] Ledger insert blocked', normalized.logMeta);
+      return new Response(JSON.stringify(normalized.body), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: normalized.status,
+      });
+    }
 
     // Create payout record
     const { error: payoutError } = await supabaseClient
@@ -132,8 +186,8 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[CASH-OUT-CREDITS] Error: ${errorMessage}`);
-    
-    return new Response(JSON.stringify({ error: errorMessage }), {
+
+    return new Response(JSON.stringify({ error: errorMessage, code: 'UNEXPECTED_ERROR' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

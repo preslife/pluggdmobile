@@ -8122,6 +8122,7 @@ export type Database = {
           meta: Json | null
           ref_id: string | null
           ref_type: string | null
+          reversal_of_entry_id: string | null
           user_id: string
         }
         Insert: {
@@ -8135,6 +8136,7 @@ export type Database = {
           meta?: Json | null
           ref_id?: string | null
           ref_type?: string | null
+          reversal_of_entry_id?: string | null
           user_id: string
         }
         Update: {
@@ -8148,6 +8150,7 @@ export type Database = {
           meta?: Json | null
           ref_id?: string | null
           ref_type?: string | null
+          reversal_of_entry_id?: string | null
           user_id?: string
         }
         Relationships: []
