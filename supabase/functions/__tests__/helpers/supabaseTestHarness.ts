@@ -10,6 +10,7 @@ interface TableFilter {
 class SupabaseTableBuilder<T extends Record<string, any>> {
   private selectColumns = '*';
   private filters: TableFilter[] = [];
+  private orderByClause: string | null = null;
 
   constructor(
     private readonly table: string,
@@ -24,6 +25,12 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
 
   eq(column: string, value: any) {
     this.filters.push({ column, value });
+    return this;
+  }
+
+  order(column: string, options: { ascending?: boolean } = {}) {
+    const direction = options.ascending === false ? 'DESC' : 'ASC';
+    this.orderByClause = `${column} ${direction}`;
     return this;
   }
 
@@ -60,6 +67,9 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
       if (copy.ref_id === undefined) {
         copy.ref_id = null;
       }
+      if (copy.reversal_of_entry_id === undefined) {
+        copy.reversal_of_entry_id = null;
+      }
       return copy;
     });
 
@@ -72,6 +82,45 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
           continue;
         }
 
+        let allowNegative = false;
+
+        if (row.reversal_of_entry_id) {
+          const original = await this.pg.oneOrNone(
+            'SELECT user_id FROM public.wallet_ledger WHERE id = $1',
+            [row.reversal_of_entry_id],
+          );
+
+          if (!original) {
+            return {
+              data: null,
+              error: { message: `Original ledger entry ${row.reversal_of_entry_id} not found` },
+            };
+          }
+
+          if (original.user_id !== user_id) {
+            return {
+              data: null,
+              error: {
+                message: `Reversal user mismatch for ledger entry ${row.reversal_of_entry_id}`,
+              },
+            };
+          }
+
+          const existingReversal = await this.pg.oneOrNone(
+            'SELECT id FROM public.wallet_ledger WHERE reversal_of_entry_id = $1',
+            [row.reversal_of_entry_id],
+          );
+
+          if (existingReversal) {
+            return {
+              data: null,
+              error: { message: `Ledger entry ${row.reversal_of_entry_id} already reversed` },
+            };
+          }
+
+          allowNegative = true;
+        }
+
         const { balance_after: latestBalance } =
           (await this.pg.oneOrNone(
             `SELECT balance_after FROM public.wallet_ledger WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
@@ -82,7 +131,7 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
         const delta = Number(amount_credits ?? 0);
         const nextBalance = previousBalance + delta;
 
-        if (nextBalance < 0) {
+        if (nextBalance < 0 && !allowNegative) {
           return {
             data: null,
             error: { message: `Insufficient credits for user ${user_id}, balance would be ${nextBalance}` },
@@ -142,10 +191,12 @@ class SupabaseTableBuilder<T extends Record<string, any>> {
 
     const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
     const limitClause = typeof limit === 'number' ? `LIMIT ${limit}` : '';
-    const query = `SELECT ${this.selectColumns} FROM ${this.table} ${where} ${limitClause}`;
+    const orderClause = this.orderByClause ? `ORDER BY ${this.orderByClause}` : '';
+    const query = `SELECT ${this.selectColumns} FROM ${this.table} ${where} ${orderClause} ${limitClause}`;
     const rows = await this.pg.any(query, values);
     this.selectColumns = '*';
     this.filters = [];
+    this.orderByClause = null;
     return rows;
   }
 }
@@ -238,6 +289,7 @@ export class SupabaseTestHarness {
         meta jsonb DEFAULT '{}'::jsonb,
         balance_before bigint NOT NULL DEFAULT 0,
         balance_after bigint NOT NULL DEFAULT 0,
+        reversal_of_entry_id uuid REFERENCES public.wallet_ledger(id) ON DELETE SET NULL,
         created_at timestamptz NOT NULL DEFAULT NOW()
       );
     `);
@@ -263,9 +315,9 @@ export class SupabaseTestHarness {
   }
 
   async reset() {
-    await this.pg.none('TRUNCATE TABLE public.wallet_ledger RESTART IDENTITY CASCADE;');
-    await this.pg.none('TRUNCATE TABLE public.orders RESTART IDENTITY CASCADE;');
-    await this.pg.none('TRUNCATE TABLE auth.users RESTART IDENTITY CASCADE;');
+    await this.pg.none('DELETE FROM public.wallet_ledger;');
+    await this.pg.none('DELETE FROM public.orders;');
+    await this.pg.none('DELETE FROM auth.users;');
   }
 
   createClient() {

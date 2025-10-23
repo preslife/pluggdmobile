@@ -8,7 +8,7 @@ import type { SupabaseHarnessClient } from './helpers/supabaseTestHarness';
 const harness = new SupabaseTestHarness();
 
 async function seedTopup(client: SupabaseHarnessClient, userId: string, amount: number) {
-  const { error } = await client
+  const { data, error } = await client
     .from('wallet_ledger')
     .insert({
       user_id: userId,
@@ -21,6 +21,8 @@ async function seedTopup(client: SupabaseHarnessClient, userId: string, amount: 
   if (error) {
     throw new Error(`Failed to seed topup: ${error.message}`);
   }
+
+  return Array.isArray(data) ? data[0] : data;
 }
 
 describe('wallet transactions integration', () => {
@@ -125,7 +127,11 @@ describe('wallet transactions integration', () => {
       meta: { order_number: 'ORD-2002', stripe_charge_id: 'ch_123' },
     });
 
-    const logger = vi.fn();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as any;
     await handleChargeReversal(
       supabase as any,
       {
@@ -144,17 +150,21 @@ describe('wallet transactions integration', () => {
     const ledger = await harness.getLedgerEntries();
     expect(ledger).toHaveLength(4);
 
+    const spendEntry = ledger.find(
+      (entry) => entry.user_id === buyerId && entry.amount_credits === -200 && entry.kind === 'spend_purchase',
+    );
     const refundEntry = ledger.find((entry) => entry.user_id === buyerId && entry.amount_credits === 200);
     expect(refundEntry).toBeTruthy();
     expect(refundEntry?.meta?.stripe_event_id).toBe('evt_refund_1');
     expect(refundEntry?.meta?.reason).toBe('refund');
+    expect(refundEntry?.reversal_of_entry_id).toBe(spendEntry?.id);
 
     const sellerBalance = ledger
       .filter((entry) => entry.user_id === sellerId)
       .reduce((sum, entry) => sum + entry.amount_credits, 0);
 
     expect(sellerBalance).toBe(200);
-    expect(logger).toHaveBeenCalledWith('Recredited wallet after charge reversal', {
+    expect(logger.info).toHaveBeenCalledWith('charge_reversal_recredited', {
       chargeId: 'ch_123',
       creditsApplied: 200,
       reason: 'refund',
@@ -222,7 +232,11 @@ describe('wallet transactions integration', () => {
     expect(balance.data?.pending_credits).toBe(0);
     expect(balance.data?.available_credits).toBe(700);
 
-    const logger = vi.fn();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as any;
     await handleChargeReversal(
       supabase as any,
       {
@@ -249,7 +263,11 @@ describe('wallet transactions integration', () => {
     expect(refund.balance_before).toBe(700);
     expect(refund.balance_after).toBe(1000);
 
-    expect(logger).toHaveBeenCalledWith('Recredited wallet after charge reversal', {
+    expect(logger.warn).toHaveBeenCalledWith('charge_reversal_original_entry_missing', {
+      chargeId: 'ch_run_1',
+      userId: buyerId,
+    });
+    expect(logger.info).toHaveBeenCalledWith('charge_reversal_recredited', {
       chargeId: 'ch_run_1',
       creditsApplied: 300,
       reason: 'refund',
@@ -285,5 +303,46 @@ describe('wallet transactions integration', () => {
     const entries = await harness.getLedgerEntries();
     expect(entries).toHaveLength(1);
     expect(entries[0].balance_after).toBe(150);
+  });
+
+  it('links reversal entries and allows compliant chargebacks', async () => {
+    const supabase = harness.createClient();
+    const userId = await harness.createUser();
+
+    const topup = await seedTopup(supabase, userId, 400);
+
+    await processCreditsTransaction(supabase as any, userId, {
+      amount_credits: -300,
+      kind: 'spend_purchase',
+      ref_type: 'order',
+      ref_id: await harness.createOrder({ userId, totalAmount: 300 }),
+      meta: { order_number: 'REV-ORDER-1' },
+    });
+
+    const { error: reversalError } = await supabase.from('wallet_ledger').insert({
+      user_id: userId,
+      kind: 'convert_cashout',
+      amount_credits: -400,
+      reversal_of_entry_id: topup?.id,
+      meta: { reason: 'chargeback' },
+    } as any);
+
+    expect(reversalError).toBeNull();
+
+    const entries = await harness.getLedgerEntries();
+    const reversal = entries.find((entry) => entry.reversal_of_entry_id === topup?.id);
+    expect(reversal).toBeTruthy();
+    expect(reversal?.balance_before).toBe(100);
+    expect(reversal?.balance_after).toBe(-300);
+
+    const { error: duplicateError } = await supabase.from('wallet_ledger').insert({
+      user_id: userId,
+      kind: 'convert_cashout',
+      amount_credits: -100,
+      reversal_of_entry_id: topup?.id,
+      meta: { reason: 'duplicate' },
+    } as any);
+
+    expect(duplicateError?.message).toContain('already reversed');
   });
 });
