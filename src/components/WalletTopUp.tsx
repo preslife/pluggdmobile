@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/hooks/useWallet";
+import { useLogger } from "@/hooks/useLogger";
 import { ShareToEarnModal } from "@/components/ShareToEarnModal";
 import { CreditCard, Package, Share2 } from "lucide-react";
 
@@ -10,13 +11,32 @@ export const WalletTopUp = () => {
   const { topUpCredits } = useWallet();
   const [customAmount, setCustomAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const { logEvent, logError } = useLogger({
+    component: "WalletTopUp",
+    feature: "wallet",
+    view: "wallet_dashboard",
+  });
 
-  const handleTopUp = async (amount: number) => {
+  const handleTopUp = async (amount: number, context: "package" | "custom") => {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      void logError("wallet_topup_invalid_amount", new Error("Invalid amount"), {
+        amount,
+        context,
+      });
+      return;
+    }
     setLoading(true);
     try {
+      void logEvent("wallet_topup_button_clicked", { amount, context });
       const result = await topUpCredits(amount);
       if (result.url) {
         window.open(result.url, '_blank');
+        void logEvent("wallet_topup_checkout_opened", { amount, context });
+      } else if (result.error) {
+        void logError("wallet_topup_checkout_unavailable", new Error(result.error), {
+          amount,
+          context,
+        });
       }
     } finally {
       setLoading(false);
@@ -63,7 +83,7 @@ export const WalletTopUp = () => {
                     {(pkg.credits / pkg.price).toFixed(0)} credits per £1
                   </p>
                   <Button
-                    onClick={() => handleTopUp(pkg.credits)}
+                    onClick={() => handleTopUp(pkg.credits, "package")}
                     disabled={loading}
                     className="w-full"
                     variant={pkg.popular ? "default" : "outline"}
@@ -109,7 +129,7 @@ export const WalletTopUp = () => {
           )}
           
           <Button
-            onClick={() => handleTopUp(parseInt(customAmount))}
+            onClick={() => handleTopUp(parseInt(customAmount), "custom")}
             disabled={loading || !customAmount || parseInt(customAmount) < 100}
             className="w-full"
           >

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,6 +8,7 @@ import { MessageCircle, Send, X, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLogger } from "@/hooks/useLogger";
 import { formatDistanceToNow } from "date-fns";
 
 const THREAD_PAGE_SIZE = 20;
@@ -181,6 +182,14 @@ export const MessagingCenter = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handledRealtimeIds = useRef<Set<string>>(new Set());
+  const previousOpenRef = useRef<boolean | null>(null);
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError, logApiCall } = useLogger({
+    component: "MessagingCenter",
+    feature: "messaging",
+    view: "messaging_center",
+    metadata: loggerMetadata,
+  });
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -190,20 +199,45 @@ export const MessagingCenter = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (!user) return;
+    if (previousOpenRef.current === isOpen) return;
+    previousOpenRef.current = isOpen;
+    void logEvent(isOpen ? "messaging_center_opened" : "messaging_center_closed", {
+      unread_count: unreadCount,
+    });
+  }, [isOpen, unreadCount, user?.id, logEvent]);
+
   const fetchUnreadCount = useCallback(async () => {
     if (!user) {
       setUnreadCount(0);
       return;
     }
 
+    const start = performance.now();
+    let status = 200;
+    let unread = 0;
     try {
       const { data, error } = await supabase.rpc("inbox_unread_count");
-      if (error) throw error;
-      setUnreadCount(data ?? 0);
+      unread = Number(data ?? 0);
+      if (error) {
+        status = 500;
+        throw error;
+      }
+      setUnreadCount(unread);
     } catch (error) {
       console.error("Error fetching inbox unread count:", error);
+      status = 500;
+      setUnreadCount(0);
+      void logError("inbox_unread_fetch_failed", error, { user_id: user.id });
+    } finally {
+      const duration = performance.now() - start;
+      void logApiCall("rpc", "inbox_unread_count", duration, status, {
+        user_id: user.id,
+        unread_count: unread,
+      });
     }
-  }, [user]);
+  }, [user, logApiCall, logError]);
 
   const fetchThreads = useCallback(
     async (options?: FetchThreadOptions) => {
@@ -218,6 +252,9 @@ export const MessagingCenter = () => {
         setThreadsLoadingMore(true);
       }
 
+      const start = performance.now();
+      let status = 200;
+      let fetchedCount = 0;
       try {
         const { data, error } = await supabase.rpc("inbox_list_threads", {
           p_limit: THREAD_PAGE_SIZE,
@@ -226,7 +263,10 @@ export const MessagingCenter = () => {
           p_thread_id: threadId,
         });
 
-        if (error) throw error;
+        if (error) {
+          status = 500;
+          throw error;
+        }
 
         const rows: InboxThreadRow[] = Array.isArray(data)
           ? (data as InboxThreadRow[])
@@ -237,6 +277,8 @@ export const MessagingCenter = () => {
         const mapped = rows
           .map(mapThreadRow)
           .filter((thread): thread is InboxThread => Boolean(thread));
+
+        fetchedCount = mapped.length;
 
         if (threadId) {
           const [target] = mapped;
@@ -281,9 +323,16 @@ export const MessagingCenter = () => {
         return mapped[0];
       } catch (error) {
         console.error("Error fetching inbox threads:", error);
+        status = 500;
         if (reset) {
           setThreads([]);
         }
+        void logError("inbox_threads_fetch_failed", error, {
+          user_id: user.id,
+          has_cursor: Boolean(cursor),
+          has_search: Boolean(search),
+          thread_id: threadId,
+        });
       } finally {
         if (reset) {
           setThreadsLoading(false);
@@ -291,11 +340,19 @@ export const MessagingCenter = () => {
         if (!reset && cursor) {
           setThreadsLoadingMore(false);
         }
+        const duration = performance.now() - start;
+        void logApiCall("rpc", "inbox_list_threads", duration, status, {
+          user_id: user.id,
+          fetched: fetchedCount,
+          has_cursor: Boolean(cursor),
+          has_search: Boolean(search),
+          thread_id: threadId,
+        });
       }
 
       return undefined;
     },
-    [user, fetchUnreadCount]
+    [user, fetchUnreadCount, logApiCall, logError]
   );
 
   const fetchMessages = useCallback(
@@ -311,6 +368,10 @@ export const MessagingCenter = () => {
         setMessagesLoadingMore(true);
       }
 
+      const start = performance.now();
+      let status = 200;
+      let fetchedCount = 0;
+
       try {
         const { data, error } = await supabase.rpc("inbox_get_thread_messages", {
           p_thread_id: thread.threadId,
@@ -318,7 +379,10 @@ export const MessagingCenter = () => {
           p_cursor: cursor,
         });
 
-        if (error) throw error;
+        if (error) {
+          status = 500;
+          throw error;
+        }
 
         const rows: InboxMessageRow[] = Array.isArray(data)
           ? (data as InboxMessageRow[])
@@ -329,6 +393,8 @@ export const MessagingCenter = () => {
         const mapped = rows
           .map(mapMessageRow)
           .filter((message): message is InboxMessage => Boolean(message));
+
+        fetchedCount = mapped.length;
 
         const sortedAscending = mapped.slice().reverse();
 
@@ -353,7 +419,23 @@ export const MessagingCenter = () => {
         setMessagesHasMore(mapped.length === MESSAGE_PAGE_SIZE);
 
         if (reset) {
-          await supabase.rpc("inbox_mark_thread_read", { p_thread_id: thread.threadId });
+          const markStart = performance.now();
+          let markStatus = 200;
+          const { error: markError } = await supabase.rpc("inbox_mark_thread_read", { p_thread_id: thread.threadId });
+          if (markError) {
+            markStatus = 500;
+            console.error("Error marking thread as read:", markError);
+            void logError("inbox_mark_thread_read_failed", markError, {
+              user_id: user.id,
+              thread_id: thread.threadId,
+            });
+          }
+          const markDuration = performance.now() - markStart;
+          void logApiCall("rpc", "inbox_mark_thread_read", markDuration, markStatus, {
+            user_id: user.id,
+            thread_id: thread.threadId,
+          });
+
           setThreads((prev) =>
             prev.map((existing) =>
               keyFromThread(existing.threadId, existing.socialAccountId) ===
@@ -366,6 +448,15 @@ export const MessagingCenter = () => {
         }
       } catch (error) {
         console.error("Error fetching inbox messages:", error);
+        status = 500;
+        if (reset) {
+          setMessages([]);
+        }
+        void logError("inbox_messages_fetch_failed", error, {
+          user_id: user.id,
+          thread_id: thread.threadId,
+          has_cursor: Boolean(cursor),
+        });
       } finally {
         if (reset) {
           setMessagesLoading(false);
@@ -373,9 +464,17 @@ export const MessagingCenter = () => {
         if (!reset && cursor) {
           setMessagesLoadingMore(false);
         }
+        const duration = performance.now() - start;
+        void logApiCall("rpc", "inbox_get_thread_messages", duration, status, {
+          user_id: user.id,
+          thread_id: thread.threadId,
+          fetched: fetchedCount,
+          has_cursor: Boolean(cursor),
+          reset,
+        });
       }
     },
-    [user, fetchUnreadCount]
+    [user, fetchUnreadCount, logApiCall, logError]
   );
 
   useEffect(() => {
@@ -510,7 +609,26 @@ export const MessagingCenter = () => {
             });
 
             if (mapped.authorId !== user.id) {
-              await supabase.rpc("inbox_mark_thread_read", { p_thread_id: mapped.threadId });
+              const markStart = performance.now();
+              let markStatus = 200;
+              const { error: realtimeMarkError } = await supabase.rpc("inbox_mark_thread_read", {
+                p_thread_id: mapped.threadId,
+              });
+              if (realtimeMarkError) {
+                markStatus = 500;
+                console.error("Error marking thread read from realtime:", realtimeMarkError);
+                void logError("inbox_mark_thread_read_failed", realtimeMarkError, {
+                  user_id: user.id,
+                  thread_id: mapped.threadId,
+                  source: "realtime",
+                });
+              }
+              const markDuration = performance.now() - markStart;
+              void logApiCall("rpc", "inbox_mark_thread_read", markDuration, markStatus, {
+                user_id: user.id,
+                thread_id: mapped.threadId,
+                source: "realtime",
+              });
               await fetchUnreadCount();
             }
           }
@@ -531,7 +649,7 @@ export const MessagingCenter = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, activeThread, fetchThreads, fetchUnreadCount]);
+  }, [user, activeThread, fetchThreads, fetchUnreadCount, logApiCall, logError]);
 
   const loadMoreThreads = () => {
     if (!threadsHasMore || !threadsCursor) return;
@@ -546,6 +664,7 @@ export const MessagingCenter = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeThread || !user) return;
 
+    const messageContent = newMessage.trim();
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMessage: InboxMessage = {
       id: optimisticId,
@@ -553,7 +672,7 @@ export const MessagingCenter = () => {
       socialAccountId: activeThread.socialAccountId,
       providerMessageId: null,
       providerThreadId: activeThread.threadId,
-      content: newMessage.trim(),
+      content: messageContent,
       authorId: user.id,
       authorName: "You",
       authorHandle: null,
@@ -569,6 +688,14 @@ export const MessagingCenter = () => {
     setNewMessage("");
     setSendingMessage(true);
 
+    void logEvent("inbox_send_attempt", {
+      thread_id: activeThread.threadId,
+      has_media: false,
+      message_length: messageContent.length,
+    });
+
+    const start = performance.now();
+    let status = 200;
     try {
       const { data, error } = await supabase.rpc("inbox_send_message", {
         p_thread_id: activeThread.threadId,
@@ -577,7 +704,10 @@ export const MessagingCenter = () => {
         p_media_urls: [],
       });
 
-      if (error) throw error;
+      if (error) {
+        status = 500;
+        throw error;
+      }
 
       const insertedRow = Array.isArray(data)
         ? (data[0] as InboxMessageRow | undefined)
@@ -607,11 +737,25 @@ export const MessagingCenter = () => {
       ) {
         setActiveThread(updated);
       }
+      void logEvent("inbox_send_success", {
+        thread_id: activeThread.threadId,
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages((prev) => prev.filter((message) => message.id !== optimisticId));
+      status = 500;
+      void logError("inbox_send_failed", error, {
+        thread_id: activeThread.threadId,
+      });
     } finally {
       setSendingMessage(false);
+      const duration = performance.now() - start;
+      void logApiCall("rpc", "inbox_send_message", duration, status, {
+        user_id: user.id,
+        thread_id: activeThread.threadId,
+        message_length: messageContent.length,
+        status,
+      });
     }
   };
 

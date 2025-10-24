@@ -66,7 +66,7 @@ export const SubscriptionGatedContent = ({
   const [denialLogged, setDenialLogged] = useState(false);
 
   const loggerMetadata = useMemo(() => ({ contentId, contentType, creatorId }), [contentId, contentType, creatorId]);
-  const { logger: gatingLogger } = useLogger({
+  const { logEvent, logError, logWarn, logApiCall, logUserAction } = useLogger({
     component: 'SubscriptionGatedContent',
     feature: 'membership',
     metadata: loggerMetadata,
@@ -90,10 +90,9 @@ export const SubscriptionGatedContent = ({
       } catch (error: any) {
         if (!isMounted) return;
         console.error("Unexpected error loading gate configuration", error);
-        void gatingLogger.error("gate_config_load_failed", {
+        void logError("gate_config_load_failed", error, {
           contentId,
           contentType,
-          error: error?.message ?? String(error),
         });
         setGateConfig(null);
       }
@@ -132,7 +131,7 @@ export const SubscriptionGatedContent = ({
 
       if (error) {
         console.error("Failed to load membership tiers", error);
-        void gatingLogger.warn("membership_tier_lookup_failed", {
+        void logWarn("membership_tier_lookup_failed", {
           contentId,
           contentType,
           ownerId: gateConfig.owner_id,
@@ -208,6 +207,7 @@ export const SubscriptionGatedContent = ({
     setCheckingAccess(true);
     const started = performance.now();
 
+    let status = 200;
     const { data, error } = await supabase.rpc("check_content_access", {
       p_content_id: contentId,
       p_content_type: contentType,
@@ -215,25 +215,19 @@ export const SubscriptionGatedContent = ({
     });
 
     const duration = performance.now() - started;
-    void gatingLogger.apiCall(
-      "rpc",
-      "check_content_access",
-      duration,
-      error ? 500 : 200,
-      {
-        contentId,
-        contentType,
-        gateType: gateConfig.gate_type,
-      }
-    );
+    status = error ? 500 : 200;
+    void logApiCall("rpc", "check_content_access", duration, status, {
+      contentId,
+      contentType,
+      gateType: gateConfig.gate_type,
+    });
 
     if (error) {
       console.error("Failed to verify gated content access", error);
-      void gatingLogger.error("gate_access_check_failed", {
+      void logError("gate_access_check_failed", error, {
         contentId,
         contentType,
         gateType: gateConfig.gate_type,
-        error: error.message,
       });
       setHasAccess(false);
     } else {
@@ -304,7 +298,7 @@ export const SubscriptionGatedContent = ({
     if (!gateConfig || checkingAccess) return;
     if (hasAccess || impressionLogged) return;
 
-    void gatingLogger.info("membership_gate_impression", {
+    void logEvent("membership_gate_impression", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,
@@ -318,7 +312,7 @@ export const SubscriptionGatedContent = ({
   useEffect(() => {
     if (!gateConfig || !hasAccess || unlockLogged) return;
 
-    void gatingLogger.info("membership_gate_unlocked", {
+    void logEvent("membership_gate_unlocked", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,
@@ -333,7 +327,7 @@ export const SubscriptionGatedContent = ({
     if (!gateConfig || checkingAccess) return;
     if (hasAccess || denialLogged) return;
 
-    void logger.userAction("membership_gate_denied", "SubscriptionGatedContent", {
+    void logUserAction("membership_gate_denied", {
       contentId,
       contentType,
       gateType: gateConfig.gate_type,

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,36 +51,20 @@ async function countDownloadEvents(supabaseService: ReturnType<typeof createClie
   return count ?? 0;
 }
 
-async function logSystemEvent(
-  supabaseService: ReturnType<typeof createClient>,
-  userId: string,
-  action: string,
-  metadata: Record<string, unknown>,
-  level = 2,
-) {
-  try {
-    await supabaseService.from("system_logs").insert({
-      level,
-      message: "Download service event",
-      component: "downloads",
-      action,
-      user_id: userId,
-      metadata,
-    });
-  } catch (error) {
-    console.error("Failed to log system event", error);
-  }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let logger: ReturnType<typeof createSystemLogger> | null = null;
+  let purchaseId: string | undefined;
+  let purchaseType: PurchaseType | undefined;
   try {
     const body = await req.json();
-    const purchaseId: string | undefined = body?.purchaseId;
-    const purchaseType: PurchaseType | undefined = body?.purchaseType;
+    purchaseId = body?.purchaseId;
+    purchaseType = body?.purchaseType;
+
+    const correlationId = generateCorrelationId();
 
     if (!purchaseId || !purchaseType) {
       return new Response(
@@ -117,6 +102,18 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
+    logger = createSystemLogger(supabaseService, {
+      component: "download_signed_url",
+      feature: "downloads",
+      userId: user.id,
+      correlationId,
+      message: "Download service event",
+    });
+
+    await logger.info("download_request_received", {
+      purchaseId,
+      purchaseType,
+    });
 
     let storage: StorageLocation | null = null;
     let limit = 0;
@@ -142,7 +139,7 @@ serve(async (req) => {
         }
 
         if (purchase.status !== 'completed') {
-          await logSystemEvent(supabaseService, user.id, "release_not_settled", metadata, 3);
+          await logger.error("release_not_settled", new Error('Purchase is not completed'), metadata);
           return new Response(
             JSON.stringify({ error: "Purchase is not completed" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -150,7 +147,7 @@ serve(async (req) => {
         }
 
         if (purchase.user_id !== user.id && purchase.purchaser_id !== user.id) {
-          await logSystemEvent(supabaseService, user.id, "release_access_denied", metadata, 3);
+          await logger.error("release_access_denied", new Error('User does not own release'), metadata);
           return new Response(
             JSON.stringify({ error: "Access denied" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -177,7 +174,7 @@ serve(async (req) => {
         );
 
         if (limit !== null && downloadCount >= limit) {
-          await logSystemEvent(supabaseService, user.id, "release_limit_reached", metadata, 3);
+          await logger.warn("release_limit_reached", metadata);
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -187,7 +184,7 @@ serve(async (req) => {
         if (purchase.download_expires_at) {
           const expires = new Date(purchase.download_expires_at);
           if (Date.now() > expires.getTime()) {
-            await logSystemEvent(supabaseService, user.id, "release_expired", metadata, 3);
+            await logger.warn("release_expired", metadata);
             return new Response(
               JSON.stringify({ error: "Download window expired" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -197,7 +194,7 @@ serve(async (req) => {
           const expires = new Date(purchase.purchased_at);
           expires.setDate(expires.getDate() + release.download_expires_days);
           if (Date.now() > expires.getTime()) {
-            await logSystemEvent(supabaseService, user.id, "release_expired", metadata, 3);
+            await logger.warn("release_expired", metadata);
             return new Response(
               JSON.stringify({ error: "Download window expired" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -228,7 +225,7 @@ serve(async (req) => {
         }
 
         if (purchase.buyer_id !== user.id) {
-          await logSystemEvent(supabaseService, user.id, "beat_access_denied", metadata, 3);
+          await logger.error("beat_access_denied", new Error('User does not own beat'), metadata);
           return new Response(
             JSON.stringify({ error: "Access denied" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -240,7 +237,7 @@ serve(async (req) => {
         downloadCount = await countDownloadEvents(supabaseService, purchaseId, purchaseType);
 
         if (downloadCount >= limit) {
-          await logSystemEvent(supabaseService, user.id, "beat_limit_reached", metadata, 3);
+          await logger.warn("beat_limit_reached", metadata);
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -265,7 +262,7 @@ serve(async (req) => {
         }
 
         if (purchase.user_id !== user.id) {
-          await logSystemEvent(supabaseService, user.id, "sample_pack_access_denied", metadata, 3);
+          await logger.error("sample_pack_access_denied", new Error('User does not own sample pack'), metadata);
           return new Response(
             JSON.stringify({ error: "Access denied" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -277,7 +274,7 @@ serve(async (req) => {
         downloadCount = await countDownloadEvents(supabaseService, purchaseId, purchaseType);
 
         if (downloadCount >= limit) {
-          await logSystemEvent(supabaseService, user.id, "sample_pack_limit_reached", metadata, 3);
+          await logger.warn("sample_pack_limit_reached", metadata);
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -320,10 +317,11 @@ serve(async (req) => {
       file_path: `${storage.bucket}/${storage.path}`,
     });
 
-    await logSystemEvent(supabaseService, user.id, "download_issued", {
+    await logger.info("download_issued", {
       ...metadata,
       remainingDownloads: limit ? Math.max(limit - (downloadCount + 1), 0) : null,
       bucket: storage.bucket,
+      path: storage.path,
     });
 
     return new Response(
@@ -336,6 +334,33 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("download-signed-url error", error);
+    try {
+      if (logger) {
+        await logger.error("download_failed", error, {
+          purchaseId,
+          purchaseType,
+        });
+      } else {
+        const fallbackClient = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          { auth: { persistSession: false } },
+        );
+        const fallbackLogger = createSystemLogger(fallbackClient, {
+          component: "download_signed_url",
+          feature: "downloads",
+          userId: null,
+          correlationId: generateCorrelationId(),
+          message: "Download service event",
+        });
+        await fallbackLogger.error("download_failed", error, {
+          purchaseId,
+          purchaseType,
+        });
+      }
+    } catch (loggingError) {
+      console.error("download-signed-url logging error", loggingError);
+    }
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

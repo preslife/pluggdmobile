@@ -1,21 +1,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } });
+  let logger: ReturnType<typeof createSystemLogger> | null = null;
+  const correlationId = generateCorrelationId();
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase credentials not configured');
+    }
+
+    logger = createSystemLogger(supabase, {
+      component: 'inbox_fetch_discord',
+      feature: 'inbox',
+      correlationId,
+      message: 'Discord inbox fetcher',
+    });
+
+    await logger.info('inbox_fetch_start', {
+      provider: 'discord',
+    });
 
     // Get creators with Discord connections
     const { data: connections, error: connectionsError } = await supabase
@@ -31,7 +49,7 @@ serve(async (req) => {
       try {
         const botToken = connection.connection_data?.bot_token;
         const channelId = connection.connection_data?.channel_id;
-        
+
         if (!botToken || !channelId) continue;
 
         // Fetch recent messages from the Discord channel
@@ -45,7 +63,11 @@ serve(async (req) => {
         });
 
         if (!response.ok) {
-          console.error(`Discord API error: ${response.status}`);
+          await logger?.warn('inbox_fetch_provider_error', {
+            provider: 'discord',
+            status: response.status,
+            user_id: connection.user_id,
+          });
           continue;
         }
 
@@ -83,29 +105,52 @@ serve(async (req) => {
           }
         }
       } catch (error) {
-        console.error(`Error processing Discord for user ${connection.user_id}:`, error);
+        await logger?.error('inbox_fetch_connection_failed', error, {
+          provider: 'discord',
+          user_id: connection.user_id,
+        });
       }
     }
 
+    await logger.info('inbox_fetch_complete', {
+      provider: 'discord',
+      processed: totalProcessed,
+      connections: connections?.length ?? 0,
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed: totalProcessed,
         provider: 'discord'
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
 
   } catch (error) {
-    console.error('Error in inbox-fetch-discord:', error);
+    const fallbackLogger =
+      logger ??
+      (supabaseUrl && supabaseServiceKey
+        ? createSystemLogger(supabase, {
+            component: 'inbox_fetch_discord',
+            feature: 'inbox',
+            correlationId,
+            message: 'Discord inbox fetcher',
+          })
+        : null);
+    const message = error instanceof Error ? error.message : String(error);
+    await fallbackLogger?.error('inbox_fetch_failed', error, {
+      provider: 'discord',
+      error: message,
+    });
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ error: message }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }

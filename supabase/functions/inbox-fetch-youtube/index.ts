@@ -1,22 +1,43 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } });
+  let logger: ReturnType<typeof createSystemLogger> | null = null;
+  const correlationId = generateCorrelationId();
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY') ?? '';
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase credentials not configured');
+    }
+    if (!youtubeApiKey) {
+      throw new Error('YouTube API key not configured');
+    }
+
+    logger = createSystemLogger(supabase, {
+      component: 'inbox_fetch_youtube',
+      feature: 'inbox',
+      correlationId,
+      message: 'YouTube inbox fetcher',
+    });
+
+    await logger.info('inbox_fetch_start', {
+      provider: 'youtube',
+    });
 
     // Get creators with YouTube connections
     const { data: connections, error: connectionsError } = await supabase
@@ -35,8 +56,16 @@ serve(async (req) => {
 
         // Fetch recent comments on the creator's channel
         const commentsUrl = `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&allThreadsRelatedToChannelId=${channelId}&maxResults=20&order=time&key=${youtubeApiKey}`;
-        
+
         const response = await fetch(commentsUrl);
+        if (!response.ok) {
+          await logger?.warn('inbox_fetch_provider_error', {
+            provider: 'youtube',
+            status: response.status,
+            user_id: connection.user_id,
+          });
+          continue;
+        }
         const data = await response.json();
 
         if (data.items) {
@@ -70,13 +99,22 @@ serve(async (req) => {
           }
         }
       } catch (error) {
-        console.error(`Error processing YouTube for user ${connection.user_id}:`, error);
+        await logger?.error('inbox_fetch_connection_failed', error, {
+          provider: 'youtube',
+          user_id: connection.user_id,
+        });
       }
     }
 
+    await logger.info('inbox_fetch_complete', {
+      provider: 'youtube',
+      processed: totalProcessed,
+      connections: connections?.length ?? 0,
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed: totalProcessed,
         provider: 'youtube'
       }),
@@ -87,12 +125,26 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in inbox-fetch-youtube:', error);
+    const fallbackLogger =
+      logger ??
+      (supabaseUrl && supabaseServiceKey
+        ? createSystemLogger(supabase, {
+            component: 'inbox_fetch_youtube',
+            feature: 'inbox',
+            correlationId,
+            message: 'YouTube inbox fetcher',
+          })
+        : null);
+    const message = error instanceof Error ? error.message : String(error);
+    await fallbackLogger?.error('inbox_fetch_failed', error, {
+      provider: 'youtube',
+      error: message,
+    });
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ error: message }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }

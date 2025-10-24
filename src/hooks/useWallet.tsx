@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { creditSystem } from '@/services/credits/credit-system';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { useLogger } from './useLogger';
 
 interface WalletBalance {
   balance_credits: number;
@@ -97,7 +98,7 @@ const parseFunctionsError = async (
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  
+
   // Safely try to use toast - will be undefined if toast context not available yet
   let toast: any;
   try {
@@ -107,7 +108,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     // Toast context not available yet - create a no-op function
     toast = () => {};
   }
-  
+
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError, logUserAction, trackPromise } = useLogger({
+    component: 'useWallet',
+    feature: 'wallet',
+    metadata: loggerMetadata,
+  });
+
   const [balance, setBalance] = useState<WalletBalance>({
     balance_credits: 0,
     pending_credits: 0,
@@ -118,20 +126,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(false);
 
   const refreshBalance = async () => {
-    if (!user) return;
-    
+    if (!user) {
+      void logEvent('wallet_balance_skip', { reason: 'no_user' });
+      return;
+    }
+
     try {
-      const { data, error } = await supabase.rpc('get_wallet_balance', {
-        p_user_id: user.id
-      });
-      
-      if (error) throw error;
-      
-      setBalance((data as any) || {
-        balance_credits: 0,
-        pending_credits: 0,
-        available_credits: 0
-      });
+      await trackPromise(
+        'wallet_balance_fetch',
+        async () => {
+          const { data, error } = await supabase.rpc('get_wallet_balance', {
+            p_user_id: user.id
+          });
+
+          if (error) throw error;
+
+          setBalance((data as any) || {
+            balance_credits: 0,
+            pending_credits: 0,
+            available_credits: 0
+          });
+        },
+        { user_id: user.id }
+      );
     } catch (error) {
       console.error('Error fetching wallet balance:', error);
       toast({
@@ -139,24 +156,34 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         description: "Failed to fetch wallet balance",
         variant: "destructive"
       });
+      void logError('wallet_balance_fetch_failed_ui', error, { user_id: user.id });
     }
   };
 
   const refreshLedger = async (limit = 50) => {
-    if (!user) return;
-    
+    if (!user) {
+      void logEvent('wallet_ledger_skip', { reason: 'no_user', limit });
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('wallet_ledger')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      
-      if (error) throw error;
-      
-      setLedger((data as any) || []);
+      await trackPromise(
+        'wallet_ledger_fetch',
+        async () => {
+          const { data, error } = await supabase
+            .from('wallet_ledger')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+          if (error) throw error;
+
+          setLedger((data as any) || []);
+        },
+        { user_id: user.id, limit }
+      );
     } catch (error) {
       console.error('Error fetching wallet ledger:', error);
       toast({
@@ -164,24 +191,46 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         description: "Failed to fetch transaction history",
         variant: "destructive"
       });
+      void logError('wallet_ledger_fetch_failed_ui', error, { user_id: user.id, limit });
     } finally {
       setLoading(false);
     }
   };
 
   const topUpCredits = async (amount: number) => {
-    if (!user) return { error: 'User not authenticated' };
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('create-credits-checkout', {
-        body: { credits_requested: amount }
+    if (!user) {
+      void logError('wallet_topup_not_authenticated', new Error('User not authenticated'), {
+        credits_requested: amount,
       });
-      
-      if (error) throw error;
-      
-      return { url: data.url };
+      return { error: 'User not authenticated' };
+    }
+
+    void logUserAction('wallet_topup_attempt', {
+      credits_requested: amount,
+    });
+
+    try {
+      const data = await trackPromise(
+        'wallet_topup_checkout',
+        async () => {
+          const { data, error } = await supabase.functions.invoke('create-credits-checkout', {
+            body: { credits_requested: amount }
+          });
+
+          if (error) throw error;
+
+          return data as { url?: string } | null;
+        },
+        { user_id: user.id, credits_requested: amount }
+      );
+
+      return { url: data?.url };
     } catch (error) {
       console.error('Error creating credits checkout:', error);
+      void logError('wallet_topup_checkout_failed', error, {
+        user_id: user.id,
+        credits_requested: amount,
+      });
       return { error: 'Failed to create checkout session' };
     }
   };
@@ -193,9 +242,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     ref_id?: string,
     counterparty_id?: string
   ) => {
-    if (!user) return { success: false, error: 'User not authenticated' };
+    if (!user) {
+      void logError('wallet_spend_not_authenticated', new Error('User not authenticated'), {
+        amount,
+        kind,
+        ref_type,
+        ref_id,
+        counterparty_id,
+      });
+      return { success: false, error: 'User not authenticated' };
+    }
 
     if (balance.available_credits < amount) {
+      void logEvent('wallet_spend_denied', {
+        reason: 'insufficient_credits',
+        amount,
+        available_credits: balance.available_credits,
+        kind,
+        ref_type,
+        ref_id,
+      });
       return { success: false, error: 'Insufficient credits' };
     }
 
@@ -213,7 +279,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
       });
 
-      const result = await creditSystem.spendCredits(user.id, amount, kind, metadata);
+      void logUserAction('wallet_spend_attempt', {
+        amount,
+        kind,
+        ref_type,
+        ref_id,
+        counterparty_id,
+      });
+
+      const result = await trackPromise(
+        'wallet_spend',
+        () => creditSystem.spendCredits(user.id, amount, kind, metadata),
+        {
+          user_id: user.id,
+          amount,
+          kind,
+          ref_type,
+          ref_id,
+          counterparty_id,
+        }
+      );
 
       await refreshBalance();
       await refreshLedger();
@@ -221,30 +306,42 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       return { success: true, ledgerEntryId: result.ledgerEntryId, manualEntryId: result.manualEntryId };
     } catch (error) {
       console.error('Error spending credits:', error);
+      void logError('wallet_spend_failed', error, {
+        user_id: user?.id,
+        amount,
+        kind,
+        ref_type,
+        ref_id,
+        counterparty_id,
+      });
       return { success: false, error: 'Failed to process transaction' };
     }
   };
 
   const cashOutCredits = async (amount: number) => {
-    if (!user) return { success: false, error: 'User not authenticated' };
+    if (!user) {
+      void logError('wallet_cashout_not_authenticated', new Error('User not authenticated'), {
+        amount,
+      });
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    void logUserAction('wallet_cashout_attempt', { amount });
 
     try {
-      const { error } = await supabase.functions.invoke('cash-out-credits', {
-        body: { amount_credits: amount }
-      });
+      await trackPromise(
+        'wallet_cashout',
+        async () => {
+          const { error } = await supabase.functions.invoke('cash-out-credits', {
+            body: { amount_credits: amount }
+          });
 
-      if (error) {
-        const parsed = await parseFunctionsError(error);
-        console.error('Error cashing out credits:', error);
-
-        toast({
-          title: parsed.complianceBlock ? 'Cash-out Blocked' : 'Error',
-          description: parsed.message,
-          variant: 'destructive'
-        });
-
-        return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
-      }
+          if (error) {
+            throw error;
+          }
+        },
+        { user_id: user.id, amount }
+      );
 
       await refreshBalance();
       await refreshLedger();
@@ -259,34 +356,44 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error cashing out credits:', error);
       const parsed = await parseFunctionsError(error);
       toast({
-        title: 'Error',
+        title: parsed.complianceBlock ? 'Cash-out Blocked' : 'Error',
         description: parsed.message,
         variant: 'destructive'
+      });
+      void logError('wallet_cashout_failed', error, {
+        user_id: user.id,
+        amount,
+        code: parsed.code,
+        compliance_block: parsed.complianceBlock,
       });
       return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
     }
   };
 
   const applyCreditsToSubscription = async (amount: number) => {
-    if (!user) return { success: false, error: 'User not authenticated' };
+    if (!user) {
+      void logError('wallet_apply_subscription_not_authenticated', new Error('User not authenticated'), {
+        amount,
+      });
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    void logUserAction('wallet_apply_subscription_attempt', { amount });
 
     try {
-      const { error } = await supabase.functions.invoke('apply-credits-to-subscription', {
-        body: { amount_credits: amount }
-      });
+      await trackPromise(
+        'wallet_apply_subscription',
+        async () => {
+          const { error } = await supabase.functions.invoke('apply-credits-to-subscription', {
+            body: { amount_credits: amount }
+          });
 
-      if (error) {
-        const parsed = await parseFunctionsError(error);
-        console.error('Error applying credits to subscription:', error);
-
-        toast({
-          title: parsed.complianceBlock ? 'Credits Locked' : 'Error',
-          description: parsed.message,
-          variant: 'destructive'
-        });
-
-        return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
-      }
+          if (error) {
+            throw error;
+          }
+        },
+        { user_id: user.id, amount }
+      );
 
       await refreshBalance();
       await refreshLedger();
@@ -301,9 +408,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error applying credits to subscription:', error);
       const parsed = await parseFunctionsError(error);
       toast({
-        title: 'Error',
+        title: parsed.complianceBlock ? 'Credits Locked' : 'Error',
         description: parsed.message,
         variant: 'destructive'
+      });
+      void logError('wallet_apply_subscription_failed', error, {
+        user_id: user.id,
+        amount,
+        code: parsed.code,
+        compliance_block: parsed.complianceBlock,
       });
       return { success: false, error: parsed.message, code: parsed.code, complianceBlock: parsed.complianceBlock };
     }

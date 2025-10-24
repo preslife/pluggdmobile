@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import useAnalytics from "@/hooks/useAnalytics";
 import { useToast } from "@/hooks/use-toast";
+import { useLogger } from "@/hooks/useLogger";
 import { setMeta } from "@/lib/seo";
 import { useLibrary, LibraryItem, LibraryItemType } from "@/services/library";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,13 @@ const LibraryPage = () => {
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null);
   const [isPlaylistModalOpen, setPlaylistModalOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError, logApiCall, logUserAction } = useLogger({
+    component: "LibraryPage",
+    feature: "downloads",
+    view: "library",
+    metadata: loggerMetadata,
+  });
 
   const { items, itemsByType, loading, loadingByType, error, ensureLoaded, refresh } = useLibrary(user?.id ?? null);
   const ensureLoadedRef = useRef(ensureLoaded);
@@ -169,7 +177,8 @@ const LibraryPage = () => {
       void load([activeTab as LibraryItemType]);
     }
     void track("library_tab_viewed", { tab: activeTab });
-  }, [activeTab, track, user]);
+    void logEvent("library_tab_viewed", { tab: activeTab });
+  }, [activeTab, track, user, logEvent]);
 
   const filterItems = useCallback(
     (list: LibraryItem[]) => {
@@ -201,6 +210,13 @@ const LibraryPage = () => {
 
   const handleRequestMore = useCallback(
     async (item: LibraryItem) => {
+      void logUserAction('library_request_download_reset', {
+        purchase_id: item.id,
+        purchase_type: item.type,
+        product_id: item.productId,
+      });
+      const start = performance.now();
+      let status = 200;
       try {
         const { error: fnError } = await supabase.functions.invoke("request-download-reset", {
           body: {
@@ -211,13 +227,21 @@ const LibraryPage = () => {
           },
         });
 
-        if (fnError) throw fnError;
+        if (fnError) {
+          status = 500;
+          throw fnError;
+        }
 
         toast({
           title: "Request sent",
           description: "Our support team will email you once your download limit is reset.",
         });
         await track("library_download_reset_requested", {
+          purchase_id: item.id,
+          purchase_type: item.type,
+          product_id: item.productId,
+        });
+        void logEvent("library_download_reset_requested", {
           purchase_id: item.id,
           purchase_type: item.type,
           product_id: item.productId,
@@ -229,9 +253,21 @@ const LibraryPage = () => {
           description: err instanceof Error ? err.message : "Please try again or contact support.",
           variant: "destructive",
         });
+        status = 500;
+        void logError("library_download_reset_failed", err, {
+          purchase_id: item.id,
+          purchase_type: item.type,
+          product_id: item.productId,
+        });
       }
+      const duration = performance.now() - start;
+      void logApiCall('function', 'request-download-reset', duration, status, {
+        purchase_id: item.id,
+        purchase_type: item.type,
+        product_id: item.productId,
+      });
     },
-    [toast, track],
+    [toast, track, logApiCall, logError, logEvent, logUserAction],
   );
 
   const handleDownload = useCallback(
@@ -240,6 +276,15 @@ const LibraryPage = () => {
         await handleRequestMore(item);
         return;
       }
+
+      void logUserAction('library_download_clicked', {
+        purchase_id: item.id,
+        purchase_type: item.type,
+        product_id: item.productId,
+      });
+      const start = performance.now();
+      let status = 200;
+      let errorForLog: unknown = null;
 
       try {
         const { data, error: fnError } = await supabase.functions.invoke("download-signed-url", {
@@ -250,7 +295,10 @@ const LibraryPage = () => {
           },
         });
 
-        if (fnError) throw fnError;
+        if (fnError) {
+          status = 500;
+          throw fnError;
+        }
 
         const signedUrl: string | undefined = data?.signedUrl ?? data?.downloadUrl;
         if (!signedUrl) {
@@ -265,16 +313,35 @@ const LibraryPage = () => {
           purchase_type: item.type,
           product_id: item.productId,
         });
+        void logEvent("library_download_started", {
+          purchase_id: item.id,
+          purchase_type: item.type,
+          product_id: item.productId,
+        });
       } catch (err) {
         console.error("Failed to download", err);
+        errorForLog = err;
         toast({
           title: "Download failed",
           description: err instanceof Error ? err.message : "Please try again or contact support.",
           variant: "destructive",
         });
+        status = 500;
+        void logError("library_download_failed", err, {
+          purchase_id: item.id,
+          purchase_type: item.type,
+          product_id: item.productId,
+        });
       }
+      const duration = performance.now() - start;
+      void logApiCall('function', 'download-signed-url', duration, status, {
+        purchase_id: item.id,
+        purchase_type: item.type,
+        product_id: item.productId,
+        error: errorForLog instanceof Error ? errorForLog.message : undefined,
+      });
     },
-    [handleRequestMore, refresh, toast, track],
+    [handleRequestMore, refresh, toast, track, logApiCall, logError, logEvent, logUserAction],
   );
 
   const handleAddToQueue = useCallback(
