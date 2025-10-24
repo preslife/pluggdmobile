@@ -41,6 +41,13 @@ export const SUPPORTED_LOCALES = {
     dateFormat: 'dd/MM/yyyy',
     flag: '🇫🇷'
   },
+  es: {
+    name: 'Español',
+    currency: 'EUR',
+    timezone: 'Europe/Madrid',
+    dateFormat: 'dd/MM/yyyy',
+    flag: '🇪🇸'
+  },
   'es-ES': {
     name: 'Español (España)',
     currency: 'EUR',
