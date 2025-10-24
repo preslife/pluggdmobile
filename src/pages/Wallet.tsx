@@ -12,10 +12,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Wallet, CreditCard, Upload, Download, ShieldCheck, History } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const WalletPage = () => {
   const { balance, ledger } = useWallet();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
   const { logEvent } = useLogger({
     component: "WalletPage",
@@ -87,17 +89,16 @@ const WalletPage = () => {
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
               <Wallet className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Wallet</h1>
+              <h1 className="text-3xl font-bold">{t('pages.wallet.heading')}</h1>
             </div>
 
             <Alert className="mb-6">
               <ShieldCheck className="h-5 w-5 text-primary" />
               <div>
-                <AlertTitle>Compliance notice</AlertTitle>
+                <AlertTitle>{t('pages.wallet.complianceTitle')}</AlertTitle>
                 <AlertDescription>
                   <p className="mb-2 text-muted-foreground">
-                    PLGD Credits are a limited-purpose digital balance. They are non-transferable, do not earn
-                    interest, and are not insured deposits.
+                    {t('pages.wallet.complianceDescription')}
                   </p>
                   <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                     <li>Available credits exclude pending top ups for the first 48 hours to mitigate chargebacks.</li>

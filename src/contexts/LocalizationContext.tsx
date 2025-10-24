@@ -19,7 +19,7 @@ export interface LocalizationSettings {
   timeFormat: '12h' | '24h';
 }
 
-interface LocalizationContextType {
+export interface LocalizationContextType {
   settings: LocalizationSettings;
   updateSettings: (newSettings: Partial<LocalizationSettings>) => Promise<void>;
   getLocaleConfig: (locale?: LocaleCode) => LocaleConfig;
@@ -222,4 +222,43 @@ export const useLocalization = () => {
     throw new Error('useLocalization must be used within a LocalizationProvider');
   }
   return context;
+};
+
+type TestLocalizationOverrides = Partial<Omit<LocalizationContextType, 'settings'>> & {
+  settings?: Partial<LocalizationSettings>;
+};
+
+export const createTestLocalizationValue = (
+  overrides: TestLocalizationOverrides = {}
+): LocalizationContextType => {
+  const baseSettings: LocalizationSettings = {
+    ...DEFAULT_SETTINGS,
+    ...overrides.settings,
+  };
+
+  return {
+    settings: baseSettings,
+    updateSettings: async () => Promise.resolve(),
+    getLocaleConfig: (locale?: LocaleCode) => SUPPORTED_LOCALES[locale ?? baseSettings.locale],
+    detectUserLocale: () => baseSettings.locale,
+    loading: false,
+    ...overrides,
+    settings: baseSettings,
+  };
+};
+
+export const LocalizationTestProvider = ({
+  children,
+  value,
+}: {
+  children: ReactNode;
+  value?: TestLocalizationOverrides;
+}) => {
+  const contextValue = createTestLocalizationValue(value);
+
+  return (
+    <LocalizationContext.Provider value={contextValue}>
+      {children}
+    </LocalizationContext.Provider>
+  );
 };
