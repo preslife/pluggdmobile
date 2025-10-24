@@ -8,17 +8,50 @@ import { WalletActivity } from "@/components/WalletActivity";
 import { WalletTopUp } from "@/components/WalletTopUp";
 import { WalletCashOut } from "@/components/WalletCashOut";
 import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
-import { formatDateLocalized } from "@/lib/i18n/formatting";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Wallet, CreditCard, Upload, Download, ShieldCheck, History } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
+type WalletTabKey = "overview" | "activity" | "topUp" | "cashOut";
+
+const WALLET_TAB_FALLBACKS: Record<WalletTabKey, string> = {
+  overview: "Overview",
+  activity: "Activity",
+  topUp: "Top Up",
+  cashOut: "Cash Out",
+};
+
+const TAB_TRANSLATION_KEYS: Record<WalletTabKey, string> = {
+  overview: "wallet:tabs.overview",
+  activity: "wallet:tabs.activity",
+  topUp: "wallet:tabs.topUp",
+  cashOut: "wallet:tabs.cashOut",
+};
+
+const getTabLabel = (
+  key: WalletTabKey,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  locale?: string | null
+) => {
+  const translationKey = TAB_TRANSLATION_KEYS[key];
+  const localizedLabel = t(
+    translationKey,
+    locale ? { lng: locale } : undefined
+  );
+
+  if (localizedLabel && localizedLabel !== translationKey) {
+    return localizedLabel;
+  }
+
+  return WALLET_TAB_FALLBACKS[key];
+};
+
 const WalletPage = () => {
   const { balance, ledger } = useWallet();
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
   const { logEvent } = useLogger({
     component: "WalletPage",
@@ -72,10 +105,8 @@ const WalletPage = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Access Required</CardTitle>
-            <CardDescription>
-              Please sign in to access your wallet.
-            </CardDescription>
+            <CardTitle>{t("wallet:auth.title")}</CardTitle>
+            <CardDescription>{t("wallet:auth.signInPrompt")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -90,24 +121,21 @@ const WalletPage = () => {
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
               <Wallet className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">{t('pages.wallet.heading')}</h1>
+              <h1 className="text-3xl font-bold">{t("wallet:header.title")}</h1>
             </div>
 
             <Alert className="mb-6">
               <ShieldCheck className="h-5 w-5 text-primary" />
               <div>
-                <AlertTitle>{t('pages.wallet.complianceTitle')}</AlertTitle>
+                <AlertTitle>{t("wallet:header.compliance.title")}</AlertTitle>
                 <AlertDescription>
                   <p className="mb-2 text-muted-foreground">
-                    {t('pages.wallet.complianceDescription')}
+                    {t("wallet:header.compliance.description")}
                   </p>
                   <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    <li>Available credits exclude pending top ups for the first 48 hours to mitigate chargebacks.</li>
-                    <li>Refunds create reversing ledger entries so that buyer, seller, and platform balances stay aligned.</li>
-                    <li>
-                      Contact support@pluggd.io for ledger disputes. Statements are retained for statutory anti-money laundering
-                      audits.
-                    </li>
+                    <li>{t("wallet:header.compliance.bulletPoints.holdPeriod")}</li>
+                    <li>{t("wallet:header.compliance.bulletPoints.refunds")}</li>
+                    <li>{t("wallet:header.compliance.bulletPoints.disputes")}</li>
                   </ul>
                 </AlertDescription>
               </div>
@@ -117,43 +145,49 @@ const WalletPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription className="text-xs">Total Balance</CardDescription>
+                  <CardDescription className="text-xs">
+                    {t("wallet:balances.total.label")}
+                  </CardDescription>
                   <CardTitle className="text-2xl">
                     {formatCreditsWithGBP(balance.balance_credits)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Total balance
+                    {t("wallet:balances.total.helper")}
                   </p>
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription className="text-xs">Available</CardDescription>
+                  <CardDescription className="text-xs">
+                    {t("wallet:balances.available.label")}
+                  </CardDescription>
                   <CardTitle className="text-2xl text-green-600">
                     {formatCreditsWithGBP(balance.available_credits)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Ready to spend
+                    {t("wallet:balances.available.helper")}
                   </p>
                 </CardContent>
               </Card>
-              
+
               {balance.pending_credits > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription className="text-xs">Pending</CardDescription>
+                    <CardDescription className="text-xs">
+                      {t("wallet:balances.pending.label")}
+                    </CardDescription>
                     <CardTitle className="text-2xl text-yellow-600">
                       {formatCreditsWithGBP(balance.pending_credits)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      Available in 48h
+                      {t("wallet:balances.pending.helper")}
                     </p>
                   </CardContent>
                 </Card>
@@ -162,11 +196,17 @@ const WalletPage = () => {
 
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Ledger snapshot</CardTitle>
+                <CardTitle>{t("wallet:ledger.title")}</CardTitle>
                 <CardDescription>
                   {ledger.length > 0
-                    ? `Based on your last ${ledger.length} ledger ${ledger.length === 1 ? "entry" : "entries"}.`
-                    : "No ledger activity recorded yet."}
+                    ? t("wallet:ledger.description.withEntries", {
+                        count: ledger.length,
+                        entryLabel:
+                          ledger.length === 1
+                            ? t("wallet:ledger.descriptionLabels.entry")
+                            : t("wallet:ledger.descriptionLabels.entries"),
+                      })
+                    : t("wallet:ledger.description.empty")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -175,7 +215,7 @@ const WalletPage = () => {
                     <div className="flex items-center gap-3 rounded-lg border p-4">
                       <CreditCard className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm font-medium">Credits added</p>
+                        <p className="text-sm font-medium">{t("wallet:ledger.summary.creditsAdded")}</p>
                         <p className="text-sm text-muted-foreground">
                           {formatCreditsWithGBP(ledgerSummary.creditsAdded)}
                         </p>
@@ -184,7 +224,7 @@ const WalletPage = () => {
                     <div className="flex items-center gap-3 rounded-lg border p-4">
                       <Upload className="h-5 w-5 text-amber-500" />
                       <div>
-                        <p className="text-sm font-medium">Credits spent</p>
+                        <p className="text-sm font-medium">{t("wallet:ledger.summary.creditsSpent")}</p>
                         <p className="text-sm text-muted-foreground">
                           {formatCreditsWithGBP(ledgerSummary.creditsSpent)}
                         </p>
@@ -193,7 +233,7 @@ const WalletPage = () => {
                     <div className="flex items-center gap-3 rounded-lg border p-4">
                       <Download className={`h-5 w-5 ${ledgerSummary.netMovement >= 0 ? "text-green-600" : "text-red-600"}`} />
                       <div>
-                        <p className="text-sm font-medium">Net movement</p>
+                        <p className="text-sm font-medium">{t("wallet:ledger.summary.netMovement")}</p>
                         <p
                           className={`text-sm font-semibold ${
                             ledgerSummary.netMovement >= 0 ? "text-green-600" : "text-red-600"
@@ -206,7 +246,7 @@ const WalletPage = () => {
                     <div className="flex items-start gap-3 rounded-lg border p-4">
                       <History className="h-5 w-5 text-slate-500" />
                       <div>
-                        <p className="text-sm font-medium">Last transaction</p>
+                        <p className="text-sm font-medium">{t("wallet:ledger.summary.lastTransaction")}</p>
                         {ledgerSummary.lastTransaction ? (
                           <div className="mt-1 space-y-1">
                             <div className="flex items-center gap-2">
@@ -218,18 +258,20 @@ const WalletPage = () => {
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {formatDateLocalized(ledgerSummary.lastTransaction.created_at)}
+                              {new Date(ledgerSummary.lastTransaction.created_at).toLocaleString()}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No activity captured yet.</p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("wallet:ledger.summary.noActivity")}
+                          </p>
                         )}
                       </div>
                     </div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Once you start topping up or spending credits we’ll summarise the movement here.
+                    {t("wallet:ledger.summary.placeholder")}
                   </p>
                 )}
               </CardContent>
@@ -239,10 +281,30 @@ const WalletPage = () => {
           {/* Main Content */}
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="topup">Top Up</TabsTrigger>
-              <TabsTrigger value="cashout">Cash Out</TabsTrigger>
+              <TabsTrigger
+                value="overview"
+                aria-label={getTabLabel("overview", t, locale)}
+              >
+                {t("wallet:tabs.overview")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                aria-label={getTabLabel("activity", t, locale)}
+              >
+                {t("wallet:tabs.activity")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="topup"
+                aria-label={getTabLabel("topUp", t, locale)}
+              >
+                {t("wallet:tabs.topUp")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="cashout"
+                aria-label={getTabLabel("cashOut", t, locale)}
+              >
+                {t("wallet:tabs.cashOut")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
