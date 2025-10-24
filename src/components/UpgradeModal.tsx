@@ -5,7 +5,8 @@ import { Check, Crown, Star, Zap } from "lucide-react";
 import { SubscriptionTier } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useLogger } from "@/hooks/useLogger";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -60,29 +61,59 @@ const tierInfo = {
   }
 };
 
-export const UpgradeModal = ({ 
-  isOpen, 
-  onClose, 
-  currentTier, 
-  requiredTier, 
+export const UpgradeModal = ({
+  isOpen,
+  onClose,
+  currentTier,
+  requiredTier,
   feature,
-  course 
+  course
 }: UpgradeModalProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const baseMetadata = useMemo(
+    () => ({
+      current_tier: currentTier,
+      required_tier: requiredTier ?? null,
+      course_id: course?.id ?? null,
+    }),
+    [course?.id, currentTier, requiredTier]
+  );
+  const { logEvent, logError, correlationId } = useLogger({
+    component: "UpgradeModal",
+    feature: "billing",
+    metadata: baseMetadata,
+  });
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
     try {
+      await logEvent("upgrade_modal_checkout_start", {
+        ...baseMetadata,
+        tier,
+      });
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier }
+        body: { tier, correlationId },
+        headers: { "x-correlation-id": correlationId },
       });
 
       if (error) throw error;
-      
+
       // Open Stripe checkout in new tab
-      window.open(data.url, '_blank');
+      const checkoutUrl = (data as { url?: string } | null)?.url;
+      if (checkoutUrl) {
+        window.open(checkoutUrl, '_blank');
+      }
+      await logEvent("upgrade_modal_checkout_success", {
+        ...baseMetadata,
+        tier,
+        has_checkout_url: Boolean(checkoutUrl),
+      });
       onClose();
     } catch (error) {
+      void logError("upgrade_modal_checkout_error", error, {
+        ...baseMetadata,
+        tier,
+      });
       toast({
         title: "Error",
         description: "Failed to start checkout process.",
@@ -93,24 +124,56 @@ export const UpgradeModal = ({
 
   const handleOneTimePurchase = async () => {
     if (!course) return;
-    
+
     setIsLoading(true);
+    let amountMinor: number | null = null;
     try {
+      amountMinor = course.oneTimePrice ? Math.round(course.oneTimePrice * 100) : null;
+      if (!amountMinor) {
+        void logError("upgrade_modal_course_purchase_error", new Error("invalid_course_price"), {
+          ...baseMetadata,
+          course_id: course.id,
+        });
+        toast({
+          title: "Unavailable",
+          description: "This course is not currently available for one-time purchase.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await logEvent("upgrade_modal_one_time_purchase_start", {
+        ...baseMetadata,
+        course_id: course.id,
+        amount_minor: amountMinor,
+      });
       const { data, error } = await supabase.functions.invoke('create-course-payment', {
-        body: { 
+        body: {
           courseId: course.id,
-          amount: course.oneTimePrice * 100 // Convert to cents
-        }
+          amount: amountMinor,
+          correlationId,
+        },
+        headers: { "x-correlation-id": correlationId },
       });
 
       if (error) throw error;
 
-      if (data.url) {
-        window.open(data.url, '_blank');
+      const checkoutUrl = (data as { url?: string } | null)?.url;
+      if (checkoutUrl) {
+        window.open(checkoutUrl, '_blank');
+        await logEvent("upgrade_modal_one_time_purchase_success", {
+          ...baseMetadata,
+          course_id: course.id,
+          amount_minor: amountMinor,
+          has_checkout_url: true,
+        });
         onClose();
       }
     } catch (error) {
-      console.error('Payment error:', error);
+      void logError("upgrade_modal_course_purchase_error", error, {
+        ...baseMetadata,
+        course_id: course.id,
+        amount_minor: amountMinor ?? undefined,
+      });
       toast({
         title: "Error",
         description: "Failed to start course purchase.",

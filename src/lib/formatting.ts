@@ -44,23 +44,23 @@ export const formatDate = (
     }
 
     const formatOptions: Intl.DateTimeFormatOptions = {
-      dateStyle: includeTime ? undefined : dateStyle,
-      timeStyle: includeTime ? timeStyle : undefined,
       timeZone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       hour12: timeFormat === '12h'
     };
 
-    // If both date and time are needed, use explicit format
     if (includeTime && !relative) {
       formatOptions.year = 'numeric';
       formatOptions.month = dateStyle === 'short' ? 'numeric' : 'short';
       formatOptions.day = 'numeric';
       formatOptions.hour = 'numeric';
       formatOptions.minute = '2-digit';
-      
+
       if (includeTimezone) {
         formatOptions.timeZoneName = 'short';
       }
+    } else {
+      formatOptions.dateStyle = dateStyle;
+      formatOptions.timeStyle = includeTime ? timeStyle : undefined;
     }
 
     const formatter = new Intl.DateTimeFormat(locale, formatOptions);

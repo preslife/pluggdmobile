@@ -110,7 +110,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
-  const { logEvent, logError, logUserAction, trackPromise } = useLogger({
+  const { logEvent, logError, logUserAction, trackPromise, correlationId } = useLogger({
     component: 'useWallet',
     feature: 'wallet',
     metadata: loggerMetadata,
@@ -150,7 +150,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         { user_id: user.id }
       );
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
       toast({
         title: "Error",
         description: "Failed to fetch wallet balance",
@@ -185,7 +184,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         { user_id: user.id, limit }
       );
     } catch (error) {
-      console.error('Error fetching wallet ledger:', error);
       toast({
         title: "Error",
         description: "Failed to fetch transaction history",
@@ -214,7 +212,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         'wallet_topup_checkout',
         async () => {
           const { data, error } = await supabase.functions.invoke('create-credits-checkout', {
-            body: { credits_requested: amount }
+            body: { credits_requested: amount, correlationId },
+            headers: { 'x-correlation-id': correlationId },
           });
 
           if (error) throw error;
@@ -226,7 +225,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
       return { url: data?.url };
     } catch (error) {
-      console.error('Error creating credits checkout:', error);
       void logError('wallet_topup_checkout_failed', error, {
         user_id: user.id,
         credits_requested: amount,
@@ -333,7 +331,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         'wallet_cashout',
         async () => {
           const { error } = await supabase.functions.invoke('cash-out-credits', {
-            body: { amount_credits: amount }
+            body: { amount_credits: amount, correlationId },
+            headers: { 'x-correlation-id': correlationId },
           });
 
           if (error) {
@@ -353,7 +352,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error cashing out credits:', error);
       const parsed = await parseFunctionsError(error);
       toast({
         title: parsed.complianceBlock ? 'Cash-out Blocked' : 'Error',
@@ -385,7 +383,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         'wallet_apply_subscription',
         async () => {
           const { error } = await supabase.functions.invoke('apply-credits-to-subscription', {
-            body: { amount_credits: amount }
+            body: { amount_credits: amount, correlationId },
+            headers: { 'x-correlation-id': correlationId },
           });
 
           if (error) {
@@ -405,7 +404,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error applying credits to subscription:', error);
       const parsed = await parseFunctionsError(error);
       toast({
         title: parsed.complianceBlock ? 'Credits Locked' : 'Error',

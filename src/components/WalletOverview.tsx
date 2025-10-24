@@ -4,22 +4,40 @@ import { Badge } from "@/components/ui/badge";
 import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowUpCircle, ArrowDownCircle, CreditCard, Award } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useLogger } from "@/hooks/useLogger";
 
 export const WalletOverview = () => {
   const { balance, topUpCredits, applyCreditsToSubscription } = useWallet();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError, logUserAction } = useLogger({
+    component: "WalletOverview",
+    feature: "wallet",
+    metadata: loggerMetadata,
+  });
 
   const handleQuickTopUp = async (amount: number) => {
     setLoading(true);
     try {
+      void logUserAction("wallet_quick_topup_selected", { amount });
+      await logEvent("wallet_quick_topup_start", { amount });
       const result = await topUpCredits(amount);
+      if (result.error) {
+        void logError("wallet_quick_topup_failed", new Error(result.error), { amount });
+        return;
+      }
+
       if (result.url) {
         window.open(result.url, '_blank');
       }
+      await logEvent("wallet_quick_topup_complete", {
+        amount,
+        has_checkout_url: Boolean(result.url),
+      });
     } catch (error) {
-      console.error('Error with quick top-up:', error);
+      void logError("wallet_quick_topup_exception", error, { amount });
     } finally {
       setLoading(false);
     }
@@ -30,12 +48,27 @@ export const WalletOverview = () => {
       alert('You need at least 1,000 credits (£10) to apply to subscription');
       return;
     }
-    
+
     setLoading(true);
     try {
-      await applyCreditsToSubscription(1000);
+      void logUserAction("wallet_apply_subscription_selected", { amount: 1000 });
+      await logEvent("wallet_apply_subscription_start", { amount: 1000 });
+      const response = await applyCreditsToSubscription(1000);
+      if (!response.success) {
+        void logError(
+          "wallet_apply_subscription_action_failed",
+          response.error ? new Error(response.error) : new Error("unknown_error"),
+          {
+            amount: 1000,
+            code: response.code,
+            compliance_block: response.complianceBlock,
+          }
+        );
+      } else {
+        await logEvent("wallet_apply_subscription_complete", { amount: 1000 });
+      }
     } catch (error) {
-      console.error('Error applying credits to subscription:', error);
+      void logError("wallet_apply_subscription_exception", error, { amount: 1000 });
     } finally {
       setLoading(false);
     }

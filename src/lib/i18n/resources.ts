@@ -160,6 +160,52 @@ export const baseTranslation = {
     twelveHour: '12 Hour',
     twentyFourHour: '24 Hour'
   },
+  pages: {
+    education: {
+      heading: 'My Learning Dashboard',
+      subheading: 'Continue your journey to mastery',
+      adminButton: 'Admin Panel',
+      upgradeButton: 'Upgrade to Pro',
+      stats: {
+        active: 'Active Courses',
+        completed: 'Completed',
+        hoursLearned: 'Hours Learned',
+        streak: 'Current Streak'
+      }
+    },
+    wallet: {
+      heading: 'Wallet',
+      complianceTitle: 'Compliance notice',
+      complianceDescription:
+        'PLGD Credits are a limited-purpose digital balance. They are non-transferable, do not earn interest, and are not insured deposits.',
+      headingBadge: 'Wallet overview'
+    },
+    live: {
+      heroTagline: 'Get Plugged In',
+      heroTitle: 'Live Battles, Showcases, and Creator Streams',
+      heroSubtitle:
+        'The energy of the culture in real-time. Submit, perform, and get feedback from the community.',
+      ctaJoinSession: 'Join a Session',
+      ctaViewBattles: 'View Battles',
+      ctaJoinCommunity: 'Join the Community',
+      scheduleHeading: 'Upcoming Schedule',
+      statusLiveNow: 'Live now',
+      statusStartingSoon: 'Starting soon',
+      statusScheduleTba: 'Schedule TBA',
+      statusEndsIn: 'Ends {{time}}',
+      statusStartsIn: 'Starts {{time}}',
+      actionJoinSession: 'Join Session',
+      actionViewSession: 'View Session',
+      actionWatchBattle: 'Watch Battle',
+      actionViewBattle: 'View Battle'
+    },
+    messaging: {
+      heading: 'Unified Inbox',
+      description: 'Manage conversations from your connected channels in one place.',
+      filtersTitle: 'Filters',
+      providerPlaceholder: 'All providers'
+    }
+  },
   dates: {
     today: 'Today',
     yesterday: 'Yesterday',
@@ -258,6 +304,15 @@ const esOverrides: TranslationOverrides = {
     previous: 'Anterior',
     yes: 'Sí',
     no: 'No',
+    and: 'y',
+    or: 'o',
+    of: 'de',
+    at: 'a',
+    in: 'en',
+    on: 'el',
+    by: 'por',
+    to: 'a',
+    from: 'de',
     preview: 'Vista previa'
   },
   auth: {
@@ -273,7 +328,9 @@ const esOverrides: TranslationOverrides = {
     invalidCredentials: 'Correo o contraseña inválidos',
     passwordsDoNotMatch: 'Las contraseñas no coinciden',
     accountCreated: 'Cuenta creada correctamente',
-    passwordReset: 'Se envió un correo para restablecer la contraseña'
+    passwordReset: 'Se envió un correo para restablecer la contraseña',
+    signInWithGoogle: 'Iniciar con Google',
+    signInWithGitHub: 'Iniciar con GitHub'
   },
   navigation: {
     home: 'Inicio',
@@ -286,13 +343,14 @@ const esOverrides: TranslationOverrides = {
     profile: 'Perfil',
     settings: 'Configuración',
     help: 'Ayuda',
+    about: 'Acerca de',
     contact: 'Contacto'
   },
   wallet: {
     balance: 'Saldo',
     credits: 'Créditos',
-    topUp: 'Recargar',
-    cashOut: 'Retirar',
+    topUp: 'Recargar créditos',
+    cashOut: 'Retirar fondos',
     transaction: 'Transacción',
     transactionHistory: 'Historial de transacciones',
     amount: 'Importe',
@@ -300,10 +358,66 @@ const esOverrides: TranslationOverrides = {
     type: 'Tipo',
     status: 'Estado',
     pending: 'Pendiente',
-    completed: 'Completado',
-    failed: 'Fallido',
+    completed: 'Completada',
+    failed: 'Fallida',
     insufficientCredits: 'Créditos insuficientes',
-    cashOutSuccess: 'Solicitud de retiro enviada'
+    topUpSuccess: 'Créditos agregados correctamente',
+    cashOutSuccess: 'Solicitud de retiro enviada',
+    transactionFailed: 'La transacción falló',
+    creditsApplied: 'Créditos aplicados a la suscripción',
+    tipSent: 'Propina enviada',
+    purchase: 'Compra',
+    battleEntry: 'Inscripción a la batalla',
+    prizeAwarded: 'Premio otorgado',
+    conversion: 'Conversión',
+    refresh: 'Actualizar',
+    clearFilters: 'Limpiar filtros',
+    noTransactionsFound: 'No se encontraron transacciones'
+  },
+  releases: {
+    title: 'Título',
+    artist: 'Artista',
+    releaseDate: 'Fecha de lanzamiento',
+    genre: 'Género',
+    duration: 'Duración',
+    plays: 'Reproducciones',
+    likes: 'Me gusta',
+    downloads: 'Descargas',
+    price: 'Precio',
+    free: 'Gratis',
+    premium: 'Premium',
+    exclusive: 'Exclusivo',
+    newRelease: 'Nuevo lanzamiento',
+    featuredArtist: 'Artista destacado',
+    albumArt: 'Arte del álbum',
+    trackList: 'Lista de canciones',
+    credits: 'Créditos',
+    description: 'Descripción',
+    tags: 'Etiquetas'
+  },
+  marketplace: {
+    beats: 'Beats',
+    samples: 'Muestras',
+    presets: 'Presets',
+    merchandise: 'Merchandising',
+    services: 'Servicios',
+    featured: 'Destacados',
+    trending: 'Tendencias',
+    newArrivals: 'Novedades',
+    onSale: 'En oferta',
+    category: 'Categoría',
+    priceRange: 'Rango de precios',
+    bpm: 'BPM',
+    key: 'Tonalidad',
+    mood: 'Estado de ánimo',
+    instrument: 'Instrumento',
+    addToCart: 'Agregar al carrito',
+    buyNow: 'Comprar ahora',
+    preview: 'Vista previa',
+    download: 'Descargar',
+    license: 'Licencia',
+    exclusive: 'Derechos exclusivos',
+    nonExclusive: 'Derechos no exclusivos'
   },
   settings: {
     general: 'General',
@@ -315,7 +429,63 @@ const esOverrides: TranslationOverrides = {
     timezone: 'Zona horaria',
     dateFormat: 'Formato de fecha',
     timeFormat: 'Formato de hora',
-    theme: 'Tema'
+    theme: 'Tema',
+    darkMode: 'Modo oscuro',
+    lightMode: 'Modo claro',
+    systemDefault: 'Predeterminado del sistema',
+    emailNotifications: 'Notificaciones por correo',
+    pushNotifications: 'Notificaciones push',
+    marketingEmails: 'Correos promocionales',
+    autoDetect: 'Detección automática',
+    custom: 'Personalizado',
+    twelveHour: '12 horas',
+    twentyFourHour: '24 horas'
+  },
+  pages: {
+    education: {
+      heading: 'Mi panel de aprendizaje',
+      subheading: 'Continúa tu camino hacia la maestría',
+      adminButton: 'Panel de administración',
+      upgradeButton: 'Mejorar a Pro',
+      stats: {
+        active: 'Cursos activos',
+        completed: 'Completados',
+        hoursLearned: 'Horas aprendidas',
+        streak: 'Racha actual'
+      }
+    },
+    wallet: {
+      heading: 'Billetera',
+      complianceTitle: 'Aviso de cumplimiento',
+      complianceDescription:
+        'Los créditos PLGD son un saldo digital de propósito limitado. No son transferibles, no generan intereses y no son depósitos asegurados.',
+      headingBadge: 'Resumen de la billetera'
+    },
+    live: {
+      heroTagline: 'Conéctate',
+      heroTitle: 'Batallas en vivo, showcases y transmisiones de creadores',
+      heroSubtitle:
+        'La energía de la cultura en tiempo real. Presenta, actúa y recibe comentarios de la comunidad.',
+      ctaJoinSession: 'Unirse a una sesión',
+      ctaViewBattles: 'Ver batallas',
+      ctaJoinCommunity: 'Unirse a la comunidad',
+      scheduleHeading: 'Próximos eventos',
+      statusLiveNow: 'En vivo',
+      statusStartingSoon: 'Comienza pronto',
+      statusScheduleTba: 'Horario por confirmar',
+      statusEndsIn: 'Termina {{time}}',
+      statusStartsIn: 'Comienza {{time}}',
+      actionJoinSession: 'Unirse a la sesión',
+      actionViewSession: 'Ver sesión',
+      actionWatchBattle: 'Ver batalla',
+      actionViewBattle: 'Ver batalla'
+    },
+    messaging: {
+      heading: 'Bandeja unificada',
+      description: 'Gestiona conversaciones de tus canales conectados en un solo lugar.',
+      filtersTitle: 'Filtros',
+      providerPlaceholder: 'Todos los proveedores'
+    }
   },
   dates: {
     today: 'Hoy',
@@ -327,7 +497,34 @@ const esOverrides: TranslationOverrides = {
     lastMonth: 'El mes pasado',
     thisYear: 'Este año',
     lastYear: 'El año pasado',
-    justNow: 'Justo ahora'
+    justNow: 'Justo ahora',
+    minutesAgo: 'hace minutos',
+    hoursAgo: 'hace horas',
+    daysAgo: 'hace días',
+    weeksAgo: 'hace semanas',
+    monthsAgo: 'hace meses',
+    yearsAgo: 'hace años'
+  },
+  errors: {
+    networkError: 'Error de red. Verifica tu conexión.',
+    serverError: 'Error del servidor. Inténtalo de nuevo más tarde.',
+    unauthorized: 'No tienes autorización para realizar esta acción.',
+    notFound: 'No se encontró el recurso solicitado.',
+    validationError: 'Revisa la información ingresada e inténtalo nuevamente.',
+    unknownError: 'Ocurrió un error desconocido.',
+    sessionExpired: 'Tu sesión ha expirado. Inicia sesión nuevamente.',
+    maintenanceMode: 'El sistema está en mantenimiento en este momento.'
+  },
+  success: {
+    saved: 'Cambios guardados correctamente',
+    updated: 'Actualizado correctamente',
+    created: 'Creado correctamente',
+    deleted: 'Eliminado correctamente',
+    uploaded: 'Archivo cargado correctamente',
+    downloaded: 'Descarga completada',
+    emailSent: 'Correo enviado correctamente',
+    passwordChanged: 'Contraseña cambiada correctamente',
+    profileUpdated: 'Perfil actualizado correctamente'
   }
 };
 

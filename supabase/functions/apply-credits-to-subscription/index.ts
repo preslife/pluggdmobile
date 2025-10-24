@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,44 +20,71 @@ const normalizeLedgerError = (
   message: string | null | undefined,
   complianceMeta: Record<string, unknown>,
 ): LedgerErrorNormalization => {
-  if (message?.includes('WALLET_BALANCE_NEGATIVE')) {
+  if (message?.includes("WALLET_BALANCE_NEGATIVE")) {
     return {
       status: 409,
       body: {
-        error: 'Credits are locked pending compliance review. Please contact support for assistance.',
-        code: 'WALLET_BALANCE_NEGATIVE',
+        error: "Credits are locked pending compliance review. Please contact support for assistance.",
+        code: "WALLET_BALANCE_NEGATIVE",
         compliance_block: true,
       },
-      logMeta: { reason: 'balance_negative', message, ...complianceMeta },
+      logMeta: { reason: "balance_negative", message, ...complianceMeta },
     };
   }
 
   return {
     status: 500,
     body: {
-      error: 'Unable to record subscription credit application.',
-      code: 'LEDGER_INSERT_FAILED',
+      error: "Unable to record subscription credit application.",
+      code: "LEDGER_INSERT_FAILED",
     },
-    logMeta: { reason: 'unknown', message, ...complianceMeta },
+    logMeta: { reason: "unknown", message, ...complianceMeta },
   };
 };
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(
+    supabaseUrl,
+    supabaseServiceRoleKey,
+    { auth: { persistSession: false } },
+  );
+
+  let rawPayload: Record<string, unknown> = {};
   try {
-    console.log("[APPLY-CREDITS-TO-SUBSCRIPTION] Function started");
+    rawPayload = await req.json();
+  } catch {
+    rawPayload = {};
+  }
 
-    // Initialize Supabase client with service role
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+  const amountCredits = typeof rawPayload?.amount_credits === "number"
+    ? (rawPayload.amount_credits as number)
+    : undefined;
+  const requestCorrelationId =
+    (typeof rawPayload?.correlationId === "string" ? (rawPayload.correlationId as string) : undefined) ??
+    req.headers.get("x-correlation-id") ??
+    generateCorrelationId();
 
-    // Get authenticated user
+  const logger = createSystemLogger(supabaseClient, {
+    component: "apply_credits_to_subscription",
+    feature: "wallet",
+    correlationId: requestCorrelationId,
+    message: "Apply wallet credits to subscription",
+  });
+
+  let userId: string | null = null;
+
+  try {
+    await logger.info("apply_subscription_request_received", {
+      amount_credits: amountCredits,
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -65,80 +93,85 @@ serve(async (req) => {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
+    userId = user.id;
 
-    console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] User: ${user.id}`);
+    await logger.info("apply_subscription_user_authenticated", {
+      user_id: user.id,
+    });
 
-    // Parse request body
-    const { amount_credits } = await req.json();
-    
-    if (!amount_credits || amount_credits < 100) {
+    if (!amountCredits || amountCredits < 100) {
       throw new Error("Minimum application is 100 credits (£1)");
     }
 
-    // Check user balance
-    const { data: balanceData, error: balanceError } = await supabaseClient.rpc('get_wallet_balance', {
-      p_user_id: user.id
+    const { data: balanceData, error: balanceError } = await supabaseClient.rpc("get_wallet_balance", {
+      p_user_id: user.id,
     });
-
     if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
-    
+
     const balance = balanceData as any;
-    if (balance.available_credits < amount_credits) {
+    if (balance.available_credits < amountCredits) {
       throw new Error("Insufficient available credits");
     }
 
-    // Initialize Stripe
+    await logger.info("apply_subscription_balance_validated", {
+      user_id: user.id,
+      available_credits: balance.available_credits,
+      amount_credits: amountCredits,
+    });
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe secret key not configured");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Find Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
       throw new Error("No Stripe customer found. Please subscribe first.");
     }
 
     const customerId = customers.data[0].id;
-    console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] Customer: ${customerId}`);
-
-    // Calculate credit amount in pence
-    const creditAmountPence = Math.round((amount_credits / CREDITS_PER_GBP) * 100);
-
-    // Create customer balance transaction (credit to account)
-    const balanceTransaction = await stripe.customers.createBalanceTransaction(customerId, {
-      amount: -creditAmountPence, // Negative amount = credit to customer
-      currency: 'gbp',
-      description: `Applied ${amount_credits.toLocaleString()} PLGD Credits to account`,
-      metadata: {
-        user_id: user.id,
-        credits_applied: amount_credits.toString(),
-        source: 'wallet_credits'
-      }
+    await logger.info("apply_subscription_customer_resolved", {
+      user_id: user.id,
+      customer_id: customerId,
     });
 
-    console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] Balance transaction: ${balanceTransaction.id}`);
+    const creditAmountPence = Math.round((amountCredits / CREDITS_PER_GBP) * 100);
 
-    // Create ledger entry
+    const balanceTransaction = await stripe.customers.createBalanceTransaction(customerId, {
+      amount: -creditAmountPence,
+      currency: "gbp",
+      description: `Applied ${amountCredits.toLocaleString()} PLGD Credits to account`,
+      metadata: {
+        user_id: user.id,
+        credits_applied: amountCredits.toString(),
+        source: "wallet_credits",
+      },
+    });
+
+    await logger.info("apply_subscription_stripe_balance_transaction", {
+      user_id: user.id,
+      customer_id: customerId,
+      balance_transaction_id: balanceTransaction.id,
+      amount_minor: creditAmountPence,
+    });
+
     const complianceMeta = {
-      event: 'apply_credits_to_subscription',
+      event: "apply_credits_to_subscription",
       actor_user_id: user.id,
       occurred_at: new Date().toISOString(),
-      amount_credits,
+      amount_credits: amountCredits,
       balance_before: balance.balance_credits,
       available_before: balance.available_credits,
-      available_after: balance.available_credits - amount_credits,
-    };
-
-    console.info('[APPLY-CREDITS-TO-SUBSCRIPTION] Compliance metadata', complianceMeta);
+      available_after: balance.available_credits - amountCredits,
+    } as Record<string, unknown>;
 
     const { error: ledgerError } = await supabaseClient
-      .from('wallet_ledger')
+      .from("wallet_ledger")
       .insert({
         user_id: user.id,
-        kind: 'convert_sub_applied',
-        amount_credits: -amount_credits,
-        ref_type: 'subscription',
+        kind: "convert_sub_applied",
+        amount_credits: -amountCredits,
+        ref_type: "subscription",
         ref_id: balanceTransaction.id,
         meta: {
           stripe_customer_id: customerId,
@@ -150,29 +183,39 @@ serve(async (req) => {
 
     if (ledgerError) {
       const normalized = normalizeLedgerError(ledgerError.message, complianceMeta);
-      console.warn('[APPLY-CREDITS-TO-SUBSCRIPTION] Ledger insert blocked', normalized.logMeta);
-      return new Response(JSON.stringify(normalized.body), {
+      await logger.warn("apply_subscription_ledger_blocked", {
+        user_id: user.id,
+        ...normalized.logMeta,
+      });
+      return new Response(JSON.stringify({ ...normalized.body, correlationId: requestCorrelationId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: normalized.status,
       });
     }
 
-    console.log(`[APPLY-CREDITS-TO-SUBSCRIPTION] Credits applied successfully`);
+    await logger.info("apply_subscription_success", {
+      user_id: user.id,
+      amount_credits: amountCredits,
+      credit_amount_pence: creditAmountPence,
+    });
 
     return new Response(JSON.stringify({
       success: true,
       credit_amount_gbp: (creditAmountPence / 100).toFixed(2),
-      balance_transaction_id: balanceTransaction.id
+      balance_transaction_id: balanceTransaction.id,
+      correlationId: requestCorrelationId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[APPLY-CREDITS-TO-SUBSCRIPTION] Error: ${errorMessage}`);
+    await logger.error("apply_subscription_failed", error, {
+      user_id: userId,
+      amount_credits: amountCredits,
+    });
 
-    return new Response(JSON.stringify({ error: errorMessage, code: 'UNEXPECTED_ERROR' }), {
+    return new Response(JSON.stringify({ error: errorMessage, code: "UNEXPECTED_ERROR", correlationId: requestCorrelationId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

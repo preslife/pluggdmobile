@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, AlertTriangle, Eye, Check, X, Flag, Music, MessageSquare, Users } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { useLogger } from '@/hooks/useLogger';
 import { Checkbox } from '@/components/ui/checkbox';
 
 type ModerationItem = {
