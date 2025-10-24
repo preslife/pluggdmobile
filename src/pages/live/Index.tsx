@@ -11,28 +11,45 @@ import { Users, Calendar, Trophy, Plug, Clock } from "lucide-react";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import type { LiveScheduleItem } from "@/hooks/useLiveSchedule";
 
 const ScheduleItemCard = ({ item, now }: { item: LiveScheduleItem; now: Date }) => {
+  const { t, formatDate: formatLocaleDate } = useTranslation();
   const nowTime = now.getTime();
   let statusLabel = "";
   if (item.status === "live") {
     statusLabel = item.endsAt
-      ? `Ends ${formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}`
-      : "Live now";
+      ? t("pages.live.statusEndsIn", {
+          time: formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })
+        })
+      : t("pages.live.statusLiveNow");
   } else if (item.scheduledFor) {
     const startTime = new Date(item.scheduledFor).getTime();
     statusLabel = startTime <= nowTime
-      ? "Starting soon"
-      : `Starts ${formatDistanceToNow(new Date(item.scheduledFor), { addSuffix: true })}`;
+      ? t("pages.live.statusStartingSoon")
+      : t("pages.live.statusStartsIn", {
+          time: formatDistanceToNow(new Date(item.scheduledFor), { addSuffix: true })
+        });
   } else {
-    statusLabel = "Schedule TBA";
+    statusLabel = t("pages.live.statusScheduleTba");
   }
 
   const actionLabel = item.type === "session"
-    ? item.status === "live" ? "Join Session" : "View Session"
-    : item.status === "live" ? "Watch Battle" : "View Battle";
+    ? item.status === "live"
+      ? t("pages.live.actionJoinSession")
+      : t("pages.live.actionViewSession")
+    : item.status === "live"
+      ? t("pages.live.actionWatchBattle")
+      : t("pages.live.actionViewBattle");
+
+  const formattedScheduleTime = item.scheduledFor
+    ? formatLocaleDate(new Date(item.scheduledFor), {
+        dateStyle: "medium",
+        timeStyle: "short"
+      })
+    : null;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -45,7 +62,7 @@ const ScheduleItemCard = ({ item, now }: { item: LiveScheduleItem; now: Date }) 
               {item.status === "live" ? (
                 <span className="inline-flex items-center gap-2 font-semibold text-red-500">
                   <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
-                  Live now
+                  {t("pages.live.statusLiveNow")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-2">
@@ -55,17 +72,21 @@ const ScheduleItemCard = ({ item, now }: { item: LiveScheduleItem; now: Date }) 
               )}
             </div>
           </div>
-          {item.scheduledFor && (
+          {formattedScheduleTime && (
             <div className="text-right text-sm text-muted-foreground">
               <div className="flex items-center justify-end gap-1">
                 <Calendar className="h-4 w-4" aria-hidden />
-                {new Date(item.scheduledFor).toLocaleString()}
+                {formattedScheduleTime}
               </div>
             </div>
           )}
         </div>
         {item.status === "live" && item.endsAt && (
-          <p className="text-sm text-muted-foreground">Ends {formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("pages.live.statusEndsIn", {
+              time: formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })
+            })}
+          </p>
         )}
       </CardHeader>
       <CardContent>
@@ -84,6 +105,7 @@ export default function LiveIndex() {
   const { rooms, loading } = useSessionRooms();
   const { schedule, loading: scheduleLoading } = useLiveSchedule();
   const now = useNow(60_000);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setMeta("Live Sessions & Events", "Join live music sessions, battles, and events with fellow creators");
@@ -101,18 +123,18 @@ export default function LiveIndex() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 text-primary mb-4">
               <Plug className="w-5 h-5" />
-              <span className="uppercase tracking-widest text-xs">Get Plugged In</span>
+              <span className="uppercase tracking-widest text-xs">{t('pages.live.heroTagline')}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
-              Live Battles, Showcases, and Creator Streams
+              {t('pages.live.heroTitle')}
             </h1>
             <p className="mt-4 text-muted-foreground max-w-2xl">
-              The energy of the culture in real-time. Submit, perform, and get feedback from the community.
+              {t('pages.live.heroSubtitle')}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/live/sessions"><Button>Join a Session</Button></Link>
-              <Link to="/live/battles"><Button variant="outline">View Battles</Button></Link>
-              <Link to="/auth"><Button variant="hero">Join the Community</Button></Link>
+              <Link to="/live/sessions"><Button>{t('pages.live.ctaJoinSession')}</Button></Link>
+              <Link to="/live/battles"><Button variant="outline">{t('pages.live.ctaViewBattles')}</Button></Link>
+              <Link to="/auth"><Button variant="hero">{t('pages.live.ctaJoinCommunity')}</Button></Link>
             </div>
           </div>
         </header>
@@ -121,7 +143,7 @@ export default function LiveIndex() {
         <section className="py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Live Schedule</h2>
+              <h2 className="text-2xl font-semibold">{t('pages.live.scheduleHeading')}</h2>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/live/sessions">View Sessions</Link>
               </Button>
