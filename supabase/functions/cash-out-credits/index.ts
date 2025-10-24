@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,44 +19,71 @@ const normalizeLedgerError = (
   message: string | null | undefined,
   complianceMeta: Record<string, unknown>,
 ): LedgerErrorNormalization => {
-  if (message?.includes('WALLET_BALANCE_NEGATIVE')) {
+  if (message?.includes("WALLET_BALANCE_NEGATIVE")) {
     return {
       status: 409,
       body: {
-        error: 'Cash-out is blocked because the wallet balance would drop below zero.',
-        code: 'WALLET_BALANCE_NEGATIVE',
+        error: "Cash-out is blocked because the wallet balance would drop below zero.",
+        code: "WALLET_BALANCE_NEGATIVE",
         compliance_block: true,
       },
-      logMeta: { reason: 'balance_negative', message, ...complianceMeta },
+      logMeta: { reason: "balance_negative", message, ...complianceMeta },
     };
   }
 
   return {
     status: 500,
     body: {
-      error: 'Unable to record cash-out request.',
-      code: 'LEDGER_INSERT_FAILED',
+      error: "Unable to record cash-out request.",
+      code: "LEDGER_INSERT_FAILED",
     },
-    logMeta: { reason: 'unknown', message, ...complianceMeta },
+    logMeta: { reason: "unknown", message, ...complianceMeta },
   };
 };
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(
+    supabaseUrl,
+    supabaseServiceRoleKey,
+    { auth: { persistSession: false } },
+  );
+
+  let rawPayload: Record<string, unknown> = {};
   try {
-    console.log("[CASH-OUT-CREDITS] Function started");
+    rawPayload = await req.json();
+  } catch {
+    rawPayload = {};
+  }
 
-    // Initialize Supabase client with service role
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+  const amountCredits = typeof rawPayload?.amount_credits === "number"
+    ? (rawPayload.amount_credits as number)
+    : undefined;
+  const requestCorrelationId =
+    (typeof rawPayload?.correlationId === "string" ? (rawPayload.correlationId as string) : undefined) ??
+    req.headers.get("x-correlation-id") ??
+    generateCorrelationId();
 
-    // Get authenticated user
+  const logger = createSystemLogger(supabaseClient, {
+    component: "cash_out_credits",
+    feature: "wallet",
+    correlationId: requestCorrelationId,
+    message: "Wallet cash-out request",
+  });
+
+  let userId: string | null = null;
+
+  try {
+    await logger.info("cash_out_request_received", {
+      amount_credits: amountCredits,
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -65,35 +92,37 @@ serve(async (req) => {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user) throw new Error("User not authenticated");
+    userId = user.id;
 
-    console.log(`[CASH-OUT-CREDITS] User: ${user.id}`);
+    await logger.info("cash_out_user_authenticated", {
+      user_id: user.id,
+    });
 
-    // Parse request body
-    const { amount_credits } = await req.json();
-    
-    if (!amount_credits || amount_credits < 1000) {
+    if (!amountCredits || amountCredits < 1000) {
       throw new Error("Minimum cash-out is 1,000 credits (£10)");
     }
 
-    // Check user balance
-    const { data: balanceData, error: balanceError } = await supabaseClient.rpc('get_wallet_balance', {
-      p_user_id: user.id
+    const { data: balanceData, error: balanceError } = await supabaseClient.rpc("get_wallet_balance", {
+      p_user_id: user.id,
     });
-
     if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
-    
+
     const balance = balanceData as any;
-    if (balance.available_credits < amount_credits) {
+    if (balance.available_credits < amountCredits) {
       throw new Error("Insufficient available credits");
     }
 
-    // Check Stripe Connect account
-    const { data: stripeAccount, error: stripeError } = await supabaseClient
-      .from('producer_stripe_accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    await logger.info("cash_out_balance_validated", {
+      user_id: user.id,
+      available_credits: balance.available_credits,
+      amount_credits: amountCredits,
+    });
 
+    const { data: stripeAccount, error: stripeError } = await supabaseClient
+      .from("producer_stripe_accounts")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
     if (stripeError || !stripeAccount) {
       throw new Error("Stripe Connect account not found. Please set up your payout account first.");
     }
@@ -102,44 +131,45 @@ serve(async (req) => {
       throw new Error("Stripe Connect account not fully set up for payouts");
     }
 
-    // Get user tier for commission calculation
-    const { data: tierData, error: tierError } = await supabaseClient.rpc('get_user_tier_limits', {
-      user_id: user.id
+    const { data: tierData, error: tierError } = await supabaseClient.rpc("get_user_tier_limits", {
+      user_id: user.id,
     });
-
     if (tierError) throw new Error(`Tier check failed: ${tierError.message}`);
-    
-    const commissionRate = (tierData as any)?.commission_rate || 15.00;
-    
-    // Calculate amounts
-    const grossAmountPence = Math.round((amount_credits / CREDITS_PER_GBP) * 100);
+
+    const commissionRate = (tierData as any)?.commission_rate || 15.0;
+
+    const grossAmountPence = Math.round((amountCredits / CREDITS_PER_GBP) * 100);
     const commissionAmountPence = Math.round(grossAmountPence * (commissionRate / 100));
     const netAmountPence = grossAmountPence - commissionAmountPence;
 
-    console.log(`[CASH-OUT-CREDITS] Gross: ${grossAmountPence}p, Commission: ${commissionAmountPence}p, Net: ${netAmountPence}p`);
+    await logger.info("cash_out_amounts_calculated", {
+      user_id: user.id,
+      amount_credits: amountCredits,
+      gross_amount_pence: grossAmountPence,
+      commission_amount_pence: commissionAmountPence,
+      net_amount_pence: netAmountPence,
+      commission_rate: commissionRate,
+    });
 
-    // Create ledger entry for cash-out
     const complianceMeta = {
-      event: 'cash_out_request',
+      event: "cash_out_request",
       actor_user_id: user.id,
       occurred_at: new Date().toISOString(),
-      amount_credits,
+      amount_credits: amountCredits,
       gross_amount_pence: grossAmountPence,
       commission_amount_pence: commissionAmountPence,
       net_amount_pence: netAmountPence,
       available_before: balance.available_credits,
-      available_after: balance.available_credits - amount_credits,
-    };
-
-    console.info('[CASH-OUT-CREDITS] Compliance metadata', complianceMeta);
+      available_after: balance.available_credits - amountCredits,
+    } as Record<string, unknown>;
 
     const { error: ledgerError } = await supabaseClient
-      .from('wallet_ledger')
+      .from("wallet_ledger")
       .insert({
         user_id: user.id,
-        kind: 'convert_cashout',
-        amount_credits: -amount_credits,
-        ref_type: 'cashout',
+        kind: "convert_cashout",
+        amount_credits: -amountCredits,
+        ref_type: "cashout",
         meta: {
           gross_amount_pence: grossAmountPence,
           commission_amount_pence: commissionAmountPence,
@@ -151,43 +181,51 @@ serve(async (req) => {
 
     if (ledgerError) {
       const normalized = normalizeLedgerError(ledgerError.message, complianceMeta);
-      console.warn('[CASH-OUT-CREDITS] Ledger insert blocked', normalized.logMeta);
-      return new Response(JSON.stringify(normalized.body), {
+      await logger.warn("cash_out_ledger_blocked", {
+        user_id: user.id,
+        ...normalized.logMeta,
+      });
+      return new Response(JSON.stringify({ ...normalized.body, correlationId: requestCorrelationId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: normalized.status,
       });
     }
 
-    // Create payout record
     const { error: payoutError } = await supabaseClient
-      .from('producer_payouts')
+      .from("producer_payouts")
       .insert({
         producer_id: user.id,
         amount_pence: netAmountPence,
         commission_pence: commissionAmountPence,
-        status: 'pending',
-        payout_type: 'wallet_cashout',
+        status: "pending",
+        payout_type: "wallet_cashout",
         from_credits: true,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       });
 
     if (payoutError) throw new Error(`Payout record creation failed: ${payoutError.message}`);
 
-    console.log(`[CASH-OUT-CREDITS] Cash-out request created successfully`);
+    await logger.info("cash_out_request_created", {
+      user_id: user.id,
+      net_amount_pence: netAmountPence,
+    });
 
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: true,
-      net_amount_gbp: (netAmountPence / 100).toFixed(2)
+      net_amount_gbp: (netAmountPence / 100).toFixed(2),
+      correlationId: requestCorrelationId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[CASH-OUT-CREDITS] Error: ${errorMessage}`);
+    await logger.error("cash_out_failed", error, {
+      user_id: userId,
+      amount_credits: amountCredits,
+    });
 
-    return new Response(JSON.stringify({ error: errorMessage, code: 'UNEXPECTED_ERROR' }), {
+    return new Response(JSON.stringify({ error: errorMessage, code: "UNEXPECTED_ERROR", correlationId: requestCorrelationId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

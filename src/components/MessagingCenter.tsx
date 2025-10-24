@@ -226,7 +226,6 @@ export const MessagingCenter = () => {
       }
       setUnreadCount(unread);
     } catch (error) {
-      console.error("Error fetching inbox unread count:", error);
       status = 500;
       setUnreadCount(0);
       void logError("inbox_unread_fetch_failed", error, { user_id: user.id });
@@ -322,7 +321,6 @@ export const MessagingCenter = () => {
 
         return mapped[0];
       } catch (error) {
-        console.error("Error fetching inbox threads:", error);
         status = 500;
         if (reset) {
           setThreads([]);
@@ -424,7 +422,6 @@ export const MessagingCenter = () => {
           const { error: markError } = await supabase.rpc("inbox_mark_thread_read", { p_thread_id: thread.threadId });
           if (markError) {
             markStatus = 500;
-            console.error("Error marking thread as read:", markError);
             void logError("inbox_mark_thread_read_failed", markError, {
               user_id: user.id,
               thread_id: thread.threadId,
@@ -447,7 +444,6 @@ export const MessagingCenter = () => {
           await fetchUnreadCount();
         }
       } catch (error) {
-        console.error("Error fetching inbox messages:", error);
         status = 500;
         if (reset) {
           setMessages([]);
@@ -558,7 +554,11 @@ export const MessagingCenter = () => {
           });
 
           if (error) {
-            console.error("Error fetching realtime inbox message:", error);
+            void logError("inbox_realtime_message_fetch_failed", error, {
+              user_id: user.id,
+              thread_id: record.thread_id,
+              message_id: record.id,
+            });
             return;
           }
 
@@ -616,7 +616,6 @@ export const MessagingCenter = () => {
               });
               if (realtimeMarkError) {
                 markStatus = 500;
-                console.error("Error marking thread read from realtime:", realtimeMarkError);
                 void logError("inbox_mark_thread_read_failed", realtimeMarkError, {
                   user_id: user.id,
                   thread_id: mapped.threadId,
@@ -741,11 +740,11 @@ export const MessagingCenter = () => {
         thread_id: activeThread.threadId,
       });
     } catch (error) {
-      console.error("Error sending message:", error);
       setMessages((prev) => prev.filter((message) => message.id !== optimisticId));
       status = 500;
       void logError("inbox_send_failed", error, {
         thread_id: activeThread.threadId,
+        user_id: user.id,
       });
     } finally {
       setSendingMessage(false);
@@ -947,7 +946,12 @@ export const MessagingCenter = () => {
                       className="flex-1"
                       disabled={sendingMessage}
                     />
-                    <Button onClick={sendMessage} size="sm" disabled={sendingMessage || !newMessage.trim()}>
+                    <Button
+                      onClick={sendMessage}
+                      size="sm"
+                      disabled={sendingMessage || !newMessage.trim()}
+                      aria-label="Send message"
+                    >
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>

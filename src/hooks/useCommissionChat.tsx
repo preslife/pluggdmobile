@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLogger } from '@/hooks/useLogger';
 
 export type CommissionMessage = {
   id: string;
@@ -12,10 +13,16 @@ export type CommissionMessage = {
 export const useCommissionChat = (commissionId: string) => {
   const [messages, setMessages] = useState<CommissionMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const loggerMetadata = useMemo(() => ({ commission_id: commissionId || null }), [commissionId]);
+  const { logEvent, logError } = useLogger({
+    component: 'useCommissionChat',
+    feature: 'messaging',
+    metadata: loggerMetadata,
+  });
 
   const fetchMessages = useCallback(async () => {
     if (!commissionId) return;
-    
+
     setLoading(true);
     const { data, error } = await supabase
       .from('commission_messages')
@@ -24,16 +31,24 @@ export const useCommissionChat = (commissionId: string) => {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching messages:', error);
+      void logError('commission_chat_fetch_failed', error, { commission_id: commissionId });
     } else {
       setMessages(data || []);
+      await logEvent('commission_chat_fetch_success', {
+        commission_id: commissionId,
+        message_count: data?.length ?? 0,
+      });
     }
     setLoading(false);
-  }, [commissionId]);
+  }, [commissionId, logError, logEvent]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!commissionId || !content.trim()) return { error: new Error('Invalid message') };
 
+    await logEvent('commission_chat_send_attempt', {
+      commission_id: commissionId,
+      content_length: content.trim().length,
+    });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: new Error('Not authenticated') };
 
@@ -46,11 +61,20 @@ export const useCommissionChat = (commissionId: string) => {
       });
 
     if (error) {
+      void logError('commission_chat_send_failed', error, {
+        commission_id: commissionId,
+        content_length: content.trim().length,
+      });
       return { error };
     }
 
+    await logEvent('commission_chat_send_success', {
+      commission_id: commissionId,
+      content_length: content.trim().length,
+    });
+
     return { ok: true };
-  }, [commissionId]);
+  }, [commissionId, logEvent, logError]);
 
   // Set up realtime subscription
   useEffect(() => {

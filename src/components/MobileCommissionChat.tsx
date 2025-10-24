@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLogger } from '@/hooks/useLogger';
 import {
   Send,
   Paperclip,
@@ -37,10 +38,10 @@ interface MobileCommissionChatProps {
   status: string;
 }
 
-export const MobileCommissionChat = ({ 
-  commissionId, 
-  recipientName, 
-  status 
+export const MobileCommissionChat = ({
+  commissionId,
+  recipientName,
+  status
 }: MobileCommissionChatProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -55,6 +56,19 @@ export const MobileCommissionChat = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const activeStreamRef = useRef<MediaStream | null>(null);
+  const loggerMetadata = useMemo(
+    () => ({
+      commission_id: commissionId,
+      recipient_name: recipientName,
+      user_id: user?.id ?? null,
+    }),
+    [commissionId, recipientName, user?.id]
+  );
+  const { logEvent, logError } = useLogger({
+    component: 'MobileCommissionChat',
+    feature: 'messaging',
+    metadata: loggerMetadata,
+  });
 
   useEffect(() => {
     scrollToBottom();
@@ -89,7 +103,11 @@ export const MobileCommissionChat = ({
 
     setMessages(prev => [...prev, message]);
     setNewMessage('');
-    
+    void logEvent('mobile_commission_text_message_sent', {
+      commission_id: commissionId,
+      content_length: message.content.length,
+    });
+
     // Simulate delivery status updates
     setTimeout(() => {
       setMessages(prev => prev.map(m => 
@@ -130,6 +148,11 @@ export const MobileCommissionChat = ({
     };
 
     setMessages(prev => [...prev, message]);
+    void logEvent('mobile_commission_file_shared', {
+      commission_id: commissionId,
+      file_name: file.name,
+      file_size: file.size,
+    });
     toast({ title: 'File shared', description: `${file.name} has been shared` });
   };
 
@@ -163,6 +186,10 @@ export const MobileCommissionChat = ({
     setIsUploadingAudio(true);
 
     try {
+      await logEvent('mobile_commission_voice_message_start', {
+        commission_id: commissionId,
+        size: blob.size,
+      });
       const publicUrl = await uploadAudioBlob(blob);
       const fallbackUrl = publicUrl ?? URL.createObjectURL(blob);
       const messageId = crypto.randomUUID();
@@ -189,11 +216,19 @@ export const MobileCommissionChat = ({
           : 'Shared locally from this device.'
       });
 
+      await logEvent('mobile_commission_voice_message_complete', {
+        commission_id: commissionId,
+        has_public_url: Boolean(publicUrl),
+      });
+
       if (!publicUrl) {
         setTimeout(() => URL.revokeObjectURL(fallbackUrl), 60_000);
       }
     } catch (error: any) {
-      console.error('Failed to upload voice note', error);
+      void logError('mobile_commission_voice_message_failed', error, {
+        commission_id: commissionId,
+        size: blob.size,
+      });
       toast({
         title: 'Upload failed',
         description: error?.message ?? 'Unable to send your voice message right now.',
@@ -247,7 +282,9 @@ export const MobileCommissionChat = ({
       setIsRecording(true);
       toast({ title: 'Recording', description: 'Tap the mic again to finish.' });
     } catch (error: any) {
-      console.error('Unable to start recording', error);
+      void logError('mobile_commission_recording_failed', error, {
+        commission_id: commissionId,
+      });
       toast({
         title: 'Recording failed',
         description: error?.message ?? 'We could not access the microphone.',
