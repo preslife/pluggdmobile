@@ -55,6 +55,45 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+vi.mock("@/hooks/useTranslation", () => ({
+  useTranslation: () => {
+    const translations: Record<string, string> = {
+      "messaging:title": "Messages",
+      "messaging:searchPlaceholder": "Search inbox...",
+      "messaging:loadingConversations": "Loading conversations...",
+      "messaging:emptyState": "No conversations yet",
+      "messaging:loading": "Loading...",
+      "messaging:loadMore": "Load more",
+      "messaging:threadFallback": "Inbox",
+      "messaging:threadHeaderFallback": "Inbox thread",
+      "messaging:authorPrefix": "{{author}}: ",
+      "messaging:badgeOverflow": "{{count}}+",
+      "messaging:loadPreviousMessages": "Load previous messages",
+      "messaging:loadingMessages": "Loading messages...",
+      "messaging:optimisticStatus": " • sending",
+      "messaging:composerPlaceholder": "Type a message...",
+      "messaging:emptyThreadState": "Select a conversation to start messaging",
+    };
+
+    const t = (key: string, params?: Record<string, string | number>) => {
+      const template = translations[key] ?? key;
+      if (!params) {
+        return template;
+      }
+
+      return Object.entries(params).reduce(
+        (acc, [paramKey, value]) => acc.replaceAll(`{{${paramKey}}}`, String(value)),
+        template
+      );
+    };
+
+    return {
+      t,
+      locale: "en-GB",
+    };
+  },
+}));
+
 vi.mock("@/hooks/useLogger", () => ({
   useLogger: () => ({
     logger: {} as any,
