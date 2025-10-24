@@ -160,6 +160,52 @@ export const baseTranslation = {
     twelveHour: '12 Hour',
     twentyFourHour: '24 Hour'
   },
+  pages: {
+    education: {
+      heading: 'My Learning Dashboard',
+      subheading: 'Continue your journey to mastery',
+      adminButton: 'Admin Panel',
+      upgradeButton: 'Upgrade to Pro',
+      stats: {
+        active: 'Active Courses',
+        completed: 'Completed',
+        hoursLearned: 'Hours Learned',
+        streak: 'Current Streak'
+      }
+    },
+    wallet: {
+      heading: 'Wallet',
+      complianceTitle: 'Compliance notice',
+      complianceDescription:
+        'PLGD Credits are a limited-purpose digital balance. They are non-transferable, do not earn interest, and are not insured deposits.',
+      headingBadge: 'Wallet overview'
+    },
+    live: {
+      heroTagline: 'Get Plugged In',
+      heroTitle: 'Live Battles, Showcases, and Creator Streams',
+      heroSubtitle:
+        'The energy of the culture in real-time. Submit, perform, and get feedback from the community.',
+      ctaJoinSession: 'Join a Session',
+      ctaViewBattles: 'View Battles',
+      ctaJoinCommunity: 'Join the Community',
+      scheduleHeading: 'Upcoming Schedule',
+      statusLiveNow: 'Live now',
+      statusStartingSoon: 'Starting soon',
+      statusScheduleTba: 'Schedule TBA',
+      statusEndsIn: 'Ends {{time}}',
+      statusStartsIn: 'Starts {{time}}',
+      actionJoinSession: 'Join Session',
+      actionViewSession: 'View Session',
+      actionWatchBattle: 'Watch Battle',
+      actionViewBattle: 'View Battle'
+    },
+    messaging: {
+      heading: 'Unified Inbox',
+      description: 'Manage conversations from your connected channels in one place.',
+      filtersTitle: 'Filters',
+      providerPlaceholder: 'All providers'
+    }
+  },
   dates: {
     today: 'Today',
     yesterday: 'Yesterday',
@@ -389,11 +435,57 @@ const esOverrides: TranslationOverrides = {
     systemDefault: 'Predeterminado del sistema',
     emailNotifications: 'Notificaciones por correo',
     pushNotifications: 'Notificaciones push',
-    marketingEmails: 'Correos de marketing',
+    marketingEmails: 'Correos promocionales',
     autoDetect: 'Detección automática',
     custom: 'Personalizado',
     twelveHour: '12 horas',
     twentyFourHour: '24 horas'
+  },
+  pages: {
+    education: {
+      heading: 'Mi panel de aprendizaje',
+      subheading: 'Continúa tu camino hacia la maestría',
+      adminButton: 'Panel de administración',
+      upgradeButton: 'Mejorar a Pro',
+      stats: {
+        active: 'Cursos activos',
+        completed: 'Completados',
+        hoursLearned: 'Horas aprendidas',
+        streak: 'Racha actual'
+      }
+    },
+    wallet: {
+      heading: 'Billetera',
+      complianceTitle: 'Aviso de cumplimiento',
+      complianceDescription:
+        'Los créditos PLGD son un saldo digital de propósito limitado. No son transferibles, no generan intereses y no son depósitos asegurados.',
+      headingBadge: 'Resumen de la billetera'
+    },
+    live: {
+      heroTagline: 'Conéctate',
+      heroTitle: 'Batallas en vivo, showcases y transmisiones de creadores',
+      heroSubtitle:
+        'La energía de la cultura en tiempo real. Presenta, actúa y recibe comentarios de la comunidad.',
+      ctaJoinSession: 'Unirse a una sesión',
+      ctaViewBattles: 'Ver batallas',
+      ctaJoinCommunity: 'Unirse a la comunidad',
+      scheduleHeading: 'Próximos eventos',
+      statusLiveNow: 'En vivo',
+      statusStartingSoon: 'Comienza pronto',
+      statusScheduleTba: 'Horario por confirmar',
+      statusEndsIn: 'Termina {{time}}',
+      statusStartsIn: 'Comienza {{time}}',
+      actionJoinSession: 'Unirse a la sesión',
+      actionViewSession: 'Ver sesión',
+      actionWatchBattle: 'Ver batalla',
+      actionViewBattle: 'Ver batalla'
+    },
+    messaging: {
+      heading: 'Bandeja unificada',
+      description: 'Gestiona conversaciones de tus canales conectados en un solo lugar.',
+      filtersTitle: 'Filtros',
+      providerPlaceholder: 'Todos los proveedores'
+    }
   },
   dates: {
     today: 'Hoy',

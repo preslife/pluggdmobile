@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { SubscriptionGatedContent } from '../SubscriptionGatedContent';
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1' } }),
@@ -57,15 +56,38 @@ vi.mock('@/integrations/supabase/client', () => {
   };
 });
 
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    apiCall: vi.fn(),
-    userAction: vi.fn(),
-  },
+const loggerSpies = vi.hoisted(() => ({
+  logEvent: vi.fn(async () => {}),
+  logError: vi.fn(async () => {}),
+  logWarn: vi.fn(async () => {}),
+  logApiCall: vi.fn(async () => {}),
+  logUserAction: vi.fn(async () => {}),
+  logDebug: vi.fn(async () => {}),
+  logPerformance: vi.fn(async () => {}),
+  trackPromise: vi.fn(async (_event: string, operation: () => Promise<any>) => operation()),
 }));
+
+vi.mock('@/hooks/useLogger', () => ({
+  useLogger: () => ({
+    logger: {
+      child: vi.fn(() => ({
+        setLevel: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        userAction: vi.fn(),
+        performance: vi.fn(),
+        apiCall: vi.fn(),
+      })),
+    },
+    correlationId: 'subscription-gated-test',
+    ...loggerSpies,
+  }),
+  loggerSpies,
+}));
+
+import { SubscriptionGatedContent } from '../SubscriptionGatedContent';
 
 describe('SubscriptionGatedContent', () => {
   beforeEach(() => {
@@ -80,6 +102,9 @@ describe('SubscriptionGatedContent', () => {
     mocks.channelFactory.mockReset();
     mocks.channelFactory.mockReturnValue({ on: mocks.channelOnMock, subscribe: mocks.channelSubscribeMock });
     mocks.removeChannelMock.mockReset();
+    Object.values(loggerSpies).forEach((spy) => {
+      (spy as any).mockClear?.();
+    });
   });
 
   it('shows gating message when membership access is denied', async () => {

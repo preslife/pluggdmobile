@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . && node scripts/verify-seo-metadata.mjs",
     "test": "vitest run",
+    "test:integration": "vitest run tests/integration",
     "test:a11y": "vitest run --reporter verbose --run --testNamePattern \"@a11y\"",
     "preview": "vite preview",
     "db:link": "supabase link --project-ref qkwvqmubhyondemhasjp --yes",

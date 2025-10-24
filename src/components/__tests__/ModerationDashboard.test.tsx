@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import ModerationDashboard from '../ModerationDashboard';
 
 const mockToast = vi.fn();
 const mockUseAuth = vi.fn();
@@ -17,12 +16,69 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    info: vi.fn().mockResolvedValue(undefined),
-    error: vi.fn().mockResolvedValue(undefined),
-    userAction: vi.fn().mockResolvedValue(undefined),
-  },
+const loggerSpies = vi.hoisted(() => {
+  const logEvent = vi.fn(async () => {});
+  const logError = vi.fn(async () => {});
+  const logUserAction = vi.fn(async () => {});
+  const logApiCall = vi.fn(async () => {});
+  const logWarn = vi.fn(async () => {});
+  const logDebug = vi.fn(async () => {});
+  const logPerformance = vi.fn(async () => {});
+  const trackPromise = vi.fn(async (_event: string, operation: () => Promise<any>) => operation());
+  const childLogger = {
+    setLevel: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    userAction: vi.fn(),
+    performance: vi.fn(),
+    apiCall: vi.fn(),
+    child: vi.fn(() => childLogger),
+  } as any;
+
+  const reset = () => {
+    logEvent.mockClear();
+    logError.mockClear();
+    logUserAction.mockClear();
+    logApiCall.mockClear();
+    logWarn.mockClear();
+    logDebug.mockClear();
+    logPerformance.mockClear();
+    trackPromise.mockClear();
+    Object.values(childLogger).forEach((spy) => {
+      (spy as any)?.mockClear?.();
+    });
+  };
+
+  return {
+    logEvent,
+    logError,
+    logUserAction,
+    logApiCall,
+    logWarn,
+    logDebug,
+    logPerformance,
+    trackPromise,
+    childLogger,
+    reset,
+  };
+});
+
+vi.mock('@/hooks/useLogger', () => ({
+  useLogger: () => ({
+    logger: loggerSpies.childLogger,
+    correlationId: 'moderation-test-corr',
+    logEvent: loggerSpies.logEvent,
+    logError: loggerSpies.logError,
+    logUserAction: loggerSpies.logUserAction,
+    logApiCall: loggerSpies.logApiCall,
+    logWarn: loggerSpies.logWarn,
+    logDebug: loggerSpies.logDebug,
+    logPerformance: loggerSpies.logPerformance,
+    trackPromise: loggerSpies.trackPromise,
+  }),
+  loggerSpies,
 }));
 
 interface TableResponse {
@@ -93,6 +149,8 @@ const { module: supabaseClientMock, helpers: supabaseMocks } = vi.hoisted(() => 
 
 vi.mock('@/integrations/supabase/client', () => supabaseClientMock);
 
+import ModerationDashboard from '../ModerationDashboard';
+
 const { setResponses, updateResponse, reset, mockInvoke } = supabaseMocks;
 
 const user = userEvent.setup();
@@ -123,6 +181,7 @@ beforeEach(() => {
   reset();
   mockToast.mockReset();
   mockUseAuth.mockReturnValue({ user: { id: 'admin-1' }, loading: false });
+  loggerSpies.reset();
 });
 
 afterEach(() => {

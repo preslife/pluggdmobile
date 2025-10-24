@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,22 +9,53 @@ const corsHeaders = {
 };
 
 const CREDITS_PER_GBP = 100;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  const supabaseService =
+    supabaseServiceRoleKey
+      ? createClient(supabaseUrl, supabaseServiceRoleKey, { auth: { persistSession: false } })
+      : null;
+
+  let rawPayload: Record<string, unknown> = {};
   try {
-    console.log("[CREATE-CREDITS-CHECKOUT] Function started");
+    rawPayload = await req.json();
+  } catch {
+    rawPayload = {};
+  }
 
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
+  const creditsRequested = typeof rawPayload?.credits_requested === "number"
+    ? (rawPayload.credits_requested as number)
+    : undefined;
+  const requestCorrelationId =
+    (typeof rawPayload?.correlationId === "string" ? (rawPayload.correlationId as string) : undefined) ??
+    req.headers.get("x-correlation-id") ??
+    generateCorrelationId();
 
-    // Get authenticated user
+  const logger =
+    supabaseService && supabaseUrl
+      ? createSystemLogger(supabaseService, {
+          component: "create_credits_checkout",
+          feature: "wallet",
+          correlationId: requestCorrelationId,
+          message: "Create wallet credits checkout",
+        })
+      : null;
+
+  let userId: string | null = null;
+
+  try {
+    await logger?.info("create_credits_checkout_request_received", {
+      credits_requested: creditsRequested,
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -32,36 +64,49 @@ serve(async (req) => {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
+    userId = user.id;
 
-    console.log(`[CREATE-CREDITS-CHECKOUT] User authenticated: ${user.id}`);
+    await logger?.info("create_credits_checkout_user_authenticated", {
+      user_id: user.id,
+    });
 
-    // Parse request body
-    const { credits_requested } = await req.json();
-    if (!credits_requested || credits_requested < 100) {
+    if (!creditsRequested || creditsRequested < 100) {
       throw new Error("Invalid credits amount. Minimum 100 credits required.");
     }
 
-    console.log(`[CREATE-CREDITS-CHECKOUT] Credits requested: ${credits_requested}`);
+    const priceInPence = Math.round((creditsRequested / CREDITS_PER_GBP) * 100);
 
-    // Calculate price in pence
-    const priceInPence = Math.round((credits_requested / CREDITS_PER_GBP) * 100);
-    console.log(`[CREATE-CREDITS-CHECKOUT] Price in pence: ${priceInPence}`);
+    await logger?.info("create_credits_checkout_amount_calculated", {
+      user_id: user.id,
+      credits_requested: creditsRequested,
+      amount_minor: priceInPence,
+    });
 
-    // Initialize Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe secret key not configured");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Check for existing customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
+    let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-      console.log(`[CREATE-CREDITS-CHECKOUT] Existing customer: ${customerId}`);
+      await logger?.info("create_credits_checkout_customer_reused", {
+        user_id: user.id,
+        customer_id: customerId,
+      });
+    } else {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { user_id: user.id },
+      });
+      customerId = customer.id;
+      await logger?.info("create_credits_checkout_customer_created", {
+        user_id: user.id,
+        customer_id: customerId,
+      });
     }
 
-    // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -70,8 +115,8 @@ serve(async (req) => {
           price_data: {
             currency: "gbp",
             product_data: {
-              name: `${credits_requested.toLocaleString()} PLGD Credits`,
-              description: `Top up your Pluggd wallet with ${credits_requested.toLocaleString()} credits`,
+              name: `${creditsRequested.toLocaleString()} PLGD Credits`,
+              description: `Top up your Pluggd wallet with ${creditsRequested.toLocaleString()} credits`,
             },
             unit_amount: priceInPence,
           },
@@ -83,23 +128,30 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/dashboard/wallet?cancelled=true`,
       metadata: {
         user_id: user.id,
-        credits_amount: credits_requested.toString(),
+        credits_amount: creditsRequested.toString(),
         transaction_type: "credits_topup",
       },
     });
 
-    console.log(`[CREATE-CREDITS-CHECKOUT] Session created: ${session.id}`);
+    await logger?.info("create_credits_checkout_session_created", {
+      user_id: user.id,
+      credits_requested: creditsRequested,
+      checkout_session_id: session.id,
+      amount_minor: priceInPence,
+    });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url, correlationId: requestCorrelationId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[CREATE-CREDITS-CHECKOUT] Error: ${errorMessage}`);
-    
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    await logger?.error("create_credits_checkout_failed", error, {
+      user_id: userId,
+      credits_requested: creditsRequested,
+    });
+
+    return new Response(JSON.stringify({ error: errorMessage, correlationId: requestCorrelationId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

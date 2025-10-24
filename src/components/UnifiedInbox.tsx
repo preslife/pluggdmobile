@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 import { 
   Inbox, 
   Star, 
@@ -68,6 +69,7 @@ export const UnifiedInbox = () => {
   });
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (user) {
@@ -268,13 +270,14 @@ export const UnifiedInbox = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Inbox className="h-5 w-5" />
-            Unified Inbox
+            {t('pages.messaging.heading')}
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount} unread
               </Badge>
             )}
           </CardTitle>
+          <CardDescription>{t('pages.messaging.description')}</CardDescription>
         </CardHeader>
       </Card>
 
@@ -285,19 +288,19 @@ export const UnifiedInbox = () => {
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search messages..."
+                placeholder={t('common.search')}
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 className="w-64"
               />
             </div>
-            
+
             <Select value={filters.provider} onValueChange={(value) => setFilters(prev => ({ ...prev, provider: value }))}>
               <SelectTrigger className="w-40">
-                <SelectValue />
+                <SelectValue placeholder={t('pages.messaging.providerPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="all">{t('pages.messaging.providerPlaceholder')}</SelectItem>
                 <SelectItem value="youtube">YouTube</SelectItem>
                 <SelectItem value="discord">Discord</SelectItem>
                 <SelectItem value="gmail">Gmail</SelectItem>
