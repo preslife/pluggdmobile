@@ -6,6 +6,13 @@ import { act, type ReactNode } from "react";
 
 import { MessagingCenter } from "../MessagingCenter";
 
+const loggerSpies = vi.hoisted(() => ({
+  logEvent: vi.fn(async () => {}),
+  logError: vi.fn(async () => {}),
+  logApiCall: vi.fn(async () => {}),
+  logWarn: vi.fn(async () => {}),
+}));
+
 vi.mock("@/components/ui/sheet", () => ({
   Sheet: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SheetContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -46,6 +53,15 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
+}));
+
+vi.mock("@/hooks/useLogger", () => ({
+  useLogger: () => ({
+    logger: {} as any,
+    correlationId: "messaging-test-corr",
+    ...loggerSpies,
+  }),
+  loggerSpies,
 }));
 
 const { module: supabaseClientMock, helpers: supabaseHelpers } = vi.hoisted(() => {
@@ -131,6 +147,9 @@ describe("MessagingCenter", () => {
     setupResizeObserver();
     reset();
     mockUseAuth.mockReturnValue({ user: { id: "user-123" }, loading: false });
+    Object.values(loggerSpies).forEach((spy) => {
+      (spy as any).mockClear?.();
+    });
   });
 
   afterEach(() => {
@@ -352,6 +371,91 @@ describe("MessagingCenter", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Reply from user")).toBeInTheDocument();
+    });
+  });
+
+  it("logs unread count failures", async () => {
+    setRpcHandlers({
+      inbox_unread_count: async () => ({ data: null, error: new Error("failed") }),
+      inbox_list_threads: async () => ({ data: [], error: null }),
+    });
+
+    render(<MessagingCenter />);
+
+    await waitFor(() => {
+      expect(loggerSpies.logError).toHaveBeenCalledWith(
+        "inbox_unread_fetch_failed",
+        expect.any(Error),
+        expect.objectContaining({ user_id: "user-123" })
+      );
+    });
+  });
+
+  it("logs send failures with metadata", async () => {
+    const threadRow = {
+      thread_id: "thread-1",
+      social_account_id: "account-1",
+      account_provider: "instagram_business",
+      account_label: "@artist",
+      latest_message: {
+        id: "msg-1",
+        content: "Hi",
+        author_name: "Fan",
+        author_handle: "fan",
+        author_avatar_url: null,
+        created_at: "2024-01-04T12:00:00Z",
+        is_read: false,
+        provider_message_id: "provider-1",
+      },
+      unread_count: 0,
+      total_messages: 1,
+      last_message_at: "2024-01-04T12:00:00Z",
+    };
+
+    const messageRow = {
+      id: "msg-1",
+      thread_id: "thread-1",
+      social_account_id: "account-1",
+      provider_message_id: "provider-1",
+      provider_thread_id: "thread-1",
+      content: "Hello",
+      author_id: "fan-1",
+      author_name: "Fan",
+      author_handle: "fan",
+      author_avatar_url: null,
+      created_at: "2024-01-04T12:00:00Z",
+      is_read: false,
+      requires_response: false,
+      media_urls: [],
+    };
+
+    setRpcHandlers({
+      inbox_unread_count: async () => ({ data: 0, error: null }),
+      inbox_list_threads: async () => ({ data: [threadRow], error: null }),
+      inbox_get_thread_messages: async () => ({ data: [messageRow], error: null }),
+      inbox_send_message: async () => ({ data: null, error: new Error("send failed") }),
+    });
+
+    render(<MessagingCenter />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Fan: Hi/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Fan: Hi/));
+
+    fireEvent.change(screen.getByPlaceholderText("Type a message..."), {
+      target: { value: "Test reply" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
+
+    await waitFor(() => {
+      expect(loggerSpies.logError).toHaveBeenCalledWith(
+        "inbox_send_failed",
+        expect.any(Error),
+        expect.objectContaining({ thread_id: "thread-1" })
+      );
     });
   });
 });

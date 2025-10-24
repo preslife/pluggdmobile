@@ -20,8 +20,10 @@ let supabaseClientMock = {
   rpc: (...args: unknown[]) => mockRpc(...args),
 };
 
+const mockUser = { id: 'user-123' };
+
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { id: 'user-123' } }),
+  useAuth: () => ({ user: mockUser }),
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
