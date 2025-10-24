@@ -4,6 +4,27 @@ import { describe, expect, it, beforeEach, beforeAll, vi } from "vitest";
 import { useMembershipTiers } from "@/hooks/useMembershipTiers";
 import type { UpsertMembershipTierInput } from "@/hooks/useMembershipTiers";
 
+const loggerSpies = vi.hoisted(() => ({
+  logEvent: vi.fn(),
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+  logDebug: vi.fn(),
+  logUserAction: vi.fn(),
+  logPerformance: vi.fn(),
+  logApiCall: vi.fn(),
+  trackPromise: vi.fn(async (_event: string, operation: () => Promise<any>) => operation()),
+}));
+
+vi.mock("@/hooks/useLogger", () => ({
+  useLogger: () => ({
+    logger: {} as any,
+    correlationId: "test-correlation-id",
+    ...loggerSpies,
+    trackPromise: loggerSpies.trackPromise,
+  }),
+  loggerSpies,
+}));
+
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: "user-123" },
@@ -32,10 +53,12 @@ const createDeferred = <T,>() => {
 };
 
 vi.mock("@/integrations/supabase/client", () => {
-  const state: { data: any[] } = { data: [] };
+  const state: { data: any[]; error: any } = { data: [], error: null };
 
   const createBuilder = () => {
-    const result = Promise.resolve(createResponse(state.data));
+    const result = state.error
+      ? Promise.resolve({ data: null, error: state.error })
+      : Promise.resolve(createResponse(state.data));
     const builder: any = {
       eq: () => builder,
       order: () => builder,
@@ -59,6 +82,10 @@ vi.mock("@/integrations/supabase/client", () => {
     supabaseMockUtils: {
       setSelectResponse: (data: any[]) => {
         state.data = data;
+        state.error = null;
+      },
+      setSelectError: (error: any) => {
+        state.error = error;
       },
       rpcMock,
       fromMock,
@@ -98,22 +125,29 @@ interface SupabaseTierRow {
 
 describe("useMembershipTiers", () => {
   let setSelectResponse: (data: any[]) => void;
+  let setSelectError: (error: any) => void;
   let rpcMock: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     const supabaseModule = (await import("@/integrations/supabase/client")) as any;
     ({
       setSelectResponse,
+      setSelectError,
       rpcMock,
     } = supabaseModule.supabaseMockUtils as {
       setSelectResponse: (data: any[]) => void;
+      setSelectError: (error: any) => void;
       rpcMock: ReturnType<typeof vi.fn>;
     });
   });
 
   beforeEach(() => {
     setSelectResponse([]);
+    setSelectError(null);
     rpcMock.mockReset();
+    Object.values(loggerSpies).forEach((spy) => {
+      (spy as ReturnType<typeof vi.fn>).mockClear();
+    });
   });
 
   const baseTierRow = (): SupabaseTierRow => ({
@@ -187,6 +221,15 @@ describe("useMembershipTiers", () => {
 
     await waitFor(() => expect(result.current.tiers[0].id).toBe(serverRow.id));
     expect(result.current.tiers[0].stripe_product_id).toBe("prod_123");
+
+    expect(loggerSpies.logEvent).toHaveBeenCalledWith(
+      "membership_tiers_fetch_start",
+      expect.objectContaining({ owner_type: "profile", owner_id: "user-123" })
+    );
+    expect(loggerSpies.logEvent).toHaveBeenCalledWith(
+      "membership_tiers_fetch_success",
+      expect.objectContaining({ owner_type: "profile", owner_id: "user-123" })
+    );
   });
 
   it("reverts optimistic create on error and surfaces friendly codes", async () => {
@@ -220,5 +263,23 @@ describe("useMembershipTiers", () => {
 
     await waitFor(() => expect(result.current.tiers).toHaveLength(0));
     expect(result.current.error).toBe("A membership tier with this slug already exists.");
+  });
+
+  it("logs fetch errors when the query fails", async () => {
+    setSelectError({ message: "Database offline" });
+
+    const { result } = renderHook(() => useMembershipTiers());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(loggerSpies.logEvent).toHaveBeenCalledWith(
+      "membership_tiers_fetch_start",
+      expect.objectContaining({ owner_type: "profile", owner_id: "user-123" })
+    );
+    expect(loggerSpies.logError).toHaveBeenCalledWith(
+      "membership_tiers_fetch_failed",
+      expect.any(Error),
+      expect.objectContaining({ owner_type: "profile", owner_id: "user-123" })
+    );
   });
 });

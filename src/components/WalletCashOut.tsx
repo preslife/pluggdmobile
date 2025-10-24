@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWallet, formatCredits, creditsToGBP } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
+import { useLogger } from "@/hooks/useLogger";
 import { Download, AlertTriangle, CheckCircle } from "lucide-react";
 
 export const WalletCashOut = () => {
@@ -12,15 +13,39 @@ export const WalletCashOut = () => {
   const { user } = useAuth();
   const [cashOutAmount, setCashOutAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const { logEvent, logError } = useLogger({
+    component: "WalletCashOut",
+    feature: "wallet",
+    view: "wallet_dashboard",
+    metadata: { user_id: user?.id ?? null },
+  });
 
   const handleCashOut = async () => {
-    if (!cashOutAmount || parseInt(cashOutAmount) < 1000) return;
-    
+    const amount = parseInt(cashOutAmount, 10);
+    if (!cashOutAmount || !Number.isFinite(amount) || amount < 1000) {
+      void logEvent("wallet_cashout_invalid_amount", {
+        amount,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const result = await cashOutCredits(parseInt(cashOutAmount));
+      void logEvent("wallet_cashout_click", { amount });
+      const result = await cashOutCredits(amount);
       if (result.success) {
         setCashOutAmount("");
+        void logEvent("wallet_cashout_ui_success", { amount });
+      } else {
+        void logError(
+          "wallet_cashout_ui_failure",
+          new Error(result.error ?? "Cash-out failed"),
+          {
+            amount,
+            code: result.code,
+            compliance_block: result.complianceBlock,
+          }
+        );
       }
     } finally {
       setLoading(false);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import baseLogger, { Logger, LogLevel } from '@/lib/logger';
 
 export type LogMetadata = Record<string, unknown>;
@@ -9,6 +9,7 @@ export interface UseLoggerOptions {
   view?: string;
   metadata?: LogMetadata;
   level?: LogLevel;
+  correlationId?: string;
 }
 
 export interface ComponentLogger {
@@ -19,7 +20,15 @@ export interface ComponentLogger {
   logError: (event: string, error: unknown, metadata?: LogMetadata) => Promise<void>;
   logUserAction: (action: string, metadata?: LogMetadata) => Promise<void>;
   logPerformance: (metric: string, durationMs: number, metadata?: LogMetadata) => Promise<void>;
+  logApiCall: (
+    method: string,
+    endpoint: string,
+    durationMs: number,
+    status?: number,
+    metadata?: LogMetadata,
+  ) => Promise<void>;
   trackPromise: <T>(event: string, operation: () => Promise<T>, metadata?: LogMetadata) => Promise<T>;
+  correlationId: string;
 }
 
 const normaliseError = (error: unknown): Error => {
@@ -36,8 +45,21 @@ const mergeMetadata = (
   return { ...(base ?? {}), ...(extra ?? {}) };
 };
 
+const generateCorrelationId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `corr_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export const useLogger = (options: UseLoggerOptions = {}): ComponentLogger => {
-  const { component = 'unknown_component', feature, view, metadata, level } = options;
+  const { component = 'unknown_component', feature, view, metadata, level, correlationId: providedCorrelationId } = options;
+
+  const correlationRef = useRef<string>();
+  if (!correlationRef.current) {
+    correlationRef.current = providedCorrelationId ?? generateCorrelationId();
+  }
+  const correlationId = correlationRef.current;
 
   const metadataKey = useMemo(() => JSON.stringify(metadata ?? {}), [metadata]);
 
@@ -46,6 +68,7 @@ export const useLogger = (options: UseLoggerOptions = {}): ComponentLogger => {
       component,
       ...(feature ? { feature } : {}),
       ...(view ? { view } : {}),
+      correlation_id: correlationId,
       ...(metadata ?? {}),
     };
 
@@ -71,6 +94,14 @@ export const useLogger = (options: UseLoggerOptions = {}): ComponentLogger => {
 
     const logPerformance = (metric: string, durationMs: number, extra?: LogMetadata) =>
       childLogger.performance(metric, durationMs, mergeMetadata(context, { ...extra, durationMs }));
+
+    const logApiCall = (
+      method: string,
+      endpoint: string,
+      durationMs: number,
+      status?: number,
+      extra?: LogMetadata,
+    ) => childLogger.apiCall(method, endpoint, durationMs, status, mergeMetadata(context, extra));
 
     const trackPromise = async <T,>(
       event: string,
@@ -99,9 +130,11 @@ export const useLogger = (options: UseLoggerOptions = {}): ComponentLogger => {
       logError,
       logUserAction,
       logPerformance,
+      logApiCall,
       trackPromise,
+      correlationId,
     };
-  }, [component, feature, view, level, metadataKey]);
+  }, [component, feature, view, level, metadataKey, correlationId]);
 };
 
 export default useLogger;

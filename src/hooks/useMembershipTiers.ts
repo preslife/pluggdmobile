@@ -293,7 +293,7 @@ export function useMembershipTiers(): MembershipTiersHook {
   const ownerId: string | null = activeLabel ? activeLabel.id : user?.id ?? null;
 
   const loggerMetadata = useMemo(() => ({ ownerType, ownerId }), [ownerType, ownerId]);
-  const { logger: membershipLogger, logUserAction } = useLogger({
+  const { logEvent, logError, logUserAction, trackPromise } = useLogger({
     component: 'useMembershipTiers',
     feature: 'membership',
     metadata: loggerMetadata,
@@ -317,7 +317,7 @@ export function useMembershipTiers(): MembershipTiersHook {
 
     setLoading(true);
     setError(null);
-    void membershipLogger.info("membership_tiers_fetch_start", {
+    void logEvent("membership_tiers_fetch_start", {
       owner_type: ownerType,
       owner_id: ownerId,
     });
@@ -335,20 +335,16 @@ export function useMembershipTiers(): MembershipTiersHook {
       setError(normalisedError.message);
       setTiers([]);
       setLoading(false);
-      void membershipLogger.error(
-        "membership_tiers_fetch_failed",
-        {
-          owner_type: ownerType,
-          owner_id: ownerId,
-        },
-        toError(error)
-      );
+      void logError("membership_tiers_fetch_failed", toError(error), {
+        owner_type: ownerType,
+        owner_id: ownerId,
+      });
       return;
     }
 
     setTiers((data ?? []).map(mapTier));
     setLoading(false);
-    void membershipLogger.info("membership_tiers_fetch_success", {
+    void logEvent("membership_tiers_fetch_success", {
       owner_type: ownerType,
       owner_id: ownerId,
       tier_count: data?.length ?? 0,
@@ -428,33 +424,44 @@ export function useMembershipTiers(): MembershipTiersHook {
           setTiers((prev) => [...prev, optimisticTier]);
 
           try {
-            const { data, error } = await supabase.rpc("create_membership_tier", {
-              p_input: payload,
-            });
-            if (error) throw error;
+            await trackPromise(
+              "membership_tier_create",
+              async () => {
+                const { data, error } = await supabase.rpc("create_membership_tier", {
+                  p_input: payload,
+                });
+                if (error) throw error;
 
-            if (data) {
-              setTiers((prev) =>
-                prev.map((tier) => (tier.id === optimisticId ? mapTier(data) : tier))
-              );
-            }
+                if (data) {
+                  setTiers((prev) =>
+                    prev.map((tier) => (tier.id === optimisticId ? mapTier(data) : tier))
+                  );
+                }
+              },
+              {
+                owner_type: ownerType,
+                owner_id: ownerId,
+                optimistic_id: optimisticId,
+                input_name: input.name,
+              }
+            );
           } catch (err) {
             setTiers((prev) => prev.filter((tier) => tier.id !== optimisticId));
             throw err;
           }
         });
 
-        void membershipLogger.info("membership_tier_create_success", {
+        void logEvent("membership_tier_create_success", {
           owner_type: ownerType,
           owner_id: ownerId,
           input_name: input.name,
         });
       } catch (err) {
-        void membershipLogger.error("membership_tier_create_failed", {
+        void logError("membership_tier_create_failed", toError(err), {
           owner_type: ownerType,
           owner_id: ownerId,
           input_name: input.name,
-        }, toError(err));
+        });
         throw err;
       }
     },
@@ -518,17 +525,27 @@ export function useMembershipTiers(): MembershipTiersHook {
           );
 
           try {
-            const { data, error } = await supabase.rpc("update_membership_tier", {
-              p_tier_id: tierId,
-              p_input: payload,
-            });
-            if (error) throw error;
+            await trackPromise(
+              "membership_tier_update",
+              async () => {
+                const { data, error } = await supabase.rpc("update_membership_tier", {
+                  p_tier_id: tierId,
+                  p_input: payload,
+                });
+                if (error) throw error;
 
-            if (data) {
-              setTiers((prev) =>
-                prev.map((tier) => (tier.id === tierId ? mapTier(data) : tier))
-              );
-            }
+                if (data) {
+                  setTiers((prev) =>
+                    prev.map((tier) => (tier.id === tierId ? mapTier(data) : tier))
+                  );
+                }
+              },
+              {
+                tier_id: tierId,
+                owner_type: existing.owner_type,
+                owner_id: existing.owner_id,
+              }
+            );
           } catch (err) {
             setTiers((prev) =>
               prev.map((tier) => (tier.id === tierId ? existing : tier))
@@ -537,17 +554,17 @@ export function useMembershipTiers(): MembershipTiersHook {
           }
         });
 
-        void membershipLogger.info("membership_tier_update_success", {
+        void logEvent("membership_tier_update_success", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
         });
       } catch (err) {
-        void membershipLogger.error("membership_tier_update_failed", {
+        void logError("membership_tier_update_failed", toError(err), {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
-        }, toError(err));
+        });
         throw err;
       }
     },
@@ -574,27 +591,37 @@ export function useMembershipTiers(): MembershipTiersHook {
           setTiers((prev) => prev.filter((tier) => tier.id !== tierId));
 
           try {
-            const { error } = await supabase.rpc("delete_membership_tier", {
-              p_tier_id: tierId,
-            });
-            if (error) throw error;
+            await trackPromise(
+              "membership_tier_delete",
+              async () => {
+                const { error } = await supabase.rpc("delete_membership_tier", {
+                  p_tier_id: tierId,
+                });
+                if (error) throw error;
+              },
+              {
+                tier_id: tierId,
+                owner_type: existing.owner_type,
+                owner_id: existing.owner_id,
+              }
+            );
           } catch (err) {
             setTiers(previousTiers);
             throw err;
           }
         });
 
-        void membershipLogger.info("membership_tier_delete_success", {
+        void logEvent("membership_tier_delete_success", {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
         });
       } catch (err) {
-        void membershipLogger.error("membership_tier_delete_failed", {
+        void logError("membership_tier_delete_failed", toError(err), {
           tier_id: tierId,
           owner_type: existing.owner_type,
           owner_id: existing.owner_id,
-        }, toError(err));
+        });
         throw err;
       }
     },

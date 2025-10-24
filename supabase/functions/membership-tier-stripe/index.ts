@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,37 +68,6 @@ type SyncPayload = {
     scheduled_at?: string | null;
   };
 };
-
-type LogLevel = "info" | "warn" | "error";
-
-const logEvent = async (
-  level: LogLevel,
-  action: string,
-  message: string,
-  details: Record<string, unknown>
-) => {
-  try {
-    await supabaseService.from("system_logs").insert({
-      level,
-      component: "membership_tier_stripe",
-      action,
-      message,
-      metadata: details,
-      user_id: (details.actor_id as string | null) ?? null,
-    });
-  } catch (loggingError) {
-    console.error("[membership-tier-stripe] Failed to write system log", loggingError);
-  }
-};
-
-const logError = (message: string, details: Record<string, unknown>) =>
-  logEvent("error", details.action ?? "unknown", message, details);
-
-const logInfo = (action: string, message: string, details: Record<string, unknown>) =>
-  logEvent("info", action, message, details);
-
-const logWarn = (action: string, message: string, details: Record<string, unknown>) =>
-  logEvent("warn", action, message, details);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -254,16 +224,26 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let logger = null as ReturnType<typeof createSystemLogger> | null;
   let action: SyncPayload["action"] | "membership-tier-sync" = "membership-tier-sync";
   let actorId: string | null = null;
   let tierId: string | null = null;
-  let correlationId: string | null = null;
+  let correlationId: string | null = generateCorrelationId();
   let jobId: string | null = null;
   let queueAttempt: number | null = null;
 
   try {
-    const payload = (await req.json()) as SyncPayload;
+    const payload = (await req.json().catch(() => null)) as SyncPayload | null;
     if (!payload || !payload.action || !payload.payload?.tier) {
+      const invalidLogger = createSystemLogger(supabaseService, {
+        component: "membership_tier_stripe",
+        feature: "membership",
+        correlationId,
+        message: "Membership tier Stripe sync",
+      });
+      await invalidLogger.warn("membership_tier_sync_invalid_payload", {
+        received_action: payload?.action ?? null,
+      });
       return new Response(JSON.stringify({ error: "Invalid payload" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -273,19 +253,32 @@ serve(async (req) => {
     action = payload.action;
     actorId = payload.payload.actor_id ?? null;
     tierId = payload.payload.tier?.id ?? null;
-    correlationId = payload.payload.correlation_id ?? crypto.randomUUID?.() ?? null;
+    correlationId = payload.payload.correlation_id ?? correlationId;
     jobId = payload.payload.job_id ?? null;
     queueAttempt = payload.payload.attempt ?? null;
 
+    logger = createSystemLogger(supabaseService, {
+      component: "membership_tier_stripe",
+      feature: "membership",
+      userId: actorId,
+      correlationId: correlationId ?? undefined,
+      message: "Membership tier Stripe sync",
+    });
+
     const { action: actionName, payload: tierPayload } = payload;
     if (!["create", "update", "delete"].includes(actionName)) {
+      await logger.warn("membership_tier_sync_invalid_action", {
+        action: actionName,
+        actor_id: actorId,
+        tier_id: tierId,
+      });
       return new Response(JSON.stringify({ error: "Unsupported action" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    await logInfo("membership_tier_sync_start", "Stripe sync started", {
+    await logger.info("membership_tier_sync_start", {
       action: actionName,
       actor_id: actorId,
       tier_id: tierId,
@@ -308,7 +301,7 @@ serve(async (req) => {
           if (attempt >= MAX_RETRIES) {
             throw error;
           }
-          await logWarn("membership_tier_sync_retry", "Retrying Stripe sync", {
+          await logger!.warn("membership_tier_sync_retry", {
             action: actionName,
             actor_id: actorId,
             tier_id: tierId,
@@ -324,7 +317,7 @@ serve(async (req) => {
       throw lastError ?? new Error("Unknown sync failure");
     })();
 
-    await logInfo("membership_tier_sync_success", "Stripe sync completed", {
+    await logger.info("membership_tier_sync_success", {
       action: actionName,
       actor_id: actorId,
       tier_id: tierId,
@@ -342,7 +335,16 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
-    await logError(message, {
+    const activeLogger =
+      logger ??
+      createSystemLogger(supabaseService, {
+        component: "membership_tier_stripe",
+        feature: "membership",
+        userId: actorId,
+        correlationId: correlationId ?? undefined,
+        message: "Membership tier Stripe sync",
+      });
+    await activeLogger.error("membership_tier_sync_failed", error, {
       action,
       actor_id: actorId,
       tier_id: tierId,

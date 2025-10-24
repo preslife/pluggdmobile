@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,9 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let requestLogger: ReturnType<typeof createSystemLogger> | null = null;
+  const requestCorrelationId = generateCorrelationId();
+
   try {
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Supabase credentials not configured for sync job");
@@ -37,6 +41,19 @@ serve(async (req) => {
     const includeFailed = Boolean(payload?.includeFailed || payload?.retryFailed);
     const candidateStatuses = includeFailed ? ["pending", "error"] : ["pending"];
     const nowIso = new Date().toISOString();
+
+    requestLogger = createSystemLogger(supabaseService, {
+      component: "membership_tier_sync",
+      feature: "membership",
+      correlationId: requestCorrelationId,
+      message: "Membership tier queue processor",
+    });
+
+    await requestLogger.info("membership_tier_sync_queue_poll", {
+      limit,
+      include_failed: includeFailed,
+      candidate_statuses: candidateStatuses,
+    });
 
     const { data: jobs, error: jobsError } = await supabaseService
       .from("membership_tier_sync_queue")
@@ -53,6 +70,16 @@ serve(async (req) => {
     const results: Array<{ id: string; status: string; error?: string }> = [];
 
     for (const job of jobs ?? []) {
+      const jobCorrelationId =
+        job.payload?.correlation_id ?? job.id ?? generateCorrelationId();
+      const jobLogger = createSystemLogger(supabaseService, {
+        component: "membership_tier_sync",
+        feature: "membership",
+        userId: job.actor_id ?? job.payload?.actor_id ?? null,
+        correlationId: jobCorrelationId,
+        message: "Membership tier queue processor",
+      });
+
       const { data: lockedJob, error: lockError } = await supabaseService
         .from("membership_tier_sync_queue")
         .update({
@@ -66,12 +93,24 @@ serve(async (req) => {
         .single();
 
       if (lockError || !lockedJob) {
+        await jobLogger.warn("membership_tier_sync_lock_skip", {
+          job_id: job.id,
+          error: lockError ? String(lockError) : "already_processed",
+        });
         continue;
       }
 
       const attemptCount = lockedJob.attempts ?? 1;
 
       try {
+        await jobLogger.info("membership_tier_sync_job_start", {
+          job_id: lockedJob.id,
+          action: lockedJob.action,
+          attempt: attemptCount,
+          scheduled_at: lockedJob.scheduled_at,
+          tier_id: lockedJob.tier_id,
+        });
+
         const tierPayload = lockedJob.payload?.tier ?? lockedJob.payload;
         if (!tierPayload) {
           throw new Error("Missing tier payload for sync job");
@@ -118,6 +157,12 @@ serve(async (req) => {
 
         const syncResult = await response.json();
 
+        await jobLogger.info("membership_tier_sync_job_response", {
+          job_id: lockedJob.id,
+          action: lockedJob.action,
+          response_status: response.status,
+        });
+
         if (lockedJob.action !== "delete" && lockedJob.tier_id) {
           const { error: tierUpdateError } = await supabaseService
             .from("membership_tiers")
@@ -145,6 +190,13 @@ serve(async (req) => {
             last_error: null,
           })
           .eq("id", lockedJob.id);
+
+        await jobLogger.info("membership_tier_sync_job_success", {
+          job_id: lockedJob.id,
+          action: lockedJob.action,
+          tier_id: lockedJob.tier_id,
+          status: "completed",
+        });
 
         results.push({ id: lockedJob.id, status: "completed" });
       } catch (error) {
@@ -175,9 +227,23 @@ serve(async (req) => {
             .eq("id", lockedJob.tier_id);
         }
 
+        await jobLogger.error("membership_tier_sync_job_failed", error, {
+          job_id: lockedJob.id,
+          action: lockedJob.action,
+          tier_id: lockedJob.tier_id,
+          status: nextStatus,
+          attempts: attemptCount,
+          max_attempts: maxAttempts,
+        });
+
         results.push({ id: lockedJob.id, status: nextStatus, error: message });
       }
     }
+
+    await requestLogger.info("membership_tier_sync_queue_complete", {
+      processed: results.length,
+      results,
+    });
 
     return new Response(
       JSON.stringify({ processed: results.length, results }),
@@ -185,7 +251,17 @@ serve(async (req) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[membership-tier-sync] Error", message, error);
+    const fallbackLogger =
+      requestLogger ??
+      createSystemLogger(supabaseService, {
+        component: "membership_tier_sync",
+        feature: "membership",
+        correlationId: requestCorrelationId,
+        message: "Membership tier queue processor",
+      });
+    await fallbackLogger.error("membership_tier_sync_queue_failed", error, {
+      error: message,
+    });
     return new Response(
       JSON.stringify({ error: message }),
       {

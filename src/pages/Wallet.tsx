@@ -9,12 +9,20 @@ import { WalletTopUp } from "@/components/WalletTopUp";
 import { WalletCashOut } from "@/components/WalletCashOut";
 import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
+import { useLogger } from "@/hooks/useLogger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Wallet, CreditCard, Upload, Download, ShieldCheck, History } from "lucide-react";
 
 const WalletPage = () => {
   const { balance, ledger } = useWallet();
   const { user } = useAuth();
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent } = useLogger({
+    component: "WalletPage",
+    feature: "wallet",
+    view: "wallet_dashboard",
+    metadata: loggerMetadata,
+  });
 
   const ledgerSummary = useMemo(() => {
     if (!ledger?.length) {
@@ -47,6 +55,14 @@ const WalletPage = () => {
       "/dashboard/wallet"
     );
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void logEvent("wallet_page_view", {
+      balance_total: balance.balance_credits,
+      ledger_entries: ledger.length,
+    });
+  }, [user?.id, balance.balance_credits, ledger.length, logEvent]);
 
   if (!user) {
     return (

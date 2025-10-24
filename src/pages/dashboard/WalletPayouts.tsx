@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DomainAwareNavigation from "@/components/DomainAwareNavigation";
 import { DashboardWalletSummary } from "@/components/dashboard/DashboardWalletSummary";
@@ -8,11 +8,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLogger } from "@/hooks/useLogger";
 import { setMeta } from "@/lib/seo";
 import { Wallet, Landmark } from "lucide-react";
 
 const WalletPayoutsPage = () => {
   const { user } = useAuth();
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError } = useLogger({
+    component: "WalletPayoutsPage",
+    feature: "wallet",
+    view: "wallet_payouts",
+    metadata: loggerMetadata,
+  });
 
   useEffect(() => {
     setMeta(
@@ -21,6 +29,11 @@ const WalletPayoutsPage = () => {
       "/dashboard/payouts"
     );
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void logEvent("wallet_payouts_view", {});
+  }, [user?.id, logEvent]);
 
   const {
     data: payoutHistory,
@@ -42,6 +55,20 @@ const WalletPayoutsPage = () => {
       return (data as PayoutRecord[]) ?? [];
     },
   });
+
+  useEffect(() => {
+    if (!user) return;
+    if (isError && error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      void logError("wallet_payout_history_failed", normalized, {
+        user_id: user.id,
+      });
+    } else if (!isLoading && payoutHistory) {
+      void logEvent("wallet_payout_history_loaded", {
+        payout_count: payoutHistory.length,
+      });
+    }
+  }, [isError, error, isLoading, payoutHistory, logEvent, logError, user?.id]);
 
   if (!user) {
     return null;

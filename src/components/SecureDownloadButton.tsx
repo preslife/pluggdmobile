@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { logger } from '@/lib/logger';
+import { useLogger } from '@/hooks/useLogger';
 
 type PurchaseType = "release" | "beat" | "sample_pack";
 
@@ -30,6 +30,16 @@ export const SecureDownloadButton = ({
   const { toast } = useToast();
   const [downloading, setDownloading] = useState(false);
   const analytics = useAnalytics({ enableGDPRCompliance: true, consentRequired: false });
+  const { logEvent, logError, logApiCall, logUserAction } = useLogger({
+    component: 'SecureDownloadButton',
+    feature: 'downloads',
+    metadata: {
+      purchase_id: purchaseId,
+      purchase_type: purchaseType,
+      release_id: releaseId,
+      title,
+    },
+  });
 
   const handleDownload = async () => {
     if (!user) {
@@ -38,18 +48,37 @@ export const SecureDownloadButton = ({
         description: 'Please sign in to download releases',
         variant: 'destructive',
       });
+      void logEvent('secure_download_blocked_unauthenticated', {
+        purchaseId,
+        purchaseType,
+        releaseId,
+      });
       return;
     }
 
+    void logUserAction('secure_download_clicked', {
+      purchaseId,
+      purchaseType,
+      releaseId,
+    });
+
     setDownloading(true);
+    const start = performance.now();
+    let status = 200;
+    let errorForLog: unknown = null;
+
     try {
       const { data, error } = await supabase.functions.invoke('download-signed-url', {
         body: { purchaseId, purchaseType }
       });
 
-      if (error) throw error;
+      if (error) {
+        status = 500;
+        throw error;
+      }
 
       if (data?.error) {
+        status = 422;
         throw new Error(data.error);
       }
 
@@ -77,16 +106,15 @@ export const SecureDownloadButton = ({
           purchase_id: purchaseId,
           purchase_type: purchaseType,
         });
-
-        void logger.userAction('secure_download_triggered', 'SecureDownloadButton', {
+        void logEvent('secure_download_started', {
           purchaseId,
           purchaseType,
           releaseId,
-          title,
         });
       }
     } catch (error: any) {
       console.error('Download error:', error);
+      errorForLog = error;
       const description = error?.message?.includes('Access denied')
         ? 'This download is locked. Complete your purchase or verify your membership.'
         : (error?.message || 'Unable to download. Please try again.');
@@ -97,14 +125,22 @@ export const SecureDownloadButton = ({
         variant: 'destructive',
       });
 
-      void logger.error('secure_download_failed', {
+      void logError('secure_download_failed', error, {
         purchaseId,
         purchaseType,
         releaseId,
-        title,
-        error: error?.message ?? String(error),
       });
+      if (status < 400) {
+        status = 500;
+      }
     } finally {
+      const duration = performance.now() - start;
+      void logApiCall('function', 'download-signed-url', duration, status, {
+        purchaseId,
+        purchaseType,
+        releaseId,
+        error: errorForLog instanceof Error ? errorForLog.message : undefined,
+      });
       setDownloading(false);
     }
   };

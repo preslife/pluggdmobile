@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useLogger } from '@/hooks/useLogger';
 import { Plus, Edit3, Trash2, Music, Download, ExternalLink, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -53,6 +54,13 @@ export const MyPurchases = () => {
   const { toast } = useToast();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
+  const loggerMetadata = useMemo(() => ({ user_id: user?.id ?? null }), [user?.id]);
+  const { logEvent, logError, logApiCall, logUserAction } = useLogger({
+    component: 'MyPurchases',
+    feature: 'downloads',
+    view: 'dashboard_purchases',
+    metadata: loggerMetadata,
+  });
 
   const fetchPurchases = useCallback(async () => {
     if (!user) {
@@ -91,6 +99,10 @@ export const MyPurchases = () => {
   }, [fetchPurchases]);
 
   const handleDownload = async (purchaseId: string) => {
+    void logUserAction('dashboard_purchase_download_clicked', { purchase_id: purchaseId });
+    const start = performance.now();
+    let status = 200;
+    let errorForLog: unknown = null;
     try {
       const { data, error } = await supabase.functions.invoke('download-signed-url', {
         body: {
@@ -99,7 +111,10 @@ export const MyPurchases = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        status = 500;
+        throw error;
+      }
 
       // Open download in new tab
       const signedUrl: string | undefined = data?.signedUrl ?? data?.downloadUrl;
@@ -113,12 +128,22 @@ export const MyPurchases = () => {
         title: 'Download Started',
         description: 'Your download should begin shortly',
       });
+      void logEvent('dashboard_purchase_download_started', { purchase_id: purchaseId });
     } catch (error) {
       console.error('Error downloading:', error);
+      errorForLog = error;
       toast({
         title: 'Download Failed',
         description: 'Unable to download the file. Please try again.',
         variant: 'destructive',
+      });
+      status = 500;
+      void logError('dashboard_purchase_download_failed', error, { purchase_id: purchaseId });
+    } finally {
+      const duration = performance.now() - start;
+      void logApiCall('function', 'download-signed-url', duration, status, {
+        purchase_id: purchaseId,
+        error: errorForLog instanceof Error ? errorForLog.message : undefined,
       });
     }
   };
