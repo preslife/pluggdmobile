@@ -8,6 +8,7 @@ import { WalletActivity } from "@/components/WalletActivity";
 import { WalletTopUp } from "@/components/WalletTopUp";
 import { WalletCashOut } from "@/components/WalletCashOut";
 import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
+import { formatDateLocalized } from "@/lib/i18n/formatting";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -217,7 +218,7 @@ const WalletPage = () => {
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(ledgerSummary.lastTransaction.created_at).toLocaleString()}
+                              {formatDateLocalized(ledgerSummary.lastTransaction.created_at)}
                             </p>
                           </div>
                         ) : (

@@ -4,6 +4,7 @@ import { creditSystem } from '@/services/credits/credit-system';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { useLogger } from './useLogger';
+import { formatNumberLocalized } from '@/lib/i18n/formatting';
 
 interface WalletBalance {
   balance_credits: number;
@@ -453,18 +454,23 @@ export const useWallet = () => {
 };
 
 export const formatCredits = (credits: number, options?: { locale?: string; showConversion?: boolean }) => {
-  const { locale = 'en-GB', showConversion = false } = options || {};
-  const formattedCredits = new Intl.NumberFormat(locale).format(credits);
-  
+  const { locale, showConversion = false } = options || {};
+  const formattedCredits = formatNumberLocalized(credits, undefined, locale);
+
   if (showConversion) {
     const gbp = creditsToGBP(credits);
-    return `${formattedCredits} credits (£${gbp.toFixed(2)})`;
+    const formattedGBP = formatNumberLocalized(
+      gbp,
+      { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 },
+      locale,
+    );
+    return `${formattedCredits} credits (${formattedGBP})`;
   }
-  
+
   return `${formattedCredits} credits`;
 };
 
-export const formatCreditsWithGBP = (credits: number, locale: string = 'en-GB') => {
+export const formatCreditsWithGBP = (credits: number, locale?: string) => {
   return formatCredits(credits, { locale, showConversion: true });
 };
 
