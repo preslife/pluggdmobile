@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import LiveIndex from "../Index";
+import i18n from "@/lib/i18n";
 
 const scheduleMock = [
   {
@@ -47,14 +48,16 @@ vi.mock("@/lib/seo", () => ({
 }));
 
 describe("LiveIndex", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    await i18n.changeLanguage("en-US");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     vi.useRealTimers();
+    await i18n.changeLanguage("en-US");
   });
 
   it("renders realtime schedule items", () => {
@@ -64,11 +67,25 @@ describe("LiveIndex", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Live Schedule")).toBeInTheDocument();
+    expect(screen.getByText("Upcoming Schedule")).toBeInTheDocument();
     expect(screen.getByText("Live Battle")).toBeInTheDocument();
     expect(screen.getAllByText(/Live now/i).length).toBeGreaterThan(0);
     expect(screen.getByText("Producer Session")).toBeInTheDocument();
     expect(screen.getAllByText(/Starts/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /Watch Battle/i })).toBeInTheDocument();
+  });
+
+  it("supports spanish translations", async () => {
+    await i18n.changeLanguage("es-ES");
+
+    render(
+      <MemoryRouter>
+        <LiveIndex />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Próximos eventos")).toBeInTheDocument();
+    expect(screen.getAllByText(/En vivo ahora/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /^Ver batalla$/i }).length).toBeGreaterThan(0);
   });
 });

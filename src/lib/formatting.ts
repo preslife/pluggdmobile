@@ -49,6 +49,7 @@ export const formatDate = (
     };
 
     if (includeTime && !relative) {
+      delete formatOptions.timeStyle;
       formatOptions.year = 'numeric';
       formatOptions.month = dateStyle === 'short' ? 'numeric' : 'short';
       formatOptions.day = 'numeric';
