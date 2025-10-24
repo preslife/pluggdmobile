@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useIntl } from "react-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,7 @@ import { EnhancedAdminCourseManager } from "@/components/EnhancedAdminCourseMana
 import { CourseUpgradeModal } from "@/components/CourseUpgradeModal";
 import { usePageMetadata } from "@/hooks/usePageMetadata";
 import { generateCourseCertificatePdf } from "@/utils/certificates";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import { 
   BookOpen, 
@@ -86,12 +86,13 @@ const DEFAULT_USER_STATS: UserStats = {
 };
 
 export default function Education() {
-  const intl = useIntl();
   usePageMetadata({
     title: "Education — Pluggd",
     description: "Stream courses, track progress, and level up your music business and production skills with Pluggd education.",
     path: "/education",
   });
+
+  const { t, formatNumber } = useTranslation();
 
   const { user } = useAuth();
   const { subscription, usage, checkCourseLimit, getTierLimits } = useSubscription();
@@ -450,12 +451,8 @@ export default function Education() {
         <div className="container mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-4xl font-bold mb-2">
-                {intl.formatMessage({ id: "pages.education.heading", defaultMessage: "My Learning Dashboard" })}
-              </h1>
-              <p className="text-white/80">
-                {intl.formatMessage({ id: "pages.education.subheading", defaultMessage: "Continue your journey to mastery" })}
-              </p>
+              <h1 className="text-4xl font-bold mb-2">{t('pages.education.heading')}</h1>
+              <p className="text-white/80">{t('pages.education.subheading')}</p>
             </div>
             <div className="flex gap-4">
               {user && (
@@ -465,7 +462,7 @@ export default function Education() {
                   className="text-white hover:bg-white/10"
                 >
                   <Settings className="w-4 h-4 mr-2" />
-                  Admin Panel
+                  {t('pages.education.adminButton')}
                 </Button>
               )}
               <Button
@@ -480,7 +477,7 @@ export default function Education() {
                 className="bg-white text-primary hover:bg-white/90"
               >
                 <Crown className="w-4 h-4 mr-2" />
-                Upgrade to Pro
+                {t('pages.education.upgradeButton')}
               </Button>
             </div>
           </div>
@@ -491,10 +488,8 @@ export default function Education() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">
-                      {intl.formatMessage({ id: "pages.education.statsActive", defaultMessage: "Active Courses" })}
-                    </p>
-                    <p className="text-2xl font-bold">{userStats.activeCourses}</p>
+                    <p className="text-white/80 text-sm">{t('pages.education.stats.active')}</p>
+                    <p className="text-2xl font-bold">{formatNumber(userStats.activeCourses)}</p>
                   </div>
                   <BookOpen className="w-8 h-8 text-white/60" />
                 </div>
@@ -505,8 +500,8 @@ export default function Education() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">Completed</p>
-                    <p className="text-2xl font-bold">{userStats.completedCourses}</p>
+                    <p className="text-white/80 text-sm">{t('pages.education.stats.completed')}</p>
+                    <p className="text-2xl font-bold">{formatNumber(userStats.completedCourses)}</p>
                   </div>
                   <Award className="w-8 h-8 text-white/60" />
                 </div>
@@ -517,8 +512,8 @@ export default function Education() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">Hours Learned</p>
-                    <p className="text-2xl font-bold">{userStats.hoursLearned}</p>
+                    <p className="text-white/80 text-sm">{t('pages.education.stats.hoursLearned')}</p>
+                    <p className="text-2xl font-bold">{formatNumber(userStats.hoursLearned)}</p>
                   </div>
                   <Clock className="w-8 h-8 text-white/60" />
                 </div>
@@ -529,8 +524,8 @@ export default function Education() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">Current Streak</p>
-                    <p className="text-2xl font-bold">{userStats.currentStreak} days</p>
+                    <p className="text-white/80 text-sm">{t('pages.education.stats.streak')}</p>
+                    <p className="text-2xl font-bold">{formatNumber(userStats.currentStreak)}</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-white/60" />
                 </div>

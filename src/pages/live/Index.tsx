@@ -1,5 +1,5 @@
 import { setMeta } from "@/lib/seo";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import LiveCTA from "@/components/LiveCTA";
 import { useSessionRooms } from "@/hooks/useSessionRooms";
 import { useLiveSchedule } from "@/hooks/useLiveSchedule";
@@ -11,35 +11,45 @@ import { Users, Calendar, Trophy, Plug, Clock } from "lucide-react";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { useIntl } from "react-intl";
-import { useLocalization } from "@/contexts/LocalizationContext";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import type { LiveScheduleItem } from "@/hooks/useLiveSchedule";
 
-const ScheduleItemCard = ({ item, now, locale }: { item: LiveScheduleItem; now: Date; locale: string }) => {
+const ScheduleItemCard = ({ item, now }: { item: LiveScheduleItem; now: Date }) => {
+  const { t, formatDate: formatLocaleDate } = useTranslation();
   const nowTime = now.getTime();
   let statusLabel = "";
   if (item.status === "live") {
     statusLabel = item.endsAt
-      ? `Ends ${formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}`
-      : "Live now";
+      ? t("pages.live.statusEndsIn", {
+          time: formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })
+        })
+      : t("pages.live.statusLiveNow");
   } else if (item.scheduledFor) {
     const startTime = new Date(item.scheduledFor).getTime();
     statusLabel = startTime <= nowTime
-      ? "Starting soon"
-      : `Starts ${formatDistanceToNow(new Date(item.scheduledFor), { addSuffix: true })}`;
+      ? t("pages.live.statusStartingSoon")
+      : t("pages.live.statusStartsIn", {
+          time: formatDistanceToNow(new Date(item.scheduledFor), { addSuffix: true })
+        });
   } else {
-    statusLabel = "Schedule TBA";
+    statusLabel = t("pages.live.statusScheduleTba");
   }
 
   const actionLabel = item.type === "session"
-    ? item.status === "live" ? "Join Session" : "View Session"
-    : item.status === "live" ? "Watch Battle" : "View Battle";
+    ? item.status === "live"
+      ? t("pages.live.actionJoinSession")
+      : t("pages.live.actionViewSession")
+    : item.status === "live"
+      ? t("pages.live.actionWatchBattle")
+      : t("pages.live.actionViewBattle");
 
-  const timeFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }),
-    [locale]
-  );
+  const formattedScheduleTime = item.scheduledFor
+    ? formatLocaleDate(new Date(item.scheduledFor), {
+        dateStyle: "medium",
+        timeStyle: "short"
+      })
+    : null;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -52,7 +62,7 @@ const ScheduleItemCard = ({ item, now, locale }: { item: LiveScheduleItem; now: 
               {item.status === "live" ? (
                 <span className="inline-flex items-center gap-2 font-semibold text-red-500">
                   <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
-                  Live now
+                  {t("pages.live.statusLiveNow")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-2">
@@ -62,17 +72,21 @@ const ScheduleItemCard = ({ item, now, locale }: { item: LiveScheduleItem; now: 
               )}
             </div>
           </div>
-                {item.scheduledFor && (
-                  <div className="text-right text-sm text-muted-foreground">
-                    <div className="flex items-center justify-end gap-1">
-                      <Calendar className="h-4 w-4" aria-hidden />
-                {timeFormatter.format(new Date(item.scheduledFor))}
-                    </div>
-                  </div>
-                )}
+          {formattedScheduleTime && (
+            <div className="text-right text-sm text-muted-foreground">
+              <div className="flex items-center justify-end gap-1">
+                <Calendar className="h-4 w-4" aria-hidden />
+                {formattedScheduleTime}
+              </div>
+            </div>
+          )}
         </div>
         {item.status === "live" && item.endsAt && (
-          <p className="text-sm text-muted-foreground">Ends {formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("pages.live.statusEndsIn", {
+              time: formatDistanceToNow(new Date(item.endsAt), { addSuffix: true })
+            })}
+          </p>
         )}
       </CardHeader>
       <CardContent>
@@ -88,11 +102,10 @@ const ScheduleItemCard = ({ item, now, locale }: { item: LiveScheduleItem; now: 
 };
 
 export default function LiveIndex() {
-  const intl = useIntl();
-  const { settings } = useLocalization();
   const { rooms, loading } = useSessionRooms();
   const { schedule, loading: scheduleLoading } = useLiveSchedule();
   const now = useNow(60_000);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setMeta("Live Sessions & Events", "Join live music sessions, battles, and events with fellow creators");
@@ -110,36 +123,18 @@ export default function LiveIndex() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 text-primary mb-4">
               <Plug className="w-5 h-5" />
-              <span className="uppercase tracking-widest text-xs">
-                {intl.formatMessage({ id: "pages.live.strapline", defaultMessage: "Get Plugged In" })}
-              </span>
+              <span className="uppercase tracking-widest text-xs">{t('pages.live.heroTagline')}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
-              {intl.formatMessage({
-                id: "pages.live.title",
-                defaultMessage: "Live Battles, Showcases, and Creator Streams",
-              })}
+              {t('pages.live.heroTitle')}
             </h1>
             <p className="mt-4 text-muted-foreground max-w-2xl">
-              {intl.formatMessage({
-                id: "pages.live.description",
-                defaultMessage: "The energy of the culture in real-time. Submit, perform, and get feedback from the community.",
-              })}
+              {t('pages.live.heroSubtitle')}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/live/sessions">
-                <Button>{intl.formatMessage({ id: "pages.live.ctaJoin", defaultMessage: "Join a Session" })}</Button>
-              </Link>
-              <Link to="/live/battles">
-                <Button variant="outline">
-                  {intl.formatMessage({ id: "pages.live.ctaBattles", defaultMessage: "View Battles" })}
-                </Button>
-              </Link>
-              <Link to="/auth">
-                <Button variant="hero">
-                  {intl.formatMessage({ id: "pages.live.ctaCommunity", defaultMessage: "Join the Community" })}
-                </Button>
-              </Link>
+              <Link to="/live/sessions"><Button>{t('pages.live.ctaJoinSession')}</Button></Link>
+              <Link to="/live/battles"><Button variant="outline">{t('pages.live.ctaViewBattles')}</Button></Link>
+              <Link to="/auth"><Button variant="hero">{t('pages.live.ctaJoinCommunity')}</Button></Link>
             </div>
           </div>
         </header>
@@ -148,13 +143,9 @@ export default function LiveIndex() {
         <section className="py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">
-                {intl.formatMessage({ id: "pages.live.scheduleHeading", defaultMessage: "Live Schedule" })}
-              </h2>
+              <h2 className="text-2xl font-semibold">{t('pages.live.scheduleHeading')}</h2>
               <Button variant="outline" size="sm" asChild>
-                <Link to="/live/sessions">
-                  {intl.formatMessage({ id: "pages.live.viewSessions", defaultMessage: "View Sessions" })}
-                </Link>
+                <Link to="/live/sessions">View Sessions</Link>
               </Button>
             </div>
 
@@ -163,18 +154,13 @@ export default function LiveIndex() {
             ) : schedule.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {schedule.map((item) => (
-                  <ScheduleItemCard key={`${item.type}-${item.id}`} item={item} now={now} locale={settings.locale} />
+                  <ScheduleItemCard key={`${item.type}-${item.id}`} item={item} now={now} />
                 ))}
               </div>
             ) : (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
-                  <p>
-                    {intl.formatMessage({
-                      id: "pages.live.noSchedule",
-                      defaultMessage: "No live events scheduled yet. Check back soon!",
-                    })}
-                  </p>
+                  <p>No live events scheduled yet. Check back soon!</p>
                 </CardContent>
               </Card>
             )}
@@ -185,13 +171,9 @@ export default function LiveIndex() {
         <section className="py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">
-                {intl.formatMessage({ id: "pages.live.roomsHeading", defaultMessage: "Live Rooms" })}
-              </h2>
+              <h2 className="text-2xl font-semibold">Live Rooms</h2>
               <Button asChild>
-                <Link to="/live/sessions">
-                  {intl.formatMessage({ id: "pages.live.viewAllSessions", defaultMessage: "View All Sessions" })}
-                </Link>
+                <Link to="/live/sessions">View All Sessions</Link>
               </Button>
             </div>
             
@@ -226,19 +208,10 @@ export default function LiveIndex() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    {intl.formatMessage({ id: "pages.live.noRoomsTitle", defaultMessage: "No live rooms" })}
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {intl.formatMessage({
-                      id: "pages.live.noRoomsDescription",
-                      defaultMessage: "Be the first to start a live session!",
-                    })}
-                  </p>
+                  <h3 className="text-lg font-semibold mb-2">No live rooms</h3>
+                  <p className="text-muted-foreground mb-4">Be the first to start a live session!</p>
                   <Button asChild>
-                    <Link to="/live/sessions">
-                      {intl.formatMessage({ id: "pages.live.createSession", defaultMessage: "Create Session" })}
-                    </Link>
+                    <Link to="/live/sessions">Create Session</Link>
                   </Button>
                 </CardContent>
               </Card>
