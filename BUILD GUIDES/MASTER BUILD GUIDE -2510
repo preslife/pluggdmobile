@@ -1,0 +1,478 @@
+Check these docs when buildingeach task : . The Master Feature Specification (The what): PLUGGD_MASTER_FEATURESPEC.MD.
+2. The Database Schema (The structure): PLUGGD_SCHEMA_2510
+3. The QA/Acceptance Standard (The validation): docs/qa-regression-checklist.md.
+The Third Critical Document: The docs/qa-regression-checklist.md
+
+Pluggd Master Build Document: Specification Compliance (P0/P1)
+Executive Summary and Scope
+The current codebase is estimated to have implemented approximately 65% of MVP features and 30% of v1.1/v2 features. The platform has strong foundational infrastructure, including basic Stripe checkout, the audio player, and PWA support.
+The remaining critical path (P0/P1) focuses on revenue finalisation (Milestone A), core recurring revenue (Milestone B), and critical platform stability (Trust & Safety, Milestone F). Full completion of P0/P1 scope is estimated to take 8–12 weeks.
+Foundational Specifications (Reference for Devs/LLMs)
+The development team must reference the content of these external specification documents for accurate implementation details:
+Document/Artifact
+Path/Reference
+Purpose
+Supporting Sources
+Master Feature Spec
+PLUGGD_MASTER_FEATURESPEC.MD
+Defines all feature acceptance criteria and scope.
+Detailed Task Plan
+BUILD GUIDES/IMPLEMENTATIONS/POST_MVP_REMAINING_TASKS_PLAN.md
+Provides line-item rationale and sequencing for all Milestones (A–F).
+Current Schema Snapshot
+PLUGGD_SCHEMA_2110.txt:1
+Definitive current database structure.
+QA/Testing Checklist
+docs/qa-regression-checklist.md
+Defines acceptance test pass required before launch.
+--------------------------------------------------------------------------------
+Part I: Comprehensive Gap Analysis (P0/P1 Critical Gaps)
+Feature Area
+Priority
+Spec Reference
+Gap Description
+Checkout Reconciliation
+P0
+Spec §4
+Store cart flows stop after Stripe session creation; no reconciliation of orders/receipts or purchase success routing.
+Secure Downloads
+P0
+Spec §2
+Download gating relies on local flags; ownership validation and signed URL issuance need hardening (Milestone A3). UI needs broader integration.
+Orders Data Quality
+P0
+Spec §17
+Status normalization, indexes, and backfills are open, leaving reporting and payouts at risk.
+Fan Account Surfaces
+P0
+Spec §17
+No dedicated orders history/receipts UI (/account/orders) yet.
+Trust, Safety & Legal
+P0
+Spec §19
+Reporting, blocking, and moderation tooling are missing (Milestone D1). The user_blocks table is NOT FOUND.
+Notifications
+P0
+Spec §6
+In-app notification center and preference management are not yet implemented (Milestone D2).
+Observability
+P0
+Global
+Structured logging and dashboards for critical flows remain open (Milestone D3).
+Membership Gating
+P1
+Spec §12
+Content gating selectors and enforcement logic are tracked but not delivered (Milestone C items).
+Tips & Gifts Settlement
+P1
+Spec §4
+Settlement logic/receipts are pending (Milestone A2); creators do not see confirmed payouts.
+--------------------------------------------------------------------------------
+Part II: Master Completion Build Plan (Milestones A–F)
+This plan sequences the work based on dependencies, prioritizing revenue flow completion (A) and membership systems (B) before moving to operational stability (F).
+Phase 1 – Revenue & Access Hardening (Milestone A)
+Deliverable
+Key Tasks
+File Paths / New Routes
+Acceptance Criteria
+A1. Checkout Reconciliation
+Extend webhook to mark orders.status = 'completed', populate paid_at, and set metadata.type = 'store_purchase'.
+Modify: supabase/functions/enhanced-store-checkout/index.ts and supabase/functions/stripe-webhook/index.ts. New: /store/success route.
+Orders match Stripe events; orders.status is complete; success page renders order summary.
+A2. Tips & Gifts Settlement
+Implement webhook handler for metadata.type === 'artist_tip', mark artist_tips succeeded, and trigger lifecycle emails.
+Modify: supabase/functions/stripe-webhook/index.ts.
+Creator sees settled tips; fan receives receipt email.
+A3. Secure Download Enforcement
+Tighten download-signed-url to unify purchase checks. Wire SecureDownloadButton to appear only when hasPurchased = true.
+Modify: supabase/functions/download-signed-url/index.ts. Modify: src/pages/ReleaseDetail.tsx.
+Non-owners receive 403; owners get time-bound signed URLs; audit log lines recorded.
+A4. Orders Data Hygiene
+Execute migration scripts to align statuses, backfill paid_at, and add DB indexes.
+Modify: supabase/migrations/... (SQL commands needed).
+Consistent statuses; paid_at populated; query plans show index usage.
+Phase 2 – Memberships, Gating, & Fan UI (Milestones B/C)
+Deliverable
+Key Tasks
+File Paths / New Routes
+Acceptance Criteria
+B1. Orders History Page
+Build /account/orders view with purchases/tips tabs, utilizing the new RPC get_orders_for_user.
+New: src/pages/AccountOrders.tsx. Backend: New RPC get_orders_for_user(p_user_id uuid).
+Fans can download receipts; all past orders visible with correct totals.
+B2. SEO & OG Toolkit
+Implement dynamic OG image generator (Edge function). Generate XML sitemap via build-time script.
+New Script: scripts/generate-sitemap.ts.
+OG preview works for entities; sitemap deployable; Lighthouse checks clean.
+B3. Search UX Polish
+Add input debounce (250ms), keyboard navigation, and explicit 0-results empty states.
+Modify: src/pages/SearchPage.tsx.
+Keyboard navigation passes accessibility review.
+B4. Mobile Pass
+Targeted 360–428px pass across homepage, marketplace, and Studio views. Increase tap targets to 44px minimum.
+N/A (CSS/Component level adjustments).
+Manual QA on 360px devices passes.
+C1. Membership Tier CRUD
+Wire EnhancedMembershipsModule to real database operations and integrate Stripe product/price creation.
+Modify: src/components/CreatorStudio/modules/EnhancedMembershipsModule.tsx.
+Creators create/edit/delete tiers that persist in Supabase + Stripe.
+C2. Fan Subscription Checkout
+Extend checkout/webhook to map Stripe subscription events to the memberships table.
+Modify: supabase/functions/stripe-webhook/index.ts. Also: supabase/functions/create-fan-subscription/index.ts.
+Fans subscribe/cancel; status updates via webhook.
+C4. Content Gating
+Extend editors with tier selectors; implement enforcement using SubscriptionGatedContent wrapper.
+Modify: src/components/SubscriptionGatedContent.tsx.
+Creators can gate content; non-members see paywall; unlocking updates instantly.
+Phase 3 – Trust, Safety, & Observability (Milestone F)
+Deliverable
+Key Tasks
+File Paths / New Routes
+Acceptance Criteria
+F1. Reporting & Blocking
+Create content_reports and user_blocks tables. Define RLS, build report modals, and wire admin moderation queue.
+New Tables: content_reports, user_blocks (Migration needed). Edge Functions: submit-report, review-report, block-user.
+Fans submit reports; admins resolve cases; blocked users restricted in chats and DMs.
+F2. Notifications v1
+Build in-app notification dropdown/panel. Implement mark-as-read API and settings toggles.
+New File: src/components/NotificationCenter.tsx.
+Orders/tips/membership events trigger in-app notifications; unread counts reconcile.
+F3. Observability
+Instrument structured logging in critical flows. Build metrics rollups and dashboards for checkout, memberships, and reporting.
+Files: Key flows in Studio, checkout, tips (call useLogger).
+Dashboards show end-to-end funnel; alerting thresholds defined.
+F4. Email Lifecycle
+Wire the 8 existing email templates to event triggers (order receipt, tip receipt, etc.).
+Function: supabase/functions/send-lifecycle-emails/index.ts.
+Lifecycle emails dispatch reliably for critical events.
+Phase 4 – Studio Hardening & Growth (Milestones D/E)
+These modules require replacement of mock data with real Supabase queries and integration of payment flows.
+Deliverable
+Key Tasks
+File Paths / Components
+Acceptance Criteria
+D1/D2. Courses/Crowdfunding
+Wire purchase flows through checkout. Implement completion tracking (Courses) and campaign progress/payout logic (Crowdfunding).
+supabase/functions/create-course-payment/index.ts.
+Enrollment grants access; contributions update campaign goal.
+E1/E2. Social & Playlists
+Implement public toggle, slugged playlist pages. Build followed-creator feed with infinite scroll.
+N/A (Feed/Page components).
+Public playlist URLs shareable; “Following” feed populated.
+E3. Catalog Module
+Replace placeholder queries in CatalogModule.tsx with Supabase RPCs and wire analytics chips to creator_metrics.
+src/components/CreatorStudio/modules/CatalogModule.tsx.
+Catalog reflects live Supabase data.
+E5. Analytics Attribution
+Complete closed-loop attribution (post → click → view → purchase/play). Implement creator_kpi_daily_personal view integration.
+src/components/CreatorStudio/modules/AnalyticsModule.tsx.
+Totals reconcile with Orders; per-post ROI visible in Analytics.
+--------------------------------------------------------------------------------
+Part III: Technical Dependencies and Execution Detail
+A. Database Migrations (P0 Priority)
+The LLMs/developers must execute the following database changes to stabilize core revenue and trust features:
+1. Orders Table Updates:
+    ◦ Add columns: paid_at timestamptz and payment_provider text to the orders table.
+    ◦ Execute migration to unify orders.status enums.
+2. Indexing (P0):
+    ◦ CREATE INDEX idx_orders_user_date ON orders(user_id, created_at DESC);
+    ◦ CREATE INDEX idx_orders_payment_id ON orders(payment_id);
+    ◦ CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+3. Missing Tables (P0, Milestone F1):
+    ◦ CREATE TABLE content_reports (id uuid PRIMARY KEY, ...);
+    ◦ CREATE TABLE user_blocks (id uuid PRIMARY KEY, ...); (Currently noted as NOT FOUND)
+4. Missing RPC Signatures (Milestone C):
+    ◦ The following RPCs must be written into the migrations for the Labels feature: create_label_for_current_user, admin_create_managed_label, invite_label_member, accept_label_invite.
+B. External Dependencies
+The following credentials and external services are required for Milestones A, B, and C:
+• Stripe Configuration: Confirmed Stripe keys and Stripe webhook secret (for stripe-webhook/index.ts consistency).
+• Discord: Discord bot tokens for role sync (Milestone C3).
+• Email Service: Email service configuration (for send-lifecycle-emails in F3/A2).
+• Social Providers: OAuth app credentials for social platforms (for Plug-ins/Channels, Phase 4).
+--------------------------------------------------------------------------------
+Part IV: Quality Assurance, Testing, and Risk Mitigation
+Required Testing Artifacts
+The LLM output must be validated against these checks:
+• Regression Checklist: Run the docs/qa-regression-checklist.md end-to-end.
+• Integration Tests: Bootstrap the Playwright smoke suite. Critical flows to test include:
+    ◦ Complete purchase flow (checkout → webhook → orders history → download).
+    ◦ Membership subscription (subscribe → access gating → Discord sync).
+    ◦ Label invite flow (send → accept → roster update).
+• Final Gating: The Lighthouse mobile score must be \ge80.
+Critical Risks & Mitigation Strategy
+Risk
+Impact
+Mitigation Strategy (As detailed in sources)
+Supporting Source References
+Stripe webhook race conditions
+Orders not marked complete; duplicate fulfillment
+Use idempotency keys; add integration tests.
+Membership cache staleness
+Users locked out of content
+Subscribe to realtime channel for updates; use grace periods.
+Discord API rate limits
+Role sync delays/failure
+Queue with retries; implement background cron sync.
+Analytics data volume
+Slow reporting queries
+Use materialized views; add indexes.
+Out of Scope (V2 Features)
+The following features are P3/v2 scope and must be deferred:
+• Native Mobile Clients.
+• Distribution to DSPs (Spotify/Apple Music delivery).
+• NFTs/Collectibles minting.
+• Advanced streaming features (gapless/crossfade/quality normalization).
+• Advanced Plug-ins Inbox features.
+
+---
+
+This is a crucial step towards standardizing your development efforts. Leveraging the detailed analyses from your sources, I have compiled a **Master Build Document** that integrates the definitive Gap Analysis, the sequenced Build Plan, and a comprehensive list of all required technical files, paths, and dependencies referenced across the source material.
+
+This document serves as the single source of truth for your development team and the LLM models (Codex/Claude), providing the specific context needed to achieve 100% specification compliance for P0 and P1 features.
+
+---
+
+# Pluggd Master Build Document: Specification Compliance (P0/P1)
+
+## Executive Summary and Scope
+
+The current codebase is estimated to have implemented approximately **65% of MVP features** and 30% of v1.1/v2 features. The platform has strong foundational infrastructure, including basic Stripe checkout, the audio player, and PWA support.
+
+The remaining critical path (P0/P1) focuses on revenue finalisation (Milestone A), core recurring revenue (Milestone B), and critical platform stability (Trust & Safety, Milestone F). Full completion of P0/P1 scope is estimated to take **8–12 weeks**.
+
+### Foundational Specifications (Reference for Devs/LLMs)
+
+The development team must reference the content of these external specification documents for accurate implementation details:
+
+| Document/Artifact | Path/Reference | Purpose | Supporting Sources |
+| :--- | :--- | :--- | :--- |
+| **Master Feature Spec** | `PLUGGD_MASTER_FEATURESPEC.MD` | Defines all feature acceptance criteria and scope. | |
+| **Detailed Task Plan** | `BUILD GUIDES/IMPLEMENTATIONS/POST_MVP_REMAINING_TASKS_PLAN.md` | Provides line-item rationale and sequencing for all Milestones (A–F). | |
+| **Current Schema Snapshot** | `PLUGGD_SCHEMA_2110.txt:1` | Definitive current database structure. | |
+| **QA/Testing Checklist** | `docs/qa-regression-checklist.md` | Defines acceptance test pass required before launch. | |
+
+---
+
+## Part I: Comprehensive Gap Analysis (P0/P1 Critical Gaps)
+
+| Feature Area | Priority | Spec Reference | Gap Description |
+| :--- | :--- | :--- | :--- |
+| **Checkout Reconciliation** | P0 | Spec §4 | Store cart flows stop after Stripe session creation; **no reconciliation of orders/receipts** or purchase success routing. |
+| **Secure Downloads** | P0 | Spec §2 | Download gating relies on local flags; **ownership validation and signed URL issuance** need hardening (Milestone A3). UI needs broader integration. |
+| **Orders Data Quality** | P0 | Spec §17 | Status normalization, indexes, and backfills are open, **leaving reporting and payouts at risk**. |
+| **Fan Account Surfaces** | P0 | Spec §17 | **No dedicated orders history/receipts UI** (`/account/orders`) yet. |
+| **Trust, Safety & Legal** | P0 | Spec §19 | **Reporting, blocking, and moderation tooling are missing** (Milestone D1). The **`user_blocks` table is NOT FOUND**. |
+| **Notifications** | P0 | Spec §6 | In-app notification center and preference management are **not yet implemented** (Milestone D2). |
+| **Observability** | P0 | Global | Structured logging and **dashboards for critical flows** remain open (Milestone D3). |
+| **Membership Gating** | P1 | Spec §12 | Content gating selectors and **enforcement logic** are tracked but not delivered (Milestone C items). |
+| **Tips & Gifts Settlement** | P1 | Spec §4 | Settlement logic/receipts are pending (Milestone A2); creators do not see confirmed payouts. |
+
+---
+
+## Part II: Master Completion Build Plan (Milestones A–F)
+
+This plan sequences the work based on dependencies, prioritizing revenue flow completion (A) and membership systems (B) before moving to operational stability (F).
+
+### Phase 1 – Revenue & Access Hardening (Milestone A)
+
+| Deliverable | Key Tasks | File Paths / New Routes | Acceptance Criteria |
+| :--- | :--- | :--- | :--- |
+| **A1. Checkout Reconciliation** | Extend webhook to mark `orders.status = 'completed'`, populate `paid_at`, and set `metadata.type = 'store_purchase'`. | **Modify:** `supabase/functions/enhanced-store-checkout/index.ts` and `supabase/functions/stripe-webhook/index.ts`. **New:** `/store/success` route. | Orders match Stripe events; `orders.status` is complete; **success page renders order summary**. |
+| **A2. Tips & Gifts Settlement** | Implement webhook handler for `metadata.type === 'artist_tip'`, mark `artist_tips` succeeded, and **trigger lifecycle emails**. | **Modify:** `supabase/functions/stripe-webhook/index.ts`. | Creator sees settled tips; fan receives receipt email. |
+| **A3. Secure Download Enforcement** | Tighten `download-signed-url` to unify purchase checks. Wire `SecureDownloadButton` to appear only when `hasPurchased = true`. | **Modify:** `supabase/functions/download-signed-url/index.ts`. **Modify:** `src/pages/ReleaseDetail.tsx`. | **Non-owners receive 403**; owners get time-bound signed URLs; audit log lines recorded. |
+| **A4. Orders Data Hygiene** | Execute migration scripts to align statuses, backfill `paid_at`, and **add DB indexes**. | **Modify:** `supabase/migrations/...` (SQL commands needed). | Consistent statuses; `paid_at` populated; query plans show index usage. |
+
+### Phase 2 – Memberships, Gating, & Fan UI (Milestones B/C)
+
+| Deliverable | Key Tasks | File Paths / New Routes | Acceptance Criteria |
+| :--- | :--- | :--- | :--- |
+| **B1. Orders History Page** | **Build `/account/orders` view** with purchases/tips tabs, utilizing the **new RPC `get_orders_for_user`**. | **New:** `src/pages/AccountOrders.tsx`. **Backend:** New RPC `get_orders_for_user(p_user_id uuid)`. | Fans can download receipts; all past orders visible with correct totals. |
+| **B2. SEO & OG Toolkit** | Implement **dynamic OG image generator** (Edge function). Generate **XML sitemap** via build-time script. | **New Script:** `scripts/generate-sitemap.ts`. | OG preview works for entities; sitemap deployable; Lighthouse checks clean. |
+| **B3. Search UX Polish** | Add **input debounce** (250ms), keyboard navigation, and explicit 0-results empty states. | **Modify:** `src/pages/SearchPage.tsx`. | Keyboard navigation passes accessibility review. |
+| **B4. Mobile Pass** | Targeted **360–428px pass** across homepage, marketplace, and Studio views. Increase tap targets to 44px minimum. | N/A (CSS/Component level adjustments). | Manual QA on 360px devices passes. |
+| **C1. Membership Tier CRUD** | Wire `EnhancedMembershipsModule` to real database operations and **integrate Stripe product/price creation**. | **Modify:** `src/components/CreatorStudio/modules/EnhancedMembershipsModule.tsx`. | Creators create/edit/delete tiers that persist in Supabase + Stripe. |
+| **C2. Fan Subscription Checkout** | Extend checkout/webhook to map Stripe subscription events to the `memberships` table. | **Modify:** `supabase/functions/stripe-webhook/index.ts`. **Also:** `supabase/functions/create-fan-subscription/index.ts`. | Fans subscribe/cancel; status updates via webhook. |
+| **C4. Content Gating** | Extend editors with tier selectors; implement enforcement using **`SubscriptionGatedContent`** wrapper. | **Modify:** `src/components/SubscriptionGatedContent.tsx`. | Creators can gate content; non-members see paywall; unlocking updates instantly. |
+
+### Phase 3 – Trust, Safety, & Observability (Milestone F)
+
+| Deliverable | Key Tasks | File Paths / New Routes | Acceptance Criteria |
+| :--- | :--- | :--- | :--- |
+| **F1. Reporting & Blocking** | Create **`content_reports` and `user_blocks` tables**. Define RLS, build report modals, and wire admin moderation queue. | **New Tables:** `content_reports`, `user_blocks` (Migration needed). **Edge Functions:** `submit-report`, `review-report`, `block-user`. | Fans submit reports; admins resolve cases; **blocked users restricted** in chats and DMs. |
+| **F2. Notifications v1** | Build **in-app notification dropdown/panel**. Implement mark-as-read API and settings toggles. | **New File:** `src/components/NotificationCenter.tsx`. | Orders/tips/membership events trigger in-app notifications; unread counts reconcile. |
+| **F3. Observability** | Instrument structured logging in critical flows. Build **metrics rollups and dashboards** for checkout, memberships, and reporting. | **Files:** Key flows in Studio, checkout, tips (call `useLogger`). | Dashboards show end-to-end funnel; alerting thresholds defined. |
+| **F4. Email Lifecycle** | Wire the 8 existing email templates to event triggers (order receipt, tip receipt, etc.). | **Function:** `supabase/functions/send-lifecycle-emails/index.ts`. | Lifecycle emails dispatch reliably for critical events. |
+
+### Phase 4 – Studio Hardening & Growth (Milestones D/E)
+
+These modules require replacement of mock data with real Supabase queries and integration of payment flows.
+
+| Deliverable | Key Tasks | File Paths / Components | Acceptance Criteria |
+| :--- | :--- | :--- | :--- |
+| **D1/D2. Courses/Crowdfunding** | Wire purchase flows through checkout. Implement completion tracking (Courses) and campaign progress/payout logic (Crowdfunding). | `supabase/functions/create-course-payment/index.ts`. | Enrollment grants access; contributions update campaign goal. |
+| **E1/E2. Social & Playlists** | Implement public toggle, slugged playlist pages. Build **followed-creator feed** with infinite scroll. | N/A (Feed/Page components). | Public playlist URLs shareable; “Following” feed populated. |
+| **E3. Catalog Module** | Replace placeholder queries in `CatalogModule.tsx` with Supabase RPCs and wire analytics chips to `creator_metrics`. | `src/components/CreatorStudio/modules/CatalogModule.tsx`. | Catalog reflects live Supabase data. |
+| **E5. Analytics Attribution** | Complete **closed-loop attribution** (post → click → view → purchase/play). Implement `creator_kpi_daily_personal` view integration. | `src/components/CreatorStudio/modules/AnalyticsModule.tsx`. | Totals reconcile with Orders; per-post ROI visible in Analytics. |
+
+---
+
+## Part III: Technical Dependencies and Execution Detail
+
+### A. Database Migrations (P0 Priority)
+
+The LLMs/developers must execute the following database changes to stabilize core revenue and trust features:
+
+1.  **Orders Table Updates:**
+    *   Add columns: `paid_at timestamptz` and `payment_provider text` to the `orders` table.
+    *   Execute migration to **unify `orders.status` enums**.
+2.  **Indexing (P0):**
+    *   `CREATE INDEX idx_orders_user_date ON orders(user_id, created_at DESC);`
+    *   `CREATE INDEX idx_orders_payment_id ON orders(payment_id);`
+    *   `CREATE INDEX idx_order_items_order_id ON order_items(order_id);`
+3.  **Missing Tables (P0, Milestone F1):**
+    *   `CREATE TABLE content_reports (id uuid PRIMARY KEY, ...);`
+    *   `CREATE TABLE user_blocks (id uuid PRIMARY KEY, ...);` (Currently noted as **NOT FOUND**)
+4.  **Missing RPC Signatures (Milestone C):**
+    *   The following RPCs must be written into the migrations for the Labels feature: `create_label_for_current_user`, `admin_create_managed_label`, `invite_label_member`, `accept_label_invite`.
+
+### B. External Dependencies
+
+The following credentials and external services are required for Milestones A, B, and C:
+
+*   **Stripe Configuration:** Confirmed Stripe keys and **Stripe webhook secret** (for `stripe-webhook/index.ts` consistency).
+*   **Discord:** **Discord bot tokens** for role sync (Milestone C3).
+*   **Email Service:** Email service configuration (for `send-lifecycle-emails` in F3/A2).
+*   **Social Providers:** OAuth app credentials for social platforms (for Plug-ins/Channels, Phase 4).
+
+---
+
+## Part IV: Quality Assurance, Testing, and Risk Mitigation
+
+### Required Testing Artifacts
+
+The LLM output must be validated against these checks:
+
+*   **Regression Checklist:** Run the `docs/qa-regression-checklist.md` end-to-end.
+*   **Integration Tests:** Bootstrap the **Playwright smoke suite**. Critical flows to test include:
+    *   Complete purchase flow (checkout → webhook → orders history → download).
+    *   Membership subscription (subscribe → access gating → Discord sync).
+    *   Label invite flow (send → accept → roster update).
+*   **Final Gating:** The **Lighthouse mobile score must be $\ge80$**.
+
+### Critical Risks & Mitigation Strategy
+
+| Risk | Impact | Mitigation Strategy (As detailed in sources) | Supporting Source References |
+| :--- | :--- | :--- | :--- |
+| Stripe webhook race conditions | Orders not marked complete; duplicate fulfillment | **Use idempotency keys**; add integration tests. | |
+| Membership cache staleness | Users locked out of content | Subscribe to **realtime channel** for updates; use grace periods. | |
+| Discord API rate limits | Role sync delays/failure | **Queue with retries**; implement background cron sync. | |
+| Analytics data volume | Slow reporting queries | Use materialized views; **add indexes**. | |
+
+### Out of Scope (V2 Features)
+
+The following features are P3/v2 scope and must be deferred:
+
+*   **Native Mobile Clients**.
+*   Distribution to DSPs (Spotify/Apple Music delivery).
+*   NFTs/Collectibles minting.
+*   Advanced streaming features (gapless/crossfade/quality normalization).
+*   Advanced Plug-ins Inbox features.
+
+Pluggd 10-Day Critical Path Master Build Document (P0/P1 Focus)
+This plan integrates Milestones A, B (UX/SEO), and D/F (Trust/Safety) into concurrent workstreams. All tasks listed below are P0 (Critical) unless marked P1.
+Workstream 1: Revenue Core & Data Integrity (Milestone A)
+Goal: Close the sales loop, ensure payment data is correct, and enforce secure access.
+Task ID
+Priority
+Implementation Details (Files/Code)
+Database Migrations / Backend
+Acceptance Criteria
+A1. Checkout Finalization
+P0
+Frontend: Add /store/success route that handles session_id query param and failure states. Code: Add toast/redirect handling inside cart/checkout hooks.
+Modify: supabase/functions/enhanced-store-checkout/index.ts. Set metadata.type = 'store_purchase' and persist payment_id = session.id. Modify: supabase/functions/stripe-webhook/index.ts. Mark orders.status = 'completed', populate paid_at, payment_provider = 'stripe'.
+Orders in orders/order_items match Stripe events. The /store/success page renders the order summary. Structured log emitted to system_logs.
+A2. Tips Settlement
+P1
+Files: supabase/functions/stripe-webhook/index.ts.
+Add branch within webhook for metadata.type === 'artist_tip'. Update artist_tips table with status='succeeded' and paid_at. Trigger send-lifecycle-emails for fan/creator receipts.
+Tip sessions move to succeeded automatically. Creators see settled tips in earnings. Confirm email dispatch in logs.
+A3. Secure Downloads
+P0
+Files: src/pages/ReleaseDetail.tsx. Update components to render SecureDownloadButton when hasPurchased. Handle expiration errors with retry/toast.
+Audit/Modify: supabase/functions/download-signed-url/index.ts. Ensure ownership validation checks orders/order_items. Log denials to system_logs.
+Non-owners receive 403. Owners get working, time-bound signed URLs. Audit log lines recorded for denials.
+A4. Orders Data Hygiene
+P0
+N/A (Backend only).
+Migration Required: Unify orders.status enumerations. Backfill existing rows with consistent status and paid_at. Add Indexes: CREATE INDEX idx_orders_user_date ON orders(user_id, created_at DESC). CREATE INDEX idx_orders_payment_id ON orders(payment_id).
+Consistent statuses in DB; paid_at populated. Query plans show index usage.
+Workstream 2: Trust, Safety, & Observability (Milestone D/F)
+Goal: Implement mandatory compliance, moderation infrastructure, and system observability.
+Task ID
+Priority
+Implementation Details (Files/Code)
+Database Migrations / Backend
+Acceptance Criteria
+F1. Reporting & Blocking
+P0
+UI: Build report modals on posts/releases/beats/profiles. Implement Admin moderation queue UI.
+CRITICAL: Create Tables: CREATE TABLE content_reports (id uuid PRIMARY KEY, ...);. CRITICAL: Create Table: CREATE TABLE user_blocks (id uuid PRIMARY KEY, ...); (This table is NOT FOUND, must be created). Edge Functions: Implement submit-report, review-report, block-user. Define RLS so blocked users cannot interact.
+Fans submit reports. Admins resolve cases; blocked users restricted in chats and DMs. RLS prevents unauthorized data access.
+D2. Notifications v1
+P0
+Files: Build src/components/NotificationCenter.tsx (dropdown/panel). Add mark-as-read API and preference toggles.
+Expand existing notifications table schema with type enums/payloads. Implement broadcast-notification Edge function. Wire notifications to critical events (orders, tips, membership).
+Orders/tips/membership events trigger in-app notifications. Unread counts reconcile.
+D3. Observability/Logging
+P0
+Code: Instrument useLogger calls in key flows (e.g., checkout success/error, tip success, report submission).
+Build LogRocket/Sentry dashboards or Supabase charts for triage. Define alerting thresholds.
+Logs cover checkout success/failure and reporting events. Dashboards show end-to-end funnel.
+Workstream 3: Fan Experience & Mobile Polish (Milestone B)
+Goal: Deliver high-visibility fan features and address core usability/SEO issues.
+Task ID
+Priority
+Implementation Details (Files/Code)
+Database Migrations / Backend
+Acceptance Criteria
+B1. Orders History Page
+P0
+Files: Create src/pages/AccountOrders.tsx. Add tabs for purchases and tips. Link page from /account sidebar.
+Backend: Expose RPC get_orders_for_user(p_user_id uuid) that aggregates items and totals.
+Fans can download receipts. User sees all past orders with accurate totals.
+B2. SEO & OG Toolkit
+P0
+Code: Implement dynamic OG image generator (Edge function or API route). Generate XML sitemap via build-time script (scripts/generate-sitemap.ts). Audit page-level SEO Helmet usage.
+N/A (Requires Supabase service role key for script access).
+OG preview works for releases/creators. Sitemap deployable.
+B3/B4. UX/Mobile Pass
+P0
+Search: Add input debounce (250–300ms). Implement keyboard navigation. Add explicit 0-results empty states. Mobile: Targeted 360–428px pass. Increase tap targets to 44px minimum.
+N/A
+Keyboard-driven search passes accessibility review. Manual QA on 360px devices passes. Lighthouse mobile ≥80.
+
+--------------------------------------------------------------------------------
+Critical Dependencies, Testing, and Deferrals
+Deferrals (Post-10 Day Plan)
+Given the 10-day constraint, the following P1 features must be paused until the core P0 revenue/safety loop is closed:
+• Milestone C (Labels & Teams): Signup/Upgrade UI, Roster Management, Artist Linking.
+• Milestone D1/D2 (Courses/Crowdfunding Checkout): The core modules exist, but payment integration is deferred.
+• Milestone E (Studio Hardening): Replacing mock data in Catalog, Analytics, CRM, etc..
+• Milestone E6 (Courses Progression/Catalog): Completion tracking and certifications.
+Testing & QA Requirements
+The LLM agents must include validation steps against the following artifacts:
+Artifact
+Purpose
+Supporting Source References
+docs/qa-regression-checklist.md
+End-to-end testing standard. Must cover Stripe webhooks, gating, mobile views.
+Playwright Smoke Suite
+Bootstrap automated tests for critical flows, specifically checkout, memberships, and reporting.
+RLS Policy Audit
+Verify RLS prevents unauthorized data access on new tables (user_blocks, content_reports).
+Key Technical Dependencies
+The following external dependencies are mandatory for successful parallel execution of Milestones A and F:
+• Stripe Configuration: Confirmed Stripe keys and webhook secret (Crucial for A1/A2 idempotency).
+• System Logging: Ensure system_logs schema is verified for instrumenting observability (D3).
+• Email Configuration: Necessary for dispatching tip receipts (A2) and lifecycle emails (F3/A2).
