@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import { setMeta } from "@/lib/seo";
 import { UnifiedInbox } from "@/components/UnifiedInbox";
+import useTranslation from "@/hooks/useTranslation";
 
 const InboxPage = () => {
+  const { t } = useTranslation();
   useEffect(() => {
     setMeta(
-      "Unified Inbox — Pluggd",
-      "Manage all your messages from YouTube, Discord, Gmail, and more in one place.",
+      t("messagingPage.metaTitle"),
+      t("messagingPage.metaDescription"),
       "/inbox"
     );
-  }, []);
+  }, [t]);
 
   return (
     <div className="min-h-screen bg-background">
