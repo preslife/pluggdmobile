@@ -1,33 +1,40 @@
 # Locale QA Guide
 
-This guide outlines the checks required to verify bilingual coverage across the Pluggd web experience.
+This playbook drives bilingual (English `en-GB` and Spanish `es-ES`) verification ahead of every release. It combines the latest product-surface checklist with practical steps for switching locales and capturing regressions.
 
-## Manual verification steps
+## Locale Switching
 
-1. **Launch the app** and ensure you can toggle between English (en-GB) and Spanish (es-ES) via the locale controls in settings or the header selector.
-2. **Navigate to primary surfaces** and validate copy and formatting in both locales:
-   - Education dashboard hero, stats, and admin actions.
-   - Wallet overview, ledger entries, and wallet activity filters.
-   - Live landing page hero, CTA buttons, and schedule cards.
-   - Messaging (Unified Inbox) header, filters, and search placeholders.
-3. **Check formatted data** while switching locales:
-   - Currency, credits, and ledger timestamps reflect the active locale.
-   - Live schedule entries display localized dates and translated status/action text.
-   - Inbox filters and search inputs show localized placeholders.
-4. **Exercise locale persistence** by refreshing the page after switching languages and confirming the selected locale remains active.
-5. **Validate fallbacks** by temporarily disconnecting network requests (e.g., using dev tools) to confirm translation keys do not leak and default copy still renders gracefully.
+1. Open **Settings → Localization** (renders via `<LocaleSettings />`). Choose **English (UK)** or **Español (España)**. Saving persists the selection through `LocalizationContext` and local storage for guests, so a refresh keeps the language active.  
+2. To force a refresh in dev, run `localStorage.setItem('pluggd_locale_settings', JSON.stringify({ ...current, locale: 'es-ES' }))` in DevTools, then reload.  
+3. Confirm the toast appears and the UI rehydrates in the chosen locale before moving on to validation.
 
-## Sign-off checklist
+## Manual Verification Steps
 
-- [ ] Automated integration tests (`npm run test:integration`) pass for both locales.
-- [ ] Manual spot-checks completed for Education, Wallet, Live, and Messaging pages in en-GB and es-ES.
-- [ ] Currency, number, and date formatting confirmed to match locale expectations.
-- [ ] Screenshots (or screen recordings) captured for QA archive when regressions are discovered.
-- [ ] Any missing or incorrect translations logged with links to the offending component and translation key.
+Work through the key surfaces in both locales (English first, then Spanish). Capture screenshots or DOM notes for anything mis-translated or formatted incorrectly.
 
-## Resources for translators & QA
+1. **Education (`/education`)** – hero copy, stats, admin/upgrade buttons, toast messages.  
+2. **Wallet (`/wallet`)** – overview cards, ledger snapshot, quick actions, filters. Verify currency/credit/date formatting respects the locale.  
+3. **Live (`/live`)** – hero headline, CTA buttons, schedule cards (status text, localised timestamps).  
+4. **Messaging / Unified Inbox (`/inbox` or via Creator Studio)** – header, filters, search placeholders, tabs and provider selectors.  
+5. **Fallback check** – briefly toggle the network offline and reload to ensure translation keys do not leak; default copy should remain human-friendly.
 
-- **Translation resources:** [`src/lib/i18n/resources.ts`](../../src/lib/i18n/resources.ts)
-- **Locale configuration reference:** [`src/lib/locales.ts`](../../src/lib/locales.ts)
-- **Product glossary & copy decks:** `docs/artifacts/copy-decks/` (update shared deck when text changes).
-- **Reporting template:** Use `docs/qa-regression-checklist.md` to capture findings and sign-off notes.
+## Automation & Regression
+
+- Run targeted i18n suites: `npm run test -- --run src/lib/__tests__/i18n.test.ts src/i18n/__tests__/i18n.test.tsx`.  
+- Execute the full integration pass (`npm run test:integration`) to confirm Education, Wallet, Live, and Messaging specs succeed for both locales.  
+- Record findings in `docs/qa-regression-checklist.md` and attach artefacts (screenshots, logs) to the release ticket.
+
+## Sign-off Checklist
+
+- [ ] Locale toggle verified in-app and persists after refresh.  
+- [ ] Manual spot-checks complete for Education, Wallet, Live, Messaging in `en-GB` and `es-ES`.  
+- [ ] Currency, credits, and date/times display locale-aware formatting.  
+- [ ] Automated locale tests (`npm run test:integration`) pass.  
+- [ ] Any gaps logged in `docs/content/untranslated-log.md` with component + translation key references.
+
+## References
+
+- Translation resources: `src/lib/i18n/resources.ts`  
+- Locale metadata: `src/lib/locales.ts`  
+- Copy decks & glossary: `docs/content/`  
+- Reporting template: `docs/qa-regression-checklist.md`
