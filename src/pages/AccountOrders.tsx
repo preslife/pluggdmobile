@@ -247,9 +247,14 @@ export default function AccountOrders() {
 
         if (!isMounted) return;
 
-        const rows = (data || []) as OrderSummary[];
-        setHasMore(rows.length > PAGE_SIZE);
-        setOrders(rows.slice(0, PAGE_SIZE));
+        const rows = (data || []) as (OrderSummary & { order_type?: string | null })[];
+        const storeOrders = rows.filter((row) => {
+          const type = row.order_type?.toLowerCase?.();
+          return !type || type === 'store_order';
+        });
+
+        setHasMore(storeOrders.length > PAGE_SIZE);
+        setOrders(storeOrders.slice(0, PAGE_SIZE));
       } catch (err: any) {
         console.error('Failed to load orders', err);
         toast({

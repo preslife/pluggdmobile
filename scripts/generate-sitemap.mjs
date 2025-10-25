@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { createClient } from '@supabase/supabase-js';
@@ -14,94 +14,178 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
-function buildUrl(loc: string, priority = '0.7', changefreq = 'weekly') {
-  return `  <url>\n    <loc>${new URL(loc, SITE_URL).toString()}</loc>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
-}
+const toAbsoluteUrl = (pathname) => new URL(pathname, SITE_URL).toString();
 
-async function main() {
-  const [releasesRes, beatsRes, profilesRes, labelsRes] = await Promise.all([
-    supabase
-      .from('releases')
-      .select('id, updated_at')
-      .eq('status', 'published')
-      .order('updated_at', { ascending: false })
-      .limit(500),
-    supabase
-      .from('beats')
-      .select('id, updated_at')
-      .eq('is_published', true)
-      .order('updated_at', { ascending: false })
-      .limit(500),
-    supabase
-      .from('profiles')
-      .select('username, updated_at')
-      .not('username', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(500),
-    supabase
-      .from('labels')
-      .select('slug, updated_at')
-      .not('slug', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(200)
-  ]);
+const toXmlDate = (input) => {
+  if (!input) return undefined;
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+};
 
-  if (releasesRes.error) throw releasesRes.error;
-  if (beatsRes.error) throw beatsRes.error;
-  if (profilesRes.error) throw profilesRes.error;
-  if (labelsRes.error) throw labelsRes.error;
-
-  const staticPaths = [
-    buildUrl('/', '1.0', 'daily'),
-    buildUrl('/store', '0.9', 'daily'),
-    buildUrl('/library', '0.9', 'weekly'),
-    buildUrl('/search', '0.9', 'weekly'),
-    buildUrl('/releases', '0.8', 'weekly'),
-    buildUrl('/beats', '0.8', 'weekly'),
-    buildUrl('/community', '0.6', 'weekly'),
-    buildUrl('/help', '0.5', 'monthly')
+const buildEntry = (entry) => {
+  const lines = [
+    '  <url>',
+    `    <loc>${entry.loc}</loc>`,
   ];
 
-  const releasePaths = (releasesRes.data || []).map((release) =>
-    buildUrl(`/release/${release.id}`, '0.8', 'weekly')
-  );
-
-  const beatPaths = (beatsRes.data || []).map((beat) =>
-    buildUrl(`/beat/${beat.id}`, '0.7', 'weekly')
-  );
-
-  const profilePaths = (profilesRes.data || []).map((profile) =>
-    buildUrl(`/profile/${profile.username}`, '0.6', 'weekly')
-  );
-
-  const labelPaths = (labelsRes.data || []).map((label) =>
-    buildUrl(`/label/${label.slug}`, '0.6', 'weekly')
-  );
-
-  const urls = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...staticPaths,
-    ...releasePaths,
-    ...beatPaths,
-    ...profilePaths,
-    ...labelPaths,
-    '</urlset>'
-  ].join('\n');
-
-  const outputDir = path.dirname(OUTPUT_PATH);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
+  if (entry.lastmod) {
+    lines.push(`    <lastmod>${entry.lastmod}</lastmod>`);
   }
 
-  fs.writeFileSync(OUTPUT_PATH, urls, 'utf8');
-  console.log(`[sitemap] Generated ${OUTPUT_PATH} with ${releasePaths.length + beatPaths.length + profilePaths.length + labelPaths.length + staticPaths.length} entries.`);
-}
+  if (entry.changefreq) {
+    lines.push(`    <changefreq>${entry.changefreq}</changefreq>`);
+  }
 
-main().catch((error) => {
-  console.error('[sitemap] Failed to generate sitemap', error);
-  process.exit(1);
-});
+  if (typeof entry.priority === 'number') {
+    lines.push(`    <priority>${entry.priority.toFixed(1)}</priority>`);
+  }
+
+  lines.push('  </url>');
+  return lines.join('\n');
+};
+
+const fetchReleases = async (client) => {
+  const { data, error } = await client
+    .from('releases')
+    .select('id, updated_at, status, smartlink_slug')
+    .in('status', ['live', 'approved'])
+    .order('updated_at', { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  return (data ?? []).map((release) => ({
+    loc: toAbsoluteUrl(release.smartlink_slug ? `/release/${release.smartlink_slug}` : `/release/${release.id}`),
+    lastmod: toXmlDate(release.updated_at),
+    changefreq: 'weekly',
+    priority: 0.8,
+  }));
+};
+
+const fetchBeats = async (client) => {
+  const { data, error } = await client
+    .from('beats')
+    .select('id, updated_at, is_published')
+    .eq('is_published', true)
+    .order('updated_at', { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  return (data ?? []).map((beat) => ({
+    loc: toAbsoluteUrl(`/beat/${beat.id}`),
+    lastmod: toXmlDate(beat.updated_at),
+    changefreq: 'weekly',
+    priority: 0.7,
+  }));
+};
+
+const fetchProfiles = async (client) => {
+  const { data, error } = await client
+    .from('profiles')
+    .select('username, updated_at')
+    .not('username', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((profile) => Boolean(profile.username))
+    .map((profile) => ({
+      loc: toAbsoluteUrl(`/profile/${profile.username}`),
+      lastmod: toXmlDate(profile.updated_at),
+      changefreq: 'weekly',
+      priority: 0.6,
+    }));
+};
+
+const fetchLabels = async (client) => {
+  const { data, error } = await client
+    .from('labels')
+    .select('slug, updated_at, is_published')
+    .eq('is_published', true)
+    .not('slug', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((label) => Boolean(label.slug))
+    .map((label) => ({
+      loc: toAbsoluteUrl(`/label/${label.slug}`),
+      lastmod: toXmlDate(label.updated_at),
+      changefreq: 'weekly',
+      priority: 0.6,
+    }));
+};
+
+const fetchStoreProducts = async (client) => {
+  const { data, error } = await client
+    .from('store_products')
+    .select('id, updated_at, product_type, status')
+    .in('status', ['active', 'published'])
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  return (data ?? []).map((product) => ({
+    loc: toAbsoluteUrl(`/store/product/${product.id}`),
+    lastmod: toXmlDate(product.updated_at),
+    changefreq: 'weekly',
+    priority: product.product_type === 'physical' ? 0.6 : 0.5,
+  }));
+};
+
+const buildEntries = async (client) => {
+  const staticEntries = [
+    { loc: toAbsoluteUrl('/'), priority: 1.0, changefreq: 'daily' },
+    { loc: toAbsoluteUrl('/store'), priority: 0.9, changefreq: 'daily' },
+    { loc: toAbsoluteUrl('/library'), priority: 0.9, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/releases'), priority: 0.8, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/beats'), priority: 0.8, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/community'), priority: 0.6, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/help'), priority: 0.5, changefreq: 'monthly' },
+  ];
+
+  const [releases, beats, profiles, labels, storeProducts] = await Promise.all([
+    fetchReleases(client),
+    fetchBeats(client),
+    fetchProfiles(client),
+    fetchLabels(client),
+    fetchStoreProducts(client),
+  ]);
+
+  return [...staticEntries, ...releases, ...beats, ...profiles, ...labels, ...storeProducts];
+};
+
+const writeSitemap = async (entries) => {
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...entries.map(buildEntry),
+    '</urlset>',
+  ].join('\n');
+
+  const outDir = path.dirname(OUTPUT_PATH);
+  await mkdir(outDir, { recursive: true });
+  await writeFile(OUTPUT_PATH, xml, 'utf8');
+
+  console.log(`Generated sitemap with ${entries.length} entries at ${OUTPUT_PATH}`);
+};
+
+(async () => {
+  try {
+    const entries = await buildEntries(supabase);
+    await writeSitemap(entries);
+  } catch (error) {
+    console.error('[sitemap] generation failed', error);
+    process.exit(1);
+  }
+})();

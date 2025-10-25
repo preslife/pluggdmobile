@@ -81,7 +81,7 @@ async function checkSupplementalOwnership({
 
   const { data: orderMatch, error: orderError } = await supabase
     .from('orders')
-    .select('id, status, paid_at, created_at')
+    .select('id, status, paid_at, created_at, order_items!inner(product_id)')
     .eq('user_id', userId)
     .eq('order_items.product_id', productId)
     .in('status', ['completed', 'processing'])
