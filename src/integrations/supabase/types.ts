@@ -8751,6 +8751,7 @@ export type Database = {
           p_offset?: number
           p_order_id?: string
           p_user_id: string
+          p_include_tips?: boolean
         }
         Returns: {
           created_at: string
@@ -8763,6 +8764,8 @@ export type Database = {
           shipping_address: Json
           status: string
           total_amount: number
+          order_type: string
+          source_details: Json
         }[]
       }
       get_producer_earnings_summary: {

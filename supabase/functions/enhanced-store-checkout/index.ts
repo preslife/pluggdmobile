@@ -305,7 +305,15 @@ serve(async (req) => {
 
       logStep('Found product', { productId: item.productId, type: productType });
 
-      cartItemIds.push(item.productId);
+      const cartItemId =
+        typeof item?.id === 'string'
+          ? item.id
+          : typeof item?.cartItemId === 'string'
+          ? item.cartItemId
+          : item.productId;
+      if (cartItemId) {
+        cartItemIds.push(cartItemId);
+      }
 
       // Create Stripe line item
       const unitPrice = item.selectedOptions?.customPrice || productData.price;
@@ -354,6 +362,7 @@ serve(async (req) => {
         type: 'store_purchase',
         user_id: user.id,
         cart_item_ids: cartItemIds.join(','),
+        cart_item_ids_json: JSON.stringify(cartItemIds),
       },
     };
 
@@ -420,7 +429,8 @@ serve(async (req) => {
         total_amount: orderSubtotal,
         status: 'pending',
         payment_id: session.id,
-        shipping_address: hasPhysicalProducts ? shippingAddress : null,
+        shipping_address: hasPhysicalProducts ? shippingAddress ?? null : null,
+        stripe_session_id: session.id,
       })
       .select()
       .single();
@@ -431,6 +441,27 @@ serve(async (req) => {
     }
 
     logStep('Created order record', { orderId: order.id });
+
+    try {
+      await stripe.checkout.sessions.update(session.id, {
+        metadata: {
+          ...(session.metadata ?? {}),
+          order_id: order.id,
+          type: 'store_purchase',
+          user_id: user.id,
+          cart_item_ids: cartItemIds.join(','),
+          cart_item_ids_json: JSON.stringify(cartItemIds),
+        },
+      });
+    } catch (sessionUpdateError) {
+      logStep('Failed to update checkout session metadata', {
+        sessionId: session.id,
+        error:
+          sessionUpdateError instanceof Error
+            ? sessionUpdateError.message
+            : String(sessionUpdateError),
+      });
+    }
 
     // Create order items
     const orderItemsWithOrderId = orderItems.map(item => ({
