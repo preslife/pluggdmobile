@@ -145,7 +145,7 @@ export default function LiveIndex() {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">{t('pages.live.scheduleHeading')}</h2>
               <Button variant="outline" size="sm" asChild>
-                <Link to="/live/sessions">View Sessions</Link>
+                <Link to="/live/sessions">{t('pages.live.ctaViewSessions')}</Link>
               </Button>
             </div>
 
@@ -160,7 +160,7 @@ export default function LiveIndex() {
             ) : (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
-                  <p>No live events scheduled yet. Check back soon!</p>
+                  <p>{t('pages.live.scheduleEmpty')}</p>
                 </CardContent>
               </Card>
             )}
@@ -171,9 +171,9 @@ export default function LiveIndex() {
         <section className="py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Live Rooms</h2>
+              <h2 className="text-2xl font-semibold">{t('pages.live.liveRoomsHeading')}</h2>
               <Button asChild>
-                <Link to="/live/sessions">View All Sessions</Link>
+                <Link to="/live/sessions">{t('pages.live.viewAllSessions')}</Link>
               </Button>
             </div>
             
@@ -197,7 +197,7 @@ export default function LiveIndex() {
                           {room.participant_count} participants
                         </div>
                         <Button size="sm" asChild>
-                          <Link to={`/live/sessions/${room.id}`}>Join</Link>
+                          <Link to={`/live/sessions/${room.id}`}>{t('pages.live.joinLiveRoom')}</Link>
                         </Button>
                       </div>
                     </CardContent>
@@ -208,10 +208,10 @@ export default function LiveIndex() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No live rooms</h3>
-                  <p className="text-muted-foreground mb-4">Be the first to start a live session!</p>
+                  <h3 className="text-lg font-semibold mb-2">{t('pages.live.roomsEmptyTitle')}</h3>
+                  <p className="text-muted-foreground mb-4">{t('pages.live.roomsEmpty')}</p>
                   <Button asChild>
-                    <Link to="/live/sessions">Create Session</Link>
+                    <Link to="/live/sessions">{t('pages.live.createSession')}</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -222,14 +222,18 @@ export default function LiveIndex() {
         <section className="py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-6">
             <article className="p-6 rounded-lg border border-border bg-card">
-              <h2 className="text-2xl font-bold">Upcoming Battles</h2>
-              <p className="mt-2 text-muted-foreground">Monthly showdowns with community voting and prizes.</p>
-              <Link to="/live/battles" className="mt-4 inline-block"><Button variant="secondary">Explore Battles</Button></Link>
+              <h2 className="text-2xl font-bold">{t('pages.live.featuredBattlesTitle')}</h2>
+              <p className="mt-2 text-muted-foreground">{t('pages.live.featuredBattlesDescription')}</p>
+              <Link to="/live/battles" className="mt-4 inline-block">
+                <Button variant="secondary">{t('pages.live.exploreBattles')}</Button>
+              </Link>
             </article>
             <article className="p-6 rounded-lg border border-border bg-card">
-              <h2 className="text-2xl font-bold">Open Sessions</h2>
-              <p className="mt-2 text-muted-foreground">Drop your track, get timestamped feedback, and collab.</p>
-              <Link to="/live/sessions" className="mt-4 inline-block"><Button variant="secondary">Find a Session</Button></Link>
+              <h2 className="text-2xl font-bold">{t('pages.live.featuredSessionsTitle')}</h2>
+              <p className="mt-2 text-muted-foreground">{t('pages.live.featuredSessionsDescription')}</p>
+              <Link to="/live/sessions" className="mt-4 inline-block">
+                <Button variant="secondary">{t('pages.live.findSession')}</Button>
+              </Link>
             </article>
           </div>
         </section>
