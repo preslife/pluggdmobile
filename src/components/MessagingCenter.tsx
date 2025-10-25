@@ -9,7 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
-import { formatDistanceToNow } from "date-fns";
+import { useTranslation } from "@/hooks/useTranslation";
+import { formatRelativeTime } from "@/lib/formatting";
+import type { LocaleCode } from "@/lib/locales";
 
 const THREAD_PAGE_SIZE = 20;
 const MESSAGE_PAGE_SIZE = 30;
@@ -160,6 +162,8 @@ const mapMessageRow = (row: InboxMessageRow): InboxMessage | undefined => {
 
 export const MessagingCenter = () => {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
+  const currentLocale = (locale || "en-GB") as LocaleCode;
   const [threads, setThreads] = useState<InboxThread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false);
@@ -770,7 +774,7 @@ export const MessagingCenter = () => {
               variant="destructive"
               className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs"
             >
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {unreadCount > 9 ? t("messaging:badgeOverflow", { count: 9 }) : unreadCount}
             </Badge>
           )}
         </Button>
@@ -779,11 +783,11 @@ export const MessagingCenter = () => {
         <div className="flex h-full">
           <div className="w-1/3 border-r border-border">
             <SheetHeader className="p-4 border-b">
-              <SheetTitle>Messages</SheetTitle>
+              <SheetTitle>{t("messaging:title")}</SheetTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search inbox..."
+                  placeholder={t("messaging:searchPlaceholder")}
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   className="pl-10"
@@ -792,9 +796,9 @@ export const MessagingCenter = () => {
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-120px)]">
               {threadsLoading && threads.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">Loading conversations...</div>
+                <div className="p-4 text-center text-muted-foreground">{t("messaging:loadingConversations")}</div>
               ) : threads.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">No conversations yet</div>
+                <div className="p-4 text-center text-muted-foreground">{t("messaging:emptyState")}</div>
               ) : (
                 <div className="space-y-1">
                   {threads.map((thread) => (
@@ -818,15 +822,15 @@ export const MessagingCenter = () => {
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium truncate">{thread.accountLabel || "Inbox"}</p>
+                            <p className="font-medium truncate">{thread.accountLabel || t("messaging:threadFallback")}</p>
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: true })}
+                              {formatRelativeTime(thread.lastMessageAt, { locale: currentLocale })}
                             </span>
                           </div>
                           {thread.latestMessage && (
                             <p className="text-sm text-muted-foreground truncate">
                               {thread.latestMessage.authorName
-                                ? `${thread.latestMessage.authorName}: `
+                                ? t("messaging:authorPrefix", { author: thread.latestMessage.authorName })
                                 : ""}
                               {thread.latestMessage.content}
                             </p>
@@ -834,7 +838,9 @@ export const MessagingCenter = () => {
                         </div>
                         {thread.unreadCount > 0 && (
                           <Badge variant="secondary" className="ml-2 text-xs">
-                            {thread.unreadCount > 9 ? "9+" : thread.unreadCount}
+                            {thread.unreadCount > 9
+                              ? t("messaging:badgeOverflow", { count: 9 })
+                              : thread.unreadCount}
                           </Badge>
                         )}
                       </div>
@@ -851,7 +857,7 @@ export const MessagingCenter = () => {
                     disabled={threadsLoadingMore}
                     className="w-full"
                   >
-                    {threadsLoadingMore ? "Loading..." : "Load more"}
+                    {threadsLoadingMore ? t("messaging:loading") : t("messaging:loadMore")}
                   </Button>
                 </div>
               )}
@@ -872,7 +878,7 @@ export const MessagingCenter = () => {
                       </Avatar>
                       <div>
                         <h3 className="font-medium">
-                          {activeThread.accountLabel || "Inbox thread"}
+                          {activeThread.accountLabel || t("messaging:threadHeaderFallback")}
                         </h3>
                         {activeThread.accountProvider && (
                           <p className="text-xs text-muted-foreground uppercase">
@@ -897,19 +903,19 @@ export const MessagingCenter = () => {
                           onClick={loadOlderMessages}
                           disabled={messagesLoadingMore}
                         >
-                          {messagesLoadingMore ? "Loading..." : "Load previous messages"}
+                          {messagesLoadingMore ? t("messaging:loading") : t("messaging:loadPreviousMessages")}
                         </Button>
                       </div>
                     )}
                     {messagesLoading && messages.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
-                        Loading messages...
+                        {t("messaging:loadingMessages")}
                       </div>
                     ) : (
                       messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${message.authorId === user.id ? "justify-end" : "justify-start"}`}
+                      <div
+                        key={message.id}
+                        className={`flex ${message.authorId === user.id ? "justify-end" : "justify-start"}`}
                         >
                           <div
                             className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
@@ -920,8 +926,8 @@ export const MessagingCenter = () => {
                           >
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                             <p className="text-xs opacity-70 mt-1">
-                              {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-                              {message.optimistic ? " • sending" : ""}
+                              {formatRelativeTime(message.createdAt, { locale: currentLocale })}
+                              {message.optimistic ? t("messaging:optimisticStatus") : ""}
                             </p>
                           </div>
                         </div>
@@ -934,7 +940,7 @@ export const MessagingCenter = () => {
                 <div className="p-4 border-t">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Type a message..."
+                      placeholder={t("messaging:composerPlaceholder")}
                       value={newMessage}
                       onChange={(event) => setNewMessage(event.target.value)}
                       onKeyDown={(event) => {
@@ -959,7 +965,7 @@ export const MessagingCenter = () => {
               </>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                Select a conversation to start messaging
+                {t("messaging:emptyThreadState")}
               </div>
             )}
           </div>
