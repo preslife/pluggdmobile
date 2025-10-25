@@ -119,6 +119,7 @@ begin
     from artist_tips t
     where p_include_tips is true
       and t.fan_id = p_user_id
+      and (p_order_id is null or t.id = p_order_id)
   ), combined as (
     select * from order_rows
     union all
