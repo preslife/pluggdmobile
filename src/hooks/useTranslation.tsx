@@ -1,20 +1,41 @@
 import { useCallback, useEffect } from 'react';
-import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTranslation as useI18nextTranslation } from 'react-i18next';
+import {
+  useLocalization,
+  type LocalizationSettings
+} from '@/contexts/LocalizationContext';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/lib/locales';
 
 /**
  * Hook for handling translations with automatic locale detection
  * and parameter interpolation
  */
+const FALLBACK_SETTINGS: LocalizationSettings = {
+  locale: DEFAULT_LOCALE,
+  currency: SUPPORTED_LOCALES[DEFAULT_LOCALE].currency,
+  timezone: SUPPORTED_LOCALES[DEFAULT_LOCALE].timezone,
+  dateFormat: 'auto',
+  timeFormat: '24h'
+};
+
 export const useTranslation = () => {
-  const { settings } = useLocalization();
+  let localizationSettings: LocalizationSettings = FALLBACK_SETTINGS;
+
+  try {
+    const { settings } = useLocalization();
+    localizationSettings = settings;
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('useTranslation falling back to default localization', error);
+    }
+  }
   const { t: i18nTranslate, i18n } = useI18nextTranslation();
 
   useEffect(() => {
-    if (settings.locale && i18n.language !== settings.locale) {
-      void i18n.changeLanguage(settings.locale);
+    if (localizationSettings.locale && i18n.language !== localizationSettings.locale) {
+      void i18n.changeLanguage(localizationSettings.locale);
     }
-  }, [i18n, settings.locale]);
+  }, [i18n, localizationSettings.locale]);
 
   /**
    * Get translation for a given key
@@ -32,8 +53,8 @@ export const useTranslation = () => {
    * Check if a translation exists for a given key
    */
   const exists = useCallback((key: string): boolean => {
-    return i18n.exists(key, { lng: settings.locale });
-  }, [i18n, settings.locale]);
+    return i18n.exists(key, { lng: localizationSettings.locale });
+  }, [i18n, localizationSettings.locale]);
 
   /**
    * Pluralization helper with automatic locale detection
@@ -44,18 +65,18 @@ export const useTranslation = () => {
     pluralForm: string
   ): string => {
     try {
-      const rule = new Intl.PluralRules(settings.locale).select(count);
+      const rule = new Intl.PluralRules(localizationSettings.locale).select(count);
       return rule === 'one' ? singular : pluralForm;
     } catch (error) {
       console.warn('Pluralization fallback triggered:', error);
       return count === 1 ? singular : pluralForm;
     }
-  }, [settings.locale]);
+  }, [localizationSettings.locale]);
 
   /**
    * Format a number with locale-appropriate formatting
    */
-  const resolvedLocale = settings.locale || i18n.language || 'en-GB';
+  const resolvedLocale = localizationSettings.locale || i18n.language || DEFAULT_LOCALE;
 
   const formatNumber = useCallback((value: number): string => {
     try {
@@ -91,7 +112,7 @@ export const useTranslation = () => {
     options?: Intl.NumberFormatOptions
   ): string => {
     try {
-      const currencyCode = currency || settings.currency;
+      const currencyCode = currency || localizationSettings.currency;
       return new Intl.NumberFormat(resolvedLocale, {
         style: 'currency',
         currency: currencyCode,
@@ -102,7 +123,7 @@ export const useTranslation = () => {
       const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
       return `${symbol}${amount.toFixed(2)}`;
     }
-  }, [resolvedLocale, settings.currency]);
+  }, [resolvedLocale, localizationSettings.currency]);
 
   /**
    * Get the current locale
@@ -112,12 +133,12 @@ export const useTranslation = () => {
   /**
    * Get the current currency
    */
-  const currency = settings.currency;
+  const currency = localizationSettings.currency;
 
   /**
    * Get the current timezone
    */
-  const timezone = settings.timezone;
+  const timezone = localizationSettings.timezone;
 
   return {
     t,

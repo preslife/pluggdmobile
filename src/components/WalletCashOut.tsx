@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { useWallet, formatCredits, creditsToGBP } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
 import { Download, AlertTriangle, CheckCircle } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export const WalletCashOut = () => {
   const { balance, cashOutCredits } = useWallet();
@@ -19,6 +20,7 @@ export const WalletCashOut = () => {
     view: "wallet_dashboard",
     metadata: { user_id: user?.id ?? null },
   });
+  const { t, formatCurrency } = useTranslation();
 
   const handleCashOut = async () => {
     const amount = parseInt(cashOutAmount, 10);
@@ -55,12 +57,23 @@ export const WalletCashOut = () => {
   const minimumCashOut = 1000; // £10 minimum
   const isEligible = balance.available_credits >= minimumCashOut;
   const enteredAmount = parseInt(cashOutAmount) || 0;
-  
+
   // Calculate commission (example: 15% for free tier, 10% for creator, 5% for pro)
   const commissionRate = 0.15; // This should come from user tier
   const grossAmount = creditsToGBP(enteredAmount);
   const commissionAmount = grossAmount * commissionRate;
   const netAmount = grossAmount - commissionAmount;
+
+  const minimumCashOutCredits = formatCredits(minimumCashOut);
+  const minimumCashOutCurrency = formatCurrency(minimumCashOut / 100, "GBP");
+  const availableCredits = formatCredits(balance.available_credits);
+  const commissionPercentage = useMemo(() => `${(commissionRate * 100).toFixed(0)}%`, [commissionRate]);
+  const formattedGrossAmount = useMemo(() => formatCurrency(grossAmount, "GBP"), [grossAmount, formatCurrency]);
+  const formattedCommissionAmount = useMemo(
+    () => formatCurrency(commissionAmount, "GBP"),
+    [commissionAmount, formatCurrency]
+  );
+  const formattedNetAmount = useMemo(() => formatCurrency(netAmount, "GBP"), [netAmount, formatCurrency]);
 
   return (
     <div className="space-y-6">
@@ -69,8 +82,11 @@ export const WalletCashOut = () => {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            You need at least {formatCredits(minimumCashOut)} credits (£{minimumCashOut / 100}) to cash out. 
-            Your current available balance is {formatCredits(balance.available_credits)} credits.
+            {t("wallet:cashOut.eligibility.notice", {
+              minimumCredits: minimumCashOutCredits,
+              minimumCurrency: minimumCashOutCurrency,
+              availableCredits,
+            })}
           </AlertDescription>
         </Alert>
       )}
@@ -80,22 +96,20 @@ export const WalletCashOut = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
-            Payment Setup
+            {t("wallet:cashOut.setup.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
               <div>
-                <p className="font-medium text-green-800">Stripe Connect Account</p>
-                <p className="text-sm text-green-600">Connected and verified</p>
+                <p className="font-medium text-green-800">{t("wallet:cashOut.setup.accountTitle")}</p>
+                <p className="text-sm text-green-600">{t("wallet:cashOut.setup.accountStatus")}</p>
               </div>
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
-            
-            <p className="text-sm text-muted-foreground">
-              Cash-outs are processed within 3-5 business days to your connected bank account.
-            </p>
+
+            <p className="text-sm text-muted-foreground">{t("wallet:cashOut.setup.processing")}</p>
           </div>
         </CardContent>
       </Card>
@@ -105,18 +119,18 @@ export const WalletCashOut = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Cash Out Credits
+            {t("wallet:cashOut.form.title")}
           </CardTitle>
-          <CardDescription>
-            Convert your credits to GBP and transfer to your bank account
-          </CardDescription>
+          <CardDescription>{t("wallet:cashOut.form.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Amount to cash out</label>
+            <label className="text-sm font-medium">{t("wallet:cashOut.form.amountLabel")}</label>
             <Input
               type="number"
-              placeholder={`Minimum ${formatCredits(minimumCashOut)} credits`}
+              placeholder={t("wallet:cashOut.form.placeholder", {
+                minimumCredits: minimumCashOutCredits,
+              })}
               value={cashOutAmount}
               onChange={(e) => setCashOutAmount(e.target.value)}
               min={minimumCashOut}
@@ -124,29 +138,29 @@ export const WalletCashOut = () => {
               disabled={!isEligible}
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Available: {formatCredits(balance.available_credits)} credits
+              {t("wallet:cashOut.form.available", { availableCredits })}
             </p>
           </div>
 
           {enteredAmount >= minimumCashOut && (
             <div className="p-4 bg-muted rounded-lg space-y-2">
-              <h4 className="font-medium">Cash-out Summary</h4>
+              <h4 className="font-medium">{t("wallet:cashOut.summary.title")}</h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Credits to convert:</span>
+                  <span>{t("wallet:cashOut.summary.creditsLabel")}</span>
                   <span>{formatCredits(enteredAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Gross amount:</span>
-                  <span>£{grossAmount.toFixed(2)}</span>
+                  <span>{t("wallet:cashOut.summary.grossLabel")}</span>
+                  <span>{formattedGrossAmount}</span>
                 </div>
                 <div className="flex justify-between text-red-600">
-                  <span>Platform commission ({(commissionRate * 100).toFixed(0)}%):</span>
-                  <span>-£{commissionAmount.toFixed(2)}</span>
+                  <span>{t("wallet:cashOut.summary.commissionLabel", { rate: commissionPercentage })}</span>
+                  <span>-{formattedCommissionAmount}</span>
                 </div>
                 <div className="flex justify-between font-medium border-t pt-1">
-                  <span>Net amount:</span>
-                  <span>£{netAmount.toFixed(2)}</span>
+                  <span>{t("wallet:cashOut.summary.netLabel")}</span>
+                  <span>{formattedNetAmount}</span>
                 </div>
               </div>
             </div>
@@ -158,14 +172,16 @@ export const WalletCashOut = () => {
             className="w-full"
           >
             <Download className="h-4 w-4 mr-2" />
-            {loading ? "Processing..." : `Cash Out £${netAmount.toFixed(2)}`}
+            {loading
+              ? t("wallet:cashOut.form.processing")
+              : t("wallet:cashOut.form.submit", { amount: formattedNetAmount })}
           </Button>
 
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>• Minimum cash-out: £{minimumCashOut / 100}</p>
-            <p>• Processing time: 3-5 business days</p>
-            <p>• Commission rates vary by subscription tier</p>
-            <p>• You'll receive an email confirmation once processed</p>
+            <p>{t("wallet:cashOut.disclaimers.minimum", { minimumCurrency: minimumCashOutCurrency })}</p>
+            <p>{t("wallet:cashOut.disclaimers.timeline")}</p>
+            <p>{t("wallet:cashOut.disclaimers.commission")}</p>
+            <p>{t("wallet:cashOut.disclaimers.confirmation")}</p>
           </div>
         </CardContent>
       </Card>
@@ -173,32 +189,30 @@ export const WalletCashOut = () => {
       {/* Recent Cash-outs */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Cash-outs</CardTitle>
-          <CardDescription>
-            Your cash-out history and status
-          </CardDescription>
+          <CardTitle>{t("wallet:cashOut.history.title")}</CardTitle>
+          <CardDescription>{t("wallet:cashOut.history.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <p className="font-medium">Cash-out</p>
-                <p className="text-sm text-muted-foreground">Completed • Dec 15, 2024</p>
+                <p className="font-medium">{t("wallet:cashOut.history.items.completed.title")}</p>
+                <p className="text-sm text-muted-foreground">{t("wallet:cashOut.history.items.completed.subtitle")}</p>
               </div>
               <div className="text-right">
-                <p className="font-medium">£47.50</p>
-                <p className="text-sm text-green-600">Paid</p>
+                <p className="font-medium">{formatCurrency(47.5, "GBP")}</p>
+                <p className="text-sm text-green-600">{t("wallet:cashOut.history.items.completed.status")}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <p className="font-medium">Cash-out</p>
-                <p className="text-sm text-muted-foreground">Processing • Dec 18, 2024</p>
+                <p className="font-medium">{t("wallet:cashOut.history.items.processing.title")}</p>
+                <p className="text-sm text-muted-foreground">{t("wallet:cashOut.history.items.processing.subtitle")}</p>
               </div>
               <div className="text-right">
-                <p className="font-medium">£95.00</p>
-                <p className="text-sm text-yellow-600">Pending</p>
+                <p className="font-medium">{formatCurrency(95, "GBP")}</p>
+                <p className="text-sm text-yellow-600">{t("wallet:cashOut.history.items.processing.status")}</p>
               </div>
             </div>
           </div>

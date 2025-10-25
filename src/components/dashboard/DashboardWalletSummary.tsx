@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
+import { formatDateLocalized } from "@/lib/i18n/formatting";
 import { CreditCard, Download, History, Upload } from "lucide-react";
 
 export const DashboardWalletSummary = () => {
@@ -154,7 +155,7 @@ export const DashboardWalletSummary = () => {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(ledgerSummary.lastTransaction.created_at).toLocaleString()}
+                      {formatDateLocalized(ledgerSummary.lastTransaction.created_at)}
                     </div>
                   </div>
                 ) : (

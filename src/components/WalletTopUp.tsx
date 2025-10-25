@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { useLogger } from "@/hooks/useLogger";
 import { ShareToEarnModal } from "@/components/ShareToEarnModal";
 import { CreditCard, Package, Share2 } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export const WalletTopUp = () => {
   const { topUpCredits } = useWallet();
@@ -16,13 +17,30 @@ export const WalletTopUp = () => {
     feature: "wallet",
     view: "wallet_dashboard",
   });
+  const { t, formatNumber, formatCurrency } = useTranslation();
+
+  const minimumCustomCredits = 100;
+  const maximumCustomCredits = 100000;
+
+  const minCurrency = useMemo(
+    () => formatCurrency(minimumCustomCredits / 100, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+    [formatCurrency]
+  );
+  const maxCurrency = useMemo(
+    () => formatCurrency(maximumCustomCredits / 100, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+    [formatCurrency]
+  );
 
   const handleTopUp = async (amount: number, context: "package" | "custom") => {
     if (!Number.isFinite(amount) || amount <= 0) {
-      void logError("wallet_topup_invalid_amount", new Error("Invalid amount"), {
-        amount,
-        context,
-      });
+      void logError(
+        "wallet_topup_invalid_amount",
+        new Error(t("wallet:topUp.errors.invalidAmount")),
+        {
+          amount,
+          context,
+        }
+      );
       return;
     }
     setLoading(true);
@@ -56,11 +74,9 @@ export const WalletTopUp = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Credit Packages
+            {t("wallet:topUp.packages.title")}
           </CardTitle>
-          <CardDescription>
-            Choose a credit package that suits your needs
-          </CardDescription>
+          <CardDescription>{t("wallet:topUp.packages.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -72,15 +88,22 @@ export const WalletTopUp = () => {
                 {pkg.popular && (
                   <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
                     <span className="bg-primary text-primary-foreground px-2 py-1 text-xs rounded">
-                      Popular
+                      {t("wallet:topUp.packages.popular")}
                     </span>
                   </div>
                 )}
                 <div className="text-center space-y-2">
-                  <h3 className="font-semibold">{pkg.credits.toLocaleString()} Credits</h3>
-                  <p className="text-2xl font-bold">£{pkg.price}</p>
+                  <h3 className="font-semibold">
+                    {t("wallet:topUp.packages.card.title", { amount: formatNumber(pkg.credits) })}
+                  </h3>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(pkg.price, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    {(pkg.credits / pkg.price).toFixed(0)} credits per £1
+                    {t("wallet:topUp.packages.card.value", {
+                      credits: formatNumber(Math.round(pkg.credits / pkg.price)),
+                      currency: formatCurrency(1, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+                    })}
                   </p>
                   <Button
                     onClick={() => handleTopUp(pkg.credits, "package")}
@@ -88,7 +111,7 @@ export const WalletTopUp = () => {
                     className="w-full"
                     variant={pkg.popular ? "default" : "outline"}
                   >
-                    Buy Now
+                    {t("wallet:topUp.packages.card.cta")}
                   </Button>
                 </div>
               </div>
@@ -99,68 +122,89 @@ export const WalletTopUp = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Custom Amount</CardTitle>
-          <CardDescription>
-            Enter a custom amount of credits to purchase
-          </CardDescription>
+          <CardTitle>{t("wallet:topUp.custom.title")}</CardTitle>
+          <CardDescription>{t("wallet:topUp.custom.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Input
               type="number"
-              placeholder="Enter credits amount"
+              placeholder={t("wallet:topUp.custom.placeholder")}
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              min="100"
-              max="100000"
+              min={minimumCustomCredits}
+              max={maximumCustomCredits}
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Minimum: 100 credits (£1) | Maximum: 100,000 credits (£1,000)
+              {t("wallet:topUp.custom.limits", {
+                min: formatNumber(minimumCustomCredits),
+                max: formatNumber(maximumCustomCredits),
+                minCurrency,
+                maxCurrency,
+              })}
             </p>
           </div>
-          
+
           {customAmount && (
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm">
-                <strong>{parseInt(customAmount).toLocaleString()} credits</strong> for{" "}
-                <strong>£{(parseInt(customAmount) / 100).toFixed(2)}</strong>
+                <strong>{formatNumber(parseInt(customAmount))} {t("wallet:topUp.custom.summary.credits")}</strong>{" "}
+                {t("wallet:topUp.custom.summary.connector")} <strong>{formatCurrency(parseInt(customAmount) / 100, "GBP")}</strong>
               </p>
             </div>
           )}
-          
+
           <Button
             onClick={() => handleTopUp(parseInt(customAmount), "custom")}
-            disabled={loading || !customAmount || parseInt(customAmount) < 100}
+            disabled={
+              loading ||
+              !customAmount ||
+              parseInt(customAmount) < minimumCustomCredits ||
+              parseInt(customAmount) > maximumCustomCredits
+            }
             className="w-full"
           >
             <CreditCard className="h-4 w-4 mr-2" />
-            Purchase Custom Amount
+            {t("wallet:topUp.custom.purchaseButton")}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Share & Earn Free Credits</CardTitle>
-          <CardDescription>
-            Invite friends and earn credits when they join and make purchases
-          </CardDescription>
+          <CardTitle>{t("wallet:topUp.share.title")}</CardTitle>
+          <CardDescription>{t("wallet:topUp.share.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              💰 200 Credits (£2) for each friend signup<br/>
-              🎯 1,000 Credits (£10) when they make their first £5+ purchase<br/>
-              🚀 2,000 Credits (£20) each when they start a subscription
-            </p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>
+                {t("wallet:topUp.share.perks.signup", {
+                  credits: formatNumber(200),
+                  reward: formatCurrency(2, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+                })}
+              </li>
+              <li>
+                {t("wallet:topUp.share.perks.purchase", {
+                  credits: formatNumber(1000),
+                  reward: formatCurrency(10, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+                })}
+              </li>
+              <li>
+                {t("wallet:topUp.share.perks.subscription", {
+                  credits: formatNumber(2000),
+                  reward: formatCurrency(20, "GBP", { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+                })}
+              </li>
+            </ul>
             <ShareToEarnModal
               shareUrl={`${window.location.origin}?ref=wallet`}
-              shareTitle="Join me on Pluggd and get free credits!"
-              shareDescription="Sign up and we both get bonus credits to spend on beats and more!"
+              shareTitle={t("wallet:topUp.share.shareTitle")}
+              shareDescription={t("wallet:topUp.share.shareDescription")}
             >
               <Button variant="outline" className="w-full">
                 <Share2 className="h-4 w-4 mr-2" />
-                Share & Earn Credits
+                {t("wallet:topUp.share.button")}
               </Button>
             </ShareToEarnModal>
           </div>

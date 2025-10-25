@@ -65,34 +65,6 @@ export const baseTranslation = {
     about: 'About',
     contact: 'Contact'
   },
-  wallet: {
-    balance: 'Balance',
-    credits: 'Credits',
-    topUp: 'Top Up',
-    cashOut: 'Cash Out',
-    transaction: 'Transaction',
-    transactionHistory: 'Transaction History',
-    amount: 'Amount',
-    date: 'Date',
-    type: 'Type',
-    status: 'Status',
-    pending: 'Pending',
-    completed: 'Completed',
-    failed: 'Failed',
-    insufficientCredits: 'Insufficient credits',
-    topUpSuccess: 'Credits added successfully',
-    cashOutSuccess: 'Cash-out requested successfully',
-    transactionFailed: 'Transaction failed',
-    creditsApplied: 'Credits applied to subscription',
-    tipSent: 'Tip Sent',
-    purchase: 'Purchase',
-    battleEntry: 'Battle Entry',
-    prizeAwarded: 'Prize Awarded',
-    conversion: 'Conversion',
-    refresh: 'Refresh',
-    clearFilters: 'Clear filters',
-    noTransactionsFound: 'No transactions found'
-  },
   releases: {
     title: 'Title',
     artist: 'Artist',
@@ -244,18 +216,261 @@ export const baseTranslation = {
     emailSent: 'Email sent successfully',
     passwordChanged: 'Password changed successfully',
     profileUpdated: 'Profile updated successfully'
+  },
+  messaging: {
+    title: 'Messages',
+    searchPlaceholder: 'Search inbox...',
+    loadingConversations: 'Loading conversations...',
+    emptyState: 'No conversations yet',
+    loading: 'Loading...',
+    loadMore: 'Load more',
+    threadFallback: 'Inbox',
+    threadHeaderFallback: 'Inbox thread',
+    authorPrefix: '{{author}}: ',
+    badgeOverflow: '{{count}}+',
+    loadPreviousMessages: 'Load previous messages',
+    loadingMessages: 'Loading messages...',
+    optimisticStatus: ' • sending',
+    composerPlaceholder: 'Type a message...',
+    emptyThreadState: 'Select a conversation to start messaging'
+  }
+} as const;
+
+export const walletTranslation = {
+  auth: {
+    title: 'Access Required',
+    signInPrompt: 'Please sign in to access your wallet.'
+  },
+  header: {
+    title: 'Wallet',
+    compliance: {
+      title: 'Compliance notice',
+      description:
+        'PLGD Credits are a limited-purpose digital balance. They are non-transferable, do not earn interest, and are not insured deposits.',
+      bulletPoints: {
+        holdPeriod: 'Available credits exclude pending top ups for the first 48 hours to mitigate chargebacks.',
+        refunds: 'Refunds create reversing ledger entries so that buyer, seller, and platform balances stay aligned.',
+        disputes:
+          'Contact support@pluggd.io for ledger disputes. Statements are retained for statutory anti-money laundering audits.'
+      }
+    }
+  },
+  balances: {
+    total: {
+      label: 'Total Balance',
+      helper: 'Total balance'
+    },
+    available: {
+      label: 'Available',
+      helper: 'Ready to spend'
+    },
+    pending: {
+      label: 'Pending',
+      helper: 'Available in 48h'
+    }
+  },
+  ledger: {
+    title: 'Ledger snapshot',
+    description: {
+      withEntries: 'Based on your last {{count}} ledger {{entryLabel}}.',
+      empty: 'No ledger activity recorded yet.'
+    },
+    descriptionLabels: {
+      entry: 'entry',
+      entries: 'entries'
+    },
+    summary: {
+      creditsAdded: 'Credits added',
+      creditsSpent: 'Credits spent',
+      netMovement: 'Net movement',
+      lastTransaction: 'Last transaction',
+      noActivity: 'No activity captured yet.',
+      placeholder: 'Once you start topping up or spending credits we’ll summarise the movement here.'
+    }
+  },
+  tabs: {
+    overview: 'Overview',
+    activity: 'Activity',
+    topUp: 'Top Up',
+    cashOut: 'Cash Out'
+  },
+  overview: {
+    quickActions: {
+      title: 'Quick Actions',
+      description: 'Top up your wallet or manage your credits',
+      buy: 'Buy {{amount}}',
+      applySubscription: {
+        label: 'Apply to subscription',
+        helper: '{{amount}} credits',
+        alert: 'You need at least 1,000 credits (£10) to apply to subscription.'
+      }
+    },
+    accountStatus: {
+      title: 'Account Status',
+      description: 'Your current wallet and account information',
+      accountType: {
+        label: 'Account Type',
+        free: 'Free'
+      },
+      totalCredits: 'Total Credits',
+      availableCredits: 'Available Credits',
+      pendingCredits: 'Pending Credits'
+    },
+    recentActivity: {
+      title: 'Recent Activity',
+      description: 'Your latest wallet transactions',
+      items: {
+        topUp: {
+          title: 'Top-up',
+          timeAgo: '2 days ago'
+        },
+        purchase: {
+          title: 'Beat Purchase',
+          timeAgo: '3 days ago'
+        }
+      },
+      viewAll: 'View all activity →'
+    }
+  },
+  topUp: {
+    errors: {
+      invalidAmount: 'Invalid amount'
+    },
+    packages: {
+      title: 'Credit Packages',
+      description: 'Choose a credit package that suits your needs',
+      popular: 'Popular',
+      card: {
+        title: '{{amount}} Credits',
+        value: '{{credits}} credits per {{currency}}',
+        cta: 'Buy Now'
+      }
+    },
+    custom: {
+      title: 'Custom Amount',
+      description: 'Enter a custom amount of credits to purchase',
+      placeholder: 'Enter credits amount',
+      limits: 'Minimum: {{min}} credits ({{minCurrency}}) | Maximum: {{max}} credits ({{maxCurrency}})',
+      summary: {
+        credits: 'credits',
+        connector: 'for'
+      },
+      purchaseButton: 'Purchase Custom Amount'
+    },
+    share: {
+      title: 'Share & Earn Free Credits',
+      description: 'Invite friends and earn credits when they join and make purchases',
+      perks: {
+        signup: '💰 {{credits}} credits ({{reward}}) for each friend signup',
+        purchase: '🎯 {{credits}} credits ({{reward}}) when they make their first £5+ purchase',
+        subscription: '🚀 {{credits}} credits ({{reward}}) each when they start a subscription'
+      },
+      shareTitle: 'Join me on Pluggd and get free credits!',
+      shareDescription: 'Sign up and we both get bonus credits to spend on beats and more!',
+      button: 'Share & Earn Credits'
+    }
+  },
+  cashOut: {
+    eligibility: {
+      notice:
+        'You need at least {{minimumCredits}} ({{minimumCurrency}}) to cash out. Your current available balance is {{availableCredits}}.'
+    },
+    setup: {
+      title: 'Payment Setup',
+      accountTitle: 'Stripe Connect Account',
+      accountStatus: 'Connected and verified',
+      processing: 'Cash-outs are processed within 3-5 business days to your connected bank account.'
+    },
+    form: {
+      title: 'Cash Out Credits',
+      description: 'Convert your credits to GBP and transfer to your bank account',
+      amountLabel: 'Amount to cash out',
+      placeholder: 'Minimum {{minimumCredits}}',
+      available: 'Available: {{availableCredits}}',
+      processing: 'Processing...',
+      submit: 'Cash Out {{amount}}'
+    },
+    summary: {
+      title: 'Cash-out Summary',
+      creditsLabel: 'Credits to convert:',
+      grossLabel: 'Gross amount:',
+      commissionLabel: 'Platform commission ({{rate}}):',
+      netLabel: 'Net amount:'
+    },
+    disclaimers: {
+      minimum: '• Minimum cash-out: {{minimumCurrency}}',
+      timeline: '• Processing time: 3-5 business days',
+      commission: '• Commission rates vary by subscription tier',
+      confirmation: "• You'll receive an email confirmation once processed"
+    },
+    history: {
+      title: 'Recent Cash-outs',
+      description: 'Your cash-out history and status',
+      items: {
+        completed: {
+          title: 'Cash-out',
+          subtitle: 'Completed • Dec 15, 2024',
+          status: 'Paid'
+        },
+        processing: {
+          title: 'Cash-out',
+          subtitle: 'Processing • Dec 18, 2024',
+          status: 'Pending'
+        }
+      }
+    }
+  },
+  activity: {
+    filter: {
+      title: 'Filter activity',
+      placeholder: 'Filter by type',
+      all: 'All transactions'
+    },
+    searchPlaceholder: 'Search transactions',
+    history: {
+      title: 'Transaction history',
+      description: 'Track every wallet credit and debit',
+      empty: 'No transactions found',
+      clear: 'Clear filters',
+      refresh: 'Refresh'
+    },
+    descriptions: {
+      tipSent: 'Tip sent',
+      purchase: '{{refType}} purchase',
+      battleEntry: 'Battle entry',
+      prizeAwarded: '{{refType}} prize awarded'
+    },
+    labels: {
+      genericTransaction: 'Transaction',
+      unknown: 'Other ({{kind}})'
+    }
+  },
+  actions: {
+    topUp: 'Top Up',
+    tipSent: 'Tip Sent',
+    purchase: 'Purchase',
+    battleEntry: 'Battle Entry',
+    prizeAwarded: 'Prize Awarded',
+    cashOut: 'Cash Out',
+    creditsApplied: 'Credits applied to subscription'
   }
 } as const;
 
 export type TranslationShape = typeof baseTranslation;
+export type WalletTranslationShape = typeof walletTranslation;
 export type TranslationOverrides = Partial<TranslationShape>;
+export type WalletTranslationOverrides = Partial<WalletTranslationShape>;
 
 type TranslationResource = {
   translation: TranslationShape;
+  wallet: WalletTranslationShape;
 };
 
 const cloneBase = (): TranslationShape =>
   JSON.parse(JSON.stringify(baseTranslation)) as TranslationShape;
+
+const cloneWalletBase = (): WalletTranslationShape =>
+  JSON.parse(JSON.stringify(walletTranslation)) as WalletTranslationShape;
 
 const applyOverrides = (target: any, source: any) => {
   Object.keys(source).forEach(key => {
@@ -271,14 +486,21 @@ const applyOverrides = (target: any, source: any) => {
   });
 };
 
-const createResource = (overrides?: TranslationOverrides): TranslationResource => {
-  if (!overrides) {
-    return { translation: baseTranslation };
+const createResource = (
+  overrides?: TranslationOverrides,
+  walletOverrides?: WalletTranslationOverrides
+): TranslationResource => {
+  const merged = cloneBase();
+  if (overrides) {
+    applyOverrides(merged, overrides);
   }
 
-  const merged = cloneBase();
-  applyOverrides(merged, overrides);
-  return { translation: merged };
+  const walletMerged = cloneWalletBase();
+  if (walletOverrides) {
+    applyOverrides(walletMerged, walletOverrides);
+  }
+
+  return { translation: merged, wallet: walletMerged };
 };
 
 const esOverrides: TranslationOverrides = {
@@ -304,15 +526,6 @@ const esOverrides: TranslationOverrides = {
     previous: 'Anterior',
     yes: 'Sí',
     no: 'No',
-    and: 'y',
-    or: 'o',
-    of: 'de',
-    at: 'a',
-    in: 'en',
-    on: 'el',
-    by: 'por',
-    to: 'a',
-    from: 'de',
     preview: 'Vista previa'
   },
   auth: {
@@ -328,9 +541,7 @@ const esOverrides: TranslationOverrides = {
     invalidCredentials: 'Correo o contraseña inválidos',
     passwordsDoNotMatch: 'Las contraseñas no coinciden',
     accountCreated: 'Cuenta creada correctamente',
-    passwordReset: 'Se envió un correo para restablecer la contraseña',
-    signInWithGoogle: 'Iniciar con Google',
-    signInWithGitHub: 'Iniciar con GitHub'
+    passwordReset: 'Se envió un correo para restablecer la contraseña'
   },
   navigation: {
     home: 'Inicio',
@@ -343,81 +554,7 @@ const esOverrides: TranslationOverrides = {
     profile: 'Perfil',
     settings: 'Configuración',
     help: 'Ayuda',
-    about: 'Acerca de',
     contact: 'Contacto'
-  },
-  wallet: {
-    balance: 'Saldo',
-    credits: 'Créditos',
-    topUp: 'Recargar créditos',
-    cashOut: 'Retirar fondos',
-    transaction: 'Transacción',
-    transactionHistory: 'Historial de transacciones',
-    amount: 'Importe',
-    date: 'Fecha',
-    type: 'Tipo',
-    status: 'Estado',
-    pending: 'Pendiente',
-    completed: 'Completada',
-    failed: 'Fallida',
-    insufficientCredits: 'Créditos insuficientes',
-    topUpSuccess: 'Créditos agregados correctamente',
-    cashOutSuccess: 'Solicitud de retiro enviada',
-    transactionFailed: 'La transacción falló',
-    creditsApplied: 'Créditos aplicados a la suscripción',
-    tipSent: 'Propina enviada',
-    purchase: 'Compra',
-    battleEntry: 'Inscripción a la batalla',
-    prizeAwarded: 'Premio otorgado',
-    conversion: 'Conversión',
-    refresh: 'Actualizar',
-    clearFilters: 'Limpiar filtros',
-    noTransactionsFound: 'No se encontraron transacciones'
-  },
-  releases: {
-    title: 'Título',
-    artist: 'Artista',
-    releaseDate: 'Fecha de lanzamiento',
-    genre: 'Género',
-    duration: 'Duración',
-    plays: 'Reproducciones',
-    likes: 'Me gusta',
-    downloads: 'Descargas',
-    price: 'Precio',
-    free: 'Gratis',
-    premium: 'Premium',
-    exclusive: 'Exclusivo',
-    newRelease: 'Nuevo lanzamiento',
-    featuredArtist: 'Artista destacado',
-    albumArt: 'Arte del álbum',
-    trackList: 'Lista de canciones',
-    credits: 'Créditos',
-    description: 'Descripción',
-    tags: 'Etiquetas'
-  },
-  marketplace: {
-    beats: 'Beats',
-    samples: 'Muestras',
-    presets: 'Presets',
-    merchandise: 'Merchandising',
-    services: 'Servicios',
-    featured: 'Destacados',
-    trending: 'Tendencias',
-    newArrivals: 'Novedades',
-    onSale: 'En oferta',
-    category: 'Categoría',
-    priceRange: 'Rango de precios',
-    bpm: 'BPM',
-    key: 'Tonalidad',
-    mood: 'Estado de ánimo',
-    instrument: 'Instrumento',
-    addToCart: 'Agregar al carrito',
-    buyNow: 'Comprar ahora',
-    preview: 'Vista previa',
-    download: 'Descargar',
-    license: 'Licencia',
-    exclusive: 'Derechos exclusivos',
-    nonExclusive: 'Derechos no exclusivos'
   },
   settings: {
     general: 'General',
@@ -429,17 +566,7 @@ const esOverrides: TranslationOverrides = {
     timezone: 'Zona horaria',
     dateFormat: 'Formato de fecha',
     timeFormat: 'Formato de hora',
-    theme: 'Tema',
-    darkMode: 'Modo oscuro',
-    lightMode: 'Modo claro',
-    systemDefault: 'Predeterminado del sistema',
-    emailNotifications: 'Notificaciones por correo',
-    pushNotifications: 'Notificaciones push',
-    marketingEmails: 'Correos promocionales',
-    autoDetect: 'Detección automática',
-    custom: 'Personalizado',
-    twelveHour: '12 horas',
-    twentyFourHour: '24 horas'
+    theme: 'Tema'
   },
   pages: {
     education: {
@@ -497,34 +624,244 @@ const esOverrides: TranslationOverrides = {
     lastMonth: 'El mes pasado',
     thisYear: 'Este año',
     lastYear: 'El año pasado',
-    justNow: 'Justo ahora',
-    minutesAgo: 'hace minutos',
-    hoursAgo: 'hace horas',
-    daysAgo: 'hace días',
-    weeksAgo: 'hace semanas',
-    monthsAgo: 'hace meses',
-    yearsAgo: 'hace años'
+    justNow: 'Justo ahora'
   },
-  errors: {
-    networkError: 'Error de red. Verifica tu conexión.',
-    serverError: 'Error del servidor. Inténtalo de nuevo más tarde.',
-    unauthorized: 'No tienes autorización para realizar esta acción.',
-    notFound: 'No se encontró el recurso solicitado.',
-    validationError: 'Revisa la información ingresada e inténtalo nuevamente.',
-    unknownError: 'Ocurrió un error desconocido.',
-    sessionExpired: 'Tu sesión ha expirado. Inicia sesión nuevamente.',
-    maintenanceMode: 'El sistema está en mantenimiento en este momento.'
+  messaging: {
+    title: 'Mensajes',
+    searchPlaceholder: 'Buscar en la bandeja...',
+    loadingConversations: 'Cargando conversaciones...',
+    emptyState: 'Aún no hay conversaciones',
+    loading: 'Cargando...',
+    loadMore: 'Cargar más',
+    threadFallback: 'Bandeja de entrada',
+    threadHeaderFallback: 'Conversación de la bandeja',
+    authorPrefix: '{{author}}: ',
+    badgeOverflow: '{{count}}+',
+    loadPreviousMessages: 'Cargar mensajes anteriores',
+    loadingMessages: 'Cargando mensajes...',
+    optimisticStatus: ' • enviando',
+    composerPlaceholder: 'Escribe un mensaje...',
+    emptyThreadState: 'Selecciona una conversación para empezar a chatear'
+  }
+};
+
+const esWalletOverrides: WalletTranslationOverrides = {
+  auth: {
+    title: 'Acceso requerido',
+    signInPrompt: 'Inicia sesión para acceder a tu monedero.'
   },
-  success: {
-    saved: 'Cambios guardados correctamente',
-    updated: 'Actualizado correctamente',
-    created: 'Creado correctamente',
-    deleted: 'Eliminado correctamente',
-    uploaded: 'Archivo cargado correctamente',
-    downloaded: 'Descarga completada',
-    emailSent: 'Correo enviado correctamente',
-    passwordChanged: 'Contraseña cambiada correctamente',
-    profileUpdated: 'Perfil actualizado correctamente'
+  header: {
+    title: 'Billetera',
+    compliance: {
+      title: 'Aviso de cumplimiento',
+      description:
+        'Los créditos PLGD son un saldo digital de propósito limitado. No son transferibles, no generan intereses y no están asegurados.',
+      bulletPoints: {
+        holdPeriod: 'Los créditos disponibles excluyen recargas pendientes durante las primeras 48 horas para mitigar contracargos.',
+        refunds: 'Los reembolsos crean asientos inversos para mantener alineados los saldos del comprador, vendedor y la plataforma.',
+        disputes:
+          'Contacta a support@pluggd.io para disputas del libro mayor. Los estados de cuenta se conservan para auditorías contra el lavado de dinero.'
+      }
+    }
+  },
+  balances: {
+    total: {
+      label: 'Saldo total',
+      helper: 'Saldo total'
+    },
+    available: {
+      label: 'Disponible',
+      helper: 'Listo para gastar'
+    },
+    pending: {
+      label: 'Pendiente',
+      helper: 'Disponible en 48 h'
+    }
+  },
+  ledger: {
+    title: 'Resumen del libro mayor',
+    description: {
+      withEntries: 'Basado en tus últimas {{count}} {{entryLabel}} del libro mayor.',
+      empty: 'Todavía no hay actividad registrada en el libro mayor.'
+    },
+    descriptionLabels: {
+      entry: 'entrada',
+      entries: 'entradas'
+    },
+    summary: {
+      creditsAdded: 'Créditos añadidos',
+      creditsSpent: 'Créditos gastados',
+      netMovement: 'Movimiento neto',
+      lastTransaction: 'Última transacción',
+      noActivity: 'Aún no se registran movimientos.',
+      placeholder: 'Cuando empieces a recargar o gastar créditos, resumiremos el movimiento aquí.'
+    }
+  },
+  tabs: {
+    overview: 'Resumen',
+    activity: 'Actividad',
+    topUp: 'Recargar',
+    cashOut: 'Retirar'
+  },
+  overview: {
+    quickActions: {
+      title: 'Acciones rápidas',
+      description: 'Recarga tu monedero o gestiona tus créditos',
+      buy: 'Comprar {{amount}}',
+      applySubscription: {
+        label: 'Aplicar a la suscripción',
+        helper: '{{amount}} créditos',
+        alert: 'Necesitas al menos 1.000 créditos (£10) para aplicarlos a la suscripción.'
+      }
+    },
+    accountStatus: {
+      title: 'Estado de la cuenta',
+      description: 'Información actual de tu monedero y cuenta',
+      accountType: {
+        label: 'Tipo de cuenta',
+        free: 'Gratis'
+      },
+      totalCredits: 'Créditos totales',
+      availableCredits: 'Créditos disponibles',
+      pendingCredits: 'Créditos pendientes'
+    },
+    recentActivity: {
+      title: 'Actividad reciente',
+      description: 'Tus transacciones más recientes del monedero',
+      items: {
+        topUp: {
+          title: 'Recarga',
+          timeAgo: 'Hace 2 días'
+        },
+        purchase: {
+          title: 'Compra de beat',
+          timeAgo: 'Hace 3 días'
+        }
+      },
+      viewAll: 'Ver toda la actividad →'
+    }
+  },
+  topUp: {
+    errors: {
+      invalidAmount: 'Importe inválido'
+    },
+    packages: {
+      title: 'Paquetes de créditos',
+      description: 'Elige el paquete de créditos que se adapte a tus necesidades',
+      popular: 'Popular',
+      card: {
+        title: '{{amount}} créditos',
+        value: '{{credits}} créditos por {{currency}}',
+        cta: 'Comprar ahora'
+      }
+    },
+    custom: {
+      title: 'Monto personalizado',
+      description: 'Ingresa la cantidad de créditos que deseas comprar',
+      placeholder: 'Introduce la cantidad de créditos',
+      limits: 'Mínimo: {{min}} créditos ({{minCurrency}}) | Máximo: {{max}} créditos ({{maxCurrency}})',
+      summary: {
+        credits: 'créditos',
+        connector: 'por'
+      },
+      purchaseButton: 'Comprar monto personalizado'
+    },
+    share: {
+      title: 'Comparte y gana créditos gratis',
+      description: 'Invita a tus amigos y gana créditos cuando se unan y realicen compras',
+      perks: {
+        signup: '💰 {{credits}} créditos ({{reward}}) por cada registro de amigo',
+        purchase: '🎯 {{credits}} créditos ({{reward}}) cuando realicen su primera compra de más de £5',
+        subscription: '🚀 {{credits}} créditos ({{reward}}) para cada uno cuando inicien una suscripción'
+      },
+      shareTitle: '¡Únete a Pluggd y obtén créditos gratis!',
+      shareDescription: 'Regístrate y ambos recibimos créditos extra para gastar en beats y más.',
+      button: 'Compartir y ganar créditos'
+    }
+  },
+  cashOut: {
+    eligibility: {
+      notice:
+        'Necesitas al menos {{minimumCredits}} ({{minimumCurrency}}) para retirar. Tu saldo disponible actual es de {{availableCredits}}.'
+    },
+    setup: {
+      title: 'Configuración de pagos',
+      accountTitle: 'Cuenta de Stripe Connect',
+      accountStatus: 'Conectada y verificada',
+      processing: 'Los retiros se procesan en 3-5 días hábiles a tu cuenta bancaria conectada.'
+    },
+    form: {
+      title: 'Retirar créditos',
+      description: 'Convierte tus créditos a GBP y transfiérelos a tu cuenta bancaria',
+      amountLabel: 'Monto a retirar',
+      placeholder: 'Mínimo {{minimumCredits}}',
+      available: 'Disponible: {{availableCredits}}',
+      processing: 'Procesando...',
+      submit: 'Retirar {{amount}}'
+    },
+    summary: {
+      title: 'Resumen del retiro',
+      creditsLabel: 'Créditos a convertir:',
+      grossLabel: 'Monto bruto:',
+      commissionLabel: 'Comisión de la plataforma ({{rate}}):',
+      netLabel: 'Monto neto:'
+    },
+    disclaimers: {
+      minimum: '• Retiro mínimo: {{minimumCurrency}}',
+      timeline: '• Tiempo de procesamiento: 3-5 días hábiles',
+      commission: '• Las comisiones varían según el plan de suscripción',
+      confirmation: '• Recibirás un correo de confirmación cuando se procese'
+    },
+    history: {
+      title: 'Retiros recientes',
+      description: 'Historial y estado de tus retiros',
+      items: {
+        completed: {
+          title: 'Retiro',
+          subtitle: 'Completado • 15 dic 2024',
+          status: 'Pagado'
+        },
+        processing: {
+          title: 'Retiro',
+          subtitle: 'En proceso • 18 dic 2024',
+          status: 'Pendiente'
+        }
+      }
+    }
+  },
+  activity: {
+    filter: {
+      title: 'Filtrar actividad',
+      placeholder: 'Filtrar por tipo',
+      all: 'Todas las transacciones'
+    },
+    searchPlaceholder: 'Buscar transacciones',
+    history: {
+      title: 'Historial de transacciones',
+      description: 'Consulta cada crédito y débito del monedero',
+      empty: 'No se encontraron transacciones',
+      clear: 'Borrar filtros',
+      refresh: 'Actualizar'
+    },
+    descriptions: {
+      tipSent: 'Propina enviada',
+      purchase: 'Compra de {{refType}}',
+      battleEntry: 'Entrada a batalla',
+      prizeAwarded: 'Premio otorgado de {{refType}}'
+    },
+    labels: {
+      genericTransaction: 'Transacción',
+      unknown: 'Otro ({{kind}})'
+    }
+  },
+  actions: {
+    topUp: 'Recargar',
+    tipSent: 'Propina enviada',
+    purchase: 'Compra',
+    battleEntry: 'Entrada a batalla',
+    prizeAwarded: 'Premio otorgado',
+    cashOut: 'Retiro',
+    creditsApplied: 'Créditos aplicados a la suscripción'
   }
 };
 
@@ -535,7 +872,7 @@ export const translationResources = {
   'en-AU': createResource(),
   'de-DE': createResource(),
   'fr-FR': createResource(),
-  'es-ES': createResource(esOverrides),
+  'es-ES': createResource(esOverrides, esWalletOverrides),
   'it-IT': createResource(),
   'ja-JP': createResource(),
   'ko-KR': createResource()

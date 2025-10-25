@@ -53,36 +53,40 @@ export const WalletActivity = () => {
   const getActivityLabel = (kind: string) => {
     switch (kind) {
       case 'topup':
-        return t('wallet.topUp');
+        return t('wallet:actions.topUp');
       case 'spend_tip':
-        return t('wallet.tipSent');
+        return t('wallet:actions.tipSent');
       case 'spend_purchase':
-        return t('wallet.purchase');
+        return t('wallet:actions.purchase');
       case 'spend_battle':
-        return t('wallet.battleEntry');
+        return t('wallet:actions.battleEntry');
       case 'award_prize':
-        return t('wallet.prizeAwarded');
+        return t('wallet:actions.prizeAwarded');
       case 'convert_cashout':
-        return t('wallet.cashOut');
+        return t('wallet:actions.cashOut');
       case 'convert_sub_applied':
-        return t('wallet.creditsApplied');
+        return t('wallet:actions.creditsApplied');
       default:
-        return kind;
+        return t('wallet:activity.labels.unknown', { kind });
     }
   };
 
   const getActivityDescription = (entry: any) => {
     switch (entry.kind) {
       case 'spend_tip':
-        return t('wallet.tipSent');
+        return t('wallet:activity.descriptions.tipSent');
       case 'spend_purchase':
-        return `${entry.ref_type} ${t('wallet.purchase').toLowerCase()}`;
+        return entry.ref_type
+          ? t('wallet:activity.descriptions.purchase', { refType: entry.ref_type })
+          : t('wallet:actions.purchase');
       case 'spend_battle':
-        return t('wallet.battleEntry');
+        return t('wallet:activity.descriptions.battleEntry');
       case 'award_prize':
-        return `${entry.ref_type} ${t('wallet.prizeAwarded').toLowerCase()}`;
+        return entry.ref_type
+          ? t('wallet:activity.descriptions.prizeAwarded', { refType: entry.ref_type })
+          : t('wallet:actions.prizeAwarded');
       default:
-        return entry.ref_type || t('wallet.transaction');
+        return entry.ref_type || t('wallet:activity.labels.genericTransaction');
     }
   };
 
@@ -93,7 +97,7 @@ export const WalletActivity = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            {t('common.filter')}
+            {t('wallet:activity.filter.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -102,27 +106,27 @@ export const WalletActivity = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t('wallet.transactionHistory')}
+                  placeholder={t('wallet:activity.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            
+
             <Select value={filterKind} onValueChange={setFilterKind}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder={t('common.filter') + ' ' + t('wallet.type')} />
+                <SelectValue placeholder={t('wallet:activity.filter.placeholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('wallet.transactionHistory')}</SelectItem>
-                <SelectItem value="topup">{t('wallet.topUp')}</SelectItem>
-                <SelectItem value="spend_tip">{t('wallet.tipSent')}</SelectItem>
-                <SelectItem value="spend_purchase">{t('wallet.purchase')}</SelectItem>
-                <SelectItem value="spend_battle">{t('wallet.battleEntry')}</SelectItem>
-                <SelectItem value="award_prize">{t('wallet.prizeAwarded')}</SelectItem>
-                <SelectItem value="convert_cashout">{t('wallet.cashOut')}</SelectItem>
-                <SelectItem value="convert_sub_applied">{t('wallet.creditsApplied')}</SelectItem>
+                <SelectItem value="all">{t('wallet:activity.filter.all')}</SelectItem>
+                <SelectItem value="topup">{t('wallet:actions.topUp')}</SelectItem>
+                <SelectItem value="spend_tip">{t('wallet:actions.tipSent')}</SelectItem>
+                <SelectItem value="spend_purchase">{t('wallet:actions.purchase')}</SelectItem>
+                <SelectItem value="spend_battle">{t('wallet:actions.battleEntry')}</SelectItem>
+                <SelectItem value="award_prize">{t('wallet:actions.prizeAwarded')}</SelectItem>
+                <SelectItem value="convert_cashout">{t('wallet:actions.cashOut')}</SelectItem>
+                <SelectItem value="convert_sub_applied">{t('wallet:actions.creditsApplied')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,10 +136,8 @@ export const WalletActivity = () => {
       {/* Transaction History */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('wallet.transactionHistory')}</CardTitle>
-          <CardDescription>
-            {t('wallet.transactionHistory')}
-          </CardDescription>
+          <CardTitle>{t('wallet:activity.history.title')}</CardTitle>
+          <CardDescription>{t('wallet:activity.history.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -144,7 +146,7 @@ export const WalletActivity = () => {
             </div>
           ) : filteredLedger.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">{t('wallet.noTransactionsFound')}</p>
+              <p className="text-muted-foreground">{t('wallet:activity.history.empty')}</p>
               {searchTerm || filterKind !== "all" ? (
                 <Button
                   variant="link"
@@ -153,7 +155,7 @@ export const WalletActivity = () => {
                     setFilterKind("all");
                   }}
                 >
-                  {t('wallet.clearFilters')}
+                  {t('wallet:activity.history.clear')}
                 </Button>
               ) : null}
             </div>
@@ -203,7 +205,7 @@ export const WalletActivity = () => {
                     onClick={() => refreshLedger()}
                     disabled={loading}
                   >
-                    {t('wallet.refresh')}
+                    {t('wallet:activity.history.refresh')}
                   </Button>
                 </div>
               )}

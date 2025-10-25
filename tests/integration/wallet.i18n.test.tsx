@@ -102,7 +102,7 @@ describe('Wallet page i18n integration', () => {
     expect(await screen.findByRole('heading', { name: 'Billetera' })).toBeInTheDocument();
     expect(screen.getByText('Aviso de cumplimiento')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: /activity/i }));
+    await user.click(screen.getByRole('tab', { name: /activity|actividad/i }));
 
     const expectedCredits = formatCredits(Math.abs(walletState.ledger[0].amount_credits), { locale: 'es-ES' });
     const expectedCurrency = formatCurrency(Math.abs(walletState.ledger[0].amount_credits / 100), { locale: 'es-ES' });
