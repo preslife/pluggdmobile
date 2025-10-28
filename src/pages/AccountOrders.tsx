@@ -38,6 +38,8 @@ interface OrderSummary {
   items?: OrderItem[];
   refund_status?: string | null;
   refund_total?: number | null;
+  order_type?: string | null;
+  source_details?: Record<string, unknown> | null;
 }
 
 const PAGE_SIZE = 10;
@@ -245,9 +247,14 @@ export default function AccountOrders() {
 
         if (!isMounted) return;
 
-        const rows = (data || []) as OrderSummary[];
-        setHasMore(rows.length > PAGE_SIZE);
-        setOrders(rows.slice(0, PAGE_SIZE));
+        const rows = (data || []) as (OrderSummary & { order_type?: string | null })[];
+        const storeOrders = rows.filter((row) => {
+          const type = row.order_type?.toLowerCase?.();
+          return !type || type === 'store_order';
+        });
+
+        setHasMore(storeOrders.length > PAGE_SIZE);
+        setOrders(storeOrders.slice(0, PAGE_SIZE));
       } catch (err: any) {
         console.error('Failed to load orders', err);
         toast({
@@ -315,7 +322,8 @@ export default function AccountOrders() {
   }, [productIds, productSummaries]);
 
   const totals = useMemo(() => {
-    const completed = orders.filter((order) => order.status === 'completed');
+    const completedStatuses = new Set(['completed', 'succeeded']);
+    const completed = orders.filter((order) => completedStatuses.has(normalise(order.status)));
     const lifetime = completed.reduce((sum, order) => sum + (order.total_amount || 0), 0);
     return {
       completedCount: completed.length,
@@ -651,7 +659,7 @@ export default function AccountOrders() {
               ) : orders.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
-                    You haven’t completed any store purchases yet.
+                    You haven’t completed any purchases or tips yet.
                   </p>
                 </div>
               ) : (
@@ -680,6 +688,11 @@ export default function AccountOrders() {
                                 {formatCurrency(order.total_amount || 0, order.currency || 'GBP')}
                               </span>
                               {renderStatus(order.status)}
+                              {order.order_type === 'artist_tip' && (
+                                <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/30" variant="outline">
+                                  Artist tip
+                                </Badge>
+                              )}
                               {refundBadge}
                             </div>
                             <div className="text-sm text-muted-foreground">

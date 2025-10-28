@@ -669,10 +669,20 @@ serve(async (req) => {
           } else if (session.metadata?.type === 'store_purchase') {
             const sessionTotal = session.amount_total ? session.amount_total / 100 : null;
             const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+            const storeLogger = scopeLogger(currentLogger, {
+              scope: 'store_order',
+              sessionId: session.id,
+            });
+
+            await storeLogger.info('store_order_reconciliation_started', {
+              paymentIntent: paymentIntentId,
+              total: sessionTotal,
+              cartItemIds: session.metadata?.cart_item_ids ?? null,
+            });
 
             const { data: existingOrder, error: existingOrderError } = await supabaseClient
               .from('orders')
-              .select('id, user_id, total_amount')
+              .select('id, user_id, total_amount, status, paid_at, payment_provider, shipping_address')
               .eq('payment_id', session.id)
               .maybeSingle();
 
@@ -681,30 +691,56 @@ serve(async (req) => {
             if (!orderRecord && !existingOrderError) {
               const { data: legacyOrder, error: legacyError } = await supabaseClient
                 .from('orders')
-                .select('id, user_id, total_amount')
+                .select('id, user_id, total_amount, status, paid_at, payment_provider, shipping_address')
                 .eq('stripe_session_id', session.id)
                 .maybeSingle();
 
               if (legacyError) {
-                await logStep('Legacy order lookup failed', { error: legacyError.message, sessionId: session.id });
+                await storeLogger.error('store_order_legacy_lookup_failed', {
+                  error: legacyError.message,
+                });
               }
               orderRecord = legacyOrder ?? null;
             }
 
             if (!orderRecord) {
-              await logStep('Order not found for session', { sessionId: session.id });
+              await storeLogger.error('store_order_missing', {
+                message: 'Order not found for Stripe session',
+              });
             } else {
+              const nowIso = new Date().toISOString();
+              const paidAt =
+                typeof session.created === 'number'
+                  ? new Date(session.created * 1000).toISOString()
+                  : nowIso;
+
+              const shippingAddress = session.shipping_details
+                ? {
+                    name: session.shipping_details.name,
+                    address: session.shipping_details.address,
+                    phone: session.shipping_details.phone,
+                  }
+                : orderRecord.shipping_address;
+
               const updatePayload: Record<string, unknown> = {
                 status: 'completed',
-                updated_at: new Date().toISOString(),
+                updated_at: nowIso,
+                paid_at: orderRecord.paid_at ?? paidAt,
+                payment_provider:
+                  orderRecord.payment_provider && orderRecord.payment_provider.length > 0
+                    ? orderRecord.payment_provider
+                    : 'stripe',
+                stripe_session_id: session.id,
+                payment_id: session.id,
               };
+
+              if (shippingAddress) {
+                updatePayload['shipping_address'] = shippingAddress;
+              }
 
               if (sessionTotal !== null) {
                 updatePayload.total_amount = sessionTotal;
               }
-
-              updatePayload['paid_at'] = new Date().toISOString();
-              updatePayload['payment_provider'] = 'stripe';
 
               const { error: orderUpdateError } = await supabaseClient
                 .from('orders')
@@ -712,25 +748,128 @@ serve(async (req) => {
                 .eq('id', orderRecord.id);
 
               if (orderUpdateError) {
-                await logStep('Order update error', { error: orderUpdateError.message, orderId: orderRecord.id });
-              } else {
-                await logStep('Store order completed', { sessionId: session.id, orderId: orderRecord.id });
-
-                await scopeLogger(currentLogger, {
-                  scope: 'store_order',
-                  sessionId: session.id,
+                await storeLogger.error('store_order_update_failed', {
                   orderId: orderRecord.id,
-                }).info('store_order_completed', {
-                  userId: orderRecord.user_id,
-                  amount: sessionTotal ?? orderRecord.total_amount,
-                  paymentIntent: paymentIntentId,
-                  currency: session.currency,
+                  error: orderUpdateError.message,
                 });
+              } else {
+                await storeLogger.info('store_order_updated', {
+                  orderId: orderRecord.id,
+                  userId: orderRecord.user_id,
+                  total: sessionTotal ?? orderRecord.total_amount,
+                  paymentIntent: paymentIntentId,
+                  paidAt: updatePayload.paid_at,
+                });
+
+                const { data: orderItems, error: orderItemsError } = await supabaseClient
+                  .from('order_items')
+                  .select('id, product_id, quantity, price, kind')
+                  .eq('order_id', orderRecord.id);
+
+                if (orderItemsError) {
+                  await storeLogger.error('store_order_items_fetch_failed', {
+                    orderId: orderRecord.id,
+                    error: orderItemsError.message,
+                  });
+                } else if (!orderItems || orderItems.length === 0) {
+                  await storeLogger.warn('store_order_items_missing', {
+                    orderId: orderRecord.id,
+                  });
+
+                  try {
+                    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+                      expand: ['data.price.product'],
+                    });
+
+                    const itemsToInsert = lineItems.data
+                      .map((lineItem) => {
+                        const metadata =
+                          lineItem.price?.product && typeof lineItem.price.product !== 'string'
+                            ? (lineItem.price.product.metadata ?? {})
+                            : {};
+                        const productId = typeof metadata.product_id === 'string' ? metadata.product_id : null;
+
+                        if (!productId) {
+                          return null;
+                        }
+
+                        const quantity = lineItem.quantity ?? 1;
+                        const priceTotal = (lineItem.amount_total ?? 0) / 100;
+                        const unitPrice = quantity > 0 ? priceTotal / quantity : priceTotal;
+
+                        return {
+                          order_id: orderRecord.id,
+                          product_id: productId,
+                          quantity,
+                          price: unitPrice,
+                          kind: typeof metadata.product_type === 'string' ? metadata.product_type : null,
+                          creator_id: typeof metadata.user_id === 'string' ? metadata.user_id : null,
+                        };
+                      })
+                      .filter((value): value is {
+                        order_id: string;
+                        product_id: string;
+                        quantity: number;
+                        price: number;
+                        kind: string | null;
+                        creator_id: string | null;
+                      } => Boolean(value));
+
+                    if (itemsToInsert.length > 0) {
+                      const { error: insertError } = await supabaseClient.from('order_items').insert(itemsToInsert);
+
+                      if (insertError) {
+                        await storeLogger.error('store_order_items_backfill_failed', {
+                          orderId: orderRecord.id,
+                          error: insertError.message,
+                        });
+                      } else {
+                        await storeLogger.info('store_order_items_backfilled', {
+                          orderId: orderRecord.id,
+                          itemCount: itemsToInsert.length,
+                        });
+                      }
+                    }
+                  } catch (lineItemError) {
+                    await storeLogger.error('store_order_items_recovery_failed', {
+                      error: lineItemError instanceof Error ? lineItemError.message : String(lineItemError),
+                    });
+                  }
+                } else {
+                  const expectedCount = (() => {
+                    if (typeof session.metadata?.cart_item_ids_json === 'string') {
+                      try {
+                        const parsed = JSON.parse(session.metadata.cart_item_ids_json);
+                        if (Array.isArray(parsed)) return parsed.length;
+                      } catch (_ignore) {
+                        return orderItems.length;
+                      }
+                    }
+                    return orderItems.length;
+                  })();
+
+                  if (expectedCount !== orderItems.length) {
+                    await storeLogger.warn('store_order_item_count_mismatch', {
+                      orderId: orderRecord.id,
+                      expectedCount,
+                      actualCount: orderItems.length,
+                    });
+                  }
+                }
               }
             }
           } else if (session.metadata?.type === 'artist_tip') {
             const tipTotal = session.amount_total ? session.amount_total / 100 : null;
             const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+            const tipLogger = scopeLogger(currentLogger, {
+              scope: 'artist_tip',
+              sessionId: session.id,
+            });
+
+            await tipLogger.info('artist_tip_reconciliation_started', {
+              amount: tipTotal,
+              paymentIntent: paymentIntentId,
+            });
 
             const { data: tipRecord, error: tipLookupError } = await supabaseClient
               .from('artist_tips')
@@ -754,7 +893,9 @@ serve(async (req) => {
             }
 
             if (!tip) {
-              await logStep('Artist tip record not found', { sessionId: session.id, paymentIntentId });
+              await tipLogger.error('artist_tip_missing_record', {
+                paymentIntent: paymentIntentId,
+              });
             } else {
               const updatePayload: Record<string, unknown> = {
                 status: 'succeeded',
@@ -775,9 +916,17 @@ serve(async (req) => {
                 .eq('id', tip.id);
 
               if (tipUpdateError) {
-                await logStep('Artist tip update error', { error: tipUpdateError.message, tipId: tip.id });
+                await tipLogger.error('artist_tip_update_failed', {
+                  tipId: tip.id,
+                  error: tipUpdateError.message,
+                });
               } else {
-                await logStep('Artist tip settled', { tipId: tip.id, sessionId: session.id });
+                await tipLogger.info('artist_tip_settled', {
+                  tipId: tip.id,
+                  fanId: tip.fan_id,
+                  artistId: tip.artist_id,
+                  amount: tipTotal ?? tip.amount,
+                });
 
                 const siteUrl = Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
 

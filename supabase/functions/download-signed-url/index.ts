@@ -9,6 +9,23 @@ const corsHeaders = {
 
 type PurchaseType = "release" | "beat" | "sample_pack";
 
+type OwnershipSource = "direct_purchase" | "order" | "membership" | "credits";
+
+interface SupplementalOwnershipParams {
+  supabase: ReturnType<typeof createClient>;
+  userId: string;
+  productId?: string | null;
+  purchaseType: PurchaseType;
+  creatorId?: string | null;
+}
+
+interface SupplementalOwnershipResult {
+  authorized: boolean;
+  source?: OwnershipSource;
+  details?: Record<string, unknown>;
+  reason?: string;
+}
+
 interface StorageLocation {
   bucket: string;
   path: string;
@@ -49,6 +66,121 @@ async function countDownloadEvents(supabaseService: ReturnType<typeof createClie
     .eq("purchase_type", purchaseType);
 
   return count ?? 0;
+}
+
+async function checkSupplementalOwnership({
+  supabase,
+  userId,
+  productId,
+  purchaseType,
+  creatorId,
+}: SupplementalOwnershipParams): Promise<SupplementalOwnershipResult> {
+  if (!productId) {
+    return { authorized: false, reason: "missing_product_id" };
+  }
+
+  const { data: orderMatch, error: orderError } = await supabase
+    .from('orders')
+    .select('id, status, paid_at, created_at, order_items!inner(product_id)')
+    .eq('user_id', userId)
+    .eq('order_items.product_id', productId)
+    .in('status', ['completed', 'processing'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (orderError) {
+    return { authorized: false, reason: `order_lookup_failed:${orderError.message}` };
+  }
+
+  if (orderMatch) {
+    return {
+      authorized: true,
+      source: 'order',
+      details: {
+        orderId: orderMatch.id,
+        status: orderMatch.status,
+        paid_at: orderMatch.paid_at,
+      },
+    };
+  }
+
+  if (creatorId) {
+    const { data: membershipMatch, error: membershipError } = await supabase
+      .from('fan_subscriptions')
+      .select('id, status')
+      .eq('fan_id', userId)
+      .eq('creator_id', creatorId)
+      .in('status', ['active', 'trialing'])
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) {
+      return { authorized: false, reason: `membership_lookup_failed:${membershipError.message}` };
+    }
+
+    if (membershipMatch) {
+      return {
+        authorized: true,
+        source: 'membership',
+        details: {
+          subscriptionId: membershipMatch.id,
+          status: membershipMatch.status,
+        },
+      };
+    }
+  }
+
+  let ledgerMatch: { id: string; kind: string; ref_type: string | null; ref_id: string | null } | null = null;
+
+  const ledgerByRef = await supabase
+    .from('wallet_ledger')
+    .select('id, kind, ref_type, ref_id, meta')
+    .eq('user_id', userId)
+    .in('kind', ['spend_purchase', 'spend_tip', 'spend_gift'])
+    .eq('ref_id', productId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (ledgerByRef.error) {
+    return { authorized: false, reason: `ledger_lookup_failed:${ledgerByRef.error.message}` };
+  }
+
+  ledgerMatch = ledgerByRef.data as typeof ledgerMatch;
+
+  if (!ledgerMatch) {
+    const ledgerByMeta = await supabase
+      .from('wallet_ledger')
+      .select('id, kind, ref_type, ref_id, meta')
+      .eq('user_id', userId)
+      .in('kind', ['spend_purchase', 'spend_tip', 'spend_gift'])
+      .contains('meta', { product_id: productId })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (ledgerByMeta.error) {
+      return { authorized: false, reason: `ledger_lookup_failed:${ledgerByMeta.error.message}` };
+    }
+
+    ledgerMatch = ledgerByMeta.data as typeof ledgerMatch;
+  }
+
+  if (ledgerMatch) {
+    return {
+      authorized: true,
+      source: 'credits',
+      details: {
+        ledgerId: ledgerMatch.id,
+        kind: ledgerMatch.kind,
+        ref_type: ledgerMatch.ref_type,
+        ref_id: ledgerMatch.ref_id,
+      },
+    };
+  }
+
+  return { authorized: false, reason: 'no_additional_records' };
 }
 
 serve(async (req) => {
@@ -119,14 +251,15 @@ serve(async (req) => {
     let limit = 0;
     let downloadCount = 0;
     let metadata: Record<string, unknown> = { purchaseId, purchaseType };
+    let ownershipSource: OwnershipSource = 'direct_purchase';
+    let supplementalContext: Record<string, unknown> | null = null;
 
     switch (purchaseType) {
       case "release": {
         const { data: purchase, error } = await supabaseService
           .from("release_purchases")
           .select(
-            `id, user_id, purchaser_id, status, downloads_used, download_expires_at, purchased_at, release_id, is_preorder, available_at,
-             releases:release_id (download_limit, download_url, download_expires_days)`,
+            `*, releases:release_id (download_limit, download_url, download_expires_days, user_id, perk_access)`,
           )
           .eq("id", purchaseId)
           .maybeSingle();
@@ -138,6 +271,11 @@ serve(async (req) => {
           );
         }
 
+        metadata = {
+          ...metadata,
+          releaseId: purchase.release_id,
+        };
+
         if (purchase.status !== 'completed') {
           await logger.error("release_not_settled", new Error('Purchase is not completed'), metadata);
           return new Response(
@@ -146,12 +284,33 @@ serve(async (req) => {
           );
         }
 
-        if (purchase.user_id !== user.id && purchase.purchaser_id !== user.id) {
-          await logger.error("release_access_denied", new Error('User does not own release'), metadata);
-          return new Response(
-            JSON.stringify({ error: "Access denied" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
+        const isDirectOwner = purchase.user_id === user.id || purchase.purchaser_id === user.id;
+
+        if (!isDirectOwner) {
+          const fallback = await checkSupplementalOwnership({
+            supabase: supabaseService,
+            userId: user.id,
+            productId: purchase.release_id,
+            purchaseType,
+            creatorId: purchase.releases?.user_id ?? null,
+          });
+
+          if (!fallback.authorized) {
+            await logger.error(
+              "release_access_denied",
+              new Error('User does not own release'),
+              { ...metadata, reason: fallback.reason ?? 'unknown' },
+            );
+            return new Response(
+              JSON.stringify({ error: "Access denied" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+
+          ownershipSource = fallback.source ?? 'order';
+          supplementalContext = fallback.details ?? null;
+        } else {
+          ownershipSource = (purchase as { from_credits?: boolean }).from_credits ? 'credits' : 'direct_purchase';
         }
 
         if (purchase.is_preorder && purchase.available_at) {
@@ -174,7 +333,13 @@ serve(async (req) => {
         );
 
         if (limit !== null && downloadCount >= limit) {
-          await logger.warn("release_limit_reached", metadata);
+          await logger.warn("release_limit_reached", {
+            ...metadata,
+            ownershipSource,
+            supplementalContext,
+            downloadsUsed: downloadCount,
+            limit,
+          });
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -184,7 +349,12 @@ serve(async (req) => {
         if (purchase.download_expires_at) {
           const expires = new Date(purchase.download_expires_at);
           if (Date.now() > expires.getTime()) {
-            await logger.warn("release_expired", metadata);
+            await logger.warn("release_expired", {
+              ...metadata,
+              ownershipSource,
+              supplementalContext,
+              expiredAt: purchase.download_expires_at,
+            });
             return new Response(
               JSON.stringify({ error: "Download window expired" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -194,7 +364,12 @@ serve(async (req) => {
           const expires = new Date(purchase.purchased_at);
           expires.setDate(expires.getDate() + release.download_expires_days);
           if (Date.now() > expires.getTime()) {
-            await logger.warn("release_expired", metadata);
+            await logger.warn("release_expired", {
+              ...metadata,
+              ownershipSource,
+              supplementalContext,
+              expiredAt: expires.toISOString(),
+            });
             return new Response(
               JSON.stringify({ error: "Download window expired" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -213,7 +388,7 @@ serve(async (req) => {
       case "beat": {
         const { data: purchase, error } = await supabaseService
           .from("purchases")
-          .select(`id, beat_id, buyer_id, license_pdf_url, beats:beat_id (audio_url)`)
+          .select(`id, beat_id, buyer_id, license_pdf_url, beats:beat_id (audio_url, user_id)`)
           .eq("id", purchaseId)
           .maybeSingle();
 
@@ -224,12 +399,33 @@ serve(async (req) => {
           );
         }
 
+        metadata = { ...metadata, beatId: purchase.beat_id };
+
         if (purchase.buyer_id !== user.id) {
-          await logger.error("beat_access_denied", new Error('User does not own beat'), metadata);
-          return new Response(
-            JSON.stringify({ error: "Access denied" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
+          const fallback = await checkSupplementalOwnership({
+            supabase: supabaseService,
+            userId: user.id,
+            productId: purchase.beat_id,
+            purchaseType,
+            creatorId: purchase.beats?.user_id ?? null,
+          });
+
+          if (!fallback.authorized) {
+            await logger.error(
+              "beat_access_denied",
+              new Error('User does not own beat'),
+              { ...metadata, reason: fallback.reason ?? 'unknown' },
+            );
+            return new Response(
+              JSON.stringify({ error: "Access denied" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+
+          ownershipSource = fallback.source ?? 'order';
+          supplementalContext = fallback.details ?? null;
+        } else {
+          ownershipSource = 'direct_purchase';
         }
 
         storage = parseStorageLocation(purchase.beats?.audio_url ?? null);
@@ -237,7 +433,13 @@ serve(async (req) => {
         downloadCount = await countDownloadEvents(supabaseService, purchaseId, purchaseType);
 
         if (downloadCount >= limit) {
-          await logger.warn("beat_limit_reached", metadata);
+          await logger.warn("beat_limit_reached", {
+            ...metadata,
+            ownershipSource,
+            supplementalContext,
+            downloadsUsed: downloadCount,
+            limit,
+          });
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -250,7 +452,7 @@ serve(async (req) => {
       case "sample_pack": {
         const { data: purchase, error } = await supabaseService
           .from("sample_pack_purchases")
-          .select(`id, user_id, download_url, sample_packs:sample_pack_id (download_url)`)
+          .select(`id, user_id, download_url, sample_pack_id, sample_packs:sample_pack_id (download_url, user_id, owner_id)`)
           .eq("id", purchaseId)
           .maybeSingle();
 
@@ -261,12 +463,33 @@ serve(async (req) => {
           );
         }
 
+        metadata = { ...metadata, samplePackId: purchase.sample_pack_id };
+
         if (purchase.user_id !== user.id) {
-          await logger.error("sample_pack_access_denied", new Error('User does not own sample pack'), metadata);
-          return new Response(
-            JSON.stringify({ error: "Access denied" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
+          const fallback = await checkSupplementalOwnership({
+            supabase: supabaseService,
+            userId: user.id,
+            productId: purchase.sample_pack_id,
+            purchaseType,
+            creatorId: purchase.sample_packs?.user_id ?? purchase.sample_packs?.owner_id ?? null,
+          });
+
+          if (!fallback.authorized) {
+            await logger.error(
+              "sample_pack_access_denied",
+              new Error('User does not own sample pack'),
+              { ...metadata, reason: fallback.reason ?? 'unknown' },
+            );
+            return new Response(
+              JSON.stringify({ error: "Access denied" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+
+          ownershipSource = fallback.source ?? 'order';
+          supplementalContext = fallback.details ?? null;
+        } else {
+          ownershipSource = 'direct_purchase';
         }
 
         storage = parseStorageLocation(purchase.download_url || purchase.sample_packs?.download_url ?? null);
@@ -274,7 +497,13 @@ serve(async (req) => {
         downloadCount = await countDownloadEvents(supabaseService, purchaseId, purchaseType);
 
         if (downloadCount >= limit) {
-          await logger.warn("sample_pack_limit_reached", metadata);
+          await logger.warn("sample_pack_limit_reached", {
+            ...metadata,
+            ownershipSource,
+            supplementalContext,
+            downloadsUsed: downloadCount,
+            limit,
+          });
           return new Response(
             JSON.stringify({ error: "Download limit reached" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -290,6 +519,12 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
     }
+
+    if (supplementalContext) {
+      metadata = { ...metadata, supplementalContext };
+    }
+
+    metadata = { ...metadata, ownershipSource };
 
     if (!storage) {
       return new Response(
