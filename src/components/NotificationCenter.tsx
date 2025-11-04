@@ -14,8 +14,8 @@ interface Notification {
   type: string;
   title: string;
   message: string;
-  data: any;
-  read: boolean;
+  payload: any;
+  read_at: string | null;
   created_at: string;
 }
 
@@ -74,9 +74,13 @@ export const NotificationCenter = () => {
 
       if (error) throw error;
       
-      const notificationList = data || [];
+      const notificationList = (data || []).map((notification) => ({
+        ...notification,
+        payload: notification.payload ?? {},
+        read_at: notification.read_at ?? null,
+      }));
       setNotifications(notificationList);
-      setUnreadCount(notificationList.filter(n => !n.read).length);
+      setUnreadCount(notificationList.filter(n => !n.read_at).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -95,7 +99,7 @@ export const NotificationCenter = () => {
       if (error) throw error;
 
       setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+        prev.map(n => n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
@@ -115,8 +119,9 @@ export const NotificationCenter = () => {
 
       if (error) throw error;
 
+      const nowIso = new Date().toISOString();
       setNotifications(prev =>
-        prev.map(n => ({ ...n, read: true }))
+        prev.map(n => ({ ...n, read_at: nowIso }))
       );
       setUnreadCount(0);
     } catch (error) {
@@ -200,7 +205,7 @@ export const NotificationCenter = () => {
             <Card 
               key={notification.id} 
               className={`bg-card/50 transition-all ${
-                !notification.read ? 'border-primary/50 bg-primary/5' : ''
+                !notification.read_at ? 'border-primary/50 bg-primary/5' : ''
               }`}
             >
               <CardContent className="p-3">
@@ -213,7 +218,7 @@ export const NotificationCenter = () => {
                       <h4 className="font-semibold text-sm">
                         {notification.title}
                       </h4>
-                      {!notification.read && (
+                      {!notification.read_at && (
                         <Button
                           size="sm"
                           variant="ghost"

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import { BlockUserButton } from "@/components/BlockUserButton";
 import { 
   Inbox, 
   Star, 
@@ -31,6 +32,7 @@ interface InboxMessage {
   message_id: string | null;
   author_name: string | null;
   author_handle: string | null;
+  author_id?: string | null;
   snippet: string | null;
   permalink: string | null;
   thread_id: string | null;
@@ -418,11 +420,21 @@ export const UnifiedInbox = () => {
 
                 <SheetContent className="w-full sm:max-w-lg">
                   <SheetHeader>
-                    <SheetTitle className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${providerColor}`}>
-                        <Icon className="h-3 w-3 text-white" />
-                      </div>
-                      {message.author_name}
+                    <SheetTitle className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${providerColor}`}>
+                          <Icon className="h-3 w-3 text-white" />
+                        </div>
+                        {message.author_name}
+                      </span>
+                      {message.author_id ? (
+                        <BlockUserButton
+                          userId={message.author_id}
+                          displayName={message.author_name || message.author_handle}
+                          size="sm"
+                          variant="ghost"
+                        />
+                      ) : null}
                     </SheetTitle>
                   </SheetHeader>
 

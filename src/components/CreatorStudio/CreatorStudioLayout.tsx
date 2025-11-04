@@ -58,6 +58,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useLabelMemberships } from "@/hooks/useLabelMemberships";
 import { StudioContext } from "@/contexts/StudioContext";
 import type { LabelMembership } from "@/hooks/useLabelMemberships";
@@ -79,7 +81,8 @@ interface CreatorStudioLayoutProps {
 
 type StudioMode = "personal" | "label";
 
-const createNavigationItems = (intl: IntlShape) => [
+const createNavigationItems = (intl: IntlShape, isAdmin: boolean) => {
+  const items = [
   {
     title: intl.formatMessage({ id: 'creatorStudio.nav.dashboard', defaultMessage: 'Dashboard' }),
     url: '/studio',
@@ -388,20 +391,84 @@ const createNavigationItems = (intl: IntlShape) => [
       },
     ],
   },
-];
+  ];
+
+  if (isAdmin) {
+    items.push({
+      title: intl.formatMessage({ id: 'creatorStudio.nav.admin', defaultMessage: 'Admin' }),
+      icon: Shield,
+      items: [
+        {
+          title: intl.formatMessage({ id: 'creatorStudio.nav.admin.moderation', defaultMessage: 'Moderation Queue' }),
+          url: '/studio/admin/moderation',
+          icon: Shield,
+        },
+      ],
+    });
+  }
+
+  return items;
+};
 
 export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { memberships, loading: labelsLoading, refresh } = useLabelMemberships();
   const intl = useIntl();
-  const navigationItems = useMemo(() => createNavigationItems(intl), [intl]);
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (!cancelled) {
+          if (error) {
+            console.error('Failed to verify admin role', error);
+            setIsAdmin(false);
+          } else {
+            setIsAdmin(Boolean(data));
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to verify admin role', err);
+          setIsAdmin(false);
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const navigationItems = useMemo(() => createNavigationItems(intl, isAdmin), [intl, isAdmin]);
   const defaultOpenSections = useMemo(
-    () => [
-      intl.formatMessage({ id: 'creatorStudio.nav.catalog', defaultMessage: 'Catalog' }),
-      intl.formatMessage({ id: 'creatorStudio.nav.analytics', defaultMessage: 'Analytics' }),
-    ],
-    [intl]
+    () => {
+      const sections = [
+        intl.formatMessage({ id: 'creatorStudio.nav.catalog', defaultMessage: 'Catalog' }),
+        intl.formatMessage({ id: 'creatorStudio.nav.analytics', defaultMessage: 'Analytics' }),
+      ];
+      if (isAdmin) {
+        sections.push(intl.formatMessage({ id: 'creatorStudio.nav.admin', defaultMessage: 'Admin' }));
+      }
+      return sections;
+    },
+    [intl, isAdmin]
   );
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(defaultOpenSections));
   useEffect(() => {

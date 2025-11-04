@@ -73,6 +73,8 @@ export const CRMModule = EnhancedCRMModule;
 import { EnhancedStorefrontModule } from './EnhancedStorefrontModule';
 export const StorefrontModule = EnhancedStorefrontModule;
 
+export { AdminModerationModule } from './AdminModerationModule';
+
 export const FinancialsModule = () => {
   const { user } = useAuth();
   const { toast } = useToast();

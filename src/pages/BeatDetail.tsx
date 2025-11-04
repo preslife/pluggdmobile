@@ -26,6 +26,7 @@ import { UniversalAudioPlayer } from '@/components/UniversalAudioPlayer';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import BeatRecommendations from '@/components/BeatRecommendations';
 import ShareModal from '@/components/ShareModal';
+import ReportButton from '@/components/ReportButton';
 import BeatLicensingModal from '@/components/BeatLicensingModal';
 import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
@@ -342,6 +343,7 @@ const BeatDetail = () => {
                           Share
                         </Button>
                       </ShareModal>
+                      <ReportButton targetType="beat" targetId={beat.id} />
                       <Button variant="ghost" size="sm">
                         <Download className="w-4 h-4 mr-1" />
                         Download for free

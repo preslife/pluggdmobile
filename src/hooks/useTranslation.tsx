@@ -19,23 +19,29 @@ const FALLBACK_SETTINGS: LocalizationSettings = {
 };
 
 export const useTranslation = () => {
-  let localizationSettings: LocalizationSettings = FALLBACK_SETTINGS;
+  const { t: i18nTranslate, i18n } = useI18nextTranslation();
+
+  let localizationSettings: LocalizationSettings = {
+    ...FALLBACK_SETTINGS,
+    locale: (i18n.language as LocalizationSettings['locale']) || FALLBACK_SETTINGS.locale,
+  };
+  let shouldSyncWithLocalization = false;
 
   try {
     const { settings } = useLocalization();
     localizationSettings = settings;
+    shouldSyncWithLocalization = true;
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('useTranslation falling back to default localization', error);
     }
   }
-  const { t: i18nTranslate, i18n } = useI18nextTranslation();
 
   useEffect(() => {
-    if (localizationSettings.locale && i18n.language !== localizationSettings.locale) {
+    if (shouldSyncWithLocalization && localizationSettings.locale && i18n.language !== localizationSettings.locale) {
       void i18n.changeLanguage(localizationSettings.locale);
     }
-  }, [i18n, localizationSettings.locale]);
+  }, [i18n, localizationSettings.locale, shouldSyncWithLocalization]);
 
   /**
    * Get translation for a given key

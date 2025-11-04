@@ -13,6 +13,7 @@ import { ReleasePreviewPlayer } from "@/components/ReleasePreviewPlayer";
 import { ReleaseComments } from "@/components/ReleaseComments";
 import { TracksManager } from "@/components/TracksManager";
 import ReleaseShareModal from "@/components/ReleaseShareModal";
+import ReportButton from "@/components/ReportButton";
 import { DistributionExporter } from "@/components/DistributionExporter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -503,6 +504,11 @@ const ReleaseDetail = () => {
                     <Share className="h-4 w-4" />
                     Share
                   </Button>
+                  <ReportButton
+                    targetType="release"
+                    targetId={release.id}
+                    className="gap-2"
+                  />
                 </div>
               </div>
 

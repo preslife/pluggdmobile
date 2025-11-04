@@ -1936,6 +1936,9 @@ export type Database = {
       }
       content_reports: {
         Row: {
+          appeal_notes: string | null
+          appealed_at: string | null
+          appealed_by: string | null
           created_at: string
           description: string | null
           id: string
@@ -1947,8 +1950,13 @@ export type Database = {
           status: string
           target_id: string
           target_type: string
+          target_owner_id: string | null
+          updated_at: string
         }
         Insert: {
+          appeal_notes?: string | null
+          appealed_at?: string | null
+          appealed_by?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1960,8 +1968,13 @@ export type Database = {
           status?: string
           target_id: string
           target_type: string
+          target_owner_id?: string | null
+          updated_at?: string
         }
         Update: {
+          appeal_notes?: string | null
+          appealed_at?: string | null
+          appealed_by?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1973,6 +1986,8 @@ export type Database = {
           status?: string
           target_id?: string
           target_type?: string
+          target_owner_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -4885,38 +4900,38 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
-          data: Json | null
           id: string
           message: string
-          read: boolean
+          payload: Json
+          read_at: string | null
           related_id: string | null
           related_type: string | null
           title: string
-          type: string
+          type: Database["public"]["Enums"]["notification_type_enum"]
           user_id: string
         }
         Insert: {
           created_at?: string
-          data?: Json | null
           id?: string
           message: string
-          read?: boolean
+          payload?: Json
+          read_at?: string | null
           related_id?: string | null
           related_type?: string | null
           title: string
-          type: string
+          type?: Database["public"]["Enums"]["notification_type_enum"]
           user_id: string
         }
         Update: {
           created_at?: string
-          data?: Json | null
           id?: string
           message?: string
-          read?: boolean
+          payload?: Json
+          read_at?: string | null
           related_id?: string | null
           related_type?: string | null
           title?: string
-          type?: string
+          type?: Database["public"]["Enums"]["notification_type_enum"]
           user_id?: string
         }
         Relationships: []
@@ -7845,6 +7860,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_blocks: {
+        Row: {
+          blocked_user_id: string
+          blocker_id: string
+          context: Json | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          reason: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolution_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          blocked_user_id: string
+          blocker_id: string
+          context?: Json | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          blocked_user_id?: string
+          blocker_id?: string
+          context?: Json | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string
@@ -9071,6 +9131,7 @@ export type Database = {
       label_role: "owner" | "admin" | "editor" | "viewer"
       managed_profile_role: "primary" | "distribution_only"
       managed_profile_status: "pending" | "active" | "removed"
+      notification_type_enum: "system" | "order" | "tip" | "membership" | "moderation" | "social"
       membership_status: "active" | "cancelled" | "expired" | "past_due"
       perk_type:
         | "discord_role"
@@ -9227,6 +9288,7 @@ export const Constants = {
       label_role: ["owner", "admin", "editor", "viewer"],
       managed_profile_role: ["primary", "distribution_only"],
       managed_profile_status: ["pending", "active", "removed"],
+      notification_type_enum: ["system", "order", "tip", "membership", "moderation", "social"],
       membership_status: ["active", "cancelled", "expired", "past_due"],
       perk_type: [
         "discord_role",

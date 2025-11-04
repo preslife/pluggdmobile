@@ -761,6 +761,36 @@ serve(async (req) => {
                   paidAt: updatePayload.paid_at,
                 });
 
+                try {
+                  const { error: notificationError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                    body: {
+                      recipients: [orderRecord.user_id],
+                      type: 'order',
+                      title: 'Order confirmed',
+                      message: 'Thanks for your purchase! Your order is confirmed.',
+                      payload: {
+                        order_id: orderRecord.id,
+                        payment_id: paymentIntentId,
+                        total_amount: sessionTotal ?? orderRecord.total_amount,
+                      },
+                      relatedId: orderRecord.id,
+                      relatedType: 'order',
+                    },
+                  });
+
+                  if (notificationError) {
+                    await storeLogger.warn('store_order_notification_failed', {
+                      error: notificationError.message,
+                      orderId: orderRecord.id,
+                    });
+                  }
+                } catch (notifyErr) {
+                  await storeLogger.warn('store_order_notification_exception', {
+                    orderId: orderRecord.id,
+                    error: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+                  });
+                }
+
                 const { data: orderItems, error: orderItemsError } = await supabaseClient
                   .from('order_items')
                   .select('id, product_id, quantity, price, kind')
@@ -1018,6 +1048,65 @@ serve(async (req) => {
                   fanId: tip.fan_id,
                   amount: tipTotal ?? tip.amount,
                 });
+
+                try {
+                  const fanMessage = `Your tip to ${artistName} was sent successfully.`;
+                  const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                    body: {
+                      recipients: [tip.fan_id],
+                      type: 'tip',
+                      title: 'Tip confirmed',
+                      message: fanMessage,
+                      payload: {
+                        tip_id: tip.id,
+                        amount: tipTotal ?? tip.amount,
+                        artist_id: tip.artist_id,
+                      },
+                      relatedId: tip.id,
+                      relatedType: 'artist_tip',
+                    },
+                  });
+
+                  if (fanNotifyError) {
+                    await tipLogger.warn('artist_tip_fan_notification_failed', {
+                      tipId: tip.id,
+                      error: fanNotifyError.message,
+                    });
+                  }
+
+                  const creatorMessage = fanName
+                    ? `${fanName} just sent you a tip.`
+                    : 'You just received a new tip!';
+                  const { error: artistNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                    body: {
+                      recipients: [tip.artist_id],
+                      type: 'tip',
+                      title: 'New tip received',
+                      message: creatorMessage,
+                      payload: {
+                        tip_id: tip.id,
+                        amount: tipTotal ?? tip.amount,
+                        fan_id: tip.fan_id,
+                      },
+                      relatedId: tip.id,
+                      relatedType: 'artist_tip',
+                    },
+                  });
+
+                  if (artistNotifyError) {
+                    await tipLogger.warn('artist_tip_creator_notification_failed', {
+                      tipId: tip.id,
+                      error: artistNotifyError.message,
+                    });
+                  }
+                } catch (notificationError) {
+                  await tipLogger.warn('artist_tip_notification_exception', {
+                    tipId: tip.id,
+                    error: notificationError instanceof Error
+                      ? notificationError.message
+                      : String(notificationError),
+                  });
+                }
               }
             }
           } else if (session.metadata?.type === 'commission_funding') {
@@ -1341,6 +1430,80 @@ serve(async (req) => {
               fanId: membershipResult.userId,
               creatorId: membershipResult.creatorId,
             });
+          } else {
+            const memberMessage = (() => {
+              switch (membershipResult.status) {
+                case 'active':
+                  return 'Your membership is now active.';
+                case 'cancelled':
+                  return 'Your membership has been cancelled.';
+                case 'expired':
+                  return 'Your membership has expired.';
+                case 'past_due':
+                  return 'Your membership payment is past due.';
+                default:
+                  return 'Your membership status has been updated.';
+              }
+            })();
+
+            try {
+              const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                body: {
+                  recipients: [membershipResult.userId],
+                  type: 'membership',
+                  title: 'Membership update',
+                  message: memberMessage,
+                  payload: {
+                    membership_id: membershipResult.membershipId,
+                    tier_id: membershipResult.tierId,
+                    status: membershipResult.status,
+                  },
+                  relatedId: membershipResult.membershipId,
+                  relatedType: 'membership',
+                },
+              });
+
+              if (fanNotifyError) {
+                await logStep('Membership fan notification failed', {
+                  error: fanNotifyError.message,
+                  fanId: membershipResult.userId,
+                });
+              }
+
+              const creatorMessage = membershipResult.status === 'active'
+                ? 'A new member just joined your tier.'
+                : membershipResult.status === 'cancelled'
+                  ? 'A member cancelled their subscription.'
+                  : 'A membership was updated.';
+
+              const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                body: {
+                  recipients: [membershipResult.creatorId],
+                  type: 'membership',
+                  title: 'Membership update',
+                  message: creatorMessage,
+                  payload: {
+                    membership_id: membershipResult.membershipId,
+                    fan_id: membershipResult.userId,
+                    status: membershipResult.status,
+                  },
+                  relatedId: membershipResult.membershipId,
+                  relatedType: 'membership',
+                },
+              });
+
+              if (creatorNotifyError) {
+                await logStep('Membership creator notification failed', {
+                  error: creatorNotifyError.message,
+                  creatorId: membershipResult.creatorId,
+                });
+              }
+            } catch (notificationError) {
+              await logStep('Membership notification error', {
+                error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+                membershipId: membershipResult.membershipId,
+              });
+            }
           }
         }
         break;
@@ -1385,6 +1548,80 @@ serve(async (req) => {
                 fanId: membershipResult.userId,
                 creatorId: membershipResult.creatorId,
               });
+            } else {
+              const memberMessage = (() => {
+                switch (membershipResult.status) {
+                  case 'active':
+                    return 'Your membership is now active.';
+                  case 'cancelled':
+                    return 'Your membership has been cancelled.';
+                  case 'expired':
+                    return 'Your membership has expired.';
+                  case 'past_due':
+                    return 'Your membership payment is past due.';
+                  default:
+                    return 'Your membership status has been updated.';
+                }
+              })();
+
+              try {
+                const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                  body: {
+                    recipients: [membershipResult.userId],
+                    type: 'membership',
+                    title: 'Membership update',
+                    message: memberMessage,
+                    payload: {
+                      membership_id: membershipResult.membershipId,
+                      tier_id: membershipResult.tierId,
+                      status: membershipResult.status,
+                    },
+                    relatedId: membershipResult.membershipId,
+                    relatedType: 'membership',
+                  },
+                });
+
+                if (fanNotifyError) {
+                  await logStep('Membership fan notification failed', {
+                    error: fanNotifyError.message,
+                    fanId: membershipResult.userId,
+                  });
+                }
+
+                const creatorMessage = membershipResult.status === 'active'
+                  ? 'A new member just joined your tier.'
+                  : membershipResult.status === 'cancelled'
+                    ? 'A member cancelled their subscription.'
+                    : 'A membership was updated.';
+
+                const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                  body: {
+                    recipients: [membershipResult.creatorId],
+                    type: 'membership',
+                    title: 'Membership update',
+                    message: creatorMessage,
+                    payload: {
+                      membership_id: membershipResult.membershipId,
+                      fan_id: membershipResult.userId,
+                      status: membershipResult.status,
+                    },
+                    relatedId: membershipResult.membershipId,
+                    relatedType: 'membership',
+                  },
+                });
+
+                if (creatorNotifyError) {
+                  await logStep('Membership creator notification failed', {
+                    error: creatorNotifyError.message,
+                    creatorId: membershipResult.creatorId,
+                  });
+                }
+              } catch (notificationError) {
+                await logStep('Membership notification error', {
+                  error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+                  membershipId: membershipResult.membershipId,
+                });
+              }
             }
           }
           break;

@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuIte
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import ReportButton from "@/components/ReportButton";
 
 interface Comment {
   id: string;
@@ -200,7 +201,7 @@ export const ReleaseComments = ({ releaseId }: ReleaseCommentsProps) => {
           </Avatar>
           
           <div className="flex-1 space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-sm">{displayName}</span>
                 <span className="text-xs text-muted-foreground">
@@ -208,34 +209,37 @@ export const ReleaseComments = ({ releaseId }: ReleaseCommentsProps) => {
                   {comment.updated_at !== comment.created_at && ' (edited)'}
                 </span>
               </div>
-              
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <MoreHorizontal className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setEditingComment(comment.id);
-                        setEditContent(comment.content);
-                      }}
-                    >
-                      <Edit className="h-3 w-3 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => deleteComment(comment.id)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+
+              <div className="flex items-center gap-2">
+                <ReportButton targetType="comment" targetId={comment.id} className="text-xs" />
+                {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditingComment(comment.id);
+                          setEditContent(comment.content);
+                        }}
+                      >
+                        <Edit className="h-3 w-3 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => deleteComment(comment.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
             {editingComment === comment.id ? (

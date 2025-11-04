@@ -16,8 +16,8 @@ interface Notification {
   type: string;
   title: string;
   message: string;
-  data: any;
-  read: boolean;
+  payload: any;
+  read_at: string | null;
   created_at: string;
   related_id?: string | null;
   related_type?: string | null;
@@ -59,7 +59,11 @@ export const NotificationBell = () => {
       const { data, error } = await supabase.rpc('notifications_list_recent', { p_limit: 20 });
       if (error) throw error;
 
-      const notificationList = (data as Notification[]) || [];
+      const notificationList = ((data as Notification[]) || []).map((notification) => ({
+        ...notification,
+        payload: notification.payload ?? {},
+        read_at: notification.read_at ?? null,
+      }));
       setNotifications(notificationList);
       await refreshUnreadCount();
     } catch (error) {
@@ -102,7 +106,13 @@ export const NotificationBell = () => {
           const newNotification = payload.new as Notification;
           setNotifications(prev => {
             const filtered = prev.filter(notification => notification.id !== newNotification.id);
-            return [newNotification, ...filtered];
+            return [
+              {
+                ...newNotification,
+                payload: (newNotification as Notification).payload ?? {},
+              },
+              ...filtered
+            ];
           });
 
           toast({
@@ -232,7 +242,7 @@ export const NotificationBell = () => {
                 <Card 
                   key={notification.id} 
                   className={`cursor-pointer transition-all hover:bg-muted/50 ${
-                    !notification.read ? 'border-primary/50 bg-primary/5' : 'bg-card/50'
+                    !notification.read_at ? 'border-primary/50 bg-primary/5' : 'bg-card/50'
                   }`}
                   onClick={async () => {
                     // Navigate to related entity if provided
@@ -255,7 +265,7 @@ export const NotificationBell = () => {
                           <h4 className="font-medium text-sm truncate">
                             {notification.title}
                           </h4>
-                          {!notification.read && (
+                          {!notification.read_at && (
                             <Button
                               size="sm"
                               variant="ghost"
