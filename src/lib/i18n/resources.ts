@@ -160,7 +160,9 @@ export const baseTranslation = {
       ctaJoinSession: 'Join a Session',
       ctaViewBattles: 'View Battles',
       ctaJoinCommunity: 'Join the Community',
+      ctaViewSessions: 'View Sessions',
       scheduleHeading: 'Upcoming Schedule',
+      scheduleEmpty: 'No upcoming events right now. Check back soon!',
       statusLiveNow: 'Live now',
       statusStartingSoon: 'Starting soon',
       statusScheduleTba: 'Schedule TBA',
@@ -169,7 +171,10 @@ export const baseTranslation = {
       actionJoinSession: 'Join Session',
       actionViewSession: 'View Session',
       actionWatchBattle: 'Watch Battle',
-      actionViewBattle: 'View Battle'
+      actionViewBattle: 'View Battle',
+      liveRoomsHeading: 'Live Rooms',
+      viewAllSessions: 'View all sessions',
+      joinLiveRoom: 'Join live room'
     },
     messaging: {
       heading: 'Unified Inbox',
@@ -596,8 +601,10 @@ const esOverrides: TranslationOverrides = {
       ctaJoinSession: 'Unirse a una sesión',
       ctaViewBattles: 'Ver batallas',
       ctaJoinCommunity: 'Unirse a la comunidad',
+      ctaViewSessions: 'Ver sesiones',
       scheduleHeading: 'Próximos eventos',
-      statusLiveNow: 'En vivo',
+      scheduleEmpty: 'No hay eventos próximos. Vuelve pronto.',
+      statusLiveNow: 'En vivo ahora',
       statusStartingSoon: 'Comienza pronto',
       statusScheduleTba: 'Horario por confirmar',
       statusEndsIn: 'Termina {{time}}',
@@ -605,7 +612,10 @@ const esOverrides: TranslationOverrides = {
       actionJoinSession: 'Unirse a la sesión',
       actionViewSession: 'Ver sesión',
       actionWatchBattle: 'Ver batalla',
-      actionViewBattle: 'Ver batalla'
+      actionViewBattle: 'Ver batalla',
+      liveRoomsHeading: 'Salas en vivo',
+      viewAllSessions: 'Ver todas las sesiones',
+      joinLiveRoom: 'Unirse a la sala en vivo'
     },
     messaging: {
       heading: 'Bandeja unificada',

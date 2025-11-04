@@ -92,9 +92,9 @@ export const ArtistCard = ({ artist }: ArtistCardProps) => {
         <h3 className="font-semibold text-sm group-hover:text-gold transition-colors flex-1">
           {artist.name.charAt(0).toUpperCase() + artist.name.slice(1).toLowerCase()}
         </h3>
-        <ReportButton 
-          targetType="artist" 
-          targetId={artist.id} 
+        <ReportButton
+          targetType="profile"
+          targetId={artist.id}
           className="opacity-0 group-hover:opacity-100 transition-opacity"
         />
       </div>

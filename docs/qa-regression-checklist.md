@@ -35,6 +35,15 @@ _Last updated: 2025-10-17_
 - [ ] Archive a conversation and ensure it no longer surfaces in default Inbox filter.
 - [ ] Validate push/email notifications fire for unread message thresholds.
 
+## Trust & Safety (Reporting & Blocking)
+- [ ] Submit a report from a release or beat and confirm the submit-report edge function logs the request and RLS allows only the reporter to view the ticket.
+- [ ] Visit Studio → Admin → Moderation Queue, resolve a pending report, and verify state transitions (investigating → resolved → archived) as well as the moderation system log entry.
+- [ ] Invoke the block-user and unblock-user edge functions, ensuring blocked users are prevented from re-submitting reports or interacting until the block is revoked.
+
+## Notifications v1
+- [ ] Trigger an order, artist tip, and membership subscription to confirm `broadcast-notification` delivers in-app notifications that appear in the bell dropdown and Notification Center (unread counts reflect `read_at`).
+- [ ] Update notification preferences and ensure opt-out users do not receive new notifications for that category.
+
 ## Live & Interactive Sessions
 - [ ] Schedule a live session with ticketing and confirm countdown surfaces on `/live` rail.
 - [ ] Join as host and fan; ensure Agora session connects and stage controls (mute/pin) work.
@@ -66,6 +75,10 @@ _Last updated: 2025-10-17_
 ## Manual Smoke
 - [ ] Start dev server (`npm run dev`) and validate Agora call join still works in live session room.
 - [ ] Confirm Library downloads still function with tooltip/share interactions after mock adjustments.
+
+## Observability & Dashboards
+- [ ] Query `analytics.platform_observability_funnels` to verify order, tip, report, and notification metrics update after test runs.
+- [ ] Audit `system_logs` entries for submit-report, review-report, block-user, unblock-user, and broadcast-notification actions to ensure correlation IDs and metadata are present.
 
 ## Release Process Alignment
 - [ ] Reference the [Release Readiness Runbook](./release-readiness.md) and ensure all pre-flight gates list this checklist as a blocking item.

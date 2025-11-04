@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Music, Calendar, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FollowButton } from "@/components/FollowButton";
+import { BlockUserButton } from "@/components/BlockUserButton";
 import { useAuth } from "@/hooks/useAuth";
 import { FavNicknameDisplay } from "@/components/FavNicknameDisplay";
 
@@ -203,12 +204,18 @@ export const UserProfileCard = ({ userId, className }: UserProfileCardProps) => 
           </div>
         )}
 
-        {/* Follow Button */}
-        <FollowButton 
-          userId={userId} 
-          currentUserId={user?.id || null} 
-          className="w-full" 
-        />
+        <div className="flex flex-col gap-2">
+          <FollowButton
+            userId={userId}
+            currentUserId={user?.id || null}
+            className="w-full"
+          />
+          <BlockUserButton
+            userId={userId}
+            displayName={profile.full_name || profile.username}
+            className="w-full"
+          />
+        </div>
       </CardContent>
     </Card>
   );

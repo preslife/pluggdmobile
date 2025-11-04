@@ -38,6 +38,7 @@ import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
 import { setMeta } from "@/lib/seo";
+import ReportButton from "@/components/ReportButton";
 
 /**
  * PLUGGD — COMMUNITY HUB
@@ -1031,6 +1032,7 @@ type CombinedPost = {
   subtitle: string;
   href: string;
   date: string;
+  sourceId: string;
   tag?: string | null;
 };
 
@@ -1067,6 +1069,7 @@ function FeedTabContent({
       subtitle: `by ${thread.author.username ?? "Unknown"} • ${thread.reply_count} replies`,
       href: normalizeCommunityHref(`/forum/${thread.slug}`),
       date: thread.updated_at,
+      sourceId: thread.id,
       tag: thread.tag,
     }));
 
@@ -1077,6 +1080,7 @@ function FeedTabContent({
       subtitle: post.excerpt ?? "",
       href: post.slug ? `/blog/${post.slug}` : `/blog`,
       date: post.created_at,
+      sourceId: post.id,
       tag: (post.tags && post.tags[0]) || "Blog",
     }));
 
@@ -1136,7 +1140,14 @@ function LatestPostsList({ posts }: { posts: CombinedPost[] }) {
                   </div>
                   <div className="mt-1 text-xs text-zinc-400">{post.subtitle}</div>
                 </div>
-                <div className="text-xs text-zinc-500">{new Date(post.date).toLocaleDateString()}</div>
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span>{new Date(post.date).toLocaleDateString()}</span>
+                  <ReportButton
+                    targetType={post.type === "blog" ? "blog_post" : "post"}
+                    targetId={post.sourceId}
+                    className="text-xs"
+                  />
+                </div>
               </a>
             ))}
           </div>
@@ -1489,7 +1500,10 @@ function ForumThreads({ threads, loading }: { threads: Thread[]; loading: boolea
                 <div className="flex items-center gap-2 text-sm"><Badge>{t.tag}</Badge><span className="truncate font-medium text-white group-hover:text-amber-200">{t.title}</span></div>
                 <div className="mt-0.5 text-xs text-zinc-400">by {t.author.username} • {t.reply_count} replies • updated {new Date(t.updated_at).toLocaleString()}</div>
               </div>
-              <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-amber-300"/>
+              <div className="flex items-center gap-2">
+                <ReportButton targetType="post" targetId={t.id} className="text-xs" />
+                <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-amber-300"/>
+              </div>
             </a>
           ))}
         </div>

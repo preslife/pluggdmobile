@@ -43,15 +43,14 @@ const ReportButton = ({ targetType, targetId, className = "" }: ReportButtonProp
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('content_reports')
-        .insert({
-          reporter_id: user.id,
-          target_type: targetType,
-          target_id: targetId,
-          reason: reason,
-          description: description.trim() || null
-        });
+      const { error } = await supabase.functions.invoke('submit-report', {
+        body: {
+          targetType,
+          targetId,
+          reason,
+          description: description.trim() || undefined
+        }
+      });
 
       if (error) {
         throw error;

@@ -16,6 +16,7 @@ import {
   FinancialsModule,
   SettingsModule,
   PartnershipsModule,
+  AdminModerationModule,
 } from "./modules";
 import { MerchandiseForm } from "./forms/MerchandiseForm";
 import { BundleForm } from "./forms/BundleForm";
@@ -72,6 +73,9 @@ export const CreatorStudio: React.FC = () => {
         
         {/* Partnerships Routes */}
         <Route path="/partnerships/*" element={<PartnershipsModule />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/moderation" element={<AdminModerationModule />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/studio" replace />} />
