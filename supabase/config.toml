@@ -95,3 +95,9 @@ verify_jwt = false
 
 [functions.webhook-handler]
 verify_jwt = false
+
+[functions.discord-sync-subscriber]
+verify_jwt = false
+
+[functions.discord-sync-cron]
+verify_jwt = false

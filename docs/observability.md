@@ -4,6 +4,15 @@ This document outlines the signals and workflows available to monitor the health
 
 ## Dashboards
 
+### 0. Supabase SQL Views
+The following read-only views back each dashboard so analysts and operators can pull ad-hoc snapshots directly from Supabase (or wire them into Metabase/Looker):
+
+- `vw_trust_safety_report_status` – aggregates moderation backlog counts, open report totals, and the oldest open case in hours. Use this to spot spikes in “pending” or “investigating” queues before SLAs are breached.
+- `vw_notification_skip_summary` – surfaces how often notifications are suppressed (e.g. push preference opt-outs) by action and notification type. Handy for validating new campaigns or tracing complaints about missing alerts.
+- `vw_webhook_delivery_errors` – groups webhook delivery attempts by endpoint, owner, and outcome to highlight integrations that need retries or manual intervention.
+
+The views are granted to the `authenticated` role so you can run `select * from public.vw_notification_skip_summary;` via the SQL Editor or any BI tool using your service-role key.
+
 ### 1. Checkout & Store Health
 - **Stripe Webhook Throughput** – count of `stripe-webhook` invocations grouped by event type.
 - **Checkout Modal Conversion** – ratio of `checkout_purchase_completed` vs `checkout_purchase_failed` events logged from the checkout modal.
@@ -19,10 +28,12 @@ This document outlines the signals and workflows available to monitor the health
 - **Dashboard Load Latency** – measure `moderation_dashboard_fetch_success` timings to ensure content queues load quickly.
 - **Action Outcomes** – success vs failure of `moderation_action_*` events split by moderator and action type.
 - **Report Intake** – pending reports from `moderation_dashboard_fetch_success` metadata to highlight backlog growth.
+- **`vw_trust_safety_report_status` view** – run a direct query to audit open investigations, oldest pending age, and seven-day inflow during incident reviews. Combine this with the `submit_report_*` system log actions for root-cause timelines.
 
 ### 4. System Reliability
 - **Edge Function Errors** – any `split_attribution_failed`, `crowdfunding_contribution_missing_*`, or `artist_tip_*` error events emitted by Supabase edge functions.
 - **System Log Insertion Failures** – watch for `[system_logs] insert_failed` console errors surfaced via the shared logger in edge functions.
+- **Notification Suppressions** – monitor `broadcast_notification_recipient_skipped` from the notification handler and the `vw_notification_skip_summary` view to understand why recipients were skipped (preferences, transient insert errors, etc.).
 
 ### 5. Wallet & Credits
 - **Wallet Fetch Latency** – compare `wallet_balance_fetch_success` and `wallet_ledger_fetch_success` durations produced by `useWallet`'s `trackPromise` wrapper.
@@ -114,6 +125,15 @@ All application and edge-function logs are normalised into the `system_logs` tab
 - **event identifiers** – keys such as `sessionId`, `orderId`, `tierId`, or `tipId` should remain camelCase to align with existing dashboards.
 - **errors** – include `error` with `message`, and, when available, contextual ids to aid triage.
 - **performance** – add `durationMs` for timed operations captured via the `trackPromise` helper.
+
+### Trust & Safety / Notification Edge Functions
+- `block-user`, `unblock-user`, `submit-report`, and `review-report` now emit structured entries to `system_logs` for every validation branch and persistence error. Use `component = 'block_user'` or `component = 'submit_report'` when slicing dashboards.
+- `broadcast-notification` now logs `broadcast_notification_recipient_skipped` per recipient (preference opt-outs, insert errors, unexpected exceptions). This powers the `vw_notification_skip_summary` view and lets you pivot by reason/type.
+- Membership invoice renewals call `broadcast-notification` so you’ll see `membership`-typed events in both logs and the new skip view when preferences suppress lifecycle messaging.
+
+### Webhook Delivery Monitoring
+- The `vw_webhook_delivery_errors` view rolls up counts from `webhook_deliveries` and annotates the owning endpoint. Pair this with `integrations-health` telemetry when diagnosing partner outages.
+- `stripe-webhook` now records renewal handling (`invoice.payment_succeeded`) into `system_logs` so you can trace retries around the same invoice id. The view helps distinguish transient vs persistent failures for webhook consumers.
 
 ## Operational Tips
 - Use the new `useLogger` hook to create scoped loggers in React components. Always attach `component`, `feature`, and `view` metadata for consistent filtering.

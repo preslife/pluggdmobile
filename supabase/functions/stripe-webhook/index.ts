@@ -1746,6 +1746,128 @@ serve(async (req) => {
         break;
       }
 
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionId = typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : (invoice.subscription as Stripe.Subscription | null)?.id ?? null;
+
+        if (!subscriptionId) {
+          await logStep('Invoice payment succeeded without subscription reference', {
+            invoiceId: invoice.id,
+          });
+          break;
+        }
+
+        await logStep('Invoice payment succeeded', {
+          invoiceId: invoice.id,
+          subscriptionId,
+        });
+
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+          const membershipResult = await syncMembershipFromSubscription(
+            supabaseClient,
+            subscription,
+            logStep,
+          );
+
+          if (
+            membershipResult?.processed &&
+            membershipResult.userId &&
+            membershipResult.creatorId
+          ) {
+            const stripeCustomerId = membershipResult.stripeCustomerId || invoice.customer?.toString() || null;
+
+            const { error: fanSubscriptionError } = await supabaseClient
+              .from('fan_subscriptions')
+              .update({
+                status: membershipResult.status,
+                stripe_subscription_id: subscription.id,
+                stripe_customer_id: stripeCustomerId,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('fan_id', membershipResult.userId)
+              .eq('creator_id', membershipResult.creatorId);
+
+            if (fanSubscriptionError) {
+              await logStep('Failed to reconcile fan_subscriptions entry for renewal', {
+                error: fanSubscriptionError.message,
+                fanId: membershipResult.userId,
+                creatorId: membershipResult.creatorId,
+              });
+            }
+
+            const renewalMessage = 'Your membership renewed successfully.';
+            const creatorMessage = 'A supporter just renewed their membership.';
+
+            try {
+              const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                body: {
+                  recipients: [membershipResult.userId],
+                  type: 'membership',
+                  title: 'Membership renewed',
+                  message: renewalMessage,
+                  payload: {
+                    membership_id: membershipResult.membershipId,
+                    tier_id: membershipResult.tierId,
+                    status: membershipResult.status,
+                    invoice_id: invoice.id,
+                  },
+                  relatedId: membershipResult.membershipId,
+                  relatedType: 'membership',
+                },
+              });
+
+              if (fanNotifyError) {
+                await logStep('Membership renewal notification failed', {
+                  error: fanNotifyError.message,
+                  fanId: membershipResult.userId,
+                });
+              }
+
+              const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+                body: {
+                  recipients: [membershipResult.creatorId],
+                  type: 'membership',
+                  title: 'Supporter renewed',
+                  message: creatorMessage,
+                  payload: {
+                    membership_id: membershipResult.membershipId,
+                    fan_id: membershipResult.userId,
+                    status: membershipResult.status,
+                    invoice_id: invoice.id,
+                  },
+                  relatedId: membershipResult.membershipId,
+                  relatedType: 'membership',
+                },
+              });
+
+              if (creatorNotifyError) {
+                await logStep('Membership renewal creator notification failed', {
+                  error: creatorNotifyError.message,
+                  creatorId: membershipResult.creatorId,
+                });
+              }
+            } catch (notificationError) {
+              await logStep('Membership renewal notification error', {
+                error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+                membershipId: membershipResult.membershipId,
+              });
+            }
+          }
+        } catch (invoiceError) {
+          await logStep('Invoice renewal handling failed', {
+            error: invoiceError instanceof Error ? invoiceError.message : String(invoiceError),
+            invoiceId: invoice.id,
+            subscriptionId,
+          });
+        }
+
+        break;
+      }
+
       default:
         await logStep("Unhandled event type", { type: event.type });
     }
