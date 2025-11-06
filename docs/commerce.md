@@ -43,6 +43,19 @@ We rely on several layers to keep webhook processing idempotent:
 
 When adding new event handlers, prefer `upsert` or `update` statements scoped by Stripe IDs, avoid mutating state when the target row is already finalized, and capture a `system_logs` entry so operations have an audit trail.【F:supabase/functions/stripe-webhook/index.ts†L566-L638】
 
+## Membership Gating & Discord Sync
+
+- The `public.gated_content` table now powers membership gating for releases, beats, posts, and sample packs. Edge functions expose three RPCs for Studio editors: `get_membership_access_rules`, `upsert_membership_access_rules`, and `delete_membership_access_rules`. These map directly to the new Supabase view `membership_access_rules`, allowing the UI to fetch/update gating metadata atomically.【F:supabase/migrations/20251001090000_membership_access_rules.sql†L1-L142】
+- `check_content_access` guards every gated fetch, while `can_access_release` now defers to membership rules before honoring purchases. Premium releases without explicit gates fall back to active memberships owned by the release owner, ensuring legacy `is_premium_content` drops respect supporter tiers.【F:supabase/migrations/20251001091500_update_release_access.sql†L1-L55】
+- A backfill migration seeds `gated_content` entries for any historical premium releases, normalises missing owner metadata for beats/posts, and widens the table constraint so beats/sample packs can be gated moving forward.【F:supabase/migrations/20251001090000_membership_access_rules.sql†L1-L186】
+- `verify-release-access` now emits structured `system_logs` entries and calls `can_access_release`, returning a correlation ID, purchase metadata, and gating verdict for the client. Any downstream 4xx/5xx responses include consistent log breadcrumbs for moderation review.【F:supabase/functions/verify-release-access/index.ts†L1-L170】
+
+### Membership Lifecycle Notifications & Discord Roles
+- Stripe webhooks handle renewals (`invoice.payment_succeeded`) in addition to create/update/cancel events. Renewals sync the membership record, enqueue a Discord sync, and broadcast “Membership renewed” notifications to both the fan and creator while respecting `notificationPreferences`.【F:supabase/functions/stripe-webhook/index.ts†L1490-L1636】【F:supabase/functions/broadcast-notification/handler.ts†L128-L199】
+- `discord-sync-subscriber` was rewritten to use structured logging, membership-tier lookups, and per-role audit logs. It now updates `membership_discord_tokens` after each sync so Cron runs can detect drift.【F:supabase/functions/discord-sync-subscriber/index.ts†L1-L248】
+- A scheduled companion function `discord-sync-cron` scans recently-updated memberships (grant/renew/cancel) and replays syncs for supporters even if a webhook was missed. Pair it with Supabase Scheduler (hourly) to keep Discord roles aligned.【F:supabase/functions/discord-sync-cron/index.ts†L1-L135】
+- Both functions are listed in `supabase/config.toml` with `verify_jwt = false`, ready for deployment with either direct HTTPS triggers or Supabase Scheduler jobs.【F:supabase/config.toml†L63-L70】
+
 ## Testing & Observability
 
 - `useCheckout` has Vitest coverage for metadata construction, redirect behavior, and error propagation using mocked Stripe session responses.【F:src/hooks/__tests__/useCheckout.test.ts†L1-L120】

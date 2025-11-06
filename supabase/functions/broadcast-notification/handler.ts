@@ -183,6 +183,12 @@ export const createBroadcastNotificationHandler = ({
         const enabled = await shouldSendNotification(serviceClient as any, cache, recipient, preferenceKeyToUse);
         if (!enabled) {
           skipped.push({ userId: recipient, reason: "preference_opt_out" });
+          await logger.info("broadcast_notification_recipient_skipped", {
+            user_id: recipient,
+            reason: "preference_opt_out",
+            notification_type: type,
+            preference_key: preferenceKeyToUse,
+          });
           continue;
         }
 
@@ -204,6 +210,12 @@ export const createBroadcastNotificationHandler = ({
         if (error) {
           skipped.push({ userId: recipient, reason: error.message });
           await logger.error("broadcast_notification_insert_failed", error, { recipient });
+          await logger.warn("broadcast_notification_recipient_skipped", {
+            user_id: recipient,
+            reason: error.message,
+            notification_type: type,
+            preference_key: preferenceKeyToUse,
+          });
           continue;
         }
 
@@ -213,6 +225,12 @@ export const createBroadcastNotificationHandler = ({
       } catch (err) {
         skipped.push({ userId: recipient, reason: err instanceof Error ? err.message : String(err) });
         await logger.error("broadcast_notification_unexpected_per_recipient", err, { recipient });
+        await logger.warn("broadcast_notification_recipient_skipped", {
+          user_id: recipient,
+          reason: err instanceof Error ? err.message : String(err),
+          notification_type: type,
+          preference_key: preferenceKeyToUse,
+        });
       }
     }
 
