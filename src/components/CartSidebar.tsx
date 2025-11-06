@@ -86,7 +86,7 @@ export const CartSidebar = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="relative">
+        <Button variant="outline" size="sm" className="relative min-h-[44px] min-w-[44px]">
           <ShoppingCart className="w-4 h-4" />
           {getTotalItems() > 0 && (
             <Badge 
@@ -137,7 +137,7 @@ export const CartSidebar = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => removeItem(item.productId)}
-                          className="p-1 h-auto"
+                          className="min-h-[44px] min-w-[44px] p-0"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -159,7 +159,7 @@ export const CartSidebar = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                            className="w-8 h-8 p-0"
+                            className="h-11 w-11 p-0"
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
@@ -168,7 +168,7 @@ export const CartSidebar = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                            className="w-8 h-8 p-0"
+                            className="h-11 w-11 p-0"
                           >
                             <Plus className="w-3 h-3" />
                           </Button>
@@ -195,7 +195,7 @@ export const CartSidebar = () => {
                 <div className="space-y-2">
                   <Button 
                     onClick={handleCheckout}
-                    className="w-full"
+                    className="w-full min-h-[44px]"
                     disabled={loading}
                   >
                     {loading ? "Processing..." : "Checkout"}
@@ -204,7 +204,7 @@ export const CartSidebar = () => {
                   <Button 
                     variant="outline" 
                     onClick={clearCart}
-                    className="w-full"
+                    className="w-full min-h-[44px]"
                   >
                     Clear Cart
                   </Button>

@@ -45,10 +45,10 @@ export const StoreFilters: React.FC<StoreFiltersProps> = ({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Filters</CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onClearFilters}>
+            <Button variant="ghost" size="sm" onClick={onClearFilters} className="min-h-[44px] px-3">
               Clear All
             </Button>
-            <Button variant="ghost" size="sm" onClick={onToggle} className="lg:hidden">
+            <Button variant="ghost" size="sm" onClick={onToggle} className="lg:hidden min-h-[44px] px-3">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -115,7 +115,7 @@ export const StoreFilters: React.FC<StoreFiltersProps> = ({
       {/* Mobile Filter Toggle Button */}
       <Button 
         onClick={onToggle}
-        className="lg:hidden w-full mb-4"
+        className="lg:hidden w-full mb-4 min-h-[44px]"
         variant="outline"
       >
         <Filter className="w-4 h-4 mr-2" />

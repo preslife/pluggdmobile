@@ -12,6 +12,13 @@ _Last updated: 2025-10-17_
 - [ ] Generate or update referral codes and confirm structured events (`generate_referral_code_*`, `update_referral_code_*`).
 - [ ] Copy/share referral link and ensure `copy_referral_link` / `share_referral_link_*` events fire.
 
+## Search Experience & Mobile UX
+- [ ] On `/search`, type a query and confirm results debounce after ~250 ms, with arrow/home/end keys moving focus between cards and Enter opening the highlighted result.
+- [ ] Verify tab-specific empty states (Music/Beats/Creators) render contextual guidance that references the active query.
+- [ ] In mobile emulation (360–428 px), confirm hero toggles, CTA buttons, and streaming links on `/` and `/release/:id` meet the 44 px tap-target requirement.
+- [ ] On `/marketplace`, validate trending tag chips, view-mode toggles, and CTA buttons remain accessible on small screens.
+- [ ] On `/store`, toggle filters on/off via the new mobile filter control and ensure the catalog + filter column stack without horizontal scrolling.
+- [ ] Still on `/store`, open the cart sidebar and verify the checkout, clear-cart, and quantity buttons provide full-width 44 px tap areas on mobile.
 ## Checkout Observability
 - [ ] Run hybrid checkout flow in staging; confirm `checkout_*` telemetry spans cover balance, tax, and payment polling.
 - [ ] Trigger checkout error (e.g., decline) and confirm `checkout_purchase_failed` event includes error payload.

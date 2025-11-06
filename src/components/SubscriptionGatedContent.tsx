@@ -358,6 +358,27 @@ export const SubscriptionGatedContent = ({
   const overlayDescription = gateConfig?.preview_text || fallbackText;
   const finalCtaHref = ctaHref || `/creator/${creatorId}#membership`;
 
+  const headingLabel = useMemo(() => {
+    switch (contentType) {
+      case "post":
+        return "Supporter-only post";
+      case "beat":
+        return "Supporter-only beat";
+      case "sample_pack":
+        return "Supporter-only pack";
+      case "release":
+        return "Supporter-only release";
+      case "track":
+        return "Supporter-only track";
+      case "video":
+        return "Supporter-only video";
+      case "livestream":
+        return "Supporter-only stream";
+      default:
+        return "Exclusive supporter content";
+    }
+  }, [contentType]);
+
   if (!gateActive) {
     return <div className={className}>{children}</div>;
   }
@@ -431,7 +452,7 @@ export const SubscriptionGatedContent = ({
               )}
             </div>
             <div className="space-y-2 max-w-md">
-              <h3 className="text-lg font-semibold">Exclusive supporter content</h3>
+              <h3 className="text-lg font-semibold">{headingLabel}</h3>
               <p className="text-sm text-muted-foreground">{overlayDescription}</p>
               {requirementDescription && (
                 <p className="text-xs text-muted-foreground">{requirementDescription}</p>

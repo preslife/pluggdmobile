@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,9 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
 
 import {
   Twitter,
@@ -58,6 +61,7 @@ interface PostVariant {
 }
 
 interface ContentComposerProps {
+  contentId?: string | null;
   onPostCreated?: (post: any) => void;
   onScheduleCreated?: (schedule: any) => void;
 }
@@ -126,6 +130,7 @@ const PLATFORMS: Platform[] = [
 ];
 
 export const ContentComposer: React.FC<ContentComposerProps> = ({
+  contentId,
   onPostCreated,
   onScheduleCreated
 }) => {
@@ -149,6 +154,41 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const [utmSource, setUtmSource] = useState('pluggd');
   const [utmCampaign, setUtmCampaign] = useState('');
+
+  const resolveOwner = useCallback(
+    () => ({
+      ownerType: 'profile' as const,
+      ownerId: user?.id ?? null,
+    }),
+    [user?.id],
+  );
+
+  const {
+    availableTiers,
+    tiersLoading: gatingTiersLoading,
+    gateEnabled,
+    setGateEnabled,
+    gateType,
+    setGateType,
+    minimumTierId,
+    setMinimumTierId,
+    allowedTierIds,
+    setAllowedTierIds,
+    previewText,
+    setPreviewText,
+    previewDuration,
+    setPreviewDuration,
+    loadRulesFor,
+    saveRulesFor,
+    deleteRulesFor,
+  } = useMembershipAccessRuleEditor({
+    contentType: 'post',
+    resolveOwner,
+  });
+
+  useEffect(() => {
+    void loadRulesFor(contentId ?? '');
+  }, [contentId, loadRulesFor]);
 
   useEffect(() => {
     // Initialize variants for selected platforms
@@ -269,12 +309,34 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
           tracking_enabled: trackingEnabled,
           utm_source: utmSource,
           utm_campaign: utmCampaign,
-          status: isScheduling ? 'scheduled' : 'draft'
+          status: isScheduling ? 'scheduled' : 'draft',
+          owner_type: 'profile',
+          owner_id: user.id,
         })
         .select()
         .single();
 
       if (postError) throw postError;
+
+      let gatingSynced = false;
+      if (postData?.id) {
+        try {
+          if (gateEnabled && availableTiers.length > 0) {
+            await saveRulesFor(postData.id);
+          } else {
+            await deleteRulesFor(postData.id);
+          }
+          await loadRulesFor(postData.id);
+          gatingSynced = true;
+        } catch (ruleError) {
+          console.error('[ContentComposer] Failed to sync membership gating', ruleError);
+          toast({
+            title: 'Membership gating sync failed',
+            description: 'Post created but membership gating could not be updated.',
+            variant: 'destructive',
+          });
+        }
+      }
 
       // Upload media files
       if (mediaFiles.length > 0) {
@@ -326,6 +388,14 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
       setMediaFiles([]);
       setMediaPreview([]);
       setIsScheduling(false);
+      if (gatingSynced || !gateEnabled) {
+        setGateEnabled(false);
+        setGateType('tier_or_higher');
+        setMinimumTierId(null);
+        setAllowedTierIds([]);
+        setPreviewText('');
+        setPreviewDuration('');
+      }
 
       if (onPostCreated) onPostCreated(postData);
       if (isScheduling && onScheduleCreated) onScheduleCreated(postData);
@@ -536,9 +606,160 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
                 );
               })}
             </Tabs>
-          )}
+      )}
 
-          {/* Scheduling Options */}
+      {/* Membership Gating */}
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold">Membership access</h3>
+            <p className="text-sm text-muted-foreground">
+              Lock this post behind your membership tiers and offer teasers to everyone else.
+            </p>
+          </div>
+          <Switch
+            checked={gateEnabled}
+            onCheckedChange={(checked) => setGateEnabled(checked)}
+            disabled={gatingTiersLoading || availableTiers.length === 0}
+          />
+        </div>
+
+        {gatingTiersLoading ? (
+          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
+            Loading membership tiers…
+          </div>
+        ) : availableTiers.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
+            Publish at least one active membership tier to enable supporter-only posts.
+          </div>
+        ) : gateEnabled ? (
+          <div className="space-y-4 rounded-lg border p-4">
+            <div>
+              <Label className="text-sm font-medium">Access requirement</Label>
+              <RadioGroup
+                value={gateType}
+                onValueChange={(value) => setGateType(value as typeof gateType)}
+                className="mt-2 grid gap-2 md:grid-cols-3"
+              >
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="tier_or_higher" id="post-gate-tier-or-higher" />
+                  <div>
+                    <Label htmlFor="post-gate-tier-or-higher" className="text-sm font-medium">
+                      Tier or higher
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Members at the selected tier or above unlock the full post.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="specific_tier" id="post-gate-specific" />
+                  <div>
+                    <Label htmlFor="post-gate-specific" className="text-sm font-medium">
+                      Specific tiers
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Choose the exact tiers that can read this update.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <RadioGroupItem value="any_tier" id="post-gate-any" />
+                  <div>
+                    <Label htmlFor="post-gate-any" className="text-sm font-medium">
+                      Any tier
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Any active supporter can unlock the post.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {gateType === 'tier_or_higher' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Minimum tier</Label>
+                <Select
+                  value={minimumTierId ?? undefined}
+                  onValueChange={(value) => setMinimumTierId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTiers.map((tier) => (
+                      <SelectItem key={tier.id} value={tier.id}>
+                        {tier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {gateType === 'specific_tier' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Allowed tiers</Label>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {availableTiers.map((tier) => {
+                    const checked = allowedTierIds.includes(tier.id);
+                    return (
+                      <label key={tier.id} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => {
+                            setAllowedTierIds((prev) => {
+                              if (value) {
+                                return Array.from(new Set([...prev, tier.id]));
+                              }
+                              return prev.filter((id) => id !== tier.id);
+                            });
+                          }}
+                        />
+                        <div>
+                          <span className="font-medium">{tier.name}</span>
+                          <p className="text-xs text-muted-foreground">Tier {tier.tier_order + 1}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                {allowedTierIds.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Select at least one tier for access.</p>
+                )}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Preview message (optional)</Label>
+                <Textarea
+                  placeholder="Describe what members will see when they unlock."
+                  value={previewText}
+                  onChange={(event) => setPreviewText(event.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Preview duration (seconds)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="30"
+                  value={previewDuration}
+                  onChange={(event) => setPreviewDuration(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional: limit how much audio/video to show non-members.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Scheduling Options */}
           <div className="space-y-4 p-4 border rounded-lg">
             <div className="flex items-center space-x-2">
               <Checkbox

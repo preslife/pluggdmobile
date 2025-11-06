@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PlaylistModal } from "@/components/PlaylistModal";
+import { buildEmptyStateCopy, buildResultSummary } from "@/lib/searchMessaging";
 
 interface SearchResults {
   creators: any[];
@@ -647,6 +648,7 @@ export const SearchPage = () => {
   };
 
   const totalResults = resultCounts.creators + resultCounts.music + resultCounts.beats;
+  const summaryState = buildResultSummary(trimmedQuery, totalResults);
 
   const currentResults = useMemo(() => {
     if (!query.trim()) return [];
@@ -657,8 +659,69 @@ export const SearchPage = () => {
       return results.creators.map((creator, index) => ({ id: creator.user_id || creator.username || `creator-${index}`, elementId: `search-result-creator-${index}` }));
     }
     return results.releases.map((release, index) => ({ id: release.id, elementId: `search-result-music-${index}` }));
-  }, [activeTab, query, results]);
+  }, [activeTab, trimmedQuery, results]);
 
+  const summaryContent = (() => {
+    switch (summaryState.kind) {
+      case "prompt":
+        return "Start typing to discover new music, beats, and creators";
+      case "empty":
+        return (
+          <>
+            No results found for{" "}
+            <span className="font-semibold text-foreground">"{summaryState.query}"</span>
+          </>
+        );
+      case "results":
+        return (
+          <>
+            Found <span className="font-bold text-foreground">{summaryState.totalResults}</span> result
+            {summaryState.totalResults === 1 ? "" : "s"} for{" "}
+            <span className="font-semibold text-foreground">"{summaryState.query}"</span>
+          </>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  const renderEmptyStateCopy = useCallback(
+    (tab: FilterTab) => {
+      const copy = buildEmptyStateCopy(tab, trimmedQuery);
+      if (copy.kind === "default") {
+        return "Try adjusting your search or filters.";
+      }
+
+      const highlighted = (
+        <span className="font-semibold text-foreground" key={copy.query}>
+          "{copy.query}"
+        </span>
+      );
+
+      switch (copy.tab) {
+        case "beats":
+          return (
+            <>
+              Nothing matched {highlighted}. Widen your BPM range or try a different genre.
+            </>
+          );
+        case "creators":
+          return (
+            <>
+              We couldn’t find any creators for {highlighted}. Try a different name or remove filters.
+            </>
+          );
+        case "music":
+        default:
+          return (
+            <>
+              We couldn’t find any releases matching {highlighted}. Try different keywords or update your filters.
+            </>
+          );
+      }
+    },
+    [trimmedQuery],
+  );
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -776,12 +839,7 @@ return (
             {/* Results Summary and Filters */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="text-center sm:text-left">
-                <p className="text-lg">
-                  {totalResults === 0 
-                    ? <span className="text-muted-foreground">No results found for <span className="font-semibold text-foreground">"${query}"</span></span>
-                    : <span className="text-muted-foreground">Found <span className="font-bold text-foreground">{totalResults}</span> result{totalResults !== 1 ? 's' : ''} for <span className="font-semibold text-foreground">"${query}"</span></span>
-                  }
-                </p>
+                <p className="text-lg text-muted-foreground">{summaryContent}</p>
               </div>
               
               {totalResults > 0 && (
@@ -896,7 +954,7 @@ return (
                         <div className="text-center py-8">
                           <Music className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                           <h3 className="text-xl font-semibold mb-2">No music found</h3>
-                          <p className="text-muted-foreground">Try adjusting your search or filters</p>
+                          <p className="text-muted-foreground">{renderEmptyStateCopy('music')}</p>
                         </div>
                       )}
                     </TabsContent>
@@ -947,7 +1005,7 @@ return (
                         <div className="text-center py-8">
                           <Disc className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                           <h3 className="text-xl font-semibold mb-2">No beats found</h3>
-                          <p className="text-muted-foreground">Try adjusting your search or filters</p>
+                          <p className="text-muted-foreground">{renderEmptyStateCopy('beats')}</p>
                         </div>
                       )}
                     </TabsContent>
@@ -998,7 +1056,7 @@ return (
                         <div className="text-center py-8">
                           <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                           <h3 className="text-xl font-semibold mb-2">No creators found</h3>
-                          <p className="text-muted-foreground">Try adjusting your search or filters</p>
+                          <p className="text-muted-foreground">{renderEmptyStateCopy('creators')}</p>
                         </div>
                       )}
                     </TabsContent>

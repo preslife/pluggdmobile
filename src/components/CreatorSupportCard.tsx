@@ -1,14 +1,15 @@
 
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { HeartHandshake } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useCreatorSupport } from "@/hooks/useCreatorSupport";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { HeartHandshake } from "lucide-react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 
 type Props = {
@@ -16,55 +17,140 @@ type Props = {
   className?: string;
 };
 
+type MembershipTierRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  tier_order: number;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  price_lifetime: number | null;
+  currency: string | null;
+};
+
+type TierOption = {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  billingInterval: "monthly" | "yearly" | "lifetime";
+  label: string;
+};
+
+const resolveTierOption = (row: MembershipTierRow): TierOption | null => {
+  const currency = row.currency?.toUpperCase() || "USD";
+
+  if (typeof row.price_monthly === "number" && row.price_monthly > 0) {
+    return {
+      id: row.id,
+      name: row.name,
+      priceCents: row.price_monthly,
+      currency,
+      billingInterval: "monthly",
+      label: `${formatCurrency(row.price_monthly / 100, currency)}/month`,
+    };
+  }
+
+  if (typeof row.price_yearly === "number" && row.price_yearly > 0) {
+    return {
+      id: row.id,
+      name: row.name,
+      priceCents: row.price_yearly,
+      currency,
+      billingInterval: "yearly",
+      label: `${formatCurrency(row.price_yearly / 100, currency)}/year`,
+    };
+  }
+
+  if (typeof row.price_lifetime === "number" && row.price_lifetime > 0) {
+    return {
+      id: row.id,
+      name: row.name,
+      priceCents: row.price_lifetime,
+      currency,
+      billingInterval: "lifetime",
+      label: `${formatCurrency(row.price_lifetime / 100, currency)} lifetime`,
+    };
+  }
+
+  return null;
+};
+
 const CreatorSupportCard = ({ creatorId, className }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { subscribed, loading, subscribe, unsubscribe, isOwner } = useCreatorSupport(creatorId);
+  const { subscribed, loading, isOwner } = useCreatorSupport(creatorId);
   const [supporterCount, setSupporterCount] = useState<number | null>(null);
-  const [tiers, setTiers] = useState<any[]>([]);
-  const [selectedTier, setSelectedTier] = useState<any>(null);
+  const [tiers, setTiers] = useState<TierOption[]>([]);
+  const [selectedTier, setSelectedTier] = useState<TierOption | null>(null);
   const [showTierPicker, setShowTierPicker] = useState(false);
 
-  useEffect(() => {
+  const loadSupporterCount = useCallback(async () => {
     if (!creatorId) return;
-    const fetchData = async () => {
-      // Fetch supporter count
-      const { count, error } = await (supabase as any)
-        .from("fan_subscriptions")
-        .select("id", { count: "exact", head: true })
-        .eq("creator_id", creatorId)
-        .eq("status", "active");
-      if (!error) setSupporterCount(count ?? 0);
+    const { count, error } = await (supabase.from as any)("fan_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", creatorId)
+      .eq("status", "active");
+    if (!error) setSupporterCount(count ?? 0);
+  }, [creatorId]);
 
-      // Fetch creator's subscription tiers
-      const { data: tiersData, error: tiersError } = await supabase
-        .from("creator_subscription_tiers")
-        .select("*")
-        .eq("user_id", creatorId)
-        .eq("active", true)
-        .order("price_cents", { ascending: true });
-      
-      if (!tiersError && tiersData) {
-        setTiers(tiersData);
-        if (tiersData.length === 1) {
-          setSelectedTier(tiersData[0]);
-        }
-      }
-    };
-    fetchData();
-  }, [creatorId, subscribed]);
+  const loadMembershipTiers = useCallback(async () => {
+    if (!creatorId) return;
+    const { data, error } = await supabase
+      .from("membership_tiers")
+      .select(
+        "id, name, description, tier_order, price_monthly, price_yearly, price_lifetime, currency, status"
+      )
+      .eq("owner_type", "profile")
+      .eq("owner_id", creatorId)
+      .eq("status", "active")
+      .order("tier_order", { ascending: true });
+
+    if (error) {
+      console.error("[CreatorSupportCard] Failed to load membership tiers", error);
+      setTiers([]);
+      setSelectedTier(null);
+      return;
+    }
+
+    const mapped =
+      data
+        ?.map((row) => resolveTierOption(row as MembershipTierRow))
+        .filter((tier): tier is TierOption => Boolean(tier)) ?? [];
+
+    setTiers(mapped);
+    if (mapped.length === 1) {
+      setSelectedTier(mapped[0]);
+    } else {
+      setSelectedTier(null);
+    }
+  }, [creatorId]);
+
+  useEffect(() => {
+    void loadSupporterCount();
+  }, [loadSupporterCount, subscribed]);
+
+  useEffect(() => {
+    void loadMembershipTiers();
+  }, [loadMembershipTiers, subscribed]);
+
+  const tierSummary = useMemo(() => {
+    if (tiers.length === 0) return "No membership tiers available";
+    if (tiers.length === 1) return tiers[0].label;
+    return `${tiers.length} membership tiers available`;
+  }, [tiers]);
 
   const onSubscribePaid = async (tier?: any) => {
     if (!creatorId) return;
     
-    const tierToUse = tier || selectedTier;
+    const tierToUse: TierOption | null = tier ?? selectedTier;
     if (!tierToUse) {
       toast({ title: "No tier selected", description: "Please select a subscription tier", variant: "destructive" });
       return;
     }
 
-    const { data, error } = await supabase.functions.invoke('create-fan-subscription', {
-      body: { creatorId, priceCents: tierToUse.price_cents },
+    const { data, error } = await supabase.functions.invoke("create-fan-subscription", {
+      body: { creatorId, membershipTierId: tierToUse.id },
     });
     if (error || !data?.url) {
       toast({ title: "Could not start subscription", description: (error as any)?.message || 'Unknown error', variant: "destructive" });
@@ -80,7 +166,8 @@ const CreatorSupportCard = ({ creatorId, className }: Props) => {
       toast({ title: "Unable to open billing portal", description: (error as any)?.message || 'Unknown error', variant: "destructive" });
       return;
     }
-    window.open((data as any).url, '_blank');
+    window.open((data as any).url, "_blank");
+    setShowTierPicker(false);
   };
   if (isOwner) return null;
 
@@ -101,6 +188,7 @@ const CreatorSupportCard = ({ creatorId, className }: Props) => {
         <p className="text-sm text-muted-foreground">
           Subscribe to unlock exclusive projects and behind‑the‑scenes content. Billed monthly via Stripe.
         </p>
+        <p className="text-xs text-muted-foreground">{tierSummary}</p>
         {!user ? (
           <Button asChild className="w-full">
             <Link to="/auth">Sign in to support</Link>
@@ -115,12 +203,12 @@ const CreatorSupportCard = ({ creatorId, className }: Props) => {
             </Button>
           </div>
         ) : tiers.length === 0 ? (
-          <Button disabled className="w-full">
-            No subscription tiers available
+          <Button disabled className="w-full" variant="outline">
+            Membership tiers coming soon
           </Button>
-        ) : tiers.length === 1 ? (
-          <Button onClick={() => onSubscribePaid()} disabled={loading} className="w-full">
-            Subscribe {formatCurrency(selectedTier?.price_cents / 100 || 0)}/mo
+        ) : tiers.length === 1 && selectedTier ? (
+          <Button onClick={() => onSubscribePaid(selectedTier)} disabled={loading} className="w-full">
+            Subscribe {selectedTier.label}
           </Button>
         ) : (
           <div className="space-y-2">
@@ -138,7 +226,7 @@ const CreatorSupportCard = ({ creatorId, className }: Props) => {
                     onClick={() => onSubscribePaid(tier)}
                   >
                     <span>{tier.name}</span>
-                    <span>{formatCurrency(tier.price_cents / 100)}/mo</span>
+                    <span>{tier.label}</span>
                   </Button>
                 ))}
                 <Button variant="ghost" size="sm" onClick={() => setShowTierPicker(false)}>

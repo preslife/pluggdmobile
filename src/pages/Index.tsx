@@ -1516,10 +1516,13 @@ function LiveCard({ item }: { item: LiveSession }) {
 // -----------------------------------------------------------------------------
 function HeaderRow({ title, cta, ctaLink }: { title: React.ReactNode; cta?: React.ReactNode; ctaLink?: string }) {
   return (
-    <div className="mb-4 flex items-center justify-between">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
       {cta && (
-        <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10" href={ctaLink || "#"}>
+        <a
+          className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          href={ctaLink || "#"}
+        >
           {cta}
         </a>
       )}
@@ -1544,14 +1547,14 @@ function GenreGrid({
         <button
           key={g}
           onClick={() => setActiveGenre(g)}
-          className={`rounded-xl border px-3 py-2 text-sm ${
+          className={`min-h-[44px] rounded-xl border px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             activeGenre === g
               ? "border-white/30 bg-white/10"
               : "border-white/10 bg-white/5 hover:bg-white/10"
           }`}
           aria-pressed={activeGenre === g}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start justify-center gap-1 text-left sm:flex-row sm:items-center sm:justify-between">
             <span>{g}</span>
             <span className="text-xs text-zinc-400">
               {role === "fans" ? "Music" : "Beats"}

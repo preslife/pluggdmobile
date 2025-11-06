@@ -447,7 +447,7 @@ const Marketplace = () => {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-2xl font-bold">All Beats</h2>
             <div className="flex items-center gap-2">
               <Button

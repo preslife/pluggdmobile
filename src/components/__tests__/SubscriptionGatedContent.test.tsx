@@ -146,9 +146,49 @@ describe('SubscriptionGatedContent', () => {
       );
     });
 
-    expect(screen.getByText(/exclusive to supporters/i)).toBeInTheDocument();
+    await screen.findByText(/supporter-only beat/i);
+    await screen.findByRole('button', { name: /unlock with membership/i });
+    await screen.findByText(/gold tier or higher/i);
+  });
+
+  it('adjusts heading copy for posts', async () => {
+    mocks.rpcMock.mockImplementation((fnName: string) => {
+      if (fnName === 'get_membership_access_rules') {
+        return Promise.resolve({
+          data: {
+            gate_type: 'specific_tier',
+            minimum_tier_id: null,
+            allowed_tier_ids: ['tier-post'],
+            preview_text: 'Members get the full story.',
+            preview_duration: null,
+            owner_id: 'owner-1',
+            owner_type: 'profile',
+          },
+          error: null,
+        });
+      }
+      if (fnName === 'check_content_access') {
+        return Promise.resolve({ data: false, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    render(
+      <SubscriptionGatedContent
+        contentId="post-1"
+        contentType="post"
+        creatorId="owner-1"
+        previewContent={<p>Preview snippet</p>}
+      >
+        <div>Post body</div>
+      </SubscriptionGatedContent>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Supporter-only post/i)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/Members get the full story/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /unlock with membership/i })).toBeInTheDocument();
-    expect(screen.getByText(/gold tier or higher/i)).toBeInTheDocument();
   });
 
   it('renders children when membership access is granted', async () => {

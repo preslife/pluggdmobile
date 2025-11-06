@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useLogger } from '@/hooks/useLogger';
+import { cn } from '@/lib/utils';
 
 type PurchaseType = "release" | "beat" | "sample_pack";
 
@@ -146,10 +147,10 @@ export const SecureDownloadButton = ({
   };
 
   return (
-    <Button 
+    <Button
       onClick={handleDownload}
       disabled={disabled || downloading}
-      className={className}
+      className={cn("min-h-[44px] gap-2", className)}
       variant="outline"
     >
       {downloading ? (
