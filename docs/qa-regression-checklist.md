@@ -29,6 +29,7 @@ _Last updated: 2025-10-17_
 - [ ] Upgrade to the required tier and confirm gated assets unlock without a browser refresh.
 - [ ] Validate Discord role sync (`discord-sync-subscriber`) grants roles that match tier access.
 - [ ] Capture gating state transition (see [`docs/artifacts/membership-gating-check.md`](./artifacts/membership-gating-check.md)).
+- [ ] Hit `verify-release-access` twice for the same user/release pair and confirm the second request logs `verify_release_access_cache_hit` plus a fresh row in `public.release_access_cache`.
 
 ## Wallet & Credits
 - [ ] Seed wallet with promo credits and confirm new balance renders in `WalletBalanceCard`.
@@ -46,10 +47,12 @@ _Last updated: 2025-10-17_
 - [ ] Submit a report from a release or beat and confirm the submit-report edge function logs the request and RLS allows only the reporter to view the ticket.
 - [ ] Visit Studio → Admin → Moderation Queue, resolve a pending report, and verify state transitions (investigating → resolved → archived) as well as the moderation system log entry.
 - [ ] Invoke the block-user and unblock-user edge functions, ensuring blocked users are prevented from re-submitting reports or interacting until the block is revoked.
+- [ ] Upload a release split agreement in Studio and confirm a `release_split_document_uploaded` log appears with the correct release id + uploader metadata.
 
 ## Notifications v1
 - [ ] Trigger an order, artist tip, and membership subscription to confirm `broadcast-notification` delivers in-app notifications that appear in the bell dropdown and Notification Center (unread counts reflect `read_at`).
 - [ ] Update notification preferences and ensure opt-out users do not receive new notifications for that category.
+- [ ] Run `npm run smoke:staging` with staging credentials and confirm the broadcast smoke test delivers to the configured recipient (toast + notification row + system log).
 
 ## Live & Interactive Sessions
 - [ ] Schedule a live session with ticketing and confirm countdown surfaces on `/live` rail.
@@ -63,6 +66,10 @@ _Last updated: 2025-10-17_
 3. **One-time checkout** – Purchase a release/beat bundle; ensure payment intent logs include tax + fee breakdown.
 4. **Dispute simulation** – Use Stripe test card `4000 0000 0000 0259`, mark evidence submitted in dashboard, and confirm webhook updates case status in `stripe_disputes`.
 5. **Payout rehearsal** – Trigger manual payout in Stripe dashboard and verify ledger settlement + email receipt.
+
+## Release Gifting
+- [ ] Purchase an instant-release gift and verify the `release_gift_queue` row moves from `pending` → `delivered`, `gift_queue_run_summary` logs the poll, and purchaser/recipient notifications are inserted.
+- [ ] Simulate a preorder gift (set `available_at` in the future), ensure the queue status remains `scheduled`, then advance `deliver_at` and rerun the cron to confirm delivery + email succeed.
 
 ## Gated Content Verification (Manual QA)
 1. Publish gated post with tier restrictions and confirm fans below tier see upsell modal.

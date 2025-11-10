@@ -653,11 +653,16 @@ serve(async (req) => {
 
               if (purchase.gift_recipient_email) {
                 try {
+                  const deliverAtIso = updatePayload["available_at"] ?? purchase.available_at ?? new Date().toISOString();
+                  const deliverTimestamp = Date.parse(deliverAtIso);
+                  const queueStatus = !Number.isNaN(deliverTimestamp) && deliverTimestamp > Date.now()
+                    ? "scheduled"
+                    : "pending";
                   await supabaseClient
                     .from('release_gift_queue')
                     .update({
-                      status: 'scheduled',
-                      deliver_at: updatePayload['available_at'] ?? purchase.available_at ?? new Date().toISOString(),
+                      status: queueStatus,
+                      deliver_at: deliverAtIso,
                       purchase_id: purchase.id,
                     })
                     .eq('purchase_id', purchase.id);

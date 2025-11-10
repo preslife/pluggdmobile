@@ -56,10 +56,19 @@ When adding new event handlers, prefer `upsert` or `update` statements scoped by
 - A scheduled companion function `discord-sync-cron` scans recently-updated memberships (grant/renew/cancel) and replays syncs for supporters even if a webhook was missed. Pair it with Supabase Scheduler (hourly) to keep Discord roles aligned.【F:supabase/functions/discord-sync-cron/index.ts†L1-L135】
 - Both functions are listed in `supabase/config.toml` with `verify_jwt = false`, ready for deployment with either direct HTTPS triggers or Supabase Scheduler jobs.【F:supabase/config.toml†L63-L70】
 
+## Release Gifting Fulfilment
+
+- Gifts enter the `release_gift_queue` as soon as a checkout session is created. Immediate purchases are marked `pending` while preorders become `scheduled` with `deliver_at` set to the release’s `available_at` timestamp, ensuring the cron worker does not email recipients prematurely.【F:supabase/functions/create-release-purchase/index.ts†L83-L108】【F:supabase/functions/create-release-purchase/index.ts†L248-L266】
+- When Stripe confirms payment, the webhook reconciles `available_at`, updates the queue status (`scheduled` vs `pending`), and preserves the fulfillment timestamp so preorders flip to ready-to-send automatically on release day.【F:supabase/functions/stripe-webhook/index.ts†L620-L667】
+- The `process-gift-queue` edge function (scheduled via Supabase Scheduler) polls up to 50 ready rows, generates seven-day signed URLs, emails the recipient, inserts purchaser/recipient in-app notifications, and records structured log events (`gift_queue_*`). Failures flip the row to `failed` and emit an error entry for alerting.【F:supabase/functions/process-gift-queue/index.ts†L1-L360】
+- Purchasers and recipients receive in-app notifications (respecting `notify_purchases` preferences) whenever a gift is delivered, and recipients without accounts are logged as unmatched so support can follow up manually.【F:supabase/functions/process-gift-queue/index.ts†L104-L219】
+- Use `release_access_cache` to inspect the most recent gating verdict for preorder gifts once they are claimed; cache rows refresh on every RPC call with correlation-id backed system logs for troubleshooting.【F:supabase/functions/verify-release-access/index.ts†L1-L260】【F:supabase/migrations/20250922094500_release_access_cache_and_split_doc_logs.sql†L1-L36】
+
 ## Testing & Observability
 
 - `useCheckout` has Vitest coverage for metadata construction, redirect behavior, and error propagation using mocked Stripe session responses.【F:src/hooks/__tests__/useCheckout.test.ts†L1-L120】
 - `createStoreCheckoutSession` is tested against mocked Supabase responses to validate success, error, and missing URL scenarios.【F:src/services/checkout/__tests__/storeCheckout.test.ts†L1-L69】
 - `StoreSuccess` retries order lookups up to three times, logging telemetry for every attempt so dashboards can distinguish transient Supabase latency from genuine failures.【F:src/pages/StoreSuccess.tsx†L9-L207】
+- Run `npm run smoke:staging` with staging Supabase credentials and `STAGING_SMOKE_RECIPIENT` configured to broadcast a sample notification via the admin smoke harness. The command wraps `scripts/send-broadcast-notification.mjs`, removing the need for manual curl snippets.【F:scripts/staging-smoke.mjs†L1-L32】【F:package.json†L6-L17】
 
 These tests, combined with telemetry emitted during checkout and post-payment reconciliation, provide defense-in-depth to detect integration regressions quickly.

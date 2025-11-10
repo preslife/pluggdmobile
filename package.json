@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "db:link": "supabase link --project-ref qkwvqmubhyondemhasjp --yes",
     "db:push": "supabase db push --linked --yes",
-    "sitemap:generate": "node scripts/generate-sitemap.mjs"
+    "sitemap:generate": "node scripts/generate-sitemap.mjs",
+    "smoke:staging": "node scripts/staging-smoke.mjs"
   },
   "dependencies": {
     "@11labs/react": "^0.1.4",

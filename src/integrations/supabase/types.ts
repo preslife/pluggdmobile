@@ -6317,6 +6317,60 @@ export type Database = {
           },
         ]
       }
+      release_access_cache: {
+        Row: {
+          available_at: string | null
+          created_at: string
+          has_access: boolean
+          has_purchased: boolean
+          is_premium: boolean
+          is_published: boolean
+          is_scheduled: boolean
+          latest_purchase_available_at: string | null
+          latest_purchase_id: string | null
+          latest_purchase_is_preorder: boolean
+          needs_purchase: boolean
+          preorder_pending: boolean
+          release_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_at?: string | null
+          created_at?: string
+          has_access?: boolean
+          has_purchased?: boolean
+          is_premium?: boolean
+          is_published?: boolean
+          is_scheduled?: boolean
+          latest_purchase_available_at?: string | null
+          latest_purchase_id?: string | null
+          latest_purchase_is_preorder?: boolean
+          needs_purchase?: boolean
+          preorder_pending?: boolean
+          release_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_at?: string | null
+          created_at?: string
+          has_access?: boolean
+          has_purchased?: boolean
+          is_premium?: boolean
+          is_published?: boolean
+          is_scheduled?: boolean
+          latest_purchase_available_at?: string | null
+          latest_purchase_id?: string | null
+          latest_purchase_is_preorder?: boolean
+          needs_purchase?: boolean
+          preorder_pending?: boolean
+          release_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       release_split_documents: {
         Row: {
           file_name: string

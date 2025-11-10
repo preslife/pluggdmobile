@@ -51,24 +51,18 @@ _Use this checklist whenever trust-safety or notification features ship. Follow 
 4. Use the **Unblock** action and repeat the query to ensure the record is cleared.
 
 ## 4. Notification Dispatch
-1. Obtain a bearer token for the admin session (inspect storage or use Supabase CLI).
-2. Trigger the broadcast function:
+1. Export staging Supabase variables (anon + service role) and set `STAGING_SMOKE_RECIPIENT` to the fan account’s UUID.
    ```bash
-   curl -X POST "$VITE_SUPABASE_URL/functions/v1/broadcast-notification" \
-     -H "Authorization: Bearer $ADMIN_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "recipients": ["<fan_user_uuid>"],
-           "type": "order",
-           "title": "Test order update",
-           "message": "Your order is ready in staging.",
-           "payload": {"demo": true}
-         }'
+   export SUPABASE_URL="$VITE_SUPABASE_URL"
+   export SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+   export STAGING_SMOKE_RECIPIENT="<fan_user_uuid>"
+   npm run smoke:staging
    ```
-3. In the fan session:
+   The script wraps `scripts/send-broadcast-notification.mjs` and prints the JSON response for screenshots/logging.
+2. In the fan session:
    - A toast should appear immediately.
    - Notification bell count increments; `/notifications` lists the new entry.
-4. Test “Mark all read” in the notification center and confirm `read_at` updates:
+3. Test “Mark all read” in the notification center and confirm `read_at` updates:
    ```sql
    select id, read_at
    from public.notifications
@@ -82,10 +76,14 @@ _Use this checklist whenever trust-safety or notification features ship. Follow 
    ```sql
    select timestamp, action, metadata
    from public.system_logs
-   where component in ('broadcast_notification', 'submit_report', 'block_user')
+   where component in ('broadcast_notification', 'submit_report', 'block_user', 'releases.gifting', 'moderation.releases')
    order by timestamp desc
    limit 20;
    ```
+   Ensure you see:
+   - `broadcast_notification_*` entries tied to the smoke test run.
+   - `gift_queue_poll_started`/`gift_queue_run_summary` reflecting queue depth after gift deliveries.
+   - `release_split_document_uploaded` when agreements are added during Studio testing.
 2. Review any Supabase dashboards or SQL views created for observability (see `docs/observability.md`).
 
 ## 6. Cleanup
