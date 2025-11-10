@@ -23,6 +23,26 @@ type ReleaseAccessResponse = {
   preorderPending: boolean;
 };
 
+type ReleaseAccessCacheRow = {
+  user_id: string;
+  release_id: string;
+  has_access: boolean;
+  has_purchased: boolean;
+  latest_purchase_id: string | null;
+  latest_purchase_available_at: string | null;
+  latest_purchase_is_preorder: boolean;
+  needs_purchase: boolean;
+  is_premium: boolean;
+  is_scheduled: boolean;
+  is_published: boolean;
+  preorder_pending: boolean;
+  available_at: string | null;
+  updated_at: string;
+  created_at: string;
+};
+
+const CACHE_TTL_MS = Number(Deno.env.get("VERIFY_RELEASE_ACCESS_CACHE_TTL_MS") ?? 5 * 60 * 1000);
+
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
@@ -80,6 +100,86 @@ serve(async (req) => {
       has_token: Boolean(authHeader),
       user_id: userId,
     });
+
+    let cacheMissReason: "empty" | "stale" | "error" | null = null;
+
+    if (userId) {
+      const { data: cacheLookup, error: cacheError } = await serviceClient
+        .from<ReleaseAccessCacheRow>("release_access_cache")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("release_id", releaseId)
+        .maybeSingle();
+
+      if (cacheError) {
+        cacheMissReason = "error";
+        await logger.warn("verify_release_access_cache_lookup_failed", {
+          release_id: releaseId,
+          user_id: userId,
+          error: cacheError.message,
+        });
+      } else if (cacheLookup) {
+        const updatedAtMs = Date.parse(cacheLookup.updated_at ?? "");
+        const ageMs = Date.now() - updatedAtMs;
+
+        if (!Number.isNaN(ageMs) && ageMs <= CACHE_TTL_MS) {
+          const cachedResponse: ReleaseAccessResponse = {
+            hasAccess: cacheLookup.has_access,
+            hasPurchased: cacheLookup.has_purchased,
+            latestPurchaseId: cacheLookup.latest_purchase_id,
+            latestPurchaseType: cacheLookup.latest_purchase_id ? "release" : null,
+            latestPurchaseAvailableAt: cacheLookup.latest_purchase_available_at,
+            latestPurchaseIsPreorder: cacheLookup.latest_purchase_is_preorder,
+            needsPurchase: cacheLookup.needs_purchase,
+            isPremium: cacheLookup.is_premium,
+            isScheduled: cacheLookup.is_scheduled,
+            isPublished: cacheLookup.is_published,
+            isPreorder: cacheLookup.latest_purchase_is_preorder,
+            availableAt: cacheLookup.available_at ?? cacheLookup.latest_purchase_available_at,
+            preorderPending: cacheLookup.preorder_pending,
+          };
+
+          await logger.info("verify_release_access_cache_hit", {
+            release_id: releaseId,
+            user_id: userId,
+            cache_age_ms: ageMs,
+          });
+
+          if (cachedResponse.preorderPending) {
+            await logger.info("verify_release_access_preorder_block", {
+              release_id: releaseId,
+              user_id: userId,
+              source: "cache",
+              available_at: cachedResponse.availableAt,
+            });
+          }
+
+          await logger.info("verify_release_access_completed", {
+            release_id: releaseId,
+            user_id: userId,
+            has_access: cachedResponse.hasAccess,
+            has_purchase: cachedResponse.hasPurchased,
+            is_premium: cacheLookup.is_premium,
+            is_scheduled: cacheLookup.is_scheduled,
+            source: "cache",
+          });
+
+          return jsonResponse(cachedResponse, 200);
+        }
+
+        cacheMissReason = "stale";
+      } else {
+        cacheMissReason = "empty";
+      }
+
+      if (cacheMissReason) {
+        await logger.info("verify_release_access_cache_miss", {
+          release_id: releaseId,
+          user_id: userId,
+          reason: cacheMissReason,
+        });
+      }
+    }
 
     const { data: release, error: releaseError } = await serviceClient
       .from("releases")
@@ -149,6 +249,7 @@ serve(async (req) => {
       }
     }
 
+    const isPremium = Boolean(release.is_premium_content);
     const isPublished =
       release.approval_status === "approved" || release.approval_status === "auto_approved";
     const isScheduled = Boolean(
@@ -170,7 +271,7 @@ serve(async (req) => {
       latestPurchaseAvailableAt,
       latestPurchaseIsPreorder,
       needsPurchase,
-      isPremium: Boolean(release.is_premium_content),
+      isPremium,
       isScheduled,
       isPublished,
       isPreorder: latestPurchaseIsPreorder,
@@ -178,13 +279,58 @@ serve(async (req) => {
       preorderPending,
     };
 
+    if (preorderPending) {
+      await logger.info("verify_release_access_preorder_block", {
+        release_id: releaseId,
+        user_id: userId,
+        source: "live",
+        available_at: latestPurchaseAvailableAt,
+      });
+    }
+
+    if (userId) {
+      try {
+        await serviceClient
+          .from("release_access_cache")
+          .upsert({
+            user_id: userId,
+            release_id: releaseId,
+            has_access: finalHasAccess,
+            has_purchased: hasPurchased,
+            latest_purchase_id: latestPurchaseId,
+            latest_purchase_available_at: latestPurchaseAvailableAt,
+            latest_purchase_is_preorder: latestPurchaseIsPreorder,
+            needs_purchase: needsPurchase,
+            is_premium: isPremium,
+            is_scheduled: isScheduled,
+            is_published: isPublished,
+            preorder_pending: preorderPending,
+            available_at: latestPurchaseAvailableAt,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "user_id,release_id" });
+
+        await logger.info("verify_release_access_cache_populated", {
+          release_id: releaseId,
+          user_id: userId,
+          status: finalHasAccess ? "granted" : "blocked",
+        });
+      } catch (cacheWriteError) {
+        await logger.warn("verify_release_access_cache_write_failed", {
+          release_id: releaseId,
+          user_id: userId,
+          error: cacheWriteError instanceof Error ? cacheWriteError.message : String(cacheWriteError),
+        });
+      }
+    }
+
     await logger.info("verify_release_access_completed", {
       release_id: releaseId,
       user_id: userId,
       has_access: finalHasAccess,
       has_purchase: hasPurchased,
-      is_premium: Boolean(release.is_premium_content),
+      is_premium: isPremium,
       is_scheduled: isScheduled,
+      source: "live",
     });
 
     return jsonResponse(responsePayload, 200);

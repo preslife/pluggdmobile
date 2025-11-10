@@ -81,6 +81,7 @@ serve(async (req) => {
 
     const availabilityDate = preorderAvailableAt ?? releaseDigitalDate ?? releaseDate ?? now;
     const availabilityIso = availabilityDate.toISOString();
+    const giftQueueStatus = availabilityDate.getTime() > now.getTime() ? "scheduled" : "pending";
 
     const isGift = Boolean(giftRecipientEmail);
     const claimToken = isGift ? crypto.randomUUID().replace(/-/g, "") : null;
@@ -256,7 +257,7 @@ serve(async (req) => {
             recipient_email: giftRecipientEmail?.trim() ?? '',
             recipient_name: giftRecipientName?.trim() || null,
             gift_message: giftMessage?.trim() || null,
-            status: 'pending',
+            status: giftQueueStatus,
             deliver_at: availabilityIso,
             claim_token: claimToken
           });

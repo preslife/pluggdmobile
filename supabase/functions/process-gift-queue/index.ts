@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "npm:resend@2.0.0";
+import { createSystemLogger, type SystemLogger } from "../_shared/systemLog.ts";
+import { createPreferenceCache, executeWithNotificationPreference } from "../_shared/notificationPreferences.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +55,130 @@ if (!resendApiKey) {
 }
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const preferenceCache = createPreferenceCache();
+
+async function findUserIdByEmail(
+  client: ReturnType<typeof createClient>,
+  email: string,
+  logger: SystemLogger,
+): Promise<string | null> {
+  try {
+    const { data } = await client.auth.admin.listUsers({ email });
+    const normalized = email.trim().toLowerCase();
+    const match = data?.users?.find((user) => (user.email ?? "").toLowerCase() === normalized);
+    return match?.id ?? null;
+  } catch (error) {
+    await logger.warn("gift_queue_recipient_lookup_failed", {
+      email,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+const notificationPayload = (
+  userId: string,
+  gift: GiftRecord,
+  type: "purchaser" | "recipient",
+  nowIso: string,
+) => {
+  const releaseTitle = gift.releases?.title ?? "Release";
+  const releaseArtist = gift.releases?.artist ?? null;
+  const subject = type === "recipient"
+    ? `You've received ${releaseTitle}`
+    : `Gift delivered: ${releaseTitle}`;
+  const message = type === "recipient"
+    ? `A supporter sent you ${releaseTitle}${releaseArtist ? ` by ${releaseArtist}` : ""}.`
+    : `Your gift for ${gift.recipient_name ?? gift.recipient_email} is ready to claim.`;
+
+  return {
+    user_id: userId,
+    type: "order" as const,
+    title: subject,
+    message,
+    related_id: gift.release_id,
+    related_type: "release",
+    payload: {
+      giftId: gift.id,
+      releaseId: gift.release_id,
+      purchaseId: gift.purchase_id,
+      deliveredAt: nowIso,
+      recipientEmail: gift.recipient_email,
+      recipientName: gift.recipient_name,
+      forRecipient: type === "recipient",
+    },
+  };
+};
+
+async function enqueueNotifications(
+  client: ReturnType<typeof createClient>,
+  gift: GiftRecord,
+  nowIso: string,
+  logger: SystemLogger,
+): Promise<void> {
+  const notifications: Array<ReturnType<typeof notificationPayload>> = [];
+
+  if (gift.purchaser_id) {
+    const result = await executeWithNotificationPreference(
+      client,
+      preferenceCache,
+      gift.purchaser_id,
+      "notify_purchases",
+      async () => {
+        notifications.push(notificationPayload(gift.purchaser_id!, gift, "purchaser", nowIso));
+      },
+    );
+
+    if (result.skipped) {
+      await logger.info("gift_queue_notification_skipped", {
+        gift_id: gift.id,
+        target: "purchaser",
+      });
+    }
+  }
+
+  const recipientUserId = await findUserIdByEmail(client, gift.recipient_email, logger);
+  if (recipientUserId) {
+    const result = await executeWithNotificationPreference(
+      client,
+      preferenceCache,
+      recipientUserId,
+      "notify_purchases",
+      async () => {
+        notifications.push(notificationPayload(recipientUserId, gift, "recipient", nowIso));
+      },
+    );
+
+    if (result.skipped) {
+      await logger.info("gift_queue_notification_skipped", {
+        gift_id: gift.id,
+        target: "recipient",
+      });
+    }
+  } else {
+    await logger.info("gift_queue_notification_unmapped_recipient", {
+      gift_id: gift.id,
+      email: gift.recipient_email,
+    });
+  }
+
+  if (notifications.length === 0) {
+    return;
+  }
+
+  const { error } = await client.from("notifications").insert(notifications);
+  if (error) {
+    await logger.warn("gift_queue_notification_failed", {
+      gift_id: gift.id,
+      error: error.message,
+    });
+  } else {
+    await logger.info("gift_queue_notification_sent", {
+      gift_id: gift.id,
+      count: notifications.length,
+    });
+  }
+}
 
 function parseStorageLocation(url: string | null): StorageLocation | null {
   if (!url) return null;
@@ -188,6 +314,7 @@ async function processGift(
   supabaseAdmin: ReturnType<typeof createClient>,
   gift: GiftRecord,
   nowIso: string,
+  logger: SystemLogger,
 ): Promise<void> {
   if (!gift.recipient_email) {
     throw new Error("Gift missing recipient email");
@@ -224,17 +351,13 @@ async function processGift(
     })
     .eq("id", gift.id);
 
-  await supabaseAdmin.from("system_logs").insert({
-    level: 2,
-    message: "Release gift delivered",
-    component: "releases.gifting",
-    action: "gift_delivered",
-    metadata: {
-      gift_id: gift.id,
-      release_id: gift.release_id,
-      purchase_id: gift.purchase_id,
-      recipient_email: gift.recipient_email,
-    },
+  await enqueueNotifications(supabaseAdmin, gift, nowIso, logger);
+
+  await logger.info("gift_queue_delivery_success", {
+    gift_id: gift.id,
+    release_id: gift.release_id,
+    purchase_id: gift.purchase_id,
+    recipient_email: gift.recipient_email,
   });
 }
 
@@ -267,6 +390,52 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
+
+    const logger = createSystemLogger(supabaseAdmin, {
+      component: "releases.gifting",
+      feature: "release_gift_queue",
+    });
+
+    const [pendingCount, scheduledCount, failedCount] = await Promise.all([
+      supabaseAdmin
+        .from("release_gift_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabaseAdmin
+        .from("release_gift_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "scheduled"),
+      supabaseAdmin
+        .from("release_gift_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
+    ]);
+
+    if (pendingCount.error) {
+      await logger.warn("gift_queue_status_count_failed", {
+        status: "pending",
+        error: pendingCount.error.message,
+      });
+    }
+    if (scheduledCount.error) {
+      await logger.warn("gift_queue_status_count_failed", {
+        status: "scheduled",
+        error: scheduledCount.error.message,
+      });
+    }
+    if (failedCount.error) {
+      await logger.warn("gift_queue_status_count_failed", {
+        status: "failed",
+        error: failedCount.error.message,
+      });
+    }
+
+    await logger.info("gift_queue_poll_started", {
+      limit: 50,
+      pending: pendingCount.count ?? 0,
+      scheduled: scheduledCount.count ?? 0,
+      failed: failedCount.count ?? 0,
+    });
 
     const nowIso = new Date().toISOString();
 
@@ -310,6 +479,11 @@ serve(async (req) => {
     }
 
     if (!gifts || gifts.length === 0) {
+      await logger.info("gift_queue_noop", {
+        delivered: 0,
+        failed: 0,
+        total: 0,
+      });
       return new Response(
         JSON.stringify({ delivered: 0, failed: 0, total: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -322,34 +496,36 @@ serve(async (req) => {
     for (const gift of gifts) {
       try {
         if (gift.claimed_at) {
+          await logger.info("gift_queue_skip_claimed", { gift_id: gift.id });
           continue;
         }
         if (gift.purchase && gift.purchase.status && gift.purchase.status !== "completed") {
-          console.warn("[process-gift-queue] Purchase not settled yet, skipping", gift.id);
+          await logger.info("gift_queue_skip_unsettled", {
+            gift_id: gift.id,
+            purchase_status: gift.purchase.status,
+          });
           continue;
         }
 
-        await processGift(supabaseAdmin, gift, nowIso);
+        await processGift(supabaseAdmin, gift, nowIso, logger);
         delivered += 1;
       } catch (error) {
         failed += 1;
-        console.error("[process-gift-queue] Failed to process gift", gift.id, error);
         await supabaseAdmin
           .from("release_gift_queue")
           .update({ status: "failed" })
           .eq("id", gift.id);
-        await supabaseAdmin.from("system_logs").insert({
-          level: 3,
-          message: "Release gift delivery failed",
-          component: "releases.gifting",
-          action: "gift_failed",
-          metadata: {
-            gift_id: gift.id,
-            error: error instanceof Error ? error.message : String(error),
-          },
+        await logger.error("gift_queue_delivery_failed", error, {
+          gift_id: gift.id,
         });
       }
     }
+
+    await logger.info("gift_queue_run_summary", {
+      delivered,
+      failed,
+      polled: gifts.length,
+    });
 
     return new Response(
       JSON.stringify({
@@ -360,7 +536,16 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error("[process-gift-queue] Unexpected error", error);
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const logger = createSystemLogger(supabaseAdmin, {
+      component: "releases.gifting",
+      feature: "release_gift_queue",
+    });
+    await logger.error("gift_queue_unexpected_error", error);
     return new Response(
       JSON.stringify({ error: "Unexpected error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

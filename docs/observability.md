@@ -23,17 +23,20 @@ The views are granted to the `authenticated` role so you can run `select * from 
 - **Membership Tier Mutations** – volume and error rate for create/update/delete actions emitted by `useMembershipTiers`.
 - **Subscription Gating** – warnings for gate configuration and tier lookups surfaced via `SubscriptionGatedContent` instrumentation.
 - **Stripe Subscription Lifecycles** – counts of `subscription_created`, `subscription_updated`, `subscription_cancelled`, and `charge_refunded/failed` webhook events.
+- **Release Access RPC Health** – monitor `verify_release_access_requested`, `verify_release_access_cache_hit/miss`, `verify_release_access_preorder_block`, and `_unexpected_error` log actions. These metrics expose cache effectiveness (hits vs misses) and highlight preorder blocks or RPC failures. Pair them with the `release_access_cache` table to review the most recent gating decision for a specific fan/release pair.
 
 ### 3. Moderation Operations
 - **Dashboard Load Latency** – measure `moderation_dashboard_fetch_success` timings to ensure content queues load quickly.
 - **Action Outcomes** – success vs failure of `moderation_action_*` events split by moderator and action type.
 - **Report Intake** – pending reports from `moderation_dashboard_fetch_success` metadata to highlight backlog growth.
 - **`vw_trust_safety_report_status` view** – run a direct query to audit open investigations, oldest pending age, and seven-day inflow during incident reviews. Combine this with the `submit_report_*` system log actions for root-cause timelines.
+- **Split Document Audits** – the `release_split_document_uploaded` system log event records every new agreement uploaded via Studio, including uploader id, release id, and storage path. Trust & Safety dashboards can pivot on these entries to ensure new royalty paperwork is reviewed promptly.
 
 ### 4. System Reliability
 - **Edge Function Errors** – any `split_attribution_failed`, `crowdfunding_contribution_missing_*`, or `artist_tip_*` error events emitted by Supabase edge functions.
 - **System Log Insertion Failures** – watch for `[system_logs] insert_failed` console errors surfaced via the shared logger in edge functions.
 - **Notification Suppressions** – monitor `broadcast_notification_recipient_skipped` from the notification handler and the `vw_notification_skip_summary` view to understand why recipients were skipped (preferences, transient insert errors, etc.).
+- **Gift Queue Throughput** – track `gift_queue_poll_started`, `gift_queue_run_summary`, and `gift_queue_delivery_failed` actions from the `process-gift-queue` cron. Pending/scheduled counts surface backlog growth while failure logs power alerting on fulfilment issues.
 
 ### 5. Wallet & Credits
 - **Wallet Fetch Latency** – compare `wallet_balance_fetch_success` and `wallet_ledger_fetch_success` durations produced by `useWallet`'s `trackPromise` wrapper.
@@ -58,6 +61,8 @@ The views are granted to the `authenticated` role so you can run `select * from 
 | **Wallet Cash-out Errors** | `wallet_cashout_failed` events >3 in 15 minutes or any event with `compliance_block=true`. | Investigate payout service availability and compliance responses. |
 | **Download Access Denied** | `release_access_denied` or `release_limit_reached` events >5 in 10 minutes. | Review purchase entitlements and download limits for the affected releases. |
 | **Inbox Fetch Failures** | `inbox_fetch_failed` events for any provider occurring on consecutive cron runs. | Inspect connector credentials and third-party API quotas for the affected provider. |
+| **Gift Queue Failure Spike** | `gift_queue_delivery_failed` events >5 within 10 minutes. | Inspect the `process-gift-queue` edge function logs, email delivery provider status, and release metadata for missing download URLs. |
+| **Verify Release Access Errors** | `verify_release_access_unexpected_error` or `_rpc_failed` actions exceeding 5% of requests in a 10-minute window. | Validate Supabase RPC availability, confirm cache upserts are succeeding, and review recent gating changes for regressions. |
 
 ## Event Catalogue
 
@@ -130,10 +135,13 @@ All application and edge-function logs are normalised into the `system_logs` tab
 - `block-user`, `unblock-user`, `submit-report`, and `review-report` now emit structured entries to `system_logs` for every validation branch and persistence error. Use `component = 'block_user'` or `component = 'submit_report'` when slicing dashboards.
 - `broadcast-notification` now logs `broadcast_notification_recipient_skipped` per recipient (preference opt-outs, insert errors, unexpected exceptions). This powers the `vw_notification_skip_summary` view and lets you pivot by reason/type.
 - Membership invoice renewals call `broadcast-notification` so you’ll see `membership`-typed events in both logs and the new skip view when preferences suppress lifecycle messaging.
+- `process-gift-queue` emits `gift_queue_*` telemetry (poll start, summary, per-gift success/failure, notification skips) so operators can correlate fulfilment issues with queue depth. Pair these with the `notifications` table to confirm purchaser/recipient alerts were inserted.
+- Uploading a royalty agreement triggers `release_split_document_uploaded`, allowing moderators to audit paperwork arrivals without polling storage buckets.
 
 ### Webhook Delivery Monitoring
 - The `vw_webhook_delivery_errors` view rolls up counts from `webhook_deliveries` and annotates the owning endpoint. Pair this with `integrations-health` telemetry when diagnosing partner outages.
 - `stripe-webhook` now records renewal handling (`invoice.payment_succeeded`) into `system_logs` so you can trace retries around the same invoice id. The view helps distinguish transient vs persistent failures for webhook consumers.
+- Use `release_access_cache` to inspect the last computed verdict for a fan/release combination. Querying by `updated_at` highlights stale cache rows or rapid-fire preorders that are still pending availability.
 
 ## Operational Tips
 - Use the new `useLogger` hook to create scoped loggers in React components. Always attach `component`, `feature`, and `view` metadata for consistent filtering.
