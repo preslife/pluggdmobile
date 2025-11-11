@@ -154,6 +154,7 @@ export const ReleasePreviewPlayer = ({
             size="sm"
             onClick={(e) => isPlaying ? handlePause(e) : handlePlay(e)}
             className="flex-shrink-0"
+            aria-label={isPlaying ? 'Pause preview audio' : 'Play preview audio'}
           >
             {isPlaying ? (
               <Pause className="w-4 h-4" />
@@ -191,6 +192,7 @@ export const ReleasePreviewPlayer = ({
         size="icon"
         onClick={(e) => isPlaying ? handlePause(e) : handlePlay(e)}
         className="mb-2 hover:bg-white/20 bg-white/10"
+        aria-label={isPlaying ? 'Pause preview audio' : 'Play preview audio'}
       >
         {isPlaying ? (
           <Pause className="w-6 h-6" />

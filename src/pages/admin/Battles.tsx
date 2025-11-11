@@ -77,10 +77,11 @@ const AdminBattles = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      <SEOHelmet 
+      <SEOHelmet
         config={{
-          title: "Admin - Battles Management",
-          description: "Manage beat battles, update status, and feature battles"
+          title: "Battles Moderation | Pluggd Admin",
+          description: "Review battle submissions, manage scheduling, and feature live competitions across the platform.",
+          canonical: "/admin/battles",
         }}
       />
       

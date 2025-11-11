@@ -4,11 +4,11 @@ import SEOHelmet from "@/components/SEOHelmet";
 export default function AdminCatalog() {
   return (
     <>
-      <SEOHelmet 
+      <SEOHelmet
         config={{
-          title: "Admin Catalog - Pluggd",
-          description: "Manage all catalog content including beats, releases, and sample packs.",
-          canonical: "/admin/catalog"
+          title: "Catalog Moderation | Pluggd Admin",
+          description: "Audit releases, beats, and sample packs, approve updates, and ensure catalog quality across Pluggd.",
+          canonical: "/admin/catalog",
         }}
       />
       <AdminCatalogEnhanced />

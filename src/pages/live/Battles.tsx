@@ -87,7 +87,7 @@ const LiveBattles = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span>{timingLabel}</span>
@@ -98,7 +98,7 @@ const LiveBattles = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {battle.status === 'upcoming' && (
               <Button
                 size="sm"
@@ -144,10 +144,11 @@ const LiveBattles = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      <SEOHelmet 
+      <SEOHelmet
         config={{
-          title: "Live Battles - Beat Competitions",
-          description: "Join live beat battles, compete with other producers, and win prizes in real-time competitions."
+          title: "Live Battles | Pluggd Live",
+          description: "Discover upcoming beat battles, watch live rounds, and secure your slot in competitive producer showdowns.",
+          canonical: "/live/battles",
         }}
       />
       

@@ -6,7 +6,7 @@ import { setMeta } from "@/lib/seo";
 const SamplePackStorePage = () => {
   useEffect(() => {
     setMeta(
-      "Sample Pack Store — Pluggd",
+      "Sample Pack Store | Pluggd",
       "Professional sample packs and loops from top producers. Download free samples or purchase premium packs.",
       "/sample-pack-store"
     );

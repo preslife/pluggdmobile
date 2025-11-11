@@ -253,7 +253,12 @@ const DomainAwareNavigation = () => {
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative hover-glow-accent">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative hover-glow-accent"
+                      aria-label="Open account menu"
+                    >
                       <Avatar className="h-8 w-8 ring-2 ring-transparent hover:ring-primary/20 transition-all duration-300">
                         <AvatarImage src={profile?.avatar_url} />
                         <AvatarFallback>

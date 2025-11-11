@@ -5,7 +5,14 @@ import { useTheme } from '@/contexts/ThemeContext';
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} className="hover:bg-primary/10">
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggleTheme}
+      className="hover:bg-primary/10"
+      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+    >
       {theme === 'dark' ? <Sun className="h-5 w-5 text-primary" /> : <Moon className="h-5 w-5 text-primary" />}
     </Button>
   );

@@ -647,11 +647,12 @@ export const SearchPage = () => {
     }
   };
 
+  const trimmedQuery = useMemo(() => query.trim(), [query]);
   const totalResults = resultCounts.creators + resultCounts.music + resultCounts.beats;
   const summaryState = buildResultSummary(trimmedQuery, totalResults);
 
   const currentResults = useMemo(() => {
-    if (!query.trim()) return [];
+    if (!trimmedQuery) return [];
     if (activeTab === 'beats') {
       return results.beats.map((beat, index) => ({ id: beat.id, elementId: `search-result-beat-${index}` }));
     }

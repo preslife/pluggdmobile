@@ -92,10 +92,11 @@ const AdminSecurity = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      <SEOHelmet 
+      <SEOHelmet
         config={{
-          title: "Admin - Security Dashboard",
-          description: "Monitor database security and RLS policy status"
+          title: "Security Monitoring | Pluggd Admin",
+          description: "Track Supabase RLS coverage, flag misconfigurations, and keep the creator ecosystem secure.",
+          canonical: "/admin/security",
         }}
       />
       

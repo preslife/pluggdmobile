@@ -8,14 +8,13 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const OUTPUT_PATH = process.argv[2] || path.resolve('public', 'sitemap.xml');
 
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('[sitemap] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.');
-  process.exit(1);
-}
+const hasSupabaseConfig = Boolean(SUPABASE_URL && SERVICE_KEY);
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false },
-});
+const supabase = hasSupabaseConfig
+  ? createClient(SUPABASE_URL, SERVICE_KEY, {
+      auth: { persistSession: false },
+    })
+  : null;
 
 const toAbsoluteUrl = (pathname) => new URL(pathname, SITE_URL).toString();
 
@@ -143,35 +142,95 @@ const fetchStoreProducts = async (client) => {
   }));
 };
 
+const fetchSamplePacks = async (client) => {
+  const { data, error } = await client
+    .from('sample_packs')
+    .select('id, updated_at, title, is_featured')
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  return (data ?? []).map((pack) => ({
+    loc: toAbsoluteUrl(`/sample-pack-store/${pack.id}`),
+    lastmod: toXmlDate(pack.updated_at),
+    changefreq: 'weekly',
+    priority: pack.is_featured ? 0.7 : 0.5,
+  }));
+};
+
+const fetchLiveSessions = async (client) => {
+  const { data, error } = await client
+    .from('live_sessions')
+    .select('id, updated_at, status, scheduled_for')
+    .not('status', 'in', '(draft)')
+    .order('scheduled_for', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  return (data ?? []).map((session) => ({
+    loc: toAbsoluteUrl(`/live/sessions/${session.id}`),
+    lastmod: toXmlDate(session.updated_at || session.scheduled_for),
+    changefreq: session.status === 'live' ? 'daily' : 'weekly',
+    priority: session.status === 'live' ? 0.7 : 0.5,
+  }));
+};
+
 const buildEntries = async (client) => {
   const staticEntries = [
     { loc: toAbsoluteUrl('/'), priority: 1.0, changefreq: 'daily' },
     { loc: toAbsoluteUrl('/store'), priority: 0.9, changefreq: 'daily' },
+    { loc: toAbsoluteUrl('/marketplace'), priority: 0.9, changefreq: 'daily' },
     { loc: toAbsoluteUrl('/library'), priority: 0.9, changefreq: 'weekly' },
     { loc: toAbsoluteUrl('/releases'), priority: 0.8, changefreq: 'weekly' },
     { loc: toAbsoluteUrl('/beats'), priority: 0.8, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/sample-pack-store'), priority: 0.7, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/live'), priority: 0.6, changefreq: 'weekly' },
+    { loc: toAbsoluteUrl('/studio'), priority: 0.6, changefreq: 'weekly' },
     { loc: toAbsoluteUrl('/community'), priority: 0.6, changefreq: 'weekly' },
     { loc: toAbsoluteUrl('/help'), priority: 0.5, changefreq: 'monthly' },
   ];
 
-  const [releases, beats, profiles, labels, storeProducts] = await Promise.all([
+  const [
+    releases,
+    beats,
+    profiles,
+    labels,
+    storeProducts,
+    samplePacks,
+    liveSessions,
+  ] = await Promise.all([
     fetchReleases(client),
     fetchBeats(client),
     fetchProfiles(client),
     fetchLabels(client),
     fetchStoreProducts(client),
+    fetchSamplePacks(client),
+    fetchLiveSessions(client),
   ]);
 
-  return [...staticEntries, ...releases, ...beats, ...profiles, ...labels, ...storeProducts];
+  return [
+    ...staticEntries,
+    ...releases,
+    ...beats,
+    ...profiles,
+    ...labels,
+    ...samplePacks,
+    ...liveSessions,
+    ...storeProducts,
+  ];
 };
 
+const buildSitemapXml = (entries) => [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+  ...entries.map(buildEntry),
+  '</urlset>',
+].join('\n');
+
 const writeSitemap = async (entries) => {
-  const xml = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...entries.map(buildEntry),
-    '</urlset>',
-  ].join('\n');
+  const xml = buildSitemapXml(entries);
 
   const outDir = path.dirname(OUTPUT_PATH);
   await mkdir(outDir, { recursive: true });
@@ -180,12 +239,23 @@ const writeSitemap = async (entries) => {
   console.log(`Generated sitemap with ${entries.length} entries at ${OUTPUT_PATH}`);
 };
 
-(async () => {
-  try {
-    const entries = await buildEntries(supabase);
-    await writeSitemap(entries);
-  } catch (error) {
-    console.error('[sitemap] generation failed', error);
+const isCliInvocation = typeof process !== 'undefined'
+  && process.argv?.[1]
+  && import.meta.url === new URL(process.argv[1], 'file://').href;
+
+if (isCliInvocation) {
+  if (!supabase) {
+    console.error('[sitemap] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.');
     process.exit(1);
   }
-})();
+
+  (async () => {
+    try {
+      const entries = await buildEntries(supabase);
+      await writeSitemap(entries);
+    } catch (error) {
+      console.error('[sitemap] generation failed', error);
+      process.exit(1);
+    }
+  })();
+}

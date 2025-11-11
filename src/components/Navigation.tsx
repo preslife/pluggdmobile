@@ -343,6 +343,9 @@ const Navigation = () => {
               variant="ghost"
               size="icon"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-expanded={isMenuOpen}
+              aria-controls="primary-mobile-nav"
+              aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             >
               <svg
                 className="h-6 w-6"
@@ -372,7 +375,7 @@ const Navigation = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden">
+          <div className="md:hidden" id="primary-mobile-nav">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-card rounded-lg mt-2 border border-border">
               {navItems.map((item) => {
                 const isActive = item.href.startsWith('/') ? location.pathname === item.href : false;
