@@ -85,6 +85,7 @@ _Last updated: 2025-10-17_
 ## Automated Tests
 - [ ] `npm run test` (now silent for GlobalPlayer and Library harness warnings).
 - [ ] Smoke `npm run build` to ensure OG helper additions compile.
+- [ ] `PLAYWRIGHT_BASE_URL=http://localhost:4173 npm run test:e2e` (or point to staging URL) for cross-browser smoke coverage.
 
 ## Manual Smoke
 - [ ] Start dev server (`npm run dev`) and validate Agora call join still works in live session room.

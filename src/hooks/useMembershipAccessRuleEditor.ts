@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 import { ContentGateType, ContentType, OwnerType } from '@/types/memberships';
+import { useLogger } from '@/hooks/useLogger';
 import {
   deleteMembershipAccessRules,
   fetchMembershipAccessRules,
@@ -29,6 +30,13 @@ interface UseMembershipAccessRuleEditorOptions {
   resolveOwner: () => MembershipOwnerResolution;
 }
 
+export interface AccessRulePreviewSummary {
+  gateType: ContentGateType;
+  minimumTier: SimpleMembershipTier | null;
+  specificTiers: SimpleMembershipTier[];
+  availableTierCount: number;
+}
+
 interface UseMembershipAccessRuleEditorResult {
   availableTiers: SimpleMembershipTier[];
   tiersLoading: boolean;
@@ -44,6 +52,11 @@ interface UseMembershipAccessRuleEditorResult {
   setPreviewText: (value: string) => void;
   previewDuration: string;
   setPreviewDuration: (value: string) => void;
+  validationIssues: string[];
+  canPersistRules: boolean;
+  selectedMinimumTier: SimpleMembershipTier | null;
+  selectedSpecificTiers: SimpleMembershipTier[];
+  previewSummary: AccessRulePreviewSummary;
   loadRulesFor: (contentId: string) => Promise<void>;
   saveRulesFor: (contentId: string) => Promise<void>;
   deleteRulesFor: (contentId: string) => Promise<void>;
@@ -58,6 +71,12 @@ export const useMembershipAccessRuleEditor = ({
   contentType,
   resolveOwner,
 }: UseMembershipAccessRuleEditorOptions): UseMembershipAccessRuleEditorResult => {
+  const { logEvent, logWarn, logError } = useLogger({
+    component: 'useMembershipAccessRuleEditor',
+    feature: 'membership_gating',
+    metadata: { contentType },
+  });
+
   const [availableTiers, setAvailableTiers] = useState<SimpleMembershipTier[]>([]);
   const [tiersLoading, setTiersLoading] = useState(false);
 
@@ -102,9 +121,15 @@ export const useMembershipAccessRuleEditor = ({
           ownerId,
           error: error.message,
         });
+        void logError('membership_tier_load_failed', error, { ownerType, ownerId });
         setAvailableTiers([]);
       } else {
         setAvailableTiers((data as SimpleMembershipTier[]) ?? []);
+        void logEvent('membership_tiers_loaded', {
+          ownerType,
+          ownerId,
+          tierCount: data?.length ?? 0,
+        });
       }
 
       setTiersLoading(false);
@@ -148,6 +173,7 @@ export const useMembershipAccessRuleEditor = ({
         const rule = await fetchMembershipAccessRules(contentType, contentId);
         if (!rule) {
           resetState();
+          void logEvent('membership_access_rule_absent', { contentId });
           return;
         }
 
@@ -157,13 +183,70 @@ export const useMembershipAccessRuleEditor = ({
         setAllowedTierIds(ensureArray(rule.allowed_tier_ids));
         setPreviewText(rule.preview_text ?? '');
         setPreviewDuration(rule.preview_duration ? String(rule.preview_duration) : '');
+        void logEvent('membership_access_rule_loaded', {
+          contentId,
+          gateType: rule.gate_type,
+          minimumTierId: rule.minimum_tier_id,
+          allowedTierCount: rule.allowed_tier_ids?.length ?? 0,
+        });
       } catch (error) {
         console.error('[useMembershipAccessRuleEditor] Failed to load rules', error);
+        void logError('membership_access_rule_load_failed', error, { contentId });
         resetState();
       }
     },
     [contentType, resetState]
   );
+
+  const selectedMinimumTier = useMemo(
+    () => availableTiers.find((tier) => tier.id === minimumTierId) ?? null,
+    [availableTiers, minimumTierId]
+  );
+
+  const selectedSpecificTiers = useMemo(
+    () => availableTiers.filter((tier) => allowedTierIds.includes(tier.id)),
+    [availableTiers, allowedTierIds]
+  );
+
+  const validationIssues = useMemo(() => {
+    if (!gateEnabled) return [];
+
+    const issues: string[] = [];
+
+    if (availableTiers.length === 0) {
+      issues.push('Create at least one active membership tier before enabling gating.');
+    }
+
+    if (gateType === 'tier_or_higher' && !selectedMinimumTier) {
+      issues.push('Select a minimum tier for the “tier or higher” option.');
+    }
+
+    if (gateType === 'specific_tier' && selectedSpecificTiers.length === 0) {
+      issues.push('Choose at least one tier to unlock the content.');
+    }
+
+    const previewDurationRaw = previewDuration.trim();
+    if (previewDurationRaw) {
+      const numericValue = Number(previewDurationRaw);
+      if (Number.isNaN(numericValue) || numericValue < 0) {
+        issues.push('Preview duration must be a non-negative number of seconds.');
+      }
+    }
+
+    return issues;
+  }, [gateEnabled, gateType, selectedMinimumTier, selectedSpecificTiers, availableTiers.length, previewDuration]);
+
+  const previewSummary: AccessRulePreviewSummary = useMemo(
+    () => ({
+      gateType,
+      minimumTier: selectedMinimumTier,
+      specificTiers: selectedSpecificTiers,
+      availableTierCount: availableTiers.length,
+    }),
+    [gateType, selectedMinimumTier, selectedSpecificTiers, availableTiers.length]
+  );
+
+  const canPersistRules = !gateEnabled || validationIssues.length === 0;
 
   const saveRulesFor = useCallback(
     async (contentId: string) => {
@@ -175,7 +258,13 @@ export const useMembershipAccessRuleEditor = ({
 
       if (!gateEnabled || availableTiers.length === 0) {
         await deleteMembershipAccessRules(contentType, contentId);
+        void logEvent('membership_access_rule_disabled', { contentId });
         return;
+      }
+
+      if (validationIssues.length > 0) {
+        void logWarn('membership_access_rule_validation_failed', { contentId, validationIssues });
+        throw new Error(validationIssues.join(' '));
       }
 
       let resolvedMinimumId = minimumTierId;
@@ -189,7 +278,7 @@ export const useMembershipAccessRuleEditor = ({
       }
 
       const filteredAllowed = gateType === 'specific_tier'
-        ? allowedTierIds.filter((id) => availableTiers.some((tier) => tier.id === id))
+        ? selectedSpecificTiers.map((tier) => tier.id)
         : null;
 
       const previewDurationNumber = previewDuration.trim()
@@ -207,6 +296,13 @@ export const useMembershipAccessRuleEditor = ({
         previewText: previewText.trim() || null,
         previewDuration: previewDurationNumber,
       });
+
+      void logEvent('membership_access_rule_saved', {
+        contentId,
+        gateType,
+        minimumTierId: gateType === 'tier_or_higher' ? resolvedMinimumId : null,
+        allowedTierCount: filteredAllowed?.length ?? 0,
+      });
     },
     [
       owner,
@@ -218,14 +314,20 @@ export const useMembershipAccessRuleEditor = ({
       previewText,
       previewDuration,
       contentType,
+      validationIssues,
+      selectedSpecificTiers,
+      logEvent,
+      logWarn,
     ]
   );
 
   const deleteRulesFor = useCallback(
     async (contentId: string) => {
+      if (!contentId) return;
       await deleteMembershipAccessRules(contentType, contentId);
+      void logEvent('membership_access_rule_deleted', { contentId });
     },
-    [contentType]
+    [contentType, logEvent]
   );
 
   return {
@@ -243,6 +345,11 @@ export const useMembershipAccessRuleEditor = ({
     setPreviewText,
     previewDuration,
     setPreviewDuration,
+    validationIssues,
+    canPersistRules,
+    selectedMinimumTier,
+    selectedSpecificTiers,
+    previewSummary,
     loadRulesFor,
     saveRulesFor,
     deleteRulesFor,

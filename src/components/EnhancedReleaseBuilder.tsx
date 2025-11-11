@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { GenreSelector } from './GenreSelector';
 import { PublishAsSelector, usePublishAs } from './PublishAsSelector';
 import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
+import { MembershipGateSummary } from '@/components/MembershipGateSummary';
 
 interface ReleaseTrack {
   id: string;
@@ -190,6 +191,8 @@ export const EnhancedReleaseBuilder = () => {
     setPreviewText,
     previewDuration,
     setPreviewDuration,
+    validationIssues,
+    previewSummary,
     loadRulesFor,
     saveRulesFor,
   } = useMembershipAccessRuleEditor({
@@ -756,8 +759,13 @@ export const EnhancedReleaseBuilder = () => {
 
         try {
           await saveRulesFor(releaseId);
-        } catch (err) {
+        } catch (err: any) {
           console.error('[ReleaseBuilder] Failed to sync gating (draft update)', err);
+          toast({
+            title: 'Membership gating not saved',
+            description: err?.message ?? 'Review your gating configuration and try again.',
+            variant: 'destructive',
+          });
         }
         // Notify creator of successful draft save
         try {
@@ -828,8 +836,13 @@ export const EnhancedReleaseBuilder = () => {
 
         try {
           await saveRulesFor(release.id);
-        } catch (err) {
+        } catch (err: any) {
           console.error('[ReleaseBuilder] Failed to sync gating (new draft)', err);
+          toast({
+            title: 'Membership gating not saved',
+            description: err?.message ?? 'Review your gating configuration and try again.',
+            variant: 'destructive',
+          });
         }
         await loadRulesFor(release.id);
         // Notify creator of successful draft save
@@ -1681,6 +1694,14 @@ export const EnhancedReleaseBuilder = () => {
                 </p>
               </div>
             </div>
+
+            <MembershipGateSummary
+              gateEnabled={gateEnabled}
+              validationIssues={validationIssues}
+              previewSummary={previewSummary}
+              previewText={previewText}
+              previewDuration={previewDuration}
+            />
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">

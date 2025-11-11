@@ -23,7 +23,7 @@ The views are granted to the `authenticated` role so you can run `select * from 
 - **Membership Tier Mutations** – volume and error rate for create/update/delete actions emitted by `useMembershipTiers`.
 - **Subscription Gating** – warnings for gate configuration and tier lookups surfaced via `SubscriptionGatedContent` instrumentation.
 - **Stripe Subscription Lifecycles** – counts of `subscription_created`, `subscription_updated`, `subscription_cancelled`, and `charge_refunded/failed` webhook events.
-- **Release Access RPC Health** – monitor `verify_release_access_requested`, `verify_release_access_cache_hit/miss`, `verify_release_access_preorder_block`, and `_unexpected_error` log actions. These metrics expose cache effectiveness (hits vs misses) and highlight preorder blocks or RPC failures. Pair them with the `release_access_cache` table to review the most recent gating decision for a specific fan/release pair.
+- **Release Access RPC Health** – monitor `verify_release_access_requested`, `verify_release_access_cache_hit/miss`, `verify_release_access_preorder_block`, and `_unexpected_error` log actions. These metrics expose cache effectiveness (hits vs misses) and highlight preorder blocks or RPC failures. Pair them with the `release_access_cache` table to review the most recent gating decision for a specific fan/release pair (see `docs/artifacts/release-access-gift-qa.md` for the QA checklist).
 
 ### 3. Moderation Operations
 - **Dashboard Load Latency** – measure `moderation_dashboard_fetch_success` timings to ensure content queues load quickly.

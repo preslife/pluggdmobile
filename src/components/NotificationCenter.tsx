@@ -8,6 +8,7 @@ import { Bell, BellRing, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationPreferences } from '@/components/NotificationPreferences';
+import { getNotificationDebugInfo } from '@/services/notifications/debug';
 
 interface Notification {
   id: string;
@@ -148,6 +149,8 @@ export const NotificationCenter = () => {
     return null;
   }
 
+  const notificationDebugInfo = getNotificationDebugInfo(notifications);
+
   const notificationCard = loading ? (
     <Card>
       <CardHeader>
@@ -191,6 +194,11 @@ export const NotificationCenter = () => {
             </Button>
           )}
         </div>
+        {notificationDebugInfo && (
+          <p className="text-xs text-muted-foreground">
+            Updated {formatDistanceToNow(notificationDebugInfo.latestCreatedAt, { addSuffix: true })}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {notifications.length === 0 ? (
@@ -252,4 +260,3 @@ export const NotificationCenter = () => {
     </div>
   );
 };
-

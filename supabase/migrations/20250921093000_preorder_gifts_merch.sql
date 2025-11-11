@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS public.release_split_documents (
 
 ALTER TABLE public.release_split_documents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Release owners manage split docs"
+  ON public.release_split_documents;
+
 CREATE POLICY "Release owners manage split docs"
   ON public.release_split_documents
   FOR ALL
@@ -73,6 +76,9 @@ CREATE POLICY "Release owners manage split docs"
     )
   );
 
+DROP POLICY IF EXISTS "Collaborators can view split docs"
+  ON public.release_split_documents;
+
 CREATE POLICY "Collaborators can view split docs"
   ON public.release_split_documents
   FOR SELECT
@@ -107,11 +113,17 @@ CREATE TABLE IF NOT EXISTS public.release_gift_queue (
 
 ALTER TABLE public.release_gift_queue ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Purchasers manage their gifts"
+  ON public.release_gift_queue;
+
 CREATE POLICY "Purchasers manage their gifts"
   ON public.release_gift_queue
   FOR ALL
   USING (purchaser_id = auth.uid())
   WITH CHECK (purchaser_id = auth.uid());
+
+DROP POLICY IF EXISTS "Release owners view gift queue"
+  ON public.release_gift_queue;
 
 CREATE POLICY "Release owners view gift queue"
   ON public.release_gift_queue
@@ -161,6 +173,9 @@ CREATE TABLE IF NOT EXISTS public.merch_inventory_adjustments (
 ALTER TABLE public.merch_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.merch_inventory_adjustments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins manage merch variants"
+  ON public.merch_variants;
+
 CREATE POLICY "Admins manage merch variants"
   ON public.merch_variants
   FOR ALL
@@ -178,6 +193,9 @@ CREATE POLICY "Admins manage merch variants"
       AND role = 'admin'
     )
   );
+
+DROP POLICY IF EXISTS "Admins manage merch inventory adjustments"
+  ON public.merch_inventory_adjustments;
 
 CREATE POLICY "Admins manage merch inventory adjustments"
   ON public.merch_inventory_adjustments

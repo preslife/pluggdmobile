@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
+import { MembershipGateSummary } from '@/components/MembershipGateSummary';
 
 import {
   Twitter,
@@ -178,6 +179,8 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
     setPreviewText,
     previewDuration,
     setPreviewDuration,
+    validationIssues,
+    previewSummary,
     loadRulesFor,
     saveRulesFor,
     deleteRulesFor,
@@ -332,7 +335,8 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
           console.error('[ContentComposer] Failed to sync membership gating', ruleError);
           toast({
             title: 'Membership gating sync failed',
-            description: 'Post created but membership gating could not be updated.',
+            description:
+              (ruleError as Error)?.message ?? 'Post created but membership gating could not be updated.',
             variant: 'destructive',
           });
         }
@@ -755,6 +759,14 @@ export const ContentComposer: React.FC<ContentComposerProps> = ({
                 </p>
               </div>
             </div>
+
+            <MembershipGateSummary
+              gateEnabled={gateEnabled}
+              validationIssues={validationIssues}
+              previewSummary={previewSummary}
+              previewText={previewText}
+              previewDuration={previewDuration}
+            />
           </div>
         ) : null}
       </div>

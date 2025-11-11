@@ -4,15 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Download, Music, Star, Filter } from 'lucide-react';
+import { Play, Download, Music, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
 
 interface SamplePack {
   id: string;
   user_id: string;
+  owner_id?: string | null;
+  owner_type?: 'user' | 'label' | null;
   title: string;
   description: string;
   cover_art_url: string;
@@ -256,97 +259,129 @@ export const SamplePackStore = () => {
 
       {/* Sample Packs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredPacks.map((pack) => (
-          <Card key={pack.id} className="group hover:shadow-lg transition-all duration-200">
-            <CardHeader className="p-0">
-              <div className="relative aspect-square overflow-hidden rounded-t-lg">
-                {pack.cover_art_url ? (
-                  <img
-                    src={pack.cover_art_url}
-                    alt={pack.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <Music className="w-12 h-12 text-muted-foreground" />
-                  </div>
-                )}
-                
-                {pack.is_featured && (
-                  <Badge className="absolute top-2 left-2 bg-yellow-500 text-black">
-                    <Star className="w-3 h-3 mr-1" />
-                    Featured
-                  </Badge>
-                )}
-                
-                {pack.preview_url && (
+        {filteredPacks.map((pack) => {
+          const membershipOwnerId = pack.owner_id ?? pack.user_id;
+          const membershipCtaHref =
+            pack.owner_type === 'label'
+              ? `/label/${membershipOwnerId}#membership`
+              : `/creator/${membershipOwnerId}#membership`;
+
+          return (
+            <SubscriptionGatedContent
+              key={pack.id}
+              contentId={pack.id}
+              contentType="sample_pack"
+              creatorId={membershipOwnerId}
+              ctaHref={membershipCtaHref}
+              fallbackText="Join this creator's membership to unlock the full sample pack and downloads."
+              previewContent={
+                pack.preview_url ? (
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="gap-2"
                     onClick={() => playPreview(pack.preview_url)}
                   >
                     <Play className="w-4 h-4" />
+                    Play 30s preview
                   </Button>
-                )}
-              </div>
-            </CardHeader>
-            
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                <div>
-                  <CardTitle className="text-lg leading-tight">{pack.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    by Producer
-                  </CardDescription>
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {pack.genre && (
-                    <Badge variant="secondary" className="text-xs">
-                      {pack.genre}
-                    </Badge>
-                  )}
-                  {pack.bpm_range && (
-                    <Badge variant="outline" className="text-xs">
-                      {pack.bpm_range} BPM
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-xs">
-                    {pack.sample_count} samples
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    {pack.total_downloads} downloads
+                ) : undefined
+              }
+              minimalWrapper
+              className="h-full"
+            >
+              <Card className="group hover:shadow-lg transition-all duration-200 h-full">
+                <CardHeader className="p-0">
+                  <div className="relative aspect-square overflow-hidden rounded-t-lg">
+                    {pack.cover_art_url ? (
+                      <img
+                        src={pack.cover_art_url}
+                        alt={pack.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                        <Music className="w-12 h-12 text-muted-foreground" />
+                      </div>
+                    )}
+                    
+                    {pack.is_featured && (
+                      <Badge className="absolute top-2 left-2 bg-yellow-500 text-black">
+                        <Star className="w-3 h-3 mr-1" />
+                        Featured
+                      </Badge>
+                    )}
+                    
+                    {pack.preview_url && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => playPreview(pack.preview_url)}
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
-                  <div className="text-lg font-bold">
-                    {(pack.price_pence || pack.price * 100) > 0 ? `£${((pack.price_pence || pack.price * 100) / 100).toFixed(2)}` : 'Free'}
-                  </div>
-                </div>
+                </CardHeader>
+                
+                <CardContent className="p-4 h-full">
+                  <div className="space-y-3">
+                    <div>
+                      <CardTitle className="text-lg leading-tight">{pack.title}</CardTitle>
+                      <CardDescription className="text-sm">
+                        by Producer
+                      </CardDescription>
+                    </div>
 
-                {(pack.price_pence || pack.price * 100) > 0 ? (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => purchaseSamplePack(pack.id, pack.price_pence || pack.price * 100)}
-                  >
-                    Purchase £{((pack.price_pence || pack.price * 100) / 100).toFixed(2)}
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => purchaseSamplePack(pack.id, 0)}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Free
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                    <div className="flex flex-wrap gap-1">
+                      {pack.genre && (
+                        <Badge variant="secondary" className="text-xs">
+                          {pack.genre}
+                        </Badge>
+                      )}
+                      {pack.bpm_range && (
+                        <Badge variant="outline" className="text-xs">
+                          {pack.bpm_range} BPM
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {pack.sample_count} samples
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        {pack.total_downloads} downloads
+                      </div>
+                      <div className="text-lg font-bold">
+                        {(pack.price_pence || pack.price * 100) > 0 ? `£${((pack.price_pence || pack.price * 100) / 100).toFixed(2)}` : 'Free'}
+                      </div>
+                    </div>
+
+                    {(pack.price_pence || pack.price * 100) > 0 ? (
+                      <Button 
+                        className="w-full" 
+                        onClick={() => purchaseSamplePack(pack.id, pack.price_pence || pack.price * 100)}
+                      >
+                        Purchase £{((pack.price_pence || pack.price * 100) / 100).toFixed(2)}
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => downloadFree(pack.id, pack.download_url)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Free
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </SubscriptionGatedContent>
+          );
+        })}
       </div>
 
       {filteredPacks.length === 0 && !loading && (

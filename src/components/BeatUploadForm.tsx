@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FileUpload } from '@/components/FileUpload';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
+import { MembershipGateSummary } from '@/components/MembershipGateSummary';
 
 type BeatFormData = {
   title: string;
@@ -99,6 +100,8 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
     setPreviewText,
     previewDuration,
     setPreviewDuration,
+    validationIssues,
+    previewSummary,
     saveRulesFor,
   } = useMembershipAccessRuleEditor({
     contentType: 'beat',
@@ -296,8 +299,13 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
 
       try {
         await saveRulesFor(beatData.id);
-      } catch (error) {
+      } catch (error: any) {
         console.error('[BeatUploadForm] Failed to sync membership gating', error);
+        toast({
+          title: 'Membership gating not saved',
+          description: error?.message ?? 'Review your gating selections and try again.',
+          variant: 'destructive',
+        });
       }
 
 
@@ -875,6 +883,14 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
                       </p>
                     </div>
                   </div>
+
+                  <MembershipGateSummary
+                    gateEnabled={gateEnabled}
+                    validationIssues={validationIssues}
+                    previewSummary={previewSummary}
+                    previewText={previewText}
+                    previewDuration={previewDuration}
+                  />
                 </div>
               ) : null}
             </div>

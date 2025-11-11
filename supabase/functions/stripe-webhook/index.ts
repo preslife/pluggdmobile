@@ -7,7 +7,7 @@ import {
   syncMembershipFromSubscription,
   type Logger,
 } from "./helpers.ts";
-import { createPreferenceCache, shouldSendNotification } from "../_shared/notificationPreferences.ts";
+import { createPreferenceCache, executeWithNotificationPreference } from "../_shared/notificationPreferences.ts";
 
 type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -983,17 +983,12 @@ serve(async (req) => {
                   const fanName = fanProfile?.full_name || fanProfile?.username || null;
                   const tipAmount = tipTotal ?? tip.amount ?? 0;
 
-                  const emailPromises: Array<Promise<unknown>> = [];
-
-                  const notifyFan = await shouldSendNotification(
+                  const fanEmailResult = await executeWithNotificationPreference(
                     supabaseClient as any,
                     preferenceCache,
                     tip.fan_id,
                     'notify_purchases',
-                  );
-
-                  if (notifyFan) {
-                    emailPromises.push(
+                    () =>
                       supabaseClient.functions.invoke('send-lifecycle-emails', {
                         body: {
                           user_id: tip.fan_id,
@@ -1006,20 +1001,18 @@ serve(async (req) => {
                           },
                         },
                       }),
-                    );
-                  } else {
+                  );
+
+                  if (fanEmailResult.skipped) {
                     await logStep('Skipping fan tip receipt email due to preferences', { fanId: tip.fan_id });
                   }
 
-                  const notifyArtist = await shouldSendNotification(
+                  const artistEmailResult = await executeWithNotificationPreference(
                     supabaseClient as any,
                     preferenceCache,
                     tip.artist_id,
                     'notify_supporters',
-                  );
-
-                  if (notifyArtist) {
-                    emailPromises.push(
+                    () =>
                       supabaseClient.functions.invoke('send-lifecycle-emails', {
                         body: {
                           user_id: tip.artist_id,
@@ -1031,13 +1024,10 @@ serve(async (req) => {
                           },
                         },
                       }),
-                    );
-                  } else {
-                    await logStep('Skipping creator tip notification due to preferences', { artistId: tip.artist_id });
-                  }
+                  );
 
-                  if (emailPromises.length > 0) {
-                    await Promise.allSettled(emailPromises);
+                  if (artistEmailResult.skipped) {
+                    await logStep('Skipping creator tip notification due to preferences', { artistId: tip.artist_id });
                   }
                 } catch (emailError) {
                   const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);

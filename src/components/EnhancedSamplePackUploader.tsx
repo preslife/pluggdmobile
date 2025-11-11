@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import useMembershipAccessRuleEditor from '@/hooks/useMembershipAccessRuleEditor';
+import { MembershipGateSummary } from '@/components/MembershipGateSummary';
 
 interface AudioFile {
   file: File;
@@ -69,6 +70,8 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
     setPreviewText,
     previewDuration,
     setPreviewDuration,
+    validationIssues,
+    previewSummary,
     saveRulesFor,
   } = useMembershipAccessRuleEditor({
     contentType: 'sample_pack',
@@ -258,8 +261,13 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
 
       try {
         await saveRulesFor(samplePack.id);
-      } catch (syncError) {
+      } catch (syncError: any) {
         console.error('[EnhancedSamplePackUploader] Failed to sync membership gating', syncError);
+        toast({
+          title: 'Membership gating not saved',
+          description: syncError?.message ?? 'Fix the gating settings and try again.',
+          variant: 'destructive',
+        });
       }
 
       setUploadProgress(100);
@@ -548,6 +556,14 @@ export const EnhancedSamplePackUploader = ({ onSuccess }: EnhancedSamplePackUplo
                 </p>
               </div>
             </div>
+
+            <MembershipGateSummary
+              gateEnabled={gateEnabled}
+              validationIssues={validationIssues}
+              previewSummary={previewSummary}
+              previewText={previewText}
+              previewDuration={previewDuration}
+            />
           </div>
         ) : null}
       </div>

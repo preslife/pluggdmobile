@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "npm:resend@2.0.0";
+import { createPreferenceCache, executeWithNotificationPreference, NotificationPreferenceKey } from "../_shared/notificationPreferences.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -196,6 +197,22 @@ const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((d
   }
 };
 
+const emailPreferenceMap: Partial<Record<EmailRequest['email_type'], NotificationPreferenceKey>> = {
+  fan_tip_receipt: 'notify_purchases',
+  creator_tip_notification: 'notify_supporters',
+  fan_welcome: 'notify_email_marketing',
+  fan_new_from_creators: 'notify_email_marketing',
+  fan_unlock_perks: 'notify_email_marketing',
+  fan_your_library: 'notify_email_marketing',
+  creator_welcome: 'notify_email_marketing',
+  creator_first_earnings: 'notify_email_marketing',
+  creator_grow_faster: 'notify_email_marketing',
+  creator_audience_insights: 'notify_email_marketing',
+  live_session_reminder: 'notify_live_sessions',
+};
+
+const preferenceCache = createPreferenceCache();
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -252,17 +269,52 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Unknown email type: ${email_type}`);
     }
 
-    // Send email via Resend
     const subject = typeof template.subject === 'function' ? template.subject(emailData) : template.subject;
 
-    const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: "Pluggd <no-reply@resend.dev>",
-      to: [recipientEmail],
-      subject,
-      html: template.html(emailData),
-    });
+    const sendEmail = async () => {
+      const { data: result, error: emailError } = await resend.emails.send({
+        from: "Pluggd <no-reply@resend.dev>",
+        to: [recipientEmail],
+        subject,
+        html: template.html(emailData),
+      });
 
-    if (emailError) throw emailError;
+      if (emailError) throw emailError;
+      return result;
+    };
+
+    const preferenceKey = user_id ? emailPreferenceMap[email_type] : undefined;
+
+    let emailResult: { id?: string } | null = null;
+
+    if (user_id && preferenceKey) {
+      const preferenceResult = await executeWithNotificationPreference(
+        supabase as any,
+        preferenceCache,
+        user_id,
+        preferenceKey,
+        sendEmail,
+      );
+
+      if (preferenceResult.skipped) {
+        console.log('Lifecycle email skipped due to preferences', { user_id, email_type, preferenceKey });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            email_type,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        );
+      }
+
+      emailResult = preferenceResult.result ?? null;
+    } else {
+      emailResult = await sendEmail();
+    }
 
     if (user_id) {
       await supabase
