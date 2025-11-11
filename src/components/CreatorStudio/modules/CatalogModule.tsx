@@ -471,7 +471,7 @@ export const CatalogModule: React.FC = () => {
     const totalRevenue = items.reduce((s, i) => s + safeNum(i.revenue), 0);
     const approved = items.filter(i => i.status === 'approved').length;
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-2">
         {[
           { label: 'Total Items', value: items.length },
           { label: 'Total Sales', value: totalSales },
@@ -515,7 +515,12 @@ export const CatalogModule: React.FC = () => {
               <div className="absolute top-2 right-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="bg-background/70 backdrop-blur border border-border hover:bg-background">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="bg-background/70 backdrop-blur border border-border hover:bg-background"
+                      aria-label={`Open actions for ${item.title}`}
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

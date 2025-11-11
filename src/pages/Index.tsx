@@ -1542,7 +1542,7 @@ function GenreGrid({
   role: "fans" | "creators";
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
       {genres.map((g) => (
         <button
           key={g}
@@ -1697,7 +1697,7 @@ function PlacementsRow() {
     { src: demoImage(903, 800, 800, "Still ah Link", "Elevatetoday"), title: "Still ah Link", artist: "Elevatetoday" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
       {placements.map((p, i) => (
         <div
           key={i}

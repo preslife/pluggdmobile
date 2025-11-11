@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
+import { setMeta } from '@/lib/seo';
 
 type SEOConfig = {
   title?: string;
@@ -43,10 +44,27 @@ const SEOHelmet = ({ config, releaseData, artistData }: SEOHelmetProps) => {
   const [canonicalUrl, setCanonicalUrl] = useState('');
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const baseUrl = window.location.origin;
-    const fullUrl = `${baseUrl}${location.pathname}`;
-    setCanonicalUrl(config.canonical || fullUrl);
-  }, [location.pathname, config.canonical]);
+    const canonicalPath = config.canonical ?? location.pathname;
+    const absoluteCanonical = canonicalPath.startsWith('http')
+      ? canonicalPath
+      : `${baseUrl}${canonicalPath}`;
+
+    setCanonicalUrl(absoluteCanonical);
+
+    if (config.title) {
+      setMeta(
+        config.title,
+        config.description,
+        canonicalPath,
+        config.ogImage,
+      );
+    }
+  }, [config.title, config.description, config.canonical, config.ogImage, location.pathname]);
 
   // Generate structured data based on content type
   const generateStructuredData = () => {
