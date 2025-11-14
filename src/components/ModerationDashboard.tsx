@@ -11,10 +11,19 @@ import { logger } from '@/lib/logger';
 import { useLogger } from '@/hooks/useLogger';
 import { Checkbox } from '@/components/ui/checkbox';
 
+type ModerationStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'investigating'
+  | 'resolved'
+  | 'dismissed'
+  | 'appealed';
+
 type ModerationItem = {
   id: string;
   type: 'release' | 'comment' | 'profile' | 'report';
-  status: 'pending' | 'approved' | 'rejected';
+  status: ModerationStatus;
   created_at: string;
   reported_by?: string;
   reason?: string;
@@ -80,7 +89,7 @@ const ModerationDashboard = () => {
       const { data: reportsData, error: reportsError } = await supabase
         .from('content_reports')
         .select('*')
-        .eq('status', 'pending')
+        .in('status', ['pending', 'investigating', 'appealed'])
         .order('created_at', { ascending: false });
 
       if (reportsError) {
@@ -132,7 +141,7 @@ const ModerationDashboard = () => {
           transformedItems.push({
             id: item.id,
             type: item.item_type as 'release' | 'comment' | 'profile' | 'report',
-            status: item.status as 'pending' | 'approved' | 'rejected',
+            status: item.status as ModerationStatus,
             created_at: item.created_at,
             severity: item.severity as 'low' | 'medium' | 'high',
             reason: item.reason,
@@ -178,7 +187,7 @@ const ModerationDashboard = () => {
           transformedItems.push({
             id: report.id,
             type: 'report',
-            status: 'pending',
+            status: report.status as ModerationStatus,
             created_at: report.created_at,
             severity: 'medium',
             reason: report.reason,
@@ -194,7 +203,9 @@ const ModerationDashboard = () => {
       // Calculate real stats
       const pendingReleases = transformedItems.filter(item => item.type === 'release' && item.status === 'pending').length;
       const pendingComments = transformedItems.filter(item => item.type === 'comment' && item.status === 'pending').length;
-      const pendingReports = transformedItems.filter(item => item.type === 'report' && item.status === 'pending').length;
+      const pendingReports = transformedItems.filter(item =>
+        item.type === 'report' && ['pending', 'investigating', 'appealed'].includes(item.status)
+      ).length;
 
       // Get today's moderation actions count
       const today = new Date().toISOString().split('T')[0];
@@ -229,7 +240,9 @@ const ModerationDashboard = () => {
   const updateStatsFromItems = (items: ModerationItem[]) => {
     const pendingReleases = items.filter(item => item.type === 'release' && item.status === 'pending').length;
     const pendingComments = items.filter(item => item.type === 'comment' && item.status === 'pending').length;
-    const pendingReports = items.filter(item => item.type === 'report' && item.status === 'pending').length;
+    const pendingReports = items.filter(item =>
+      item.type === 'report' && ['pending', 'investigating', 'appealed'].includes(item.status)
+    ).length;
 
     setStats(prev => ({
       ...prev,
@@ -269,8 +282,10 @@ const ModerationDashboard = () => {
         throw new Error(data.error as string);
       }
 
-      const results = (data?.results as { itemId: string; status?: ModerationItem['status']; reportStatus?: string; success: boolean }[] | undefined) || [];
-      const successfulIds = results.filter(result => result.success && result.status).map(result => result.itemId);
+      const results = (data?.results as { itemId: string; status?: ModerationStatus; reportStatus?: string; success: boolean }[] | undefined) || [];
+      const successfulIds = results
+        .filter(result => result.success && (result.status || result.reportStatus))
+        .map(result => result.itemId);
 
       if (!successfulIds.length) {
         throw new Error('No moderation items were updated');
@@ -279,13 +294,21 @@ const ModerationDashboard = () => {
       setModerationItems(prev => {
         const updated = prev.map(item => {
           const result = results.find(r => r.itemId === item.id);
-          if (!result || !result.status) {
+          if (!result) {
+            return item;
+          }
+
+          const nextStatus: ModerationStatus | undefined =
+            result.status ??
+            (item.type === 'report' && result.reportStatus ? (result.reportStatus as ModerationStatus) : undefined);
+
+          if (!nextStatus) {
             return item;
           }
 
           return {
             ...item,
-            status: result.status,
+            status: nextStatus,
             content: {
               ...item.content,
               report_status: result.reportStatus ?? item.content?.report_status,
@@ -385,6 +408,26 @@ const ModerationDashboard = () => {
         return <Badge variant="outline">Low</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status: ModerationStatus) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="default">Approved</Badge>;
+      case 'resolved':
+        return <Badge variant="default">Resolved</Badge>;
+      case 'rejected':
+      case 'dismissed':
+        return <Badge variant="destructive">{status === 'rejected' ? 'Closed' : 'Dismissed'}</Badge>;
+      case 'investigating':
+        return <Badge variant="secondary">Investigating</Badge>;
+      case 'appealed':
+        return <Badge variant="secondary">Appealed</Badge>;
+      default:
+        return <Badge variant="outline" className="capitalize">
+          {status}
+        </Badge>;
     }
   };
 
@@ -491,9 +534,9 @@ const ModerationDashboard = () => {
             )}
 
             {item.status !== 'pending' && (
-              <Badge variant={item.status === 'approved' ? 'default' : 'destructive'} className="capitalize">
-                {item.status === 'rejected' ? 'closed' : item.status}
-              </Badge>
+              <div>
+                {getStatusBadge(item.status)}
+              </div>
             )}
           </div>
         </div>

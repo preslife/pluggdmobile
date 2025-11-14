@@ -5,13 +5,16 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Bell, Mail, Users } from 'lucide-react';
+import { Bell, Mail, Users, Loader2, ArrowRight } from 'lucide-react';
 import { NotificationPreferenceKey, useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { type ComponentType, type SVGProps, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationPreferencesProps {
   variant?: 'full' | 'compact';
   className?: string;
+  showManageLink?: boolean;
 }
 
 interface PreferenceDefinition {
@@ -138,8 +141,17 @@ const shouldRenderItem = (variant: 'full' | 'compact', item: PreferenceDefinitio
 const NotificationPreferencesCard = ({
   variant = 'full',
   className,
+  showManageLink = true,
 }: NotificationPreferencesProps) => {
-  const { preferences, loading, error, updating, updatePreference, refresh } = useNotificationPreferences();
+  const {
+    preferences,
+    lastUpdatedAt,
+    loading,
+    error,
+    updating,
+    updatePreference,
+    refresh,
+  } = useNotificationPreferences();
 
   const sections = useMemo(() => {
     if (variant === 'full') {
@@ -205,13 +217,18 @@ const NotificationPreferencesCard = ({
                         </Label>
                         <p className="text-sm text-muted-foreground">{item.description}</p>
                       </div>
-                      <Switch
-                        id={item.key}
-                        checked={checked}
-                        onCheckedChange={(value) => updatePreference(item.key, value)}
-                        disabled={isUpdating}
-                        aria-label={item.label}
-                      />
+                      <div className="flex items-center gap-2">
+                        {isUpdating && (
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />
+                        )}
+                        <Switch
+                          id={item.key}
+                          checked={checked}
+                          onCheckedChange={(value) => updatePreference(item.key, value)}
+                          disabled={isUpdating}
+                          aria-label={item.label}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -220,6 +237,21 @@ const NotificationPreferencesCard = ({
           );
         })}
       </CardContent>
+      <div className="flex items-center justify-between border-t px-6 py-3 text-xs text-muted-foreground">
+        <span>
+          {lastUpdatedAt
+            ? `Updated ${formatDistanceToNow(new Date(lastUpdatedAt), { addSuffix: true })}`
+            : 'Updated moments ago'}
+        </span>
+        {variant === 'compact' && showManageLink && (
+          <Button variant="link" size="sm" className="px-0" asChild>
+            <Link to="/settings/notifications" className="flex items-center gap-1">
+              Open settings
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        )}
+      </div>
     </Card>
   );
 };

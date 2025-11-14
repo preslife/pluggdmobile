@@ -8,11 +8,23 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Flag } from 'lucide-react';
 
+type AllowedReportTarget = 'release' | 'beat' | 'post' | 'profile' | 'comment' | 'blog_post';
+
 interface ReportButtonProps {
-  targetType: 'release' | 'comment' | 'profile' | 'beat' | 'course' | 'artist' | 'blog_post' | 'sample_pack' | 'post';
+  targetType: AllowedReportTarget;
   targetId: string;
   className?: string;
 }
+
+const REPORT_REASONS = [
+  { value: "inappropriate_content", label: "Inappropriate Content" },
+  { value: "spam", label: "Spam" },
+  { value: "harassment", label: "Harassment" },
+  { value: "copyright_infringement", label: "Copyright Infringement" },
+  { value: "hate_speech", label: "Hate Speech" },
+  { value: "violence", label: "Violence or Threats" },
+  { value: "other", label: "Other" },
+] as const;
 
 const ReportButton = ({ targetType, targetId, className = "" }: ReportButtonProps) => {
   const { user } = useAuth();
@@ -100,13 +112,11 @@ const ReportButton = ({ targetType, targetId, className = "" }: ReportButtonProp
                 <SelectValue placeholder="Select a reason" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="inappropriate_content">Inappropriate Content</SelectItem>
-                <SelectItem value="spam">Spam</SelectItem>
-                <SelectItem value="harassment">Harassment</SelectItem>
-                <SelectItem value="copyright_infringement">Copyright Infringement</SelectItem>
-                <SelectItem value="hate_speech">Hate Speech</SelectItem>
-                <SelectItem value="violence">Violence or Threats</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {REPORT_REASONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

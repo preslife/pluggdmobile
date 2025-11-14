@@ -9,6 +9,26 @@ export type SubmitReportPayload = {
   description?: string;
 };
 
+export type ReportReason =
+  | "inappropriate_content"
+  | "spam"
+  | "harassment"
+  | "copyright_infringement"
+  | "hate_speech"
+  | "violence"
+  | "other";
+
+const ALLOWED_TARGET_TYPES: ReportTargetType[] = ["release", "beat", "post", "profile", "comment", "blog_post"];
+const ALLOWED_REPORT_REASONS: ReportReason[] = [
+  "inappropriate_content",
+  "spam",
+  "harassment",
+  "copyright_infringement",
+  "hate_speech",
+  "violence",
+  "other",
+];
+
 export type CreateClientFn = (
   supabaseUrl: string,
   supabaseKey: string,
@@ -98,8 +118,32 @@ export const resolveTargetOwner = async (
         metadata: { username: data.username ?? null, type: "profile" },
       };
     }
-    case "comment":
-    case "blog_post":
+    case "comment": {
+      const { data, error } = await serviceClient
+        .from("comments")
+        .select("id, user_id, post_id")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (error) throw new Error(`Failed to load comment: ${error.message}`);
+      if (!data) return { ownerId: null, metadata: null };
+      return {
+        ownerId: data.user_id,
+        metadata: { post_id: data.post_id, type: "comment" },
+      };
+    }
+    case "blog_post": {
+      const { data, error } = await serviceClient
+        .from("blog_posts")
+        .select("id, created_by, title")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (error) throw new Error(`Failed to load blog post: ${error.message}`);
+      if (!data) return { ownerId: null, metadata: null };
+      return {
+        ownerId: data.created_by ?? null,
+        metadata: { title: data.title ?? null, type: "blog_post" },
+      };
+    }
     default:
       return { ownerId: null, metadata: null };
   }
@@ -161,9 +205,9 @@ export const createSubmitReportHandler = ({
       return jsonResponse({ error: "Request body required" }, 400, corsHeaders);
     }
 
-    const { targetType, targetId, reason, description } = payload;
+  const { targetType, targetId, reason, description } = payload;
 
-    if (!targetType || !targetId || !reason) {
+  if (!targetType || !targetId || !reason) {
       await logger.warn("submit_report_missing_fields", { targetType, targetId, hasReason: Boolean(reason) });
       return jsonResponse({ error: "targetType, targetId, and reason are required" }, 400, corsHeaders);
     }
@@ -173,17 +217,22 @@ export const createSubmitReportHandler = ({
       return jsonResponse({ error: "Invalid targetId" }, 400, corsHeaders);
     }
 
-    const normalizedReason = reason.trim();
-    if (!normalizedReason) {
-      await logger.warn("submit_report_empty_reason");
-      return jsonResponse({ error: "reason must not be empty" }, 400, corsHeaders);
-    }
+  const normalizedReason = reason.trim();
+  if (!normalizedReason) {
+    await logger.warn("submit_report_empty_reason");
+    return jsonResponse({ error: "reason must not be empty" }, 400, corsHeaders);
+  }
 
-    const allowedTypes: ReportTargetType[] = ["release", "beat", "post", "profile", "comment", "blog_post"];
-    if (!allowedTypes.includes(targetType)) {
-      await logger.warn("submit_report_invalid_type", { targetType });
-      return jsonResponse({ error: "Unsupported targetType" }, 400, corsHeaders);
-    }
+  if (!ALLOWED_TARGET_TYPES.includes(targetType)) {
+    await logger.warn("submit_report_invalid_type", { targetType });
+    return jsonResponse({ error: "Unsupported targetType" }, 400, corsHeaders);
+  }
+
+  const normalizedReasonKey = normalizedReason.toLowerCase().replace(/\s+/g, "_") as ReportReason;
+  if (!ALLOWED_REPORT_REASONS.includes(normalizedReasonKey)) {
+    await logger.warn("submit_report_invalid_reason", { reason });
+    return jsonResponse({ error: "Unsupported reason" }, 400, corsHeaders);
+  }
 
     try {
       const { ownerId, metadata } = await resolveTargetOwner(serviceClient, targetType, targetId);
@@ -212,7 +261,7 @@ export const createSubmitReportHandler = ({
         target_type: targetType,
         target_id: targetId,
         target_owner_id: ownerId,
-        reason: normalizedReason,
+        reason: normalizedReasonKey,
         description: description?.trim() ? description.trim() : null,
         status: "pending",
       } as const;

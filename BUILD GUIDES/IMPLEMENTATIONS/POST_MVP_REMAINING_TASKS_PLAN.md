@@ -155,12 +155,14 @@
   - Add notification dropdown/panel with pagination, mark-as-read, and preference toggles in settings.
   - Keep push notifications optional; rely on toasts + in-app feed for MVP.
 - **QA**: Integration tests ensuring notifications appear for events triggered in QA scripts.
+- **TODO**: Re-run the notifications smoke once everything ships (broadcast sends, bell dropdown, `/notifications` page, preference toggles) and log the pass/fail results; owner wants to batch all testing at the very end.
 
 ### D3. Observability Coverage
 - **Tasks**:
   - Instrument key flows (checkout success/failure, membership changes, gating errors, report submissions) with `system_logs` and metrics tables.
   - Build LogRocket/Sentry dashboards or Supabase charts for quick triage.
 - **QA**: Validate logs via staged test events.
+- **TODO**: When the final QA window opens, query `vw_notification_skip_summary`, `vw_trust_safety_report_status`, and `vw_webhook_delivery_errors` to confirm the new metrics/views reflect recent traffic; capture screenshots for the release checklist.
 
 ---
 
@@ -195,6 +197,7 @@
 ### X1. QA & Testing Strategy
 - Introduce Playwright smoke suite for checkout, memberships, gating, reporting.
 - Extend Cypress coverage where available; add Jest unit tests for new hooks and utilities.
+- **TODO (Milestone D1)**: After all trust & safety work lands, run the reporting/blocking smoke walkthrough (submit report → admin resolve → block/unblock) on staging and log results; owner noted this should wait until the very end.
 
 ### X2. Documentation & Support
 - Update `/docs` with commerce, memberships, and moderation guides.

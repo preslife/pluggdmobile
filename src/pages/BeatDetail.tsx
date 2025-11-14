@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +32,7 @@ import { formatCurrency } from '@/lib/utils';
 import SEOHelmet from '@/components/SEOHelmet';
 import { SubscriptionGatedContent } from '@/components/SubscriptionGatedContent';
 import { fetchMembershipAccessRules } from '@/services/memberships/accessRules';
+import { describeMembershipGate, MembershipTierSummary } from '@/lib/membershipGateSummary';
 
 type Beat = {
   id: string;
@@ -82,6 +83,8 @@ const BeatDetail = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [relatedBeats, setRelatedBeats] = useState<Beat[]>([]);
   const [isLicensingModalOpen, setIsLicensingModalOpen] = useState(false);
+  const [gateRule, setGateRule] = useState<Awaited<ReturnType<typeof fetchMembershipAccessRules>> | null>(null);
+  const [gateTiers, setGateTiers] = useState<MembershipTierSummary[]>([]);
 
   const resolvedArtistName = beat
     ? beat.uploaded_by_admin
@@ -137,8 +140,10 @@ const BeatDetail = () => {
           beatWithProfile.owner_id = accessRule.owner_id ?? beatData.owner_id ?? beatData.user_id ?? null;
           beatWithProfile.owner_type = accessRule.owner_type ?? beatData.owner_type ?? null;
         }
+        setGateRule(accessRule ?? null);
       } catch (lookupError) {
         console.error('Failed to load membership access rules', lookupError);
+        setGateRule(null);
       }
 
       setBeat(beatWithProfile);
@@ -171,6 +176,38 @@ const BeatDetail = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    const loadTiers = async () => {
+      if (!gateRule?.owner_id || !gateRule.owner_type) {
+        if (active) setGateTiers([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("membership_tiers")
+        .select("id, name, tier_order, price_monthly, price_yearly, price_lifetime, currency")
+        .eq("owner_id", gateRule.owner_id)
+        .eq("owner_type", gateRule.owner_type)
+        .eq("status", "active")
+        .order("tier_order", { ascending: true });
+
+      if (!active) return;
+
+      if (error) {
+        console.error("Failed to load membership tiers for gating", error);
+        setGateTiers([]);
+      } else {
+        setGateTiers((data as MembershipTierSummary[]) ?? []);
+      }
+    };
+
+    void loadTiers();
+    return () => {
+      active = false;
+    };
+  }, [gateRule]);
 
   useEffect(() => {
     if (!beat) {
@@ -261,6 +298,10 @@ const BeatDetail = () => {
   const membershipCtaHref = beat.owner_id
     ? `/creator/${beat.owner_id}#membership`
     : `/creator/${beat.user_id}#membership`;
+  const gateSummary = useMemo(
+    () => describeMembershipGate(gateRule ?? undefined, gateTiers),
+    [gateRule, gateTiers],
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -407,6 +448,21 @@ const BeatDetail = () => {
                           <p className="text-sm text-muted-foreground">
                             {beat.description}
                           </p>
+                        </div>
+                      </>
+                    )}
+
+                    {gateRule && (
+                      <>
+                        <Separator />
+                        <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 space-y-2">
+                          <Badge variant="secondary">Membership exclusive</Badge>
+                          <p className="text-sm text-muted-foreground">
+                            {gateSummary ?? "Only members of this creator can unlock the full beat experience."}
+                          </p>
+                          <Button asChild size="sm" variant="outline">
+                            <a href={membershipCtaHref}>View membership</a>
+                          </Button>
                         </div>
                       </>
                     )}

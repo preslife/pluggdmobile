@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptionalStudioContext } from "@/contexts/StudioContext";
@@ -28,6 +31,11 @@ type DiscordTokenRow = Database["public"]["Tables"]["membership_discord_tokens"]
 type ProfileSummary = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
   "id" | "display_name" | "username" | "avatar_url"
+>;
+
+type TierOption = Pick<
+  Database["public"]["Tables"]["membership_tiers"]["Row"],
+  "id" | "name" | "status"
 >;
 
 const getStatusBadge = (token: DiscordTokenRow) => {
@@ -120,6 +128,11 @@ const StudioMembershipDiscordPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingTokenId, setSyncingTokenId] = useState<string | null>(null);
+  const [guildIdInput, setGuildIdInput] = useState("");
+  const [roleMappings, setRoleMappings] = useState<Record<string, string>>({});
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [tierOptions, setTierOptions] = useState<TierOption[]>([]);
 
   useEffect(() => {
     setMeta(
@@ -128,6 +141,65 @@ const StudioMembershipDiscordPage = () => {
       "/dashboard/studio/membership/discord"
     );
   }, []);
+
+  useEffect(() => {
+    if (!ownerType || !ownerId || ownerType !== "profile") {
+      setGuildIdInput("");
+      setRoleMappings({});
+      setTierOptions([]);
+      setSettingsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const loadSettings = async () => {
+      setSettingsLoading(true);
+      try {
+        const [{ data: profileData, error: profileError }, { data: tierData, error: tierError }] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, discord_guild_id, discord_role_map")
+            .eq("id", ownerId)
+            .maybeSingle(),
+          supabase
+            .from("membership_tiers")
+            .select("id, name, status")
+            .eq("owner_id", ownerId)
+            .eq("owner_type", ownerType)
+            .order("tier_order", { ascending: true }),
+        ]);
+
+        if (profileError) throw profileError;
+        if (tierError) throw tierError;
+
+        if (!isMounted) return;
+
+        setGuildIdInput(profileData?.discord_guild_id ?? "");
+        const rawMap = (profileData?.discord_role_map as Record<string, string> | null) ?? {};
+        const normalisedMap = Object.fromEntries(
+          Object.entries(rawMap).map(([tierId, roleId]) => [tierId, roleId ?? ""]),
+        );
+        setRoleMappings(normalisedMap);
+        setTierOptions((tierData as TierOption[]) ?? []);
+      } catch (err) {
+        console.error("[StudioMembershipDiscord] settings fetch failed", err);
+        if (isMounted) {
+          setTierOptions([]);
+          setGuildIdInput("");
+          setRoleMappings({});
+        }
+      } finally {
+        if (isMounted) {
+          setSettingsLoading(false);
+        }
+      }
+    };
+
+    void loadSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, [ownerId, ownerType]);
 
   const fetchTokens = useCallback(async () => {
     if (!ownerType || !ownerId) {
@@ -208,6 +280,50 @@ const StudioMembershipDiscordPage = () => {
   useEffect(() => {
     void fetchTokens();
   }, [fetchTokens]);
+
+  const handleRoleMappingChange = useCallback((tierId: string, value: string) => {
+    setRoleMappings((prev) => ({
+      ...prev,
+      [tierId]: value,
+    }));
+  }, []);
+
+  const handleSaveSettings = useCallback(async () => {
+    if (!ownerId || ownerType !== "profile") return;
+
+    const sanitisedMap = Object.fromEntries(
+      Object.entries(roleMappings)
+        .map(([tierId, roleId]) => [tierId, roleId.trim()])
+        .filter(([, roleId]) => Boolean(roleId)),
+    );
+
+    setSettingsSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          discord_guild_id: guildIdInput.trim() || null,
+          discord_role_map: Object.keys(sanitisedMap).length ? sanitisedMap : null,
+        })
+        .eq("id", ownerId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Discord settings saved",
+        description: "Guild and role mapping updated successfully.",
+      });
+    } catch (err: any) {
+      console.error("[StudioMembershipDiscord] save settings error", err);
+      toast({
+        title: "Unable to save settings",
+        description: err?.message ?? "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setSettingsSaving(false);
+    }
+  }, [guildIdInput, ownerId, ownerType, roleMappings, toast]);
 
   const handleSyncToken = useCallback(
     async (token: DiscordTokenRow) => {
@@ -416,6 +532,104 @@ const StudioMembershipDiscordPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {ownerType === "profile" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Discord server settings</CardTitle>
+              <CardDescription>Link your guild and map membership tiers to Discord role IDs.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {settingsLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-40 w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="discord-guild-id">Discord server ID</Label>
+                      <Input
+                        id="discord-guild-id"
+                        value={guildIdInput}
+                        onChange={(event) => setGuildIdInput(event.target.value)}
+                        placeholder="123456789012345678"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enable developer mode in Discord → Right click your server name → Copy Server ID.
+                      </p>
+                    </div>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p className="font-medium">Need help?</p>
+                      <p>
+                        Invite the Pluggd bot to your guild, ensure it has “Manage Roles”, and keep its role above the ones you want to
+                        assign. Mapping a tier below lets us grant the right role automatically after checkout.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Membership tier role mapping</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Optional. Provide the Discord role ID for each tier to grant on successful sync.
+                        </p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setRoleMappings({})}
+                        disabled={settingsSaving || Object.keys(roleMappings).length === 0}
+                      >
+                        Clear mappings
+                      </Button>
+                    </div>
+
+                    {tierOptions.filter((tier) => tier.status === "active").length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Publish a membership tier to configure role mapping.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {tierOptions
+                          .filter((tier) => tier.status === "active")
+                          .map((tier) => (
+                            <div key={tier.id} className="space-y-1">
+                              <Label htmlFor={`role-${tier.id}`} className="text-sm font-medium">
+                                {tier.name}
+                              </Label>
+                              <Input
+                                id={`role-${tier.id}`}
+                                placeholder="Discord role ID"
+                                value={roleMappings[tier.id] ?? ""}
+                                onChange={(event) => handleRoleMappingChange(tier.id, event.target.value)}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveSettings} disabled={settingsSaving}>
+                      {settingsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Save settings
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Alert>
+            <AlertTitle>Discord settings are read-only in label workspaces</AlertTitle>
+            <AlertDescription>
+              Switch to a creator profile to configure guild IDs and role mappings. You can still view token activity below.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>

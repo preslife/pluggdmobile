@@ -23,10 +23,14 @@ interface Notification {
   related_type?: string | null;
 }
 
+const PAGE_SIZE = 20;
+
 export const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [currentLimit, setCurrentLimit] = useState(PAGE_SIZE);
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -47,7 +51,7 @@ export const NotificationBell = () => {
     }
   }, [user]);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (limit?: number) => {
     if (!user) {
       setNotifications([]);
       setLoading(false);
@@ -55,8 +59,11 @@ export const NotificationBell = () => {
     }
 
     try {
-      setLoading(true);
-      const { data, error } = await supabase.rpc('notifications_list_recent', { p_limit: 20 });
+      if (!limit) {
+        setLoading(true);
+      }
+      const targetLimit = limit ?? currentLimit;
+      const { data, error } = await supabase.rpc('notifications_list_recent', { p_limit: targetLimit });
       if (error) throw error;
 
       const notificationList = ((data as Notification[]) || []).map((notification) => ({
@@ -65,13 +72,15 @@ export const NotificationBell = () => {
         read_at: notification.read_at ?? null,
       }));
       setNotifications(notificationList);
+      setCurrentLimit(targetLimit);
       await refreshUnreadCount();
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [user, refreshUnreadCount]);
+  }, [user, refreshUnreadCount, currentLimit]);
 
   useEffect(() => {
     const handler = () => {
@@ -121,7 +130,7 @@ export const NotificationBell = () => {
           });
 
           await refreshUnreadCount();
-          await fetchNotifications();
+          await fetchNotifications(currentLimit);
         }
       )
       .subscribe();
@@ -151,7 +160,7 @@ export const NotificationBell = () => {
       console.error('Error marking notification as read:', error);
     } finally {
       await refreshUnreadCount();
-      await fetchNotifications();
+      await fetchNotifications(currentLimit);
     }
   };
 
@@ -164,9 +173,18 @@ export const NotificationBell = () => {
       console.error('Error marking all notifications as read:', error);
     } finally {
       await refreshUnreadCount();
-      await fetchNotifications();
+      await fetchNotifications(PAGE_SIZE);
     }
   };
+
+  const handleLoadMore = async () => {
+    if (loadingMore) return;
+    const nextLimit = currentLimit + PAGE_SIZE;
+    setLoadingMore(true);
+    await fetchNotifications(nextLimit);
+  };
+
+  const canLoadMore = notifications.length >= currentLimit;
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -245,7 +263,6 @@ export const NotificationBell = () => {
                     !notification.read_at ? 'border-primary/50 bg-primary/5' : 'bg-card/50'
                   }`}
                   onClick={async () => {
-                    // Navigate to related entity if provided
                     try {
                       if (notification.related_type === 'release' && notification.related_id) {
                         navigate(`/release/${notification.related_id}`);
@@ -290,6 +307,28 @@ export const NotificationBell = () => {
                   </CardContent>
                 </Card>
               ))}
+              {canLoadMore && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Loading…' : 'Load older notifications'}
+                </Button>
+              )}
+              <Button
+                variant="link"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/notifications');
+                }}
+              >
+                View all notifications
+              </Button>
             </div>
           )}
         </ScrollArea>

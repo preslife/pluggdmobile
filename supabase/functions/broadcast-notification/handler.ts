@@ -202,7 +202,6 @@ export const createBroadcastNotificationHandler = ({
             payload: sanitizedPayload ?? {},
             related_id: relatedId ?? null,
             related_type: relatedType ?? null,
-            type_enum: type,
           })
           .select("id, user_id")
           .maybeSingle();

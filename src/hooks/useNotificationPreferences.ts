@@ -28,6 +28,7 @@ const DEFAULT_PREFERENCES: NotificationPreferencesState = {
 
 interface UseNotificationPreferencesResult {
   preferences: NotificationPreferencesState | null;
+  lastUpdatedAt: string | null;
   loading: boolean;
   error: string | null;
   updating: Set<NotificationPreferenceKey>;
@@ -42,6 +43,7 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<Set<NotificationPreferenceKey>>(new Set());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const mergeWithDefaults = useCallback(
     (values: Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined): NotificationPreferencesState => {
@@ -74,17 +76,20 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase.rpc('get_notification_prefs', {});
+      const { data, error: fetchError } = await supabase.rpc('get_notification_prefs');
 
       if (fetchError) {
         throw fetchError;
       }
 
-      setPreferences(mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined));
+      const merged = mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined);
+      setPreferences(merged);
+      setLastUpdatedAt((data as { updated_at?: string | null } | null | undefined)?.updated_at ?? null);
     } catch (fetchErr: any) {
       console.error('Failed to load notification preferences:', fetchErr);
       setError(fetchErr?.message ?? 'Unable to load notification preferences');
       setPreferences(mergeWithDefaults(null));
+      setLastUpdatedAt(null);
     } finally {
       setLoading(false);
     }
@@ -121,7 +126,9 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
           description: 'We could not save your notification preference. Please try again.',
         });
       } else {
-        setPreferences(mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined));
+        const merged = mergeWithDefaults(data as Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined);
+        setPreferences(merged);
+        setLastUpdatedAt((data as { updated_at?: string | null } | null | undefined)?.updated_at ?? null);
       }
 
       setUpdating((prev) => {
@@ -141,6 +148,7 @@ export const useNotificationPreferences = (): UseNotificationPreferencesResult =
 
   return {
     preferences,
+    lastUpdatedAt,
     loading,
     error,
     updating: memoizedUpdating,

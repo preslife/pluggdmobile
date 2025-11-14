@@ -18,6 +18,7 @@ import appleMusicIcon from "@/assets/apple-music-icon.svg";
 import youtubeIcon from "@/assets/youtube-icon.svg";
 import soundcloudIcon from "@/assets/soundcloud-icon.svg";
 import { fetchMembershipAccessRules } from "@/services/memberships/accessRules";
+import { describeMembershipGate, MembershipTierSummary } from "@/lib/membershipGateSummary";
 
 interface Release {
   id: string;
@@ -51,24 +52,6 @@ interface Track {
   duration: number;
 }
 
-interface TierSummary {
-  id: string;
-  name: string;
-  tier_order: number;
-  price_monthly: number | null;
-  price_yearly: number | null;
-  price_lifetime: number | null;
-  currency: string | null;
-}
-
-const formatTierPrice = (tier: TierSummary | null) => {
-  if (!tier) return null;
-  const price = tier.price_monthly ?? tier.price_yearly ?? tier.price_lifetime;
-  if (price == null) return null;
-  const value = price >= 1000 ? price / 100 : price;
-  return formatCurrency(value, tier.currency ?? "USD");
-};
-
 const Release = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,7 +59,7 @@ const Release = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [gateRule, setGateRule] = useState<Awaited<ReturnType<typeof fetchMembershipAccessRules>> | null>(null);
-  const [gateTiers, setGateTiers] = useState<TierSummary[]>([]);
+  const [gateTiers, setGateTiers] = useState<MembershipTierSummary[]>([]);
 
   const [previewPlayingId, setPreviewPlayingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -218,7 +201,7 @@ const Release = () => {
         console.error("Failed to load gating tier metadata", error);
         setGateTiers([]);
       } else {
-        setGateTiers((data as TierSummary[]) ?? []);
+        setGateTiers((data as MembershipTierSummary[]) ?? []);
       }
     };
 
@@ -251,38 +234,10 @@ const Release = () => {
     ? `/creator/${release.user_id}#membership`
     : "/subscription";
 
-  const gateSummary = useMemo(() => {
-    if (!gateRule) return null;
-
-    const allowedNames = gateRule.allowed_tier_ids?.map((id) => {
-      const tier = gateTiers.find((t) => t.id === id);
-      return tier?.name;
-    }).filter(Boolean) as string[] | undefined;
-
-    const minimumTier = gateRule.minimum_tier_id
-      ? gateTiers.find((tier) => tier.id === gateRule.minimum_tier_id) ?? null
-      : null;
-
-    switch (gateRule.gate_type) {
-      case "any_tier":
-        return "Any active membership unlocks this release.";
-      case "specific_tier":
-        if (!allowedNames || allowedNames.length === 0) {
-          return "Exclusive to select membership tiers.";
-        }
-        if (allowedNames.length === 1) {
-          return `Exclusive to ${allowedNames[0]} members.`;
-        }
-        return `Exclusive to ${allowedNames.slice(0, -1).join(", ")} or ${allowedNames.slice(-1)} members.`;
-      case "tier_or_higher": {
-        const base = minimumTier ? `Unlocked at ${minimumTier.name} tier or above.` : "Unlocked above a specific tier.";
-        const price = formatTierPrice(minimumTier);
-        return price ? `${base} Starts at ${price}.` : base;
-      }
-      default:
-        return null;
-    }
-  }, [gateRule, gateTiers]);
+  const gateSummary = useMemo(
+    () => describeMembershipGate(gateRule ?? undefined, gateTiers),
+    [gateRule, gateTiers],
+  );
 
   // Check if this release is also available as a store product
   const [isStoreProduct, setIsStoreProduct] = useState(false);
