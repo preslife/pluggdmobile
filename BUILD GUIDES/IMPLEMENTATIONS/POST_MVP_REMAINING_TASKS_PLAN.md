@@ -169,8 +169,16 @@
 ## Milestone E (Weeks 9–10) — V2 Enhancements
 
 ### E1. Public Playlists & Sharing
-- Extend existing playlist scaffolding to allow public toggle, slugged pages, and share links.
-- Add collaborative permissions (owner + invited editors) with Supabase RLS updates.
+- **Schema/RLS**:
+  - `playlists` table needs `slug` (unique per user), `is_public` (existing but unused), `visibility` enum (`private|unlisted|public`), and `cover_art_url` for social cards.
+  - Add `playlist_collaborators` RLS so owners can invite editors (pending column already exists but policies do not).
+- **API**:
+  - RPC `generate_playlist_share_slug(p_playlist_id uuid)` that enforces ownership and slug uniqueness.
+  - RPC `get_playlist_for_public(slug text)` returning playlist + items (respecting `is_public`).
+- **UI**:
+  - Playlist detail page (`/playlist/:slug`) for public view with share metadata (Open Graph).
+  - Studio playlist editor gains toggle for `public/unlisted`, slug preview, and collaborator management.
+- **QA**: Smoke create playlist → toggle public → open share URL anonymously; add collaborator and confirm edit rights.
 
 ### E2. Social Feed from Follows
 - Build feed query that aggregates posts/tracks from followed creators; implement infinite scroll and fallback to trending.
