@@ -95,7 +95,7 @@ serve(async (req) => {
       throw new Error('Membership tier price is not configured.');
     }
 
-    const tierCurrency = tierRow.currency ?? 'usd';
+    const tierCurrency = (tierRow.currency ?? 'USD').toUpperCase();
 
     const stripePriceId =
       tierRow.stripe_price_monthly_id ||
@@ -156,18 +156,30 @@ serve(async (req) => {
         membershipTierId,
         membership_tier_id: membershipTierId,
         stripe_price_id: stripePriceId,
+        stripe_product_id: tierRow.stripe_product_id ?? undefined,
         ...(tierRow.stripe_product_id ? { stripe_product_id: tierRow.stripe_product_id } : {}),
       },
     });
 
-    // Create a pending record so we can flip to active on return
-    await supabaseAuth.from('fan_subscriptions').insert({
-      fan_id: user.id,
-      creator_id: creatorId,
-      status: 'pending',
-      price_cents: tierPriceCents,
-      currency: tierCurrency,
-    } as any);
+    // Create or update pending subscription row
+    await supabaseService
+      .from('fan_subscriptions')
+      .upsert(
+        {
+          fan_id: user.id,
+          creator_id: creatorId,
+          tier_id: membershipTierId,
+          status: 'pending',
+          price_cents: tierPriceCents,
+          currency: tierCurrency,
+          stripe_price_id: stripePriceId,
+          metadata: {
+            checkout_session_id: session.id,
+            stripe_product_id: tierRow.stripe_product_id,
+          },
+        },
+        { onConflict: 'fan_id,creator_id' },
+      );
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

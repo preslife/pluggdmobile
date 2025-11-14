@@ -1,5 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DomainAwareNavigation from "@/components/DomainAwareNavigation";
@@ -51,12 +51,32 @@ interface Track {
   duration: number;
 }
 
+interface TierSummary {
+  id: string;
+  name: string;
+  tier_order: number;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  price_lifetime: number | null;
+  currency: string | null;
+}
+
+const formatTierPrice = (tier: TierSummary | null) => {
+  if (!tier) return null;
+  const price = tier.price_monthly ?? tier.price_yearly ?? tier.price_lifetime;
+  if (price == null) return null;
+  const value = price >= 1000 ? price / 100 : price;
+  return formatCurrency(value, tier.currency ?? "USD");
+};
+
 const Release = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [release, setRelease] = useState<Release | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gateRule, setGateRule] = useState<Awaited<ReturnType<typeof fetchMembershipAccessRules>> | null>(null);
+  const [gateTiers, setGateTiers] = useState<TierSummary[]>([]);
 
   const [previewPlayingId, setPreviewPlayingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -135,6 +155,7 @@ const Release = () => {
       let releaseWithGate = data;
       try {
         const accessRule = await fetchMembershipAccessRules('release', releaseId);
+        setGateRule(accessRule ?? null);
         if (accessRule) {
           releaseWithGate = {
             ...data,
@@ -144,6 +165,7 @@ const Release = () => {
         }
       } catch (lookupError) {
         console.error('Failed to load membership access rules', lookupError);
+        setGateRule(null);
       }
 
       setRelease(releaseWithGate);
@@ -174,6 +196,38 @@ const Release = () => {
     }
   };
 
+  useEffect(() => {
+    let active = true;
+    const loadTiers = async () => {
+      if (!gateRule?.owner_id || !gateRule.owner_type) {
+        if (active) setGateTiers([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("membership_tiers")
+        .select("id, name, tier_order, price_monthly, price_yearly, price_lifetime, currency")
+        .eq("owner_id", gateRule.owner_id)
+        .eq("owner_type", gateRule.owner_type)
+        .eq("status", "active")
+        .order("tier_order", { ascending: true });
+
+      if (!active) return;
+
+      if (error) {
+        console.error("Failed to load gating tier metadata", error);
+        setGateTiers([]);
+      } else {
+        setGateTiers((data as TierSummary[]) ?? []);
+      }
+    };
+
+    void loadTiers();
+    return () => {
+      active = false;
+    };
+  }, [gateRule]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -196,6 +250,39 @@ const Release = () => {
     : release?.user_id
     ? `/creator/${release.user_id}#membership`
     : "/subscription";
+
+  const gateSummary = useMemo(() => {
+    if (!gateRule) return null;
+
+    const allowedNames = gateRule.allowed_tier_ids?.map((id) => {
+      const tier = gateTiers.find((t) => t.id === id);
+      return tier?.name;
+    }).filter(Boolean) as string[] | undefined;
+
+    const minimumTier = gateRule.minimum_tier_id
+      ? gateTiers.find((tier) => tier.id === gateRule.minimum_tier_id) ?? null
+      : null;
+
+    switch (gateRule.gate_type) {
+      case "any_tier":
+        return "Any active membership unlocks this release.";
+      case "specific_tier":
+        if (!allowedNames || allowedNames.length === 0) {
+          return "Exclusive to select membership tiers.";
+        }
+        if (allowedNames.length === 1) {
+          return `Exclusive to ${allowedNames[0]} members.`;
+        }
+        return `Exclusive to ${allowedNames.slice(0, -1).join(", ")} or ${allowedNames.slice(-1)} members.`;
+      case "tier_or_higher": {
+        const base = minimumTier ? `Unlocked at ${minimumTier.name} tier or above.` : "Unlocked above a specific tier.";
+        const price = formatTierPrice(minimumTier);
+        return price ? `${base} Starts at ${price}.` : base;
+      }
+      default:
+        return null;
+    }
+  }, [gateRule, gateTiers]);
 
   // Check if this release is also available as a store product
   const [isStoreProduct, setIsStoreProduct] = useState(false);
@@ -397,6 +484,22 @@ const Release = () => {
                 <p className="text-muted-foreground mb-6 leading-relaxed">
                   {release.description}
                 </p>
+              )}
+
+              {gateRule && (
+                <div className="mb-6 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <Badge variant="secondary" className="mb-2">
+                      Membership exclusive
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      {gateSummary ?? "Only members of this creator can unlock the full experience."}
+                    </p>
+                  </div>
+                  <Button asChild variant="outline">
+                    <a href={membershipCtaHref}>View membership</a>
+                  </Button>
+                </div>
               )}
 
             <SubscriptionGatedContent

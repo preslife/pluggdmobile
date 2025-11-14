@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { Plus, Edit, Trash2, Users, DollarSign } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
+import { Plus, Edit, Trash2, Users, DollarSign, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +14,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useMembershipTiers, MembershipTier, UpsertMembershipTierInput } from "@/hooks/useMembershipTiers";
 import { formatCurrency } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 const emptyForm = {
   name: "",
@@ -55,6 +59,28 @@ const centsToCurrency = (value: number | null | undefined, currency = "USD") => 
   return formatCurrency(value / 100, currency);
 };
 
+type DiscordTokenRow = Database["public"]["Tables"]["membership_discord_tokens"]["Row"] & {
+  membership: (Database["public"]["Tables"]["memberships"]["Row"] & {
+    tier: Pick<Database["public"]["Tables"]["membership_tiers"]["Row"], "owner_type" | "owner_id">;
+  }) | null;
+};
+
+type DiscordSyncSummary = {
+  total: number;
+  active: number;
+  expired: number;
+  errored: number;
+  lastSync: string | null;
+};
+
+const EMPTY_DISCORD_SUMMARY: DiscordSyncSummary = {
+  total: 0,
+  active: 0,
+  expired: 0,
+  errored: 0,
+  lastSync: null,
+};
+
 export const EnhancedMembershipsModule: React.FC = () => {
   const { toast } = useToast();
   const {
@@ -73,6 +99,9 @@ export const EnhancedMembershipsModule: React.FC = () => {
   const [formState, setFormState] = useState<TierFormState>(emptyForm);
   const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<MembershipTier | null>(null);
+  const [discordSummary, setDiscordSummary] = useState<DiscordSyncSummary>(EMPTY_DISCORD_SUMMARY);
+  const [discordLoading, setDiscordLoading] = useState(false);
+  const [discordError, setDiscordError] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormState(emptyForm);
@@ -162,6 +191,81 @@ export const EnhancedMembershipsModule: React.FC = () => {
   const activeTierCount = useMemo(() => tiers.filter((tier) => tier.status === "active").length, [tiers]);
   const draftTierCount = useMemo(() => tiers.filter((tier) => tier.status === "draft").length, [tiers]);
 
+  useEffect(() => {
+    if (!ownerType || !ownerId) {
+      setDiscordSummary(EMPTY_DISCORD_SUMMARY);
+      setDiscordError(null);
+      setDiscordLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchSummary = async () => {
+      setDiscordLoading(true);
+      setDiscordError(null);
+      try {
+        const { data, error } = await supabase
+          .from("membership_discord_tokens")
+          .select(
+            `
+              id,
+              expires_at,
+              roles_synced_at,
+              sync_error,
+              membership:memberships!inner (
+                tier:membership_tiers!inner ( owner_type, owner_id )
+              )
+            `
+          )
+          .order("roles_synced_at", { ascending: false, nullsLast: false })
+          .limit(200);
+
+        if (error) throw error;
+
+        const filtered = ((data ?? []) as DiscordTokenRow[]).filter(
+          (row) =>
+            row.membership?.tier?.owner_type === ownerType && row.membership?.tier?.owner_id === ownerId
+        );
+
+        const now = Date.now();
+        const summary = filtered.reduce<DiscordSyncSummary>(
+          (acc, token) => {
+            acc.total += 1;
+            if (token.sync_error) {
+              acc.errored += 1;
+            } else if (token.expires_at && Date.parse(token.expires_at) < now) {
+              acc.expired += 1;
+            } else if (token.roles_synced_at) {
+              acc.active += 1;
+              if (!acc.lastSync || Date.parse(token.roles_synced_at) > Date.parse(acc.lastSync)) {
+                acc.lastSync = token.roles_synced_at;
+              }
+            }
+            return acc;
+          },
+          { ...EMPTY_DISCORD_SUMMARY }
+        );
+
+        if (!isMounted) return;
+        setDiscordSummary(summary);
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error("[EnhancedMembershipsModule] discord summary fetch failed", err);
+        setDiscordError(err?.message ?? "Unable to load Discord sync status.");
+        setDiscordSummary(EMPTY_DISCORD_SUMMARY);
+      } finally {
+        if (isMounted) {
+          setDiscordLoading(false);
+        }
+      }
+    };
+
+    void fetchSummary();
+    return () => {
+      isMounted = false;
+    };
+  }, [ownerId, ownerType]);
+
   if (requiresLabelSelection) {
     return (
       <Card>
@@ -187,6 +291,11 @@ export const EnhancedMembershipsModule: React.FC = () => {
       </Card>
     );
   }
+
+  const pendingDiscordCount = Math.max(discordSummary.total - discordSummary.active, 0);
+  const readableLastSync = discordSummary.lastSync
+    ? formatDistanceToNow(new Date(discordSummary.lastSync), { addSuffix: true })
+    : "No sync activity yet";
 
   return (
     <div className="space-y-6">
@@ -250,6 +359,69 @@ export const EnhancedMembershipsModule: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>Discord perks sync</CardTitle>
+            <CardDescription>Monitor how membership roles map to your Discord server.</CardDescription>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/studio/memberships/discord">Open Discord panel</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {discordError && (
+            <Alert variant="destructive">
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>Discord status unavailable</AlertTitle>
+              <AlertDescription>{discordError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                label: "Active roles",
+                value: discordSummary.active,
+                description: "Members synced in the last cycle",
+                icon: CheckCircle2,
+              },
+              {
+                label: "Pending members",
+                value: pendingDiscordCount,
+                description: "Queued for next sync",
+                icon: Clock,
+              },
+              {
+                label: "Expired tokens",
+                value: discordSummary.expired,
+                description: "Fans need to relink Discord",
+                icon: Clock,
+              },
+              {
+                label: "Sync errors",
+                value: discordSummary.errored,
+                description: "Resolve from the Discord panel",
+                icon: ShieldAlert,
+              },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-lg border p-3 flex items-center gap-3">
+                <stat.icon className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">{stat.label}</p>
+                  <p className="text-xl font-semibold">{discordLoading ? "…" : stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Last successful sync: {discordLoading ? "Checking…" : readableLastSync}
+          </p>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="tiers" className="space-y-4">
         <TabsList>

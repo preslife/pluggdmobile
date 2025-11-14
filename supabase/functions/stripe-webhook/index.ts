@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   createDownloadRecords,
   handleChargeReversal,
+  reconcileFanSubscriptionRecord,
   syncMembershipFromSubscription,
   type Logger,
 } from "./helpers.ts";
@@ -1397,110 +1398,95 @@ serve(async (req) => {
           logStep
         );
 
-        if (
-          membershipResult?.processed &&
-          membershipResult.userId &&
-          membershipResult.creatorId
-        ) {
-          const stripeCustomerId =
-            membershipResult.stripeCustomerId ||
-            (typeof subscription.customer === 'string'
-              ? subscription.customer
-              : (subscription.customer as Stripe.Customer)?.id ?? null);
-
-          const { error: fanSubscriptionError } = await supabaseClient
-            .from('fan_subscriptions')
-            .update({
-              status: membershipResult.status,
-              stripe_subscription_id: subscription.id,
-              stripe_customer_id: stripeCustomerId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('fan_id', membershipResult.userId)
-            .eq('creator_id', membershipResult.creatorId);
-
-          if (fanSubscriptionError) {
-            await logStep('Failed to reconcile fan_subscriptions entry', {
-              error: fanSubscriptionError.message,
+        if (membershipResult?.processed && membershipResult.userId && membershipResult.creatorId) {
+          await reconcileFanSubscriptionRecord(
+            supabaseClient,
+            subscription,
+            membershipResult,
+            scopeLogger(currentLogger, {
+              scope: 'fan_subscription',
+              subscriptionId: subscription.id,
+              membershipId: membershipResult.membershipId,
               fanId: membershipResult.userId,
               creatorId: membershipResult.creatorId,
+            })
+          );
+
+          const memberMessage = (() => {
+            switch (membershipResult.status) {
+              case 'active':
+                return 'Your membership is now active.';
+              case 'cancelled':
+                return 'Your membership has been cancelled.';
+              case 'expired':
+                return 'Your membership has expired.';
+              case 'past_due':
+                return 'Your membership payment is past due.';
+              default:
+                return 'Your membership status has been updated.';
+            }
+          })();
+
+          try {
+            const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+              body: {
+                recipients: [membershipResult.userId],
+                type: 'membership',
+                title: 'Membership update',
+                message: memberMessage,
+                payload: {
+                  membership_id: membershipResult.membershipId,
+                  tier_id: membershipResult.tierId,
+                  status: membershipResult.status,
+                },
+                relatedId: membershipResult.membershipId,
+                relatedType: 'membership',
+              },
             });
-          } else {
-            const memberMessage = (() => {
-              switch (membershipResult.status) {
-                case 'active':
-                  return 'Your membership is now active.';
-                case 'cancelled':
-                  return 'Your membership has been cancelled.';
-                case 'expired':
-                  return 'Your membership has expired.';
-                case 'past_due':
-                  return 'Your membership payment is past due.';
-                default:
-                  return 'Your membership status has been updated.';
-              }
-            })();
 
-            try {
-              const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
-                body: {
-                  recipients: [membershipResult.userId],
-                  type: 'membership',
-                  title: 'Membership update',
-                  message: memberMessage,
-                  payload: {
-                    membership_id: membershipResult.membershipId,
-                    tier_id: membershipResult.tierId,
-                    status: membershipResult.status,
-                  },
-                  relatedId: membershipResult.membershipId,
-                  relatedType: 'membership',
-                },
-              });
-
-              if (fanNotifyError) {
-                await logStep('Membership fan notification failed', {
-                  error: fanNotifyError.message,
-                  fanId: membershipResult.userId,
-                });
-              }
-
-              const creatorMessage = membershipResult.status === 'active'
-                ? 'A new member just joined your tier.'
-                : membershipResult.status === 'cancelled'
-                  ? 'A member cancelled their subscription.'
-                  : 'A membership was updated.';
-
-              const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
-                body: {
-                  recipients: [membershipResult.creatorId],
-                  type: 'membership',
-                  title: 'Membership update',
-                  message: creatorMessage,
-                  payload: {
-                    membership_id: membershipResult.membershipId,
-                    fan_id: membershipResult.userId,
-                    status: membershipResult.status,
-                  },
-                  relatedId: membershipResult.membershipId,
-                  relatedType: 'membership',
-                },
-              });
-
-              if (creatorNotifyError) {
-                await logStep('Membership creator notification failed', {
-                  error: creatorNotifyError.message,
-                  creatorId: membershipResult.creatorId,
-                });
-              }
-            } catch (notificationError) {
-              await logStep('Membership notification error', {
-                error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-                membershipId: membershipResult.membershipId,
+            if (fanNotifyError) {
+              await logStep('Membership fan notification failed', {
+                error: fanNotifyError.message,
+                fanId: membershipResult.userId,
               });
             }
+
+            const creatorMessage = membershipResult.status === 'active'
+              ? 'A new member just joined your tier.'
+              : membershipResult.status === 'cancelled'
+                ? 'A member cancelled their subscription.'
+                : 'A membership was updated.';
+
+            const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+              body: {
+                recipients: [membershipResult.creatorId],
+                type: 'membership',
+                title: 'Membership update',
+                message: creatorMessage,
+                payload: {
+                  membership_id: membershipResult.membershipId,
+                  fan_id: membershipResult.userId,
+                  status: membershipResult.status,
+                },
+                relatedId: membershipResult.membershipId,
+                relatedType: 'membership',
+              },
+            });
+
+            if (creatorNotifyError) {
+              await logStep('Membership creator notification failed', {
+                error: creatorNotifyError.message,
+                creatorId: membershipResult.creatorId,
+              });
+            }
+          } catch (notificationError) {
+            await logStep('Membership notification error', {
+              error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+              membershipId: membershipResult.membershipId,
+            });
           }
         }
+
         break;
       }
 
@@ -1518,117 +1504,101 @@ serve(async (req) => {
           logStep
         );
 
-        if (membershipResult?.processed) {
-          if (membershipResult.userId && membershipResult.creatorId) {
-            const stripeCustomerId =
-              membershipResult.stripeCustomerId ||
-              (typeof subscription.customer === 'string'
-                ? subscription.customer
-                : (subscription.customer as Stripe.Customer)?.id ?? null);
+        if (membershipResult?.processed && membershipResult.userId && membershipResult.creatorId) {
+          await reconcileFanSubscriptionRecord(
+            supabaseClient,
+            subscription,
+            membershipResult,
+            scopeLogger(currentLogger, {
+              scope: 'fan_subscription',
+              subscriptionId: subscription.id,
+              membershipId: membershipResult.membershipId,
+              fanId: membershipResult.userId,
+              creatorId: membershipResult.creatorId,
+            })
+          );
 
-            const { error: fanSubscriptionError } = await supabaseClient
-              .from('fan_subscriptions')
-              .update({
-                status: membershipResult.status,
-                stripe_subscription_id: subscription.id,
-                stripe_customer_id: stripeCustomerId,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('fan_id', membershipResult.userId)
-              .eq('creator_id', membershipResult.creatorId);
+          const memberMessage = (() => {
+            switch (membershipResult.status) {
+              case 'active':
+                return 'Your membership is now active.';
+              case 'cancelled':
+                return 'Your membership has been cancelled.';
+              case 'expired':
+                return 'Your membership has expired.';
+              case 'past_due':
+                return 'Your membership payment is past due.';
+              default:
+                return 'Your membership status has been updated.';
+            }
+          })();
 
-            if (fanSubscriptionError) {
-              await logStep('Failed to reconcile fan_subscriptions entry', {
-                error: fanSubscriptionError.message,
+          try {
+            const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+              body: {
+                recipients: [membershipResult.userId],
+                type: 'membership',
+                title: 'Membership update',
+                message: memberMessage,
+                payload: {
+                  membership_id: membershipResult.membershipId,
+                  tier_id: membershipResult.tierId,
+                  status: membershipResult.status,
+                },
+                relatedId: membershipResult.membershipId,
+                relatedType: 'membership',
+              },
+            });
+
+            if (fanNotifyError) {
+              await logStep('Membership fan notification failed', {
+                error: fanNotifyError.message,
                 fanId: membershipResult.userId,
+              });
+            }
+
+            const creatorMessage = membershipResult.status === 'active'
+              ? 'A new member just joined your tier.'
+              : membershipResult.status === 'cancelled'
+                ? 'A member cancelled their subscription.'
+                : 'A membership was updated.';
+
+            const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
+              body: {
+                recipients: [membershipResult.creatorId],
+                type: 'membership',
+                title: 'Membership update',
+                message: creatorMessage,
+                payload: {
+                  membership_id: membershipResult.membershipId,
+                  fan_id: membershipResult.userId,
+                  status: membershipResult.status,
+                },
+                relatedId: membershipResult.membershipId,
+                relatedType: 'membership',
+              },
+            });
+
+            if (creatorNotifyError) {
+              await logStep('Membership creator notification failed', {
+                error: creatorNotifyError.message,
                 creatorId: membershipResult.creatorId,
               });
-            } else {
-              const memberMessage = (() => {
-                switch (membershipResult.status) {
-                  case 'active':
-                    return 'Your membership is now active.';
-                  case 'cancelled':
-                    return 'Your membership has been cancelled.';
-                  case 'expired':
-                    return 'Your membership has expired.';
-                  case 'past_due':
-                    return 'Your membership payment is past due.';
-                  default:
-                    return 'Your membership status has been updated.';
-                }
-              })();
-
-              try {
-                const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
-                  body: {
-                    recipients: [membershipResult.userId],
-                    type: 'membership',
-                    title: 'Membership update',
-                    message: memberMessage,
-                    payload: {
-                      membership_id: membershipResult.membershipId,
-                      tier_id: membershipResult.tierId,
-                      status: membershipResult.status,
-                    },
-                    relatedId: membershipResult.membershipId,
-                    relatedType: 'membership',
-                  },
-                });
-
-                if (fanNotifyError) {
-                  await logStep('Membership fan notification failed', {
-                    error: fanNotifyError.message,
-                    fanId: membershipResult.userId,
-                  });
-                }
-
-                const creatorMessage = membershipResult.status === 'active'
-                  ? 'A new member just joined your tier.'
-                  : membershipResult.status === 'cancelled'
-                    ? 'A member cancelled their subscription.'
-                    : 'A membership was updated.';
-
-                const { error: creatorNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
-                  body: {
-                    recipients: [membershipResult.creatorId],
-                    type: 'membership',
-                    title: 'Membership update',
-                    message: creatorMessage,
-                    payload: {
-                      membership_id: membershipResult.membershipId,
-                      fan_id: membershipResult.userId,
-                      status: membershipResult.status,
-                    },
-                    relatedId: membershipResult.membershipId,
-                    relatedType: 'membership',
-                  },
-                });
-
-                if (creatorNotifyError) {
-                  await logStep('Membership creator notification failed', {
-                    error: creatorNotifyError.message,
-                    creatorId: membershipResult.creatorId,
-                  });
-                }
-              } catch (notificationError) {
-                await logStep('Membership notification error', {
-                  error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-                  membershipId: membershipResult.membershipId,
-                });
-              }
             }
+          } catch (notificationError) {
+            await logStep('Membership notification error', {
+              error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+              membershipId: membershipResult.membershipId,
+            });
           }
-          break;
         }
 
         await logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
 
         const customerId = subscription.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
-        
+
         if ('email' in customer && customer.email) {
-          // Update subscription in database
           const { data: existingSub } = await supabaseClient
             .from("user_subscriptions")
             .select("user_id")
@@ -1645,7 +1615,6 @@ serve(async (req) => {
 
             await logStep("Subscription updated in database", { subscriptionId: subscription.id });
 
-            // Trigger Discord role sync for subscription update
             try {
               await supabaseClient.functions.invoke('discord-sync-subscriber', {
                 body: {
@@ -1659,9 +1628,9 @@ serve(async (req) => {
             }
           }
         }
+
         break;
       }
-
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         await logStep("Subscription cancelled", { subscriptionId: subscription.id });

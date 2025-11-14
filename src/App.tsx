@@ -43,6 +43,7 @@ import Store from "./pages/Store";
 import StoreSuccess from "./pages/StoreSuccess";
 import GiftClaim from "./pages/GiftClaim";
 import AccountOrders from "./pages/AccountOrders";
+import AccountMemberships from "./pages/AccountMemberships";
 import Admin from "./pages/Admin";
 import BetaProgram from "./pages/BetaProgram";
 import Roadmap from "./pages/Roadmap";
@@ -259,6 +260,14 @@ const AppContent = () => {
           }
         />
         <Route path="/account/orders" element={<Navigate to="/orders" replace />} />
+        <Route
+          path="/account/memberships"
+          element={
+            <ProtectedRoute>
+              <AccountMemberships />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/product/:id" element={<ProductRedirect />} />
         <Route path="/store/product/:id" element={<ProductDetail />} />
         <Route path="/admin/*" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>} >

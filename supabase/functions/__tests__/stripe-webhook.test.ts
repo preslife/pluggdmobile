@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handleChargeReversal, syncMembershipFromSubscription } from '../stripe-webhook/helpers';
+import { handleChargeReversal, reconcileFanSubscriptionRecord, syncMembershipFromSubscription } from '../stripe-webhook/helpers';
 
 describe('handleChargeReversal', () => {
   const insertMock = vi.fn();
@@ -70,6 +70,108 @@ describe('handleChargeReversal', () => {
     await handleChargeReversal(supabaseClient, charge, 'evt_2', 'failure', logger);
 
     expect(insertMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('reconcileFanSubscriptionRecord', () => {
+  const logger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+
+  const createSupabaseStub = (
+    responses: Array<{ data: any[] | null; error: any }>,
+    insertResult: { error: any } = { error: null },
+  ) => {
+    const updatePayloads: any[] = [];
+    const insertPayloads: any[] = [];
+    let responseIndex = 0;
+
+    const buildFilter = () => ({
+      eq: vi.fn(() => buildFilter()),
+      select: vi.fn(async () => responses[responseIndex++] ?? { data: [], error: null }),
+    });
+
+    const table = {
+      update: vi.fn((payload: any) => {
+        updatePayloads.push(payload);
+        return buildFilter();
+      }),
+      insert: vi.fn(async (payload: any) => {
+        insertPayloads.push(payload);
+        return insertResult;
+      }),
+    };
+
+    const client = {
+      from: vi.fn((tableName: string) => {
+        if (tableName !== 'fan_subscriptions') {
+          throw new Error(`Unexpected table ${tableName}`);
+        }
+        return table;
+      }),
+    };
+
+    return { client, table, updatePayloads, insertPayloads };
+  };
+
+  const baseSubscription = {
+    id: 'sub_123',
+    customer: 'cus_123',
+    items: { data: [{ price: { id: 'price_123', unit_amount: 999, currency: 'usd' } }] },
+  } as any;
+
+  const baseMembershipResult = {
+    status: 'active',
+    tierId: 'tier_1',
+    userId: 'fan_1',
+    creatorId: 'creator_1',
+    currentPeriodStart: '2024-01-01T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('updates by stripe_subscription_id when a row exists', async () => {
+    const { client, table, updatePayloads } = createSupabaseStub([{ data: [{ id: 'row-1' }], error: null }]);
+
+    const result = await reconcileFanSubscriptionRecord(client, baseSubscription, baseMembershipResult, logger);
+
+    expect(result).toMatchObject({ updated: true, method: 'stripe_subscription_id' });
+    expect(table.update).toHaveBeenCalledTimes(1);
+    expect(updatePayloads[0]).toMatchObject({
+      status: 'active',
+      stripe_subscription_id: 'sub_123',
+      stripe_customer_id: 'cus_123',
+      tier_id: 'tier_1',
+      price_cents: 999,
+      currency: 'USD',
+    });
+  });
+
+  it('falls back to fan/creator pair and inserts when no rows match', async () => {
+    const { client, table, insertPayloads } = createSupabaseStub(
+      [
+        { data: [], error: null },
+        { data: [], error: null },
+      ],
+      { error: null },
+    );
+
+    const result = await reconcileFanSubscriptionRecord(client, baseSubscription, baseMembershipResult, logger);
+
+    expect(result).toMatchObject({ updated: true, method: 'inserted' });
+    expect(table.update).toHaveBeenCalledTimes(2);
+    expect(table.insert).toHaveBeenCalledTimes(1);
+    expect(insertPayloads[0]).toMatchObject({
+      fan_id: 'fan_1',
+      creator_id: 'creator_1',
+      stripe_subscription_id: 'sub_123',
+      currency: 'USD',
+      status: 'active',
+    });
   });
 });
 

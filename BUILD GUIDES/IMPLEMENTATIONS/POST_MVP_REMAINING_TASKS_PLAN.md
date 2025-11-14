@@ -119,6 +119,20 @@
   - Immediately unlock gated assets upon membership creation (listen to membership status changes).
 - **Analytics**: Emit `gate_impression`, `gate_unlock` events.
 
+### Status Update — 2025-02-18
+- ✅ Tier CRUD: RPCs (`create/update/delete_membership_tier`), permission guard, Stripe sync queue + worker, and Supabase migration `20250930000000_membership_tier_queue_and_rpcs.sql` are staged locally.
+- ✅ Fan subscriptions: checkout/verification functions now write enriched rows (`tier_id`, currency, Stripe ids), Stripe webhook reconciles them through `reconcileFanSubscriptionRecord`, and Vitest coverage guards the new helper.
+- 🚧 Still pending for Milestone C: Studio Discord tab wiring (C3), gating enforcement polish (C4), and staging runs of the new queue + webhook so Stripe creds can be verified end-to-end.
+
+#### Cloud follow-up (next operator)
+1. Apply the new migration to staging/prod (`supabase db push` or manual SQL) and refresh generated types so Deno functions pick up `fan_subscriptions` changes.
+2. Run the `membership-tier-sync` edge function in staging (POST `{ "limit": 10, "retryFailed": true }`) until `membership_tier_sync_queue` is empty; confirm Stripe products/prices were created.
+3. Smoke-test fan checkout on staging: invoke `create-fan-subscription` for a live tier, complete Stripe checkout, then hit `verify-fan-subscription` and ensure the webhook flips the row to `active`.
+4. Once the above is green, continue with C3/C4 UI work (Discord panel + content gating) while keeping notifications/receipts flagged for Milestone D overlap.
+5. New `/account/memberships` hub: run through the page with a seeded user, hit `Refresh`, `Resume checkout`, and `Manage billing` to verify the UI routes into Stripe correctly and surfaces each subscription state.
+6. Studio memberships dashboard: confirm the “Discord perks sync” card shows accurate counts (active/pending/expired/errors) and that the “Open Discord panel” CTA jumps to `/studio/memberships/discord`.
+7. Release detail page: open a gated release and verify the new “Membership exclusive” banner shows the correct summary copy + membership CTA while non-gated releases hide the block.
+
 ---
 
 ## Milestone D (Weeks 7–8) — Trust, Safety, Notifications
@@ -215,4 +229,3 @@
 3. Sequence migrations with transaction-safe scripts; capture snapshots pre/post deploy.
 4. Kick off Milestone A implementation with dedicated branch and work tickets for A1–A4.
 5. Schedule weekly review to adjust prioritisation as milestones progress.
-

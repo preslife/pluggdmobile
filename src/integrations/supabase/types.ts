@@ -3619,8 +3619,15 @@ export type Database = {
           creator_id: string
           fan_id: string
           id: string
+          tier_id: string | null
           price_cents: number
+          currency: string | null
           status: string
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          stripe_customer_id: string | null
+          metadata: Json | null
+          last_payment_at: string | null
           updated_at: string
         }
         Insert: {
@@ -3628,8 +3635,15 @@ export type Database = {
           creator_id: string
           fan_id: string
           id?: string
+          tier_id?: string | null
           price_cents?: number
+          currency?: string | null
           status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          metadata?: Json | null
+          last_payment_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -3637,11 +3651,26 @@ export type Database = {
           creator_id?: string
           fan_id?: string
           id?: string
+          tier_id?: string | null
           price_cents?: number
+          currency?: string | null
           status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          metadata?: Json | null
+          last_payment_at?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fan_subscriptions_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       favorites: {
         Row: {

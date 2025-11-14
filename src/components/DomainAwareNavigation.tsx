@@ -308,6 +308,11 @@ const DomainAwareNavigation = () => {
                           <span>Orders & Purchases</span>
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/account/memberships" className="flex items-center justify-between">
+                          <span>Memberships & Access</span>
+                        </Link>
+                      </DropdownMenuItem>
                       {profile?.is_creator && (
                         <DropdownMenuItem asChild>
                           <Link to="/dashboard/payouts" className="flex items-center justify-between">

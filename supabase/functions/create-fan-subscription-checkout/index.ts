@@ -95,7 +95,6 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
-    // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
@@ -130,13 +129,21 @@ serve(async (req) => {
       }
     });
 
-    // Create pending fan subscription record
-    await supabaseService.from('fan_subscriptions').insert({
-      fan_id: user.id,
-      creator_id: creatorId,
-      price_cents: priceCents,
-      status: 'pending'
-    });
+    await supabaseService
+      .from('fan_subscriptions')
+      .upsert(
+        {
+          fan_id: user.id,
+          creator_id: creatorId,
+          price_cents: priceCents,
+          status: 'pending',
+          currency: 'USD',
+          metadata: {
+            checkout_session_id: session.id,
+          },
+        },
+        { onConflict: 'fan_id,creator_id' },
+      );
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

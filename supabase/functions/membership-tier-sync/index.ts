@@ -39,7 +39,7 @@ serve(async (req) => {
     const limitValue = typeof payload?.limit === "number" ? payload.limit : 10;
     const limit = Math.max(1, Math.min(25, limitValue));
     const includeFailed = Boolean(payload?.includeFailed || payload?.retryFailed);
-    const candidateStatuses = includeFailed ? ["pending", "error"] : ["pending"];
+    const candidateStatuses = includeFailed ? ["pending", "failed"] : ["pending"];
     const nowIso = new Date().toISOString();
 
     requestLogger = createSystemLogger(supabaseService, {

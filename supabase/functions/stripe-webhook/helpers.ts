@@ -304,6 +304,132 @@ export const syncMembershipFromSubscription = async (
   };
 };
 
+export const reconcileFanSubscriptionRecord = async (
+  supabaseClient: any,
+  subscription: any,
+  membershipResult: {
+    status?: string | null;
+    tierId?: string | null;
+    userId?: string | null;
+    creatorId?: string | null;
+    currentPeriodStart?: string | null;
+    stripeCustomerId?: string | null;
+  },
+  logger: Logger,
+) => {
+  if (!subscription?.id) {
+    await logger.warn('fan_subscription_reconcile_missing_subscription', {});
+    return { updated: false };
+  }
+
+  if (!membershipResult?.userId || !membershipResult?.creatorId) {
+    await logger.warn('fan_subscription_reconcile_missing_ids', {
+      subscriptionId: subscription.id,
+    });
+    return { updated: false };
+  }
+
+  const stripeCustomerId =
+    membershipResult.stripeCustomerId ||
+    (typeof subscription.customer === 'string'
+      ? subscription.customer
+      : (subscription.customer as { id?: string } | null)?.id ?? null);
+
+  const priceObject = subscription.items?.data?.[0]?.price;
+  const updatePayload: Record<string, any> = {
+    status: membershipResult.status ?? 'active',
+    stripe_subscription_id: subscription.id,
+    stripe_customer_id: stripeCustomerId,
+    tier_id: membershipResult.tierId ?? null,
+    last_payment_at: membershipResult.currentPeriodStart ?? new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (typeof priceObject?.unit_amount === 'number') {
+    updatePayload.price_cents = priceObject.unit_amount;
+  }
+  if (priceObject?.currency) {
+    updatePayload.currency = priceObject.currency.toUpperCase();
+  }
+  if (priceObject?.id) {
+    updatePayload.stripe_price_id = priceObject.id;
+  }
+
+  const updateBySubscription = await supabaseClient
+    .from('fan_subscriptions')
+    .update(updatePayload)
+    .eq('stripe_subscription_id', subscription.id)
+    .select('id');
+
+  if (updateBySubscription.error) {
+    await logger.error('fan_subscription_reconcile_failed', {
+      method: 'stripe_subscription_id',
+      error: updateBySubscription.error.message,
+    });
+    return { updated: false, error: updateBySubscription.error };
+  }
+
+  if (updateBySubscription.data && updateBySubscription.data.length > 0) {
+    await logger.info('fan_subscription_reconciled', { method: 'stripe_subscription_id' });
+    return { updated: true, method: 'stripe_subscription_id' };
+  }
+
+  const updateByPair = await supabaseClient
+    .from('fan_subscriptions')
+    .update(updatePayload)
+    .eq('fan_id', membershipResult.userId)
+    .eq('creator_id', membershipResult.creatorId)
+    .select('id');
+
+  if (updateByPair.error) {
+    await logger.error('fan_subscription_reconcile_failed', {
+      method: 'fan_creator_pair',
+      error: updateByPair.error.message,
+      fanId: membershipResult.userId,
+      creatorId: membershipResult.creatorId,
+    });
+    return { updated: false, error: updateByPair.error };
+  }
+
+  if (updateByPair.data && updateByPair.data.length > 0) {
+    await logger.info('fan_subscription_reconciled', { method: 'fan_creator_pair' });
+    return { updated: true, method: 'fan_creator_pair' };
+  }
+
+  const insertPayload = {
+    fan_id: membershipResult.userId,
+    creator_id: membershipResult.creatorId,
+    tier_id: membershipResult.tierId ?? null,
+    status: membershipResult.status ?? 'active',
+    price_cents: updatePayload.price_cents ?? 0,
+    currency: updatePayload.currency ?? 'USD',
+    stripe_subscription_id: subscription.id,
+    stripe_customer_id: stripeCustomerId,
+    stripe_price_id: updatePayload.stripe_price_id ?? null,
+    last_payment_at: updatePayload.last_payment_at,
+    metadata: {
+      source: 'stripe_webhook',
+      event_type: subscription?.object ?? 'subscription',
+    },
+  };
+
+  const { error: insertError } = await supabaseClient
+    .from('fan_subscriptions')
+    .insert(insertPayload);
+
+  if (insertError) {
+    await logger.error('fan_subscription_insert_failed', {
+      error: insertError.message,
+      fanId: membershipResult.userId,
+      creatorId: membershipResult.creatorId,
+    });
+    return { updated: false, error: insertError };
+  }
+
+  await logger.info('fan_subscription_reconciled', { method: 'inserted' });
+  return { updated: true, method: 'inserted' };
+};
+
 export const createDownloadRecords = async (
   supabaseClient: any,
   userId: string,
