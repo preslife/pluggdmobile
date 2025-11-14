@@ -247,7 +247,7 @@ const AppContent = () => {
 <Route path="/release/new" element={<ProtectedRoute><ReleaseBuilder /></ProtectedRoute>} />
 <Route path="/my-releases" element={<ProtectedRoute><MyReleases /></ProtectedRoute>} />
 <Route path="/release/:id" element={<ReleaseDetail />} />
-        <Route path="/playlist/:id" element={<PlaylistPage />} />
+        <Route path="/playlist/:slug" element={<PlaylistPage />} />
         <Route path="/store" element={<Store />} />
         <Route path="/store/success" element={<ProtectedRoute><StoreSuccess /></ProtectedRoute>} />
         <Route path="/gift/claim" element={<GiftClaim />} />

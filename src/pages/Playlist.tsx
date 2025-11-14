@@ -95,7 +95,7 @@ const buildPlayerTrack = (track: PlaylistTrack): PlayerTrack | null => {
 };
 
 const PlaylistPage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { state: playerState, actions: playerActions } = useGlobalPlayer();
@@ -118,7 +118,7 @@ const PlaylistPage = () => {
   usePageMetadata({
     title: playlistTitle,
     description: playlistDescription,
-    path: id ? `/playlist/${id}` : '/playlist',
+    path: slug ? `/playlist/${slug}` : '/playlist',
     image: playlist?.coverArtUrl ?? undefined,
   });
 
@@ -158,21 +158,19 @@ const PlaylistPage = () => {
   }, [user?.id]);
 
   const fetchPlaylistDetails = useCallback(async () => {
-    if (!id) return;
+    if (!slug) return;
 
     setLoading(true);
     setError(null);
 
     try {
       const { data: playlistData, error: playlistError } = await supabase
-        .from('playlists')
-        .select('*')
-        .eq('id', id)
-        .single();
+        .rpc('get_playlist_for_public', { p_slug: slug, p_share_code: shareCode ?? null })
+        .maybeSingle();
 
       if (playlistError) throw playlistError;
       if (!playlistData) {
-        setError('Playlist not found');
+        setError('Playlist not found or unavailable');
         setLoading(false);
         return;
       }
@@ -186,7 +184,7 @@ const PlaylistPage = () => {
       const { data: itemsData, error: itemsError } = await supabase
         .from('playlist_items')
         .select('id, position, beat_id, release_id, added_at')
-        .eq('playlist_id', id)
+        .eq('playlist_id', playlistData.playlist_id)
         .order('position', { ascending: true })
         .order('added_at', { ascending: true });
 
@@ -318,14 +316,14 @@ const PlaylistPage = () => {
         .filter((track): track is PlaylistTrack => Boolean(track));
 
       setPlaylist({
-        id: playlistData.id,
+        id: playlistData.playlist_id,
         name: playlistData.name,
         description: playlistData.description,
         coverArtUrl: playlistData.cover_art_url,
         tags: playlistData.tags ?? [],
         collaborative: Boolean(playlistData.collaborative),
         visibility: (playlistData.visibility as PlaylistDetails['visibility']) || 'private',
-        ownerId: playlistData.user_id,
+        ownerId: playlistData.owner_id,
         owner: ownerProfile ?? null,
         followerCount: 0,
         createdAt: playlistData.created_at,
@@ -393,7 +391,7 @@ const PlaylistPage = () => {
         const { error: unfollowError } = await supabase
           .from<any>('playlist_follows')
           .delete()
-          .eq('playlist_id', id)
+        .eq('playlist_id', playlistData.playlist_id)
           .eq('user_id', user.id);
 
         if (unfollowError) throw unfollowError;
@@ -420,14 +418,14 @@ const PlaylistPage = () => {
         description: 'Please try again in a moment.',
         variant: 'destructive'
       });
-      await fetchFollowState(id);
+      await fetchFollowState(playlistData.playlist_id);
     }
   };
 
   const handleShare = () => {
     if (!playlist) return;
 
-    const shareUrl = `${window.location.origin}/playlist/${playlist.id}`;
+    const shareUrl = `${window.location.origin}/playlist/${slug ?? playlist.slug ?? playlist.id}`;
     nativeShare({
       title: playlist.name,
       url: shareUrl,
