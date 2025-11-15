@@ -46,7 +46,8 @@ type PlaylistTrack = {
 type PlaylistDetails = PlaylistSummary & {
   follower_count?: number | null;
   is_followable?: boolean | null;
-  share_token?: string | null;
+  share_code?: string | null;
+  slug?: string | null;
   is_public?: boolean | null;
   is_collaborative?: boolean | null;
   total_duration?: number | null;
@@ -289,7 +290,8 @@ const PlaylistManager = () => {
           duration,
           total_duration,
           user_id,
-          share_token
+          slug,
+          share_code
         `)
         .eq('id', playlistId)
         .single();
@@ -315,7 +317,8 @@ const PlaylistManager = () => {
             is_followable: data.is_followable ?? prev?.is_followable ?? true,
             is_public:
               typeof data.is_public === 'boolean' ? data.is_public : resolvedVisibility === 'public',
-            share_token: (data as any).share_token ?? prev?.share_token ?? null,
+            slug: data.slug ?? prev?.slug ?? null,
+            share_code: data.share_code ?? prev?.share_code ?? null,
             track_count: data.track_count ?? prev?.track_count ?? playlistTracks.length,
             duration: data.duration ?? data.total_duration ?? prev?.duration ?? null,
             total_duration: data.total_duration ?? prev?.total_duration ?? null,
@@ -495,29 +498,38 @@ const PlaylistManager = () => {
     if (!selectedPlaylist?.id || !isSelectedOwner) return;
 
     try {
-      const { error } = await supabase
-        .from('playlists')
-        .update({
-          visibility,
-          is_public: visibility === 'public'
+      const { data, error } = await supabase
+        .rpc('set_playlist_visibility', {
+          p_playlist_id: selectedPlaylist.id,
+          p_visibility: visibility
         })
-        .eq('id', selectedPlaylist.id);
+        .single();
 
       if (error) throw error;
 
-      setSelectedPlaylist(prev =>
-        prev
-          ? {
-              ...prev,
-              visibility,
-              is_public: visibility === 'public'
-            }
-          : prev
-      );
+      if (data) {
+        setSelectedPlaylist(prev =>
+          prev
+            ? {
+                ...prev,
+                visibility: (data.visibility as 'public' | 'unlisted' | 'private') ?? visibility,
+                is_public: data.visibility ? data.visibility === 'public' : visibility === 'public',
+                slug: data.slug ?? prev.slug ?? null,
+                share_code: data.share_code ?? prev.share_code ?? null
+              }
+            : prev
+        );
+      }
+
       fetchPlaylists();
       toast({
         title: 'Visibility updated',
-        description: `Playlist visibility set to ${visibility}.`
+        description:
+          visibility === 'public'
+            ? 'Playlist is now public.'
+            : visibility === 'unlisted'
+              ? 'Generated a private share link for this playlist.'
+              : 'Playlist hidden from public links.'
       });
     } catch (error) {
       console.error('Error updating visibility:', error);
@@ -728,62 +740,92 @@ const PlaylistManager = () => {
     setShareDialogOpen(true);
   }, []);
 
-  const shareUrl = useMemo(() => {
-    if (!shareTarget) return '';
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.club';
-    return `${origin}/playlist/${shareTarget.id}`;
-  }, [shareTarget]);
+  const buildShareUrl = useCallback(
+    (
+      playlist?:
+        | {
+            id?: string;
+            slug?: string | null;
+            share_code?: string | null;
+            visibility?: 'public' | 'unlisted' | 'private' | null;
+          }
+        | null
+    ) => {
+      if (!playlist?.id) return '';
+      const visibility = playlist.visibility ?? 'public';
+      if (visibility === 'private') return '';
+      if (visibility === 'unlisted' && !playlist.share_code) return '';
 
-  const selectedPlaylistShareUrl = useMemo(() => {
-    if (!selectedPlaylist?.id) return '';
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.club';
-    return `${origin}/playlist/${selectedPlaylist.id}`;
-  }, [selectedPlaylist?.id]);
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pluggd.club';
+      const slugOrId =
+        playlist.slug && playlist.slug.trim().length > 0 ? playlist.slug.trim() : playlist.id;
+      const token = visibility === 'unlisted' ? `?token=${playlist.share_code}` : '';
+      return `${origin}/playlist/${slugOrId}${token}`;
+    },
+    []
+  );
 
-  const handleCopyShareLink = useCallback(async () => {
+  const shareUrl = useMemo(
+    () => buildShareUrl(shareTarget as PlaylistDetails | PlaylistSummary | null),
+    [buildShareUrl, shareTarget]
+  );
+
+  const selectedPlaylistShareUrl = useMemo(
+    () => buildShareUrl(selectedPlaylist),
+    [buildShareUrl, selectedPlaylist]
+  );
+
+  const copyValue = useCallback(
+    async (value: string, successDescription: string) => {
+      if (!value) return;
+      if (typeof navigator === 'undefined' || !navigator.clipboard) {
+        toast({
+          title: 'Clipboard unavailable',
+          description: 'Copy the value manually instead.'
+        });
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(value);
+        toast({ title: 'Copied', description: successDescription });
+      } catch (error) {
+        console.error('Error copying value:', error);
+        toast({
+          title: 'Unable to copy value',
+          description: 'Try copying manually instead.',
+          variant: 'destructive'
+        });
+      }
+    },
+    [toast]
+  );
+
+  const handleCopyShareLink = useCallback(() => {
     if (!shareUrl) return;
-    if (typeof navigator === 'undefined' || !navigator.clipboard) {
-      toast({
-        title: 'Clipboard unavailable',
-        description: 'Copy the link manually instead.'
-      });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast({ title: 'Link copied', description: 'Share link copied to your clipboard.' });
-    } catch (error) {
-      console.error('Error copying link:', error);
-      toast({
-        title: 'Unable to copy link',
-        description: 'Try copying manually instead.',
-        variant: 'destructive'
-      });
-    }
-  }, [shareUrl, toast]);
+    void copyValue(shareUrl, 'Share link copied to your clipboard.');
+  }, [copyValue, shareUrl]);
 
-  const handleCopySelectedShareLink = useCallback(async () => {
+  const handleCopySelectedShareLink = useCallback(() => {
     if (!selectedPlaylistShareUrl) return;
-    if (typeof navigator === 'undefined' || !navigator.clipboard) {
-      toast({
-        title: 'Clipboard unavailable',
-        description: 'Copy the link manually instead.'
-      });
-      return;
-    }
+    void copyValue(selectedPlaylistShareUrl, 'Share link copied to your clipboard.');
+  }, [copyValue, selectedPlaylistShareUrl]);
 
-    try {
-      await navigator.clipboard.writeText(selectedPlaylistShareUrl);
-      toast({ title: 'Link copied', description: 'Share link copied to your clipboard.' });
-    } catch (error) {
-      console.error('Error copying link:', error);
-      toast({
-        title: 'Unable to copy link',
-        description: 'Try copying manually instead.',
-        variant: 'destructive'
-      });
-    }
-  }, [selectedPlaylistShareUrl, toast]);
+  const handleCopySlug = useCallback(
+    (value?: string | null) => {
+      if (!value) return;
+      void copyValue(value, 'Slug copied to your clipboard.');
+    },
+    [copyValue]
+  );
+
+  const handleCopyShareCode = useCallback(
+    (value?: string | null) => {
+      if (!value) return;
+      void copyValue(value, 'Access token copied to your clipboard.');
+    },
+    [copyValue]
+  );
 
   const handleNativeShare = useCallback(async () => {
     if (!shareTarget || !shareUrl) return;
@@ -1133,27 +1175,94 @@ const PlaylistManager = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {selectedVisibility !== 'private' && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Share link
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Input value={selectedPlaylistShareUrl} readOnly className="font-mono text-xs" />
-                        <div className="flex gap-2">
-                          <Button variant="secondary" size="sm" onClick={handleCopySelectedShareLink}>
-                            <Copy className="mr-2 h-4 w-4" /> Copy
-                          </Button>
+                  {selectedVisibility === 'private' ? (
+                    <p className="text-sm text-muted-foreground">
+                      Set the playlist to public or unlisted to generate a shareable slug and link.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Public slug
+                        </p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            value={selectedPlaylist?.slug ?? ''}
+                            placeholder="Generating slug..."
+                            readOnly
+                            className="font-mono text-xs"
+                          />
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
-                            onClick={() =>
-                              selectedPlaylistShareUrl && window.open(selectedPlaylistShareUrl, '_blank')
-                            }
-                            disabled={!selectedPlaylistShareUrl}
+                            onClick={() => handleCopySlug(selectedPlaylist?.slug)}
+                            disabled={!selectedPlaylist?.slug}
                           >
-                            <ExternalLink className="mr-2 h-4 w-4" /> Open
+                            <Copy className="mr-2 h-4 w-4" /> Copy slug
                           </Button>
+                        </div>
+                        {!selectedPlaylist?.slug && (
+                          <p className="text-xs text-muted-foreground">
+                            Slug will be generated automatically after enabling sharing.
+                          </p>
+                        )}
+                      </div>
+
+                      {selectedVisibility === 'unlisted' && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Unlisted access token
+                          </p>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <Input
+                              value={selectedPlaylist?.share_code ?? ''}
+                              placeholder="Token available after making playlist unlisted"
+                              readOnly
+                              className="font-mono text-xs"
+                            />
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleCopyShareCode(selectedPlaylist?.share_code)}
+                              disabled={!selectedPlaylist?.share_code}
+                            >
+                              <Copy className="mr-2 h-4 w-4" /> Copy token
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Share link
+                        </p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            value={selectedPlaylistShareUrl}
+                            placeholder="Link will appear when sharing is enabled"
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={handleCopySelectedShareLink}
+                              disabled={!selectedPlaylistShareUrl}
+                            >
+                              <Copy className="mr-2 h-4 w-4" /> Copy link
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                selectedPlaylistShareUrl && window.open(selectedPlaylistShareUrl, '_blank')
+                              }
+                              disabled={!selectedPlaylistShareUrl}
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" /> Open
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1392,22 +1501,83 @@ const PlaylistManager = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Playlist link</p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Input value={shareUrl} readOnly className="font-mono text-xs" />
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={handleCopyShareLink} disabled={!shareUrl}>
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                  </Button>
-                  {canUseNativeShare && (
-                    <Button variant="outline" size="sm" onClick={handleNativeShare} disabled={!shareUrl}>
-                      <Share className="mr-2 h-4 w-4" /> Share
+            {shareTarget?.visibility === 'private' ? (
+              <p className="text-sm text-muted-foreground">
+                Make this playlist public or unlisted to generate a shareable link.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Public slug
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      value={shareTarget?.slug ?? ''}
+                      placeholder="Slug will appear here"
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleCopySlug(shareTarget?.slug)}
+                      disabled={!shareTarget?.slug}
+                    >
+                      <Copy className="mr-2 h-4 w-4" /> Copy slug
                     </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                {shareTarget?.visibility === 'unlisted' && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Access token
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Input
+                        value={shareTarget?.share_code ?? ''}
+                        placeholder="Token generated when playlist is unlisted"
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleCopyShareCode(shareTarget?.share_code)}
+                        disabled={!shareTarget?.share_code}
+                      >
+                        <Copy className="mr-2 h-4 w-4" /> Copy token
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Playlist link
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      value={shareUrl}
+                      placeholder="Share link unavailable"
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <Button variant="secondary" size="sm" onClick={handleCopyShareLink} disabled={!shareUrl}>
+                        <Copy className="mr-2 h-4 w-4" /> Copy link
+                      </Button>
+                      {canUseNativeShare && (
+                        <Button variant="outline" size="sm" onClick={handleNativeShare} disabled={!shareUrl}>
+                          <Share className="mr-2 h-4 w-4" /> Share
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

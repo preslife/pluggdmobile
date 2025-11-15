@@ -104,3 +104,15 @@ verify_jwt = false
 
 [functions.process-gift-queue]
 verify_jwt = false
+
+[functions.inbox-fetch-gmail]
+verify_jwt = false
+
+[functions.inbox-fetch-discord]
+verify_jwt = false
+
+[functions.inbox-send-gmail]
+verify_jwt = true
+
+[functions.inbox-send-discord]
+verify_jwt = true

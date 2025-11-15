@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
+import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,24 +166,29 @@ serve(async (req) => {
       available_after: balance.available_credits - amountCredits,
     } as Record<string, unknown>;
 
-    const { error: ledgerError } = await supabaseClient
-      .from("wallet_ledger")
-      .insert({
-        user_id: user.id,
-        kind: "convert_sub_applied",
-        amount_credits: -amountCredits,
-        ref_type: "subscription",
-        ref_id: balanceTransaction.id,
-        meta: {
-          stripe_customer_id: customerId,
-          credit_amount_pence: creditAmountPence,
-          balance_transaction_id: balanceTransaction.id,
-          compliance: complianceMeta,
+    try {
+      await recordWalletTransaction(
+        supabaseClient,
+        {
+          userId: user.id,
+          amountCredits: -amountCredits,
+          kind: "convert_sub_applied",
+          refType: "subscription",
+          refId: balanceTransaction.id,
+          meta: {
+            stripe_customer_id: customerId,
+            credit_amount_pence: creditAmountPence,
+            balance_transaction_id: balanceTransaction.id,
+            compliance: complianceMeta,
+          },
         },
-      });
-
-    if (ledgerError) {
-      const normalized = normalizeLedgerError(ledgerError.message, complianceMeta);
+        { logger, correlationId: requestCorrelationId },
+      );
+    } catch (ledgerError: any) {
+      const normalized = normalizeLedgerError(
+        typeof ledgerError?.message === "string" ? ledgerError.message : null,
+        complianceMeta,
+      );
       await logger.warn("apply_subscription_ledger_blocked", {
         user_id: user.id,
         ...normalized.logMeta,

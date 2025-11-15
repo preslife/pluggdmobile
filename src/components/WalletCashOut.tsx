@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,14 +6,23 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWallet, formatCredits, creditsToGBP } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogger } from "@/hooks/useLogger";
-import { Download, AlertTriangle, CheckCircle } from "lucide-react";
+import { Download, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { supabase } from "@/integrations/supabase/client";
 
 export const WalletCashOut = () => {
   const { balance, cashOutCredits } = useWallet();
   const { user } = useAuth();
   const [cashOutAmount, setCashOutAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tierInfo, setTierInfo] = useState<{ commission_rate?: number; tier_name?: string } | null>(null);
+  const [tierLoading, setTierLoading] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<{
+    onboarding_complete: boolean;
+    payouts_enabled: boolean;
+    compliance_hold_reason?: string | null;
+  } | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
   const { logEvent, logError } = useLogger({
     component: "WalletCashOut",
     feature: "wallet",
@@ -21,6 +30,55 @@ export const WalletCashOut = () => {
     metadata: { user_id: user?.id ?? null },
   });
   const { t, formatCurrency } = useTranslation();
+
+  useEffect(() => {
+    if (!user?.id) {
+      setTierInfo(null);
+      return;
+    }
+
+    setTierLoading(true);
+    supabase
+      .rpc('get_user_tier_limits', { user_id: user.id })
+      .then(({ data, error }) => {
+        if (error) {
+          void logError('wallet_cashout_tier_fetch_failed', error, { user_id: user.id });
+          return;
+        }
+        setTierInfo(data as any);
+      })
+      .finally(() => setTierLoading(false));
+  }, [user?.id, logError]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setStripeStatus(null);
+      return;
+    }
+
+    setStripeLoading(true);
+    supabase
+      .from('producer_stripe_accounts')
+      .select('onboarding_complete, payouts_enabled, compliance_hold_reason')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          void logError('wallet_cashout_stripe_status_failed', error, { user_id: user.id });
+          return;
+        }
+        setStripeStatus(
+          data
+            ? {
+                onboarding_complete: Boolean(data.onboarding_complete),
+                payouts_enabled: Boolean(data.payouts_enabled),
+                compliance_hold_reason: data.compliance_hold_reason ?? null,
+              }
+            : { onboarding_complete: false, payouts_enabled: false },
+        );
+      })
+      .finally(() => setStripeLoading(false));
+  }, [user?.id, logError]);
 
   const handleCashOut = async () => {
     const amount = parseInt(cashOutAmount, 10);
@@ -58,8 +116,8 @@ export const WalletCashOut = () => {
   const isEligible = balance.available_credits >= minimumCashOut;
   const enteredAmount = parseInt(cashOutAmount) || 0;
 
-  // Calculate commission (example: 15% for free tier, 10% for creator, 5% for pro)
-  const commissionRate = 0.15; // This should come from user tier
+  const commissionRate = ((tierInfo?.commission_rate ?? 15) / 100);
+  const tierLabel = tierInfo?.tier_name ?? 'STANDARD';
   const grossAmount = creditsToGBP(enteredAmount);
   const commissionAmount = grossAmount * commissionRate;
   const netAmount = grossAmount - commissionAmount;
@@ -74,6 +132,8 @@ export const WalletCashOut = () => {
     [commissionAmount, formatCurrency]
   );
   const formattedNetAmount = useMemo(() => formatCurrency(netAmount, "GBP"), [netAmount, formatCurrency]);
+  const payoutsReady = Boolean(stripeStatus?.onboarding_complete && stripeStatus?.payouts_enabled);
+  const complianceMessage = stripeStatus?.compliance_hold_reason;
 
   return (
     <div className="space-y-6">
@@ -91,6 +151,17 @@ export const WalletCashOut = () => {
         </Alert>
       )}
 
+      {!payoutsReady && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {complianceMessage
+              ? complianceMessage
+              : `Complete your Stripe Connect onboarding to enable payouts for the ${tierLabel} tier.`}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Stripe Connect Status */}
       <Card>
         <CardHeader>
@@ -101,15 +172,37 @@ export const WalletCashOut = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div
+              className={`flex items-center justify-between p-3 border rounded-lg ${
+                payoutsReady ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+              }`}
+            >
               <div>
-                <p className="font-medium text-green-800">{t("wallet:cashOut.setup.accountTitle")}</p>
-                <p className="text-sm text-green-600">{t("wallet:cashOut.setup.accountStatus")}</p>
+                <p className="font-medium">
+                  {payoutsReady ? t("wallet:cashOut.setup.accountTitle") : 'Stripe Connect onboarding incomplete'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {stripeLoading
+                    ? 'Checking Connect status...'
+                    : payoutsReady
+                    ? t("wallet:cashOut.setup.accountStatus")
+                    : 'Finish verification to enable payouts.'}
+                </p>
               </div>
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              {stripeLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : payoutsReady ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              )}
             </div>
 
-            <p className="text-sm text-muted-foreground">{t("wallet:cashOut.setup.processing")}</p>
+            <p className="text-sm text-muted-foreground">
+              {tierLoading
+                ? 'Loading commission rate...'
+                : `Current commission: ${commissionPercentage} (${tierLabel})`}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -168,7 +261,13 @@ export const WalletCashOut = () => {
 
           <Button
             onClick={handleCashOut}
-            disabled={loading || !isEligible || enteredAmount < minimumCashOut || enteredAmount > balance.available_credits}
+            disabled={
+              loading ||
+              !isEligible ||
+              enteredAmount < minimumCashOut ||
+              enteredAmount > balance.available_credits ||
+              !payoutsReady
+            }
             className="w-full"
           >
             <Download className="h-4 w-4 mr-2" />
@@ -182,6 +281,7 @@ export const WalletCashOut = () => {
             <p>{t("wallet:cashOut.disclaimers.timeline")}</p>
             <p>{t("wallet:cashOut.disclaimers.commission")}</p>
             <p>{t("wallet:cashOut.disclaimers.confirmation")}</p>
+            <p>All payouts remain subject to platform compliance reviews and Stripe KYC obligations.</p>
           </div>
         </CardContent>
       </Card>

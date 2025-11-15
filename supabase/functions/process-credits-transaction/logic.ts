@@ -16,6 +16,7 @@ export interface CreditsTransactionPayload {
   ref_id?: string | null;
   counterparty_user_id?: string | null;
   meta?: Record<string, any> | null;
+  reversal_of_entry_id?: string | null;
 }
 
 interface SupabaseQueryBuilder<T> {
@@ -69,6 +70,7 @@ export async function processCreditsTransaction(
       ref_id,
       counterparty_user_id,
       meta,
+      reversal_of_entry_id: payload.reversal_of_entry_id ?? null,
     } as any);
 
   if (ledgerError) {

@@ -9,6 +9,7 @@ import {
   type Logger,
 } from "./helpers.ts";
 import { createPreferenceCache, executeWithNotificationPreference } from "../_shared/notificationPreferences.ts";
+import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
 
 type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -371,26 +372,24 @@ serve(async (req) => {
           if (userId && creditsAmount) {
             await logStep("Processing credits top-up", { userId, creditsAmount });
             
-            // Create ledger entry for credits top-up
-            const { error: ledgerError } = await supabaseClient
-              .from('wallet_ledger')
-              .insert({
-                user_id: userId,
+            try {
+              await recordWalletTransaction(supabaseClient, {
+                userId,
+                amountCredits: creditsAmount,
                 kind: 'topup',
-                amount_credits: creditsAmount,
-                ref_type: 'stripe_checkout',
-                ref_id: session.id,
+                refType: 'stripe_checkout',
+                refId: session.id,
                 meta: {
                   stripe_session_id: session.id,
                   amount_total: session.amount_total,
                   currency: session.currency
                 }
               });
-            
-            if (ledgerError) {
-              await logStep("Error creating credits ledger entry", { error: ledgerError.message });
-            } else {
               await logStep("Credits top-up completed successfully", { userId, creditsAmount });
+            } catch (ledgerError: any) {
+              await logStep("Error creating credits ledger entry", {
+                error: typeof ledgerError?.message === 'string' ? ledgerError.message : String(ledgerError),
+              });
             }
           }
           break;

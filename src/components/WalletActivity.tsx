@@ -8,13 +8,17 @@ import { useWallet } from "@/hooks/useWallet";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatDate, formatCurrency, formatCredits } from "@/lib/formatting";
 import { ArrowUpCircle, ArrowDownCircle, Search, Filter } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const WalletActivity = () => {
   const { ledger, loading, refreshLedger } = useWallet();
   const { t, locale, timezone } = useTranslation();
+  const { toast } = useToast();
   const [filteredLedger, setFilteredLedger] = useState(ledger);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKind, setFilterKind] = useState("all");
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     let filtered = ledger;
@@ -87,6 +91,50 @@ export const WalletActivity = () => {
           : t('wallet:actions.prizeAwarded');
       default:
         return entry.ref_type || t('wallet:activity.labels.genericTransaction');
+    }
+  };
+
+  const canViewReceipt = (entry: any) => {
+    return ['spend_purchase', 'topup', 'convert_cashout'].includes(entry.kind);
+  };
+
+  const handleViewReceipt = async (entry: any) => {
+    setReceiptLoadingId(entry.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-receipt', {
+        body: {
+          payment_id: entry.id,
+          type: 'wallet_transaction',
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.receipt_html) {
+        const receiptWindow = window.open('', '_blank');
+        if (receiptWindow) {
+          receiptWindow.document.write(data.receipt_html);
+          receiptWindow.document.close();
+        } else {
+          toast({
+            title: 'Unable to open receipt window',
+            description: 'Please allow popups for this site and try again.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        throw new Error('Receipt payload missing.');
+      }
+    } catch (error) {
+      toast({
+        title: 'Receipt unavailable',
+        description: error instanceof Error ? error.message : 'Unable to generate receipt for this transaction.',
+        variant: 'destructive',
+      });
+    } finally {
+      setReceiptLoadingId(null);
     }
   };
 
@@ -185,7 +233,7 @@ export const WalletActivity = () => {
                     </div>
                   </div>
                   
-                  <div className="text-right">
+                  <div className="text-right space-y-1">
                     <p className={`font-medium ${
                       entry.amount_credits > 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
@@ -194,6 +242,17 @@ export const WalletActivity = () => {
                     <p className="text-xs text-muted-foreground">
                       {formatCurrency(Math.abs(entry.amount_credits / 100), { locale })}
                     </p>
+                    {canViewReceipt(entry) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => handleViewReceipt(entry)}
+                        disabled={receiptLoadingId === entry.id}
+                      >
+                        {receiptLoadingId === entry.id ? 'Preparing…' : 'Receipt'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

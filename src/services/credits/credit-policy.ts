@@ -14,6 +14,7 @@ class CreditPolicyService {
       const { data, error } = await supabase
         .from('credit_rules')
         .select('max_cart_percent')
+        .order('effective_at', { ascending: false, nullsLast: false })
         .limit(1)
         .maybeSingle();
 

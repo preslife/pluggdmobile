@@ -16,6 +16,8 @@ export interface Playlist {
   user_id: string;
   created_at: string;
   updated_at: string;
+  slug?: string | null;
+  share_code?: string | null;
 }
 
 export interface CreatePlaylistData {
@@ -63,6 +65,8 @@ export const usePlaylist = () => {
         collaborative: playlist.collaborative || false,
         cover_art_url: playlist.cover_art_url || '',
         track_count: playlist.playlist_items?.[0]?.count || 0,
+        slug: playlist.slug,
+        share_code: playlist.share_code,
         user_id: playlist.user_id,
         created_at: playlist.created_at,
         updated_at: playlist.updated_at
@@ -107,6 +111,8 @@ export const usePlaylist = () => {
         collaborative: playlist.collaborative || false,
         cover_art_url: playlist.cover_art_url || '',
         track_count: playlist.playlist_items?.[0]?.count || 0,
+        slug: playlist.slug,
+        share_code: playlist.share_code,
         user_id: playlist.user_id,
         created_at: playlist.created_at,
         updated_at: playlist.updated_at

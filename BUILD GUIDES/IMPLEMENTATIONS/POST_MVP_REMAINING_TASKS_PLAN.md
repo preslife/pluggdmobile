@@ -179,18 +179,22 @@
   - Playlist detail page (`/playlist/:slug`) for public view with share metadata (Open Graph).
   - Studio playlist editor gains toggle for `public/unlisted`, slug preview, and collaborator management.
 - **QA**: Smoke create playlist → toggle public → open share URL anonymously; add collaborator and confirm edit rights.
+- **TODO (QA)**: Run the full E1 sharing smoke at the end (create playlist → toggle to public + unlisted to capture slug/token → open the slug link logged out → confirm collaborator can edit) once QA window opens.
 
 ### E2. Social Feed from Follows
 - Build feed query that aggregates posts/tracks from followed creators; implement infinite scroll and fallback to trending.
 - Surface follow CTA if feed empty; ensure caching for performance.
+- **TODO (QA)**: When QA resumes, run the Social Feed smoke (seed follows, verify personalized feed pagination + trending fallback + follow CTA) to confirm E2 behavior.
 
 ### E3. Unified Inbox Hardening
 - Wire authentication, pagination, and message composer for Gmail/Discord; ensure token refresh flows are handled server-side.
 - Add automated polling schedules via Supabase cron for each provider.
+- **TODO (QA)**: Execute the unified inbox smoke (connect Gmail + Discord → trigger manual poll → send test messages via composer → confirm pagination works) once QA window opens.
 
 ### E4. Credits & Wallet Completion
 - Finalize ledger calculations (credits earned/spent); ensure checkout uses credits balance before Stripe charges.
 - Implement cash-out flow with compliance checks and Connect payouts; include legal copy and receipt exports.
+- **TODO (QA)**: Run the wallet/credits smoke (top-up → hybrid checkout applying credits → verify ledger totals → submit cash-out + confirm compliance gating messages) once the test window re-opens.
 
 ### E5. Live Sessions Enhancements
 - Add schedule list with filtering, "Now Playing" tile, and reminders integration with notifications.

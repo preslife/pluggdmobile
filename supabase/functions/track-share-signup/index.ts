@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,24 +100,20 @@ const handler = async (req: Request): Promise<Response> => {
         const shareCredits = parseInt(Deno.env.get('REF_CREDITS_SHARE_SIGNUP') || '200');
 
         // Award credits to sharer
-        const { error: walletError } = await supabase
-          .from('wallet_ledger')
-          .insert({
-            user_id: sharer_user_id,
-            kind: 'award_prize',
-            amount_credits: shareCredits,
-            ref_type: 'share_to_earn',
-            ref_id: signup_user_id,
-            counterparty_user_id: signup_user_id,
-            meta: {
-              event_type: 'share_signup_bonus',
-              share_token,
-              share_platform: shareClick.properties.share_platform,
-              attributed_signup_id: signup_user_id
-            }
-          });
-
-        if (walletError) throw walletError;
+        await recordWalletTransaction(supabase, {
+          userId: sharer_user_id,
+          amountCredits: shareCredits,
+          kind: 'award_prize',
+          refType: 'share_to_earn',
+          refId: signup_user_id ?? null,
+          counterpartyUserId: signup_user_id ?? null,
+          meta: {
+            event_type: 'share_signup_bonus',
+            share_token,
+            share_platform: shareClick.properties.share_platform,
+            attributed_signup_id: signup_user_id
+          }
+        });
 
         // Log analytics event for the reward
         await supabase

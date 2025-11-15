@@ -107,40 +107,12 @@ class CreditSystemService {
 
     const balanceData = (data as any) || {};
 
-    const [earnedData, spentData] = await Promise.all([
-      supabase
-        .from('wallet_ledger')
-        .select('total:amount_credits', { head: false, count: 'exact' })
-        .eq('user_id', userId)
-        .gte('amount_credits', 0)
-        .single()
-        .then((result) => {
-          if (result.error && result.error.code !== 'PGRST116') {
-            throw result.error;
-          }
-          return (result.data as any)?.total ?? 0;
-        }),
-      supabase
-        .from('wallet_ledger')
-        .select('total:amount_credits', { head: false, count: 'exact' })
-        .eq('user_id', userId)
-        .lt('amount_credits', 0)
-        .single()
-        .then((result) => {
-          if (result.error && result.error.code !== 'PGRST116') {
-            throw result.error;
-          }
-          const spent = (result.data as any)?.total ?? 0;
-          return Math.abs(spent);
-        }),
-    ]);
-
     return {
       balance_credits: balanceData.balance_credits ?? 0,
       pending_credits: balanceData.pending_credits ?? 0,
       available_credits: balanceData.available_credits ?? 0,
-      total_earned: earnedData,
-      total_spent: spentData,
+      total_earned: balanceData.total_earned ?? 0,
+      total_spent: balanceData.total_spent ?? 0,
     };
   }
 

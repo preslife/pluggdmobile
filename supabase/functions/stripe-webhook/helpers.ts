@@ -1,3 +1,5 @@
+import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
+
 export interface Logger {
   info: (event: string, details?: Record<string, unknown>) => Promise<void> | void;
   warn: (event: string, details?: Record<string, unknown>) => Promise<void> | void;
@@ -518,15 +520,13 @@ export const handleChargeReversal = async (
     await logger.warn('charge_reversal_original_entry_missing', { chargeId: charge.id, userId });
   }
 
-  const { error } = await supabaseClient
-    .from('wallet_ledger')
-    .insert({
-      user_id: userId,
+  try {
+    await recordWalletTransaction(supabaseClient, {
+      userId,
+      amountCredits: creditsApplied,
       kind: 'award_prize',
-      amount_credits: creditsApplied,
-      ref_type: 'stripe_charge',
-      ref_id: charge.id,
-      reversal_of_entry_id: reversalOfEntryId,
+      refType: 'stripe_charge',
+      refId: charge.id,
       meta: {
         stripe_charge_id: charge.id,
         stripe_event_id: eventId,
@@ -534,11 +534,13 @@ export const handleChargeReversal = async (
         credits_applied: creditsApplied,
         manual_amount_credits: metadata.manual_amount_credits,
       },
+      reversalOfEntryId: reversalOfEntryId ?? undefined,
     });
-
-  if (error) {
-    await logger.error('charge_reversal_recredit_failed', { error: error.message, chargeId: charge.id });
-  } else {
     await logger.info('charge_reversal_recredited', { chargeId: charge.id, creditsApplied, reason });
+  } catch (error: any) {
+    await logger.error('charge_reversal_recredit_failed', {
+      error: typeof error?.message === 'string' ? error.message : String(error),
+      chargeId: charge.id,
+    });
   }
 };

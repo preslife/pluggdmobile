@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,7 +83,11 @@ serve(async (req) => {
       );
     }
 
-    const transactions = [];
+    const ledgerTransactions: {
+      userId: string;
+      amountCredits: number;
+      meta: Record<string, any>;
+    }[] = [];
 
     // Process rewards based on event type
     switch (event_type) {
@@ -92,24 +97,33 @@ serve(async (req) => {
           .from('wallet_ledger')
           .select('id')
           .eq('user_id', user_id)
-          .eq('kind', 'referral_reward')
-          .eq('description', 'Referral signup bonus')
+          .eq('kind', 'award_prize')
+          .eq('meta->>reward_type', 'referral_signup_invitee')
           .limit(1);
 
         if (!existingSignupReward || existingSignupReward.length === 0) {
           // Award signup bonus to both users
-          transactions.push({
-            user_id: user_id,
-            amount_credits: REF_CREDITS_SIGNUP_INVITEE,
-            kind: 'referral_reward',
-            description: 'Referral signup bonus',
+          ledgerTransactions.push({
+            userId: user_id,
+            amountCredits: REF_CREDITS_SIGNUP_INVITEE,
+            meta: {
+              reward_type: 'referral_signup_invitee',
+              description: 'Referral signup bonus',
+              referrer_id,
+              referred_user_id: user_id,
+              event_type,
+            },
           });
 
-          transactions.push({
-            user_id: referrer_id,
-            amount_credits: REF_CREDITS_SIGNUP_INVITEE,
-            kind: 'referral_reward',
-            description: 'Friend signup bonus',
+          ledgerTransactions.push({
+            userId: referrer_id,
+            amountCredits: REF_CREDITS_SIGNUP_INVITEE,
+            meta: {
+              reward_type: 'referral_signup_referrer',
+              description: 'Friend signup bonus',
+              referred_user_id: user_id,
+              event_type,
+            },
           });
 
           // Update referrer's signup count and rewards
@@ -140,16 +154,21 @@ serve(async (req) => {
           .from('wallet_ledger')
           .select('id')
           .eq('user_id', referrer_id)
-          .eq('kind', 'referral_reward')
-          .eq('description', 'Friend first purchase bonus')
+          .eq('kind', 'award_prize')
+          .eq('meta->>reward_type', 'referral_first_purchase_referrer')
           .limit(1);
 
         if (!existingPurchaseReward || existingPurchaseReward.length === 0) {
-          transactions.push({
-            user_id: referrer_id,
-            amount_credits: REF_CREDITS_FIRST_PURCHASE_INVITER,
-            kind: 'referral_reward',
-            description: 'Friend first purchase bonus',
+          ledgerTransactions.push({
+            userId: referrer_id,
+            amountCredits: REF_CREDITS_FIRST_PURCHASE_INVITER,
+            meta: {
+              reward_type: 'referral_first_purchase_referrer',
+              description: 'Friend first purchase bonus',
+              referred_user_id: user_id,
+              event_type,
+              amount_spent,
+            },
           });
 
           // Update referrer's rewards earned
@@ -174,23 +193,31 @@ serve(async (req) => {
           .from('wallet_ledger')
           .select('id')
           .eq('user_id', user_id)
-          .eq('kind', 'referral_reward')
-          .eq('description', 'Subscription start bonus')
+          .eq('kind', 'award_prize')
+          .eq('meta->>reward_type', 'referral_first_subscription_invitee')
           .limit(1);
 
         if (!existingSubReward || existingSubReward.length === 0) {
-          transactions.push({
-            user_id: user_id,
-            amount_credits: REF_CREDITS_FIRST_SUB_BOTH,
-            kind: 'referral_reward',
-            description: 'Subscription start bonus',
+          ledgerTransactions.push({
+            userId: user_id,
+            amountCredits: REF_CREDITS_FIRST_SUB_BOTH,
+            meta: {
+              reward_type: 'referral_first_subscription_invitee',
+              description: 'Subscription start bonus',
+              referrer_id,
+              event_type,
+            },
           });
 
-          transactions.push({
-            user_id: referrer_id,
-            amount_credits: REF_CREDITS_FIRST_SUB_BOTH,
-            kind: 'referral_reward',
-            description: 'Friend subscription bonus',
+          ledgerTransactions.push({
+            userId: referrer_id,
+            amountCredits: REF_CREDITS_FIRST_SUB_BOTH,
+            meta: {
+              reward_type: 'referral_first_subscription_referrer',
+              description: 'Friend subscription bonus',
+              referred_user_id: user_id,
+              event_type,
+            },
           });
 
           // Update referrer's rewards earned
@@ -210,11 +237,16 @@ serve(async (req) => {
         break;
 
       case 'share_signup':
-        transactions.push({
-          user_id: referrer_id,
-          amount_credits: REF_CREDITS_SHARE_SIGNUP,
-          kind: 'referral_reward',
-          description: 'Share link signup bonus',
+        ledgerTransactions.push({
+          userId: referrer_id,
+          amountCredits: REF_CREDITS_SHARE_SIGNUP,
+          meta: {
+            reward_type: 'referral_share_signup',
+            description: 'Share link signup bonus',
+            share_token,
+            referred_user_id: user_id,
+            event_type,
+          },
         });
 
         // Update referrer's rewards earned
@@ -234,25 +266,28 @@ serve(async (req) => {
     }
 
     // Execute wallet transactions
-    if (transactions.length > 0) {
-      const { error: ledgerError } = await supabase
-        .from('wallet_ledger')
-        .insert(transactions);
-
-      if (ledgerError) {
-        console.error('Error inserting wallet transactions:', ledgerError);
-        throw ledgerError;
+    if (ledgerTransactions.length > 0) {
+      for (const tx of ledgerTransactions) {
+        await recordWalletTransaction(supabase, {
+          userId: tx.userId,
+          amountCredits: tx.amountCredits,
+          kind: 'award_prize',
+          refType: 'referral',
+          refId: user_id,
+          meta: tx.meta,
+        });
       }
 
       // Log analytics events
-      const analyticsEvents = transactions.map(tx => ({
-        user_id: tx.user_id,
+      const analyticsEvents = ledgerTransactions.map(tx => ({
+        user_id: tx.userId,
         event_name: 'referral_reward_earned',
         metadata: {
           event_type,
-          amount_credits: tx.amount_credits,
+          amount_credits: tx.amountCredits,
           referrer_id: referrer_id,
-          referred_user_id: user_id
+          referred_user_id: user_id,
+          reward_type: tx.meta.reward_type,
         }
       }));
 

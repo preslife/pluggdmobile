@@ -453,6 +453,10 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     );
   }, [balanceSummary, totalCost, maxCartPercent]);
 
+  useEffect(() => {
+    setCreditsToApply((current) => Math.min(current, creditCap));
+  }, [creditCap]);
+
   const taxCurrency = taxQuote?.currency?.toUpperCase?.() ?? 'GBP';
   const subtotalCurrency = totalCost / CREDITS_PER_GBP;
   const baseCashDueCurrency = cashDuePreview / CREDITS_PER_GBP;
@@ -734,9 +738,29 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         user_id: user.id,
         item_count: checkoutItems.length,
         requested_credits: desiredCredits,
+        applied_credits: result.appliedCredits,
         cash_due_credits: result.cashDue,
         requires_cash_component: result.cashDue > 0,
       });
+
+      if (result.appliedCredits !== desiredCredits) {
+        setCreditsToApply(result.appliedCredits);
+        toast({
+          title: 'Credit amount adjusted',
+          description:
+            'We updated the applied credits to match the current wallet balance and policy limits.',
+        });
+        void checkoutLogger.warn(
+          'checkout_credit_adjusted_to_policy',
+          {
+            user_id: user.id,
+            requested_credits: desiredCredits,
+            applied_credits: result.appliedCredits,
+            max_percent: maxCartPercent,
+            balance_at_checkout: balanceSummary?.available_credits ?? null,
+          },
+        );
+      }
 
       if (result.cashDue > 0) {
         if (checkoutSession?.url && checkoutSession.sessionId) {

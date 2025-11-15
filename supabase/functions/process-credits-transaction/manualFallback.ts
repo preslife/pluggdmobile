@@ -2,7 +2,7 @@ import type { CreditsTransactionPayload } from './logic.ts';
 
 type JsonRecord = Record<string, any>;
 
-type ManualEntryInput = {
+export type ManualEntryInput = {
   order_id?: string | null;
   item_type?: string | null;
   item_id?: string | null;
@@ -14,6 +14,7 @@ type ManualEntryInput = {
 
 export interface ManualTransactionPayload extends CreditsTransactionPayload {
   manual_entry?: ManualEntryInput;
+  reversal_of_entry_id?: string | null;
 }
 
 export interface ManualTransactionResult {
@@ -61,6 +62,7 @@ export async function performManualTransactionFallback(
     counterparty_user_id,
     meta,
     manual_entry,
+    reversal_of_entry_id,
   } = payload;
 
   const normalizedMeta = normalizeMeta(meta);
@@ -75,6 +77,7 @@ export async function performManualTransactionFallback(
     ref_id: ref_id ?? null,
     counterparty_user_id: counterparty_user_id ?? null,
     meta: normalizedMeta,
+    reversal_of_entry_id: reversal_of_entry_id ?? null,
   } as JsonRecord);
 
   if (ledgerError) {

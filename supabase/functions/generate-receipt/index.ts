@@ -146,6 +146,41 @@ serve(async (req) => {
         };
         break;
 
+      case 'wallet_transaction': {
+        const { data: ledgerEntry, error: ledgerError } = await supabaseClient
+          .from('wallet_ledger')
+          .select('id, kind, amount_credits, created_at, meta')
+          .eq('id', payment_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (ledgerError || !ledgerEntry) {
+          return new Response(
+            JSON.stringify({ error: 'Wallet transaction not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const meta = ledgerEntry.meta || {};
+        const creditsAmount = Math.abs(Number(ledgerEntry.amount_credits) || 0);
+        const amountGbp = creditsAmount / 100;
+        const productTitle = meta.product_title || meta.product_type || ledgerEntry.kind;
+
+        paymentData = ledgerEntry;
+        receiptData = {
+          type: 'wallet_transaction',
+          title: 'Wallet Transaction Receipt',
+          item_name: productTitle,
+          amount: amountGbp,
+          date: ledgerEntry.created_at,
+          payment_method: ledgerEntry.amount_credits >= 0 ? 'Credits Added' : 'Wallet Credits',
+          reference: ledgerEntry.id,
+          metadata: meta,
+          currency: 'GBP',
+        };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid payment type' }),

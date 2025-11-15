@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGlobalPlayer, type Track as PlayerTrack } from '@/components/GlobalPlayer/GlobalPlayer';
@@ -45,12 +45,14 @@ interface PlaylistCollaborator {
 
 interface PlaylistDetails {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   coverArtUrl: string | null;
   tags: string[];
   collaborative: boolean;
   visibility: 'public' | 'unlisted' | 'private';
+  shareCode: string | null;
   ownerId: string;
   owner: PlaylistOwnerProfile | null;
   followerCount: number;
@@ -97,10 +99,17 @@ const buildPlayerTrack = (track: PlaylistTrack): PlayerTrack | null => {
 const PlaylistPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { state: playerState, actions: playerActions } = useGlobalPlayer();
   const { toast } = useToast();
   const { nativeShare } = useShare();
+
+  const shareCode = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    return token ? token.trim() : null;
+  }, [location.search]);
 
   const [playlist, setPlaylist] = useState<PlaylistDetails | null>(null);
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
@@ -121,6 +130,8 @@ const PlaylistPage = () => {
     path: slug ? `/playlist/${slug}` : '/playlist',
     image: playlist?.coverArtUrl ?? undefined,
   });
+
+  const playlistId = playlist?.id ?? null;
 
   const canEdit = useMemo(() => {
     if (!playlist || !user) return false;
@@ -170,21 +181,31 @@ const PlaylistPage = () => {
 
       if (playlistError) throw playlistError;
       if (!playlistData) {
-        setError('Playlist not found or unavailable');
+        setError(
+          shareCode
+            ? 'This unlisted link is invalid or has expired.'
+            : 'Playlist not found or unavailable.'
+        );
         setLoading(false);
         return;
       }
 
+      const playlistRowId = playlistData.playlist_id;
+      const resolvedSlug =
+        (playlistData as { slug?: string | null }).slug ?? slug ?? null;
+      const resolvedShareCode =
+        shareCode ?? (playlistData as { share_code?: string | null }).share_code ?? null;
+
       const { data: ownerProfile } = await supabase
         .from('profiles')
         .select('user_id, username, full_name, avatar_url')
-        .eq('user_id', playlistData.user_id)
+        .eq('user_id', playlistData.owner_id)
         .maybeSingle();
 
       const { data: itemsData, error: itemsError } = await supabase
         .from('playlist_items')
         .select('id, position, beat_id, release_id, added_at')
-        .eq('playlist_id', playlistData.playlist_id)
+        .eq('playlist_id', playlistRowId)
         .order('position', { ascending: true })
         .order('added_at', { ascending: true });
 
@@ -316,13 +337,15 @@ const PlaylistPage = () => {
         .filter((track): track is PlaylistTrack => Boolean(track));
 
       setPlaylist({
-        id: playlistData.playlist_id,
+        id: playlistRowId,
+        slug: resolvedSlug,
         name: playlistData.name,
         description: playlistData.description,
         coverArtUrl: playlistData.cover_art_url,
         tags: playlistData.tags ?? [],
         collaborative: Boolean(playlistData.collaborative),
         visibility: (playlistData.visibility as PlaylistDetails['visibility']) || 'private',
+        shareCode: resolvedShareCode,
         ownerId: playlistData.owner_id,
         owner: ownerProfile ?? null,
         followerCount: 0,
@@ -334,7 +357,7 @@ const PlaylistPage = () => {
       const { data: collaboratorRows, error: collaboratorError } = await supabase
         .from('playlist_collaborators')
         .select('user_id, role, accepted_at')
-        .eq('playlist_id', id);
+        .eq('playlist_id', playlistRowId);
 
       if (!collaboratorError && collaboratorRows?.length) {
         const collaboratorProfileIds = collaboratorRows
@@ -365,21 +388,21 @@ const PlaylistPage = () => {
         setCollaborators([]);
       }
 
-      await fetchFollowState(id);
+      await fetchFollowState(playlistRowId);
     } catch (fetchError: any) {
       console.error('Failed to load playlist', fetchError);
       setError('Unable to load playlist. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, [fetchFollowState, id]);
+  }, [fetchFollowState, shareCode, slug]);
 
   useEffect(() => {
     fetchPlaylistDetails();
   }, [fetchPlaylistDetails]);
 
   const handleFollowToggle = async () => {
-    if (!id) return;
+    if (!playlistId) return;
     if (!user) {
       navigate('/auth');
       return;
@@ -391,7 +414,7 @@ const PlaylistPage = () => {
         const { error: unfollowError } = await supabase
           .from<any>('playlist_follows')
           .delete()
-        .eq('playlist_id', playlistData.playlist_id)
+          .eq('playlist_id', playlistId)
           .eq('user_id', user.id);
 
         if (unfollowError) throw unfollowError;
@@ -403,7 +426,7 @@ const PlaylistPage = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: followError } = await supabase
           .from<any>('playlist_follows')
-          .insert({ playlist_id: id, user_id: user.id });
+          .insert({ playlist_id: playlistId, user_id: user.id });
 
         if (followError) throw followError;
 
@@ -418,14 +441,30 @@ const PlaylistPage = () => {
         description: 'Please try again in a moment.',
         variant: 'destructive'
       });
-      await fetchFollowState(playlistData.playlist_id);
+      await fetchFollowState(playlistId);
     }
   };
 
   const handleShare = () => {
     if (!playlist) return;
 
-    const shareUrl = `${window.location.origin}/playlist/${slug ?? playlist.slug ?? playlist.id}`;
+    const slugOrId = playlist.slug ?? slug ?? playlist.id;
+    let tokenQuery = '';
+
+    if (playlist.visibility === 'unlisted') {
+      const token = shareCode ?? playlist.shareCode;
+      if (!token) {
+        toast({
+          title: 'Missing access token',
+          description: 'Open the Studio share dialog to copy the unlisted link.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      tokenQuery = `?token=${token}`;
+    }
+
+    const shareUrl = `${window.location.origin}/playlist/${slugOrId}${tokenQuery}`;
     nativeShare({
       title: playlist.name,
       url: shareUrl,
@@ -474,14 +513,14 @@ const PlaylistPage = () => {
   };
 
   const handleRemoveTrack = async (itemId: string) => {
-    if (!id) return;
+    if (!playlistId || !canEdit) return;
 
     try {
       const { error: removeError } = await supabase
         .from('playlist_items')
         .delete()
         .eq('id', itemId)
-        .eq('playlist_id', id);
+        .eq('playlist_id', playlistId);
 
       if (removeError) throw removeError;
 
@@ -498,7 +537,7 @@ const PlaylistPage = () => {
   };
 
   const handleMoveTrack = async (itemId: string, direction: 'up' | 'down') => {
-    if (isReordering) return;
+    if (isReordering || !playlistId || !canEdit) return;
 
     const currentIndex = tracks.findIndex((track) => track.itemId === itemId);
     if (currentIndex === -1) return;
@@ -527,7 +566,7 @@ const PlaylistPage = () => {
       await supabase
         .from('playlists')
         .update({ updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', playlistId);
 
       toast({ title: 'Playlist updated', description: 'Track order saved.' });
     } catch (reorderError) {
