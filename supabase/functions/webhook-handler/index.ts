@@ -57,13 +57,24 @@ serve(async (req) => {
         }
         break;
 
-      case 'user_signup':
-        // Send welcome email
+      case 'user_signup': {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_creator')
+          .eq('user_id', user_id)
+          .maybeSingle();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error loading profile for welcome email:', profileError);
+        }
+
+        const isCreator = profile?.is_creator === true;
+        const welcomeType = isCreator ? 'creator_welcome' : 'fan_welcome';
+
         const { error: emailError } = await supabase.functions.invoke('send-lifecycle-emails', {
           body: {
             user_id,
-            email_type: 'welcome',
-            trigger_event: 'signup'
+            email_type: welcomeType,
           }
         });
 
@@ -71,6 +82,7 @@ serve(async (req) => {
           console.error('Error sending welcome email:', emailError);
         }
         break;
+      }
 
       default:
         console.log('Unhandled webhook event type:', event_type);

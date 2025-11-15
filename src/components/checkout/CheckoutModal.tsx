@@ -697,14 +697,34 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     });
 
     try {
-      const desiredCredits = Math.min(creditsToApply, creditCap);
-      const baseCashDueCredits = Math.max(totalCost - desiredCredits, 0);
+      const previewResult = await creditSystem.processPurchase(user.id, checkoutItems, {
+        requestedCredits: creditsToApply,
+        maxCreditPercentage: maxCartPercent,
+        cartTotal: totalCost,
+        previewOnly: true,
+      });
+
+      const desiredCredits = previewResult.appliedCredits;
+      const baseCashDueCredits = Math.max(previewResult.cashDue, 0);
+      const baseCashDueCurrency = baseCashDueCredits / CREDITS_PER_GBP;
+
+      if (desiredCredits !== creditsToApply) {
+        setCreditsToApply(desiredCredits);
+      }
+
+      void checkoutLogger.info('checkout_credit_preview', {
+        user_id: user.id,
+        requested_credits: creditsToApply,
+        applied_credits: desiredCredits,
+        base_cash_due_credits: baseCashDueCredits,
+      });
 
       let taxDetails: TaxQuote | null = null;
       let checkoutSession:
         | { url: string; sessionId: string; paymentIntentId?: string | null }
         | null = null;
       let totalManualCredits = baseCashDueCredits;
+      let completedPaymentIntentId: string | null = null;
 
       if (baseCashDueCredits > 0) {
         taxDetails = await fetchTaxEstimate(baseCashDueCredits, { force: true });
@@ -726,43 +746,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
         }
       }
 
-      const result = await creditSystem.processPurchase(user.id, checkoutItems, {
-        requestedCredits: desiredCredits,
-        maxCreditPercentage: maxCartPercent,
-        cartTotal: totalCost,
-        stripePaymentIntentId: checkoutSession?.paymentIntentId ?? undefined,
-        stripeCheckoutSessionId: checkoutSession?.sessionId ?? undefined,
-      });
-
-      void checkoutLogger.info('checkout_purchase_processed', {
-        user_id: user.id,
-        item_count: checkoutItems.length,
-        requested_credits: desiredCredits,
-        applied_credits: result.appliedCredits,
-        cash_due_credits: result.cashDue,
-        requires_cash_component: result.cashDue > 0,
-      });
-
-      if (result.appliedCredits !== desiredCredits) {
-        setCreditsToApply(result.appliedCredits);
-        toast({
-          title: 'Credit amount adjusted',
-          description:
-            'We updated the applied credits to match the current wallet balance and policy limits.',
-        });
-        void checkoutLogger.warn(
-          'checkout_credit_adjusted_to_policy',
-          {
-            user_id: user.id,
-            requested_credits: desiredCredits,
-            applied_credits: result.appliedCredits,
-            max_percent: maxCartPercent,
-            balance_at_checkout: balanceSummary?.available_credits ?? null,
-          },
-        );
-      }
-
-      if (result.cashDue > 0) {
+      if (baseCashDueCredits > 0) {
         if (checkoutSession?.url && checkoutSession.sessionId) {
           const estimatedTotal = taxDetails
             ? formatCurrency((taxDetails.totalMinor ?? 0) / 100, taxDetails.currency?.toUpperCase?.() ?? 'GBP')
@@ -785,11 +769,27 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           const pollResult = await startPolling(checkoutSession.sessionId, checkoutSession.paymentIntentId ?? null);
 
           if (pollResult.status === 'success') {
-            setCompletedPaymentIntentId(pollResult.paymentIntentId ?? null);
+            completedPaymentIntentId = pollResult.paymentIntentId ?? checkoutSession.paymentIntentId ?? null;
+            setCompletedPaymentIntentId(completedPaymentIntentId);
             toast({
               title: 'Purchase Successful!',
               description: 'Your payment has been confirmed.',
             });
+            const committed = await creditSystem.processPurchase(user.id, checkoutItems, {
+              requestedCredits: desiredCredits,
+              maxCreditPercentage: maxCartPercent,
+              cartTotal: previewResult.cartTotal,
+              stripePaymentIntentId: completedPaymentIntentId ?? undefined,
+              stripeCheckoutSessionId: checkoutSession.sessionId,
+            });
+            if (committed.appliedCredits !== desiredCredits) {
+              setCreditsToApply(committed.appliedCredits);
+              toast({
+                title: 'Credit amount adjusted',
+                description:
+                  'We updated the applied credits to match the current wallet balance and policy limits.',
+              });
+            }
             setStep('success');
             setLiveMessage('Purchase complete. Downloads are ready.');
             await fetchBalance();
@@ -797,8 +797,8 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
             void checkoutLogger.info('checkout_purchase_completed', {
               user_id: user.id,
               session_id: checkoutSession.sessionId,
-              payment_intent_id: pollResult.paymentIntentId ?? null,
-              credits_applied: desiredCredits,
+              payment_intent_id: completedPaymentIntentId,
+              credits_applied: committed.appliedCredits,
             });
           } else if (pollResult.status === 'cancelled') {
             setLiveMessage('Payment polling cancelled.');
@@ -830,9 +830,22 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           throw new Error('Unable to start Stripe checkout for remaining balance');
         }
       } else {
+        const committed = await creditSystem.processPurchase(user.id, checkoutItems, {
+          requestedCredits: desiredCredits,
+          maxCreditPercentage: maxCartPercent,
+          cartTotal: previewResult.cartTotal,
+        });
+        if (committed.appliedCredits !== desiredCredits) {
+          setCreditsToApply(committed.appliedCredits);
+          toast({
+            title: 'Credit amount adjusted',
+            description:
+              'We updated the applied credits to match the current wallet balance and policy limits.',
+          });
+        }
         toast({
           title: 'Purchase Successful!',
-          description: result.message,
+          description: committed.message,
         });
         setStep('success');
         setLiveMessage('Purchase complete. Downloads are ready.');
@@ -842,7 +855,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
           user_id: user.id,
           session_id: null,
           payment_intent_id: null,
-          credits_applied: desiredCredits,
+          credits_applied: committed.appliedCredits,
         });
       }
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,6 +18,28 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { InsightsModule } from "./InsightsModule";
 
+interface KpiDailyRow {
+  metric_date: string;
+  kpi_key: string;
+  total_value: number;
+  attribution_source?: string | null;
+  attribution_medium?: string | null;
+  attribution_campaign?: string | null;
+  post_id?: string | null;
+  content_type?: string | null;
+  content_id?: string | null;
+}
+
+interface AttributionRow {
+  key: string;
+  label: string;
+  views: number;
+  plays: number;
+  revenueCents: number;
+  conversionRate: number | null;
+  revenuePerViewCents: number | null;
+}
+
 interface LiveAnalyticsMetrics {
   ticketRevenue: number;
   ticketsSold: number;
@@ -35,6 +57,115 @@ const formatCurrency = (value: number) => {
   }).format(value / 100);
 };
 
+const summarizeKpis = (rows: KpiDailyRow[]) => {
+  return rows.reduce(
+    (acc, row) => {
+      const value = Number(row.total_value ?? 0);
+      if (!Number.isFinite(value)) {
+        return acc;
+      }
+
+      switch (row.kpi_key) {
+        case "total_views":
+          acc.totalViews += value;
+          break;
+        case "total_streams":
+          acc.totalStreams += value;
+          break;
+        case "fan_revenue_cents":
+          acc.fanRevenueCents += value;
+          break;
+        case "event_revenue_cents":
+          acc.eventRevenueCents += value;
+          break;
+        case "battle_revenue_cents":
+          acc.battleRevenueCents += value;
+          break;
+      }
+
+      return acc;
+    },
+    {
+      totalViews: 0,
+      totalStreams: 0,
+      fanRevenueCents: 0,
+      eventRevenueCents: 0,
+      battleRevenueCents: 0,
+    },
+  );
+};
+
+const buildAttributionRows = (rows: KpiDailyRow[]): AttributionRow[] => {
+  const buckets = new Map<
+    string,
+    {
+      key: string;
+      label: string;
+      views: number;
+      plays: number;
+      revenueCents: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const value = Number(row.total_value ?? 0);
+    if (!Number.isFinite(value)) continue;
+
+    const keyParts = [
+      row.post_id ? `post:${row.post_id}` : null,
+      row.attribution_source ? `src:${row.attribution_source}` : null,
+      row.content_type ? `type:${row.content_type}` : null,
+    ].filter(Boolean);
+
+    const key = keyParts.join("|") || row.kpi_key || "unattributed";
+    const labelSegments = [
+      row.attribution_source,
+      row.attribution_medium,
+      row.content_type,
+      row.post_id ? `post ${row.post_id.slice(0, 6)}` : null,
+    ].filter(Boolean);
+    const label = labelSegments.join(" • ") || "Organic / Unknown";
+
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        key,
+        label,
+        views: 0,
+        plays: 0,
+        revenueCents: 0,
+      });
+    }
+
+    const bucket = buckets.get(key)!;
+    switch (row.kpi_key) {
+      case "total_views":
+        bucket.views += value;
+        break;
+      case "total_streams":
+        bucket.plays += value;
+        break;
+      case "fan_revenue_cents":
+      case "event_revenue_cents":
+      case "battle_revenue_cents":
+        bucket.revenueCents += value;
+        break;
+    }
+  }
+
+  return Array.from(buckets.values())
+    .filter((bucket) => bucket.views > 0 || bucket.plays > 0 || bucket.revenueCents > 0)
+    .map((bucket) => ({
+      key: bucket.key,
+      label: bucket.label,
+      views: bucket.views,
+      plays: bucket.plays,
+      revenueCents: bucket.revenueCents,
+      conversionRate: bucket.views > 0 ? (bucket.plays / bucket.views) * 100 : null,
+      revenuePerViewCents: bucket.views > 0 ? bucket.revenueCents / bucket.views : null,
+    }))
+    .sort((a, b) => b.revenueCents - a.revenueCents);
+};
+
 export const AnalyticsModule: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -47,6 +178,15 @@ export const AnalyticsModule: React.FC = () => {
     recordingsPublishedThisMonth: 0,
   });
   const [loading, setLoading] = useState(false);
+  const [kpiRows, setKpiRows] = useState<KpiDailyRow[]>([]);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const kpiSummary = useMemo(() => summarizeKpis(kpiRows), [kpiRows]);
+  const attributionRows = useMemo(() => buildAttributionRows(kpiRows), [kpiRows]);
+  const attributedRevenueCents =
+    kpiSummary.fanRevenueCents + kpiSummary.eventRevenueCents + kpiSummary.battleRevenueCents;
+  const hasAttributionData =
+    kpiRows.length > 0 &&
+    (kpiSummary.totalViews > 0 || kpiSummary.totalStreams > 0 || attributedRevenueCents > 0);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -122,6 +262,55 @@ export const AnalyticsModule: React.FC = () => {
     void fetchMetrics();
   }, [user?.id, toast]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchAttribution = async () => {
+      setKpiLoading(true);
+      try {
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        const startDate = start.toISOString().split("T")[0];
+
+        const { data, error } = await supabase
+          .from("creator_kpi_daily_personal")
+          .select(
+            "metric_date, kpi_key, total_value, attribution_source, attribution_medium, attribution_campaign, post_id, content_type, content_id"
+          )
+          .gte("metric_date", startDate)
+          .order("metric_date", { ascending: true });
+
+        if (error) throw error;
+
+        const normalized =
+          (data ?? []).map((row) => ({
+            metric_date: row.metric_date,
+            kpi_key: row.kpi_key,
+            total_value: Number(row.total_value ?? 0),
+            attribution_source: row.attribution_source,
+            attribution_medium: row.attribution_medium,
+            attribution_campaign: row.attribution_campaign,
+            post_id: row.post_id,
+            content_type: row.content_type,
+            content_id: row.content_id,
+          })) ?? [];
+
+        setKpiRows(normalized);
+      } catch (error) {
+        console.error("[AnalyticsModule] Failed to load KPI attribution", error);
+        toast({
+          title: "Unable to load attribution",
+          description: "We couldn't fetch KPI rollups right now. Try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setKpiLoading(false);
+      }
+    };
+
+    void fetchAttribution();
+  }, [user?.id, toast]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
@@ -131,9 +320,108 @@ export const AnalyticsModule: React.FC = () => {
             Monitor key audience KPIs alongside live session performance, reminders, and recordings in one place.
           </p>
       </div>
-    </div>
+      </div>
 
       <InsightsModule />
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold">Attribution & ROI</h2>
+            <p className="text-sm text-muted-foreground">
+              Closed-loop metrics from creator_kpi_daily_personal showing views → plays → revenue.
+            </p>
+          </div>
+          {kpiLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+        </div>
+
+        {hasAttributionData ? (
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardContent className="p-4 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Attributed views (30d)</p>
+                  <p className="text-2xl font-semibold">{kpiSummary.totalViews.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Streams / plays (30d)</p>
+                  <p className="text-2xl font-semibold">{kpiSummary.totalStreams.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Attributed revenue</p>
+                  <p className="text-2xl font-semibold">{formatCurrency(attributedRevenueCents)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Top channel</p>
+                  <p className="text-2xl font-semibold">
+                    {attributionRows[0]?.label ?? "Organic / Unknown"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {attributionRows[0]
+                      ? `${attributionRows[0].views.toLocaleString()} views`
+                      : "Awaiting activity"}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Post & UTM attribution</CardTitle>
+                <CardDescription>Track how social pushes convert to plays and revenue.</CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b">
+                      <th className="py-2 pr-4 font-medium">Source / Post</th>
+                      <th className="py-2 pr-4 font-medium">Views</th>
+                      <th className="py-2 pr-4 font-medium">Plays</th>
+                      <th className="py-2 pr-4 font-medium">Revenue</th>
+                      <th className="py-2 pr-4 font-medium">Conversion</th>
+                      <th className="py-2 font-medium">Rev / View</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attributionRows.map((row) => (
+                      <tr key={row.key} className="border-b last:border-none">
+                        <td className="py-2 pr-4">
+                          <p className="font-medium">{row.label}</p>
+                          <p className="text-xs text-muted-foreground">{row.key}</p>
+                        </td>
+                        <td className="py-2 pr-4">{row.views.toLocaleString()}</td>
+                        <td className="py-2 pr-4">{row.plays.toLocaleString()}</td>
+                        <td className="py-2 pr-4">{formatCurrency(row.revenueCents)}</td>
+                        <td className="py-2 pr-4">
+                          {row.conversionRate !== null ? `${row.conversionRate.toFixed(1)}%` : "–"}
+                        </td>
+                        <td className="py-2">
+                          {row.revenuePerViewCents !== null
+                            ? formatCurrency(row.revenuePerViewCents)
+                            : "–"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Attribution data will populate after your connected channels begin delivering events. Publish
+              via Plug-ins or sync Spotify/YouTube to start the closed-loop pipeline.
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

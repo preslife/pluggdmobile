@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,14 +14,19 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const [isInteractionBlocked, setIsInteractionBlocked] = useState(false);
+  const [checkingBlock, setCheckingBlock] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (currentUserId && userId !== currentUserId) {
       checkFollowStatus();
       getFollowerCount();
+      void checkBlockRelationship();
+    } else {
+      setIsInteractionBlocked(false);
     }
-  }, [currentUserId, userId]);
+  }, [currentUserId, userId, checkBlockRelationship]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -91,6 +96,34 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
     }
   };
 
+  const checkBlockRelationship = useCallback(async () => {
+    if (!currentUserId || userId === currentUserId) {
+      setIsInteractionBlocked(false);
+      return;
+    }
+
+    try {
+      setCheckingBlock(true);
+      const { data, error } = await supabase.rpc("is_user_blocked", {
+        p_actor: currentUserId,
+        p_target: userId,
+      });
+
+      if (error) {
+        console.error("Error checking block relationship:", error);
+        setIsInteractionBlocked(false);
+        return;
+      }
+
+      setIsInteractionBlocked(Boolean(data));
+    } catch (error) {
+      console.error("Error checking block relationship:", error);
+      setIsInteractionBlocked(false);
+    } finally {
+      setCheckingBlock(false);
+    }
+  }, [currentUserId, userId]);
+
   const handleFollow = async () => {
     if (!currentUserId) {
       toast({
@@ -123,6 +156,34 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
         });
       } else {
         // Follow
+        if (isInteractionBlocked) {
+          toast({
+            title: "Follow blocked",
+            description: "One of you has blocked the other. Unblock to follow again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const { data: blockStatus, error: blockCheckError } = await supabase.rpc("is_user_blocked", {
+          p_actor: currentUserId,
+          p_target: userId,
+        });
+
+        if (blockCheckError) {
+          throw blockCheckError;
+        }
+
+        if (blockStatus) {
+          setIsInteractionBlocked(true);
+          toast({
+            title: "Follow blocked",
+            description: "One of you has blocked the other. Unblock to follow again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const { error } = await supabase
           .from('user_follows')
           .insert({
@@ -161,25 +222,32 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
 
   return (
     <div className="flex items-center gap-3">
-      <Button
-        onClick={handleFollow}
-        disabled={isLoading}
-        variant={isFollowing ? "outline" : "default"}
-        size="sm"
-        className={className}
-      >
-        {isFollowing ? (
-          <>
-            <UserMinus className="w-4 h-4 mr-2" />
-            Unfollow
-          </>
-        ) : (
-          <>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Follow
-          </>
+      <div className="flex flex-col gap-1">
+        <Button
+          onClick={handleFollow}
+          disabled={isLoading || checkingBlock || isInteractionBlocked}
+          variant={isFollowing ? "outline" : "default"}
+          size="sm"
+          className={className}
+        >
+          {isFollowing ? (
+            <>
+              <UserMinus className="w-4 h-4 mr-2" />
+              Unfollow
+            </>
+          ) : (
+            <>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Follow
+            </>
+          )}
+        </Button>
+        {isInteractionBlocked && (
+          <p className="text-xs text-muted-foreground">
+            Interactions blocked. Unblock to follow.
+          </p>
         )}
-      </Button>
+      </div>
       <div className="text-sm text-muted-foreground">
         {followerCount} {followerCount === 1 ? 'follower' : 'followers'}
       </div>

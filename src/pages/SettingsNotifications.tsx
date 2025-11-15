@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { Settings } from "lucide-react";
 import { NotificationSettings } from "../components/NotificationSettings";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { usePageMetadata } from "@/hooks/usePageMetadata";
 
 export const SettingsNotificationsPage = () => {
   usePageMetadata({
@@ -32,4 +32,3 @@ export const SettingsNotificationsPage = () => {
     </div>
   );
 };
-

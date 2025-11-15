@@ -99,11 +99,27 @@ beforeEach(() => {
     },
   });
 
-  processPurchaseMock.mockResolvedValue({
-    creditsUsed: 50,
-    cashDue: 50,
-    totalCost: 100,
-    message: 'Additional payment required',
+  processPurchaseMock.mockImplementation((_userId, _items, options) => {
+    if (options?.previewOnly) {
+      return Promise.resolve({
+        creditsUsed: 50,
+        cashDue: 50,
+        totalCost: 100,
+        message: 'Additional payment required',
+        appliedCredits: 50,
+        maxCreditsAllowed: 50,
+        cartTotal: 100,
+      });
+    }
+    return Promise.resolve({
+      creditsUsed: 50,
+      cashDue: 50,
+      totalCost: 100,
+      message: 'Additional payment required',
+      appliedCredits: 50,
+      maxCreditsAllowed: 50,
+      cartTotal: 100,
+    });
   });
 
   getPolicyMock.mockResolvedValue({ maxCartPercent: 0.5 });
@@ -181,6 +197,14 @@ describe('CheckoutModal hybrid checkout flow', () => {
       course: 'Course',
     };
 
+    const enrichedCheckoutItems = checkoutItems.map((item) => ({
+      ...item,
+      metadata: {
+        type_label: typeLabels[item.type] ?? item.type,
+        ...(item.metadata ?? {}),
+      },
+    }));
+
     render(
       <CheckoutModal
         isOpen
@@ -220,28 +244,39 @@ describe('CheckoutModal hybrid checkout flow', () => {
                 title: item.title,
                 price: item.price,
                 license_type: item.license_type,
-              metadata: expect.objectContaining({
-                ...(item.metadata ?? {}),
-                type_label: typeLabels[item.type] ?? item.type,
-              }),
-            })),
+                metadata: expect.objectContaining({
+                  ...(item.metadata ?? {}),
+                  type_label: typeLabels[item.type] ?? item.type,
+                }),
+              })),
+            }),
           }),
         }),
-      })
-    );
-      expect(processPurchaseMock).toHaveBeenCalledWith(
+      );
+    });
+
+    await waitFor(() => {
+      expect(processPurchaseMock).toHaveBeenNthCalledWith(
+        1,
         'user-123',
-        checkoutItems.map((item) => ({
-          ...item,
-          metadata: {
-            type_label: typeLabels[item.type] ?? item.type,
-            ...(item.metadata ?? {}),
-          },
-        })),
+        enrichedCheckoutItems,
         expect.objectContaining({
+          previewOnly: true,
+          cartTotal: 100,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(processPurchaseMock).toHaveBeenNthCalledWith(
+        2,
+        'user-123',
+        enrichedCheckoutItems,
+        expect.objectContaining({
+          previewOnly: undefined,
           stripeCheckoutSessionId: 'sess_123',
           stripePaymentIntentId: 'pi_456',
-        })
+        }),
       );
     });
 

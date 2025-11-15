@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,24 @@ interface Activity {
   created_at: string;
   audio_url?: string;
   genre?: string;
+  body?: string;
+}
+
+interface FollowFeedRow {
+  feed_id: string;
+  activity_type: 'release' | 'beat_upload' | 'social_post';
+  entity_type: string;
+  entity_id: string;
+  actor_id: string;
+  actor_name: string;
+  actor_avatar_url?: string | null;
+  title?: string | null;
+  body?: string | null;
+  media_url?: string | null;
+  price?: number | null;
+  status?: string | null;
+  created_at: string;
+  metadata?: Record<string, any> | null;
 }
 
 interface TrendingItem {
@@ -63,13 +81,19 @@ interface CourseCertificateItem {
   } | null;
 }
 
+const FEED_PAGE_SIZE = 12;
+
 export default function FanHome() {
   const { user } = useAuth();
-  const [followFeed, setFollowFeed] = useState<Activity[]>([]);
+  const { toast } = useToast();
+  const [followFeedRows, setFollowFeedRows] = useState<FollowFeedRow[]>([]);
   const [trending, setTrending] = useState<TrendingItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [trendingLoading, setTrendingLoading] = useState(true);
   const [learningProgress, setLearningProgress] = useState<CourseProgressItem[]>([]);
   const [learningCertificates, setLearningCertificates] = useState<CourseCertificateItem[]>([]);
+  const [feedInitialLoading, setFeedInitialLoading] = useState(true);
+  const [feedPaging, setFeedPaging] = useState({ page: 0, hasMore: true, loadingMore: false });
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   usePageMetadata({
     title: "Fan Home — Pluggd",
@@ -77,92 +101,88 @@ export default function FanHome() {
     path: "/home",
   });
 
+  const loadFeed = useCallback(
+    async (pageToLoad: number, initial = false) => {
+      if (!user?.id) {
+        setFollowFeedRows([]);
+        setFeedPaging({ page: 0, hasMore: false, loadingMore: false });
+        setFeedInitialLoading(false);
+        return;
+      }
+
+      if (initial) {
+        setFeedInitialLoading(true);
+        setFeedPaging((prev) => ({ ...prev, loadingMore: false }));
+      } else {
+        setFeedPaging((prev) => ({ ...prev, loadingMore: true }));
+      }
+
+      const { data, error } = await supabase.rpc('get_follow_feed', {
+        p_user_id: user.id,
+        p_limit: FEED_PAGE_SIZE,
+        p_offset: pageToLoad * FEED_PAGE_SIZE,
+      });
+
+      if (error) {
+        console.error('Error loading follow feed:', error);
+        toast({
+          title: "Couldn't load feed",
+          description: error.message ?? 'Please try again in a moment.',
+          variant: 'destructive',
+        });
+        if (initial) {
+          setFollowFeedRows([]);
+        }
+        setFeedPaging({ page: 0, hasMore: false, loadingMore: false });
+      } else {
+        const rows = (data ?? []) as FollowFeedRow[];
+        setFollowFeedRows((prev) => (initial ? rows : [...prev, ...rows]));
+        setFeedPaging({
+          page: pageToLoad,
+          hasMore: rows.length === FEED_PAGE_SIZE,
+          loadingMore: false,
+        });
+      }
+
+      if (initial) {
+        setFeedInitialLoading(false);
+      }
+    },
+    [toast, user?.id]
+  );
+
   useEffect(() => {
-    if (user) {
-      fetchFollowFeed();
+    if (user?.id) {
+      loadFeed(0, true);
       fetchLearningData();
     } else {
       setLearningProgress([]);
       setLearningCertificates([]);
+      setFollowFeedRows([]);
+      setFeedPaging({ page: 0, hasMore: false, loadingMore: false });
+      setFeedInitialLoading(false);
     }
-    // Trending list is visible to everyone
     fetchTrending();
-  }, [user]);
+  }, [user?.id, loadFeed]);
 
-  const fetchFollowFeed = async () => {
-    if (!user) return;
-
-    try {
-      // Get followed creators
-      const { data: follows } = await supabase
-        .from('user_follows')
-        .select('following_id')
-        .eq('follower_id', user.id);
-
-      if (!follows?.length) {
-        setFollowFeed([]);
-        return;
-      }
-
-      const followingIds = follows.map(f => f.following_id);
-
-      // Get recent releases from followed creators
-        const { data: releases } = await supabase
-          .from('releases')
-          .select(`
-            id, title, artist, cover_art_url, price, created_at, genre, preview_url,
-            user_id, profiles!inner(full_name, avatar_url)
-          `)
-          .in('user_id', followingIds)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        // Get recent beats from followed creators
-        const { data: beats } = await supabase
-          .from('beats')
-          .select(`
-            id, title, producer_name, image_url, price, created_at, genre, audio_url,
-            user_id
-          `)
-          .in('user_id', followingIds)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-      // Combine and sort by date
-        const activities: Activity[] = [
-          ...(releases || []).map(r => ({
-            id: r.id,
-            type: 'release' as const,
-            title: r.title,
-            creator_name: r.profiles.full_name || r.artist,
-            creator_id: r.user_id,
-            creator_avatar: r.profiles.avatar_url,
-            artwork_url: r.cover_art_url,
-            price: r.price,
-            created_at: r.created_at,
-            audio_url: r.preview_url,
-            genre: r.genre
-          })),
-          ...(beats || []).map(b => ({
-            id: b.id,
-            type: 'beat' as const,
-            title: b.title,
-            creator_name: b.producer_name || 'Unknown',
-            creator_id: b.user_id,
-            creator_avatar: undefined,
-            artwork_url: b.image_url,
-            price: b.price,
-            created_at: b.created_at,
-            audio_url: b.audio_url,
-            genre: b.genre
-          }))
-        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      setFollowFeed(activities);
-    } catch (error) {
-      console.error('Error fetching follow feed:', error);
+  useEffect(() => {
+    if (!loadMoreRef.current || feedInitialLoading || feedPaging.loadingMore || !feedPaging.hasMore) {
+      return;
     }
-  };
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadFeed(feedPaging.page + 1);
+      }
+    });
+
+    const current = loadMoreRef.current;
+    observer.observe(current);
+
+    return () => {
+      observer.unobserve(current);
+    };
+  }, [feedInitialLoading, feedPaging.hasMore, feedPaging.loadingMore, feedPaging.page, loadFeed]);
 
   const fetchTrending = async () => {
     try {
@@ -213,8 +233,13 @@ export default function FanHome() {
       setTrending(trendingItems);
     } catch (error) {
       console.error('Error fetching trending:', error);
+      toast({
+        title: "Couldn't load trending drops",
+        description: error instanceof Error ? error.message : 'Try refreshing the page.',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(false);
+      setTrendingLoading(false);
     }
   };
 
@@ -252,6 +277,56 @@ export default function FanHome() {
     }
   };
 
+  const followFeed = useMemo<Activity[]>(() => {
+    return followFeedRows.map((row) => {
+      const metadata = row.metadata ?? {};
+      const normalizedType: Activity['type'] =
+        row.activity_type === 'beat_upload'
+          ? 'beat'
+          : row.activity_type === 'social_post'
+          ? 'post'
+          : 'release';
+      const artwork =
+        row.media_url ??
+        (typeof metadata.cover_art_url === 'string' ? metadata.cover_art_url : undefined) ??
+        (typeof metadata.image_url === 'string' ? metadata.image_url : undefined);
+      const genre = typeof metadata.genre === 'string' ? metadata.genre : undefined;
+      const audioSource =
+        typeof metadata.preview_url === 'string'
+          ? metadata.preview_url
+          : typeof metadata.audio_url === 'string'
+          ? metadata.audio_url
+          : undefined;
+      const computedPrice =
+        typeof row.price === 'number'
+          ? row.price
+          : typeof metadata.price === 'number'
+          ? metadata.price
+          : undefined;
+
+      return {
+        id: row.feed_id,
+        type: normalizedType,
+        title:
+          row.title ??
+          (normalizedType === 'post'
+            ? 'Creator update'
+            : normalizedType === 'beat'
+            ? 'New beat'
+            : 'New release'),
+        creator_name: row.actor_name || 'Creator',
+        creator_id: row.actor_id,
+        creator_avatar: row.actor_avatar_url ?? undefined,
+        artwork_url: artwork,
+        price: computedPrice,
+        created_at: row.created_at,
+        audio_url: audioSource,
+        genre,
+        body: row.body ?? undefined,
+      };
+    });
+  }, [followFeedRows]);
+
   const learningStats = useMemo(() => {
     if (!learningProgress.length) {
       return { active: 0, completed: 0, hours: 0 };
@@ -271,7 +346,9 @@ export default function FanHome() {
     };
   }, [learningProgress]);
 
-  if (loading) {
+  const showInitialSkeleton = feedInitialLoading && trendingLoading;
+
+  if (showInitialSkeleton) {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="animate-pulse space-y-4">
@@ -415,18 +492,44 @@ export default function FanHome() {
         <TabsContent value="following" className="space-y-4">
           {!user ? (
             <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-muted-foreground mb-4">Sign in to see updates from creators you follow</p>
+              <CardContent className="pt-6 text-center space-y-4">
+                <p className="text-muted-foreground">
+                  Sign in to see updates from creators you follow.
+                </p>
                 <Button onClick={() => window.location.href = '/auth'}>Sign In</Button>
               </CardContent>
             </Card>
+          ) : feedInitialLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <Card key={`feed-skeleton-${idx}`} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 bg-muted rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-1/3" />
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           ) : followFeed.length === 0 ? (
             <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-muted-foreground mb-4">
-                  No updates from followed creators. Start following some creators to see their latest releases!
+              <CardContent className="pt-6 text-center space-y-4">
+                <p className="text-muted-foreground">
+                  No updates yet. Follow more creators to build a personalized feed.
                 </p>
-                <Button onClick={() => window.location.href = '/directory'}>Browse Creators</Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button variant="outline" onClick={() => window.location.href = '/directory'}>
+                    Explore Creators
+                  </Button>
+                  <Button onClick={() => window.location.href = '/marketplace'}>
+                    Browse Marketplace
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -434,16 +537,53 @@ export default function FanHome() {
               {followFeed.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} />
               ))}
+              {feedPaging.loadingMore && (
+                <p className="text-center text-sm text-muted-foreground">Loading more updates…</p>
+              )}
+              {!feedPaging.loadingMore && feedPaging.hasMore && (
+                <p className="text-center text-xs text-muted-foreground">Scroll to load more</p>
+              )}
+              {!feedPaging.hasMore && (
+                <p className="text-center text-sm text-muted-foreground">You’re all caught up 🎧</p>
+              )}
+              <div ref={loadMoreRef} className="h-1 w-full" aria-hidden />
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="trending" className="space-y-4">
-          <div className="space-y-4">
-            {trending.map((item) => (
-              <TrendingCard key={item.id} item={item} />
-            ))}
-          </div>
+          {trendingLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <Card key={`trending-skeleton-${idx}`} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 bg-muted rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-1/2" />
+                        <div className="h-3 bg-muted rounded w-1/3" />
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : trending.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center space-y-4">
+                <p className="text-muted-foreground">
+                  No trending items at the moment. Check back soon!
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {trending.map((item) => (
+                <TrendingCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -478,7 +618,7 @@ function ActivityCard({ activity }: { activity: Activity }) {
                 <div className="flex items-center gap-2 mt-1">
                   <Avatar className="w-5 h-5">
                     <AvatarImage src={activity.creator_avatar} />
-                    <AvatarFallback>{activity.creator_name[0]}</AvatarFallback>
+                    <AvatarFallback>{activity.creator_name?.[0] ?? '?'}</AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-muted-foreground truncate">
                     {activity.creator_name}
@@ -494,6 +634,11 @@ function ActivityCard({ activity }: { activity: Activity }) {
                     </Badge>
                   )}
                 </div>
+                {activity.body && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
+                    {activity.body}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col items-end gap-2">

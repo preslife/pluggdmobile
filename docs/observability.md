@@ -10,6 +10,8 @@ The following read-only views back each dashboard so analysts and operators can 
 - `vw_trust_safety_report_status` – aggregates moderation backlog counts, open report totals, and the oldest open case in hours. Use this to spot spikes in “pending” or “investigating” queues before SLAs are breached.
 - `vw_notification_skip_summary` – surfaces how often notifications are suppressed (e.g. push preference opt-outs) by action and notification type. Handy for validating new campaigns or tracing complaints about missing alerts.
 - `vw_webhook_delivery_errors` – groups webhook delivery attempts by endpoint, owner, and outcome to highlight integrations that need retries or manual intervention.
+- `vw_checkout_activity_daily` – 30-day rolling view of completed vs failed orders, captured revenue, and checkout error counts pulled from `system_logs`. Drop it into Metabase to chart conversion trends or error spikes.
+- `vw_membership_activity_daily` – day-level rollup of new vs churned fan subscriptions plus active subscriber/MRR counts. Use it to quickly calculate churn percentage or verify a new membership campaign’s lift.
 
 The views are granted to the `authenticated` role so you can run `select * from public.vw_notification_skip_summary;` via the SQL Editor or any BI tool using your service-role key.
 
@@ -18,12 +20,14 @@ The views are granted to the `authenticated` role so you can run `select * from 
 - **Checkout Modal Conversion** – ratio of `checkout_purchase_completed` vs `checkout_purchase_failed` events logged from the checkout modal.
 - **Hybrid Purchase Fulfilment** – number of download records created vs missing user metadata (`hybrid purchase` guard rail).
 - **Store Success Page Errors** – aggregate of `store_success_order_fetch_failed` and `store_success_order_not_found` events.
+- **`vw_checkout_activity_daily` view** – query `select * from public.vw_checkout_activity_daily;` to visualize a rolling 30-day timeline of completed orders, failures, revenue, and checkout error counts in one place.
 
 ### 2. Membership & Subscriptions
 - **Membership Tier Mutations** – volume and error rate for create/update/delete actions emitted by `useMembershipTiers`.
 - **Subscription Gating** – warnings for gate configuration and tier lookups surfaced via `SubscriptionGatedContent` instrumentation.
 - **Stripe Subscription Lifecycles** – counts of `subscription_created`, `subscription_updated`, `subscription_cancelled`, and `charge_refunded/failed` webhook events.
 - **Release Access RPC Health** – monitor `verify_release_access_requested`, `verify_release_access_cache_hit/miss`, `verify_release_access_preorder_block`, and `_unexpected_error` log actions. These metrics expose cache effectiveness (hits vs misses) and highlight preorder blocks or RPC failures. Pair them with the `release_access_cache` table to review the most recent gating decision for a specific fan/release pair (see `docs/artifacts/release-access-gift-qa.md` for the QA checklist).
+- **`vw_membership_activity_daily` view** – chart net subscriber change by running `select * from public.vw_membership_activity_daily;` to pull daily new vs churned subscriptions plus current active subs/MRR, making campaign retrospectives trivial.
 
 ### 3. Moderation Operations
 - **Dashboard Load Latency** – measure `moderation_dashboard_fetch_success` timings to ensure content queues load quickly.

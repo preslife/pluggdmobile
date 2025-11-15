@@ -169,6 +169,7 @@ class CreditSystemService {
       stripePaymentIntentId?: string;
       stripeChargeId?: string;
       stripeCheckoutSessionId?: string;
+      previewOnly?: boolean;
     } = {},
   ): Promise<{
     creditsUsed: number;
@@ -182,7 +183,9 @@ class CreditSystemService {
     const totalCost = items.reduce((sum, item) => sum + item.price, 0);
 
     if (totalCost === 0) {
-      await this.createDownloadRecords(userId, items);
+      if (!options.previewOnly) {
+        await this.createDownloadRecords(userId, items);
+      }
       return {
         creditsUsed: 0,
         cashDue: 0,
@@ -195,6 +198,7 @@ class CreditSystemService {
     }
 
     const cartTotal = Math.max(options.cartTotal ?? totalCost, 0);
+    const previewOnly = options.previewOnly === true;
 
     const [{ maxCartPercent }, balanceSummary] = await Promise.all([
       creditPolicyService.getCurrentPolicy(),
@@ -235,7 +239,7 @@ class CreditSystemService {
         remainingCredits -= creditsForItem;
         creditsSpent += creditsForItem;
 
-        if (creditsForItem > 0) {
+        if (creditsForItem > 0 && !previewOnly) {
           const orderId =
             options.stripeCheckoutSessionId ||
             options.stripePaymentIntentId ||
@@ -289,7 +293,7 @@ class CreditSystemService {
 
     const cashDue = Math.max(totalCost - creditsSpent, 0);
 
-    if (cashDue === 0) {
+    if (!previewOnly && cashDue === 0) {
       await this.createDownloadRecords(userId, items);
     }
 

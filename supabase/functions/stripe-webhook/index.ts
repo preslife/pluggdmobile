@@ -88,6 +88,194 @@ const scopeLogger = (logger: Logger, metadata: Record<string, unknown>): Logger 
   error: (event: string, details?: Record<string, unknown>) => logger.error(event, { ...metadata, ...(details ?? {}) }),
 });
 
+const hasAnalyticsEvent = async (
+  client: any,
+  userId: string,
+  eventName: string,
+  filters?: { orderId?: string },
+) => {
+  try {
+    let query = client
+      .from('analytics_events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('event_name', eventName)
+      .limit(1);
+
+    if (filters?.orderId) {
+      query = query.eq('properties->>order_id', filters.orderId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    return Boolean(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('[analytics_events] lookup_failed', { eventName, userId, message });
+    return true;
+  }
+};
+
+const recordAnalyticsEvent = async (
+  client: any,
+  userId: string,
+  eventName: string,
+  properties: Record<string, unknown>,
+) => {
+  try {
+    const { error } = await client.from('analytics_events').insert({
+      user_id: userId,
+      event_name: eventName,
+      properties,
+    });
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('[analytics_events] insert_failed', { eventName, userId, message });
+  }
+};
+
+const sendFanOrderReceiptEmail = async (
+  client: any,
+  order: { id: string; user_id: string; total_amount?: number | string | null },
+  orderItems: Array<{ product_id: string; quantity?: number | null; price?: number | string | null; kind?: string | null }>,
+  orderTotal: number | null,
+  logger: Logger,
+) => {
+  if (!order.user_id) {
+    return;
+  }
+
+  const alreadySent = await hasAnalyticsEvent(client, order.user_id, 'order_receipt_email', { orderId: order.id });
+  if (alreadySent) {
+    return;
+  }
+
+  try {
+    const productIds = Array.from(new Set(orderItems.map((item) => item.product_id).filter(Boolean)));
+    let products: Array<{ id: string; title?: string | null; name?: string | null }> = [];
+
+    if (productIds.length > 0) {
+      const { data, error } = await client
+        .from('store_products')
+        .select('id, title, name')
+        .in('id', productIds);
+
+      if (error) {
+        throw error;
+      }
+      products = data ?? [];
+    }
+
+    const nameMap = new Map(products.map((product) => [product.id, product.title ?? product.name ?? 'Digital download']));
+    const itemSummaries = orderItems.map((item) => ({
+      name: nameMap.get(item.product_id) ?? 'Digital download',
+      quantity: item.quantity ?? 1,
+      kind: item.kind ?? null,
+    }));
+
+    const normalizedTotal =
+      orderTotal ??
+      (typeof order.total_amount === 'number'
+        ? order.total_amount
+        : Number(order.total_amount ?? 0));
+
+    const { error: emailError } = await client.functions.invoke('send-lifecycle-emails', {
+      body: {
+        user_id: order.user_id,
+        email_type: 'fan_your_library',
+        user_data: {
+          order_id: order.id,
+          order_total: normalizedTotal,
+          total_tracks: itemSummaries.reduce((sum, item) => sum + (item.quantity ?? 1), 0),
+          items: itemSummaries,
+        },
+      },
+    });
+
+    if (emailError) {
+      logger.warn('store_order_receipt_email_failed', {
+        orderId: order.id,
+        error: emailError.message,
+      });
+      return;
+    }
+
+    await recordAnalyticsEvent(client, order.user_id, 'order_receipt_email', {
+      order_id: order.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('store_order_receipt_email_error', {
+      orderId: order.id,
+      error: message,
+    });
+  }
+};
+
+const maybeSendCreatorFirstEarnings = async (
+  client: any,
+  creatorId: string | null | undefined,
+  amount: number | null,
+  logger: Logger,
+  source: 'order' | 'tip',
+) => {
+  if (!creatorId) {
+    return;
+  }
+
+  const alreadyLogged = await hasAnalyticsEvent(client, creatorId, 'first_earnings');
+  if (alreadyLogged) {
+    return;
+  }
+
+  const { error } = await client.functions.invoke('send-lifecycle-emails', {
+    body: {
+      user_id: creatorId,
+      email_type: 'creator_first_earnings',
+      user_data: {
+        credits_earned: Math.max(amount ?? 0, 0),
+        source,
+      },
+    },
+  });
+
+  if (error) {
+    logger.warn('creator_first_earnings_email_failed', {
+      creatorId,
+      source,
+      error: error.message,
+    });
+    return;
+  }
+
+  await recordAnalyticsEvent(client, creatorId, 'first_earnings', {
+    amount,
+    source,
+  });
+};
+
+const notifyCreatorsOfFirstEarningsFromOrder = async (
+  client: any,
+  items: Array<{ creator_id?: string | null; price?: number | string | null; quantity?: number | null }>,
+  logger: Logger,
+) => {
+  const earningsMap = new Map<string, number>();
+  for (const orderItem of items) {
+    if (!orderItem.creator_id) continue;
+    const gross = Number(orderItem.price ?? 0) * Math.max(orderItem.quantity ?? 1, 1);
+    earningsMap.set(orderItem.creator_id, (earningsMap.get(orderItem.creator_id) ?? 0) + gross);
+  }
+
+  for (const [creatorId, gross] of earningsMap.entries()) {
+    await maybeSendCreatorFirstEarnings(client, creatorId, gross, logger, 'order');
+  }
+};
+
 // Handle split attribution for digital purchases
 const handleSplitAttribution = async (
   session: any,
@@ -796,9 +984,18 @@ serve(async (req) => {
                   });
                 }
 
+                let resolvedOrderItems: Array<{
+                  order_id?: string;
+                  product_id: string;
+                  quantity?: number | null;
+                  price?: number | string | null;
+                  kind?: string | null;
+                  creator_id?: string | null;
+                }> = [];
+
                 const { data: orderItems, error: orderItemsError } = await supabaseClient
                   .from('order_items')
-                  .select('id, product_id, quantity, price, kind')
+                  .select('id, product_id, quantity, price, kind, creator_id')
                   .eq('order_id', orderRecord.id);
 
                 if (orderItemsError) {
@@ -863,6 +1060,7 @@ serve(async (req) => {
                           orderId: orderRecord.id,
                           itemCount: itemsToInsert.length,
                         });
+                        resolvedOrderItems = itemsToInsert;
                       }
                     }
                   } catch (lineItemError) {
@@ -871,6 +1069,7 @@ serve(async (req) => {
                     });
                   }
                 } else {
+                  resolvedOrderItems = orderItems;
                   const expectedCount = (() => {
                     if (typeof session.metadata?.cart_item_ids_json === 'string') {
                       try {
@@ -891,6 +1090,15 @@ serve(async (req) => {
                     });
                   }
                 }
+
+                await sendFanOrderReceiptEmail(
+                  supabaseClient,
+                  orderRecord,
+                  resolvedOrderItems,
+                  sessionTotal ?? null,
+                  storeLogger,
+                );
+                await notifyCreatorsOfFirstEarningsFromOrder(supabaseClient, resolvedOrderItems, storeLogger);
               }
             }
           } else if (session.metadata?.type === 'artist_tip') {
@@ -1094,6 +1302,14 @@ serve(async (req) => {
                       error: artistNotifyError.message,
                     });
                   }
+
+                  await maybeSendCreatorFirstEarnings(
+                    supabaseClient,
+                    tip.artist_id,
+                    tipTotal ?? tip.amount ?? 0,
+                    tipLogger,
+                    'tip',
+                  );
                 } catch (notificationError) {
                   await tipLogger.warn('artist_tip_notification_exception', {
                     tipId: tip.id,

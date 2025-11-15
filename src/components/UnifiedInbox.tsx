@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Inbox,
   Star,
@@ -106,21 +107,19 @@ export const UnifiedInbox = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const debouncedSearch = useDebounce(filters.search, 400);
 
   useEffect(() => {
     if (user) {
       void fetchConnections();
-      void loadMessages(0, true);
     } else {
       setMessages([]);
       setFilteredMessages([]);
       setConnections(DEFAULT_CONNECTIONS);
+      setHasMore(false);
+      setInitialLoading(false);
     }
   }, [user?.id]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [messages, filters]);
 
   const fetchConnections = async () => {
     if (!user) return;
@@ -159,89 +158,70 @@ export const UnifiedInbox = () => {
     }
   };
 
-  const loadMessages = async (pageToLoad: number, reset = false) => {
-    if (!user) return;
+  const loadMessages = useCallback(
+    async (pageToLoad: number, reset = false) => {
+      if (!user?.id) return;
 
-    if (reset) {
-      setInitialLoading(true);
-      setHasMore(true);
-    } else {
-      setLoadingPage(true);
-    }
-
-    try {
-      const from = pageToLoad * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, error } = await supabase
-        .from("unified_inbox")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      setMessages((prev) => {
-        if (reset || pageToLoad === 0) {
-          return data || [];
-        }
-
-        const ids = new Set(prev.map((msg) => msg.id));
-        const merged = [...prev];
-
-        for (const message of data || []) {
-          if (!ids.has(message.id)) {
-            merged.push(message);
-          }
-        }
-
-        return merged;
-      });
-
-      setPage(pageToLoad);
-      setHasMore((data || []).length === PAGE_SIZE);
-    } catch (error) {
-      console.error("Error fetching inbox messages:", error);
       if (reset) {
-        setMessages([]);
+        setInitialLoading(true);
+        setHasMore(true);
+        setPage(0);
+      } else {
+        setLoadingPage(true);
       }
-      toast({
-        title: "Error",
-        description: "Failed to load inbox messages",
-        variant: "destructive"
-      });
-    } finally {
+
+      try {
+        const providerFilter = filters.provider === "all" ? null : filters.provider;
+        const statusFilter = filters.status === "all" ? null : filters.status;
+        const searchFilter = debouncedSearch ? debouncedSearch : null;
+
+        const { data, error } = await supabase.rpc("get_unified_inbox_messages", {
+          p_user_id: user.id,
+          p_provider: providerFilter,
+          p_status: statusFilter,
+          p_search: searchFilter,
+          p_limit: PAGE_SIZE,
+          p_offset: pageToLoad * PAGE_SIZE
+        });
+
+        if (error) throw error;
+
+        const rows = (data || []) as InboxMessage[];
+        setMessages((prev) => (reset ? rows : [...prev, ...rows]));
+        setFilteredMessages((prev) => (reset ? rows : [...prev, ...rows]));
+        setHasMore(rows.length === PAGE_SIZE);
+        setPage(pageToLoad);
+      } catch (error) {
+        console.error("Error fetching inbox messages:", error);
+        if (reset) {
+          setMessages([]);
+          setFilteredMessages([]);
+        }
+        toast({
+          title: "Error",
+          description: "Failed to load inbox messages",
+          variant: "destructive"
+        });
+      } finally {
+        if (reset) {
+          setInitialLoading(false);
+        }
+        setLoadingPage(false);
+      }
+    },
+    [user?.id, filters.provider, filters.status, debouncedSearch, toast]
+  );
+
+  useEffect(() => {
+    if (!user) {
+      setMessages([]);
+      setFilteredMessages([]);
+      setHasMore(false);
       setInitialLoading(false);
-      setLoadingPage(false);
+      return;
     }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...messages];
-
-    if (filters.provider !== "all") {
-      filtered = filtered.filter((msg) => msg.provider === filters.provider);
-    }
-
-    if (filters.status === "unread") {
-      filtered = filtered.filter((msg) => !msg.is_read);
-    } else if (filters.status === "starred") {
-      filtered = filtered.filter((msg) => msg.is_starred);
-    }
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        (msg) =>
-          (msg.snippet && msg.snippet.toLowerCase().includes(searchLower)) ||
-          (msg.author_name && msg.author_name.toLowerCase().includes(searchLower)) ||
-          (msg.author_handle && msg.author_handle.toLowerCase().includes(searchLower))
-      );
-    }
-
-    setFilteredMessages(filtered);
-  };
+    void loadMessages(0, true);
+  }, [user?.id, loadMessages]);
 
   const markAsRead = async (messageId: string) => {
     try {

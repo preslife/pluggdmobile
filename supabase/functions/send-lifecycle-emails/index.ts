@@ -34,6 +34,13 @@ const formatCredits = (credits: number) => {
   return `${credits.toLocaleString()} credits (£${gbp})`;
 };
 
+const formatCurrency = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '';
+  }
+  return `£${Number(value).toFixed(2)}`;
+};
+
 const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((data: any) => string); html: (data: any) => string }> = {
   creator_welcome: {
     subject: "Welcome to Pluggd - Start Earning with Your Music! 🎵",
@@ -119,15 +126,34 @@ const emailTemplates: Record<EmailRequest['email_type'], { subject: string | ((d
   },
   fan_your_library: {
     subject: "🎵 Your Growing Music Library", 
-    html: (data: any) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #2563eb;">Your Library! 🎵</h1>
-        <p>Hi ${data.name || 'Music Lover'},</p>
-        <p>Your collection is growing! Total tracks: ${data.total_tracks || 1}</p>
-        <p><a href="${data.marketplace_url}" style="color: #2563eb;">Explore More</a></p>
-      <p>Best regards,<br>The Pluggd Team</p>
-      </div>
-    `
+    html: (data: any) => {
+      const totalTracks = data.total_tracks ?? data.total_items ?? 1;
+      const orderTotal = typeof data.order_total === 'number' ? `<p><strong>Order total:</strong> ${formatCurrency(data.order_total)}</p>` : '';
+      const itemsList = Array.isArray(data.items) && data.items.length > 0
+        ? `
+          <div style="margin: 16px 0;">
+            <p style="margin-bottom: 8px;">Latest additions:</p>
+            <ul style="padding-left: 18px; color: #374151;">
+              ${data.items
+                .map((item: any) => `<li>${item.name || 'Digital download'}${item.quantity ? ` × ${item.quantity}` : ''}</li>`)
+                .join('')}
+            </ul>
+          </div>
+        `
+        : '';
+
+      return `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #2563eb;">Your Library! 🎵</h1>
+          <p>Hi ${data.name || 'Music Lover'},</p>
+          <p>You just added <strong>${totalTracks}</strong> new ${totalTracks === 1 ? 'item' : 'items'} to your collection.</p>
+          ${orderTotal}
+          ${itemsList}
+          <p><a href="${data.marketplace_url}" style="color: #2563eb;">Explore More</a></p>
+          <p style="margin-top: 16px;">Best regards,<br>The Pluggd Team</p>
+        </div>
+      `;
+    }
   },
   fan_tip_receipt: {
     subject: (data: any) => `Thanks for supporting ${data.artist_name || 'a creator'} ❤️`,

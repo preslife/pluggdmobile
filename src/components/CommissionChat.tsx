@@ -17,7 +17,7 @@ type Props = {
 export const CommissionChat: React.FC<Props> = ({ commissionId, className }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { messages, loading, sendMessage } = useCommissionChat(commissionId);
+  const { messages, loading, sendMessage, interactionBlocked, checkingBlock } = useCommissionChat(commissionId);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -31,6 +31,15 @@ export const CommissionChat: React.FC<Props> = ({ commissionId, className }) => 
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
+
+    if (interactionBlocked) {
+      toast({
+        title: 'Messaging blocked',
+        description: 'One of you has blocked the other. Unblock to continue the conversation.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSending(true);
     const result = await sendMessage(newMessage);
@@ -109,6 +118,12 @@ export const CommissionChat: React.FC<Props> = ({ commissionId, className }) => 
           )}
         </ScrollArea>
 
+        {interactionBlocked && (
+          <p className="text-sm text-destructive text-center">
+            Messaging is blocked between these accounts. Unblock the user to resume chat.
+          </p>
+        )}
+
         {/* Message Input */}
         <div className="flex gap-2">
           <Textarea
@@ -118,10 +133,11 @@ export const CommissionChat: React.FC<Props> = ({ commissionId, className }) => 
             placeholder="Type your message..."
             className="resize-none"
             rows={2}
+            disabled={interactionBlocked || checkingBlock}
           />
           <Button
             onClick={handleSend}
-            disabled={!newMessage.trim() || sending}
+            disabled={!newMessage.trim() || sending || interactionBlocked || checkingBlock}
             size="sm"
             className="self-end"
           >

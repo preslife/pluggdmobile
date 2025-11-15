@@ -15,6 +15,15 @@ The analytics pipeline collects engagement and revenue signals from Supabase Edg
 | `public.creator_kpi_daily` | Materialized rollup, refreshed nightly to support performant queries. |
 | `public.creator_kpi_daily_personal` | Security-filtered view for client consumption. |
 
+### Attribution-friendly columns
+The refreshed materialized view now preserves common attribution metadata so the UI can chart post-level ROI:
+
+- `source` – the emitter (metrics-aggregator, revenue-aggregator, analytics-processor, etc.).
+- `post_id`, `content_type`, `content_id` – identifiers captured in the original event metadata so we can join back to posts, drops, or live sessions.
+- `attribution_source`, `attribution_medium`, `attribution_campaign` – normalized UTM fields stripped from metadata.
+
+Each grouping stores `event_count`, `total_value`, and `last_occurred_at` so we can build funnel summaries (views → plays → revenue) per post or channel.
+
 ## KPI catalog
 The following KPI keys are currently produced. All financial metrics are stored as integer cents.
 
@@ -34,7 +43,7 @@ The following KPI keys are currently produced. All financial metrics are stored 
 | `total_subscribers` | YouTube channel subscriber count snapshot. | `fetch-youtube-analytics` |
 
 ## Scheduling
-- The migration `20250926021500_creator_kpi_analytics.sql` installs `pg_cron` and schedules the job `refresh-creator-kpi-daily` to run every day at 00:10 UTC. It invokes `public.refresh_creator_kpi_daily()` to refresh the materialized view concurrently.
+- The migration `20251107121500_creator_kpi_daily_pipeline.sql` installs the materialized view, helper function, and schedules the job `refresh-creator-kpi-daily` to run every day at 00:10 UTC. It invokes `public.refresh_creator_kpi_daily()` to refresh the materialized view concurrently.
 - Edge Functions that publish KPI snapshots first prune existing rows for the same creator/date/source combination so the rollup stays idempotent.
 
 ## Front-end consumption

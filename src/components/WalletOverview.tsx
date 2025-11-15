@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useWallet, formatCreditsWithGBP } from "@/hooks/useWallet";
+import { useWallet, formatCreditsWithGBP, formatCredits } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowUpCircle, ArrowDownCircle, CreditCard, Award } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, CreditCard, Award, Upload, Download, History } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLogger } from "@/hooks/useLogger";
 
 export const WalletOverview = () => {
-  const { balance, topUpCredits, applyCreditsToSubscription } = useWallet();
+  const { balance, ledger, topUpCredits, applyCreditsToSubscription } = useWallet();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const { t, formatNumber, formatCurrency } = useTranslation();
@@ -75,6 +75,34 @@ export const WalletOverview = () => {
       setLoading(false);
     }
   };
+
+  const ledgerSummary = useMemo(() => {
+    if (!ledger?.length) {
+      return {
+        creditsAdded: 0,
+        creditsSpent: 0,
+        netMovement: 0,
+        lastTransaction: null as (typeof ledger)[number] | null,
+      };
+    }
+
+    const creditsAdded = ledger.reduce((sum, entry) => {
+      return entry.amount_credits > 0 ? sum + entry.amount_credits : sum;
+    }, 0);
+
+    const creditsSpent = ledger.reduce((sum, entry) => {
+      return entry.amount_credits < 0 ? sum + Math.abs(entry.amount_credits) : sum;
+    }, 0);
+
+    return {
+      creditsAdded,
+      creditsSpent,
+      netMovement: creditsAdded - creditsSpent,
+      lastTransaction: ledger[0] ?? null,
+    };
+  }, [ledger]);
+
+  const hasLedgerEntries = ledger?.length > 0;
 
   return (
     <div className="space-y-6">
@@ -217,6 +245,88 @@ export const WalletOverview = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ledger Snapshot */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("wallet:ledger.title")}</CardTitle>
+          <CardDescription>
+            {hasLedgerEntries
+              ? t("wallet:ledger.description.withEntries", {
+                  count: ledger.length,
+                  entryLabel:
+                    ledger.length === 1
+                      ? t("wallet:ledger.descriptionLabels.entry")
+                      : t("wallet:ledger.descriptionLabels.entries"),
+                })
+              : t("wallet:ledger.description.empty")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {hasLedgerEntries ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <ArrowUpCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium">{t("wallet:ledger.summary.creditsAdded")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatCreditsWithGBP(ledgerSummary.creditsAdded)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <Upload className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="text-sm font-medium">{t("wallet:ledger.summary.creditsSpent")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatCreditsWithGBP(ledgerSummary.creditsSpent)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border p-4">
+                <Download className={`h-5 w-5 ${ledgerSummary.netMovement >= 0 ? "text-green-600" : "text-red-600"}`} />
+                <div>
+                  <p className="text-sm font-medium">{t("wallet:ledger.summary.netMovement")}</p>
+                  <p
+                    className={`text-sm font-semibold ${
+                      ledgerSummary.netMovement >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {formatCreditsWithGBP(ledgerSummary.netMovement)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border p-4">
+                <History className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm font-medium">{t("wallet:ledger.summary.lastTransaction")}</p>
+                  {ledgerSummary.lastTransaction ? (
+                    <div className="mt-1 space-y-1 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {ledgerSummary.lastTransaction.kind.replace(/_/g, " ")}
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          {formatCredits(Math.abs(ledgerSummary.lastTransaction.amount_credits), {
+                            showConversion: true,
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ledgerSummary.lastTransaction.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t("wallet:ledger.summary.noActivity")}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("wallet:ledger.summary.placeholder")}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

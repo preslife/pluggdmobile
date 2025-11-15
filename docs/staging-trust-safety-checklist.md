@@ -41,7 +41,9 @@ _Use this checklist whenever trust-safety or notification features ship. Follow 
 
 ## 3. User Blocking
 1. Still as the **fan**, visit the creator’s profile and press **Block**.
-2. Confirm success toast, then attempt to follow or DM the creator—interaction should be prevented.
+2. Confirm success toast, then attempt to follow or DM the creator—interaction should be prevented:
+   - Open the Messaging Center (`bell` icon → inbox) and select the thread with that creator/fan. The composer should show the “interactions blocked” banner, the input should be disabled, and attempting to send should raise the blocked toast.
+   - If you have an active commission conversation or live session with that creator, try sending a message inside **Commission Chat** or the live session chat. Both surfaces should block the submission and display the same warning.
 3. Check the database:
    ```sql
    select blocker_id, blocked_user_id, status
@@ -49,6 +51,7 @@ _Use this checklist whenever trust-safety or notification features ship. Follow 
    where blocker_id = '<fan_user_uuid>';
    ```
 4. Use the **Unblock** action and repeat the query to ensure the record is cleared.
+5. Return to the creator’s profile while the block is active and confirm the **Follow** button is disabled with the “Interactions blocked” message. Unblocking should re-enable the button.
 
 ## 4. Notification Dispatch
 1. Export staging Supabase variables (anon + service role) and set `STAGING_SMOKE_RECIPIENT` to the fan account’s UUID.

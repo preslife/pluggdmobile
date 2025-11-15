@@ -11,6 +11,8 @@ _Last updated: 2025-10-17_
 - [ ] Load Creator Growth dashboard as a host; verify `creator_growth_profile_fetch_start/success` events in `system_logs`.
 - [ ] Generate or update referral codes and confirm structured events (`generate_referral_code_*`, `update_referral_code_*`).
 - [ ] Copy/share referral link and ensure `copy_referral_link` / `share_referral_link_*` events fire.
+- [ ] Visit Studio → Analytics and confirm the KPI + Attribution section mirrors data from `creator_kpi_daily_personal` (views → plays → revenue and conversion rates per post/UTM source).
+- [ ] Publish a social post via Plug-ins (with tracking link), wait for ingestion, query `creator_kpi_daily_personal` for that post, and verify the Studio attribution table matches the Supabase row (views, plays, fan revenue).
 
 ## Search Experience & Mobile UX
 - [ ] On `/search`, type a query and confirm results debounce after ~250 ms, with arrow/home/end keys moving focus between cards and Enter opening the highlighted result.
@@ -19,9 +21,25 @@ _Last updated: 2025-10-17_
 - [ ] On `/marketplace`, validate trending tag chips, view-mode toggles, and CTA buttons remain accessible on small screens.
 - [ ] On `/store`, toggle filters on/off via the new mobile filter control and ensure the catalog + filter column stack without horizontal scrolling.
 - [ ] Still on `/store`, open the cart sidebar and verify the checkout, clear-cart, and quantity buttons provide full-width 44 px tap areas on mobile.
+
+## Catalog Management
+- [ ] Visit `/studio/catalog` as a profile owner and confirm each tab (Releases, Beats, Packs, Merch, Bundles, Collectibles) updates via the `get_catalog_items` RPC when filters/search/sort values change (check the Supabase request payload).
+- [ ] Exercise the status filter + debounced search box; ensure empty states render per tab and the `highlight` query parameter still applies the visual emphasis to the targeted card.
+- [ ] Validate the 30-day revenue/sales/plays/subscriber cards match `creator_metrics` totals for the active profile (spot-check via Supabase SQL runner).
+
+## Social Feed
+- [ ] Seed `user_follows` rows in staging, load `/home`, and confirm the Following tab uses the `get_follow_feed` RPC (check Supabase logs) with infinite scroll bringing back releases, beats, and posts in descending order.
+- [ ] Remove all follow relationships and ensure the CTA to discover creators plus trending fallback renders; re-follow a creator to confirm the feed repopulates without refresh.
+- [ ] Trigger a social post + release for a followed creator and verify the card shows the correct avatar, body copy, and tip/listen controls. Test `load more` sentinel behavior on mobile.
+
+## Unified Inbox
+- [ ] Connect Gmail & Discord via Studio → Plugins and confirm the Inbox page reflects connection status + last sync timestamp.
+- [ ] Run a manual poll from the Inbox UI for each provider and verify `cron.job` schedules (`inbox-fetch-*`) appear in Supabase plus new rows land in `unified_inbox`.
+- [ ] Use the message filters/search to drive the `get_unified_inbox_messages` RPC (watch Supabase logs) and ensure composer actions (`inbox-send-gmail`, `inbox-send-discord`) deliver and refresh the list.
 ## Checkout Observability
 - [ ] Run hybrid checkout flow in staging; confirm `checkout_*` telemetry spans cover balance, tax, and payment polling.
 - [ ] Trigger checkout error (e.g., decline) and confirm `checkout_purchase_failed` event includes error payload.
+- [ ] Query `select * from public.vw_checkout_activity_daily limit 7;` to verify the new checkout observability view reflects recent completed/failed orders and revenue (no gaps for days with activity).
 
 ## Memberships & Gating
 - [ ] Create a multi-tier membership and ensure tier metadata syncs to `membership_tiers`.
@@ -35,13 +53,18 @@ _Last updated: 2025-10-17_
 - [ ] Seed wallet with promo credits and confirm new balance renders in `WalletBalanceCard`.
 - [ ] Execute a purchase using split tender (credits + card) and confirm debits in ledger tables.
 - [ ] Refund a purchase and confirm wallet balance & transaction history reflect reversal.
+- [ ] Force a temporary failure of `wallet_process_transaction` (toggle the RPC off in staging or simulate via feature flag) and confirm fallback ledger inserts still credit/debit correctly, including charge-reversal replays.
+- [ ] Start checkout with credits applied, cancel the Stripe session, and ensure wallet credits remain unchanged (preview-only deduction should not run until Stripe payment confirms).
 - [ ] Verify weekly wallet email digest still sends via `wallet_digest_cron` after ledger updates.
+- [ ] Attempt a wallet cash-out with Stripe Connect onboarding incomplete or on compliance hold; confirm the Wallet Cash Out tab surfaces the onboarding CTA/compliance banner and blocks the request without debiting credits.
+- [ ] From Wallet → Activity, open a ledger receipt (`spend_purchase` or `convert_cashout`) and confirm the `generate-receipt` function renders HTML with the matching ledger id.
 
 ## Messaging & Inbox
 - [ ] Send fan → creator DM and confirm it appears instantly via Supabase real-time channel.
 - [ ] Test attachments in Studio inbox (`UploadAttachment`), ensuring virus scan webhook updates status.
 - [ ] Archive a conversation and ensure it no longer surfaces in default Inbox filter.
 - [ ] Validate push/email notifications fire for unread message thresholds.
+- [ ] Hit `cron.job` via SQL (e.g., `select jobname, schedule from cron.job where jobname like 'inbox-fetch-%';`) and verify the Gmail/Discord/YouTube/Instagram fetch jobs exist with the updated intervals plus the correct `net.http_post` payload.
 
 ## Trust & Safety (Reporting & Blocking)
 - [ ] Submit a report from a release or beat and confirm the submit-report edge function logs the request and RLS allows only the reporter to view the ticket.
@@ -53,6 +76,11 @@ _Last updated: 2025-10-17_
 - [ ] Trigger an order, artist tip, and membership subscription to confirm `broadcast-notification` delivers in-app notifications that appear in the bell dropdown and Notification Center (unread counts reflect `read_at`).
 - [ ] Update notification preferences and ensure opt-out users do not receive new notifications for that category.
 - [ ] Run `npm run smoke:staging` with staging credentials and confirm the broadcast smoke test delivers to the configured recipient (toast + notification row + system log).
+
+## Lifecycle Emails
+- [ ] Create a fresh fan and creator account (or trigger the signup webhook) and confirm `fan_welcome`/`creator_welcome` emails arrive via the Resend log. Toggle creator mode in Studio to re-run the creator welcome flow if needed.
+- [ ] Complete a store checkout and verify the purchaser receives the library/receipt email. Inspect `analytics_events` for an `order_receipt_email` row tied to the `order_id` and ensure repeat webhooks do not duplicate the email.
+- [ ] For a creator without prior sales, trigger a tip or store purchase and confirm a single `creator_first_earnings` email plus `analytics_events` entry (`event_name = first_earnings`). Subsequent sales should skip the email.
 
 ## Live & Interactive Sessions
 - [ ] Schedule a live session with ticketing and confirm countdown surfaces on `/live` rail.
@@ -94,6 +122,7 @@ _Last updated: 2025-10-17_
 ## Observability & Dashboards
 - [ ] Query `analytics.platform_observability_funnels` to verify order, tip, report, and notification metrics update after test runs.
 - [ ] Audit `system_logs` entries for submit-report, review-report, block-user, unblock-user, and broadcast-notification actions to ensure correlation IDs and metadata are present.
+- [ ] Pull `select * from public.vw_membership_activity_daily limit 7;` to ensure membership observability covers new vs churned subscribers plus active MRR data for dashboards.
 
 ## Release Process Alignment
 - [ ] Reference the [Release Readiness Runbook](./release-readiness.md) and ensure all pre-flight gates list this checklist as a blocking item.

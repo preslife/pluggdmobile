@@ -95,10 +95,21 @@ export const recordWalletTransaction = async (
     reversal_of_entry_id: input.reversalOfEntryId ?? null,
   };
 
-  const { data, error } = await supabaseClient.rpc(
-    WALLET_TRANSACTION_RPC,
-    rpcPayload as Record<string, unknown>,
-  );
+  let rpcResponse: { data: unknown; error: any } | null = null;
+  let rpcError: any = null;
+
+  try {
+    rpcResponse = await supabaseClient.rpc(
+      WALLET_TRANSACTION_RPC,
+      rpcPayload as Record<string, unknown>,
+    );
+  } catch (error) {
+    rpcError = error;
+    rpcResponse = { data: null, error };
+  }
+
+  const data = rpcResponse?.data ?? null;
+  const error = rpcResponse?.error ?? rpcError;
 
   if (!error && data) {
     const normalized = normalizeTransactionResponse(data);

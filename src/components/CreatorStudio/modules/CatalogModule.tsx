@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import "./catalog-v2.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -20,14 +20,12 @@ import {
   Gift,
   Plus,
   Search,
-  Filter,
   Edit,
   Trash2,
   Eye,
   TrendingUp,
   DollarSign,
   Download,
-  Calendar,
   MoreHorizontal,
   Users,
 } from "lucide-react";
@@ -45,10 +43,13 @@ import {
 import { useStudioContext } from "@/contexts/StudioContext";
 import { ConnectionsModule } from "./ConnectionsModule";
 
+type CatalogItemType = 'release' | 'beat' | 'pack' | 'bundle' | 'merch' | 'collectible';
+
 interface CatalogItem {
   id: string;
   title: string;
-  type: 'release' | 'beat' | 'pack' | 'bundle' | 'merch' | 'collectible';
+  type: CatalogItemType;
+  item_type?: CatalogItemType;
   status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'live';
   price: number;
   sales: number;
@@ -82,6 +83,45 @@ const typeIcons = {
   collectible: TrendingUp,
 };
 
+type OwnerContext = { ownerType: 'label' | 'profile'; ownerId: string };
+
+interface MetricsSummary {
+  totalRevenue: number;
+  totalSales: number;
+  totalPlays: number;
+  activeSubs: number;
+}
+
+const TAB_TYPE_MAP: Record<string, string> = {
+  releases: "release",
+  beats: "beat",
+  "sound-packs": "pack",
+  merch: "merch",
+  bundles: "bundle",
+  collectibles: "collectible",
+};
+
+const SORT_MAP: Record<string, string> = {
+  title: "title",
+  revenue: "revenue",
+  sales: "sales",
+  updated_at: "updated_at",
+  created_at: "created_desc",
+  created_desc: "created_desc",
+};
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(value);
+
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(value ?? 0);
+
 export const CatalogModule: React.FC = () => {
   const ENABLE_EXTENDED_TYPES = true; // Enable merchandise, bundles, and collectibles
   const { user } = useAuth();
@@ -91,22 +131,25 @@ export const CatalogModule: React.FC = () => {
   const { mode, activeLabel } = useStudioContext();
   const isLabelWorkspace = mode === "label" && !!activeLabel;
 
-  // Get tab from query parameter
-  const searchParams = new URLSearchParams(location.search);
-  const tabFromUrl = searchParams.get('tab') || 'releases';
-
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("tab") || "releases";
+  });
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
   const [filterStatus, setFilterStatus] = useState("all");
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [metricsSummary, setMetricsSummary] = useState<MetricsSummary | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const ownerRef = useRef<OwnerContext | null>(null);
 
   // Update active tab when URL changes
   useEffect(() => {
-    const newTab = searchParams.get('tab') || 'releases';
-    setActiveTab(newTab);
+    const params = new URLSearchParams(location.search);
+    const newTab = params.get("tab") || "releases";
+    setActiveTab((prev) => (prev === newTab ? prev : newTab));
   }, [location.search]);
 
   useEffect(() => {
@@ -121,184 +164,134 @@ export const CatalogModule: React.FC = () => {
     setHighlightId(null);
   }, [location.search]);
 
-  const resolveOwner = useCallback(() => {
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const owner = useMemo<OwnerContext | null>(() => {
     if (isLabelWorkspace && activeLabel) {
-      return { ownerType: 'label' as const, ownerId: activeLabel.id };
+      return { ownerType: "label", ownerId: activeLabel.id };
     }
     if (user) {
-      return { ownerType: 'profile' as const, ownerId: user.id };
+      return { ownerType: "profile", ownerId: user.id };
     }
     return null;
   }, [isLabelWorkspace, activeLabel?.id, user?.id]);
 
-  useEffect(() => {
-    const owner = resolveOwner();
-    if (owner) {
-      fetchCatalogItems(owner);
+  const fetchCatalogItems = useCallback(
+    async (owner: OwnerContext) => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.rpc("get_catalog_items", {
+          p_owner_type: owner.ownerType,
+          p_owner_id: owner.ownerId,
+          p_content_type: TAB_TYPE_MAP[activeTab] ?? activeTab,
+          p_search: debouncedSearch ? debouncedSearch : null,
+          p_status: filterStatus !== "all" ? filterStatus : null,
+          p_sort: SORT_MAP[sortBy] ?? SORT_MAP.created_at,
+          p_limit: 200,
+          p_offset: 0,
+        });
+
+        if (error) throw error;
+        const normalizedItems: CatalogItem[] = Array.isArray(data)
+          ? (data as Record<string, any>[]).map((item) => {
+              const normalizedType = (item.item_type ?? item.type) as CatalogItemType;
+              return {
+                ...item,
+                type: normalizedType,
+                price: Number(item.price ?? 0),
+                sales: Number(item.sales ?? 0),
+                revenue: Number(item.revenue ?? 0),
+              };
+            })
+          : [];
+        setCatalogItems(normalizedItems);
+      } catch (error: any) {
+        toast({
+          title: "Error loading catalog",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeTab, debouncedSearch, filterStatus, sortBy, toast]
+  );
+
+  const fetchCatalogMetrics = useCallback(async (owner: OwnerContext) => {
+    if (owner.ownerType !== "profile") {
+      setMetricsSummary(null);
+      return;
     }
-  }, [resolveOwner, activeTab]);
 
-  const fetchCatalogItems = async (owner: { ownerType: 'label' | 'profile'; ownerId: string }) => {
-    setLoading(true);
     try {
-      let data: any[] = [];
-      
-      switch (activeTab) {
-        case "releases":
-          // Fetch all releases from unified releases table
-          const { data: releases, error: releasesError } = await supabase
-            .from('releases')
-            .select('*')
-            .eq('owner_type', owner.ownerType)
-            .eq('owner_id', owner.ownerId);
-          
-          if (releasesError) throw releasesError;
-          
-          // Process releases with proper status handling
-          const allReleases = (releases || []).map(release => {
-            // Check if approved release date has passed to make it live
-            let status = release.status || 'draft';
-            if (status === 'approved' && release.release_date) {
-              const releaseDate = new Date(release.release_date);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              if (releaseDate <= today) {
-                status = 'live';
-              }
-            }
-            
-            return {
-              ...release,
-              type: 'release' as const,
-              price: release.price || 0,
-              sales: release.total_plays || 0,
-              revenue: (release.price || 0) * (release.total_plays || 0),
-              status,
-            };
-          });
-          
-          data = allReleases;
-          break;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        case "beats":
-          let beatsQuery = supabase.from('beats').select('*');
-          if (owner.ownerType === 'label') {
-            beatsQuery = beatsQuery
-              .eq('owner_type', 'label')
-              .eq('owner_id', owner.ownerId);
-          } else {
-            beatsQuery = beatsQuery.eq('user_id', owner.ownerId);
-          }
-          const { data: beats, error: beatsError } = await beatsQuery;
-          if (beatsError && beatsError.code !== '42703') throw beatsError;
-          
-          data = (beats || []).map(beat => ({
-            ...beat,
-            type: 'beat' as const,
-            price: beat.price || 0,
-            sales: beat.total_plays || 0,
-            revenue: (beat.price || 0) * (beat.total_plays || 0),
-            status: beat.is_published ? 'live' : 'draft',
-          }));
-          break;
+      const { data, error } = await supabase
+        .from("creator_metrics")
+        .select("metric_date, revenue_cents, sales_count, plays_count, subs_count")
+        .eq("creator_id", owner.ownerId)
+        .gte("metric_date", thirtyDaysAgo.toISOString().split("T")[0])
+        .order("metric_date", { ascending: false })
+        .limit(60);
 
-        case "sound-packs":
-          let packsQuery = supabase.from('sample_packs').select('*');
-          if (owner.ownerType === 'label') {
-            packsQuery = packsQuery
-              .eq('owner_type', 'label')
-              .eq('owner_id', owner.ownerId);
-          } else {
-            packsQuery = packsQuery.eq('user_id', owner.ownerId);
-          }
-          const { data: packs, error: packsError } = await packsQuery;
-          if (packsError) throw packsError;
-          
-          data = (packs || []).map(pack => ({
-            ...pack,
-            type: 'pack' as const,
-            price: pack.price || 0,
-            sales: pack.download_count || 0,
-            revenue: (pack.price || 0) * (pack.download_count || 0),
-            status: pack.status || 'draft',
-          }));
-          break;
-          
-        case "merch":
-          let merchQuery = supabase.from('creator_merchandise').select('*');
-          if (owner.ownerType === 'label') {
-            merchQuery = merchQuery
-              .eq('owner_type', 'label')
-              .eq('owner_id', owner.ownerId);
-          } else {
-            merchQuery = merchQuery.eq('user_id', owner.ownerId);
-          }
-          const { data: merchandise, error: merchError } = await merchQuery;
-          if (merchError) throw merchError;
-          
-          data = (merchandise || []).map(item => ({
-            ...item,
-            type: 'merch' as const,
-            price: item.price || 0,
-            sales: item.sales_count || 0,
-            revenue: item.revenue_total || 0,
-            status: item.status || 'draft',
-          }));
-          break;
+      if (error) throw error;
 
-        case "bundles":
-          const { data: bundles, error: bundlesError } = await supabase
-            .from('creator_bundles')
-            .select('*')
-            .eq(owner.ownerType === 'label' ? 'owner_id' : 'user_id', owner.ownerId)
-            .eq(owner.ownerType === 'label' ? 'owner_type' : 'owner_type', owner.ownerType);
-          if (bundlesError) throw bundlesError;
-          
-          data = (bundles || []).map(item => ({
-            ...item,
-            type: 'bundle' as const,
-            price: item.bundle_price || 0,
-            sales: item.sales_count || 0,
-            revenue: item.revenue_total || 0,
-            status: item.status || 'draft',
-          }));
-          break;
-
-        case "collectibles":
-          const { data: collectibles, error: collectiblesError } = await supabase
-            .from('creator_collectibles')
-            .select('*')
-            .eq(owner.ownerType === 'label' ? 'owner_id' : 'user_id', owner.ownerId)
-            .eq(owner.ownerType === 'label' ? 'owner_type' : 'owner_type', owner.ownerType);
-          if (collectiblesError) throw collectiblesError;
-          
-          data = (collectibles || []).map(item => ({
-            ...item,
-            type: 'collectible' as const,
-            price: item.price || 0,
-            sales: item.sales_count || 0,
-            revenue: item.revenue_total || 0,
-            status: item.status || 'draft',
-          }));
-          break;
-          
-        default:
-          // Default to empty data if tab not recognized
-          data = [];
-          break;
+      if (!data || data.length === 0) {
+        setMetricsSummary(null);
+        return;
       }
 
-      setCatalogItems(data);
-    } catch (error: any) {
-      toast({
-        title: "Error loading catalog",
-        description: error.message,
-        variant: "destructive",
+      const totals = data.reduce(
+        (acc, row) => {
+          acc.revenue += row.revenue_cents || 0;
+          acc.sales += row.sales_count || 0;
+          acc.plays += row.plays_count || 0;
+          return acc;
+        },
+        { revenue: 0, sales: 0, plays: 0 }
+      );
+
+      setMetricsSummary({
+        totalRevenue: totals.revenue / 100,
+        totalSales: totals.sales,
+        totalPlays: totals.plays,
+        activeSubs: data[0]?.subs_count ?? 0,
       });
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("[CatalogModule] Failed to load metrics", error);
+      setMetricsSummary(null);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!owner || (isLabelWorkspace && activeLabel)) {
+      ownerRef.current = null;
+      setCatalogItems([]);
+      setLoading(false);
+      return;
+    }
+
+    ownerRef.current = owner;
+    fetchCatalogItems(owner);
+  }, [owner, fetchCatalogItems, isLabelWorkspace, activeLabel]);
+
+  useEffect(() => {
+    if (
+      !owner ||
+      owner.ownerType !== "profile" ||
+      (isLabelWorkspace && activeLabel)
+    ) {
+      setMetricsSummary(null);
+      return;
+    }
+
+    fetchCatalogMetrics(owner);
+  }, [owner, fetchCatalogMetrics, isLabelWorkspace, activeLabel]);
 
   if (isLabelWorkspace && activeLabel) {
     return (
@@ -329,39 +322,8 @@ export const CatalogModule: React.FC = () => {
     );
   }
 
-  const filteredItems = catalogItems.filter(item => {
-    const title = (item.title || '').toString();
-    const description = (item.description || '').toString();
-    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "all" || item.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    const safeNum = (n: any) => {
-      const v = Number(n);
-      return Number.isFinite(v) ? v : 0;
-    };
-    switch (sortBy) {
-      case "title":
-        return (a.title || "").localeCompare(b.title || "");
-      case "revenue":
-        return safeNum(b.revenue) - safeNum(a.revenue);
-      case "sales":
-        return safeNum(b.sales) - safeNum(a.sales);
-      case "updated_at": {
-        const bt = new Date(b.updated_at || 0).getTime();
-        const at = new Date(a.updated_at || 0).getTime();
-        return safeNum(bt) - safeNum(at);
-      }
-      default: {
-        const bt = new Date(b.created_at || 0).getTime();
-        const at = new Date(a.created_at || 0).getTime();
-        return safeNum(bt) - safeNum(at);
-      }
-    }
-  });
+  const filteredItems = catalogItems;
+  const sortedItems = filteredItems;
 
   const getCreateUrl = (tab: string) => {
     switch (tab) {
@@ -409,7 +371,9 @@ export const CatalogModule: React.FC = () => {
         description: "The item has been successfully deleted.",
       });
 
-      fetchCatalogItems();
+      if (ownerRef.current) {
+        fetchCatalogItems(ownerRef.current);
+      }
     } catch (error: any) {
       toast({
         title: "Delete failed",
@@ -474,14 +438,38 @@ export const CatalogModule: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-2">
         {[
           { label: 'Total Items', value: items.length },
-          { label: 'Total Sales', value: totalSales },
-          { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}` },
+          { label: 'Total Sales', value: formatNumber(totalSales) },
+          { label: 'Total Revenue', value: formatCurrency(totalRevenue) },
           { label: 'Approved', value: approved },
         ].map((stat) => (
           <div key={stat.label} className="rounded-md border border-border bg-transparent p-3">
             <div className="text-xs font-medium text-muted-foreground tracking-wide">{stat.label}</div>
             <div className="text-xl font-semibold">{stat.value}</div>
           </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderMetricsSummary = () => {
+    if (!metricsSummary) {
+      return null;
+    }
+
+    const metrics = [
+      { label: "30d revenue", value: formatCurrency(metricsSummary.totalRevenue) },
+      { label: "30d sales", value: formatNumber(metricsSummary.totalSales) },
+      { label: "30d plays", value: formatNumber(metricsSummary.totalPlays) },
+      { label: "Active subscribers", value: formatNumber(metricsSummary.activeSubs) },
+    ];
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.map((metric) => (
+          <Card key={metric.label} className="p-4 bg-muted/30 border-border">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+            <p className="text-2xl font-semibold mt-1">{metric.value}</p>
+          </Card>
         ))}
       </div>
     );
@@ -546,15 +534,15 @@ export const CatalogModule: React.FC = () => {
             <div className="px-1 pt-2 pb-1">
               <div className="flex items-center justify-between gap-2 text-sm">
                 <h3 className="font-medium leading-tight line-clamp-1">{item.title}</h3>
-                <span className="font-semibold">${Number(item.price || 0).toFixed(2)}</span>
+                <span className="font-semibold">{formatCurrency(item.price || 0)}</span>
               </div>
               {item.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
               )}
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1"><Download className="h-3 w-3" />{item.sales}</span>
-                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{Number(item.revenue || 0).toFixed(0)}</span>
+                  <span className="flex items-center gap-1"><Download className="h-3 w-3" />{formatNumber(item.sales)}</span>
+                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{formatCurrency(item.revenue || 0)}</span>
                 </div>
                 <span>Updated {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : '—'}</span>
               </div>
@@ -578,6 +566,8 @@ export const CatalogModule: React.FC = () => {
       </div>
 
       <ConnectionsModule />
+
+      {renderMetricsSummary()}
 
       <Tabs value={activeTab} onValueChange={(v) => {
         try {

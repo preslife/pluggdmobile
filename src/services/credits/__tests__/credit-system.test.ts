@@ -116,4 +116,23 @@ describe('CreditSystemService.processPurchase', () => {
       }),
     );
   });
+
+  it('allows previewing credit usage without spending', async () => {
+    const items: PurchaseItem[] = [
+      { id: 'preview-1', type: 'release', title: 'Preview Item', price: 80 },
+    ];
+
+    policySpy.mockResolvedValue({ maxCartPercent: 1 });
+
+    const result = await creditSystem.processPurchase('user-preview', items, {
+      requestedCredits: 80,
+      previewOnly: true,
+      maxCreditPercentage: 1,
+    });
+
+    expect(result.creditsUsed).toBe(80);
+    expect(result.cashDue).toBe(0);
+    expect(spendCreditsSpy).not.toHaveBeenCalled();
+    expect(createDownloadSpy).not.toHaveBeenCalled();
+  });
 });

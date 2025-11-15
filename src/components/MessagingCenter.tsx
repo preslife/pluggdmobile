@@ -183,6 +183,8 @@ export const MessagingCenter = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [threadBlockState, setThreadBlockState] = useState<Record<string, { blocked: boolean; checked: boolean }>>({});
+  const [checkingThreadBlockKey, setCheckingThreadBlockKey] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handledRealtimeIds = useRef<Set<string>>(new Set());
@@ -211,6 +213,13 @@ export const MessagingCenter = () => {
       unread_count: unreadCount,
     });
   }, [isOpen, unreadCount, user?.id, logEvent]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setThreadBlockState({});
+      setCheckingThreadBlockKey(null);
+    }
+  }, [user?.id]);
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user) {
@@ -355,6 +364,69 @@ export const MessagingCenter = () => {
       return undefined;
     },
     [user, fetchUnreadCount, logApiCall, logError]
+  );
+
+  const evaluateThreadBlock = useCallback(
+    async (thread: InboxThread, force = false): Promise<"allowed" | "blocked" | "error"> => {
+      if (!user?.id) return "allowed";
+      const key = keyFromThread(thread.threadId, thread.socialAccountId);
+      const cached = threadBlockState[key];
+      if (!force && cached?.checked) {
+        return cached.blocked ? "blocked" : "allowed";
+      }
+
+      setCheckingThreadBlockKey(key);
+      try {
+        const { data, error } = await supabase
+          .from("inbox_thread_participants")
+          .select("user_id")
+          .eq("thread_id", thread.threadId);
+
+        if (error) {
+          void logError("messaging_thread_participants_failed", error, {
+            user_id: user.id,
+            thread_id: thread.threadId,
+          });
+          return "error";
+        }
+
+        const participantIds = (data ?? [])
+          .map((row: { user_id: string | null }) => row.user_id)
+          .filter((id): id is string => Boolean(id) && id !== user.id);
+
+        if (!participantIds.length) {
+          setThreadBlockState((prev) => ({ ...prev, [key]: { blocked: false, checked: true } }));
+          return "allowed";
+        }
+
+        for (const participantId of participantIds) {
+          const { data: blocked, error: blockError } = await supabase.rpc("is_user_blocked", {
+            p_actor: user.id,
+            p_target: participantId,
+          });
+
+          if (blockError) {
+            void logError("messaging_block_check_failed", blockError, {
+              user_id: user.id,
+              thread_id: thread.threadId,
+              target_id: participantId,
+            });
+            return "error";
+          }
+
+          if (blocked) {
+            setThreadBlockState((prev) => ({ ...prev, [key]: { blocked: true, checked: true } }));
+            return "blocked";
+          }
+        }
+
+        setThreadBlockState((prev) => ({ ...prev, [key]: { blocked: false, checked: true } }));
+        return "allowed";
+      } finally {
+        setCheckingThreadBlockKey((prev) => (prev === key ? null : prev));
+      }
+    },
+    [user?.id, threadBlockState, logError]
   );
 
   const fetchMessages = useCallback(
@@ -533,6 +605,12 @@ export const MessagingCenter = () => {
   }, [openThreadById]);
 
   useEffect(() => {
+    if (activeThread) {
+      void evaluateThreadBlock(activeThread);
+    }
+  }, [activeThread, evaluateThreadBlock]);
+
+  useEffect(() => {
     if (!user) return;
 
     const channel = supabase
@@ -665,7 +743,22 @@ export const MessagingCenter = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeThread || !user) return;
+    if (!newMessage.trim() || !activeThread || !user || sendingMessage) return;
+
+    setSendingMessage(true);
+    const guardResult = await evaluateThreadBlock(activeThread, true);
+    if (guardResult !== "allowed") {
+      setSendingMessage(false);
+      toast({
+        title: guardResult === "blocked" ? "Messaging blocked" : "Unable to send message",
+        description:
+          guardResult === "blocked"
+            ? "One of you has blocked the other. Unblock to continue the conversation."
+            : "We couldn't verify messaging permissions. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const messageContent = newMessage.trim();
     const optimisticId = `temp-${Date.now()}`;
@@ -689,7 +782,6 @@ export const MessagingCenter = () => {
 
     setMessages((prev) => [...prev, optimisticMessage]);
     setNewMessage("");
-    setSendingMessage(true);
 
     void logEvent("inbox_send_attempt", {
       thread_id: activeThread.threadId,
@@ -763,6 +855,11 @@ export const MessagingCenter = () => {
   };
 
   if (!user) return null;
+
+  const activeThreadKey = activeThread ? keyFromThread(activeThread.threadId, activeThread.socialAccountId) : null;
+  const activeThreadBlockEntry = activeThreadKey ? threadBlockState[activeThreadKey] : undefined;
+  const interactionBlocked = Boolean(activeThreadBlockEntry?.blocked);
+  const blockCheckInFlight = Boolean(activeThreadKey && checkingThreadBlockKey === activeThreadKey);
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -938,6 +1035,14 @@ export const MessagingCenter = () => {
                 </ScrollArea>
 
                 <div className="p-4 border-t">
+                  {blockCheckInFlight && (
+                    <p className="text-xs text-muted-foreground mb-2">Checking messaging permissions…</p>
+                  )}
+                  {interactionBlocked && (
+                    <p className="text-xs text-destructive mb-2">
+                      Messaging is blocked between these users. Unblock to continue the conversation.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <Input
                       placeholder={t("messaging:composerPlaceholder")}
@@ -950,12 +1055,12 @@ export const MessagingCenter = () => {
                         }
                       }}
                       className="flex-1"
-                      disabled={sendingMessage}
+                      disabled={sendingMessage || interactionBlocked || blockCheckInFlight}
                     />
                     <Button
                       onClick={sendMessage}
                       size="sm"
-                      disabled={sendingMessage || !newMessage.trim()}
+                      disabled={sendingMessage || !newMessage.trim() || interactionBlocked || blockCheckInFlight}
                       aria-label="Send message"
                     >
                       <Send className="w-4 h-4" />
