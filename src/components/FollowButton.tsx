@@ -18,6 +18,74 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
   const [checkingBlock, setCheckingBlock] = useState(false);
   const { toast } = useToast();
 
+  const checkBlockRelationship = useCallback(async () => {
+    if (!currentUserId || userId === currentUserId) {
+      setIsInteractionBlocked(false);
+      return;
+    }
+
+    try {
+      setCheckingBlock(true);
+      const { data, error } = await supabase.rpc("is_user_blocked", {
+        p_actor: currentUserId,
+        p_target: userId,
+      });
+
+      if (error) {
+        console.error("Error checking block relationship:", error);
+        setIsInteractionBlocked(false);
+        return;
+      }
+
+      setIsInteractionBlocked(Boolean(data));
+    } catch (error) {
+      console.error("Error checking block relationship:", error);
+      setIsInteractionBlocked(false);
+    } finally {
+      setCheckingBlock(false);
+    }
+  }, [currentUserId, userId]);
+
+  const checkFollowStatus = useCallback(async () => {
+    if (!currentUserId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', currentUserId)
+        .eq('following_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking follow status:', error);
+        return;
+      }
+
+      setIsFollowing(!!data);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  }, [currentUserId, userId]);
+
+  const getFollowerCount = useCallback(async () => {
+    try {
+      const { count, error } = await supabase
+        .from('user_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+
+      if (error) {
+        console.error('Error getting follower count:', error);
+        return;
+      }
+
+      setFollowerCount(count || 0);
+    } catch (error) {
+      console.error('Error getting follower count:', error);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (currentUserId && userId !== currentUserId) {
       checkFollowStatus();
@@ -26,7 +94,7 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
     } else {
       setIsInteractionBlocked(false);
     }
-  }, [currentUserId, userId, checkBlockRelationship]);
+  }, [currentUserId, userId, checkBlockRelationship, checkFollowStatus, getFollowerCount]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -56,73 +124,7 @@ export const FollowButton = ({ userId, currentUserId, className }: FollowButtonP
     };
   }, [currentUserId, userId]);
 
-  const checkFollowStatus = async () => {
-    if (!currentUserId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_follows')
-        .select('id')
-        .eq('follower_id', currentUserId)
-        .eq('following_id', userId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking follow status:', error);
-        return;
-      }
-
-      setIsFollowing(!!data);
-    } catch (error) {
-      console.error('Error checking follow status:', error);
-    }
-  };
-
-  const getFollowerCount = async () => {
-    try {
-      const { count, error } = await supabase
-        .from('user_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId);
-
-      if (error) {
-        console.error('Error getting follower count:', error);
-        return;
-      }
-
-      setFollowerCount(count || 0);
-    } catch (error) {
-      console.error('Error getting follower count:', error);
-    }
-  };
-
-  const checkBlockRelationship = useCallback(async () => {
-    if (!currentUserId || userId === currentUserId) {
-      setIsInteractionBlocked(false);
-      return;
-    }
-
-    try {
-      setCheckingBlock(true);
-      const { data, error } = await supabase.rpc("is_user_blocked", {
-        p_actor: currentUserId,
-        p_target: userId,
-      });
-
-      if (error) {
-        console.error("Error checking block relationship:", error);
-        setIsInteractionBlocked(false);
-        return;
-      }
-
-      setIsInteractionBlocked(Boolean(data));
-    } catch (error) {
-      console.error("Error checking block relationship:", error);
-      setIsInteractionBlocked(false);
-    } finally {
-      setCheckingBlock(false);
-    }
-  }, [currentUserId, userId]);
+  
 
   const handleFollow = async () => {
     if (!currentUserId) {

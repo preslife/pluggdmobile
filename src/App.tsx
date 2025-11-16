@@ -23,6 +23,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import OrdersPurchasesPage from "./pages/dashboard/OrdersPurchases";
 import WalletPayoutsPage from "./pages/dashboard/WalletPayouts";
+import { I18nProvider } from "@/i18n/I18nProvider";
 import ConnectionsPage from "./pages/dashboard/Connections";
 import Marketplace from "./pages/Marketplace";
 import Library from "./pages/Library";
@@ -412,7 +413,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <SubscriptionProvider>
-              <LocalizationProvider>
+              <I18nProvider>
                 <WalletProvider>
                   <DomainProvider>
                     <ThemeProvider>
@@ -425,7 +426,7 @@ const App = () => (
                     </ThemeProvider>
                   </DomainProvider>
                 </WalletProvider>
-              </LocalizationProvider>
+              </I18nProvider>
             </SubscriptionProvider>
           </AuthProvider>
         </BrowserRouter>

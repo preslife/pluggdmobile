@@ -56,8 +56,8 @@ const Directory = () => {
 
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
   const [approvedProfiles, setApprovedProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProfessional, setSelectedProfessional] = useState<BookingProfessional | null>(null);
@@ -250,12 +250,12 @@ const Directory = () => {
           return false;
         }
       }
-      if (selectedGenre) {
+      if (selectedGenre !== "all") {
         if (!entry.genres || !entry.genres.some((genre) => genre?.toLowerCase() === selectedGenre.toLowerCase())) {
           return false;
         }
       }
-      if (selectedLocation) {
+      if (selectedLocation !== "all") {
         if (!entry.location || entry.location.toLowerCase() !== selectedLocation.toLowerCase()) {
           return false;
         }
@@ -301,14 +301,10 @@ const Directory = () => {
               </div>
               <Select value={selectedGenre} onValueChange={setSelectedGenre}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Genre">
-                    {selectedGenre || "Genre"}
-                  </SelectValue>
+                  <SelectValue placeholder="Genre" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
-                    All genres
-                  </SelectItem>
+                  <SelectItem value="all">All genres</SelectItem>
                   {availableGenres.map((genre) => (
                     <SelectItem key={genre} value={genre}>
                       {genre}
@@ -318,14 +314,10 @@ const Directory = () => {
               </Select>
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Location">
-                    {selectedLocation || "Location"}
-                  </SelectValue>
+                  <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
-                    All locations
-                  </SelectItem>
+                  <SelectItem value="all">All locations</SelectItem>
                   {availableLocations.map((location) => (
                     <SelectItem key={location} value={location}>
                       {location}

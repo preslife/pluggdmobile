@@ -3,11 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   DEFAULT_LOCALE,
-  LocaleCode,
-  LocaleConfig,
   SUPPORTED_LOCALES
 } from '@/lib/locales';
-export { SUPPORTED_LOCALES, LocaleCode, LocaleConfig } from '@/lib/locales';
+import type { LocaleCode, LocaleConfig } from '@/lib/locales';
+export { SUPPORTED_LOCALES } from '@/lib/locales';
+export type { LocaleCode, LocaleConfig } from '@/lib/locales';
 import i18n from '@/lib/i18n';
 
 export interface LocalizationSettings {

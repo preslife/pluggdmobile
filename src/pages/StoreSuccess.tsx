@@ -10,6 +10,9 @@ import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { setMeta } from "@/lib/seo";
 import { logger } from "@/lib/logger";
+import { useLocalization } from "@/contexts/LocalizationContext";
+import { useIntl } from "react-intl";
+import { telemetry } from "@/services/analytics/telemetry";
 
 type OrderItemSummary = {
   id: string;
@@ -39,6 +42,8 @@ type ReleaseReceiptContext = {
   timestamp?: string;
 };
 
+const RETRY_ATTEMPTS = 3;
+
 const StoreSuccess: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -46,6 +51,7 @@ const StoreSuccess: React.FC = () => {
   const { clearCart } = useCart();
   const { toast } = useToast();
   const { settings } = useLocalization();
+  const intl = useIntl();
 
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<OrderSummary | null>(null);
@@ -70,7 +76,7 @@ const StoreSuccess: React.FC = () => {
     });
   }, [releaseReceipt]);
 
-  useEffect(() => {
+  const fetchOrderWithRetry = useCallback(async () => {
     if (!sessionId) {
       void logger.warn("store_success_missing_session", {
         component: "StoreSuccessPage",
@@ -137,15 +143,16 @@ const StoreSuccess: React.FC = () => {
           setCartCleared(true);
           telemetry.checkout("cart_cleared", {
             sessionId,
-            orderId: orderSummary.id,
+            orderId: data.id,
             reason: "store.success",
           });
-          void logger.info("storeSuccess:cart_cleared", { sessionId, orderId: orderSummary.id });
+          void logger.info("storeSuccess:cart_cleared", { sessionId, orderId: data.id });
         }
 
         success = true;
       } catch (err: any) {
         const message = err?.message || "Unable to load your order summary.";
+        lastError = message;
         const errorObject = err instanceof Error ? err : new Error(message);
         void logger.error("store_success_fetch_failed", {
           component: "StoreSuccessPage",
@@ -236,7 +243,10 @@ const StoreSuccess: React.FC = () => {
         }, errorObject);
       } finally {
         sessionStorage.removeItem("recentReleaseReceipt");
-        void logEvent('store_success_release_receipt_cleared', { source: 'sessionStorage' });
+        void logger.info("store_success_release_receipt_cleared", {
+          component: "StoreSuccessPage",
+          source: "sessionStorage",
+        });
       }
     }
 
@@ -252,7 +262,7 @@ const StoreSuccess: React.FC = () => {
         source: "query_param",
       });
     }
-  }, [searchParams, releaseReceipt, logEvent, logError]);
+  }, [searchParams, releaseReceipt]);
 
   const formatOrderDate = useCallback(
     (value: string) =>

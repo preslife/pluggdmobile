@@ -83,6 +83,7 @@
     "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.59.0",
     "react-i18next": "^16.0.1",
+    "react-intl": "^7.1.14",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.3",
     "react-router-dom": "^6.26.2",

@@ -27,3 +27,5 @@ if (!initialized) {
 }
 
 export default i18n;
+export { DEFAULT_LOCALE, translationResources };
+export const getMessages = (locale: string) => translationResources[locale as keyof typeof translationResources]?.translation ?? {};
