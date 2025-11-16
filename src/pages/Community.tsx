@@ -34,12 +34,14 @@ import { FollowButton } from "@/components/FollowButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useGlobalPlayer } from "@/components/GlobalPlayer/GlobalPlayer";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
 import { setMeta } from "@/lib/seo";
 import { getAcademyBasePath } from '@/lib/academyRoutes';
 import ReportButton from "@/components/ReportButton";
+import MapView from "@/features/fanMap/components/MapView";
+import PluggdWall from "@/features/fanMap/components/PluggdWall";
+import { PlugProvider } from "@/features/fanMap/contexts/PlugContext";
 
 /**
  * PLUGGD — COMMUNITY HUB
@@ -477,14 +479,16 @@ export default function CommunityHubEpic() {
 
   if (loading) {
     return (
-      <main className="relative min-h-screen w-full bg-background text-foreground">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="mx-auto mb-4 h-32 w-32 animate-spin rounded-full border-b-2 border-amber-400"></div>
-            <p className="text-zinc-400">Loading Community Hub...</p>
+      <PlugProvider>
+        <main className="relative min-h-screen w-full bg-background text-foreground">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-32 w-32 animate-spin rounded-full border-b-2 border-amber-400"></div>
+              <p className="text-zinc-400">Loading Community Hub...</p>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </PlugProvider>
     );
   }
 
@@ -493,7 +497,8 @@ export default function CommunityHubEpic() {
   const hasAnnouncements = Boolean(data.announcements?.length);
 
   return (
-    <main className="relative min-h-screen w-full bg-background text-foreground">
+    <PlugProvider>
+      <main className="relative min-h-screen w-full bg-background text-foreground">
       {error && (
         <div className="mx-auto max-w-7xl px-4">
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
@@ -505,8 +510,11 @@ export default function CommunityHubEpic() {
       <div className="relative pb-16">
         <div className="mx-auto max-w-7xl px-4 pt-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
-            <div className="flex min-h-[26rem] items-center justify-center rounded-3xl border border-white/10 bg-card/80 p-6 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-              <PluggdCarousel accentColor="#FF5A00" heightClass="h-[22rem] md:h-[24rem]" />
+            <div className="rounded-3xl border border-white/10 bg-card/80 p-4 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+              <div className="space-y-6">
+                <PluggdWall />
+                <MapView className="min-h-[28rem]" />
+              </div>
             </div>
             <div id="quick-actions">
               <QuickActionSidebar
@@ -551,7 +559,8 @@ export default function CommunityHubEpic() {
         actions={createActions}
       />
       <CommandBar open={showCmd} onClose={() => setShowCmd(false)} onSelectTab={handleTabChange} />
-    </main>
+      </main>
+    </PlugProvider>
   );
 }
 

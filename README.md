@@ -36,6 +36,10 @@ Below is a selection of key tables and their primary functions:
 Getting Started
 To use this schema, you can inspect the SQL files in this repository to understand the data architecture. The primary schema definition provides the table structures, constraints, and relationships needed to power the application's backend.
 This section can be expanded with instructions on how to set up the database, run migrations, and connect the application.
+
+### Environment variables
+
+The community map module reads a Mapbox access token from `VITE_MAPBOX_TOKEN`. Add this to your `.env` (or `.env.local`) with a valid **public** Mapbox token before loading the Community page locally, otherwise the globe will remain in a loading state.
 Disclaimer
 Warning: The schema provided in this repository is for contextual understanding and architectural reference only. It is not guaranteed to be executable in its current state. The order of table creation and the dependencies between them may not be valid for direct execution.
 
