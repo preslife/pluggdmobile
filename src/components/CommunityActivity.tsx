@@ -33,7 +33,7 @@ interface ActivityStats {
   growth_percentage: number;
 }
 
-export const CommunityActivity = () => {
+export const CommunityActivity = ({ maxPosts = 6 }: { maxPosts?: number }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -295,7 +295,7 @@ export const CommunityActivity = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map((post) => (
+            {posts.slice(0, maxPosts).map((post) => (
               <Card key={post.id} className="hover:shadow-lg transition-all duration-300 group">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">

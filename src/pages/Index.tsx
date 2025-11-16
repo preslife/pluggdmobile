@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState, useContext, createContext, useId } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause, Sparkles, Disc, Handshake, TrendingUp } from "lucide-react";
+import { ShieldCheck, Zap, Coins, Users, UploadCloud, FileKey2, Rocket, Music2, Play, Pause, Sparkles, Disc, Handshake, TrendingUp, HeartHandshake, Megaphone, BarChart3, Radio, CheckCircle2, Quote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { setMeta } from "@/lib/seo";
-import { HomeStudioPreview } from "@/components/HomeStudioPreview";
 import { warmRoute } from "@/lib/warmRoute";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
-import { useIntl, FormattedMessage } from "react-intl";
+import { useIntl } from "react-intl";
 
 // -----------------------------------------------------------------------------
 // X3 HOMEPAGE — production pass wired to Supabase
@@ -178,13 +177,7 @@ async function fetchLive(limit = 12): Promise<LiveSession[]> {
 
 import { useGlobalPlayer } from '@/components/GlobalPlayer/GlobalPlayer';
 import SpotlightCarousel from "@/components/SpotlightCarousel";
-import NewThisWeekCarousel from "@/components/NewThisWeekCarousel";
-import LatestReleases from "@/components/LatestReleases";
-import FeaturedArtistsSection from "@/components/FeaturedArtistsSection";
-import FeaturedBeatsCarousel from "@/components/FeaturedBeatsCarousel";
-import UpcomingReleases from "@/components/UpcomingReleases";
 import { CommunityActivity } from "@/components/CommunityActivity";
-import PlatformStats from "@/components/PlatformStats";
 import FeaturesPreview from "@/components/FeaturesPreview";
 
 // -----------------------------------------------------------------------------
@@ -193,7 +186,6 @@ import FeaturesPreview from "@/components/FeaturesPreview";
 export default function PluggdHomepage() {
   const intl = useIntl();
   const [role, setRole] = useState<"fans" | "creators">("fans");
-  const [activeGenre, setActiveGenre] = useState<string | null>(null);
   const [beats, setBeats] = useState<BeatRow[]>([]);
   const [releases, setReleases] = useState<ReleaseRow[]>([]);
   const [collabs, setCollabs] = useState<CollabProject[]>([]);
@@ -208,22 +200,6 @@ export default function PluggdHomepage() {
       "/"
     );
   }, []);
-
-  const labels = useMemo(
-    () =>
-      role === "fans"
-        ? [
-            { key: "music", label: "Music", helper: "Songs, EPs & albums" },
-            { key: "creators", label: "Creators", helper: "Follow & support" },
-            { key: "beats", label: "Beats", helper: "Instrumentals to license" },
-          ]
-        : [
-            { key: "beats", label: "Beats", helper: "Instrumentals to license" },
-            { key: "music", label: "Music", helper: "Tracks, EPs & albums" },
-            { key: "creators", label: "Creators", helper: "Artists, producers, vocalists" },
-          ],
-    [role]
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -252,30 +228,6 @@ export default function PluggdHomepage() {
       cancelled = true;
     };
   }, []);
-
-  const trendingRef = useRef<HTMLDivElement | null>(null);
-  const scrollTo = (el: HTMLElement | null) =>
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // Compute genres from live data with graceful fallback
-  const genres = useMemo(() => {
-    const set = new Set<string>();
-    releases.forEach((r) => r.genre && set.add(r.genre));
-    beats.forEach((b) => b.genre && set.add(b.genre));
-    const arr = Array.from(set);
-    if (arr.length) return arr.slice(0, 12);
-    return ["Afrobeats", "Drill", "Trap", "Lo-fi", "Amapiano", "House"]; // fallback
-  }, [releases, beats]);
-
-  const filteredBeats = useMemo(
-    () => (activeGenre ? beats.filter((b) => b.genre === activeGenre) : beats),
-    [activeGenre, beats]
-  );
-  const filteredReleases = useMemo(
-    () =>
-      activeGenre ? releases.filter((r) => r.genre === activeGenre) : releases,
-    [activeGenre, releases]
-  );
 
   // Hero slides from releases with cover
   const slides = useMemo(() => {
@@ -328,106 +280,56 @@ export default function PluggdHomepage() {
     >
       <Header role={role} setRole={setRole} />
       <main className="mx-auto max-w-[1280px] px-4">
-          <Hero role={role} labels={labels} slides={slides} />
+        <Hero role={role} slides={slides} />
 
-          {/* Core discovery sections */}
+        <section className="py-16">
+          <WhyPluggdExists />
+        </section>
+
+        <section className="py-16">
+          <CreatorOSGrid />
+        </section>
+
+        <section className="py-16">
+          <HeaderRow title="Creator spotlight" cta="Browse creators" ctaLink="/directory" />
           <SpotlightCarousel />
-          <NewThisWeekCarousel />
-          <LatestReleases />
-          <FeaturedArtistsSection />
-          <FeaturedBeatsCarousel />
-          <UpcomingReleases />
+        </section>
 
-          {/* Dynamic first rail by role */}
-          <section ref={trendingRef} id="trending" className="py-12">
-            {role === "fans" ? (
-              <>
-                <HeaderRow
-                  title={`Trending ${activeGenre ? `${activeGenre} ` : ""}Music`}
-                  cta="View all"
-                  ctaLink="/releases"
-                />
-                <Carousel
-                  items={filteredReleases}
-                  renderItem={(it) => <ReleaseCard item={it} />}
-                />
-              </>
-            ) : (
-              <>
-                <HeaderRow
-                  title={`Trending ${activeGenre ? `${activeGenre} ` : ""}Beats`}
-                  cta="View all"
-                  ctaLink="/search?tab=beats"
-                />
-                <Carousel items={filteredBeats} renderItem={(it) => <BeatCard item={it} />} />
-              </>
-            )}
-          </section>
+        <section className="py-16">
+          <BenefitsSplit role={role} />
+        </section>
 
-          {/* Popular Genres — clickable filters that drive the first rail */}
-          <section className="py-6">
-            <HeaderRow title="Popular Genres" cta="See more" ctaLink="/search" />
-            <GenreGrid
-              genres={genres}
-              activeGenre={activeGenre}
-              setActiveGenre={(g) => {
-                setActiveGenre((prev) => (prev === g ? null : g));
-                scrollTo(trendingRef.current as any);
-              }}
-              role={role}
-            />
-          </section>
+        <section className="py-16">
+          <CollabHighlights collabs={collabs} live={live} />
+        </section>
 
-          <HomeRecommendations role={role} activeGenre={activeGenre} />
+        <section className="py-16">
+          <SocialProofStrip />
+        </section>
 
-          <section className="py-12">
-            <HeaderRow title="Active Collaborations" cta="Browse all projects" ctaLink="/collaborate" />
-            <Carousel
-              items={collabs}
-              renderItem={(it) => <CollabCard item={it} />}
-              itemWidth={380}
-            />
-          </section>
+        <section className="py-16">
+          <HeaderRow title="How Pluggd works" />
+          <HowItWorks />
+        </section>
 
-          <section className="py-12">
-            <HeaderRow title="Upcoming Live" cta="See schedule" ctaLink="/live" />
-            <Carousel items={live} renderItem={(it) => <LiveCard item={it} />} itemWidth={360} />
-          </section>
-
-          <CommunityActivity />
-          <PlatformStats />
-
-          {/* Why Pluggd — credibility + conversion */}
-          <section className="py-12">
-            <HeaderRow title={<FormattedMessage id="homepage.section.why" defaultMessage="Why Pluggd" />} />
-            <FeatureBand />
-          </section>
-
-          {/* How it works — role aware */}
-          <section className="py-12">
-            <HeaderRow title={<FormattedMessage id="homepage.section.how" defaultMessage="How it works" />} />
-            <HowItWorks role={role} />
-          </section>
-
+        <section className="py-16">
+          <HeaderRow title="See the Creator OS in action" />
           <FeaturesPreview />
-          <HomeStudioPreview role={role} />
+        </section>
 
-          {/* FAQ */}
-          <section className="py-12">
-            <HeaderRow title={<FormattedMessage id="homepage.section.faq" defaultMessage="FAQ" />} />
-            <FAQ />
-          </section>
+        <section className="py-16">
+          <TestimonialsSection />
+        </section>
 
-          <section className="py-12">
-            <HeaderRow
-              title={<FormattedMessage id="homepage.section.madeWith" defaultMessage="Made with Pluggd" />}
-              cta={<FormattedMessage id="homepage.section.madeWithCta" defaultMessage="See placements" />}
-              ctaLink="/directory"
-            />
-            <PlacementsRow />
-          </section>
+        <section className="py-16">
+          <CommunityActivity maxPosts={2} />
+        </section>
 
-          {error && (
+        <section className="py-16">
+          <FinalCTA />
+        </section>
+
+        {error && (
             <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
               <div className="flex items-center justify-between gap-3">
                 <span>{error}</span>
@@ -451,8 +353,8 @@ export default function PluggdHomepage() {
                 </button>
               </div>
             </div>
-          )}
-        </main>
+        )}
+      </main>
       <Footer />
     </div>
   );
@@ -508,39 +410,67 @@ function Header({
 
 function Hero({
   role,
-  labels,
   slides,
 }: {
   role: "fans" | "creators";
-  labels: { key: string; label: string; helper: string }[];
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
 }) {
-  const intl = useIntl();
+  const heroHighlights =
+    role === "creators"
+      ? ["Launch releases & beats", "Instant payouts", "Grow your community"]
+      : ["Early drops & exclusives", "Direct creator support", "Zero-spam credits"];
+
   return (
     <section className="relative overflow-visible pt-10">
-      {/* subtle brand gradient behind the whole hero */}
       <div className="pointer-events-none absolute inset-0 -z-20">
-        <div className="absolute inset-0 bg-[radial-gradient(800px_400px_at_20%_20%,rgba(124,58,237,0.15),transparent),radial-gradient(700px_400px_at_90%_10%,rgba(249,115,22,0.12),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(800px_400px_at_20%_20%,rgba(124,58,237,0.2),transparent),radial-gradient(700px_400px_at_90%_10%,rgba(249,115,22,0.15),transparent)]" />
       </div>
-      {/* Blended artwork backdrop */}
       <HeroBackdrop slides={slides} />
-      <div className="relative z-10 mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-12 md:grid md:grid-cols-12 md:gap-8 md:px-6">
-        <div className="md:col-span-7">
-          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-[72px]">
-            {role === "fans"
-              ? intl.formatMessage({ id: "homepage.hero.fanHeadline", defaultMessage: "Discover & support the artists you love" })
-              : intl.formatMessage({ id: "homepage.hero.creatorHeadline", defaultMessage: "Build, release, and get paid — in one hub" })}
+      <div className="relative z-10 mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-12 md:grid md:grid-cols-12 md:gap-10 md:px-6">
+        <div className="md:col-span-7 flex flex-col gap-6">
+          <Badge variant="secondary" className="w-fit border border-white/30 bg-white/10 text-white">
+            Built for artists, producers & fans
+          </Badge>
+          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-[68px]">
+            The Creator-First Music Platform
           </h1>
-          <p className="mt-3 max-w-2xl text-base text-zinc-200 sm:text-lg">
-            {role === "fans"
-              ? intl.formatMessage({ id: "homepage.hero.fanSubheadline", defaultMessage: "Stream releases, buy digital music, tip creators, and join live sessions." })
-              : intl.formatMessage({ id: "homepage.hero.creatorSubheadline", defaultMessage: "Sell beats & sound packs, license music, and book collaborations." })}
+          <p className="text-lg text-zinc-200 sm:text-xl">
+            Own your music. Sell your beats. Run memberships, live sessions, and collaborations — all inside Pluggd.
           </p>
-          <SearchBlock labels={labels} role={role} />
-          <div className="mt-5 flex flex-wrap items-center gap-5 px-1 text-xs text-zinc-200/90">
-            <span>{intl.formatMessage({ id: "homepage.hero.bullet.secureCheckout", defaultMessage: "✅ Secure checkout" })}</span>
-            <span>{intl.formatMessage({ id: "homepage.hero.bullet.credits", defaultMessage: "🪙 Credits never expire" })}</span>
-            <span>{intl.formatMessage({ id: "homepage.hero.bullet.noSpam", defaultMessage: "🔕 No spam" })}</span>
+          <div className="flex flex-wrap gap-4">
+            <Button size="lg" className="px-7 text-base" asChild>
+              <Link to="/signup?intent=create">Start Creating</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="px-7 text-base" asChild>
+              <Link to="/marketplace">Explore Marketplace</Link>
+            </Button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: "Creators", value: "2,900+" },
+              { label: "Paid this month", value: "£13,854" },
+              { label: "Credits", value: "Never expire" },
+            ].map((item, idx) => (
+              <div
+                key={item.label}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200"
+                style={{ animationDelay: `${idx * 80}ms` }}
+              >
+                <div className="text-xs uppercase tracking-wider text-zinc-400">{item.label}</div>
+                <div className="text-lg font-semibold text-white">{item.value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-sm text-zinc-300">
+            <span className="font-semibold text-white">Viewing {role === "creators" ? "Creator mode" : "Fan mode"}</span>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-400">
+              {heroHighlights.map((highlight) => (
+                <span key={highlight} className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  {highlight}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="md:col-span-5">
@@ -694,110 +624,6 @@ function HeroBackdrop({
 // -----------------------------------------------------------------------------
 // Search / Tabs
 // -----------------------------------------------------------------------------
-function SearchBlock({
-  labels,
-  role,
-}: {
-  labels: { key: string; label: string; helper: string }[];
-  role: "fans" | "creators";
-}) {
-  const [active, setActive] = useState(labels[0].key);
-  const [q, setQ] = useState("");
-  const searchInputId = useId();
-  const helperId = `${searchInputId}-helper`;
-  useEffect(() => {
-    if (!labels.length) return;
-    setActive((prev) => (labels.some((label) => label.key === prev) ? prev : labels[0].key));
-  }, [labels]);
-  const submit = () => {
-    const term = q.trim();
-    if (!term) return;
-    const type = active;
-    try {
-      const searchParams = new URLSearchParams({
-        q: term,
-        tab: String(type),
-      });
-      searchParams.set("type", String(type));
-      window.location.href = `/search?${searchParams.toString()}`;
-    } catch {}
-  };
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    submit();
-  };
-  const helperText = labels.find((l) => l.key === active)?.helper;
-  return (
-    <form className="mt-5" onSubmit={handleSubmit} noValidate>
-      <div className="rounded-2xl border border-white/10 bg-white/10 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/40 p-1 md:flex-nowrap">
-          {labels.map((l) => (
-            <button
-              key={l.key}
-              type="button"
-              onClick={() => setActive(l.key)}
-              className={`min-h-[44px] min-w-[44px] rounded-lg px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                active === l.key
-                  ? "bg-white text-black"
-                  : "text-zinc-200 hover:text-white"
-              }`}
-              aria-pressed={active === l.key}
-            >
-              {l.label}
-            </button>
-          ))}
-          <div className="ml-auto flex w-full flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/60 pl-3 pr-2">
-            <label htmlFor={searchInputId} className="sr-only">
-              Search Pluggd catalog
-            </label>
-            <svg
-              aria-hidden
-              className="h-5 w-5 text-zinc-400"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path
-                d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              />
-            </svg>
-            <input
-              id={searchInputId}
-              aria-describedby={helperText ? helperId : undefined}
-              className="w-full bg-transparent px-3 py-3 text-base outline-none placeholder:text-zinc-400"
-              placeholder={
-                role === "fans"
-                  ? "Search music, creators, or beats…"
-                  : "Search beats, music, or creators…"
-              }
-              value={q}
-              onChange={(e) => setQ(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="min-h-[44px] rounded-lg bg-[#7C3AED] px-5 py-3 text-base font-semibold text-white transition hover:bg-[#6d34d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Search
-            </button>
-          </div>
-        </div>
-      </div>
-      {helperText && (
-        <div id={helperId} className="mt-2 text-xs text-zinc-300">
-          {helperText}
-        </div>
-      )}
-    </form>
-  );
-}
-
 type ReleaseRecommendation = {
   id: string;
   title: string;
@@ -1252,6 +1078,271 @@ function HomeRecommendations({
   );
 }
 
+function WhyPluggdExists() {
+  const pillars = [
+    {
+      title: "Creators deserve ownership",
+      description: "Set your prices, keep your royalties, and move your entire catalog without gatekeepers.",
+      Icon: ShieldCheck,
+    },
+    {
+      title: "Fans deserve connection",
+      description: "Join live studio sessions, unlock exclusive posts, and support releases directly.",
+      Icon: HeartHandshake,
+    },
+    {
+      title: "The industry needs a reset",
+      description: "No middlemen. No algorithms playing favourites. Just creators and fans building together.",
+      Icon: Megaphone,
+    },
+  ];
+  return (
+    <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-8 md:p-12">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Why Pluggd exists</p>
+        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Music was broken. We’re fixing it.</h2>
+        <p className="mt-4 text-lg text-zinc-300">
+          Pluggd is a creator-owned operating system that brings music releases, beat sales, memberships, and live sessions together.
+        </p>
+      </div>
+      <div className="mt-10 grid gap-6 md:grid-cols-3">
+        {pillars.map((pillar) => {
+          const Icon = pillar.Icon;
+          return (
+            <div key={pillar.title} className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Icon className="h-5 w-5 text-white" />
+                </span>
+                {pillar.title}
+              </div>
+              <p className="mt-3 text-sm text-zinc-400">{pillar.description}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CreatorOSGrid() {
+  const features = [
+    { title: "Releases", description: "Upload singles, EPs, and albums with instant payouts.", Icon: UploadCloud },
+    { title: "Beat Store", description: "License beats, loops, and sound packs in one storefront.", Icon: Disc },
+    { title: "Live Sessions", description: "Host public or private livestreams with tips and ticketing.", Icon: Radio },
+    { title: "Collabs", description: "Drop collaboration briefs and match with creators fast.", Icon: Handshake },
+    { title: "Contracts", description: "Auto split sheets, rights management, and licensing.", Icon: FileKey2 },
+    { title: "Community", description: "Memberships, paid posts, and fan-only drops.", Icon: Users },
+    { title: "Analytics", description: "Track sales, streams, and community growth in real time.", Icon: BarChart3 },
+    { title: "AI Tools", description: "Lyrics assists, mix feedback, cover art concepts, and more.", Icon: Sparkles },
+  ];
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/30 p-8 md:p-12">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Creator operating system</p>
+        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Everything you need to build a music career.</h2>
+        <p className="mt-4 text-zinc-300">
+          Releases, live sessions, community, analytics, and pro tools — tightly integrated so you never have to stitch apps together.
+        </p>
+      </div>
+      <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {features.map((feature) => {
+          const Icon = feature.Icon;
+          return (
+            <div key={feature.title} className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                  <Icon className="h-6 w-6 text-white" />
+                </span>
+                <div className="text-lg font-semibold">{feature.title}</div>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{feature.description}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BenefitsSplit({ role }: { role: "fans" | "creators" }) {
+  const creatorBenefits = [
+    "90% creator earnings",
+    "Fast payouts",
+    "Your own store page",
+    "Sync-ready licensing",
+    "Community monetisation",
+    "AI workflow tools",
+    "Professional feedback & collabs",
+    "Live interactive sessions",
+  ];
+  const fanBenefits = [
+    "Exclusive content",
+    "Early drops",
+    "Direct support",
+    "Zero-spam credits",
+    "Community access",
+    "Verified creator pages",
+    "Live Q&A and events",
+    "Backstage memberships",
+  ];
+  const lists = [
+    { title: "Why creators love Pluggd", description: "Turn your music business into a streamlined OS with commerce, community, and collabs in one place.", bullets: creatorBenefits },
+    { title: "Why fans join", description: "Unlock deeper access to the artists you champion and keep every credit working for you.", bullets: fanBenefits },
+  ];
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-8 md:p-12">
+      <div className="flex flex-col gap-3 text-center">
+        <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Built for both sides</p>
+        <h2 className="text-3xl font-bold md:text-4xl">Why creators and fans commit to Pluggd.</h2>
+        <p className="text-zinc-300">
+          Toggle above to explore what matters most to you. You’re currently in <span className="font-semibold text-white">{role}</span> mode.
+        </p>
+      </div>
+      <div className="mt-10 grid gap-6 md:grid-cols-2">
+        {lists.map((list) => (
+          <div key={list.title} className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <h3 className="text-2xl font-semibold">{list.title}</h3>
+            <p className="mt-2 text-sm text-zinc-400">{list.description}</p>
+            <ul className="mt-6 space-y-3 text-sm text-zinc-200">
+              {list.bullets.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CollabHighlights({ collabs, live }: { collabs: CollabProject[]; live: LiveSession[] }) {
+  if (!collabs.length && !live.length) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-black/30 p-6 text-center text-sm text-zinc-400">
+        Fresh collaborations and live sessions will appear here soon.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="border border-white/10 bg-white/5">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl">Live collaboration briefs</CardTitle>
+          <Badge variant="outline" className="border-primary/40 text-xs text-primary">
+            {collabs.length} active
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {collabs.slice(0, 3).map((collab) => (
+            <Link
+              key={collab.id}
+              to={`/collaborate/${collab.id}`}
+              className="block rounded-xl border border-white/10 bg-black/40 p-4 hover:border-primary/50"
+              onMouseEnter={() => warmRoute(`/collaborate/${collab.id}`)}
+            >
+              <div className="flex items-center justify-between text-sm text-zinc-400">
+                <span className="inline-flex items-center gap-2 text-white">
+                  <Handshake className="h-4 w-4 text-primary" />
+                  {collab.title}
+                </span>
+                {collab.genre && <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs">{collab.genre}</span>}
+              </div>
+              {collab.description && <p className="mt-2 text-sm text-zinc-400 line-clamp-2">{collab.description}</p>}
+              {collab.budget_range && <p className="mt-3 text-xs text-zinc-500">Budget: {collab.budget_range}</p>}
+            </Link>
+          ))}
+          <Button variant="ghost" className="w-full justify-between" asChild>
+            <Link to="/collaborate">
+              Browse all projects
+              <Sparkles className="h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-white/10 bg-white/5">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl">Upcoming live sessions</CardTitle>
+          <Badge variant="outline" className="border-white/20 text-xs text-white/80">
+            Live & scheduled
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {live.slice(0, 3).map((session) => (
+            <Link
+              key={session.id}
+              to={`/live/${session.id}`}
+              className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-3 hover:border-primary/50"
+              onMouseEnter={() => warmRoute(`/live/${session.id}`)}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">{session.title}</p>
+                <p className="text-xs text-zinc-400">{session.scheduled_at ? formatWhen(session.scheduled_at) : session.status}</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Play className="h-4 w-4 text-primary" />
+                {session.status === "live" ? "Live now" : "Upcoming"}
+              </div>
+            </Link>
+          ))}
+          <Button variant="ghost" className="w-full justify-between" asChild>
+            <Link to="/live">
+              See the schedule
+              <TrendingUp className="h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SocialProofStrip() {
+  const stats = [
+    { label: "Paid to creators this month", value: "£13,854" },
+    { label: "Active creators", value: "2.9K+" },
+    { label: "Completed collabs", value: "187" },
+    { label: "Countries shipping music", value: "16" },
+  ];
+  const artists = [
+    { name: "D’Yani", image: demoImage(801, 200, 200, "D'Yani") },
+    { name: "The FaNaTiX", image: demoImage(802, 200, 200, "The FaNaTiX") },
+    { name: "Elevatetoday", image: demoImage(803, 200, 200, "Elevatetoday") },
+    { name: "Zeeks", image: demoImage(804, 200, 200, "Zeeks") },
+  ];
+  return (
+    <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 via-transparent to-white/5 p-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-5">
+            <div className="text-2xl font-semibold text-white">{stat.value}</div>
+            <p className="text-xs uppercase tracking-wide text-zinc-400">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <span className="text-xs uppercase tracking-[0.4em] text-zinc-500">Featured with</span>
+        <div className="flex flex-wrap gap-3">
+          {artists.map((artist) => (
+            <div key={artist.name} className="flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1 pr-4">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={artist.image} alt={artist.name} />
+                <AvatarFallback>{artist.name[0]}</AvatarFallback>
+              </Avatar>
+              <span className="text-sm text-white">{artist.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Carousel (controlled)
 // -----------------------------------------------------------------------------
@@ -1610,19 +1701,12 @@ function FeatureBand() {
   );
 }
 
-function HowItWorks({ role }: { role: "fans" | "creators" }) {
-  const steps =
-    role === "fans"
-      ? [
-          { t: "Follow creators", d: "Get notified when they drop new music or go live." },
-          { t: "Support releases", d: "Buy downloads, tip artists, and share what you love." },
-          { t: "Join live sessions", d: "Be part of the process and the premieres." },
-        ]
-      : [
-          { t: "Upload your work", d: "Beats, releases, or sample packs — all welcome." },
-          { t: "Set your store", d: "Licenses, prices & bundles — your rules." },
-          { t: "Launch & grow", d: "Run contests, host sessions, and collab." },
-        ];
+function HowItWorks() {
+  const steps = [
+    { t: "Create", d: "Upload music, beats, and content. Set your store, memberships, and licensing in minutes.", Icon: UploadCloud },
+    { t: "Earn", d: "Get paid instantly from fans, sync buyers, community memberships, and live sessions.", Icon: Coins },
+    { t: "Grow", d: "Host lives, run collabs, and track your growth with the Creator OS dashboard.", Icon: Rocket },
+  ];
   return (
     <motion.ol
       initial={{ opacity: 0, y: 6 }}
@@ -1631,41 +1715,101 @@ function HowItWorks({ role }: { role: "fans" | "creators" }) {
       transition={{ staggerChildren: 0.06 }}
       className="grid grid-cols-1 gap-4 md:grid-cols-3"
     >
-      {steps.map((s, i) => {
-        const Icon = [Users, ShieldCheck, Zap][i % 3];
-        return (
-          <motion.li
-            key={i}
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4"
-          >
-            <div className="flex items-center gap-3">
-              <div className="rounded-full border border-white/20 bg-black/60 p-2">
-                <Icon className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-[11px] uppercase tracking-wide text-zinc-400">
-                Step {i + 1}
-              </span>
+      {steps.map((s, i) => (
+        <motion.li
+          key={i}
+          initial={{ opacity: 0, y: 6 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="rounded-2xl border border-white/10 bg-white/5 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="rounded-full border border-white/20 bg-black/60 p-2 text-white">
+              <s.Icon className="h-5 w-5" />
             </div>
-            <div className="mt-1 text-base font-semibold leading-snug">{s.t}</div>
-            <p className="mt-1 text-sm text-zinc-300 leading-relaxed">{s.d}</p>
-            <div className="mt-4 flex items-center gap-3 text-[11px] text-white/70">
-              <span className="inline-flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" /> Community
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" /> Safe
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Zap className="h-3.5 w-3.5" /> Fast
-              </span>
-            </div>
-          </motion.li>
-        );
-      })}
+            <span className="text-[11px] uppercase tracking-wide text-zinc-400">
+              Step {i + 1}
+            </span>
+          </div>
+          <div className="mt-1 text-base font-semibold leading-snug">{s.t}</div>
+          <p className="mt-1 text-sm text-zinc-300 leading-relaxed">{s.d}</p>
+          <div className="mt-4 flex items-center gap-3 text-[11px] text-white/70">
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> Community
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" /> Ownership
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Zap className="h-3.5 w-3.5" /> Momentum
+            </span>
+          </div>
+        </motion.li>
+      ))}
     </motion.ol>
+  );
+}
+
+function TestimonialsSection() {
+  const quotesData = [
+    {
+      quote: "Pluggd helped me launch my first EP and earn more in one week than three months on streaming.",
+      name: "AYOFÉ",
+      role: "Singer & producer",
+    },
+    {
+      quote: "Finally a platform built for creators, not corporations. The community energy is unmatched.",
+      name: "The FaNaTiX",
+      role: "Producer collective",
+    },
+  ];
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/30 p-8 md:p-12">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Community stories</p>
+        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Pluggd is powering the next wave.</h2>
+      </div>
+      <div className="mt-10 grid gap-6 md:grid-cols-2">
+        {quotesData.map((quote) => (
+          <div key={quote.name} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <Quote className="h-6 w-6 text-primary" />
+            <p className="mt-4 text-lg leading-relaxed text-white">“{quote.quote}”</p>
+            <div className="mt-6 flex items-center gap-3">
+              <Avatar className="h-11 w-11">
+                <AvatarFallback>{quote.name[0]}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold">{quote.name}</div>
+                <div className="text-xs text-zinc-400">{quote.role}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FinalCTA() {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/30 via-transparent to-purple-900/40 p-12 text-center">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_45%)]" />
+      <div className="relative z-10 space-y-6">
+        <p className="text-xs uppercase tracking-[0.4em] text-zinc-300">Ready when you are</p>
+        <h2 className="text-4xl font-bold">Join the future of music.</h2>
+        <p className="text-lg text-zinc-200">
+          Launch your store, grow your fans, and keep your ownership with Pluggd’s creator OS.
+        </p>
+        <div className="flex flex-wrap justify-center gap-4">
+          <Button size="lg" className="px-8 text-base" asChild>
+            <Link to="/signup?intent=create">Start Creating Today</Link>
+          </Button>
+          <Button size="lg" variant="outline" className="px-8 text-base" asChild>
+            <Link to="/marketplace">Explore the Marketplace</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
