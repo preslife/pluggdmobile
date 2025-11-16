@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
 
 const HighlightsSection = () => {
   const highlights = [
@@ -38,6 +39,8 @@ const HighlightsSection = () => {
       cta: "Start Learning"
     }
   ];
+
+  const academyPath = getAcademyBasePath();
 
   return (
     <section id="highlights" className="py-24 bg-background">
@@ -92,7 +95,7 @@ const HighlightsSection = () => {
                   highlight.cta === "Start Collaborating" ? "/collaborate" :
                   highlight.cta === "Browse Beats" ? "/marketplace" :
                   highlight.cta === "Access Tools" ? "/tools" :
-                  highlight.cta === "Start Learning" ? "/education" : "#"
+                  highlight.cta === "Start Learning" ? academyPath : "#"
                 }>
                   <Button 
                     variant="glow" 

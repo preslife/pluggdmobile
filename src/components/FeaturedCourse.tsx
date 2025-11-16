@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Star, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getAcademyBasePath, getAcademyCoursePath } from '@/lib/academyRoutes';
 
 interface Course {
   id: string;
@@ -85,7 +86,7 @@ const FeaturedCourse = () => {
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Courses Available</h3>
                 <p className="text-muted-foreground mb-4">Check back soon for new learning opportunities!</p>
-                <Link to="/education">
+                <Link to={getAcademyBasePath()}>
                   <Button>Browse Education</Button>
                 </Link>
               </CardContent>
@@ -180,10 +181,10 @@ const FeaturedCourse = () => {
                     )}
                   </div>
                   <div className="flex gap-3">
-                    <Link to={`/education/course/${course.id}`} className="flex-1">
+                    <Link to={getAcademyCoursePath(course.id)} className="flex-1">
                       <Button className="w-full">Start Learning</Button>
                     </Link>
-                    <Link to="/education">
+                    <Link to={getAcademyBasePath()}>
                       <Button variant="outline">View All Courses</Button>
                     </Link>
                   </div>

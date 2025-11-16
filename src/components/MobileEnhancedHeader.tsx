@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
+import { FeatureFlag, isFeatureEnabled } from '@/config/featureFlags';
 
 const MobileEnhancedHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,13 +28,16 @@ const MobileEnhancedHeader = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const academyHref = getAcademyBasePath();
+  const academyLabel = isFeatureEnabled(FeatureFlag.LMS) ? "Learn" : "Education";
+
   const navigationItems = [
     { label: "Home", href: "/" },
     { label: "Releases", href: "/releases" },
     { label: "Community", href: "/community" },
     { label: "Tools", href: "/tools" },
     { label: "Store", href: "/store" },
-    { label: "Education", href: "/education" },
+    { label: academyLabel, href: academyHref },
   ];
 
   return (

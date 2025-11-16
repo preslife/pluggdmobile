@@ -2,8 +2,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
 
 const FeaturesPreview = () => {
+  const academyPath = getAcademyBasePath();
   const features = [
     {
       category: "Collaboration",
@@ -38,7 +40,7 @@ const FeaturesPreview = () => {
       description: "Master your craft with expert-led courses on production, sync licensing, and the music business. Unlock knowledge that powers careers.",
       status: "Live",
       preview: "👨‍🏫 Expert-Led • 🏆 Career-Focused • 📚 Industry Secrets",
-      link: "/education",
+      link: academyPath,
       accessible: true
     },
     {

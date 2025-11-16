@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, DownloadCloud, ExternalLink, LifeBuoy, Library as LibraryIcon, Package, Truck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { setMeta } from "@/lib/seo";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
 
 interface OrderItem {
   id: string;
@@ -216,6 +217,7 @@ export default function AccountOrders() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [productSummaries, setProductSummaries] = useState<Record<string, StoreProductSummary>>({});
+  const academyPath = getAcademyBasePath();
 
   useEffect(() => {
     setMeta(
@@ -496,7 +498,7 @@ export default function AccountOrders() {
       primaryIcon = 'external';
       description = 'Manage your membership perks and billing from the subscriptions dashboard.';
     } else if (normalizedKind.includes('course') || normalizedType.includes('course')) {
-      primaryHref = '/education';
+      primaryHref = academyPath;
       primaryLabel = 'Go to courses';
       primaryIcon = 'external';
       description = 'Course materials live in the education hub.';

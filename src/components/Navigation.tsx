@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -84,6 +85,8 @@ const Navigation = () => {
     }
   };
 
+  const academyHref = getAcademyBasePath();
+
   const baseItems = useMemo(() => [
     { name: intl.formatMessage({ id: "navigation.home", defaultMessage: "Home" }), href: "/" },
     { name: intl.formatMessage({ id: "navigation.live", defaultMessage: "Live" }), href: "/live" },
@@ -97,7 +100,7 @@ const Navigation = () => {
     },
     { name: intl.formatMessage({ id: "navigation.releases", defaultMessage: "Releases" }), href: "/releases" },
     { name: intl.formatMessage({ id: "navigation.beats", defaultMessage: "Beats" }), href: "/marketplace" },
-    { name: intl.formatMessage({ id: "navigation.academy", defaultMessage: "Academy" }), href: "/education" },
+    { name: intl.formatMessage({ id: "navigation.academy", defaultMessage: "Academy" }), href: academyHref },
     {
       name: intl.formatMessage({ id: "navigation.community", defaultMessage: "Community" }),
       href: "/community",
@@ -114,7 +117,7 @@ const Navigation = () => {
         { name: intl.formatMessage({ id: "navigation.community.refunds", defaultMessage: "Refunds" }), href: "/refunds" },
       ]
     },
-  ], [intl]);
+  ], [intl, academyHref]);
 
   const navItems = useMemo(() => {
     if (!user) {

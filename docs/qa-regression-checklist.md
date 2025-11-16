@@ -49,6 +49,15 @@ _Last updated: 2025-10-17_
 - [ ] Capture gating state transition (see [`docs/artifacts/membership-gating-check.md`](./artifacts/membership-gating-check.md)).
 - [ ] Hit `verify-release-access` twice for the same user/release pair and confirm the second request logs `verify_release_access_cache_hit` plus a fresh row in `public.release_access_cache`.
 
+## LMS / Learn
+- [ ] Browse `/learn` with `VITE_FEATURE_LMS=true` and confirm catalog filters/search call `get_lms_courses`; cards should show instructor/difficulty/pricing pulled from Supabase.
+- [ ] Open `/learn/:slug` as a non-entitled user and ensure only preview lessons display, the lock banner renders, and the CTA routes through auth → membership → purchase depending on access metadata.
+- [ ] Complete at least two lessons, reload, and verify `lms_course_progress` updates (`completed_lesson_ids`, `percent_complete`, `last_accessed`).
+- [ ] Click “Log perfect attempt” on a quiz card; confirm `lms_quiz_attempts` logs the row and the quiz stats refresh (attempt count/best score).
+- [ ] Purchase a course via the purchase CTA (or call `record_lms_course_purchase`) and ensure lessons unlock immediately plus `lms_course_purchases`/`lms_course_entitlements` contain the row.
+- [ ] Sign in as the instructor, edit pricing via the admin controls, and verify `lms_course_pricing` reflects the saved values; grant manual access to a test user and confirm they can view the course without purchasing.
+- [ ] Toggle “membership only” in the pricing panel, downgrade to a free tier, and confirm `can_access_lms_course` blocks lessons until the user re-upgrades or gets a manual grant.
+
 ## Wallet & Credits
 - [ ] Seed wallet with promo credits and confirm new balance renders in `WalletBalanceCard`.
 - [ ] Execute a purchase using split tender (credits + card) and confirm debits in ledger tables.

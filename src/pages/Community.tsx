@@ -38,6 +38,7 @@ import PluggdCarousel from "@/components/PluggdCarousel";
 import { QuestsXP } from "@/components/QuestsXP";
 import { useReleases, type ReleaseSummary } from "@/hooks/useReleases";
 import { setMeta } from "@/lib/seo";
+import { getAcademyBasePath } from '@/lib/academyRoutes';
 import ReportButton from "@/components/ReportButton";
 
 /**
@@ -325,6 +326,7 @@ export default function CommunityHubEpic() {
   const [activeTab, setActiveTab] = useState<TabId>("feed");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const academyPath = getAcademyBasePath();
 
   useEffect(() => {
     let cancelled = false;
@@ -1515,7 +1517,7 @@ function ForumThreads({ threads, loading }: { threads: Thread[]; loading: boolea
 function CoursesStrip({ courses }: { courses: Course[] }) {
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><BookOpen className="h-5 w-5"/><CardTitle>New Courses & Masterclasses</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href="/education">View all</a></CardHeader>
+      <CardHeader className="flex items-center justify-between"><div className="flex items-center gap-2 text-zinc-200"><BookOpen className="h-5 w-5"/><CardTitle>New Courses & Masterclasses</CardTitle></div><a className="text-sm text-amber-300 hover:text-amber-200" href={academyPath}>View all</a></CardHeader>
       <CardContent>
         <div className="no-scrollbar -mx-2 flex gap-4 overflow-x-auto px-2 pb-2">
           {courses.map((c) => (
@@ -1528,7 +1530,7 @@ function CoursesStrip({ courses }: { courses: Course[] }) {
                   <div className="mt-1 text-xs text-zinc-400">{c.level} • {c.length}</div>
                 </div>
               </div>
-              <a href="/education"><Button className="mt-3 w-full bg-white/10 text-white hover:bg-white/20">Watch</Button></a>
+              <a href={academyPath}><Button className="mt-3 w-full bg-white/10 text-white hover:bg-white/20">Watch</Button></a>
             </div>
           ))}
         </div>

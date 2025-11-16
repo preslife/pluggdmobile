@@ -11,6 +11,7 @@ import { formatCredits } from "@/hooks/useWallet";
 import { TipModal } from "@/components/TipModal";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMetadata } from "@/hooks/usePageMetadata";
+import { getAcademyBasePath, getAcademyCertificatesPath } from '@/lib/academyRoutes';
 
 interface Activity {
   id: string;
@@ -94,6 +95,8 @@ export default function FanHome() {
   const [feedInitialLoading, setFeedInitialLoading] = useState(true);
   const [feedPaging, setFeedPaging] = useState({ page: 0, hasMore: true, loadingMore: false });
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const academyPath = getAcademyBasePath();
+  const academyCertificatesPath = getAcademyCertificatesPath();
 
   usePageMetadata({
     title: "Fan Home — Pluggd",
@@ -436,7 +439,7 @@ export default function FanHome() {
                       </div>
                     );
                   })}
-                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/education'}>
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = academyPath}>
                     Continue learning
                   </Button>
                 </div>
@@ -459,7 +462,7 @@ export default function FanHome() {
                   ) : (
                     <p className="text-sm text-muted-foreground">Complete a course to earn your first certificate.</p>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/education?tab=certificates'}>
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = academyCertificatesPath}>
                     View certificates
                   </Button>
                 </div>
@@ -470,7 +473,7 @@ export default function FanHome() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Enroll in your first course to see progress here.
                 </p>
-                <Button onClick={() => window.location.href = '/education'}>Browse Courses</Button>
+                <Button onClick={() => window.location.href = academyPath}>Browse Courses</Button>
               </div>
             )}
           </CardContent>

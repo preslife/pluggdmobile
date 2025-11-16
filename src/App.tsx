@@ -30,6 +30,8 @@ import Charts from "./pages/Charts";
 import Radio from "./pages/Radio";
 import Tools from "./pages/Tools";
 import Education from "./pages/Education";
+import Learn from "./pages/Learn";
+import LearnCourse from "./pages/LearnCourse";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import Label from "./pages/Label";
@@ -70,6 +72,7 @@ import { SettingsNotificationsPage } from "./pages/SettingsNotifications";
 import CreatorAutomations from "./pages/CreatorAutomations";
 import StudioMembershipDiscord from "./pages/StudioMembershipDiscord";
 import DashboardRouter from "./components/DashboardRouter";
+import { FeatureFlag, isFeatureEnabled } from "./config/featureFlags";
 
 // Lazy load additional pages
 const Partners = lazy(() => import("./pages/Partners"));
@@ -227,6 +230,14 @@ const AppContent = () => {
         <Route path="/sample-pack-store" element={<SamplePackStorePage />} />
         
         <Route path="/education" element={<Education />} />
+        <Route
+          path="/learn"
+          element={isFeatureEnabled(FeatureFlag.LMS) ? <Learn /> : <ComingSoon />}
+        />
+        <Route
+          path="/learn/:slug"
+          element={isFeatureEnabled(FeatureFlag.LMS) ? <LearnCourse /> : <ComingSoon />}
+        />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/label" element={<Label />} />
         <Route path="/label/:slug" element={<Label />} />

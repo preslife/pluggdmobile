@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Link } from 'react-router-dom';
+import { getAcademyBasePath } from '@/lib/academyRoutes';
+import { FeatureFlag, isFeatureEnabled } from '@/config/featureFlags';
 
 interface MobileOptimizedHeaderProps {
   title: string;
@@ -13,12 +15,15 @@ interface MobileOptimizedHeaderProps {
 const MobileOptimizedHeader = ({ title, actions, showMenu = true }: MobileOptimizedHeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
+  const academyHref = getAcademyBasePath();
+  const academyLabel = isFeatureEnabled(FeatureFlag.LMS) ? 'Learn' : 'Education';
+
   const menuItems = [
     { label: 'Studio', href: '/airtrax-studio' },
     { label: 'Store', href: '/store' },
     { label: 'Community', href: '/community' },
     { label: 'Live', href: '/live' },
-    { label: 'Education', href: '/education' },
+    { label: academyLabel, href: academyHref },
     { label: 'Tools', href: '/tools' },
   ];
 
