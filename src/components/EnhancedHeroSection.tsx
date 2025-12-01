@@ -51,7 +51,7 @@ const EnhancedHeroSection = () => {
   return <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{
-      backgroundImage: 'url(/lovable-uploads/2c459a02-2523-4950-b2d0-83b46ff62f1e.png)'
+      backgroundImage: 'url(/uploads/2c459a02-2523-4950-b2d0-83b46ff62f1e.png)'
     }}></div>
       
       {/* Background Overlay */}

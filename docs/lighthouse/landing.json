@@ -1543,7 +1543,7 @@
             "experimentalFromMainFrame": true
           },
           {
-            "url": "http://127.0.0.1:4173/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
+            "url": "http://127.0.0.1:4173/uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
             "sessionTargetType": "page",
             "protocol": "http/1.1",
             "rendererStartTime": 1729.5460000000894,
@@ -4810,10 +4810,10 @@
                 "width": 1248,
                 "height": 1436
               },
-              "snippet": "<div class=\"absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60\" style=\"background-image: url(&quot;/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f63…&quot;);\">",
+              "snippet": "<div class=\"absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60\" style=\"background-image: url(&quot;/uploads/7a7e071e-72b3-4824-aead-f1d0760f63…&quot;);\">",
               "nodeLabel": "div.min-h-screen > main.mx-auto > section#features > div.absolute"
             },
-            "url": "http://127.0.0.1:4173/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
+            "url": "http://127.0.0.1:4173/uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
             "requestStartTime": 10687314.896,
             "totalBytes": 1462400,
             "wastedBytes": 1462400,
@@ -5121,10 +5121,10 @@
                 "width": 1248,
                 "height": 1436
               },
-              "snippet": "<div class=\"absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60\" style=\"background-image: url(&quot;/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f63…&quot;);\">",
+              "snippet": "<div class=\"absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60\" style=\"background-image: url(&quot;/uploads/7a7e071e-72b3-4824-aead-f1d0760f63…&quot;);\">",
               "nodeLabel": "div.min-h-screen > main.mx-auto > section#features > div.absolute"
             },
-            "url": "http://127.0.0.1:4173/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
+            "url": "http://127.0.0.1:4173/uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png",
             "fromProtocol": true,
             "isCrossOrigin": false,
             "totalBytes": 1462400,

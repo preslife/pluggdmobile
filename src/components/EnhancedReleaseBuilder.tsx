@@ -891,7 +891,7 @@ export const EnhancedReleaseBuilder = () => {
       return;
     }
 
-    // Show debug info in toast for Lovable environment
+    // Show debug info in toast for development environment
     const debugData = {
       title,
       artist,

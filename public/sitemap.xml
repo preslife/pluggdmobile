@@ -2,91 +2,91 @@
 <!-- Update the <loc> domain to your production domain after publishing -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://example.com/</loc>
+    <loc>https://pluggd.fm/</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://example.com/marketplace</loc>
+    <loc>https://pluggd.fm/marketplace</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://example.com/store</loc>
+    <loc>https://pluggd.fm/store</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://example.com/blog</loc>
+    <loc>https://pluggd.fm/blog</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://example.com/education</loc>
+    <loc>https://pluggd.fm/education</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://example.com/tools</loc>
+    <loc>https://pluggd.fm/tools</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://example.com/community</loc>
+    <loc>https://pluggd.fm/community</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://example.com/directory</loc>
+    <loc>https://pluggd.fm/directory</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://example.com/label</loc>
+    <loc>https://pluggd.fm/label</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://example.com/xbeatstudio</loc>
+    <loc>https://pluggd.fm/xbeatstudio</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://example.com/beta-program</loc>
+    <loc>https://pluggd.fm/beta-program</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://example.com/roadmap</loc>
+    <loc>https://pluggd.fm/roadmap</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://example.com/terms</loc>
+    <loc>https://pluggd.fm/terms</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://example.com/privacy</loc>
+    <loc>https://pluggd.fm/privacy</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://example.com/refunds</loc>
+    <loc>https://pluggd.fm/refunds</loc>
     <lastmod>2025-08-12</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

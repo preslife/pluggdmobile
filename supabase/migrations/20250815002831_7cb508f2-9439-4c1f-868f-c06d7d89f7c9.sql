@@ -19,7 +19,7 @@ BEGIN
         'D''yani',
         'dyani',
         'Rising R&B artist creating soulful music that connects hearts and minds. Known for powerful vocals and emotionally resonant songwriting.',
-        '/lovable-uploads/695d06f7-2a64-4b9c-9cd1-34dd538fc6d9.png', -- Using existing D'yani image
+        '/uploads/695d06f7-2a64-4b9c-9cd1-34dd538fc6d9.png', -- Using existing D'yani image
         'artist',
         now(),
         now()

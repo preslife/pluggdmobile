@@ -276,7 +276,7 @@ function generateEmailContent(creator: any, stats: any): string {
         ` : ''}
 
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'lovable.app') || 'https://pluggd.fm'}/dashboard/creator" class="button">
+          <a href="https://pluggd.fm/dashboard/creator" class="button">
             View Full Dashboard
           </a>
         </div>
@@ -284,7 +284,7 @@ function generateEmailContent(creator: any, stats: any): string {
         <div class="footer">
           <p>Keep creating amazing content! 🎵</p>
           <p>
-            <a href="${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'lovable.app') || 'https://pluggd.fm'}/settings/notifications">
+            <a href="https://pluggd.fm/settings/notifications">
               Manage email preferences
             </a>
           </p>

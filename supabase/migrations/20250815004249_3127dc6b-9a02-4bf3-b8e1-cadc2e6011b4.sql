@@ -4,7 +4,7 @@ SET
   full_name = 'D''yani',
   username = 'dyani',
   bio = 'Rising R&B artist creating soulful music that connects hearts and minds. Known for powerful vocals and emotionally resonant songwriting.',
-  avatar_url = '/lovable-uploads/695d06f7-2a64-4b9c-9cd1-34dd538fc6d9.png',
+  avatar_url = '/uploads/695d06f7-2a64-4b9c-9cd1-34dd538fc6d9.png',
   user_type = 'artist',
   updated_at = now()
 WHERE user_id = 'c6e4bc7e-cf3d-4eac-87f3-bc3d72c6ff5f';

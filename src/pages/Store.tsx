@@ -209,7 +209,7 @@ const Store = () => {
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           <div className="flex items-center justify-center mb-6">
             <img 
-              src="/lovable-uploads/0bd18373-2a96-4dcd-8b49-4f9f1b477acf.png" 
+              src="/uploads/0bd18373-2a96-4dcd-8b49-4f9f1b477acf.png" 
               alt="Pluggd Logo" 
               className="h-16 md:h-20 w-auto mr-4"
             />

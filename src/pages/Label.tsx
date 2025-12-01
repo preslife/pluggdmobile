@@ -216,7 +216,7 @@ const Label = () => {
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center">
             <img 
-              src="/lovable-uploads/212db52d-c929-4ab8-bd60-8522a6391187.png" 
+              src="/uploads/212db52d-c929-4ab8-bd60-8522a6391187.png" 
               alt="Pluggd Logo" 
               className="h-8 w-auto"
             />

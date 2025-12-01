@@ -117,7 +117,6 @@
     "globals": "^15.9.0",
     "jest-axe": "^9.0.0",
     "jsdom": "^24.1.0",
-    "lovable-tagger": "^1.1.7",
     "pg-mem": "^3.0.5",
     "pg-promise": "^12.2.0",
     "postcss": "^8.4.47",
