@@ -23,3 +23,28 @@ pluggd map/
 *.njsproj
 *.sln
 *.sw?
+
+# Additional ignores
+*.log
+*.bak
+*.backup
+.DS_Store
+Thumbs.db
+
+# Build outputs (should not be committed)
+dist/
+build/
+
+# Separate projects
+pluggd map/
+PLUGGD ACADEMY/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test artifacts
+coverage/
+.nyc_output/
