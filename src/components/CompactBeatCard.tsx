@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils';
 import { PurchaseButton } from '@/components/checkout/PurchaseButton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { PlaylistModal } from '@/components/PlaylistModal';
+import { useGlobalFeaturePrompt } from '@/components/FeaturePrompt';
 
 interface Beat {
   id: string;
@@ -54,6 +55,14 @@ export const CompactBeatCard = ({
     ? (beat.producer_name || 'Internal Producer')
     : (beat.profiles?.full_name || beat.profiles?.username || 'Unknown Artist');
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const { triggerPrompt } = useGlobalFeaturePrompt();
+
+  const handlePurchaseComplete = () => {
+    // Trigger BarFlow prompt after beat purchase
+    setTimeout(() => {
+      triggerPrompt('barflow-after-beat-purchase');
+    }, 1000);
+  };
   const playlistTrack = useMemo(
     () => ({
       id: beat.id,
@@ -257,6 +266,7 @@ export const CompactBeatCard = ({
                       size="sm"
                       className="h-6 px-2 text-xs"
                       showPrice={false}
+                      onPurchaseComplete={handlePurchaseComplete}
                     />
                   </div>
                 </div>
@@ -434,6 +444,7 @@ export const CompactBeatCard = ({
             size="sm"
             className="text-xs h-6 px-2"
             showPrice={false}
+            onPurchaseComplete={handlePurchaseComplete}
           />
         </div>
       </CardContent>

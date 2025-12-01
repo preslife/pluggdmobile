@@ -99,21 +99,23 @@ export const TicketsSoldWidget: React.FC = () => {
   };
 
   return (
-    <Card>
+    <Card className="studio-card overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Live Events</CardTitle>
-        <Ticket className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-sm font-medium text-muted-foreground">Live Events</CardTitle>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20">
+          <Ticket className="h-4 w-4 text-violet-500" />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {/* Main ticket count */}
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">{stats.totalSold}</span>
+              <span className="text-3xl font-bold tracking-tight">{stats.totalSold}</span>
               <span className="text-sm text-muted-foreground">tickets sold</span>
             </div>
             {stats.todaySales > 0 && (
-              <div className="flex items-center gap-1 text-xs text-green-500 mt-1">
+              <div className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 mt-2">
                 <TrendingUp className="h-3 w-3" />
                 <span>+{stats.todaySales} today</span>
               </div>

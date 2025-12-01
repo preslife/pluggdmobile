@@ -163,7 +163,7 @@ export const WorldClassCreatorPage = () => {
         { count: supporterCount }
       ] = await Promise.all([
         supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', profileData.user_id),
-        supabase.from('releases').select('total_plays').eq('user_id', profileData.user_id),
+        supabase.from('releases').select('total_plays').eq('user_id', profileData.user_id).eq('status', 'live').eq('approved', true),
         supabase.from('courses').select('id').eq('creator_id', profileData.user_id).eq('status', 'published'),
         supabase.from('live_sessions').select('id, scheduled_for').eq('creator_id', profileData.user_id).gte('scheduled_for', new Date().toISOString()),
         supabase.from('fan_subscriptions').select('*', { count: 'exact', head: true }).eq('creator_id', profileData.user_id).eq('status', 'active')

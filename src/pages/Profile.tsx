@@ -142,12 +142,13 @@ const Profile = () => {
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      // Fetch user's releases
+      // Fetch user's releases (use correct status filters)
       const { data: releasesData } = await supabase
         .from('releases')
         .select('*')
         .eq('user_id', userId)
-        .eq('is_published', true)
+        .eq('status', 'live')
+        .eq('approved', true)
         .order('created_at', { ascending: false });
 
       // Fetch fan funding contributions for this creator

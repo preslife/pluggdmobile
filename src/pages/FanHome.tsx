@@ -12,6 +12,7 @@ import { TipModal } from "@/components/TipModal";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMetadata } from "@/hooks/usePageMetadata";
 import { getAcademyBasePath, getAcademyCertificatesPath } from '@/lib/academyRoutes';
+import ContinueListening from "@/components/ContinueListening";
 
 interface Activity {
   id: string;
@@ -374,6 +375,9 @@ export default function FanHome() {
           Follow your favorite creators and discover the latest releases
         </p>
       </div>
+
+      {/* Continue Listening Section */}
+      {user && <ContinueListening className="mb-4" />}
 
       {user && (
         <Card className="border shadow-sm">

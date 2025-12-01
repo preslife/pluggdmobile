@@ -3175,6 +3175,36 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          daily_spend_limit: number | null
+          effective_at: string
+          id: string
+          max_cart_percent: number
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          daily_spend_limit?: number | null
+          effective_at?: string
+          id?: string
+          max_cart_percent?: number
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          daily_spend_limit?: number | null
+          effective_at?: string
+          id?: string
+          max_cart_percent?: number
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       crm_segment_members: {
         Row: {
           contact_id: string
@@ -3574,6 +3604,62 @@ export type Database = {
             columns: ["release_id"]
             isOneToOne: true
             referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fan_map_plugs: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          creator_id: string | null
+          display_name: string
+          id: string
+          is_featured: boolean
+          lat: number
+          lng: number
+          message: string | null
+          metadata: Json
+          tip_amount: number | null
+          user_id: string | null
+        }
+        Insert: {
+          city: string
+          country: string
+          created_at?: string
+          creator_id?: string | null
+          display_name: string
+          id?: string
+          is_featured?: boolean
+          lat: number
+          lng: number
+          message?: string | null
+          metadata?: Json
+          tip_amount?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          creator_id?: string | null
+          display_name?: string
+          id?: string
+          is_featured?: boolean
+          lat?: number
+          lng?: number
+          message?: string | null
+          metadata?: Json
+          tip_amount?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fan_map_plugs_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
             referencedColumns: ["id"]
           },
         ]
@@ -4501,6 +4587,410 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      lms_course_entitlements: {
+        Row: {
+          course_id: string
+          grant_source: string | null
+          granted_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          grant_source?: string | null
+          granted_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          grant_source?: string | null
+          granted_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_course_entitlements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_course_pricing: {
+        Row: {
+          course_id: string
+          created_at: string
+          currency: string | null
+          is_membership_only: boolean | null
+          metadata: Json | null
+          one_time_price_cents: number | null
+          required_tier: Database["public"]["Enums"]["subscription_tier"] | null
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          currency?: string | null
+          is_membership_only?: boolean | null
+          metadata?: Json | null
+          one_time_price_cents?: number | null
+          required_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          currency?: string | null
+          is_membership_only?: boolean | null
+          metadata?: Json | null
+          one_time_price_cents?: number | null
+          required_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_course_pricing_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_course_progress: {
+        Row: {
+          completed_lesson_ids: string[] | null
+          course_id: string
+          created_at: string
+          id: string
+          last_accessed: string
+          last_lesson_id: string | null
+          percent_complete: number | null
+          total_time_minutes: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_lesson_ids?: string[] | null
+          course_id: string
+          created_at?: string
+          id?: string
+          last_accessed?: string
+          last_lesson_id?: string | null
+          percent_complete?: number | null
+          total_time_minutes?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_lesson_ids?: string[] | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          last_accessed?: string
+          last_lesson_id?: string | null
+          percent_complete?: number | null
+          total_time_minutes?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_course_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_course_progress_last_lesson_id_fkey"
+            columns: ["last_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lms_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_course_purchases: {
+        Row: {
+          amount_cents: number
+          course_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          purchase_reference: string | null
+          purchased_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          course_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          purchase_reference?: string | null
+          purchased_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          course_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          purchase_reference?: string | null
+          purchased_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_course_purchases_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_courses: {
+        Row: {
+          created_at: string
+          currency: string | null
+          description: string | null
+          difficulty: Database["public"]["Enums"]["lms_course_difficulty"]
+          duration_minutes: number | null
+          id: string
+          instructor_id: string
+          lesson_count: number | null
+          metadata: Json | null
+          price_cents: number | null
+          promo_video_url: string | null
+          published_at: string | null
+          slug: string
+          subtitle: string | null
+          thumbnail_url: string | null
+          title: string
+          topics: string[] | null
+          updated_at: string
+          visibility: Database["public"]["Enums"]["lms_course_visibility"]
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["lms_course_difficulty"]
+          duration_minutes?: number | null
+          id?: string
+          instructor_id: string
+          lesson_count?: number | null
+          metadata?: Json | null
+          price_cents?: number | null
+          promo_video_url?: string | null
+          published_at?: string | null
+          slug: string
+          subtitle?: string | null
+          thumbnail_url?: string | null
+          title: string
+          topics?: string[] | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["lms_course_visibility"]
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["lms_course_difficulty"]
+          duration_minutes?: number | null
+          id?: string
+          instructor_id?: string
+          lesson_count?: number | null
+          metadata?: Json | null
+          price_cents?: number | null
+          promo_video_url?: string | null
+          published_at?: string | null
+          slug?: string
+          subtitle?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          topics?: string[] | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["lms_course_visibility"]
+        }
+        Relationships: []
+      }
+      lms_lessons: {
+        Row: {
+          content: Json | null
+          course_id: string
+          created_at: string
+          download_urls: string[] | null
+          estimated_minutes: number | null
+          id: string
+          is_preview: boolean | null
+          order_index: number
+          slug: string
+          summary: string | null
+          title: string
+          updated_at: string
+          video_asset_url: string | null
+        }
+        Insert: {
+          content?: Json | null
+          course_id: string
+          created_at?: string
+          download_urls?: string[] | null
+          estimated_minutes?: number | null
+          id?: string
+          is_preview?: boolean | null
+          order_index?: number
+          slug: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          video_asset_url?: string | null
+        }
+        Update: {
+          content?: Json | null
+          course_id?: string
+          created_at?: string
+          download_urls?: string[] | null
+          estimated_minutes?: number | null
+          id?: string
+          is_preview?: boolean | null
+          order_index?: number
+          slug?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          video_asset_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_quiz_attempts: {
+        Row: {
+          answers: Json
+          attempt_number: number | null
+          completed_at: string
+          created_at: string
+          id: string
+          passed: boolean | null
+          quiz_id: string
+          score: number | null
+          time_spent_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          attempt_number?: number | null
+          completed_at?: string
+          created_at?: string
+          id?: string
+          passed?: boolean | null
+          quiz_id: string
+          score?: number | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          attempt_number?: number | null
+          completed_at?: string
+          created_at?: string
+          id?: string
+          passed?: boolean | null
+          quiz_id?: string
+          score?: number | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "lms_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_quizzes: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean | null
+          lesson_id: string | null
+          max_attempts: number | null
+          passing_score: number | null
+          question_bank: Json
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean | null
+          lesson_id?: string | null
+          max_attempts?: number | null
+          passing_score?: number | null
+          question_bank: Json
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean | null
+          lesson_id?: string | null
+          max_attempts?: number | null
+          passing_score?: number | null
+          question_bank?: Json
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_quizzes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lms_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mailing_list: {
         Row: {
@@ -5579,6 +6069,8 @@ export type Database = {
           id: string
           is_public: boolean | null
           name: string
+          share_code: string | null
+          slug: string | null
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -5592,6 +6084,8 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           name: string
+          share_code?: string | null
+          slug?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -5605,6 +6099,8 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           name?: string
+          share_code?: string | null
+          slug?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string
@@ -8658,22 +9154,36 @@ export type Database = {
       }
       creator_kpi_daily: {
         Row: {
+          attribution_campaign: string | null
+          attribution_medium: string | null
+          attribution_source: string | null
+          content_id: string | null
+          content_type: string | null
           creator_id: string | null
           event_count: number | null
           kpi_key: string | null
           last_occurred_at: string | null
           metric_date: string | null
+          post_id: string | null
+          source: string | null
           total_value: number | null
         }
         Relationships: []
       }
       creator_kpi_daily_personal: {
         Row: {
+          attribution_campaign: string | null
+          attribution_medium: string | null
+          attribution_source: string | null
+          content_id: string | null
+          content_type: string | null
           creator_id: string | null
           event_count: number | null
           kpi_key: string | null
           last_occurred_at: string | null
           metric_date: string | null
+          post_id: string | null
+          source: string | null
           total_value: number | null
         }
         Relationships: []
@@ -8933,6 +9443,28 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_checkout_activity_daily: {
+        Row: {
+          checkout_errors: number | null
+          completed_orders: number | null
+          completed_revenue: number | null
+          day: string | null
+          failed_orders: number | null
+        }
+        Relationships: []
+      }
+      vw_membership_activity_daily: {
+        Row: {
+          active_mrr_cents: number | null
+          active_subscriptions: number | null
+          churned_mrr_cents: number | null
+          churned_subscriptions: number | null
+          day: string | null
+          new_mrr_cents: number | null
+          new_subscriptions: number | null
+        }
+        Relationships: []
+      }
       vw_notification_skip_summary: {
         Row: {
           events_last_24h: number | null
@@ -9072,12 +9604,20 @@ export type Database = {
         Args: { p_user_id: string; p_xp_amount: number }
         Returns: undefined
       }
+      can_access_lms_course: {
+        Args: { p_course_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       can_access_release: {
         Args: { p_release_id: string; p_user_id: string }
         Returns: boolean
       }
       can_access_session: {
         Args: { p_session_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      can_edit_playlist: {
+        Args: { p_playlist_id: string; p_user_id: string }
         Returns: boolean
       }
       catalog_list_items: {
@@ -9118,6 +9658,39 @@ export type Database = {
           label_id: string
           owner_user_id: string
         }[]
+      }
+      create_fan_map_plug: {
+        Args: {
+          p_city: string
+          p_country: string
+          p_creator_id?: string
+          p_display_name: string
+          p_lat: number
+          p_lng: number
+          p_message?: string
+          p_tip_amount?: number
+        }
+        Returns: {
+          city: string
+          country: string
+          created_at: string
+          creator_id: string | null
+          display_name: string
+          id: string
+          is_featured: boolean
+          lat: number
+          lng: number
+          message: string | null
+          metadata: Json
+          tip_amount: number | null
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "fan_map_plugs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_label_for_current_user: {
         Args: {
@@ -9386,6 +9959,10 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_playlist_slug: {
+        Args: { p_playlist_id: string; p_user_id?: string }
+        Returns: string
+      }
       get_beat_collaborators_safe: {
         Args: { p_beat_id: string }
         Returns: {
@@ -9400,6 +9977,32 @@ export type Database = {
           profit_share_percentage: number
           publishing_share_percentage: number
           role: string
+          updated_at: string
+        }[]
+      }
+      get_catalog_items: {
+        Args: {
+          p_content_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_owner_id: string
+          p_owner_type: string
+          p_search?: string
+          p_sort?: string
+          p_status?: string
+        }
+        Returns: {
+          cover_art_url: string
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          item_type: string
+          price: number
+          revenue: number
+          sales: number
+          status: string
+          title: string
           updated_at: string
         }[]
       }
@@ -9457,6 +10060,57 @@ export type Database = {
           slug: string
         }[]
       }
+      get_fan_map_plugs: {
+        Args: { p_creator_id?: string; p_limit?: number }
+        Returns: {
+          city: string
+          country: string
+          created_at: string
+          creator_id: string | null
+          display_name: string
+          id: string
+          is_featured: boolean
+          lat: number
+          lng: number
+          message: string | null
+          metadata: Json
+          tip_amount: number | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "fan_map_plugs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_fan_map_stats: {
+        Args: { p_creator_id?: string }
+        Returns: {
+          countries: number
+          featured: number
+          total: number
+        }[]
+      }
+      get_follow_feed: {
+        Args: { p_limit?: number; p_offset?: number; p_user_id: string }
+        Returns: {
+          activity_type: string
+          actor_avatar_url: string
+          actor_id: string
+          actor_name: string
+          body: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          feed_id: string
+          media_url: string
+          metadata: Json
+          price: number
+          status: string
+          title: string
+        }[]
+      }
       get_label_invitation_details: {
         Args: { p_token: string }
         Returns: {
@@ -9469,6 +10123,106 @@ export type Database = {
           label_name: string
           label_slug: string
           role: string
+        }[]
+      }
+      get_lms_course_detail: {
+        Args: {
+          p_include_lessons?: boolean
+          p_slug: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      get_lms_course_progress: {
+        Args: { p_course_id: string; p_user_id?: string }
+        Returns: {
+          completed_lesson_ids: string[] | null
+          course_id: string
+          created_at: string
+          id: string
+          last_accessed: string
+          last_lesson_id: string | null
+          percent_complete: number | null
+          total_time_minutes: number | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_course_progress"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_lms_courses: {
+        Args: {
+          p_difficulty?: Database["public"]["Enums"]["lms_course_difficulty"]
+          p_instructor?: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_visibility?: Database["public"]["Enums"]["lms_course_visibility"]
+        }
+        Returns: {
+          created_at: string
+          currency: string
+          description: string
+          difficulty: Database["public"]["Enums"]["lms_course_difficulty"]
+          duration_minutes: number
+          id: string
+          instructor: Json
+          lesson_count: number
+          metadata: Json
+          price_cents: number
+          promo_video_url: string
+          published_at: string
+          slug: string
+          subtitle: string
+          thumbnail_url: string
+          title: string
+          topics: string[]
+          updated_at: string
+          visibility: Database["public"]["Enums"]["lms_course_visibility"]
+        }[]
+      }
+      get_lms_quiz_attempts: {
+        Args: { p_quiz_id: string; p_user_id?: string }
+        Returns: {
+          answers: Json
+          attempt_number: number | null
+          completed_at: string
+          created_at: string
+          id: string
+          passed: boolean | null
+          quiz_id: string
+          score: number | null
+          time_spent_seconds: number | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "lms_quiz_attempts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_lms_quizzes: {
+        Args: { p_course_id: string; p_user_id?: string }
+        Returns: {
+          course_id: string
+          created_at: string
+          description: string
+          id: string
+          is_published: boolean
+          lesson_id: string
+          max_attempts: number
+          passing_score: number
+          question_bank: Json
+          stats: Json
+          time_limit_minutes: number
+          title: string
+          updated_at: string
         }[]
       }
       get_membership_access_rules: {
@@ -9549,6 +10303,18 @@ export type Database = {
               total_amount: number
             }[]
           }
+      get_playlist_for_public: {
+        Args: { p_share_code?: string; p_slug: string }
+        Returns: {
+          collaborative: boolean
+          cover_art_url: string
+          description: string
+          name: string
+          owner_id: string
+          playlist_id: string
+          visibility: string
+        }[]
+      }
       get_producer_earnings_summary: {
         Args: { p_producer_id: string }
         Returns: Json
@@ -9560,6 +10326,36 @@ export type Database = {
       get_release_analytics: {
         Args: { p_days?: number; p_release_id?: string; p_user_id: string }
         Returns: Json
+      }
+      get_unified_inbox_messages: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_provider?: string
+          p_search?: string
+          p_status?: string
+          p_user_id: string
+        }
+        Returns: {
+          author_handle: string | null
+          author_name: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          is_starred: boolean
+          message_id: string | null
+          permalink: string | null
+          provider: string
+          snippet: string | null
+          thread_id: string | null
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "unified_inbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_user_file_limits: { Args: { p_user_id: string }; Returns: Json }
       get_user_memberships: {
@@ -9593,6 +10389,22 @@ export type Database = {
       }
       get_user_tier_limits: { Args: { user_id: string }; Returns: Json }
       get_wallet_balance: { Args: { p_user_id: string }; Returns: Json }
+      grant_lms_course_entitlement: {
+        Args: { p_course_id: string; p_source?: string; p_user_id: string }
+        Returns: {
+          course_id: string
+          grant_source: string | null
+          granted_at: string
+          id: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_course_entitlements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_course_access: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
@@ -9854,6 +10666,7 @@ export type Database = {
           username: string
         }[]
       }
+      lms_is_course_owner: { Args: { p_course_id: string }; Returns: boolean }
       log_sensitive_access: {
         Args: { p_action: string; p_record_id?: string; p_table_name: string }
         Returns: undefined
@@ -9921,6 +10734,58 @@ export type Database = {
         }
         Returns: Json
       }
+      record_lms_course_purchase: {
+        Args: {
+          p_amount_cents: number
+          p_course_id: string
+          p_currency?: string
+          p_reference?: string
+          p_user_id?: string
+        }
+        Returns: {
+          amount_cents: number
+          course_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          purchase_reference: string | null
+          purchased_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_course_purchases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_lms_lesson_progress: {
+        Args: {
+          p_completed?: boolean
+          p_course_id: string
+          p_lesson_id: string
+          p_time_spent_seconds?: number
+          p_user_id?: string
+        }
+        Returns: {
+          completed_lesson_ids: string[] | null
+          course_id: string
+          created_at: string
+          id: string
+          last_accessed: string
+          last_lesson_id: string | null
+          percent_complete: number | null
+          total_time_minutes: number | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_course_progress"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       refresh_campaign_progress: {
         Args: { p_campaign_id: string }
         Returns: undefined
@@ -9978,6 +10843,32 @@ export type Database = {
         Args: { p_invitation_id: string }
         Returns: undefined
       }
+      set_lms_course_pricing: {
+        Args: {
+          p_course_id: string
+          p_currency?: string
+          p_is_membership_only?: boolean
+          p_metadata?: Json
+          p_one_time_price_cents?: number
+          p_required_tier?: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Returns: {
+          course_id: string
+          created_at: string
+          currency: string | null
+          is_membership_only: boolean | null
+          metadata: Json | null
+          one_time_price_cents: number | null
+          required_tier: Database["public"]["Enums"]["subscription_tier"] | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_course_pricing"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_notification_pref: {
         Args: { p_key: string; p_user_id?: string; p_value: boolean }
         Returns: {
@@ -10000,10 +10891,69 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_playlist_visibility: {
+        Args: {
+          p_playlist_id: string
+          p_user_id?: string
+          p_visibility: string
+        }
+        Returns: {
+          collaborative: boolean | null
+          cover_art_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          share_code: string | null
+          slug: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          visibility: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "playlists"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       slugify: { Args: { txt: string }; Returns: string }
       slugify_membership_identifier: {
         Args: { p_value: string }
         Returns: string
+      }
+      submit_lms_quiz_attempt: {
+        Args: {
+          p_answers: Json
+          p_quiz_id: string
+          p_time_spent_seconds?: number
+          p_user_id?: string
+        }
+        Returns: {
+          answers: Json
+          attempt_number: number | null
+          completed_at: string
+          created_at: string
+          id: string
+          passed: boolean | null
+          quiz_id: string
+          score: number | null
+          time_spent_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lms_quiz_attempts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      subscription_tier_rank: {
+        Args: { p_tier: Database["public"]["Enums"]["subscription_tier"] }
+        Returns: number
       }
       switch_content_owner: {
         Args: {
@@ -10126,6 +11076,8 @@ export type Database = {
       label_deletion_type: "downgrade" | "delete"
       label_member_role: "owner" | "admin" | "editor" | "viewer"
       label_role: "owner" | "admin" | "editor" | "viewer"
+      lms_course_difficulty: "beginner" | "intermediate" | "advanced"
+      lms_course_visibility: "public" | "unlisted" | "private"
       managed_profile_role: "primary" | "distribution_only"
       managed_profile_status: "pending" | "active" | "removed"
       membership_status: "active" | "cancelled" | "expired" | "past_due"
@@ -10293,6 +11245,8 @@ export const Constants = {
       label_deletion_type: ["downgrade", "delete"],
       label_member_role: ["owner", "admin", "editor", "viewer"],
       label_role: ["owner", "admin", "editor", "viewer"],
+      lms_course_difficulty: ["beginner", "intermediate", "advanced"],
+      lms_course_visibility: ["public", "unlisted", "private"],
       managed_profile_role: ["primary", "distribution_only"],
       managed_profile_status: ["pending", "active", "removed"],
       membership_status: ["active", "cancelled", "expired", "past_due"],

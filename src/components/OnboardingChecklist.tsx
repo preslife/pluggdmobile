@@ -166,7 +166,7 @@ export const OnboardingChecklist = () => {
       let isCompleted = false;
 
       switch (taskId) {
-        case 'complete_profile':
+        case 'complete_profile': {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('bio, avatar_url, username, user_type, onboarding_completed')
@@ -178,8 +178,8 @@ export const OnboardingChecklist = () => {
             (profileData?.user_type && profileData?.onboarding_completed)
           );
           break;
-
-        case 'connect_stripe':
+        }
+        case 'connect_stripe': {
           const { data: stripe } = await supabase
             .from('producer_stripe_accounts')
             .select('onboarding_complete')
@@ -187,8 +187,8 @@ export const OnboardingChecklist = () => {
             .single();
           isCompleted = stripe?.onboarding_complete || false;
           break;
-
-        case 'publish_content':
+        }
+        case 'publish_content': {
           const { data: releases } = await supabase
             .from('releases')
             .select('id')
@@ -201,8 +201,8 @@ export const OnboardingChecklist = () => {
             .limit(1);
           isCompleted = (releases?.length || 0) > 0 || (beats?.length || 0) > 0;
           break;
-
-        case 'enable_tips':
+        }
+        case 'enable_tips': {
           // Auto-complete for all users (tips are enabled by default)
           const { data: profileTip } = await supabase
             .from('profiles')
@@ -211,8 +211,8 @@ export const OnboardingChecklist = () => {
             .single();
           isCompleted = !!profileTip?.user_type; // If they completed quiz, tips are enabled
           break;
-
-        case 'connect_social':
+        }
+        case 'connect_social': {
           const { data: social } = await supabase
             .from('profiles')
             .select('discord_guild_id, mailchimp_status')
@@ -220,8 +220,8 @@ export const OnboardingChecklist = () => {
             .single();
           isCompleted = !!(social?.discord_guild_id || social?.mailchimp_status === 'connected');
           break;
-
-        case 'install_pwa':
+        }
+        case 'install_pwa': {
           // Check if user has push subscription
           const { data: pushSub } = await supabase
             .from('web_push_subscriptions')
@@ -230,6 +230,7 @@ export const OnboardingChecklist = () => {
             .limit(1);
           isCompleted = (pushSub?.length || 0) > 0;
           break;
+        }
       }
 
       if (isCompleted && !progress.completed_tasks.includes(taskId)) {

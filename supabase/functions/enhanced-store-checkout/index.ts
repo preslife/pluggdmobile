@@ -257,7 +257,9 @@ serve(async (req) => {
             title: beat.title,
             price: beat.price,
             image_url: beat.image_url,
-            product_type: 'beat'
+            product_type: 'beat',
+            user_id: beat.user_id,
+            owner_id: beat.owner_id,
           };
           productType = 'beat';
         } else {
@@ -274,7 +276,9 @@ serve(async (req) => {
               title: release.title,
               price: release.download_price || release.price || 0,
               image_url: release.cover_art_url,
-              product_type: 'release'
+              product_type: 'release',
+              user_id: release.user_id,
+              owner_id: release.owner_id,
             };
             productType = 'release';
           } else {
@@ -291,7 +295,9 @@ serve(async (req) => {
                 title: samplePack.title,
                 price: samplePack.price,
                 image_url: samplePack.cover_art_url,
-                product_type: 'sample_pack'
+                product_type: 'sample_pack',
+                user_id: samplePack.user_id,
+                owner_id: samplePack.owner_id,
               };
               productType = 'sample_pack';
             }

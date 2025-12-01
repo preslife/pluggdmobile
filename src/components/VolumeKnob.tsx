@@ -36,7 +36,7 @@ export const VolumeKnob = ({
     const deltax = x1 - x2;
     const deltay = y1 - y2;
     const rad = Math.atan2(deltay, deltax);
-    let deg = rad * (180 / Math.PI);
+    const deg = rad * (180 / Math.PI);
     return deg;
   }, []);
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -46,13 +46,12 @@ export const VolumeKnob = ({
       if (knobRef.current) {
         knobRef.current.style.transform = `rotate(${result}deg)`;
       }
-      let val = Math.floor(calculateDegree(e) + 90);
+      const val = Math.floor(calculateDegree(e) + 90);
       let ran = 0;
       if (val > 0 && val < 181) ran = val / 180;
       if (val > 180) ran = Math.abs((val - 360) / 180);
       if (val < 0) ran = Math.abs(val) / 180;
       let num = Math.floor(ran * 100);
-      if (num < 10) num = num;
       if (num >= 100) num = 99;
       onChange(num);
       if (sliderRef.current) {

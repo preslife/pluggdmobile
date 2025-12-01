@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Play,
   Pause,
@@ -20,20 +23,224 @@ import {
   List,
   Settings,
   ExternalLink,
-  Lock
+  Lock,
+  PenTool,
+  Music,
+  Download,
+  Bookmark,
+  Copy,
+  Mic,
+  MicOff,
+  Save,
+  FileText,
+  Clock,
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { useGlobalPlayer } from './GlobalPlayerProvider';
 import { cn } from '@/lib/utils';
 import { QueueManager } from './QueueManager';
 import { PlayerSettings } from './PlayerSettings';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExpandedPlayerProps {
   className?: string;
 }
 
+// BarFlow Lyrics Writing Component integrated into the player
+const BarFlowPanel: React.FC<{ trackTitle: string; trackArtist: string }> = ({ trackTitle, trackArtist }) => {
+  const { toast } = useToast();
+  const [lyrics, setLyrics] = useState('');
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [wordCount, setWordCount] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const storageKey = `barflow-lyrics-${trackTitle}-${trackArtist}`.toLowerCase().replace(/\s+/g, '-');
+
+  // Load saved lyrics
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setLyrics(parsed.lyrics || '');
+        if (parsed.savedAt) setSavedAt(new Date(parsed.savedAt));
+      } catch {
+        setLyrics(saved);
+      }
+    }
+  }, [storageKey]);
+
+  // Update word count
+  useEffect(() => {
+    const words = lyrics.trim().split(/\s+/).filter(Boolean).length;
+    setWordCount(words);
+  }, [lyrics]);
+
+  // Auto-save
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (lyrics.trim()) {
+        localStorage.setItem(storageKey, JSON.stringify({ lyrics, savedAt: new Date().toISOString() }));
+        setSavedAt(new Date());
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [lyrics, storageKey]);
+
+  const handleSave = () => {
+    localStorage.setItem(storageKey, JSON.stringify({ lyrics, savedAt: new Date().toISOString() }));
+    setSavedAt(new Date());
+    toast({ title: 'Lyrics Saved', description: 'Your lyrics have been saved locally' });
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(lyrics);
+    toast({ title: 'Copied', description: 'Lyrics copied to clipboard' });
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([`${trackTitle} - ${trackArtist}\n\n${lyrics}`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${trackTitle}-lyrics.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Exported', description: 'Lyrics exported as text file' });
+  };
+
+  const handleClear = () => {
+    if (confirm('Clear all lyrics? This cannot be undone.')) {
+      setLyrics('');
+      localStorage.removeItem(storageKey);
+      setSavedAt(null);
+      toast({ title: 'Cleared', description: 'Lyrics cleared' });
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast({ title: 'Recording', description: 'Speak into your microphone...' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not access microphone', variant: 'destructive' });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      toast({ title: 'Recording Stopped', description: 'Voice recording saved' });
+    }
+  };
+
+  const insertTemplate = (template: string) => {
+    const templates: Record<string, string> = {
+      verse: '\n[Verse]\n\n\n',
+      chorus: '\n[Chorus]\n\n\n',
+      bridge: '\n[Bridge]\n\n\n',
+      hook: '\n[Hook]\n\n\n',
+      intro: '\n[Intro]\n\n\n',
+      outro: '\n[Outro]\n\n\n',
+    };
+    setLyrics(prev => prev + (templates[template] || ''));
+  };
+
+  return (
+    <div className="h-full flex flex-col p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+            <PenTool className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg">BarFlow</h3>
+            <p className="text-xs text-muted-foreground">Write lyrics to "{trackTitle}"</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {wordCount} words
+          </Badge>
+          {savedAt && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Saved {savedAt.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Structure Templates */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {['verse', 'chorus', 'bridge', 'hook', 'intro', 'outro'].map(template => (
+          <Button
+            key={template}
+            variant="outline"
+            size="sm"
+            onClick={() => insertTemplate(template)}
+            className="text-xs capitalize"
+          >
+            + {template}
+          </Button>
+        ))}
+      </div>
+
+      {/* Lyrics Editor */}
+      <div className="flex-1 min-h-0">
+        <Textarea
+          value={lyrics}
+          onChange={(e) => setLyrics(e.target.value)}
+          placeholder={`Start writing lyrics for "${trackTitle}"...\n\n[Verse 1]\nWrite your first verse here...\n\n[Chorus]\nThe hook goes here...`}
+          className="h-full resize-none font-mono text-sm bg-muted/30 border-muted"
+        />
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex items-center justify-between pt-4 border-t mt-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={isRecording ? stopRecording : startRecording}>
+            {isRecording ? <MicOff className="h-4 w-4 mr-1 text-red-500" /> : <Mic className="h-4 w-4 mr-1" />}
+            {isRecording ? 'Stop' : 'Record'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleClear}>
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            <Copy className="h-4 w-4 mr-1" />
+            Copy
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <FileText className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+          <Button size="sm" onClick={handleSave}>
+            <Save className="h-4 w-4 mr-1" />
+            Save
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => {
   const { state, actions } = useGlobalPlayer();
-  const [activeTab, setActiveTab] = useState<'player' | 'queue' | 'settings'>('player');
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'player' | 'queue' | 'lyrics' | 'settings'>('player');
+  const [isLiked, setIsLiked] = useState(false);
   
   if (!state.currentTrack || !state.isExpanded) {
     return null;
@@ -90,47 +297,84 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
     >
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-b from-muted/30 to-transparent">
           <Button
             variant="ghost"
             size="sm"
             onClick={actions.toggleExpanded}
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 p-0 rounded-full hover:bg-muted"
           >
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-5 w-5" />
           </Button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-muted/50 rounded-full p-1">
             <Button
               variant={activeTab === 'player' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('player')}
+              className={cn("rounded-full px-4", activeTab === 'player' && "shadow-sm")}
             >
+              <Music className="h-4 w-4 mr-2" />
               Now Playing
             </Button>
             <Button
               variant={activeTab === 'queue' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('queue')}
+              className={cn("rounded-full px-4", activeTab === 'queue' && "shadow-sm")}
             >
               <List className="h-4 w-4 mr-2" />
-              Queue ({state.queue.length})
+              Queue
+              {state.queue.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {state.queue.length}
+                </Badge>
+              )}
+            </Button>
+            <Button
+              variant={activeTab === 'lyrics' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('lyrics')}
+              className={cn("rounded-full px-4", activeTab === 'lyrics' && "shadow-sm")}
+            >
+              <PenTool className="h-4 w-4 mr-2" />
+              BarFlow
             </Button>
             <Button
               variant={activeTab === 'settings' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('settings')}
+              className={cn("rounded-full px-4", activeTab === 'settings' && "shadow-sm")}
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-9 w-9 p-0 rounded-full"
+              onClick={() => {
+                setIsLiked(!isLiked);
+                toast({ title: isLiked ? 'Removed from Favorites' : 'Added to Favorites' });
+              }}
+            >
+              <Heart className={cn("h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-9 w-9 p-0 rounded-full"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + `/release/${state.currentTrack?.releaseId}`);
+                toast({ title: 'Link Copied', description: 'Share link copied to clipboard' });
+              }}
+            >
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-full">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </div>
@@ -316,6 +560,13 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = ({ className }) => 
 
           {activeTab === 'queue' && (
             <QueueManager />
+          )}
+
+          {activeTab === 'lyrics' && state.currentTrack && (
+            <BarFlowPanel 
+              trackTitle={state.currentTrack.title} 
+              trackArtist={state.currentTrack.artist} 
+            />
           )}
 
           {activeTab === 'settings' && (

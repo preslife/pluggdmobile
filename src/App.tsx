@@ -125,6 +125,7 @@ import InboxPage from "./pages/Inbox";
 import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { GlobalPlayer } from "./components/GlobalPlayer/GlobalPlayer";
+import { FeaturePromptProvider } from "./components/FeaturePrompt";
 import { ScrollAnimationProvider } from "./components/ScrollAnimationProvider";
 import { WalletProvider } from "./hooks/useWallet";
 import { SubscriptionProvider } from "./hooks/useSubscription";
@@ -419,8 +420,10 @@ const App = () => (
                     <ThemeProvider>
                       <ScrollAnimationProvider>
                         <GlobalPlayer>
-                          <AppContent />
-                          <PWAInstallPrompt />
+                          <FeaturePromptProvider>
+                            <AppContent />
+                            <PWAInstallPrompt />
+                          </FeaturePromptProvider>
                         </GlobalPlayer>
                       </ScrollAnimationProvider>
                     </ThemeProvider>

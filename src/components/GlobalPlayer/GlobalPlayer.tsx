@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { GlobalPlayerProvider } from './GlobalPlayerProvider';
 import { MicroPlayer } from './MicroPlayer';
 import { ExpandedPlayer } from './ExpandedPlayer';
+import { ListeningHistoryTracker } from './ListeningHistoryTracker';
 
 interface GlobalPlayerProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export const GlobalPlayer: React.FC<GlobalPlayerProps> = ({ children }) => {
   return (
     <GlobalPlayerProvider>
       {children}
+      <ListeningHistoryTracker />
       <MicroPlayer />
       <ExpandedPlayer />
     </GlobalPlayerProvider>

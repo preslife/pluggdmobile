@@ -111,15 +111,12 @@ export const CreatorStudioDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [salesBreakdown, setSalesBreakdown] = useState<SalesBreakdown[]>([]);
 
+  // All hooks must be called before any conditional returns
   useEffect(() => {
     if (isLabelWorkspace && activeLabel) {
       setLoading(false);
     }
   }, [isLabelWorkspace, activeLabel]);
-
-  if (isLabelWorkspace && activeLabel) {
-    return <LabelWorkspaceDashboard label={activeLabel} navigate={navigate} />;
-  }
 
   useEffect(() => {
     if (user && !isLabelWorkspace) {
@@ -146,6 +143,11 @@ export const CreatorStudioDashboard: React.FC = () => {
 
     setEarningsData(points);
   }, [earningsPeriod, earningsHistory]);
+
+  // Early return for label workspace - AFTER all hooks
+  if (isLabelWorkspace && activeLabel) {
+    return <LabelWorkspaceDashboard label={activeLabel} navigate={navigate} />;
+  }
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -576,19 +578,21 @@ export const CreatorStudioDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Creator Studio Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your content.
+    <div className="space-y-6 ambient-bg">
+      {/* Header - Premium Hero Style */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between pb-2">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/80 bg-clip-text">
+            Creator Studio
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Welcome back! Here's your performance overview.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-[1.02]">
                 <Plus className="w-4 h-4 mr-2" />
                 Quick Add
               </Button>
@@ -628,72 +632,80 @@ export const CreatorStudioDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Key Metrics Cards */}
+      {/* Key Metrics Cards - Premium Design */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        {/* Earnings Card - Primary Emphasis */}
+        <Card className="metric-card metric-card--earnings relative overflow-hidden animate-fade-in-up stagger-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Earnings</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/20">
+              <DollarSign className="h-4 w-4 text-orange-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.todayEarnings.toFixed(2)}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <div className="stat-value stat-value--primary text-3xl font-bold tracking-tight">
+              ${stats.todayEarnings.toFixed(2)}
+            </div>
+            <div className={`stat-change mt-2 ${stats.todayEarningsChange >= 0 ? 'stat-change--positive' : 'stat-change--negative'}`}>
               {stats.todayEarningsChange >= 0 ? (
-                <ArrowUpRight className="w-3 h-3 text-green-500 mr-1" />
+                <ArrowUpRight className="w-3 h-3" />
               ) : (
-                <ArrowDownRight className="w-3 h-3 text-red-500 mr-1" />
+                <ArrowDownRight className="w-3 h-3" />
               )}
-              <span className={stats.todayEarningsChange >= 0 ? "text-green-500" : "text-red-500"}>
-                {Math.abs(stats.todayEarningsChange)}%
-              </span>
-              <span className="ml-1">from yesterday</span>
+              <span>{Math.abs(stats.todayEarningsChange).toFixed(1)}% from yesterday</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Sales Card */}
+        <Card className="metric-card relative overflow-hidden animate-fade-in-up stagger-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-violet-500/10 border border-purple-500/20">
+              <ShoppingBag className="h-4 w-4 text-purple-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.todaySales}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <div className="stat-value text-3xl font-bold tracking-tight">{stats.todaySales}</div>
+            <div className={`stat-change mt-2 ${stats.todaySalesChange >= 0 ? 'stat-change--positive' : 'stat-change--negative'}`}>
               {stats.todaySalesChange >= 0 ? (
-                <ArrowUpRight className="w-3 h-3 text-green-500 mr-1" />
+                <ArrowUpRight className="w-3 h-3" />
               ) : (
-                <ArrowDownRight className="w-3 h-3 text-red-500 mr-1" />
+                <ArrowDownRight className="w-3 h-3" />
               )}
-              <span className={stats.todaySalesChange >= 0 ? "text-green-500" : "text-red-500"}>
-                {Math.abs(stats.todaySalesChange)}%
-              </span>
-              <span className="ml-1">from yesterday</span>
+              <span>{Math.abs(stats.todaySalesChange).toFixed(1)}% from yesterday</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Products Card */}
+        <Card className="metric-card relative overflow-hidden animate-fade-in-up stagger-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-500/20">
+              <Package className="h-4 w-4 text-blue-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">
-              Active listings
+            <div className="stat-value text-3xl font-bold tracking-tight">{stats.totalProducts}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Active listings in catalog
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Customers Card */}
+        <Card className="metric-card relative overflow-hidden animate-fade-in-up stagger-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unique Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Unique Customers</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-green-500/10 border border-emerald-500/20">
+              <Users className="h-4 w-4 text-emerald-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.uniqueCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Buyers across all time
+            <div className="stat-value text-3xl font-bold tracking-tight">{stats.uniqueCustomers}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Buyers this period
             </p>
           </CardContent>
         </Card>
@@ -706,46 +718,68 @@ export const CreatorStudioDashboard: React.FC = () => {
         <InvitesWidget />
       </div>
 
-      {/* Today's Sales Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Sales Breakdown</CardTitle>
-          <CardDescription>Detailed view of today's performance by category</CardDescription>
+      {/* Today's Sales Breakdown - Premium Design */}
+      <Card className="studio-card overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Sales Breakdown</CardTitle>
+              <CardDescription>Today's performance by category</CardDescription>
+            </div>
+            <Badge variant="outline" className="text-xs font-normal">
+              <Clock className="w-3 h-3 mr-1" />
+              Today
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {salesBreakdown.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div key={index} className="flex items-center gap-3 p-4 rounded-lg border">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${item.bgClass}`}>
-                    <Icon className={`h-5 w-5 ${item.textClass}`} />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{item.category}</h4>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{item.sales} sales</span>
-                      <span>•</span>
-                      <span className="font-semibold text-foreground">${item.earnings.toFixed(2)}</span>
+          {salesBreakdown.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {salesBreakdown.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div 
+                      key={index} 
+                      className="group flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-card to-muted/30 border border-border/50 hover:border-border transition-all duration-300 hover:shadow-md"
+                    >
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.bgClass} transition-transform group-hover:scale-110`}>
+                        <Icon className={`h-5 w-5 ${item.textClass}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{item.category}</h4>
+                        <div className="flex items-center gap-2 text-xs mt-0.5">
+                          <span className="text-muted-foreground">{item.sales} sales</span>
+                          <span className="font-semibold text-foreground">${item.earnings.toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+              <div className="mt-5 pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total Today</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      {salesBreakdown.reduce((sum, item) => sum + item.sales, 0)} sales
+                    </span>
+                    <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+                      ${salesBreakdown.reduce((sum, item) => sum + item.earnings, 0).toFixed(2)}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 pt-4 border-t">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Total Today</span>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
-                  {salesBreakdown.reduce((sum, item) => sum + item.sales, 0)} sales
-                </span>
-                <span className="text-lg font-bold">
-                  ${salesBreakdown.reduce((sum, item) => sum + item.earnings, 0).toFixed(2)}
-                </span>
               </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 mx-auto mb-3">
+                <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No sales today yet</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Sales will appear here as they come in</p>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

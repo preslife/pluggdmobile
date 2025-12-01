@@ -74,7 +74,8 @@ export const SocialProofBar = ({ stats, profile }: SocialProofBarProps) => {
       ] = await Promise.all([
         supabase.from('releases').select('*', { count: 'exact', head: true })
           .gte('created_at', thirtyDaysAgo.toISOString())
-          .eq('status', 'published'),
+          .eq('status', 'live')
+          .eq('approved', true),
         supabase.from('beats').select('*', { count: 'exact', head: true })
           .gte('created_at', thirtyDaysAgo.toISOString())
           .eq('is_published', true)

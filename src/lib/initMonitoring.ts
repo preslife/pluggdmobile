@@ -70,20 +70,12 @@ export const setUserContext = (user: {
       }
     });
 
-    // Set analytics user properties
-    import('@/hooks/useAnalytics').then(({ default: useAnalytics }) => {
-      const analytics = useAnalytics();
-      analytics.setUserProperties({
-        role: user.role,
-        plan: user.plan,
-        lastLogin: new Date().toISOString()
-      });
-    });
-
+    // Log user properties (analytics tracking is handled via React components)
     logger.info('User context set for monitoring', {
       userId: user.id,
       role: user.role,
       plan: user.plan,
+      lastLogin: new Date().toISOString(),
       category: 'user_context'
     });
 
@@ -151,22 +143,18 @@ export const trackPagePerformance = (pageName: string) => {
 
 /**
  * Track feature usage
+ * Note: For full analytics tracking with user context, use the useAnalytics hook in React components.
+ * This function provides basic logging without requiring React context.
  */
 export const trackFeatureUsage = async (featureName: string, action: string, metadata?: Record<string, any>) => {
   try {
-    const { default: useAnalytics } = await import('@/hooks/useAnalytics');
-    const analytics = useAnalytics();
-    
-    await analytics.trackFeature(featureName, action, {
-      ...metadata,
-      timestamp: Date.now(),
-      url: window.location.href
-    });
-
+    // Log feature usage (full analytics tracking is handled via React components with useAnalytics hook)
     logger.info(`Feature usage: ${featureName}`, {
       feature: featureName,
       action,
       ...metadata,
+      timestamp: Date.now(),
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
       category: 'feature_usage'
     });
 

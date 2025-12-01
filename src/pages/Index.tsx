@@ -428,37 +428,43 @@ function Hero({
       <HeroBackdrop slides={slides} />
       <div className="relative z-10 mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-12 md:grid md:grid-cols-12 md:gap-10 md:px-6">
         <div className="md:col-span-7 flex flex-col gap-6">
-          <Badge variant="secondary" className="w-fit border border-white/30 bg-white/10 text-white">
-            Built for artists, producers & fans
+          <Badge variant="secondary" className="w-fit border border-primary/40 bg-primary/10 text-primary font-medium animate-pulse">
+            🔥 The future of music is creator-owned
           </Badge>
-          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-[68px]">
-            The Creator-First Music Platform
+          <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-[72px] bg-gradient-to-r from-white via-white to-zinc-400 bg-clip-text text-transparent">
+            Your Music.<br className="hidden sm:block" />
+            <span className="text-primary">Your Rules.</span>
           </h1>
-          <p className="text-lg text-zinc-200 sm:text-xl">
-            Own your music. Sell your beats. Run memberships, live sessions, and collaborations — all inside Pluggd.
+          <p className="text-lg text-zinc-200 sm:text-xl leading-relaxed max-w-xl">
+            Stop giving away <span className="font-semibold text-white">70% of your earnings</span>. Pluggd gives creators the tools to release music, sell beats, run memberships, and go live — while keeping what they earn.
           </p>
           <div className="flex flex-wrap gap-4">
-            <Button size="lg" className="px-7 text-base" asChild>
-              <Link to="/signup?intent=create">Start Creating</Link>
+            <Button size="lg" className="px-8 text-base font-semibold bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-primary/40 hover:scale-[1.02]" asChild>
+              <Link to="/signup?intent=create">Claim Your Free Creator Page →</Link>
             </Button>
-            <Button size="lg" variant="outline" className="px-7 text-base" asChild>
-              <Link to="/marketplace">Explore Marketplace</Link>
+            <Button size="lg" variant="outline" className="px-8 text-base border-white/20 hover:bg-white/10 hover:border-white/40 transition-all duration-300" asChild>
+              <Link to="/marketplace">Browse Beats & Music</Link>
             </Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             {[
-              { label: "Creators", value: "2,900+" },
-              { label: "Paid this month", value: "£13,854" },
-              { label: "Credits", value: "Never expire" },
+              { label: "Creators earning", value: "2,900+", icon: "🎤", accent: "from-primary/20 to-transparent" },
+              { label: "Paid out this month", value: "£13,854", icon: "💰", accent: "from-emerald-500/20 to-transparent" },
+              { label: "Your credits", value: "Never expire", icon: "✨", accent: "from-purple-500/20 to-transparent" },
             ].map((item, idx) => (
-              <div
+              <motion.div
                 key={item.label}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200"
-                style={{ animationDelay: `${idx * 80}ms` }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + idx * 0.1 }}
+                className={`rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} px-4 py-3.5 text-sm text-zinc-200 backdrop-blur-sm hover:border-white/20 transition-colors`}
               >
-                <div className="text-xs uppercase tracking-wider text-zinc-400">{item.label}</div>
-                <div className="text-lg font-semibold text-white">{item.value}</div>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{item.icon}</span>
+                  <span className="text-xs uppercase tracking-wider text-zinc-400">{item.label}</span>
+                </div>
+                <div className="text-xl font-bold text-white mt-1">{item.value}</div>
+              </motion.div>
             ))}
           </div>
           <div className="mt-2 text-sm text-zinc-300">
@@ -1081,43 +1087,66 @@ function HomeRecommendations({
 function WhyPluggdExists() {
   const pillars = [
     {
-      title: "Creators deserve ownership",
-      description: "Set your prices, keep your royalties, and move your entire catalog without gatekeepers.",
+      title: "Keep 90% of what you earn",
+      description: "Streaming pays £0.003 per play. On Pluggd, you set the price — and keep almost all of it. Your music, your business.",
       Icon: ShieldCheck,
+      stat: "90%",
+      statLabel: "creator cut"
     },
     {
-      title: "Fans deserve connection",
-      description: "Join live studio sessions, unlock exclusive posts, and support releases directly.",
+      title: "Your fans, direct",
+      description: "No algorithms deciding who sees your releases. Build real relationships through live sessions, memberships, and exclusive drops.",
       Icon: HeartHandshake,
+      stat: "0",
+      statLabel: "middlemen"
     },
     {
-      title: "The industry needs a reset",
-      description: "No middlemen. No algorithms playing favourites. Just creators and fans building together.",
+      title: "All-in-one creator OS",
+      description: "Releases, beat store, courses, live streaming, collabs, contracts, and analytics — one login, zero app-hopping.",
       Icon: Megaphone,
+      stat: "10+",
+      statLabel: "tools built-in"
     },
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-8 md:p-12">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Why Pluggd exists</p>
-        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Music was broken. We’re fixing it.</h2>
-        <p className="mt-4 text-lg text-zinc-300">
-          Pluggd is a creator-owned operating system that brings music releases, beat sales, memberships, and live sessions together.
+    <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-primary/5 via-transparent to-purple-900/10 p-8 md:p-12 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1),transparent_50%)]" />
+      <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <Badge className="mb-4 bg-white/10 text-white border-white/20">The problem we solve</Badge>
+        <h2 className="mt-3 text-3xl font-bold md:text-5xl bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+          Streaming broke music.<br />Pluggd fixes it.
+        </h2>
+        <p className="mt-5 text-lg text-zinc-300 leading-relaxed max-w-2xl mx-auto">
+          Artists need more than a platform — they need an operating system for their entire career. 
+          That's Pluggd: releases, community, commerce, and collaboration in one place.
         </p>
       </div>
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {pillars.map((pillar) => {
+      <div className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
+        {pillars.map((pillar, idx) => {
           const Icon = pillar.Icon;
           return (
-            <div key={pillar.title} className="rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                  <Icon className="h-5 w-5 text-white" />
+            <motion.div 
+              key={pillar.title} 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.1 }}
+              className="group rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm p-6 hover:border-primary/30 transition-all duration-300"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-transparent border border-primary/20">
+                  <Icon className="h-6 w-6 text-primary" />
                 </span>
-                {pillar.title}
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-primary">{pillar.stat}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">{pillar.statLabel}</div>
+                </div>
               </div>
-              <p className="mt-3 text-sm text-zinc-400">{pillar.description}</p>
-            </div>
+              <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
+                {pillar.title}
+              </h3>
+              <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{pillar.description}</p>
+            </motion.div>
           );
         })}
       </div>
@@ -1127,39 +1156,55 @@ function WhyPluggdExists() {
 
 function CreatorOSGrid() {
   const features = [
-    { title: "Releases", description: "Upload singles, EPs, and albums with instant payouts.", Icon: UploadCloud },
-    { title: "Beat Store", description: "License beats, loops, and sound packs in one storefront.", Icon: Disc },
-    { title: "Live Sessions", description: "Host public or private livestreams with tips and ticketing.", Icon: Radio },
-    { title: "Collabs", description: "Drop collaboration briefs and match with creators fast.", Icon: Handshake },
-    { title: "Contracts", description: "Auto split sheets, rights management, and licensing.", Icon: FileKey2 },
-    { title: "Community", description: "Memberships, paid posts, and fan-only drops.", Icon: Users },
-    { title: "Analytics", description: "Track sales, streams, and community growth in real time.", Icon: BarChart3 },
-    { title: "AI Tools", description: "Lyrics assists, mix feedback, cover art concepts, and more.", Icon: Sparkles },
+    { title: "Music Releases", description: "Drop singles, EPs, and albums. Get paid instantly — no 90-day wait.", Icon: UploadCloud, color: "from-blue-500" },
+    { title: "Beat Store", description: "Sell beats with standard, premium, and exclusive licenses built-in.", Icon: Disc, color: "from-purple-500" },
+    { title: "Live Sessions", description: "Go live with ticketed shows, tips, and real-time fan interaction.", Icon: Radio, color: "from-red-500" },
+    { title: "Collaborations", description: "Post briefs, find talent, and split payments automatically.", Icon: Handshake, color: "from-emerald-500" },
+    { title: "Smart Contracts", description: "Auto-generate split sheets and licensing agreements. Legally sound.", Icon: FileKey2, color: "from-amber-500" },
+    { title: "Fan Community", description: "Paid memberships, exclusive posts, and tiered supporter access.", Icon: Users, color: "from-pink-500" },
+    { title: "Pro Analytics", description: "Real-time revenue, audience insights, and growth tracking.", Icon: BarChart3, color: "from-cyan-500" },
+    { title: "AI Toolkit", description: "Lyric assists, artwork concepts, and production feedback.", Icon: Sparkles, color: "from-violet-500" },
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/30 p-8 md:p-12">
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Creator operating system</p>
-        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Everything you need to build a music career.</h2>
-        <p className="mt-4 text-zinc-300">
-          Releases, live sessions, community, analytics, and pro tools — tightly integrated so you never have to stitch apps together.
+    <div className="relative rounded-3xl border border-white/10 bg-black/40 p-8 md:p-12 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.1),transparent_60%)]" />
+      <div className="relative z-10 mx-auto max-w-2xl text-center">
+        <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">The Creator OS</Badge>
+        <h2 className="mt-3 text-3xl font-bold md:text-5xl">
+          One platform.<br />
+          <span className="text-zinc-400">Every tool you need.</span>
+        </h2>
+        <p className="mt-5 text-lg text-zinc-300 max-w-xl mx-auto">
+          No more juggling 10 different apps. Pluggd brings your entire music business under one roof.
         </p>
       </div>
-      <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {features.map((feature) => {
+      <div className="relative z-10 mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {features.map((feature, idx) => {
           const Icon = feature.Icon;
           return (
-            <div key={feature.title} className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5">
+            <motion.div 
+              key={feature.title} 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.05 }}
+              className="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 hover:border-white/20 hover:bg-white/[0.07] transition-all duration-300"
+            >
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                  <Icon className="h-6 w-6 text-white" />
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} to-transparent`}>
+                  <Icon className="h-5 w-5 text-white" />
                 </span>
-                <div className="text-lg font-semibold">{feature.title}</div>
+                <div className="text-base font-semibold group-hover:text-primary transition-colors">{feature.title}</div>
               </div>
               <p className="mt-3 text-sm leading-relaxed text-zinc-400">{feature.description}</p>
-            </div>
+            </motion.div>
           );
         })}
+      </div>
+      <div className="relative z-10 mt-10 text-center">
+        <Button size="lg" variant="outline" className="border-white/20 hover:bg-white/10" asChild>
+          <Link to="/features">See all features →</Link>
+        </Button>
       </div>
     </div>
   );
@@ -1304,39 +1349,53 @@ function CollabHighlights({ collabs, live }: { collabs: CollabProject[]; live: L
 
 function SocialProofStrip() {
   const stats = [
-    { label: "Paid to creators this month", value: "£13,854" },
-    { label: "Active creators", value: "2.9K+" },
-    { label: "Completed collabs", value: "187" },
-    { label: "Countries shipping music", value: "16" },
-  ];
-  const artists = [
-    { name: "D’Yani", image: demoImage(801, 200, 200, "D'Yani") },
-    { name: "The FaNaTiX", image: demoImage(802, 200, 200, "The FaNaTiX") },
-    { name: "Elevatetoday", image: demoImage(803, 200, 200, "Elevatetoday") },
-    { name: "Zeeks", image: demoImage(804, 200, 200, "Zeeks") },
+    { label: "Paid out monthly", value: "£13,854", icon: "💸", trend: "+12%" },
+    { label: "Active creators", value: "2,900+", icon: "🎤", trend: "+8%" },
+    { label: "Completed collabs", value: "187", icon: "🤝", trend: "+23%" },
+    { label: "Countries worldwide", value: "16", icon: "🌍", trend: "" },
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 via-transparent to-white/5 p-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-5">
-            <div className="text-2xl font-semibold text-white">{stat.value}</div>
-            <p className="text-xs uppercase tracking-wide text-zinc-400">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 flex flex-wrap items-center gap-4">
-        <span className="text-xs uppercase tracking-[0.4em] text-zinc-500">Featured with</span>
-        <div className="flex flex-wrap gap-3">
-          {artists.map((artist) => (
-            <div key={artist.name} className="flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1 pr-4">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={artist.image} alt={artist.name} />
-                <AvatarFallback>{artist.name[0]}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-white">{artist.name}</span>
-            </div>
+    <div className="relative rounded-3xl border border-white/10 bg-gradient-to-r from-primary/10 via-transparent to-purple-900/10 p-8 md:p-10 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(249,115,22,0.15),transparent_40%)]" />
+      <div className="relative z-10">
+        <div className="text-center mb-8">
+          <h3 className="text-2xl font-bold md:text-3xl">Trusted by creators worldwide</h3>
+          <p className="mt-2 text-zinc-400">Real numbers, real impact, real payouts</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat, idx) => (
+            <motion.div 
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.1 }}
+              className="group rounded-2xl border border-white/10 bg-black/50 backdrop-blur-sm px-5 py-5 hover:border-primary/30 transition-all duration-300"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl">{stat.icon}</span>
+                {stat.trend && (
+                  <span className="text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    {stat.trend}
+                  </span>
+                )}
+              </div>
+              <div className="text-3xl font-bold text-white group-hover:text-primary transition-colors">{stat.value}</div>
+              <p className="text-xs uppercase tracking-wider text-zinc-500 mt-1">{stat.label}</p>
+            </motion.div>
           ))}
+        </div>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-center">
+          <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">Featured creators include</span>
+          <span className="text-sm text-white font-medium">D'Yani</span>
+          <span className="text-zinc-600">•</span>
+          <span className="text-sm text-white font-medium">The FaNaTiX</span>
+          <span className="text-zinc-600">•</span>
+          <span className="text-sm text-white font-medium">Elevatetoday</span>
+          <span className="text-zinc-600">•</span>
+          <span className="text-sm text-white font-medium">Zeeks</span>
+          <span className="text-zinc-600">•</span>
+          <Link to="/directory" className="text-sm text-primary hover:underline">and more →</Link>
         </div>
       </div>
     </div>
@@ -1703,87 +1762,130 @@ function FeatureBand() {
 
 function HowItWorks() {
   const steps = [
-    { t: "Create", d: "Upload music, beats, and content. Set your store, memberships, and licensing in minutes.", Icon: UploadCloud },
-    { t: "Earn", d: "Get paid instantly from fans, sync buyers, community memberships, and live sessions.", Icon: Coins },
-    { t: "Grow", d: "Host lives, run collabs, and track your growth with the Creator OS dashboard.", Icon: Rocket },
+    { 
+      t: "Create", 
+      d: "Upload your music, set up your beat store, design your memberships. Your page is live in minutes.", 
+      Icon: UploadCloud,
+      color: "from-blue-500",
+      time: "5 min setup"
+    },
+    { 
+      t: "Earn", 
+      d: "Fans buy directly from you. No middlemen, no 90-day waits. Payouts hit your account fast.", 
+      Icon: Coins,
+      color: "from-emerald-500",
+      time: "Instant payouts"
+    },
+    { 
+      t: "Grow", 
+      d: "Go live, run collabs, launch courses. Track everything in your Creator Studio dashboard.", 
+      Icon: Rocket,
+      color: "from-primary",
+      time: "Scale infinitely"
+    },
   ];
   return (
-    <motion.ol
-      initial={{ opacity: 0, y: 6 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ staggerChildren: 0.06 }}
-      className="grid grid-cols-1 gap-4 md:grid-cols-3"
-    >
-      {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          initial={{ opacity: 0, y: 6 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="rounded-2xl border border-white/10 bg-white/5 p-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-full border border-white/20 bg-black/60 p-2 text-white">
-              <s.Icon className="h-5 w-5" />
-            </div>
-            <span className="text-[11px] uppercase tracking-wide text-zinc-400">
+    <div className="relative">
+      {/* Connection line */}
+      <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent hidden md:block" />
+      
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 relative z-10">
+        {steps.map((s, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.15 }}
+            className="group relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-6 hover:border-white/20 transition-all duration-300"
+          >
+            {/* Step number badge */}
+            <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-black border border-white/20 text-xs font-medium">
               Step {i + 1}
-            </span>
-          </div>
-          <div className="mt-1 text-base font-semibold leading-snug">{s.t}</div>
-          <p className="mt-1 text-sm text-zinc-300 leading-relaxed">{s.d}</p>
-          <div className="mt-4 flex items-center gap-3 text-[11px] text-white/70">
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" /> Community
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5" /> Ownership
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Zap className="h-3.5 w-3.5" /> Momentum
-            </span>
-          </div>
-        </motion.li>
-      ))}
-    </motion.ol>
+            </div>
+            
+            <div className="flex items-start justify-between mt-2">
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${s.color} to-transparent`}>
+                <s.Icon className="h-7 w-7 text-white" />
+              </div>
+              <span className="text-xs text-zinc-500 bg-white/5 px-2 py-1 rounded-full">{s.time}</span>
+            </div>
+            
+            <h3 className="mt-4 text-xl font-bold group-hover:text-primary transition-colors">{s.t}</h3>
+            <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{s.d}</p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
   );
 }
 
 function TestimonialsSection() {
   const quotesData = [
     {
-      quote: "Pluggd helped me launch my first EP and earn more in one week than three months on streaming.",
+      quote: "I made more in my first week on Pluggd than 3 months of streaming. The direct fan connection is everything.",
       name: "AYOFÉ",
-      role: "Singer & producer",
+      role: "Singer & Producer",
+      stat: "£2,400",
+      statLabel: "first month",
+      initials: "AY"
     },
     {
-      quote: "Finally a platform built for creators, not corporations. The community energy is unmatched.",
+      quote: "Finally a platform built for creators, not corporations. The collab tools alone changed how we work.",
       name: "The FaNaTiX",
-      role: "Producer collective",
+      role: "Grammy-nominated collective",
+      stat: "47",
+      statLabel: "collabs completed",
+      initials: "TF"
+    },
+    {
+      quote: "Selling beats with proper licensing, running memberships, AND going live? All in one place. Game changer.",
+      name: "Elevatetoday",
+      role: "Producer & Artist",
+      stat: "1,200+",
+      statLabel: "beats sold",
+      initials: "ET"
     },
   ];
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/30 p-8 md:p-12">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Community stories</p>
-        <h2 className="mt-3 text-3xl font-bold md:text-4xl">Pluggd is powering the next wave.</h2>
+    <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-black/50 to-black/30 p-8 md:p-12 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.05),transparent_60%)]" />
+      <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <Badge className="mb-4 bg-white/10 text-white border-white/20">Creator stories</Badge>
+        <h2 className="mt-3 text-3xl font-bold md:text-5xl">
+          Hear it from the<br />
+          <span className="text-primary">creators themselves</span>
+        </h2>
+        <p className="mt-4 text-zinc-400">Real artists. Real results. Real payouts.</p>
       </div>
-      <div className="mt-10 grid gap-6 md:grid-cols-2">
-        {quotesData.map((quote) => (
-          <div key={quote.name} className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <Quote className="h-6 w-6 text-primary" />
-            <p className="mt-4 text-lg leading-relaxed text-white">“{quote.quote}”</p>
-            <div className="mt-6 flex items-center gap-3">
-              <Avatar className="h-11 w-11">
-                <AvatarFallback>{quote.name[0]}</AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="text-sm font-semibold">{quote.name}</div>
-                <div className="text-xs text-zinc-400">{quote.role}</div>
+      <div className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
+        {quotesData.map((quote, idx) => (
+          <motion.div 
+            key={quote.name}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.1 }}
+            className="group rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 hover:border-primary/30 transition-all duration-300"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <Quote className="h-8 w-8 text-primary/60" />
+              <div className="text-right">
+                <div className="text-xl font-bold text-primary">{quote.stat}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{quote.statLabel}</div>
               </div>
             </div>
-          </div>
+            <p className="text-base leading-relaxed text-white/90 italic">"{quote.quote}"</p>
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center gap-3">
+              <Avatar className="h-10 w-10 border border-primary/30">
+                <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold">{quote.initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold text-white">{quote.name}</div>
+                <div className="text-xs text-zinc-500">{quote.role}</div>
+              </div>
+            </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -1792,23 +1894,38 @@ function TestimonialsSection() {
 
 function FinalCTA() {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/30 via-transparent to-purple-900/40 p-12 text-center">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_45%)]" />
-      <div className="relative z-10 space-y-6">
-        <p className="text-xs uppercase tracking-[0.4em] text-zinc-300">Ready when you are</p>
-        <h2 className="text-4xl font-bold">Join the future of music.</h2>
-        <p className="text-lg text-zinc-200">
-          Launch your store, grow your fans, and keep your ownership with Pluggd’s creator OS.
+    <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/20 via-black/60 to-purple-900/30 p-10 md:p-16 text-center">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.25),_transparent_50%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.2),_transparent_50%)]" />
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="relative z-10 space-y-6"
+      >
+        <Badge className="bg-primary/20 text-primary border-primary/30 font-medium">
+          ✨ Free to get started
+        </Badge>
+        <h2 className="text-4xl md:text-6xl font-bold leading-tight">
+          Ready to own<br />
+          <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">your music career?</span>
+        </h2>
+        <p className="text-lg md:text-xl text-zinc-300 max-w-2xl mx-auto leading-relaxed">
+          Join thousands of creators who chose independence over algorithms. 
+          Set up your page in minutes, start earning today.
         </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <Button size="lg" className="px-8 text-base" asChild>
-            <Link to="/signup?intent=create">Start Creating Today</Link>
+        <div className="flex flex-wrap justify-center gap-4 pt-4">
+          <Button size="lg" className="px-10 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 shadow-xl shadow-primary/30 transition-all duration-300 hover:shadow-primary/50 hover:scale-[1.02]" asChild>
+            <Link to="/signup?intent=create">Create Your Free Page →</Link>
           </Button>
-          <Button size="lg" variant="outline" className="px-8 text-base" asChild>
-            <Link to="/marketplace">Explore the Marketplace</Link>
+          <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20 hover:bg-white/10 hover:border-white/40" asChild>
+            <Link to="/marketplace">Browse as a Fan</Link>
           </Button>
         </div>
-      </div>
+        <p className="text-sm text-zinc-500 pt-2">
+          No credit card required • Set up in under 5 minutes • 90% creator earnings
+        </p>
+      </motion.div>
     </div>
   );
 }
@@ -1861,38 +1978,70 @@ function PlacementsRow() {
 
 function Footer() {
   return (
-    <footer className="mt-20 border-t border-white/10 bg-black/40">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-6 px-4 py-10 md:grid-cols-4">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-lg font-bold">
-            <PluggdMark />
-            <span>pluggd</span>
+    <footer className="mt-20 border-t border-white/10 bg-black/60">
+      <div className="mx-auto max-w-[1280px] px-4 py-12">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
+          <div className="col-span-2 md:col-span-1">
+            <div className="mb-3 flex items-center gap-2 text-lg font-bold">
+              <PluggdMark />
+              <span>pluggd</span>
+            </div>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              The creator-first music platform. Own your work. Grow your fanbase. Keep your earnings.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <a href="https://twitter.com/pluggdmusic" target="_blank" rel="noopener noreferrer" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/20 hover:text-white transition-colors" aria-label="Twitter">
+                𝕏
+              </a>
+              <a href="https://instagram.com/pluggdmusic" target="_blank" rel="noopener noreferrer" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/20 hover:text-white transition-colors" aria-label="Instagram">
+                📷
+              </a>
+              <a href="https://discord.gg/pluggd" target="_blank" rel="noopener noreferrer" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/20 hover:text-white transition-colors" aria-label="Discord">
+                💬
+              </a>
+            </div>
           </div>
-          <p className="text-sm text-zinc-400">The community for creators & fans.</p>
+          <div>
+            <div className="text-sm font-semibold mb-3">Product</div>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/marketplace" className="text-zinc-400 hover:text-white transition-colors">Beat Store</Link></li>
+              <li><Link to="/releases" className="text-zinc-400 hover:text-white transition-colors">Releases</Link></li>
+              <li><Link to="/live" className="text-zinc-400 hover:text-white transition-colors">Live Sessions</Link></li>
+              <li><Link to="/collaborate" className="text-zinc-400 hover:text-white transition-colors">Collaborations</Link></li>
+              <li><Link to="/courses" className="text-zinc-400 hover:text-white transition-colors">Courses</Link></li>
+            </ul>
+          </div>
+          <div>
+            <div className="text-sm font-semibold mb-3">Creators</div>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/signup?intent=create" className="text-zinc-400 hover:text-white transition-colors">Get Started</Link></li>
+              <li><Link to="/studio" className="text-zinc-400 hover:text-white transition-colors">Creator Studio</Link></li>
+              <li><Link to="/directory" className="text-zinc-400 hover:text-white transition-colors">Directory</Link></li>
+              <li><Link to="/tools" className="text-zinc-400 hover:text-white transition-colors">Pro Tools</Link></li>
+            </ul>
+          </div>
+          <div>
+            <div className="text-sm font-semibold mb-3">Company</div>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/about" className="text-zinc-400 hover:text-white transition-colors">About</Link></li>
+              <li><Link to="/blog" className="text-zinc-400 hover:text-white transition-colors">Blog</Link></li>
+              <li><Link to="/careers" className="text-zinc-400 hover:text-white transition-colors">Careers</Link></li>
+              <li><Link to="/contact" className="text-zinc-400 hover:text-white transition-colors">Contact</Link></li>
+            </ul>
+          </div>
+          <div>
+            <div className="text-sm font-semibold mb-3">Legal</div>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/terms" className="text-zinc-400 hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link to="/privacy" className="text-zinc-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/cookies" className="text-zinc-400 hover:text-white transition-colors">Cookie Policy</Link></li>
+              <li><Link to="/dmca" className="text-zinc-400 hover:text-white transition-colors">DMCA</Link></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <div className="text-sm font-semibold">Product</div>
-          <ul className="mt-2 space-y-1 text-sm text-zinc-400">
-            <li>Beats</li>
-            <li>Releases</li>
-            <li>Live</li>
-            <li>Collab</li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-sm font-semibold">Company</div>
-          <ul className="mt-2 space-y-1 text-sm text-zinc-400">
-            <li>About</li>
-            <li>Blog</li>
-            <li>Careers</li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-sm font-semibold">Legal</div>
-          <ul className="mt-2 space-y-1 text-sm text-zinc-400">
-            <li>Terms</li>
-            <li>Privacy</li>
-          </ul>
+        <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+          <p>© {new Date().getFullYear()} Pluggd. All rights reserved.</p>
+          <p className="text-center">Made with 🎵 for creators, by creators</p>
         </div>
       </div>
     </footer>

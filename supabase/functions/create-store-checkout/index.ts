@@ -199,14 +199,16 @@ serve(async (req) => {
 
     logStep("Order created", { orderId: order.id });
 
-    // Create order items
+    // Create order items with creator attribution
     const orderItems = cartItems.map(cartItem => {
       const product = products.find(p => p.id === cartItem.productId);
       return {
         order_id: order.id,
         product_id: cartItem.productId,
         quantity: cartItem.quantity || 1,
-        price: product?.price || 0
+        price: product?.price || 0,
+        creator_id: product?.user_id || product?.owner_id || null,
+        kind: product?.product_type || 'product',
       };
     });
 

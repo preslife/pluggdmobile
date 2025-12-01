@@ -170,7 +170,7 @@ export const PaymentValidation = () => {
       setResolving(issueId);
 
       switch (issue.type) {
-        case 'expired':
+        case 'expired': {
           // Extend download link
           const newExpiryDate = new Date();
           newExpiryDate.setDate(newExpiryDate.getDate() + 30); // Extend by 30 days
@@ -190,8 +190,8 @@ export const PaymentValidation = () => {
             description: "Download link has been extended by 30 days",
           });
           break;
-
-        case 'failed':
+        }
+        case 'failed': {
           // Retry payment processing
           const { error: retryError } = await supabase.functions.invoke('retry-payment', {
             body: { payment_id: issue.payment_id }
@@ -204,7 +204,7 @@ export const PaymentValidation = () => {
             description: "We're attempting to process the payment again",
           });
           break;
-
+        }
         case 'duplicate':
           // Mark as reviewed/resolved
           toast({

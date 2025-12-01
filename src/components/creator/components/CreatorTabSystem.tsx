@@ -141,7 +141,7 @@ export const CreatorTabSystem = ({ profile, stats, visitorStatus }: CreatorTabSy
         { count: coursesCount },
         { count: communityPosts }
       ] = await Promise.all([
-        supabase.from('releases').select('*', { count: 'exact', head: true }).eq('user_id', profile.user_id).eq('status', 'published'),
+        supabase.from('releases').select('*', { count: 'exact', head: true }).eq('user_id', profile.user_id).eq('status', 'live').eq('approved', true),
         supabase.from('beats').select('*', { count: 'exact', head: true }).eq('user_id', profile.user_id).eq('is_published', true),
         supabase.from('live_sessions').select('*').eq('creator_id', profile.user_id).gte('scheduled_for', new Date().toISOString()).order('scheduled_for', { ascending: true }),
         supabase.from('courses').select('*', { count: 'exact', head: true }).eq('creator_id', profile.user_id).eq('status', 'published'),

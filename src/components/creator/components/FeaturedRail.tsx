@@ -138,7 +138,8 @@ export const FeaturedRail = ({ creatorId }: FeaturedRailProps) => {
           .select('*')
           .eq('user_id', creatorId)
           .eq('is_featured', true)
-          .eq('status', 'published')
+          .eq('status', 'live')
+          .eq('approved', true)
           .order('created_at', { ascending: false })
           .limit(3),
 

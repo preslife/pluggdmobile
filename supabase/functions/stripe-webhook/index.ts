@@ -1702,6 +1702,55 @@ serve(async (req) => {
           }
         }
 
+        // Handle subscription deletion: update user_subscriptions, Discord sync, and send email
+        if (event.type === 'customer.subscription.deleted') {
+          const customerId = subscription.customer as string;
+          const customer = await stripe.customers.retrieve(customerId);
+          
+          if ('email' in customer && customer.email) {
+            const { data: existingSub } = await supabaseClient
+              .from("user_subscriptions")
+              .select("user_id")
+              .eq("stripe_subscription_id", subscription.id)
+              .single();
+
+            if (existingSub) {
+              await supabaseClient.from("user_subscriptions").update({
+                tier: 'free',
+                status: 'inactive',
+                stripe_subscription_id: null,
+                current_period_start: null,
+                current_period_end: null,
+                updated_at: new Date().toISOString(),
+              }).eq("stripe_subscription_id", subscription.id);
+
+              await logStep("Subscription cancelled in database", { subscriptionId: subscription.id });
+
+              // Trigger Discord role revoke for cancelled subscription
+              try {
+                await supabaseClient.functions.invoke('discord-sync-subscriber', {
+                  body: {
+                    creator_id: existingSub.user_id,
+                    fan_user_id: existingSub.user_id,
+                    action: 'revoke'
+                  }
+                });
+              } catch (discordError: any) {
+                await logStep("Discord sync failed", { error: discordError.message });
+              }
+
+              // Send cancellation email
+              await supabaseClient.functions.invoke('send-subscription-email', {
+                body: {
+                  type: 'subscription_cancelled',
+                  email: customer.email,
+                  user_id: existingSub.user_id
+                }
+              });
+            }
+          }
+        }
+
         break;
       }
 
@@ -1844,58 +1893,6 @@ serve(async (req) => {
           }
         }
 
-        break;
-      }
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        await logStep("Subscription cancelled", { subscriptionId: subscription.id });
-        
-        const customerId = subscription.customer as string;
-        const customer = await stripe.customers.retrieve(customerId);
-        
-        if ('email' in customer && customer.email) {
-          // Update subscription to free tier
-          const { data: existingSub } = await supabaseClient
-            .from("user_subscriptions")
-            .select("user_id")
-            .eq("stripe_subscription_id", subscription.id)
-            .single();
-
-          if (existingSub) {
-            await supabaseClient.from("user_subscriptions").update({
-              tier: 'free',
-              status: 'inactive',
-              stripe_subscription_id: null,
-              current_period_start: null,
-              current_period_end: null,
-              updated_at: new Date().toISOString(),
-            }).eq("stripe_subscription_id", subscription.id);
-
-            await logStep("Subscription cancelled in database", { subscriptionId: subscription.id });
-
-            // Trigger Discord role revoke for cancelled subscription
-            try {
-              await supabaseClient.functions.invoke('discord-sync-subscriber', {
-                body: {
-                  creator_id: existingSub.user_id,
-                  fan_user_id: existingSub.user_id,
-                  action: 'revoke'
-                }
-              });
-            } catch (discordError: any) {
-              await logStep("Discord sync failed", { error: discordError.message });
-            }
-
-            // Send cancellation email
-            await supabaseClient.functions.invoke('send-subscription-email', {
-              body: {
-                type: 'subscription_cancelled',
-                email: customer.email,
-                user_id: existingSub.user_id
-              }
-            });
-          }
-        }
         break;
       }
 

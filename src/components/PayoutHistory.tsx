@@ -94,7 +94,7 @@ const PayoutHistory = () => {
     // Filter by date range
     if (filters.dateRange !== 'all') {
       const now = new Date();
-      let cutoffDate = new Date();
+      const cutoffDate = new Date();
       
       switch (filters.dateRange) {
         case '7days':

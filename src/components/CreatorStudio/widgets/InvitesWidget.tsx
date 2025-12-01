@@ -157,10 +157,19 @@ export const InvitesWidget: React.FC = () => {
   };
 
   return (
-    <Card>
+    <Card className="studio-card overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Invites</CardTitle>
-        <UserPlus className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Invites</CardTitle>
+          {invites.length > 0 && (
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] bg-orange-500/15 text-orange-500 border-0">
+              {invites.length}
+            </Badge>
+          )}
+        </div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/20">
+          <UserPlus className="h-4 w-4 text-cyan-500" />
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (

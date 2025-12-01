@@ -3,189 +3,162 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { getAcademyBasePath } from '@/lib/academyRoutes';
+import { motion } from "framer-motion";
+import { Handshake, Music2, Wrench, GraduationCap, BarChart3, Users } from "lucide-react";
 
 const FeaturesPreview = () => {
   const academyPath = getAcademyBasePath();
   const features = [
     {
       category: "Collaboration",
-      title: "FYBY Hub",
-      description: "Advanced matching algorithm connects you with the perfect collaborators",
+      title: "Collab Hub",
+      description: "Smart matching connects you with vocalists, producers, and writers who fit your sound.",
       status: "Live",
-      preview: "💫 Smart Matching • 🎯 Project Management • 💬 Real-time Chat",
+      highlights: ["Smart Matching", "Project Management", "Real-time Chat"],
       link: "/collaborate",
-      accessible: true
+      accessible: true,
+      Icon: Handshake,
+      color: "from-emerald-500"
     },
     {
       category: "Marketplace",
       title: "Beat Store",
-      description: "Discover the hottest instrumentals or sell your own. Standard, premium, and custom licenses available — and sync-ready for pro users.",
+      description: "Sell beats with standard, premium, and exclusive licenses. Sync-ready for film & TV.",
       status: "Live",
-      preview: "🎵 Hot Instrumentals • 📜 Multiple Licenses • 🎬 Sync-Ready",
+      highlights: ["Multiple Licenses", "Instant Delivery", "Sync-Ready"],
       link: "/marketplace",
-      accessible: true
+      accessible: true,
+      Icon: Music2,
+      color: "from-purple-500"
     },
     {
       category: "Tools",
-      title: "Professional Tools",
-      description: "Create smarter with AI-powered lyric generators, instant contract templates, and auto-split sheet generation — everything you need to stay professional.",
+      title: "Pro Tools",
+      description: "AI lyric assists, contract templates, auto split sheets — everything to stay professional.",
       status: "Live",
-      preview: "🤖 AI Generators • 📜 Instant Contracts • 📊 Auto Split Sheets",
+      highlights: ["AI Generators", "Legal Templates", "Split Sheets"],
       link: "/tools",
-      accessible: true
+      accessible: true,
+      Icon: Wrench,
+      color: "from-blue-500"
     },
     {
       category: "Education",
-      title: "Industry Education",
-      description: "Master your craft with expert-led courses on production, sync licensing, and the music business. Unlock knowledge that powers careers.",
+      title: "Academy",
+      description: "Expert-led courses on production, sync licensing, and the music business.",
       status: "Live",
-      preview: "👨‍🏫 Expert-Led • 🏆 Career-Focused • 📚 Industry Secrets",
+      highlights: ["Expert-Led", "Career-Focused", "Industry Secrets"],
       link: academyPath,
-      accessible: true
+      accessible: true,
+      Icon: GraduationCap,
+      color: "from-amber-500"
     },
     {
       category: "Business",
-      title: "Premium Analytics",
-      description: "Track your growth with powerful analytics, deep market insights, and real-time revenue breakdowns.",
-      status: "Premium",
-      preview: "📊 Growth Tracking • 🎯 Market Insights • 💰 Revenue Analytics",
+      title: "Analytics",
+      description: "Track growth, revenue, and audience insights. Know exactly what's working.",
+      status: "Pro",
+      highlights: ["Growth Tracking", "Market Insights", "Revenue Analytics"],
       link: "/tools",
-      accessible: false
+      accessible: true,
+      Icon: BarChart3,
+      color: "from-cyan-500"
     },
     {
       category: "Network",
-      title: "Pro Directory",
-      description: "Access a verified directory of managers, publishers, label reps, A&Rs, and sync agents — with built-in messaging and availability calendars.",
+      title: "Directory",
+      description: "Find verified managers, A&Rs, publishers, and sync agents with direct messaging.",
       status: "Live",
-      preview: "✅ Verified Pros • 💬 Built-in Messaging • 📅 Availability",
+      highlights: ["Verified Pros", "Direct Messaging", "Availability"],
       link: "/directory",
-      accessible: true
+      accessible: true,
+      Icon: Users,
+      color: "from-pink-500"
     }
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Live":
-        return "bg-primary/20 text-primary border-primary/30";
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
       case "Beta":
-        return "bg-accent/20 text-accent border-accent/30";
-      case "Premium":
-        return "bg-gold/20 text-gold border-gold/30";
+        return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+      case "Pro":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
       case "Coming Soon":
-        return "bg-muted/20 text-muted-foreground border-muted/30";
+        return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
       default:
-        return "bg-muted/20 text-muted-foreground border-muted/30";
+        return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
     }
   };
 
   return (
-    <section id="features" className="relative py-24 bg-muted/30 overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
-        style={{ backgroundImage: 'url(/lovable-uploads/7a7e071e-72b3-4824-aead-f1d0760f6374.png)' }}
-      ></div>
+    <div className="relative rounded-3xl border border-white/10 bg-black/40 p-8 md:p-12 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(249,115,22,0.08),transparent_50%)]" />
       
-      {/* Background Overlay */}
-      <div className="absolute inset-0 bg-background/50"></div>
-      
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">
-            🚀 Feature Preview
-          </Badge>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Powerful Features{" "}
-            <span className="bg-gradient-accent bg-clip-text text-transparent">
-              Built for Artists
-            </span>
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Discover the comprehensive suite of tools and services designed to accelerate 
-            your music career and streamline your creative process.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <Card 
-              key={index} 
-              className="group hover:shadow-glow transition-all duration-500 hover:scale-[1.02] bg-background/80 backdrop-blur-sm border-border/50"
-            >
-              <CardHeader className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-xs font-medium">
-                    {feature.category}
-                  </Badge>
-                  <Badge className={`text-xs ${getStatusColor(feature.status)}`}>
-                    {feature.status}
-                  </Badge>
-                </div>
-                <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                  {feature.title}
-                </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground">
-                  {feature.description}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <div className="bg-muted/50 rounded-lg p-3 border border-border/30">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {feature.preview}
-                  </p>
-                </div>
-                
-                {feature.accessible ? (
-                  <Link to={feature.link}>
-                    <Button 
-                      variant={feature.status === "Live" ? "default" : feature.status === "Premium" ? "premium" : "glow"} 
-                      className="w-full transition-all duration-300"
-                    >
-                      {feature.status === "Live" ? "Access Now" : 
-                       feature.status === "Premium" ? "View Premium" : "Try Now"}
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button 
-                    variant="outline"
-                    className="w-full transition-all duration-300"
-                    disabled
-                  >
-                    Coming Soon
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Development Roadmap Teaser */}
-        <div className="mt-16 text-center">
-          <div className="bg-gradient-card p-8 rounded-2xl border border-border/50 shadow-card">
-            <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              🛣️ Development Roadmap
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-              We're constantly evolving our platform based on community feedback. 
-              Join our beta program to get early access to new features.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/beta-program">
-                <Button variant="premium" size="lg">
-                  Join Beta Program
-                </Button>
-              </Link>
-              <Link to="/roadmap">
-                <Button variant="outline" size="lg">
-                  View Full Roadmap
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <div className="relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {features.map((feature, index) => {
+            const Icon = feature.Icon;
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.08 }}
+              >
+                <Card 
+                  className="group h-full hover:border-white/20 transition-all duration-300 bg-white/[0.03] backdrop-blur-sm border-white/10"
+                >
+                  <CardHeader className="space-y-3 pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} to-transparent`}>
+                        <Icon className="h-5 w-5 text-white" />
+                      </div>
+                      <Badge className={`text-[10px] ${getStatusColor(feature.status)}`}>
+                        {feature.status}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                      {feature.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm text-zinc-400">
+                      {feature.description}
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {feature.highlights.map((highlight, i) => (
+                        <span 
+                          key={i}
+                          className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-zinc-400 border border-white/10"
+                        >
+                          {highlight}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    {feature.accessible && (
+                      <Link to={feature.link}>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                        >
+                          Explore →
+                        </Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

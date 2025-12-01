@@ -248,7 +248,7 @@ async function fetchHubData(): Promise<HubData> {
     ...((radioQueueRes.data ?? []).map(q => q.track_id))
   ];
   const unique = Array.from(new Set(trackIds));
-  let radio: HubData["radio"] = {
+  const radio: HubData["radio"] = {
     listeners,
     now: { id: "0", title: "Community Radio", artist: "Pluggd", cover: null, url: null },
     queue: []
@@ -483,8 +483,9 @@ export default function CommunityHubEpic() {
         <main className="relative min-h-screen w-full bg-background text-foreground">
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">
-              <div className="mx-auto mb-4 h-32 w-32 animate-spin rounded-full border-b-2 border-amber-400"></div>
-              <p className="text-zinc-400">Loading Community Hub...</p>
+              <div className="mx-auto mb-6 h-20 w-20 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+              <h2 className="text-xl font-semibold text-white mb-2">Loading Community Hub</h2>
+              <p className="text-zinc-400">Gathering the latest from the community...</p>
             </div>
           </div>
         </main>
@@ -500,33 +501,96 @@ export default function CommunityHubEpic() {
     <PlugProvider>
       <main className="relative min-h-screen w-full bg-background text-foreground">
       {error && (
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <div className="mx-auto max-w-7xl px-4 pt-4">
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             {error}
           </div>
         </div>
       )}
 
-      <div className="relative pb-16">
-        <div className="mx-auto max-w-7xl px-4 pt-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
-            <div className="rounded-3xl border border-white/10 bg-card/80 p-4 shadow-[0_25px_60px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-              <div className="space-y-6">
-                <PluggdWall />
-                <MapView className="min-h-[28rem]" />
+      {/* Hero Section */}
+      <div className="relative pt-6 pb-8 overflow-hidden">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-purple-900/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(249,115,22,0.15),transparent_50%)]" />
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-4">
+          {/* Hero Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+              <Users className="w-3 h-3 mr-1" />
+              {formatNumber(data.stats.members)} creators worldwide
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3">
+              The <span className="text-primary">Community Hub</span>
+            </h1>
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+              Connect with creators, enter contests, find collaborators, and grow together. 
+              Your creative journey starts here.
+            </p>
+          </motion.div>
+
+          {/* Quick Stats Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-wrap justify-center gap-6 mb-8"
+          >
+            {[
+              { icon: Users, label: `${formatNumber(data.stats.active_week)} active this week`, color: "text-emerald-400" },
+              { icon: Trophy, label: `${data.contests.length} live contests`, color: "text-amber-400" },
+              { icon: Radio, label: `${livesNow.length} live now`, color: "text-red-400" },
+              { icon: Handshake, label: `${data.collab_briefs.length} open collabs`, color: "text-purple-400" },
+            ].map((stat, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-sm">
+                <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                <span className="text-zinc-300">{stat.label}</span>
               </div>
-            </div>
-            <div id="quick-actions">
+            ))}
+          </motion.div>
+
+          {/* Main Grid: Map + Quick Actions */}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-3xl border border-white/10 bg-card/80 p-5 shadow-2xl backdrop-blur-xl overflow-hidden"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Compass className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-white">Fan Map</h2>
+                <Badge className="ml-auto bg-white/10 border-white/20 text-xs">Interactive</Badge>
+              </div>
+              <div className="space-y-4">
+                <PluggdWall />
+                <MapView className="min-h-[24rem] rounded-2xl overflow-hidden" />
+              </div>
+            </motion.div>
+            <motion.div 
+              id="quick-actions"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <QuickActionSidebar
                 actions={quickActions}
                 stats={data.stats}
                 onCreate={() => setShowCreateModal(true)}
               />
-            </div>
+            </motion.div>
           </div>
         </div>
+      </div>
 
-        <div className="sticky top-[var(--masthead-h)] z-30 border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="relative pb-16">
+        {/* Sticky Tab Navigation */}
+        <div className="sticky top-[var(--masthead-h)] z-30 border-b border-white/10 bg-background/90 backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4">
             <TabsNav
               tabs={TABS}
@@ -538,16 +602,28 @@ export default function CommunityHubEpic() {
           </div>
         </div>
 
+        {/* Announcements */}
         {hasAnnouncements && (
-          <div className="border-b border-white/10 bg-background/70">
+          <div className="border-b border-white/10 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5">
             <div className="mx-auto max-w-7xl px-4 py-2">
               <AnnouncementsBar announcements={data.announcements} />
             </div>
           </div>
         )}
 
+        {/* Tab Content */}
         <section className="mx-auto max-w-7xl px-4 py-10">
-          {tabContent}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {tabContent}
+            </motion.div>
+          </AnimatePresence>
         </section>
       </div>
 
@@ -640,55 +716,71 @@ type QuickActionItem = {
 
 function QuickActionSidebar({ actions, stats, onCreate }: { actions: QuickActionItem[]; stats: HubData["stats"]; onCreate: () => void }) {
   return (
-    <div className="flex h-full flex-col gap-5 rounded-3xl border border-white/10 bg-card/70 p-5 shadow-[0_20px_50px_-25px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-      <div>
-        <h2 className="text-lg font-semibold text-white">Quick Actions</h2>
-        <p className="text-sm text-zinc-400">Pick a next step and keep momentum.</p>
+    <div className="flex h-full flex-col gap-4 rounded-3xl border border-white/10 bg-gradient-to-b from-card/90 to-card/70 p-5 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Quick Actions
+          </h2>
+          <p className="text-sm text-zinc-400">What would you like to do?</p>
+        </div>
       </div>
-      <div className="grid gap-3">
-        {actions.map((action) => (
-          <a
+      
+      <div className="grid gap-2">
+        {actions.map((action, idx) => (
+          <motion.a
             key={action.label}
             href={action.href}
-            className="group block rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/10"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 + idx * 0.05 }}
+            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 transition-all hover:bg-white/10 hover:border-primary/30"
           >
-            <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-amber-200">
-                {action.icon}
-              </span>
-              <div className="flex-1">
-                <div className="font-medium text-white">{action.label}</div>
-                <div className="text-xs text-zinc-400">{action.description}</div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-zinc-500 transition group-hover:text-amber-300" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-transparent text-primary">
+              {action.icon}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-white group-hover:text-primary transition-colors">{action.label}</div>
+              <div className="text-xs text-zinc-500 truncate">{action.description}</div>
             </div>
-          </a>
+            <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:text-primary group-hover:translate-x-0.5" />
+          </motion.a>
         ))}
       </div>
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-200">
-        <div className="mb-2 text-xs uppercase tracking-wide text-zinc-400">This Week</div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
+      
+      {/* Stats Card */}
+      <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs uppercase tracking-wider text-zinc-400 font-medium">Community Pulse</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="font-semibold text-white">{formatNumber(stats.active_week)}</div>
-            <div className="text-xs text-zinc-400">Active creators</div>
+            <div className="text-2xl font-bold text-white">{formatNumber(stats.active_week)}</div>
+            <div className="text-xs text-zinc-500">Active this week</div>
           </div>
           <div>
-            <div className="font-semibold text-white">{formatNumber(stats.members)}</div>
-            <div className="text-xs text-zinc-400">Members in hub</div>
+            <div className="text-2xl font-bold text-white">{formatNumber(stats.members)}</div>
+            <div className="text-xs text-zinc-500">Total members</div>
           </div>
           <div>
-            <div className="font-semibold text-white">{formatNumber(stats.xp)}</div>
-            <div className="text-xs text-zinc-400">XP earned</div>
+            <div className="text-2xl font-bold text-primary">{formatNumber(stats.xp)}</div>
+            <div className="text-xs text-zinc-500">XP earned</div>
           </div>
           <div>
-            <div className="font-semibold text-white">{formatNumber(stats.streak_days)}</div>
-            <div className="text-xs text-zinc-400">Avg streak</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.streak_days}d</div>
+            <div className="text-xs text-zinc-500">Avg streak</div>
           </div>
         </div>
       </div>
-      <Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400" onClick={onCreate}>
+      
+      <Button 
+        className="w-full bg-gradient-to-r from-primary to-amber-500 text-white font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-[1.02]" 
+        onClick={onCreate}
+      >
         <Plus className="h-4 w-4" />
-        Create
+        Create Something New
       </Button>
     </div>
   );
@@ -703,30 +795,49 @@ type TabsNavProps = {
 };
 
 function TabsNav({ tabs, active, onSelect, onCreate, onCommand }: TabsNavProps) {
+  const tabIcons: Record<TabId, React.ReactNode> = {
+    feed: <Megaphone className="h-4 w-4" />,
+    contests: <Trophy className="h-4 w-4" />,
+    collabs: <Handshake className="h-4 w-4" />,
+    crowdfund: <Coins className="h-4 w-4" />,
+    live: <Radio className="h-4 w-4" />,
+    blog: <BookOpen className="h-4 w-4" />,
+  };
+
   return (
-    <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-      <nav className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto px-2">
+    <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
+      <nav className="no-scrollbar -mx-2 flex gap-1.5 overflow-x-auto px-2">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onSelect(tab.id)}
             className={classNames(
-              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+              "inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all",
               active === tab.id
-                ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
-                : "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+                ? "border-primary/40 bg-primary/10 text-primary shadow-sm"
+                : "border-transparent bg-transparent text-zinc-400 hover:text-white hover:bg-white/5"
             )}
           >
+            {tabIcons[tab.id]}
             {tab.label}
           </button>
         ))}
       </nav>
       <div className="flex items-center gap-2 self-start md:self-auto">
-        <Button className="hidden sm:inline-flex bg-white/10 text-white hover:bg-white/15" onClick={onCommand}>
+        <Button 
+          className="hidden sm:inline-flex bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10 hover:text-white transition-all" 
+          onClick={onCommand}
+        >
           <CommandIcon className="h-4 w-4" />
-          Command
+          <span className="hidden lg:inline">Command</span>
+          <kbd className="ml-2 hidden lg:inline-flex items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-zinc-500">
+            ⌘K
+          </kbd>
         </Button>
-        <Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400" onClick={onCreate}>
+        <Button 
+          className="bg-gradient-to-r from-primary to-amber-500 text-white font-medium shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all" 
+          onClick={onCreate}
+        >
           <Plus className="h-4 w-4" />
           Create
         </Button>
@@ -1686,17 +1797,34 @@ function TrendingTopics({ topics }: { topics: { tag: string; count: number }[] }
 
 function FooterCTA() {
   return (
-    <section className="relative mx-auto mt-12 max-w-7xl px-4 pb-16">
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-10">
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div>
-            <h3 className="text-2xl font-semibold text-white">Want to host a session or submit a course?</h3>
-            <p className="mt-1 text-zinc-300/90">Share your expertise, grow your audience, and earn. We’ll help you craft an irresistible session.</p>
+    <section className="relative mx-auto max-w-7xl px-4 pb-16">
+      <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-purple-900/10 p-8 sm:p-12">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.1),transparent_50%)]" />
+        
+        <div className="relative z-10 flex flex-col items-center text-center gap-6 md:flex-row md:text-left md:justify-between">
+          <div className="max-w-xl">
+            <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">
+              <Star className="h-3 w-3 mr-1" />
+              Share your expertise
+            </Badge>
+            <h3 className="text-2xl md:text-3xl font-bold text-white">Ready to lead a session or teach a course?</h3>
+            <p className="mt-2 text-zinc-400">Share your knowledge with the community. Host live sessions, create courses, and earn while helping others grow.</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <a href="/studio/live/sessions"><Button className="bg-amber-500 text-zinc-950 hover:bg-amber-400"><Radio className="h-4 w-4"/>Host a Session</Button></a>
-            <a href="/studio/courses/builder"><Button className="bg-white/10 text-white hover:bg-white/20"><BookOpen className="h-4 w-4"/>Submit a Course</Button></a>
-            <a href="https://discord.gg/pluggd" className="text-sm text-amber-300 hover:text-amber-200" target="_blank" rel="noreferrer">Join Discord</a>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <a href="/studio/live/sessions">
+              <Button className="bg-gradient-to-r from-primary to-amber-500 text-white font-medium shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
+                <Radio className="h-4 w-4"/>
+                Host a Session
+              </Button>
+            </a>
+            <a href="/studio/courses/builder">
+              <Button className="bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-all">
+                <BookOpen className="h-4 w-4"/>
+                Create a Course
+              </Button>
+            </a>
           </div>
         </div>
       </div>

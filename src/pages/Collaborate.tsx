@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users } from "lucide-react";
+import { Users, Handshake, Search, PlusCircle, FileText, Sparkles, Music, Mic, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 import { ProjectCard } from "@/components/ProjectCard";
 import { ProjectFilters } from "@/components/ProjectFilters";
@@ -13,28 +15,24 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { setMeta } from "@/lib/seo";
 
 const Collaborate = () => {
-  console.log('Collaborate component rendering - start');
+  const { toast } = useToast();
+  const { 
+    projects, 
+    loading, 
+    error, 
+    fetchProjects, 
+    applyToProject, 
+    getUserProjects,
+    getUserApplications 
+  } = useCollaboration();
   
-  try {
-    const { toast } = useToast();
-    const { 
-      projects, 
-      loading, 
-      error, 
-      fetchProjects, 
-      applyToProject, 
-      getUserProjects,
-      getUserApplications 
-    } = useCollaboration();
-    console.log('Hooks loaded successfully');
-    
-    useEffect(() => {
-      setMeta(
-        "Pluggd Collaborate — Find Creators & Projects",
-        "Find collaborators and projects on Pluggd.",
-        "/collaborate"
-      );
-    }, []);
+  useEffect(() => {
+    setMeta(
+      "Pluggd Collaborate — Find Creators & Projects",
+      "Find collaborators and projects on Pluggd.",
+      "/collaborate"
+    );
+  }, []);
   const [selectedGenre, setSelectedGenre] = useState("all");
   const [selectedSkill, setSelectedSkill] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,11 +104,8 @@ const Collaborate = () => {
   }, []);
 
   const handleOpenDetail = (project: CollaborationProject) => {
-    console.log('Collaborate handleOpenDetail called with:', project);
-    console.log('Current modal state before:', { selectedProject, isDetailModalOpen });
     setSelectedProject(project);
     setIsDetailModalOpen(true);
-    console.log('Modal state after setting:', { selectedProject: project, isDetailModalOpen: true });
   };
 
   const handleCloseDetail = () => {
@@ -181,41 +176,102 @@ const Collaborate = () => {
       </div>
     );
   }
-
-  console.log('About to render Collaborate component');
   
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="relative text-center mb-12 py-16 rounded-2xl overflow-hidden">
-          {/* Background Image */}
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
-            style={{ backgroundImage: 'url(/lovable-uploads/b19f0151-b9ac-41fa-b010-ed59a5b085ef.png)' }}
-          ></div>
-          
-          {/* Background Overlay */}
-          <div className="absolute inset-0 bg-background/60"></div>
-          
-          <div className="relative z-10">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-background to-teal-500/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(20,184,166,0.1),transparent_50%)]" />
+        
+        <div className="relative z-10 container mx-auto px-4 pt-12 pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-3xl mx-auto"
+          >
+            <Badge className="mb-4 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+              <Handshake className="w-3 h-3 mr-1" />
+              Find Your People
+            </Badge>
+            
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-primary bg-clip-text text-transparent">FYBY</span>
-              {" "}
-              <span className="text-foreground">Collaboration Hub</span>
+              Collaboration <span className="text-emerald-500">Hub</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Find Your Beat, Find Your Voice - Connect with artists and producers for your next collaboration
+            
+            <p className="text-lg text-muted-foreground mb-8">
+              Find your beat, find your voice. Connect with artists, producers, and creators 
+              for your next project. Post briefs, discover talent, and make music together.
             </p>
-          </div>
-        </div>
 
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-6 mb-8">
+              {[
+                { icon: Music, label: "Producers", color: "text-emerald-400" },
+                { icon: Mic, label: "Vocalists", color: "text-teal-400" },
+                { icon: Palette, label: "Mix Engineers", color: "text-cyan-400" },
+                { icon: Sparkles, label: "Songwriters", color: "text-green-400" },
+              ].map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + idx * 0.05 }}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <item.icon className={`w-4 h-4 ${item.color}`} />
+                  <span className="text-zinc-300">{item.label}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Feature Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 max-w-4xl mx-auto"
+          >
+            {[
+              { icon: Search, title: "Find Collaborators", desc: "Browse hundreds of open projects", color: "from-emerald-500/20 to-teal-500/10" },
+              { icon: PlusCircle, title: "Post Your Brief", desc: "Describe what you need and get applications", color: "from-teal-500/20 to-cyan-500/10" },
+              { icon: FileText, title: "Apply & Connect", desc: "Send your pitch and start creating", color: "from-cyan-500/20 to-green-500/10" },
+            ].map((card, idx) => (
+              <div
+                key={idx}
+                className={`p-5 rounded-2xl border border-white/10 bg-gradient-to-br ${card.color} backdrop-blur-sm`}
+              >
+                <card.icon className="w-8 h-8 text-emerald-400 mb-3" />
+                <h3 className="font-semibold text-white mb-1">{card.title}</h3>
+                <p className="text-sm text-zinc-400">{card.desc}</p>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <Tabs defaultValue="browse" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 max-w-xl mx-auto">
-            <TabsTrigger value="browse">Browse Projects</TabsTrigger>
-            <TabsTrigger value="submit">Submit Project</TabsTrigger>
-            <TabsTrigger value="my-projects">My Projects</TabsTrigger>
-            <TabsTrigger value="my-applications">My Applications</TabsTrigger>
+          <TabsList className="bg-muted/50 p-1 w-full max-w-2xl mx-auto grid grid-cols-4">
+            <TabsTrigger value="browse" className="data-[state=active]:bg-background">
+              <Search className="w-4 h-4 mr-2 hidden sm:inline" />
+              Browse
+            </TabsTrigger>
+            <TabsTrigger value="submit" className="data-[state=active]:bg-background">
+              <PlusCircle className="w-4 h-4 mr-2 hidden sm:inline" />
+              Submit
+            </TabsTrigger>
+            <TabsTrigger value="my-projects" className="data-[state=active]:bg-background">
+              <FileText className="w-4 h-4 mr-2 hidden sm:inline" />
+              My Projects
+            </TabsTrigger>
+            <TabsTrigger value="my-applications" className="data-[state=active]:bg-background">
+              <Users className="w-4 h-4 mr-2 hidden sm:inline" />
+              Applications
+            </TabsTrigger>
           </TabsList>
 
           {/* Browse Projects Tab */}
@@ -232,18 +288,15 @@ const Collaborate = () => {
 
             {/* Project Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => {
-                console.log('Rendering project:', project);
-                return (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project}
-                    onOpenDetail={handleOpenDetail}
-                    onApply={handleApply}
-                    onMessage={handleMessage}
-                  />
-                );
-              })}
+              {filteredProjects.map((project) => (
+                <ProjectCard 
+                  key={project.id} 
+                  project={project}
+                  onOpenDetail={handleOpenDetail}
+                  onApply={handleApply}
+                  onMessage={handleMessage}
+                />
+              ))}
             </div>
 
             {filteredProjects.length === 0 && (
@@ -355,10 +408,6 @@ const Collaborate = () => {
       </div>
     </div>
   );
-  } catch (error) {
-    console.error('Error in Collaborate component:', error);
-    return <div className="min-h-screen bg-background flex items-center justify-center text-white">Error loading page</div>;
-  }
 };
 
 export default Collaborate;

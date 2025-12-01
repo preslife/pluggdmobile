@@ -62,6 +62,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLabelMemberships } from "@/hooks/useLabelMemberships";
 import { StudioContext } from "@/contexts/StudioContext";
+import OnboardingProgressWidget from "@/components/OnboardingProgressWidget";
+import CreatorWelcome from "@/components/CreatorWelcome";
 import type { LabelMembership } from "@/hooks/useLabelMemberships";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -657,15 +659,15 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
           Skip to studio content
         </a>
         <div className="min-h-screen w-full bg-background flex flex-col md:flex-row">
-        <Sidebar className="border-r" aria-label="Studio navigation">
-          <SidebarHeader>
-            <div className="flex items-center gap-2 px-2 py-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Music className="h-4 w-4" />
+        <Sidebar className="border-r border-border/50" aria-label="Studio navigation">
+          <SidebarHeader className="border-b border-border/30">
+            <div className="flex items-center gap-3 px-3 py-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/25">
+                <Music className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold">{intl.formatMessage({ id: 'creatorStudio.header.title', defaultMessage: 'Creator Studio' })}</h2>
-                <p className="text-xs text-muted-foreground">{intl.formatMessage({ id: 'creatorStudio.header.subtitle', defaultMessage: 'Professional Dashboard' })}</p>
+                <h2 className="text-sm font-bold tracking-tight">{intl.formatMessage({ id: 'creatorStudio.header.title', defaultMessage: 'Creator Studio' })}</h2>
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{intl.formatMessage({ id: 'creatorStudio.header.subtitle', defaultMessage: 'Pro Dashboard' })}</p>
               </div>
             </div>
           </SidebarHeader>
@@ -687,8 +689,8 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
                               <SidebarMenuButton
                                 isActive={hasActive}
                                 className={cn(
-                                  "w-full justify-between rounded-md px-2 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                                  hasActive && "bg-primary/10"
+                                  "w-full justify-between rounded-lg px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary hover:bg-muted/50",
+                                  hasActive && "bg-gradient-to-r from-orange-500/10 to-amber-500/5 border border-orange-500/20 text-orange-500"
                                 )}
                               >
                                 <div className="flex items-center gap-2">
@@ -753,23 +755,29 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
             </SidebarGroup>
           </SidebarContent>
           
-          <SidebarFooter>
-            <div className="p-2">
-              <div className="text-xs text-muted-foreground text-center">
-                Creator Studio v2.0
+          <SidebarFooter className="border-t border-border/30">
+            {/* Onboarding Progress Widget */}
+            <div className="px-3 pt-3">
+              <OnboardingProgressWidget variant="sidebar" />
+            </div>
+            <div className="p-3">
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Studio v2.0
               </div>
             </div>
           </SidebarFooter>
         </Sidebar>
         
         <SidebarInset className="flex-1">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/40 px-4 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10">
             <SidebarTrigger
-              className="-ml-1 h-11 w-11"
+              className="-ml-1 h-9 w-9 rounded-lg hover:bg-muted/50 transition-colors"
               aria-label="Toggle studio navigation"
             />
             <div className="flex-1" />
             {workspaceSwitcher}
+            <div className="h-5 w-px bg-border/50" />
             <ThemeToggle />
           </header>
           
@@ -780,6 +788,9 @@ export const CreatorStudioLayout: React.FC<CreatorStudioLayoutProps> = ({ childr
         </SidebarInset>
       </div>
       </SidebarProvider>
+      
+      {/* Creator Welcome Modal for new creators */}
+      <CreatorWelcome />
     </StudioContext.Provider>
   );
 };

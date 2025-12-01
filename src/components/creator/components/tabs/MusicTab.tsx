@@ -85,7 +85,8 @@ export const MusicTab = ({ profile, visitorStatus, count }: MusicTabProps) => {
         .from('releases')
         .select('*')
         .eq('user_id', profile.user_id)
-        .eq('status', 'published');
+        .eq('status', 'live')
+        .eq('approved', true);
 
       // Apply sorting
       switch (sortBy) {

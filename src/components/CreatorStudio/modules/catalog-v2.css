@@ -1,82 +1,541 @@
+/* Creator Studio Premium Design System
+   World-class dark theme with refined accents */
+
+/* ============================================
+   SCOPE: Catalog Module
+   ============================================ */
 .catalog-scope {
-  /* Force neutral, black-based surfaces inside Catalog only */
-  --background: 240 10% 3.9%; /* pure app background */
+  --background: 240 10% 3.9%;
   --card: 240 10% 6%;
-  --muted: 240 10% 8%;
+  --card-elevated: 240 10% 8%;
+  --muted: 240 10% 10%;
+  --border-subtle: 240 10% 12%;
+  --glow-primary: 24 100% 50%;
+  --glow-accent: 280 100% 70%;
 }
 
 .catalog-scope .card-ambient {
-  background: hsl(var(--card));
+  background: linear-gradient(
+    145deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card-elevated)) 100%
+  );
+  border: 1px solid hsl(var(--border-subtle));
 }
 
-.catalog-scope .tabs-list-reset {
-  background: transparent;
-}
-
-/* Ensure any accidental orange “panel” classes are neutralized */
-/* Neutralize orange/yellow/primary backgrounds on block containers only. */
-.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-orange"]:not([class*="inline"]),
-.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-amber"]:not([class*="inline"]),
-.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-yellow"]:not([class*="inline"]),
-.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-primary"]:not([class*="inline"]),
-.catalog-scope .bg-card,
-.catalog-scope .bg-secondary,
-.catalog-scope .bg-muted {
-  background-color: hsl(var(--background)) !important;
-}
-
-/* Also neutralize gradient panels on block containers (not inline chips/badges) */
-.catalog-scope :is(div,section,main,article,aside,header,footer)[class*="bg-gradient"],
-.catalog-scope :is(div,section,main,article,aside,header,footer)[style*="gradient"] {
-  background: hsl(var(--background)) !important;
-}
-
-/* Remove shadows/glows from tiles to keep flat black surfaces */
-.catalog-scope .shadow,
-.catalog-scope .shadow-sm,
-.catalog-scope .shadow-md,
-.catalog-scope .shadow-lg { box-shadow: none !important; }
-
-.catalog-scope .border-primary { /* keep outlines allowed */ }
-
+/* ============================================
+   SCOPE: Creator Studio Main
+   ============================================ */
 .creator-studio-scope {
-  /* Force neutral, black-based surfaces inside Creator Studio */
-  --background: 240 10% 3.9%; /* pure app background */
-  --card: 240 10% 6%;
-  --muted: 240 10% 8%;
+  --background: 240 10% 3.9%;
+  --card: 240 10% 5.5%;
+  --card-elevated: 240 10% 7%;
+  --muted: 240 10% 9%;
+  --border-subtle: 240 10% 13%;
+  --border-accent: 240 10% 16%;
+  
+  /* Premium accents */
+  --glow-primary: 24 100% 50%;
+  --glow-accent: 280 100% 70%;
+  --glow-success: 142 76% 36%;
+  --glow-gold: 43 96% 56%;
+  
+  /* Refined shadows */
+  --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.2);
+  --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.25);
+  --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.3);
+  --shadow-glow: 0 0 20px hsl(var(--glow-primary) / 0.15);
 }
 
-.creator-studio-scope .card-ambient {
+/* ============================================
+   PREMIUM CARDS
+   ============================================ */
+.creator-studio-scope .studio-card {
+  background: linear-gradient(
+    165deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card-elevated)) 100%
+  );
+  border: 1px solid hsl(var(--border-subtle));
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.creator-studio-scope .studio-card:hover {
+  border-color: hsl(var(--border-accent));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+/* Metric cards with premium feel */
+.creator-studio-scope .metric-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    165deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card-elevated)) 100%
+  );
+  border: 1px solid hsl(var(--border-subtle));
+  border-radius: 16px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.creator-studio-scope .metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--border-accent)) 50%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+.creator-studio-scope .metric-card:hover {
+  border-color: hsl(var(--glow-primary) / 0.3);
+  box-shadow: 
+    0 8px 32px hsl(0 0% 0% / 0.3),
+    0 0 0 1px hsl(var(--glow-primary) / 0.1),
+    inset 0 1px 0 hsl(255 255% 255% / 0.03);
+}
+
+/* Earnings card - primary emphasis */
+.creator-studio-scope .metric-card--earnings {
+  background: linear-gradient(
+    165deg,
+    hsl(var(--card)) 0%,
+    hsl(24 30% 8%) 100%
+  );
+}
+
+.creator-studio-scope .metric-card--earnings::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    hsl(var(--glow-primary) / 0.08) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* ============================================
+   PREMIUM STATS DISPLAY
+   ============================================ */
+.creator-studio-scope .stat-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  background: linear-gradient(
+    135deg,
+    hsl(0 0% 100%) 0%,
+    hsl(0 0% 85%) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.creator-studio-scope .stat-value--primary {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--glow-primary)) 0%,
+    hsl(40 100% 60%) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 8px hsl(var(--glow-primary) / 0.3));
+}
+
+.creator-studio-scope .stat-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.creator-studio-scope .stat-change--positive {
+  background: hsl(142 76% 36% / 0.15);
+  color: hsl(142 76% 50%);
+  border: 1px solid hsl(142 76% 36% / 0.3);
+}
+
+.creator-studio-scope .stat-change--negative {
+  background: hsl(0 84% 60% / 0.15);
+  color: hsl(0 84% 65%);
+  border: 1px solid hsl(0 84% 60% / 0.3);
+}
+
+/* ============================================
+   SPARKLINE & CHARTS
+   ============================================ */
+.creator-studio-scope .chart-container {
+  position: relative;
+  padding: 12px;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border-subtle) / 0.5);
+}
+
+.creator-studio-scope .chart-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--glow-primary) / 0.03) 0%,
+    transparent 50%
+  );
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/* ============================================
+   QUICK ACTIONS GRID
+   ============================================ */
+.creator-studio-scope .quick-action {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
   background: hsl(var(--card));
+  border: 1px solid hsl(var(--border-subtle));
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
-.creator-studio-scope .tabs-list-reset {
-  background: transparent;
+.creator-studio-scope .quick-action:hover {
+  background: hsl(var(--card-elevated));
+  border-color: hsl(var(--glow-primary) / 0.4);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 8px 24px hsl(0 0% 0% / 0.25),
+    0 0 20px hsl(var(--glow-primary) / 0.1);
 }
 
-/* Ensure any accidental orange "panel" classes are neutralized */
-/* Neutralize orange/yellow/primary backgrounds on block containers only. */
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-orange"]:not([class*="inline"]),
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-amber"]:not([class*="inline"]),
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-yellow"]:not([class*="inline"]),
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-primary"]:not([class*="inline"]),
-.creator-studio-scope .bg-card,
-.creator-studio-scope .bg-secondary,
-.creator-studio-scope .bg-muted {
-  background-color: hsl(var(--background)) !important;
+.creator-studio-scope .quick-action:active {
+  transform: translateY(0) scale(0.98);
 }
 
-/* Also neutralize gradient panels on block containers (not inline chips/badges) */
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[class*="bg-gradient"],
-.creator-studio-scope :is(div,section,main,article,aside,header,footer)[style*="gradient"] {
-  background: hsl(var(--background)) !important;
+.creator-studio-scope .quick-action__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--glow-primary) / 0.15) 0%,
+    hsl(var(--glow-accent) / 0.1) 100%
+  );
+  border: 1px solid hsl(var(--glow-primary) / 0.2);
+  border-radius: 10px;
+  color: hsl(var(--glow-primary));
+  transition: all 0.3s ease;
 }
 
-/* Remove shadows/glows from tiles to keep flat black surfaces */
-.creator-studio-scope .shadow,
-.creator-studio-scope .shadow-sm,
-.creator-studio-scope .shadow-md,
-.creator-studio-scope .shadow-lg { box-shadow: none !important; }
+.creator-studio-scope .quick-action:hover .quick-action__icon {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--glow-primary) / 0.25) 0%,
+    hsl(var(--glow-accent) / 0.15) 100%
+  );
+  box-shadow: 0 0 16px hsl(var(--glow-primary) / 0.3);
+}
 
-.creator-studio-scope .border-primary { /* keep outlines allowed */ }
+/* ============================================
+   TOP PRODUCTS LIST
+   ============================================ */
+.creator-studio-scope .product-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border-subtle) / 0.5);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
 
+.creator-studio-scope .product-item:hover {
+  background: hsl(var(--muted) / 0.5);
+  border-color: hsl(var(--border-accent));
+}
+
+.creator-studio-scope .product-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--muted)) 100%
+  );
+  border: 1px solid hsl(var(--border-subtle));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.creator-studio-scope .product-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ============================================
+   TASKS & TODOS
+   ============================================ */
+.creator-studio-scope .task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border-subtle));
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.creator-studio-scope .task-item:hover {
+  border-color: hsl(var(--border-accent));
+  background: hsl(var(--card-elevated));
+}
+
+.creator-studio-scope .task-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid hsl(var(--border-accent));
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.creator-studio-scope .task-checkbox:hover {
+  border-color: hsl(var(--glow-primary));
+  background: hsl(var(--glow-primary) / 0.1);
+}
+
+.creator-studio-scope .task-checkbox--checked {
+  background: hsl(var(--glow-success));
+  border-color: hsl(var(--glow-success));
+}
+
+.creator-studio-scope .task-priority {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.creator-studio-scope .task-priority--high {
+  background: hsl(0 84% 60% / 0.15);
+  color: hsl(0 84% 65%);
+}
+
+.creator-studio-scope .task-priority--medium {
+  background: hsl(45 100% 51% / 0.15);
+  color: hsl(45 100% 60%);
+}
+
+.creator-studio-scope .task-priority--low {
+  background: hsl(142 76% 36% / 0.15);
+  color: hsl(142 76% 50%);
+}
+
+/* ============================================
+   SIDEBAR ENHANCEMENTS
+   ============================================ */
+.creator-studio-scope .sidebar-section {
+  margin-bottom: 8px;
+}
+
+.creator-studio-scope .sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.creator-studio-scope .sidebar-link:hover {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+.creator-studio-scope .sidebar-link--active {
+  background: hsl(var(--glow-primary) / 0.12);
+  color: hsl(var(--glow-primary));
+  border: 1px solid hsl(var(--glow-primary) / 0.2);
+}
+
+.creator-studio-scope .sidebar-link--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: hsl(var(--glow-primary));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ============================================
+   AMBIENT EFFECTS
+   ============================================ */
+.creator-studio-scope .ambient-bg {
+  position: relative;
+}
+
+.creator-studio-scope .ambient-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% -20%,
+    hsl(var(--glow-primary) / 0.08) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+/* Premium section header */
+.creator-studio-scope .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.creator-studio-scope .section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+.creator-studio-scope .section-subtitle {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+.creator-studio-scope .skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================
+   RESPONSIVE REFINEMENTS
+   ============================================ */
+@media (max-width: 768px) {
+  .creator-studio-scope .metric-card {
+    border-radius: 12px;
+  }
+  
+  .creator-studio-scope .quick-action {
+    padding: 12px;
+  }
+  
+  .creator-studio-scope .quick-action__icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ============================================
+   FOCUS STATES (Accessibility)
+   ============================================ */
+.creator-studio-scope :focus-visible {
+  outline: 2px solid hsl(var(--glow-primary));
+  outline-offset: 2px;
+}
+
+.creator-studio-scope button:focus-visible,
+.creator-studio-scope a:focus-visible {
+  box-shadow: 0 0 0 3px hsl(var(--glow-primary) / 0.3);
+}
+
+/* ============================================
+   MICRO-ANIMATIONS
+   ============================================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.creator-studio-scope .animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.creator-studio-scope .stagger-1 { animation-delay: 0.05s; }
+.creator-studio-scope .stagger-2 { animation-delay: 0.1s; }
+.creator-studio-scope .stagger-3 { animation-delay: 0.15s; }
+.creator-studio-scope .stagger-4 { animation-delay: 0.2s; }
+
+/* Pulse glow for live indicators */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--glow-success) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--glow-success) / 0);
+  }
+}
+
+.creator-studio-scope .pulse-live {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

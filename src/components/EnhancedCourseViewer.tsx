@@ -446,7 +446,7 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
     }
 
     switch (lesson.type) {
-      case 'quiz':
+      case 'quiz': {
         // Parse quiz content from JSON
         let quizData = null;
         try {
@@ -473,7 +473,7 @@ export const EnhancedCourseViewer: React.FC<CourseViewerProps> = ({
         // Create a temporary lesson object with quiz data for compatibility
         const quizLesson = { ...lesson, quiz: quizData };
         return renderQuizContent(quizLesson);
-      
+      }
       case 'text':
       case 'markdown':
         return (

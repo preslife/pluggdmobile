@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import {
   Play,
   Pause,
@@ -9,10 +10,17 @@ import {
   ChevronUp,
   Heart,
   MoreHorizontal,
-  Lock
+  Lock,
+  Volume2,
+  VolumeX,
+  PenTool,
+  List,
+  Shuffle,
+  Repeat
 } from 'lucide-react';
 import { useGlobalPlayer } from './GlobalPlayerProvider';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MicroPlayerProps {
   className?: string;
@@ -20,6 +28,9 @@ interface MicroPlayerProps {
 
 export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
   const { state, actions } = useGlobalPlayer();
+  const { toast } = useToast();
+  const [isLiked, setIsLiked] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
 
   if (!state.currentTrack) {
     return null;
@@ -149,24 +160,101 @@ export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
           </Button>
         </div>
 
+        {/* Extended controls - hidden on mobile */}
+        <div className="hidden md:flex items-center gap-1">
+          {/* Shuffle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={actions.toggleShuffle}
+            className={cn("h-8 w-8 p-0 hover:bg-muted/50", state.shuffle && "text-primary")}
+          >
+            <Shuffle className="h-3.5 w-3.5" />
+          </Button>
+
+          {/* Repeat */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={actions.toggleRepeat}
+            className={cn("h-8 w-8 p-0 hover:bg-muted/50 relative", state.repeat !== 'none' && "text-primary")}
+          >
+            <Repeat className="h-3.5 w-3.5" />
+            {state.repeat === 'one' && (
+              <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-primary">1</span>
+            )}
+          </Button>
+
+          {/* Volume Control */}
+          <div className="relative flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowVolume(!showVolume)}
+              onMouseEnter={() => setShowVolume(true)}
+              className="h-8 w-8 p-0 hover:bg-muted/50"
+            >
+              {state.isMuted || state.volume === 0 ? (
+                <VolumeX className="h-3.5 w-3.5" />
+              ) : (
+                <Volume2 className="h-3.5 w-3.5" />
+              )}
+            </Button>
+            {showVolume && (
+              <div 
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover border rounded-lg shadow-lg w-8"
+                onMouseLeave={() => setShowVolume(false)}
+              >
+                <Slider
+                  orientation="vertical"
+                  value={[state.isMuted ? 0 : state.volume * 100]}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => actions.setVolume(value[0] / 100)}
+                  className="h-20"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Right side actions */}
         <div className="flex items-center gap-1">
+          {/* Like */}
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => {
+              setIsLiked(!isLiked);
+              toast({ title: isLiked ? 'Removed from Favorites' : 'Added to Favorites' });
+            }}
             className="h-8 w-8 p-0 hover:bg-muted/50 hidden sm:flex"
           >
-            <Heart className="h-4 w-4" />
+            <Heart className={cn("h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
           </Button>
 
+          {/* Queue */}
           <Button
             variant="ghost"
             size="sm"
+            onClick={actions.toggleExpanded}
             className="h-8 w-8 p-0 hover:bg-muted/50 hidden sm:flex"
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <List className="h-4 w-4" />
           </Button>
 
+          {/* BarFlow - Write Lyrics */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={actions.toggleExpanded}
+            className="h-8 w-8 p-0 hover:bg-muted/50 hidden lg:flex"
+            title="Write lyrics (BarFlow)"
+          >
+            <PenTool className="h-4 w-4" />
+          </Button>
+
+          {/* Expand */}
           <Button
             variant="ghost"
             size="sm"
@@ -190,7 +278,7 @@ export const MicroPlayer: React.FC<MicroPlayerProps> = ({ className }) => {
         )}
 
         {/* Time display - hidden on mobile */}
-        <div className="text-xs text-muted-foreground hidden md:block whitespace-nowrap">
+        <div className="text-xs text-muted-foreground hidden md:block whitespace-nowrap ml-2">
           {formatTime(clampedCurrentTime)} / {formatTime(clampedDuration || state.duration)}
         </div>
       </div>

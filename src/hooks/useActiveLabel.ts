@@ -16,22 +16,22 @@ export type ActiveLabel = {
 export function useActiveLabel() {
   const studioContext = useOptionalStudioContext();
   const { slug: routeSlug } = useParams<{ slug?: string }>();
-
-  if (studioContext) {
-    const { mode, activeLabel, labelsLoading } = studioContext;
-    return {
-      label: mode === "label" ? activeLabel : null,
-      loading: labelsLoading,
-      error: null as string | null,
-    };
-  }
-
   const { user } = useAuth();
+  
+  // Always call hooks unconditionally to satisfy Rules of Hooks
   const [label, setLabel] = useState<ActiveLabel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Track if we should use studio context
+  const useStudioData = Boolean(studioContext);
+
   useEffect(() => {
+    // If using studio context, skip the fetch logic
+    if (useStudioData) {
+      return;
+    }
+
     const run = async () => {
       if (!user) { setLabel(null); setLoading(false); return; }
       setLoading(true);
@@ -130,7 +130,17 @@ export function useActiveLabel() {
       }
     };
     run();
-  }, [routeSlug, user?.id]);
+  }, [routeSlug, user?.id, useStudioData]);
+
+  // If using studio context, return that data instead
+  if (studioContext) {
+    const { mode, activeLabel, labelsLoading } = studioContext;
+    return {
+      label: mode === "label" ? activeLabel : null,
+      loading: labelsLoading,
+      error: null as string | null,
+    };
+  }
 
   return { label, loading, error };
 }

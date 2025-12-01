@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Pause, ShoppingCart, Heart, Share2, Search, Filter, Grid3X3, List, TrendingUp, Flame, Star, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Heart, Share2, Search, Filter, Grid3X3, List, TrendingUp, Flame, Star, AlertTriangle, RefreshCw, Music2, Disc, Shield, Zap, Clock } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -387,119 +388,203 @@ const Marketplace = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative pb-8 pt-masthead overflow-hidden">
-        {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
-          style={{ backgroundImage: 'url(/lovable-uploads/6299467a-f115-4657-9015-ec1f1939e292.png)' }}
-        ></div>
+      {/* Hero Section - World Class */}
+      <div className="relative pb-12 pt-masthead overflow-hidden">
+        {/* Background Gradient Layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-background to-purple-900/15" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(249,115,22,0.2),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.15),transparent_50%)]" />
         
-        {/* Background Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background"></div>
-        
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Your Next Anthem
-            </span>
-            <br />
-            <span className="text-foreground">Starts Here</span>
-          </h1>
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 px-4 py-1.5">
+              <Disc className="w-3.5 h-3.5 mr-1.5" />
+              Over 5,000 beats ready to license
+            </Badge>
+            
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              <span className="bg-gradient-to-r from-white via-white to-zinc-400 bg-clip-text text-transparent">
+                Find Your
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent">
+                Perfect Sound
+              </span>
+            </h1>
+            
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Premium beats from top producers worldwide. Instant licensing, 
+              stems included, and chart-ready quality.
+            </p>
+          </motion.div>
           
-          {/* Trending Tags */}
-          <div className="flex flex-wrap justify-center gap-2 mb-6">
-            {['afro', 'bouncy', 'party', 'trap soul', 'finesse', 'UK', 'instrumental', 'emotional', '808 heavy'].map((tag) => (
+          {/* Quick Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap justify-center gap-6 mb-8"
+          >
+            {[
+              { icon: Music2, label: "5K+ Beats", value: "" },
+              { icon: Star, label: "4.9 Rating", value: "" },
+              { icon: Shield, label: "Legal Licensing", value: "" },
+              { icon: Zap, label: "Instant Download", value: "" },
+            ].map((stat, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <stat.icon className="w-4 h-4 text-primary" />
+                <span>{stat.label}</span>
+              </div>
+            ))}
+          </motion.div>
+          
+          {/* Trending Tags - Improved */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-wrap justify-center gap-2 mb-8"
+          >
+            <span className="text-sm text-muted-foreground mr-2">Trending:</span>
+            {['Afrobeats', 'Drill', 'Trap', 'R&B', 'Dancehall', 'Amapiano', 'Pop', 'Soul'].map((tag) => (
               <Button
                 key={tag}
                 variant="outline"
                 size="sm"
                 onClick={() => setFilters(prev => ({ ...prev, searchTerm: tag }))}
-                className="rounded-full bg-background/50 backdrop-blur-sm hover:bg-primary/20 border-primary/30 transition-all"
+                className="rounded-full bg-white/5 backdrop-blur-sm hover:bg-primary/20 border-white/10 hover:border-primary/40 transition-all h-8"
               >
-                #{tag}
+                {tag}
               </Button>
             ))}
-          </div>
+          </motion.div>
           
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="px-8 py-4 text-lg rounded-2xl bg-gradient-primary hover:opacity-90 transition-all">
-              Browse Beats
+          {/* CTA Buttons - Enhanced */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Button 
+              size="lg" 
+              className="px-10 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02]"
+              asChild
+            >
+              <a href="#beats">Browse All Beats</a>
             </Button>
-            <Button size="lg" variant="outline" className="px-8 py-4 text-lg rounded-2xl border-2 hover:bg-background/20 transition-all">
-              Sell Your Beats
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="px-10 py-6 text-lg border-white/20 hover:bg-white/10 hover:border-white/40 transition-all"
+              asChild
+            >
+              <Link to="/studio">Sell Your Beats</Link>
             </Button>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8" id="beats">
         <div className="max-w-7xl mx-auto">
 
-          {/* Marketplace Filters - Moved to top */}
-          <div className="mb-8">
-            <MarketplaceFilters
-              onFiltersChange={setFilters}
-              availableGenres={genres}
-              totalResults={filteredBeats.length}
-            />
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-2xl font-bold">All Beats</h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="h-8 px-3"
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="h-8 px-3"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+          {/* Sticky Search & Filters Bar */}
+          <div className="sticky top-16 z-30 -mx-4 px-4 py-4 mb-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
+            <div className="max-w-7xl mx-auto">
+              <MarketplaceFilters
+                onFiltersChange={setFilters}
+                availableGenres={genres}
+                totalResults={filteredBeats.length}
+              />
             </div>
           </div>
 
-          {/* Trending Tracks Section */}
+          {/* Section Header with View Toggle */}
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-muted rounded-xl">
+                <Music2 className="w-5 h-5" />
+              </div>
+              <h2 className="text-2xl font-bold">Browse Beats</h2>
+              <span className="text-muted-foreground">({filteredBeats.length})</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 border rounded-lg p-1 bg-muted/30">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="h-7 w-7 p-0"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-7 w-7 p-0"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Trending Tracks Section - Enhanced */}
           {trendingBeats.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-primary rounded-xl">
-                  <TrendingUp className="w-5 h-5 text-white" />
+            <motion.section 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg shadow-orange-500/20">
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Trending Now</h2>
+                  <div className="flex gap-0.5 ml-1">
+                    <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    <Flame className="w-2 h-2 text-orange-300" />
+                  </div>
                 </div>
-                <h2 className="text-xl font-bold">Trending Tracks</h2>
-                <div className="flex gap-1">
-                  <Flame className="w-4 h-4 text-orange-500" />
-                  <Flame className="w-3 h-3 text-orange-400" />
-                  <Flame className="w-2 h-2 text-orange-300" />
-                </div>
+                <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                  Hot this week
+                </Badge>
               </div>
               
               {/* Compact Trending Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-                {trendingBeats.map((beat) => (
-                  <CompactBeatCard
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {trendingBeats.map((beat, idx) => (
+                  <motion.div
                     key={beat.id}
-                    beat={beat}
-                    viewMode="grid"
-                    isPlaying={currentTrack?.id === beat.id && isPlaying}
-                    onPlay={() => handlePlayBeat(beat)}
-                    onFavorite={() => toggleFavorite(beat.id)}
-                    isFavorited={isFavorited(beat.id)}
-                    onShare={() => handleShareBeat(beat)}
-                  />
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="relative group"
+                  >
+                    <CompactBeatCard
+                      beat={beat}
+                      viewMode="grid"
+                      isPlaying={currentTrack?.id === beat.id && isPlaying}
+                      onPlay={() => handlePlayBeat(beat)}
+                      onFavorite={() => toggleFavorite(beat.id)}
+                      isFavorited={isFavorited(beat.id)}
+                      onShare={() => handleShareBeat(beat)}
+                    />
+                    {/* Rank Badge */}
+                    <div className="absolute -top-2 -left-2 z-10 w-7 h-7 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      {idx + 1}
+                    </div>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.section>
           )}
 
           {/* All Beats Grid/List */}
@@ -548,88 +633,90 @@ const Marketplace = () => {
             </div>
           )}
 
-          {/* Feature Highlights Section */}
-          <div className="mb-16 py-16 relative overflow-hidden rounded-3xl">
-            {/* Background Images Collage */}
-            <div className="absolute inset-0 grid grid-cols-3 gap-0">
-              <div 
-                className="bg-cover bg-center opacity-60"
-                style={{ backgroundImage: 'url(/lovable-uploads/695d06f7-2a64-4b9c-9cd1-34dd538fc6d9.png)' }}
-              ></div>
-              <div 
-                className="bg-cover bg-center opacity-60"
-                style={{ backgroundImage: 'url(/lovable-uploads/392a1a2d-81d9-4106-95aa-a5347c293bc3.png)' }}
-              ></div>
-              <div 
-                className="bg-cover bg-center opacity-60"
-                style={{ backgroundImage: 'url(/lovable-uploads/71e3dd35-ce08-4e48-a0c2-a16d8388010c.png)' }}
-              ></div>
-            </div>
-            
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background/85 via-background/90 to-background/85"></div>
+          {/* Feature Highlights Section - Premium Design */}
+          <motion.section 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="my-16 py-12 relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/5 via-background to-purple-900/5"
+          >
+            {/* Background Gradient */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1),transparent_50%)]" />
             
             <div className="relative z-10 max-w-6xl mx-auto px-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <div className="text-center group">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-glow">
-                    <Star className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Instant Licensing</h3>
-                  <p className="text-muted-foreground text-sm">Secure exclusive or lease rights in seconds</p>
-                </div>
-                
-                <div className="text-center group">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-glow">
-                    <TrendingUp className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Chart-Ready Quality</h3>
-                  <p className="text-muted-foreground text-sm">Mixed, mastered, and ready for vocals</p>
-                </div>
-                
-                <div className="text-center group">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-glow">
-                    <Heart className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Trusted by Artists Worldwide</h3>
-                  <p className="text-muted-foreground text-sm">Used on festival stages & streaming hits</p>
-                </div>
-                
-                <div className="text-center group">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-glow">
-                    <ShoppingCart className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Earn with Every Play</h3>
-                  <p className="text-muted-foreground text-sm">For producers: fast payouts + featured placement</p>
-                </div>
+              <div className="text-center mb-10">
+                <Badge className="mb-4 bg-white/10 text-white border-white/20">Why Pluggd</Badge>
+                <h2 className="text-3xl font-bold">The producer's marketplace of choice</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  { icon: Shield, title: "Legal Licensing", desc: "Instant contracts. Standard, premium, and exclusive rights.", color: "from-emerald-500" },
+                  { icon: Star, title: "Chart-Ready Quality", desc: "Professional mixed & mastered. Stems included.", color: "from-amber-500" },
+                  { icon: Zap, title: "Instant Delivery", desc: "Download immediately. No waiting, no hassle.", color: "from-blue-500" },
+                  { icon: Clock, title: "Fast Payouts", desc: "Producers get paid within days, not months.", color: "from-purple-500" },
+                ].map((feature, idx) => (
+                  <motion.div 
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="group text-center"
+                  >
+                    <div className={`w-14 h-14 mx-auto mb-4 bg-gradient-to-br ${feature.color} to-transparent rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}>
+                      <feature.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm">{feature.desc}</p>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </div>
+          </motion.section>
 
-          {/* Summary Section */}
-          <div className="mt-12 py-20 relative text-center overflow-hidden rounded-3xl">
-            {/* Background Image */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center opacity-60"
-              style={{ backgroundImage: 'url(/lovable-uploads/71e3dd35-ce08-4e48-a0c2-a16d8388010c.png)' }}
-            ></div>
+          {/* Final CTA Section - Premium */}
+          <motion.section 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="mt-12 mb-8 py-16 relative text-center overflow-hidden rounded-3xl border border-primary/20"
+          >
+            {/* Background Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-black/60 to-purple-900/20" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.2),transparent_50%)]" />
             
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/70 to-background/90"></div>
-            
-            <div className="relative z-10 max-w-4xl mx-auto px-8">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Whether you're recording your first mixtape or headlining festivals,<br />
-                <span className="bg-gradient-primary bg-clip-text text-transparent">we've got the beat for you.</span>
+            <div className="relative z-10 max-w-3xl mx-auto px-8">
+              <Badge className="mb-6 bg-primary/20 text-primary border-primary/30">
+                🎵 Your sound, your way
+              </Badge>
+              <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+                Whether you're recording your first track or headlining stages,
+                <br />
+                <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">
+                  we've got the beat for you.
+                </span>
               </h2>
-              <p className="text-xl text-muted-foreground mb-8">
-                Plug in. Build your sound. Break the mold.
+              <p className="text-xl text-muted-foreground mb-8 max-w-xl mx-auto">
+                Join thousands of artists who found their sound on Pluggd.
               </p>
-              <Button size="lg" className="px-12 py-4 text-lg rounded-2xl bg-gradient-primary hover:opacity-90 transition-all shadow-glow">
-                Start Building Your Legacy
-              </Button>
+              <div className="flex flex-wrap justify-center gap-4">
+                <Button 
+                  size="lg" 
+                  className="px-10 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-amber-500 shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-[1.02]"
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                >
+                  Browse Beats →
+                </Button>
+                <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20" asChild>
+                  <Link to="/studio">Sell Your Beats</Link>
+                </Button>
+              </div>
+              <p className="mt-6 text-sm text-muted-foreground">
+                Free to browse • Instant licensing • Stems included
+              </p>
             </div>
-          </div>
+          </motion.section>
         </div>
       </div>
       {shareBeat && (

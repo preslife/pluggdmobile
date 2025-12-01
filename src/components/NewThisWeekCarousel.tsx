@@ -53,7 +53,7 @@ const NewThisWeekCarousel = () => {
         .filter(item => item.content_type === 'release')
         .map(item => item.content_id);
 
-      let query = supabase
+      const query = supabase
         .from('releases')
         .select('*')
         .eq('approved', true)

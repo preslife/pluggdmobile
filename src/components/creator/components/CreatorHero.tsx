@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { FeaturePrompt, useFeaturePrompt } from '@/components/FeaturePrompt';
 
 import {
   MapPin,
@@ -79,6 +80,7 @@ export const CreatorHero = ({ profile, stats, visitorStatus }: CreatorHeroProps)
   const { toast } = useToast();
   const [isFollowing, setIsFollowing] = useState(visitorStatus?.isFollowing || false);
   const [loading, setLoading] = useState(false);
+  const { activePrompt, triggerPrompt, closePrompt } = useFeaturePrompt();
 
   // Determine visitor type and appropriate CTA
   const getVisitorType = () => {
@@ -121,6 +123,11 @@ export const CreatorHero = ({ profile, stats, visitorStatus }: CreatorHeroProps)
         
         setIsFollowing(true);
         toast({ title: "Following!", description: `You're now following ${profile.full_name || profile.username}` });
+        
+        // Trigger feature prompt to check out their live sessions
+        setTimeout(() => {
+          triggerPrompt('live-after-follow');
+        }, 1500);
       }
     } catch (error) {
       toast({
@@ -411,6 +418,16 @@ export const CreatorHero = ({ profile, stats, visitorStatus }: CreatorHeroProps)
             </div>
           </div>
         </div>
+      )}
+
+      {/* Feature Prompt */}
+      {activePrompt && (
+        <FeaturePrompt
+          type={activePrompt}
+          show={true}
+          onClose={closePrompt}
+          customActionPath={`/creator/${profile.username}#live`}
+        />
       )}
     </section>
   );
