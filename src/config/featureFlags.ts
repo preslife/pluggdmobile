@@ -3,7 +3,8 @@ export enum FeatureFlag {
 }
 
 const rawFlags: Record<FeatureFlag, string | boolean | undefined> = {
-  [FeatureFlag.LMS]: import.meta.env.VITE_FEATURE_LMS ?? false,
+  // LMS is enabled by default - fully integrated
+  [FeatureFlag.LMS]: import.meta.env.VITE_FEATURE_LMS ?? true,
 };
 
 export const featureFlags: Record<FeatureFlag, boolean> = {
