@@ -190,8 +190,16 @@ type HubData = {
 // ---------- Data Fetcher ---------- //
 
 async function fetchHubData(): Promise<HubData> {
-  const { data, error } = await supabase.rpc("fn_hub_payload");
-  if (error) throw error;
+  // Try to fetch from RPC, but fall back to empty data if it fails
+  let rpcData: any = null;
+  try {
+    const { data, error } = await supabase.rpc("fn_hub_payload");
+    if (!error) {
+      rpcData = data;
+    }
+  } catch (e) {
+    console.warn("fn_hub_payload RPC not available, using fallback data");
+  }
 
   // Fetch additional data not included in fn_hub_payload
   const [
@@ -275,8 +283,8 @@ async function fetchHubData(): Promise<HubData> {
       .slice(0, 5);
   }
 
-  // Merge with RPC payload
-  const payload = data as any;
+  // Merge with RPC payload (or use empty defaults)
+  const payload = rpcData ?? {};
   const hub: HubData = {
     contests: payload.contests ?? [],
     events: payload.events ?? [],
@@ -493,7 +501,31 @@ export default function CommunityHubEpic() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <PlugProvider>
+        <main className="relative min-h-screen w-full bg-background text-foreground">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center max-w-md mx-auto px-4">
+              <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="h-10 w-10 text-primary" />
+              </div>
+              <h2 className="text-2xl font-semibold text-white mb-3">Community Hub</h2>
+              <p className="text-zinc-400 mb-6">
+                {error || "Unable to load community data. Please try again."}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
+        </main>
+      </PlugProvider>
+    );
+  }
 
   const hasAnnouncements = Boolean(data.announcements?.length);
 
@@ -953,17 +985,22 @@ function DailyPrompt({ prompt }: { prompt: DailyPromptT }) {
 function CreatorSpotlight({ creator }: { creator: Creator }) {
   const { user } = useAuth();
   const { state, actions } = useGlobalPlayer();
-  
+
+  // Guard against incomplete creator data
+  if (!creator || !creator.name) {
+    return null;
+  }
+
   return (
     <Card className="overflow-hidden">
       <div className="relative h-36 w-full overflow-hidden">
-        <img src={creator.cover} alt="cover" className="h-full w-full object-cover" />
+        <img src={creator.cover || '/placeholder.svg'} alt="cover" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/0 dark:from-black/70 dark:via-black/0" />
         <Badge className="absolute left-4 top-4 border-amber-400/30 bg-amber-500/10 text-amber-200"><Crown className="h-3 w-3"/>Creator of the Week</Badge>
       </div>
       <CardContent className="pt-4">
         <div className="flex items-start gap-4">
-          <img src={creator.avatar} className="h-16 w-16 rounded-xl object-cover" alt="avatar"/>
+          <img src={creator.avatar || '/placeholder.svg'} className="h-16 w-16 rounded-xl object-cover" alt="avatar"/>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-xl font-semibold text-white">{creator.name}</h3>
@@ -971,9 +1008,9 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-zinc-300/90">{creator.bio}</p>
             <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-zinc-400">
-              <span>{formatNumber(creator.followers)} followers</span>
-              <span>{formatNumber(creator.stats.contest_wins)} contest wins</span>
-              <span>{formatNumber(creator.stats.placements)} placements</span>
+              <span>{formatNumber(creator.followers || 0)} followers</span>
+              {creator.stats?.contest_wins ? <span>{formatNumber(creator.stats.contest_wins)} contest wins</span> : null}
+              {creator.stats?.placements ? <span>{formatNumber(creator.stats.placements)} placements</span> : null}
             </div>
           </div>
           <div className="hidden sm:block">
@@ -982,16 +1019,18 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
         </div>
 
         {/* Featured track mini-player */}
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="flex items-center gap-3">
-            <img src={creator.featured_track.cover} className="h-12 w-12 rounded-lg object-cover" alt="track"/>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-white">{creator.featured_track.title}</div>
-              <div className="text-xs text-zinc-400">{creator.name} • {formatNumber(creator.featured_track.plays)} plays</div>
+        {creator.featured_track && (
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center gap-3">
+              <img src={creator.featured_track.cover || '/placeholder.svg'} className="h-12 w-12 rounded-lg object-cover" alt="track"/>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-white">{creator.featured_track.title}</div>
+                <div className="text-xs text-zinc-400">{creator.name} • {formatNumber(creator.featured_track.plays || 0)} plays</div>
+              </div>
+              <SpotlightTrackPlayer creator={creator} />
             </div>
-            <SpotlightTrackPlayer creator={creator} />
           </div>
-        </div>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-3">
           <ArtistTipButton 
@@ -1019,14 +1058,19 @@ function CreatorSpotlight({ creator }: { creator: Creator }) {
 }
 
 function SpotlightTrackPlayer({ creator }: { creator: Creator }) {
-    const { state, actions } = useGlobalPlayer();
+  const { state, actions } = useGlobalPlayer();
+  
+  // Guard against missing featured_track
+  if (!creator?.featured_track) {
+    return null;
+  }
   
   const track = {
     id: `creator-spotlight-${creator.id}`,
-    title: creator.featured_track.title,
-    artist: creator.name,
-    src: creator.featured_track.url,
-    artwork: creator.featured_track.cover
+    title: creator.featured_track.title || 'Unknown Track',
+    artist: creator.name || 'Unknown Artist',
+    src: creator.featured_track.url || '',
+    artwork: creator.featured_track.cover || '/placeholder.svg'
   };
 
   const isCurrentTrack = state.currentTrack?.id === track.id;

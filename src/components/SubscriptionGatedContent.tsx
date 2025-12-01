@@ -443,27 +443,27 @@ export const SubscriptionGatedContent = ({
         </div>
 
         {locked && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 p-6 text-center backdrop-blur-sm">
-            <div className="flex items-center justify-center rounded-full bg-primary/10 p-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/90 p-4 text-center backdrop-blur-sm overflow-hidden">
+            <div className="flex items-center justify-center rounded-full bg-primary/10 p-2">
               {gateConfig?.gate_type === "specific_tier" ? (
-                <Crown className="h-8 w-8 text-primary" />
+                <Crown className="h-6 w-6 text-primary" />
               ) : (
-                <Lock className="h-8 w-8 text-primary" />
+                <Lock className="h-6 w-6 text-primary" />
               )}
             </div>
-            <div className="space-y-2 max-w-md">
-              <h3 className="text-lg font-semibold">{headingLabel}</h3>
-              <p className="text-sm text-muted-foreground">{overlayDescription}</p>
+            <div className="space-y-1 max-w-[90%]">
+              <h3 className="text-sm font-semibold">{headingLabel}</h3>
+              <p className="text-xs text-muted-foreground line-clamp-2">{overlayDescription}</p>
               {requirementDescription && (
-                <p className="text-xs text-muted-foreground">{requirementDescription}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1">{requirementDescription}</p>
               )}
             </div>
-            <div className="flex flex-col items-center gap-3 sm:flex-row">
-              <Button onClick={handleJoinClick} size="lg" className="min-w-[180px]">
+            <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+              <Button onClick={handleJoinClick} size="sm" className="w-full">
                 {ctaLabel}
               </Button>
               {!user?.id && (
-                <Button variant="outline" onClick={handleSignIn} size="lg">
+                <Button variant="outline" onClick={handleSignIn} size="sm" className="w-full">
                   Sign in to continue
                 </Button>
               )}
@@ -471,7 +471,8 @@ export const SubscriptionGatedContent = ({
                 <Button
                   variant="outline"
                   onClick={checkAccess}
-                  size="lg"
+                  size="sm"
+                  className="w-full"
                   disabled={checkingAccess}
                 >
                   {checkingAccess ? "Rechecking…" : "Refresh access"}

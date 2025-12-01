@@ -296,7 +296,7 @@ export const CommunityActivity = ({ maxPosts = 6 }: { maxPosts?: number }) => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {posts.slice(0, maxPosts).map((post) => (
-              <Card key={post.id} className="hover:shadow-lg transition-all duration-300 group">
+              <Card key={post.id} className="hover:shadow-lg transition-all duration-300 group overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">

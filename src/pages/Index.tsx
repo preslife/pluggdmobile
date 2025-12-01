@@ -282,43 +282,57 @@ export default function PluggdHomepage() {
       <main className="mx-auto max-w-[1280px] px-4">
         <Hero role={role} slides={slides} />
 
+        {/* Role-specific value proposition */}
         <section className="py-16">
-          <WhyPluggdExists />
+          <WhyPluggdExists role={role} />
+        </section>
+
+        {/* Role-specific feature grid */}
+        <section className="py-16">
+          {role === "creators" ? <CreatorOSGrid /> : <FanFeaturesGrid />}
+        </section>
+
+        {/* Role-specific content sections */}
+        {role === "fans" ? (
+          <>
+            <section className="py-16">
+              <HeaderRow title="Trending releases" cta="See all" ctaLink="/releases" />
+              <SpotlightCarousel />
+            </section>
+
+            <section className="py-16">
+              <HeaderRow title="Discover creators" cta="Browse all" ctaLink="/directory" />
+              <HomeRecommendations role={role} activeGenre={null} />
+            </section>
+
+            <section className="py-16">
+              <CollabHighlights collabs={[]} live={live} />
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="py-16">
+              <HeaderRow title="How Pluggd works" />
+              <HowItWorks />
+            </section>
+
+            <section className="py-16">
+              <HeaderRow title="See the Creator OS in action" />
+              <FeaturesPreview />
+            </section>
+
+            <section className="py-16">
+              <CollabHighlights collabs={collabs} live={live} />
+            </section>
+          </>
+        )}
+
+        <section className="py-16">
+          <SocialProofStrip role={role} />
         </section>
 
         <section className="py-16">
-          <CreatorOSGrid />
-        </section>
-
-        <section className="py-16">
-          <HeaderRow title="Creator spotlight" cta="Browse creators" ctaLink="/directory" />
-          <SpotlightCarousel />
-        </section>
-
-        <section className="py-16">
-          <BenefitsSplit role={role} />
-        </section>
-
-        <section className="py-16">
-          <CollabHighlights collabs={collabs} live={live} />
-        </section>
-
-        <section className="py-16">
-          <SocialProofStrip />
-        </section>
-
-        <section className="py-16">
-          <HeaderRow title="How Pluggd works" />
-          <HowItWorks />
-        </section>
-
-        <section className="py-16">
-          <HeaderRow title="See the Creator OS in action" />
-          <FeaturesPreview />
-        </section>
-
-        <section className="py-16">
-          <TestimonialsSection />
+          <TestimonialsSection role={role} />
         </section>
 
         <section className="py-16">
@@ -326,7 +340,7 @@ export default function PluggdHomepage() {
         </section>
 
         <section className="py-16">
-          <FinalCTA />
+          <FinalCTA role={role} />
         </section>
 
         {error && (
@@ -415,10 +429,32 @@ function Hero({
   role: "fans" | "creators";
   slides: { src: string; fallbackSeed: number; title: string; artist?: string | null; href?: string }[];
 }) {
-  const heroHighlights =
-    role === "creators"
-      ? ["Launch releases & beats", "Instant payouts", "Grow your community"]
-      : ["Early drops & exclusives", "Direct creator support", "Zero-spam credits"];
+  // Different content based on role
+  const heroContent = role === "creators" ? {
+    badge: "🚀 Built for independent artists",
+    headline: <>Your Music.<br className="hidden sm:block" /><span className="text-primary">Your Money.</span></>,
+    subtext: <>Stop giving away <span className="font-semibold text-white">70% to streaming platforms</span>. Pluggd gives you the tools to release music, sell beats, run memberships, and go live — while keeping 90% of what you earn.</>,
+    primaryCta: { text: "Claim Your Free Creator Page →", link: "/signup?intent=create" },
+    secondaryCta: { text: "See Creator Tools", link: "/features" },
+    stats: [
+      { label: "Creator earnings", value: "90%", icon: "💰", accent: "from-emerald-500/20 to-transparent" },
+      { label: "Payouts", value: "Weekly", icon: "⚡", accent: "from-primary/20 to-transparent" },
+      { label: "Tools included", value: "10+", icon: "🛠️", accent: "from-purple-500/20 to-transparent" },
+    ],
+    highlights: ["Sell beats & releases", "Run memberships", "Go live with fans", "Track analytics"]
+  } : {
+    badge: "🎵 Discover music directly from artists",
+    headline: <>Support Artists.<br className="hidden sm:block" /><span className="text-primary">Get Exclusive Access.</span></>,
+    subtext: <>Discover new music, unlock exclusive drops, and connect directly with your favourite creators. When you support on Pluggd, <span className="font-semibold text-white">artists actually get paid</span>.</>,
+    primaryCta: { text: "Start Exploring →", link: "/releases" },
+    secondaryCta: { text: "Browse Beats", link: "/marketplace" },
+    stats: [
+      { label: "To artists", value: "90%", icon: "❤️", accent: "from-pink-500/20 to-transparent" },
+      { label: "Exclusive drops", value: "Daily", icon: "🔥", accent: "from-primary/20 to-transparent" },
+      { label: "Live sessions", value: "Weekly", icon: "📺", accent: "from-purple-500/20 to-transparent" },
+    ],
+    highlights: ["Early access drops", "Exclusive memberships", "Live Q&As", "Direct support"]
+  };
 
   return (
     <section className="relative overflow-visible pt-10">
@@ -429,29 +465,24 @@ function Hero({
       <div className="relative z-10 mx-auto flex max-w-[1280px] flex-col gap-10 px-4 pb-12 md:grid md:grid-cols-12 md:gap-10 md:px-6">
         <div className="md:col-span-7 flex flex-col gap-6">
           <Badge variant="secondary" className="w-fit border border-primary/40 bg-primary/10 text-primary font-medium animate-pulse">
-            🔥 The future of music is creator-owned
+            {heroContent.badge}
           </Badge>
           <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-[72px] bg-gradient-to-r from-white via-white to-zinc-400 bg-clip-text text-transparent">
-            Your Music.<br className="hidden sm:block" />
-            <span className="text-primary">Your Rules.</span>
+            {heroContent.headline}
           </h1>
           <p className="text-lg text-zinc-200 sm:text-xl leading-relaxed max-w-xl">
-            Stop giving away <span className="font-semibold text-white">70% of your earnings</span>. Pluggd gives creators the tools to release music, sell beats, run memberships, and go live — while keeping what they earn.
+            {heroContent.subtext}
           </p>
           <div className="flex flex-wrap gap-4">
             <Button size="lg" className="px-8 text-base font-semibold bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-primary/40 hover:scale-[1.02]" asChild>
-              <Link to="/signup?intent=create">Claim Your Free Creator Page →</Link>
+              <Link to={heroContent.primaryCta.link}>{heroContent.primaryCta.text}</Link>
             </Button>
             <Button size="lg" variant="outline" className="px-8 text-base border-white/20 hover:bg-white/10 hover:border-white/40 transition-all duration-300" asChild>
-              <Link to="/marketplace">Browse Beats & Music</Link>
+              <Link to={heroContent.secondaryCta.link}>{heroContent.secondaryCta.text}</Link>
             </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { label: "Creators earning", value: "2,900+", icon: "🎤", accent: "from-primary/20 to-transparent" },
-              { label: "Paid out this month", value: "£13,854", icon: "💰", accent: "from-emerald-500/20 to-transparent" },
-              { label: "Your credits", value: "Never expire", icon: "✨", accent: "from-purple-500/20 to-transparent" },
-            ].map((item, idx) => (
+            {heroContent.stats.map((item, idx) => (
               <motion.div
                 key={item.label}
                 initial={{ opacity: 0, y: 20 }}
@@ -468,9 +499,8 @@ function Hero({
             ))}
           </div>
           <div className="mt-2 text-sm text-zinc-300">
-            <span className="font-semibold text-white">Viewing {role === "creators" ? "Creator mode" : "Fan mode"}</span>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-400">
-              {heroHighlights.map((highlight) => (
+            <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
+              {heroContent.highlights.map((highlight) => (
                 <span key={highlight} className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
                   {highlight}
@@ -1084,8 +1114,8 @@ function HomeRecommendations({
   );
 }
 
-function WhyPluggdExists() {
-  const pillars = [
+function WhyPluggdExists({ role }: { role: "fans" | "creators" }) {
+  const creatorPillars = [
     {
       title: "Keep 90% of what you earn",
       description: "Streaming pays £0.003 per play. On Pluggd, you set the price — and keep almost all of it. Your music, your business.",
@@ -1108,17 +1138,53 @@ function WhyPluggdExists() {
       statLabel: "tools built-in"
     },
   ];
+
+  const fanPillars = [
+    {
+      title: "Support artists directly",
+      description: "When you buy on Pluggd, 90% goes straight to the artist. No middlemen, no waiting, just real support.",
+      Icon: HeartHandshake,
+      stat: "90%",
+      statLabel: "to artists"
+    },
+    {
+      title: "Exclusive access",
+      description: "Get early releases, behind-the-scenes content, and VIP access through creator memberships.",
+      Icon: Sparkles,
+      stat: "∞",
+      statLabel: "exclusives"
+    },
+    {
+      title: "Connect with creators",
+      description: "Join live sessions, participate in Q&As, and build real relationships with the artists you love.",
+      Icon: Users,
+      stat: "Live",
+      statLabel: "interaction"
+    },
+  ];
+
+  const pillars = role === "creators" ? creatorPillars : fanPillars;
+
+  const content = role === "creators" ? {
+    badge: "The problem we solve",
+    headline: <>Streaming broke music.<br />Pluggd fixes it.</>,
+    subtext: "Artists need more than a platform — they need an operating system for their entire career. That's Pluggd: releases, community, commerce, and collaboration in one place."
+  } : {
+    badge: "Why fans love Pluggd",
+    headline: <>Real support.<br />Real connection.</>,
+    subtext: "Tired of streaming services that pay artists pennies? On Pluggd, your support actually matters — and you get exclusive access in return."
+  };
+
   return (
     <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-primary/5 via-transparent to-purple-900/10 p-8 md:p-12 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.1),transparent_50%)]" />
       <div className="relative z-10 mx-auto max-w-3xl text-center">
-        <Badge className="mb-4 bg-white/10 text-white border-white/20">The problem we solve</Badge>
+        <Badge className="mb-4 bg-white/10 text-white border-white/20">{content.badge}</Badge>
         <h2 className="mt-3 text-3xl font-bold md:text-5xl bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
-          Streaming broke music.<br />Pluggd fixes it.
+          {content.headline}
         </h2>
         <p className="mt-5 text-lg text-zinc-300 leading-relaxed max-w-2xl mx-auto">
-          Artists need more than a platform — they need an operating system for their entire career. 
-          That's Pluggd: releases, community, commerce, and collaboration in one place.
+          {content.subtext}
         </p>
       </div>
       <div className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
@@ -1204,6 +1270,62 @@ function CreatorOSGrid() {
       <div className="relative z-10 mt-10 text-center">
         <Button size="lg" variant="outline" className="border-white/20 hover:bg-white/10" asChild>
           <Link to="/features">See all features →</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FanFeaturesGrid() {
+  const features = [
+    { title: "Discover Music", description: "Find fresh releases and hidden gems directly from independent artists.", Icon: Music2, color: "from-blue-500" },
+    { title: "Beat Marketplace", description: "License beats for your own projects from verified producers.", Icon: Disc, color: "from-purple-500" },
+    { title: "Watch Live", description: "Join live sessions, Q&As, and exclusive performances from creators.", Icon: Radio, color: "from-red-500" },
+    { title: "Memberships", description: "Unlock exclusive content and perks with creator memberships.", Icon: Users, color: "from-emerald-500" },
+    { title: "Learn & Grow", description: "Take courses from industry pros to level up your skills.", Icon: Sparkles, color: "from-amber-500" },
+    { title: "Community", description: "Connect with other fans and creators who share your taste.", Icon: HeartHandshake, color: "from-pink-500" },
+    { title: "Early Access", description: "Get first access to new drops before anyone else.", Icon: Zap, color: "from-cyan-500" },
+    { title: "Support Artists", description: "90% of your purchase goes directly to the creator.", Icon: Coins, color: "from-violet-500" },
+  ];
+  return (
+    <div className="relative rounded-3xl border border-white/10 bg-black/40 p-8 md:p-12 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.1),transparent_60%)]" />
+      <div className="relative z-10 mx-auto max-w-2xl text-center">
+        <Badge className="mb-4 bg-pink-500/10 text-pink-400 border-pink-500/20">For Fans</Badge>
+        <h2 className="mt-3 text-3xl font-bold md:text-5xl">
+          More than streaming.<br />
+          <span className="text-zinc-400">Real connection.</span>
+        </h2>
+        <p className="mt-5 text-lg text-zinc-300 max-w-xl mx-auto">
+          Pluggd isn't just about listening — it's about being part of an artist's journey.
+        </p>
+      </div>
+      <div className="relative z-10 mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {features.map((feature, idx) => {
+          const Icon = feature.Icon;
+          return (
+            <motion.div 
+              key={feature.title} 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.05 }}
+              className="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 hover:border-white/20 hover:bg-white/[0.07] transition-all duration-300"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} to-transparent`}>
+                  <Icon className="h-5 w-5 text-white" />
+                </span>
+                <div className="text-base font-semibold group-hover:text-primary transition-colors">{feature.title}</div>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{feature.description}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+      <div className="relative z-10 mt-10 text-center">
+        <Button size="lg" variant="outline" className="border-white/20 hover:bg-white/10" asChild>
+          <Link to="/releases">Start Exploring →</Link>
         </Button>
       </div>
     </div>
@@ -1347,20 +1469,62 @@ function CollabHighlights({ collabs, live }: { collabs: CollabProject[]; live: L
   );
 }
 
-function SocialProofStrip() {
-  const stats = [
+function SocialProofStrip({ role }: { role: "fans" | "creators" }) {
+  const creatorStats = [
     { label: "Paid out monthly", value: "£13,854", icon: "💸", trend: "+12%" },
     { label: "Active creators", value: "2,900+", icon: "🎤", trend: "+8%" },
     { label: "Completed collabs", value: "187", icon: "🤝", trend: "+23%" },
     { label: "Countries worldwide", value: "16", icon: "🌍", trend: "" },
   ];
+
+  const fanStats = [
+    { label: "Direct to artists", value: "90%", icon: "❤️", trend: "" },
+    { label: "Active fans", value: "12,400+", icon: "🎧", trend: "+15%" },
+    { label: "Exclusive releases", value: "340+", icon: "🔥", trend: "+18%" },
+    { label: "Live sessions weekly", value: "50+", icon: "📺", trend: "" },
+  ];
+
+  const stats = role === "creators" ? creatorStats : fanStats;
+
+  const content = role === "creators" ? {
+    title: "Trusted by creators worldwide",
+    subtitle: "Real numbers, real impact, real payouts",
+    footer: (
+      <>
+        <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">Featured creators include</span>
+        <span className="text-sm text-white font-medium">D'Yani</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-sm text-white font-medium">The FaNaTiX</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-sm text-white font-medium">Elevatetoday</span>
+        <span className="text-zinc-600">•</span>
+        <Link to="/directory" className="text-sm text-primary hover:underline">and more →</Link>
+      </>
+    )
+  } : {
+    title: "A community that cares",
+    subtitle: "Join fans who support artists directly",
+    footer: (
+      <>
+        <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">Popular this week</span>
+        <span className="text-sm text-white font-medium">Fresh drops</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-sm text-white font-medium">Live Q&As</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-sm text-white font-medium">Exclusive content</span>
+        <span className="text-zinc-600">•</span>
+        <Link to="/releases" className="text-sm text-primary hover:underline">Explore →</Link>
+      </>
+    )
+  };
+
   return (
     <div className="relative rounded-3xl border border-white/10 bg-gradient-to-r from-primary/10 via-transparent to-purple-900/10 p-8 md:p-10 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(249,115,22,0.15),transparent_40%)]" />
       <div className="relative z-10">
         <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold md:text-3xl">Trusted by creators worldwide</h3>
-          <p className="mt-2 text-zinc-400">Real numbers, real impact, real payouts</p>
+          <h3 className="text-2xl font-bold md:text-3xl">{content.title}</h3>
+          <p className="mt-2 text-zinc-400">{content.subtitle}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, idx) => (
@@ -1386,16 +1550,7 @@ function SocialProofStrip() {
           ))}
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-center">
-          <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">Featured creators include</span>
-          <span className="text-sm text-white font-medium">D'Yani</span>
-          <span className="text-zinc-600">•</span>
-          <span className="text-sm text-white font-medium">The FaNaTiX</span>
-          <span className="text-zinc-600">•</span>
-          <span className="text-sm text-white font-medium">Elevatetoday</span>
-          <span className="text-zinc-600">•</span>
-          <span className="text-sm text-white font-medium">Zeeks</span>
-          <span className="text-zinc-600">•</span>
-          <Link to="/directory" className="text-sm text-primary hover:underline">and more →</Link>
+          {content.footer}
         </div>
       </div>
     </div>
@@ -1820,12 +1975,12 @@ function HowItWorks() {
   );
 }
 
-function TestimonialsSection() {
-  const quotesData = [
+function TestimonialsSection({ role }: { role: "fans" | "creators" }) {
+  const creatorQuotes = [
     {
       quote: "I made more in my first week on Pluggd than 3 months of streaming. The direct fan connection is everything.",
       name: "AYOFÉ",
-      role: "Singer & Producer",
+      userRole: "Singer & Producer",
       stat: "£2,400",
       statLabel: "first month",
       initials: "AY"
@@ -1833,7 +1988,7 @@ function TestimonialsSection() {
     {
       quote: "Finally a platform built for creators, not corporations. The collab tools alone changed how we work.",
       name: "The FaNaTiX",
-      role: "Grammy-nominated collective",
+      userRole: "Grammy-nominated collective",
       stat: "47",
       statLabel: "collabs completed",
       initials: "TF"
@@ -1841,22 +1996,61 @@ function TestimonialsSection() {
     {
       quote: "Selling beats with proper licensing, running memberships, AND going live? All in one place. Game changer.",
       name: "Elevatetoday",
-      role: "Producer & Artist",
+      userRole: "Producer & Artist",
       stat: "1,200+",
       statLabel: "beats sold",
       initials: "ET"
     },
   ];
+
+  const fanQuotes = [
+    {
+      quote: "I finally feel like my support actually reaches the artists I love. The exclusive content is incredible.",
+      name: "Marcus T.",
+      userRole: "Music Fan",
+      stat: "15",
+      statLabel: "artists supported",
+      initials: "MT"
+    },
+    {
+      quote: "Got early access to 3 albums this year before they went mainstream. The membership perks are worth every penny.",
+      name: "Sarah K.",
+      userRole: "Superfan",
+      stat: "3",
+      statLabel: "exclusive albums",
+      initials: "SK"
+    },
+    {
+      quote: "The live Q&As are amazing. I've had real conversations with producers I've followed for years.",
+      name: "James R.",
+      userRole: "Beat Collector",
+      stat: "12",
+      statLabel: "live sessions joined",
+      initials: "JR"
+    },
+  ];
+
+  const quotesData = role === "creators" ? creatorQuotes : fanQuotes;
+
+  const content = role === "creators" ? {
+    badge: "Creator stories",
+    headline: <>Hear it from the<br /><span className="text-primary">creators themselves</span></>,
+    subtitle: "Real artists. Real results. Real payouts."
+  } : {
+    badge: "Fan experiences",
+    headline: <>Fans who<br /><span className="text-primary">support differently</span></>,
+    subtitle: "Real fans. Real connections. Real impact."
+  };
+
   return (
     <div className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-black/50 to-black/30 p-8 md:p-12 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.05),transparent_60%)]" />
       <div className="relative z-10 mx-auto max-w-3xl text-center">
-        <Badge className="mb-4 bg-white/10 text-white border-white/20">Creator stories</Badge>
+        <Badge className="mb-4 bg-white/10 text-white border-white/20">{content.badge}</Badge>
         <h2 className="mt-3 text-3xl font-bold md:text-5xl">
-          Hear it from the<br />
-          <span className="text-primary">creators themselves</span>
+          {content.headline}
         </h2>
-        <p className="mt-4 text-zinc-400">Real artists. Real results. Real payouts.</p>
+        <p className="mt-4 text-zinc-400">{content.subtitle}</p>
       </div>
       <div className="relative z-10 mt-10 grid gap-6 md:grid-cols-3">
         {quotesData.map((quote, idx) => (
@@ -1882,7 +2076,7 @@ function TestimonialsSection() {
               </Avatar>
               <div>
                 <div className="text-sm font-semibold text-white">{quote.name}</div>
-                <div className="text-xs text-zinc-500">{quote.role}</div>
+                <div className="text-xs text-zinc-500">{quote.userRole}</div>
               </div>
             </div>
           </motion.div>
@@ -1892,7 +2086,23 @@ function TestimonialsSection() {
   );
 }
 
-function FinalCTA() {
+function FinalCTA({ role }: { role: "fans" | "creators" }) {
+  const content = role === "creators" ? {
+    badge: "✨ Free to get started",
+    headline: <>Ready to own<br /><span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">your music career?</span></>,
+    subtext: "Join thousands of creators who chose independence over algorithms. Set up your page in minutes, start earning today.",
+    primaryCta: { text: "Create Your Free Page →", link: "/signup?intent=create" },
+    secondaryCta: { text: "See How It Works", link: "/features" },
+    footer: "No credit card required • Set up in under 5 minutes • 90% creator earnings"
+  } : {
+    badge: "🎵 Join the community",
+    headline: <>Ready to discover<br /><span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">music that matters?</span></>,
+    subtext: "Support artists directly and get exclusive access to new releases, live sessions, and behind-the-scenes content.",
+    primaryCta: { text: "Start Exploring →", link: "/releases" },
+    secondaryCta: { text: "Browse Creators", link: "/directory" },
+    footer: "Free to browse • No subscription required • 90% goes to artists"
+  };
+
   return (
     <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/20 via-black/60 to-purple-900/30 p-10 md:p-16 text-center">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.25),_transparent_50%)]" />
@@ -1904,26 +2114,24 @@ function FinalCTA() {
         className="relative z-10 space-y-6"
       >
         <Badge className="bg-primary/20 text-primary border-primary/30 font-medium">
-          ✨ Free to get started
+          {content.badge}
         </Badge>
         <h2 className="text-4xl md:text-6xl font-bold leading-tight">
-          Ready to own<br />
-          <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent">your music career?</span>
+          {content.headline}
         </h2>
         <p className="text-lg md:text-xl text-zinc-300 max-w-2xl mx-auto leading-relaxed">
-          Join thousands of creators who chose independence over algorithms. 
-          Set up your page in minutes, start earning today.
+          {content.subtext}
         </p>
         <div className="flex flex-wrap justify-center gap-4 pt-4">
           <Button size="lg" className="px-10 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 shadow-xl shadow-primary/30 transition-all duration-300 hover:shadow-primary/50 hover:scale-[1.02]" asChild>
-            <Link to="/signup?intent=create">Create Your Free Page →</Link>
+            <Link to={content.primaryCta.link}>{content.primaryCta.text}</Link>
           </Button>
           <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20 hover:bg-white/10 hover:border-white/40" asChild>
-            <Link to="/marketplace">Browse as a Fan</Link>
+            <Link to={content.secondaryCta.link}>{content.secondaryCta.text}</Link>
           </Button>
         </div>
         <p className="text-sm text-zinc-500 pt-2">
-          No credit card required • Set up in under 5 minutes • 90% creator earnings
+          {content.footer}
         </p>
       </motion.div>
     </div>
