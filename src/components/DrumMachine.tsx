@@ -1227,19 +1227,23 @@ const DrumMachine = () => {
       fileInputRef.current?.click();
     }
   };
-  const handlePadRelease = (padIndex: number) => {
-    if (samples[padIndex]?.gateMode) {
-      const currentSource = playingSources.get(padIndex);
-      if (currentSource) {
-        currentSource.stop();
-        setPlayingSources(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(padIndex);
-          return newMap;
-        });
-      }
+  const handlePadRelease = useCallback((padIndex: number) => {
+    if (!samples[padIndex]?.gateMode) {
+      return;
     }
-  };
+
+    setPlayingSources(prev => {
+      const currentSource = prev.get(padIndex);
+      if (!currentSource) {
+        return prev;
+      }
+
+      currentSource.stop();
+      const newMap = new Map(prev);
+      newMap.delete(padIndex);
+      return newMap;
+    });
+  }, [samples]);
   const handleFileLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && selectedPad !== null) {

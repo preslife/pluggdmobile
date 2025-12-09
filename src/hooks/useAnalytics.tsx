@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
 import { sentry } from '@/lib/sentry';
@@ -39,21 +39,27 @@ export interface AnalyticsConfig {
 export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
   const { user } = useAuth();
   
-  const defaultConfig: AnalyticsConfig = {
-    enableAutoTracking: true,
-    enableConversionTracking: true,
-    enableEngagementTracking: true,
-    enableRevenueTracking: true,
-    enableGDPRCompliance: true,
-    consentRequired: false,
-    ...config
-  };
+  const mergedConfig = useMemo<AnalyticsConfig>(() => ({
+    enableAutoTracking: config.enableAutoTracking ?? true,
+    enableConversionTracking: config.enableConversionTracking ?? true,
+    enableEngagementTracking: config.enableEngagementTracking ?? true,
+    enableRevenueTracking: config.enableRevenueTracking ?? true,
+    enableGDPRCompliance: config.enableGDPRCompliance ?? true,
+    consentRequired: config.consentRequired ?? false,
+  }), [
+    config.enableAutoTracking,
+    config.enableConversionTracking,
+    config.enableEngagementTracking,
+    config.enableRevenueTracking,
+    config.enableGDPRCompliance,
+    config.consentRequired,
+  ]);
 
   // Track analytics event
   const track = useCallback(async (eventName: string, properties: Record<string, any> = {}) => {
     try {
       // GDPR compliance check
-      if (defaultConfig.enableGDPRCompliance && defaultConfig.consentRequired) {
+      if (mergedConfig.enableGDPRCompliance && mergedConfig.consentRequired) {
         const hasConsent = localStorage.getItem('analytics_consent') === 'true';
         if (!hasConsent) {
           logger.debug('Analytics tracking skipped - no user consent', { eventName });
@@ -104,7 +110,7 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
     } catch (error) {
       logger.error('Failed to track analytics event', { eventName, error }, error);
     }
-  }, [user?.id, defaultConfig]);
+  }, [user?.id, mergedConfig.enableGDPRCompliance, mergedConfig.consentRequired]);
 
   // Track page view
   const trackPageView = useCallback(async (page: string, properties: Record<string, any> = {}) => {
@@ -117,14 +123,14 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
 
   // Track user engagement
   const trackEngagement = useCallback(async (action: string, element: string, properties: Record<string, any> = {}) => {
-    if (!defaultConfig.enableEngagementTracking) return;
+    if (!mergedConfig.enableEngagementTracking) return;
 
     await track('user_engagement', {
       action,
       element,
       ...properties
     });
-  }, [track, defaultConfig.enableEngagementTracking]);
+  }, [track, mergedConfig.enableEngagementTracking]);
 
   // Track conversion events
   const trackConversion = useCallback(async (
@@ -132,14 +138,14 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
     value?: number, 
     properties: Record<string, any> = {}
   ) => {
-    if (!defaultConfig.enableConversionTracking) return;
+    if (!mergedConfig.enableConversionTracking) return;
 
     await track('conversion', {
       conversion_type: conversionType,
       conversion_value: value,
       ...properties
     });
-  }, [track, defaultConfig.enableConversionTracking]);
+  }, [track, mergedConfig.enableConversionTracking]);
 
   // Track revenue events
   const trackRevenue = useCallback(async (
@@ -148,7 +154,7 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
     productId?: string, 
     properties: Record<string, any> = {}
   ) => {
-    if (!defaultConfig.enableRevenueTracking) return;
+    if (!mergedConfig.enableRevenueTracking) return;
 
     await track('revenue', {
       amount,
@@ -156,7 +162,7 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
       product_id: productId,
       ...properties
     });
-  }, [track, defaultConfig.enableRevenueTracking]);
+  }, [track, mergedConfig.enableRevenueTracking]);
 
   // Track feature usage
   const trackFeature = useCallback(async (featureName: string, action: string, properties: Record<string, any> = {}) => {
@@ -314,7 +320,7 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
 
   // Auto-tracking setup
   useEffect(() => {
-    if (!defaultConfig.enableAutoTracking) return;
+    if (!mergedConfig.enableAutoTracking) return;
 
     // Track page view on mount
     trackPageView(window.location.pathname);
@@ -330,7 +336,7 @@ export const useAnalytics = (config: Partial<AnalyticsConfig> = {}) => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       trackSessionDuration();
     };
-  }, [defaultConfig.enableAutoTracking, trackPageView, trackSessionDuration]);
+  }, [mergedConfig.enableAutoTracking, trackPageView, trackSessionDuration]);
 
   // Set up user context when user changes
   useEffect(() => {

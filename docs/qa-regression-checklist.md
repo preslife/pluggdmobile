@@ -3,7 +3,7 @@
 _Last updated: 2025-10-17_
 
 ## Dynamic OG Image Service
-- [ ] Hit `https://qkwvqmubhyondemhasjp.supabase.co/functions/v1/generate-og-image?title=Test&description=Example&type=release` and confirm PNG renders with correct badge and gradients.
+- [x] Hit `https://qkwvqmubhyondemhasjp.supabase.co/functions/v1/generate-og-image?title=Test&description=Example&type=release` and confirm PNG renders with correct badge and gradients.
 - [ ] Share a release and confirm `<meta property="og:image">` points to the new function URL.
 - [ ] Verify social debuggers (X, Facebook) render the updated preview.
 

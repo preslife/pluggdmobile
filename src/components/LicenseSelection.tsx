@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Check, Crown, Zap, Infinity, Star, Eye, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, Crown, Zap, Infinity as InfinityIcon, Star, Eye, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useContracts, ContractTemplate } from '@/hooks/useContracts';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,7 +32,7 @@ const LicenseSelection = ({ beatId, producerId, beatTitle, onLicenseSelected }: 
     switch (templateType) {
       case 'basic_lease': return <Zap className="h-5 w-5" />;
       case 'premium_lease': return <Crown className="h-5 w-5" />;
-      case 'unlimited_lease': return <Infinity className="h-5 w-5" />;
+      case 'unlimited_lease': return <InfinityIcon className="h-5 w-5" />;
       case 'exclusive_rights': return <Star className="h-5 w-5" />;
       default: return <Check className="h-5 w-5" />;
     }
