@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Battles &amp; Contests</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#121212", // Adjusted to be closer to pure black as per Pluggd brand description
+                        "surface-dark": "#1E1E1E",
+                        "surface-dark-highlight": "#2a2a2a",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased selection:bg-primary selection:text-white pb-24">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between">
+<h2 class="text-xl font-bold leading-tight tracking-tight flex-1 text-center pl-10">Battles</h2>
+<div class="flex items-center justify-end">
+<button class="flex items-center justify-center rounded-full p-2 text-slate-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</div>
+<!-- Main Content -->
+<div class="flex flex-col gap-6 p-4 max-w-md mx-auto w-full">
+<!-- Hero Section: Join Battle -->
+<div class="relative overflow-hidden rounded-2xl shadow-lg group">
+<!-- Background Image -->
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Silhouette of a music artist performing on stage with dramatic lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBOPjDmOHS-_vRgjZ9DKqqcB7blizvFg4o_kRXTx5IzzH10zaAFalbpv3nRvVqm16zNWL1Eee02aKtMJoKf23eXxEEXc-gcmrzg5T5enYNwhzUHb-dVQ4byiTj8dAjBCysQIppUK77ql8Qutj90ZwvaS1-Jb8bE9EAB9saDxiHpu1_WXe4nWj0jVaN4V391dtvN_KpojvBAP1qFFvYkaZ5FgFiqs9aJVRSeAmGRCDdt1XyZD5NI1_ZslKJ2Bh0Tvh3KAfar6yWEAzc');">
+</div>
+<!-- Gradient Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+<div class="relative p-5 flex flex-col min-h-[240px] justify-between">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="text-xs font-bold text-white tracking-wide uppercase">Live Now</span>
+</div>
+<div class="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+<span class="text-xs font-medium text-gray-300">Ends in 2h 15m</span>
+</div>
+</div>
+<div class="space-y-3">
+<div>
+<h1 class="text-2xl font-bold text-white leading-tight mb-1">Weekly Beat Battle</h1>
+<p class="text-gray-300 text-sm font-medium">Current Prize Pool: <span class="text-primary font-bold">$500</span></p>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 active:scale-95 transition-all text-white font-bold py-3 rounded-xl shadow-[0_0_15px_rgba(236,127,19,0.4)] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+                        Submit Your Track
+                    </button>
+</div>
+</div>
+</div>
+<!-- Tournament Bracket Widget -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between px-1">
+<h2 class="text-lg font-bold text-white tracking-tight">Tournament Bracket</h2>
+<a class="text-xs font-bold text-primary hover:text-primary/80" href="#">View Full</a>
+</div>
+<div class="w-full overflow-x-auto scrollbar-hide pb-2">
+<div class="flex gap-4 min-w-max">
+<!-- Matchup Card 1 (Active) -->
+<div class="flex flex-col bg-surface-dark border border-white/5 rounded-xl p-4 w-[280px] shrink-0 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex justify-between items-center mb-4 opacity-60">
+<span class="text-xs font-bold uppercase tracking-wider text-white">Semi-Finals</span>
+<span class="material-symbols-outlined text-white text-sm">trophy</span>
+</div>
+<div class="flex items-center justify-between relative z-10">
+<!-- Player 1 -->
+<div class="flex flex-col items-center gap-2 w-20">
+<div class="w-14 h-14 rounded-full border-2 border-primary p-0.5 relative">
+<img alt="Profile picture of DJ Kicks" class="w-full h-full rounded-full object-cover" data-alt="Close up portrait of a young man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi-dVgtj54d6bVsSFNt4P1M54qzYwcNH1tZUoXGg1aZsbn3SyMlSLJx85reGg-7-kup5t0DlALGlOwCeVK23bOMpdMaCI4061bdNBU7uDzs2dR8aeVndD-as-qGF7nUjbT87H8FM-FS0kJdmv0tFhJa-PctadwSAiYjWrWp4AFO3QTIRNDWGAKYvoOx2yixgZuN_q10ETrE6HoGLihMGRIdMnV2ScYYbQIrkYy3T7tJuILpjIggoKGO53dxNlIBv1ahLzls_BG000"/>
+</div>
+<span class="text-xs font-bold text-white text-center truncate w-full">DJ Kicks</span>
+</div>
+<!-- VS -->
+<div class="flex flex-col items-center justify-center">
+<span class="text-2xl font-black text-white/20 italic select-none">VS</span>
+</div>
+<!-- Player 2 -->
+<div class="flex flex-col items-center gap-2 w-20">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-0.5 relative">
+<img alt="Profile picture of MC Flow" class="w-full h-full rounded-full object-cover" data-alt="Portrait of a woman with sunglasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_BZ9EStV7S9HvBZYRhfm67IWblM9Q3KA3cUy7Op3gLO4jWruRyPU7Qbww9H4TTjSbAm_7AVttdQU30ndkif-35bYOBJjdlgFLeCyV4djlwCRoHwp9OTiWnBTty4-VocwuND7uz_TOOkHjs1YJXnwqvCYMa-9bNq4UfO9vADvxrv_yWJ0sQkovwq_cUJ2CSiRCJgeB9G14ABfXyP_5yArVFhQxE6xorBwwHc14NIFAOtSvqFDFSi0bYWo7-AwhdubaGdIzfUioy4g"/>
+</div>
+<span class="text-xs font-bold text-white text-center truncate w-full">MC Flow</span>
+</div>
+</div>
+</div>
+<!-- Matchup Card 2 (Upcoming) -->
+<div class="flex flex-col bg-surface-dark border border-white/5 rounded-xl p-4 w-[280px] shrink-0 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+<div class="flex justify-between items-center mb-4 opacity-60">
+<span class="text-xs font-bold uppercase tracking-wider text-white">Semi-Finals</span>
+</div>
+<div class="flex items-center justify-between relative z-10">
+<div class="flex flex-col items-center gap-2 w-20">
+<div class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center">
+<span class="text-xs text-white/40">?</span>
+</div>
+<span class="text-xs font-bold text-white/40 text-center">TBD</span>
+</div>
+<div class="flex flex-col items-center justify-center">
+<span class="text-2xl font-black text-white/10 italic select-none">VS</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-20">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-0.5">
+<img alt="Profile picture of waiting player" class="w-full h-full rounded-full object-cover" data-alt="Portrait of a smiling man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYBu6nQmy9OZUsvhszahMgj3rmdADKA6ZJQU1ZT4GaouvLhFXX866yPfKblOzg6aq9yUO2Saj36X_3AHWadQM5XdYiKVil_xJO_9_QtK_8vLy6Z0gGnm--5wStPYCSdMOe7i_Z6Y3U80Pq0OmxVYZrfV4DAz16xNoDni9h7_k8OjayXlmGbG3nDgB2mO6HlxAqlIuqI6PEM17oYx9A3NO3qP0LEDOc-K_axfv2F28Nnh17vXdJbRN5TyydSM9s9Jm-Fr2PqYS4Q9M"/>
+</div>
+<span class="text-xs font-bold text-white text-center truncate w-full">Apex</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Leaderboard -->
+<div class="flex flex-col gap-4">
+<div class="flex items-end justify-between px-1 pt-2">
+<div>
+<h2 class="text-lg font-bold text-white tracking-tight">Live Leaderboard</h2>
+<p class="text-xs text-gray-400">Voting ends in 2h</p>
+</div>
+<div class="flex items-center gap-1 text-primary text-xs font-bold px-2 py-1 bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-[14px] animate-pulse">sensors</span>
+                    Live Voting
+                </div>
+</div>
+<!-- List -->
+<div class="flex flex-col gap-3">
+<!-- Rank 1 -->
+<div class="group flex items-center gap-3 bg-surface-dark p-3 rounded-xl border border-primary/30 shadow-[0_0_10px_rgba(236,127,19,0.1)] relative overflow-hidden">
+<!-- Progress Bar Background (Simulated) -->
+<div class="absolute left-0 top-0 bottom-0 bg-primary/5 w-[85%] z-0"></div>
+<div class="relative z-10 flex items-center justify-center w-8 text-2xl font-black text-primary italic">1</div>
+<div class="relative z-10 h-12 w-12 shrink-0">
+<img alt="Avatar of Lil Apex" class="h-full w-full rounded-full object-cover border-2 border-surface-dark shadow-sm" data-alt="Man in a hoodie looking away" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyRxkaNaoksbWlIyHk3b4HJqUymYjXT6lCc_iFFz12K8_MG660UgUqaluHslDD3TOszvbPPXRH6sS_mUhjWTcOt52mYkqWyf1FbXdh-mSUp8PC1LPo0_yzJzW1g7vFOxexW9YjsFpg3SqOwIf1GJAd0eeKTMdzGZTr4i_QYnNE9HdoaGAg2GTz8dPN_iCiFITYYEbVwADgecsi96xuS-4ZeXW-8eR4FYtogL1qfjwY1xdNyluljXm9iOmPagLomn_2CxoCErvZCpE"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-1 rounded-sm">4.5k</div>
+</div>
+<div class="relative z-10 flex flex-col flex-1 min-w-0">
+<h3 class="text-white font-bold truncate text-sm">Lil Apex</h3>
+<div class="flex items-center gap-1 text-gray-400 text-xs">
+<span class="material-symbols-outlined text-[12px]">music_note</span>
+<span class="truncate">Night Drive</span>
+</div>
+</div>
+<button class="relative z-10 h-10 w-10 flex items-center justify-center rounded-full bg-primary text-white shadow-md active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">local_fire_department</span>
+</button>
+</div>
+<!-- Rank 2 -->
+<div class="group flex items-center gap-3 bg-surface-dark p-3 rounded-xl border border-white/5 relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 bg-white/5 w-[70%] z-0"></div>
+<div class="relative z-10 flex items-center justify-center w-8 text-2xl font-black text-white/50 italic">2</div>
+<div class="relative z-10 h-12 w-12 shrink-0">
+<img alt="Avatar of Sarah Beat" class="h-full w-full rounded-full object-cover border-2 border-surface-dark shadow-sm" data-alt="Smiling woman looking at camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSk1C0h_U3kwgH_zf4LWJ_02alCidPuv6foVR5VEdlo-oQM76D6bQhrwKKxkT3f6QxfW_SzmXaYvU_K7HC-Z550oe2u8YyiJK6-khmOnel4KyP_o_rlOL6wzjX7ZOWaHM1-sKnkHoWx77yC3vSISf7Op2cHWxS_Q-SiG8W499f_oIlMjzr2hPQi1P9Eo8wD8xLPTeZwND9n0NgCM74-EzR8DHCSVeFiLCrPqQTH7r8m0VIDb1JZkiYtmf5QgiYLMBuHZjAHYiK7sg"/>
+<div class="absolute -bottom-1 -right-1 bg-surface-dark-highlight border border-white/10 text-white text-[10px] font-bold px-1 rounded-sm">4.2k</div>
+</div>
+<div class="relative z-10 flex flex-col flex-1 min-w-0">
+<h3 class="text-white font-bold truncate text-sm">Sarah Beat</h3>
+<div class="flex items-center gap-1 text-gray-400 text-xs">
+<span class="material-symbols-outlined text-[12px]">music_note</span>
+<span class="truncate">Heartless</span>
+</div>
+</div>
+<button class="relative z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-dark-highlight border border-white/10 text-gray-400 hover:text-primary hover:border-primary/50 transition-colors active:scale-90">
+<span class="material-symbols-outlined text-[20px]">local_fire_department</span>
+</button>
+</div>
+<!-- Rank 3 -->
+<div class="group flex items-center gap-3 bg-surface-dark p-3 rounded-xl border border-white/5 relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 bg-white/5 w-[55%] z-0"></div>
+<div class="relative z-10 flex items-center justify-center w-8 text-2xl font-black text-white/50 italic">3</div>
+<div class="relative z-10 h-12 w-12 shrink-0">
+<img alt="Avatar of The Prodigy" class="h-full w-full rounded-full object-cover border-2 border-surface-dark shadow-sm" data-alt="Man with a beard smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjKON2sTP-dcwFm5tod_Kx6tEsBc9SGICSs3r52DyM-8-5Yos2vLWBajkKdvzLJj07D-TocLTjSIh_GoNgeLtVZ0t1XLiDmeqYFdt2uAkyn5K2rAAKf9ddXH7YtEu3S4n2vjT1urOrCJkX_CZZL6G61XCXZjmRHJbv3tKqQmBGR-drDhsBaDdy2MqU0Kyqx_WwlxQhsM_WCRiRWW78yTNAlZvrinYI-iwpP5ii5dW35F4t20Mr-b0pVpLjgnnkATeGdqlECb5V63k"/>
+<div class="absolute -bottom-1 -right-1 bg-surface-dark-highlight border border-white/10 text-white text-[10px] font-bold px-1 rounded-sm">3.8k</div>
+</div>
+<div class="relative z-10 flex flex-col flex-1 min-w-0">
+<h3 class="text-white font-bold truncate text-sm">The Prodigy</h3>
+<div class="flex items-center gap-1 text-gray-400 text-xs">
+<span class="material-symbols-outlined text-[12px]">music_note</span>
+<span class="truncate">Bassline</span>
+</div>
+</div>
+<button class="relative z-10 h-10 w-10 flex items-center justify-center rounded-full bg-surface-dark-highlight border border-white/10 text-gray-400 hover:text-primary hover:border-primary/50 transition-colors active:scale-90">
+<span class="material-symbols-outlined text-[20px]">local_fire_department</span>
+</button>
+</div>
+</div>
+<button class="w-full py-3 text-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                View All 124 Entries
+            </button>
+</div>
+</div>
+<!-- Bottom Navigation -->
+<div class="fixed bottom-0 left-0 w-full bg-[#121212]/95 backdrop-blur-lg border-t border-white/5 z-50 pb-safe">
+<div class="flex justify-around items-center h-16 max-w-md mx-auto">
+<button class="flex flex-col items-center justify-center gap-1 w-16 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">swords</span>
+<span class="text-[10px] font-medium">Battles</span>
+</button>
+<div class="relative -top-5">
+<button class="flex items-center justify-center h-14 w-14 rounded-full bg-white text-black shadow-lg shadow-white/10 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+</div>
+<button class="flex flex-col items-center justify-center gap-1 w-16 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="text-[10px] font-medium">Chat</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 text-gray-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</div>
+<!-- Safe area spacing for iOS home indicator -->
+<div class="h-6 w-full"></div>
+</div>
+</body></html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Press Kit Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#ec7f13",
+              "background-light": "#f8f7f6",
+              "background-dark": "#221910",
+              "surface-dark": "#2C241B", 
+              "text-muted": "#b9ab9d",
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"],
+              "body": ["Noto Sans", "sans-serif"],
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+            boxShadow: {
+              'glow': '0 0 20px rgba(236,127,19,0.25)',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-white font-display antialiased overflow-x-hidden">
+<div class="relative flex flex-col min-h-screen w-full max-w-md mx-auto shadow-2xl overflow-hidden bg-background-dark group/design-root">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-30 flex items-center bg-background-dark/95 backdrop-blur-md p-4 pb-3 justify-between border-b border-white/5">
+<div class="text-white flex size-12 shrink-0 items-center justify-start cursor-pointer hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-white" style="font-size: 24px;">arrow_back</span>
+</div>
+<h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Edit Press Kit</h2>
+<div class="flex items-center justify-end absolute right-4 cursor-pointer hover:opacity-80 transition-opacity">
+<p class="text-primary text-base font-bold leading-normal tracking-[0.015em] shrink-0">Preview</p>
+</div>
+</div>
+<!-- Main Scrollable Area -->
+<div class="flex-1 flex flex-col gap-6 p-4 pb-36">
+<!-- Context Hint -->
+<div class="flex items-center justify-between px-1">
+<p class="text-text-muted text-xs font-semibold uppercase tracking-wider">Drag to reorder sections</p>
+<span class="material-symbols-outlined text-text-muted text-sm">info</span>
+</div>
+<!-- Card 1: Press Photos -->
+<div class="group relative flex flex-col bg-white/5 rounded-2xl border border-white/5 active:border-primary/50 transition-colors shadow-lg">
+<!-- Drag Handle -->
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 p-3 cursor-move opacity-40 group-hover:opacity-100 transition-opacity touch-none">
+<span class="material-symbols-outlined text-text-muted">drag_indicator</span>
+</div>
+<!-- Card Header -->
+<div class="pl-6 pr-4 pt-4 pb-2 flex justify-between items-center">
+<h3 class="text-white text-sm font-extrabold uppercase tracking-wider">Press Photos</h3>
+<button class="size-8 flex items-center justify-center rounded-full bg-white/10 text-primary hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+</button>
+</div>
+<!-- Card Content -->
+<div class="pl-6 pr-4 pb-4">
+<div class="grid grid-cols-2 gap-3">
+<div class="aspect-square bg-center bg-cover rounded-lg bg-gray-800 relative overflow-hidden group/img" data-alt="Press photo of artist performing on stage with orange lighting" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDr-C6M57a5eNh_6Wvm-MX72gwkOO9dDKRk7LAYJgHXRs7bOL67AWWMnhiemdlfvEGlRGjB_lSKUlzlEikywIyoUwtYJSjhBphqCsFWxsBLs9uIn3Xe1gRfbDeG6i8lNa5cJ2u5NZupLcJe2OzWQSbgLPZpyPPlpERu3k_TYsNZ1gplnlN3RIpVvPkXwnVMZX7phj2eNysqF4K6nIkccI-gIOjwBgHcbWvcAPWWlZhjnX-n-U5l3_ch2qCC-8dNWRNS4dmFTo33_Kk");'>
+<div class="absolute inset-0 bg-black/40 hidden group-hover/img:flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm">visibility</span>
+</div>
+</div>
+<div class="aspect-square bg-center bg-cover rounded-lg bg-gray-800" data-alt="Studio portrait of artist in black and white" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA0a4pRqd-zBynqUIH1zpCyuQvxUi8OxNRUZRkd-yu9m6JV9Y8pg4pixgqWnERhUiE21gMWqfDTOjYm6XEbHnAUfF2hzMKh2fZq6um_yvlp3Pty1UTm-aUwuuN7qYRbqRVVbWp5nvNolQFrg8QufkOXpr_N1NdcPjIzJZGw7yNFXuL6UxURXGg2adTQxDlYM9_ttrM6L1rmAvQJIKV65eEWpyHtVm8qYiLb357ZsMmhQidSCOl64ZmlG4QYFoTEjuB7GkSzFvEdyIg");'></div>
+<div class="aspect-square bg-center bg-cover rounded-lg bg-gray-800" data-alt="Artist playing guitar in a dark setting" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuArCW3voa1eEepUBPtd6px4kH9Vca5r9rEF4tGMozHlEKO9X9EzM9RzUGDjBFGqfFYRr_jvuPu36yKXTFBUy4zUxpG5I7IeQlKDBhozTNMYIxdyFwAmX6tQz_gqwjz0hT_BQofjxBzglD-Kt6Fw1yJtQuFlXVPDeiaLizr6pEVVUZANAN8ggdU8iTyC21CX-P5jkTJLn7yh7kFf2xF6LOLwewEWGtFCxBIEMjB15Cj3OJsGgOLXKqw4M1gfOnqr6Se7FjwO3i-ALRw");'></div>
+<!-- Add New Placeholder -->
+<div class="relative flex flex-col gap-1 items-center justify-center aspect-square bg-white/5 rounded-lg border border-dashed border-white/20 hover:bg-white/10 hover:border-primary/50 cursor-pointer transition-all">
+<span class="material-symbols-outlined text-primary">add_circle</span>
+<span class="text-[10px] text-text-muted font-bold uppercase">Add Photo</span>
+</div>
+</div>
+<p class="text-xs text-text-muted mt-3 font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        4 Photos Selected
+                     </p>
+</div>
+</div>
+<!-- Card 2: Biography -->
+<div class="group relative flex flex-col bg-white/5 rounded-2xl border border-white/5 shadow-lg">
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 p-3 cursor-move opacity-40 group-hover:opacity-100 transition-opacity touch-none">
+<span class="material-symbols-outlined text-text-muted">drag_indicator</span>
+</div>
+<div class="pl-6 pr-4 pt-4 pb-2 flex justify-between items-center">
+<h3 class="text-white text-sm font-extrabold uppercase tracking-wider">Biography</h3>
+<button class="size-8 flex items-center justify-center rounded-full bg-white/10 text-primary hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+</button>
+</div>
+<div class="pl-6 pr-4 pb-4">
+<div class="p-3 rounded-lg bg-black/20 border border-white/5">
+<p class="text-gray-300 text-sm leading-relaxed line-clamp-3 font-body">
+                             Rising from the underground scene of Atlanta, Pluggd artist 'Neon V' blends synthetic wave beats with gritty trap soul. His latest EP redefines the genre boundaries...
+                         </p>
+</div>
+</div>
+</div>
+<!-- Card 3: Featured Tracks -->
+<div class="group relative flex flex-col bg-white/5 rounded-2xl border border-white/5 shadow-lg">
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 p-3 cursor-move opacity-40 group-hover:opacity-100 transition-opacity touch-none">
+<span class="material-symbols-outlined text-text-muted">drag_indicator</span>
+</div>
+<div class="pl-6 pr-4 pt-4 pb-2 flex justify-between items-center">
+<h3 class="text-white text-sm font-extrabold uppercase tracking-wider">Featured Tracks</h3>
+<div class="flex gap-2">
+<button class="size-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+</button>
+</div>
+</div>
+<div class="pl-6 pr-4 pb-4 flex flex-col gap-3">
+<!-- Track 1 -->
+<div class="flex items-center gap-3 p-2 pr-3 rounded-xl bg-black/20 border border-white/5 hover:border-primary/30 transition-colors">
+<div class="size-12 rounded-lg bg-gray-700 bg-center bg-cover shrink-0 relative" data-alt="Album art for Midnight Drive showing a neon car" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBifqqgRCUXbP426kF1z3al4jImIVWXPpsqw0rGVrxaAYmGF9baHMKVXsM12sLouKW5x5Ii2rdx0dZN2RWlQxhZJGaLoOYZcvamC-Qxg8-8Xa5vR3Nb1j0rZunBAUttRUNiXqYpoVxMO37yA0LjVkoOi-PecXtnxNVOHpEBSsPjG16tTrM9wGgMCYghjPIudfH9o4rYnTLaFkpM8tJ2NEzyJJQDLhYUy_h_9fBcY6Qr3J0rHPRzZKlJV0kwyX8E1kxnuzRrcv_x9sY");'>
+<div class="absolute inset-0 flex items-center justify-center bg-black/30">
+<span class="material-symbols-outlined text-white text-sm">play_arrow</span>
+</div>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center">
+<p class="text-white text-sm font-bold truncate">Midnight Drive</p>
+<p class="text-text-muted text-xs truncate">Original Mix</p>
+</div>
+<div class="flex flex-col items-end gap-1">
+<p class="text-text-muted text-xs font-mono">3:45</p>
+<span class="material-symbols-outlined text-primary text-sm">equalizer</span>
+</div>
+</div>
+<!-- Track 2 -->
+<div class="flex items-center gap-3 p-2 pr-3 rounded-xl bg-black/20 border border-white/5 hover:border-primary/30 transition-colors">
+<div class="size-12 rounded-lg bg-gray-700 bg-center bg-cover shrink-0 relative" data-alt="Album art for Neon Horizon showing a sunset" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAny0lMAYKRMK6KSSWSOuEUyZQsnFf467UpleH39sp1KKCPdTYKy_jV3fL5SlylyLznKrVqkZUlQVTIZZ9sCDjiqnMhIbX1mzqoKAegWKwMjYmi-DFzi-hA9N2_U2UyYxY7zPnf664iX6OIo2MWLuz-Q_iyD_YaYPsAMC7IBUsRhEb7rlSCH8xRqSTTtIiczEbTHQ_7h_y0iXjBJ74kaZjC_9dfSDnkUseY7NpSDYGEHdanjAKa0CkORUCfiRkDxIDAvS_Y-1JTflI");'>
+<div class="absolute inset-0 flex items-center justify-center bg-black/30">
+<span class="material-symbols-outlined text-white text-sm">play_arrow</span>
+</div>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center">
+<p class="text-white text-sm font-bold truncate">Neon Horizon</p>
+<p class="text-text-muted text-xs truncate">Feat. K-Loud</p>
+</div>
+<div class="flex flex-col items-end gap-1">
+<p class="text-text-muted text-xs font-mono">2:50</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4: Notable Press -->
+<div class="group relative flex flex-col bg-white/5 rounded-2xl border border-white/5 shadow-lg">
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 p-3 cursor-move opacity-40 group-hover:opacity-100 transition-opacity touch-none">
+<span class="material-symbols-outlined text-text-muted">drag_indicator</span>
+</div>
+<div class="pl-6 pr-4 pt-4 pb-2 flex justify-between items-center">
+<h3 class="text-white text-sm font-extrabold uppercase tracking-wider">Notable Press</h3>
+<button class="size-8 flex items-center justify-center rounded-full bg-white/10 text-primary hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+</button>
+</div>
+<div class="pl-6 pr-4 pb-4 flex flex-col gap-2">
+<div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:bg-black/40 transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-8 rounded bg-white text-black font-bold text-xs shadow-sm">P</div>
+<span class="text-sm font-medium text-gray-200">Pitchfork Review</span>
+</div>
+<span class="material-symbols-outlined text-text-muted text-lg">open_in_new</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:bg-black/40 transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-8 rounded bg-white text-black font-bold text-xs shadow-sm">C</div>
+<span class="text-sm font-medium text-gray-200">Complex Magazine</span>
+</div>
+<span class="material-symbols-outlined text-text-muted text-lg">open_in_new</span>
+</div>
+</div>
+</div>
+<!-- Analytics Toggle -->
+<div class="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 mt-2 shadow-[0_0_15px_rgba(236,127,19,0.1)]">
+<div class="flex items-start gap-3">
+<div class="p-2 rounded-full bg-primary/20 text-primary shrink-0">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div>
+<h3 class="text-white font-bold text-sm">Show Analytics</h3>
+<p class="text-text-muted text-xs mt-0.5">Include stream counts in your kit</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer shrink-0">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-white/10"></div>
+</label>
+</div>
+</div>
+<!-- Sticky Footer Action -->
+<div class="fixed bottom-0 w-full max-w-md bg-background-dark/80 backdrop-blur-xl border-t border-white/5 p-4 z-40 pb-8">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold text-lg py-4 rounded-xl shadow-glow transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 group/btn">
+<span>Generate Shareable Link</span>
+<span class="material-symbols-outlined group-hover/btn:translate-x-1 transition-transform">link</span>
+</button>
+</div>
+</div>
+</body></html>

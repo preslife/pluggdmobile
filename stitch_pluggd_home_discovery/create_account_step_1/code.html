@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd - Create Account</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#181411", // Overridden to match the deeper dark tone requested in components
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col items-center justify-center overflow-x-hidden">
+<div class="relative flex h-full min-h-screen w-full max-w-md flex-col bg-background-light dark:bg-background-dark shadow-2xl mx-auto">
+<!-- Header / Status Bar Area -->
+<div class="flex flex-col gap-2 p-4 pb-2 z-10">
+<div class="flex items-center h-12 justify-between">
+<!-- Back Button -->
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</span>
+</button>
+<!-- Progress Indicator -->
+<div class="flex gap-1">
+<div class="w-8 h-1 bg-primary rounded-full"></div>
+<div class="w-2 h-1 bg-gray-300 dark:bg-neutral-700 rounded-full"></div>
+<div class="w-2 h-1 bg-gray-300 dark:bg-neutral-700 rounded-full"></div>
+</div>
+<!-- Empty div for spacing balance -->
+<div class="w-10"></div>
+</div>
+</div>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto px-6 pt-2 pb-8 no-scrollbar">
+<!-- Logo Area -->
+<div class="flex justify-center py-8">
+<div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 rotate-3">
+<span class="material-symbols-outlined text-white text-4xl">graphic_eq</span>
+</div>
+</div>
+<!-- Headline -->
+<h2 class="text-slate-900 dark:text-white tracking-tight text-[28px] font-bold leading-tight text-center pb-2">Let's get you pluggd in.</h2>
+<p class="text-slate-500 dark:text-neutral-400 text-center mb-8 text-sm font-medium">Create an account to start your journey.</p>
+<!-- Form Fields -->
+<form class="flex flex-col gap-5">
+<!-- Full Name -->
+<label class="flex flex-col gap-1.5 group">
+<span class="text-slate-900 dark:text-white text-sm font-medium leading-normal ml-1">Full Name</span>
+<div class="relative">
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#b9ab9d] bg-white dark:bg-[#27211c] border border-slate-200 dark:border-[#54473b] focus:border-primary dark:focus:border-primary focus:ring-1 focus:ring-primary focus:outline-0 h-14 p-[15px] pl-[15px] text-base font-normal leading-normal transition-all" placeholder="Enter your full name" type="text"/>
+</div>
+</label>
+<!-- Email -->
+<label class="flex flex-col gap-1.5 group">
+<span class="text-slate-900 dark:text-white text-sm font-medium leading-normal ml-1">Email Address</span>
+<div class="relative">
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#b9ab9d] bg-white dark:bg-[#27211c] border border-slate-200 dark:border-[#54473b] focus:border-primary dark:focus:border-primary focus:ring-1 focus:ring-primary focus:outline-0 h-14 p-[15px] pl-[15px] text-base font-normal leading-normal transition-all" placeholder="name@example.com" type="email"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#b9ab9d]">mail</span>
+</div>
+</label>
+<!-- Password -->
+<label class="flex flex-col gap-1.5 group">
+<span class="text-slate-900 dark:text-white text-sm font-medium leading-normal ml-1">Password</span>
+<div class="relative">
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#b9ab9d] bg-white dark:bg-[#27211c] border border-slate-200 dark:border-[#54473b] focus:border-primary dark:focus:border-primary focus:ring-1 focus:ring-primary focus:outline-0 h-14 p-[15px] pl-[15px] pr-12 text-base font-normal leading-normal transition-all" placeholder="••••••••" type="password"/>
+<button class="absolute right-0 top-0 h-full px-4 flex items-center justify-center text-slate-400 dark:text-[#b9ab9d] hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+<div class="flex gap-2 mt-1">
+<div class="h-1 flex-1 bg-green-500 rounded-full"></div>
+<div class="h-1 flex-1 bg-green-500 rounded-full"></div>
+<div class="h-1 flex-1 bg-gray-200 dark:bg-neutral-700 rounded-full"></div>
+<div class="h-1 flex-1 bg-gray-200 dark:bg-neutral-700 rounded-full"></div>
+</div>
+<span class="text-xs text-slate-500 dark:text-neutral-500 ml-1">Password strength: Medium</span>
+</label>
+<div class="h-4"></div>
+<!-- Primary Action Button -->
+<button class="w-full bg-primary hover:bg-[#d67210] active:scale-[0.98] transition-all text-white font-bold h-14 rounded-full shadow-lg shadow-primary/25 flex items-center justify-center gap-2" type="button">
+<span>Create Account</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</form>
+<!-- Divider / Social Login -->
+<div class="relative py-8 flex items-center">
+<div class="flex-grow border-t border-slate-200 dark:border-neutral-800"></div>
+<span class="flex-shrink-0 mx-4 text-slate-400 dark:text-neutral-600 text-sm font-medium">Or continue with</span>
+<div class="flex-grow border-t border-slate-200 dark:border-neutral-800"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<button class="h-12 flex items-center justify-center gap-2 bg-white dark:bg-[#27211c] border border-slate-200 dark:border-[#54473b] rounded-lg hover:bg-slate-50 dark:hover:bg-[#322a24] transition-colors">
+<img alt="Google Logo" class="w-5 h-5" data-alt="Google G logo in multicolor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdevIcoEa6ogcaNJ5qlVIUfumFDY3sL3nQF4Z6l09Icv4niM-0cg5EymDPniKwXF1mjeOFEjjFFpXCmddyDW5b8wneNZmUHhrlwVqCJGHBp61GQ9TuSzi7UlC1_yS3I4W9VDo309O8XChhNIEX2iDKVjsVQv2hprrrbw5f12S6bM34whX9mFZ7Rdr4hHCh11rh_gk18xnCuztGx42eCvxM7_6Dx-uWdVP8x-lpAjhBXPWKXa78q50_T1ZGu3N7eDDFsS8roTqPfho"/>
+<span class="text-slate-900 dark:text-white font-medium text-sm">Google</span>
+</button>
+<button class="h-12 flex items-center justify-center gap-2 bg-white dark:bg-[#27211c] border border-slate-200 dark:border-[#54473b] rounded-lg hover:bg-slate-50 dark:hover:bg-[#322a24] transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white text-[22px]">ios</span>
+<span class="text-slate-900 dark:text-white font-medium text-sm">Apple</span>
+</button>
+</div>
+</div>
+<!-- Footer Link -->
+<div class="p-6 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-transparent">
+<p class="text-center text-slate-500 dark:text-neutral-400 text-sm font-medium">
+                Already have an account? 
+                <a class="text-primary hover:text-[#ff9d3b] font-bold ml-1 transition-colors" href="#">Login</a>
+</p>
+<!-- Safe Area Bottom Spacer -->
+<div class="h-2"></div>
+</div>
+</div>
+</body></html>

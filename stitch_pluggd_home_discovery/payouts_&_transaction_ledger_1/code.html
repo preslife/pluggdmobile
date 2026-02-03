@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Export Request</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#181411", 
+                        "surface-dark": "#221910",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-white font-display antialiased selection:bg-primary selection:text-white">
+<div class="relative flex min-h-screen w-full flex-col justify-between overflow-hidden bg-background-dark">
+<div class="relative z-10 flex items-center justify-center p-6 border-b border-white/5 bg-background-dark/50 backdrop-blur-sm">
+<h1 class="text-lg font-bold tracking-tight text-white">Data Export Request</h1>
+</div>
+<div class="relative z-10 flex flex-1 flex-col items-center justify-center px-6 w-full max-w-md mx-auto py-8">
+<div class="relative mb-12 flex flex-col items-center justify-center">
+<div class="absolute inset-0 rounded-full bg-primary/20 blur-3xl scale-150"></div>
+<div class="relative flex items-center justify-center size-40 rounded-full bg-surface-dark border-4 border-white/5 shadow-2xl">
+<div class="absolute inset-0 rounded-full border-4 border-t-primary border-r-primary/40 border-b-transparent border-l-transparent -rotate-45"></div>
+<span class="material-symbols-outlined text-primary" style="font-size: 64px;">
+                    hourglass_top
+                </span>
+</div>
+<div class="absolute -bottom-5">
+<div class="flex items-center gap-2 bg-[#2a221a] border border-primary/30 rounded-full px-5 py-2 shadow-lg ring-4 ring-background-dark">
+<span class="relative flex size-2.5">
+<span class="relative inline-flex rounded-full size-2.5 bg-primary"></span>
+</span>
+<span class="text-xs font-bold uppercase tracking-wider text-primary">In Progress</span>
+</div>
+</div>
+</div>
+<div class="text-center space-y-6 w-full">
+<h2 class="text-3xl font-extrabold tracking-tight text-white">
+                Preparing Archive
+            </h2>
+<p class="text-gray-400 text-base leading-relaxed px-4">
+                We are currently compiling a secure archive of your personal data. This process happens in the background.
+            </p>
+<div class="bg-white/5 rounded-2xl p-6 border border-white/5 text-left w-full shadow-inner">
+<p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 border-b border-white/5 pb-2">Data Included</p>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-8 rounded-lg bg-surface-dark text-primary">
+<span class="material-symbols-outlined" style="font-size: 20px;">receipt_long</span>
+</div>
+<span class="text-base font-semibold text-gray-200">Purchases</span>
+</div>
+<span class="material-symbols-outlined text-green-500" style="font-size: 20px;">check</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-8 rounded-lg bg-surface-dark text-primary">
+<span class="material-symbols-outlined" style="font-size: 20px;">chat</span>
+</div>
+<span class="text-base font-semibold text-gray-200">Messages</span>
+</div>
+<span class="material-symbols-outlined text-green-500" style="font-size: 20px;">check</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-8 rounded-lg bg-surface-dark text-primary">
+<span class="material-symbols-outlined" style="font-size: 20px;">photo_library</span>
+</div>
+<span class="text-base font-semibold text-gray-200">Posts &amp; Media</span>
+</div>
+<span class="material-symbols-outlined text-green-500" style="font-size: 20px;">check</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-gray-500 max-w-xs mx-auto">
+                Once ready, we will email a download link to your registered email address.
+            </p>
+</div>
+</div>
+<div class="relative z-10 w-full p-6 pb-8 bg-background-dark">
+<button class="flex w-full cursor-pointer items-center justify-center rounded-xl h-14 bg-primary hover:bg-orange-600 transition-colors text-[#181411] text-lg font-bold tracking-wide shadow-lg shadow-orange-900/20">
+            Close
+        </button>
+</div>
+</div>
+
+</body></html>

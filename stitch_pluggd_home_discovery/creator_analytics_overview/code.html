@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Creator Analytics Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910",
+                        "surface-dark": "#2d231a",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for clean look in horizontal lists */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased selection:bg-primary selection:text-white pb-24">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-50 flex items-center justify-between bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-3">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight">Analytics</h1>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-2xl">more_horiz</span>
+</button>
+</div>
+<!-- Period Filter -->
+<div class="px-4 py-2 mb-2">
+<button class="flex h-9 items-center gap-x-2 rounded-full bg-stone-200 dark:bg-surface-dark border border-transparent dark:border-white/5 px-4 transition-all active:scale-95">
+<span class="text-sm font-medium">Last 28 Days</span>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</div>
+<!-- Stats Grid -->
+<div class="px-4 mb-6">
+<div class="grid grid-cols-2 gap-3">
+<!-- Main Stat: Total Streams (Full Width) -->
+<div class="col-span-2 p-5 rounded-[2rem] bg-surface-light dark:bg-surface-dark border border-transparent dark:border-white/5 shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<p class="text-stone-500 dark:text-stone-400 font-medium text-sm">Total Streams</p>
+<div class="flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-sm font-bold">trending_up</span>
+<span class="text-xs font-bold">+5.4%</span>
+</div>
+</div>
+<p class="text-4xl font-bold tracking-tight mb-1">1.2M</p>
+<p class="text-xs text-stone-400">vs. previous 28 days</p>
+</div>
+<!-- Secondary Stat: Revenue -->
+<div class="p-5 rounded-[2rem] bg-surface-light dark:bg-surface-dark border border-transparent dark:border-white/5 shadow-sm flex flex-col justify-between h-32">
+<p class="text-stone-500 dark:text-stone-400 font-medium text-sm">Revenue</p>
+<div>
+<p class="text-2xl font-bold tracking-tight mb-1">$4,250</p>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-base">trending_up</span>
+<span class="text-sm font-bold">+12%</span>
+</div>
+</div>
+</div>
+<!-- Secondary Stat: Fan Growth -->
+<div class="p-5 rounded-[2rem] bg-surface-light dark:bg-surface-dark border border-transparent dark:border-white/5 shadow-sm flex flex-col justify-between h-32">
+<p class="text-stone-500 dark:text-stone-400 font-medium text-sm">Fan Growth</p>
+<div>
+<p class="text-2xl font-bold tracking-tight mb-1">+850</p>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-base">trending_up</span>
+<span class="text-sm font-bold">+2.1%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chart Section -->
+<div class="px-4 mb-8">
+<div class="p-6 rounded-[2rem] bg-surface-light dark:bg-surface-dark border border-transparent dark:border-white/5 shadow-sm">
+<div class="flex justify-between items-end mb-6">
+<div>
+<h3 class="text-stone-500 dark:text-stone-400 text-sm font-medium mb-1">Streaming Trends</h3>
+<p class="text-2xl font-bold">Daily Activity</p>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-lg">show_chart</span>
+</button>
+</div>
+</div>
+<div class="relative w-full h-[180px]">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 478 150">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ec7f13" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#ec7f13" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Gradient Fill -->
+<path d="M0 109C18.15 109 18.15 21 36.3 21C54.46 21 54.46 41 72.6 41C90.76 41 90.76 93 108.9 93C127.0 93 127.0 33 145.2 33C163.3 33 163.3 101 181.5 101C199.6 101 199.6 61 217.8 61C236 61 236 45 254.1 45C272.3 45 272.3 121 290.4 121C308.6 121 308.6 149 326.7 149C344.9 149 344.9 1 363.0 1C381.2 1 381.2 81 399.3 81C417.5 81 417.5 129 435.6 129C453.8 129 453.8 25 472 25V160H0V109Z" fill="url(#chartGradient)"></path>
+<!-- Line Stroke -->
+<path d="M0 109C18.15 109 18.15 21 36.3 21C54.46 21 54.46 41 72.6 41C90.76 41 90.76 93 108.9 93C127.0 93 127.0 33 145.2 33C163.3 33 163.3 101 181.5 101C199.6 101 199.6 61 217.8 61C236 61 236 45 254.1 45C272.3 45 272.3 121 290.4 121C308.6 121 308.6 149 326.7 149C344.9 149 344.9 1 363.0 1C381.2 1 381.2 81 399.3 81C417.5 81 417.5 129 435.6 129C453.8 129 453.8 25 472 25" fill="none" stroke="#ec7f13" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"></path>
+<!-- Data Points (Circles) -->
+<circle cx="145.2" cy="33" fill="#181411" r="6" stroke="#ec7f13" stroke-width="3"></circle>
+<circle cx="254.1" cy="45" fill="#181411" r="6" stroke="#ec7f13" stroke-width="3"></circle>
+<circle cx="363" cy="1" fill="#181411" r="6" stroke="#ec7f13" stroke-width="3"></circle>
+</svg>
+</div>
+<div class="flex justify-between mt-6 px-2">
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Mon</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Tue</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Wed</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Thu</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Fri</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Sat</span>
+<span class="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Sun</span>
+</div>
+</div>
+</div>
+<!-- Top Locations -->
+<div class="px-4">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-xl font-bold tracking-tight">Top Locations</h2>
+<button class="text-primary text-sm font-medium">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Location 1 -->
+<div class="group">
+<div class="flex justify-between items-center mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center overflow-hidden">
+<span class="text-lg">🇺🇸</span>
+</div>
+<span class="font-medium">United States</span>
+</div>
+<span class="font-bold">45%</span>
+</div>
+<div class="h-2 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<!-- Location 2 -->
+<div class="group">
+<div class="flex justify-between items-center mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center overflow-hidden">
+<span class="text-lg">🇬🇧</span>
+</div>
+<span class="font-medium">United Kingdom</span>
+</div>
+<span class="font-bold">20%</span>
+</div>
+<div class="h-2 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 20%"></div>
+</div>
+</div>
+<!-- Location 3 -->
+<div class="group">
+<div class="flex justify-between items-center mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center overflow-hidden">
+<span class="text-lg">🇩🇪</span>
+</div>
+<span class="font-medium">Germany</span>
+</div>
+<span class="font-bold">10%</span>
+</div>
+<div class="h-2 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 10%"></div>
+</div>
+</div>
+<!-- Location 4 -->
+<div class="group">
+<div class="flex justify-between items-center mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center overflow-hidden">
+<span class="text-lg">🇧🇷</span>
+</div>
+<span class="font-medium">Brazil</span>
+</div>
+<span class="font-bold">8%</span>
+</div>
+<div class="h-2 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 8%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-light dark:bg-[#1a130c] border-t border-stone-200 dark:border-white/5 pt-2 pb-6 px-6 z-50">
+<div class="flex justify-between items-center">
+<button class="flex flex-col items-center gap-1 w-16 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">upload</span>
+<span class="text-[10px] font-medium">Upload</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 text-primary">
+<span class="material-symbols-outlined text-2xl fill-1">analytics</span>
+<span class="text-[10px] font-medium">Analytics</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</div>
+</div>
+</body></html>

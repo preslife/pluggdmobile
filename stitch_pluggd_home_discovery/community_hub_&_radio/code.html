@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Community Hub</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF5500", // Striking Orange
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#000000", // Pure Black
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#161616", // Dark Card
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased selection:bg-primary selection:text-white overflow-x-hidden">
+<div class="relative flex min-h-screen w-full flex-col pb-24">
+<header class="sticky top-0 z-40 w-full bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
+<div class="flex items-center justify-between px-4 py-3">
+<div class="flex items-center gap-3">
+<div class="relative">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-primary/20" data-alt="User profile avatar showing a stylized musician" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDL5fZ_OEsRAyKt-JBsydjiXR35khGoJtIJ9xmD2LdOjRNFc-H9BqEp_2hvKqZi7o39CpHVtofvVw2btp8JArTXcz2nwHhA2umAsl6ubB3m46tQKrNZbfKUHe-esg8ykXGkJooMDSiwqIB-8MD1gvaXkxVieZp7GSaSoHlxovw3WCXkZLuMBtonOEYHXPKYkXs_RQMH5CHJzRq-WTUalE-T7wMMYQ_49wzhN0RBpJCRKz4cYnCRjIRWaD8-Fo3Oe92gU4zraRJJzwo");'>
+</div>
+<div class="absolute bottom-0 right-0 size-2.5 rounded-full bg-green-500 border-2 border-background-light dark:border-background-dark"></div>
+</div>
+<h1 class="text-lg font-bold tracking-tight">Community Hub</h1>
+</div>
+<button class="relative p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 rounded-full bg-primary"></span>
+</button>
+</div>
+</header>
+<main class="flex flex-col w-full">
+<section class="px-4 py-4">
+<div class="relative overflow-hidden rounded-xl bg-surface-dark shadow-lg ring-1 ring-white/10">
+<div class="absolute inset-0 opacity-40 bg-gradient-to-br from-primary via-zinc-900 to-black"></div>
+<div class="relative p-4 flex items-center justify-between gap-4">
+<div class="flex items-center gap-4 flex-1 min-w-0">
+<div class="relative shrink-0">
+<div class="size-14 rounded-lg bg-cover bg-center shadow-md" data-alt="Abstract neon waveform graphic representing radio station" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD3bVvv3HmK0paZzXNu9vN64ZsELQ8HgIFK47AqdpvgFmRpQSIzTYHL_EaAVl0QofCixR4FsVfO1J-LD-tooFxMlGf_rudvR1oLbGeGc2tuD5TUUmef6Sl7VkZD2s3Yf1f-jyTqlKZ4oGZYt-6A2Ln4vteiQZ2B6rtsZhcM0PE74rj_-wRWI_ry2Kvhns2JlTbbSvDK6AZ4mAFfT8LmGz3dzLAgGnD9uPC9D0uVQnWtgrVQZ8AN1krHha2Kpj3Ybsoj_x4vstVFw84');">
+</div>
+<div class="absolute -bottom-1 -right-1 flex gap-0.5 items-end justify-center bg-black/50 p-1 rounded backdrop-blur-sm">
+<div class="w-0.5 h-2 bg-primary animate-pulse"></div>
+<div class="w-0.5 h-3 bg-primary animate-pulse delay-75"></div>
+<div class="w-0.5 h-1.5 bg-primary animate-pulse delay-150"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 mb-0.5">
+<span class="text-white font-bold text-base truncate">Pluggd FM</span>
+<span class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/20 text-primary border border-primary/20 uppercase tracking-wider">
+<span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                                        Live
+                                    </span>
+</div>
+<p class="text-slate-300 text-sm truncate">Live: DJ K-Slaps</p>
+<p class="text-primary text-xs font-medium mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">headphones</span>
+                                    1,240 Listening
+                                </p>
+</div>
+</div>
+<button class="flex shrink-0 items-center justify-center rounded-full size-12 bg-primary text-white shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+<span class="material-symbols-filled text-2xl">play_arrow</span>
+</button>
+</div>
+</div>
+</section>
+<section class="px-4 pb-2">
+<div class="rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-white/5 p-4 shadow-sm">
+<div class="flex justify-between items-center mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">bolt</span>
+<h3 class="text-sm font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">Daily Quest</h3>
+</div>
+<span class="text-xs font-medium text-slate-500 dark:text-slate-400">Resets in 4h</span>
+</div>
+<div class="flex justify-between items-end mb-2">
+<p class="text-base font-medium">Vibe Check: Listen for 30m</p>
+<p class="text-primary font-bold text-sm">350<span class="text-slate-400 font-normal">/500 XP</span></p>
+</div>
+<div class="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 70%;"></div>
+</div>
+</div>
+</section>
+<div class="px-4 py-2 mt-2 flex items-center justify-between">
+<h2 class="text-lg font-bold">Latest Drops</h2>
+<div class="flex gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+<span class="text-primary">Hot</span>
+<span>New</span>
+<span>Following</span>
+</div>
+</div>
+<article class="mx-4 mb-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-white/5 p-4 shadow-sm">
+<div class="flex gap-3">
+<div class="shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 ring-2 ring-transparent group-hover:ring-primary/20 transition-all" data-alt="User avatar for BeatsByDre" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDWMi8sH-jB2N_Ps5XnZDiOLrKv-qu-kuEkXGMCH7Fg7osG4zmWvhUbUhHufsEL0428W2sYIm5KwhU2i8V3fMdTg6E3LRcZn8s8xC-5x23Ss3wL7bs7cLw3kjpnnmUKoiirDupYuXHsUKMJXZ_t559bHxzN0y9boXyyNgoRVOyFCDkIpF72x80QEqHIKxNqa2J5_SLDKkJCqPDGt6z6fbkXkagiY8fL6luGK1WkJyRy9pt5x15gB3clU0cfo2Q0UI3jEMZl0j5wKng");'>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5 overflow-hidden">
+<span class="font-bold text-slate-900 dark:text-white truncate">BeatsByDre</span>
+<span class="material-symbols-filled text-blue-400 text-[14px]" title="Verified">verified</span>
+<span class="text-primary text-sm truncate font-medium">@beatsbydre</span>
+</div>
+<span class="text-slate-500 text-xs whitespace-nowrap">2h</span>
+</div>
+<p class="mt-1 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed">
+                            Just dropped a new sample pack in the marketplace! It's got those heavy 808s you've been asking for. Check it out 🎹🔥
+                        </p>
+<div class="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-black">
+<div class="aspect-video w-full bg-cover bg-center" data-alt="Digital audio workstation screen showing colorful waveforms" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDLn53ljzSmT_up07t2h_dZ8fJUxDnBjhn0V-s5cIKtIOIhb24RZ9HVZeJbfl8f5KH1ByRag4eFglPBVomyBttDOiDfe9loQOFzBt2TpHtvYNMC2f-kcWmEw2_tSuOh4J3wMGqKzGpDm11CrtJ6uuVOONDoDCM-tu2xVAP-IK0EFwUlc9D1ZzSYQeZg_or5qMKBPOdQtX0RM5z6v171Zfc0maXkKeSeAbEpMkomXUc-pAB8_9dZcc8JPTE_ClgG5txA-749Lwopufk");'>
+</div>
+</div>
+<div class="flex items-center justify-between mt-3 text-slate-500 dark:text-slate-400">
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">favorite</span>
+<span class="text-xs font-medium">1.2k</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">chat_bubble</span>
+<span class="text-xs font-medium">48</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-green-500 transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">ios_share</span>
+<span class="text-xs font-medium">Share</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<article class="mx-4 mb-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-white/5 p-4 shadow-sm">
+<div class="flex gap-3">
+<div class="shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10" data-alt="User avatar for VocalSarah" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBTHwIufi4P1nVgd-YU4iYMciXf6GFfmzDGW8ASYAWqb7VQanAdYB5BRo4OesV3S4YQdBDHf7w_NLZ_tWOnPkK_3DBe1tvUlyemO4GLYOjyAU9X-RBo5vSRXj0WyDoRviVSTqPY3PKMsiQ7kgqNT4to7CK8dh4gesAiFLR8jh4AM4ljIlLm4Na2qGtESInRn9_89Y0ti8YUb5SGi3SOMJ0VaNhPfNkWuzkkQPlgpa9bhO45MhQOkaV4IgiYJDlt7uXHxvAFY_Qg0w0");'>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5 overflow-hidden">
+<span class="font-bold text-slate-900 dark:text-white truncate">VocalSarah</span>
+<span class="text-primary text-sm truncate font-medium">@sarahvsings</span>
+</div>
+<span class="text-slate-500 text-xs whitespace-nowrap">4h</span>
+</div>
+<p class="mt-1 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed">
+                            Listening to the radio right now, this transition was crazy! Had to clip it.
+                        </p>
+<div class="mt-3 rounded-lg bg-background-light dark:bg-black/40 border border-slate-200 dark:border-white/10 p-3 flex items-center gap-3">
+<button class="flex shrink-0 items-center justify-center rounded-full size-8 bg-primary text-white hover:bg-orange-600 transition-colors">
+<span class="material-symbols-filled text-[18px]">play_arrow</span>
+</button>
+<div class="flex-1 flex flex-col justify-center gap-1">
+<div class="flex items-center gap-2">
+<div class="h-6 w-1 bg-primary rounded-full"></div>
+<div class="h-4 w-1 bg-primary/40 rounded-full"></div>
+<div class="h-8 w-1 bg-primary rounded-full"></div>
+<div class="h-5 w-1 bg-primary/60 rounded-full"></div>
+<div class="h-3 w-1 bg-primary/30 rounded-full"></div>
+<div class="h-7 w-1 bg-primary rounded-full"></div>
+<div class="h-4 w-1 bg-primary/50 rounded-full"></div>
+<div class="h-2 w-1 bg-primary/20 rounded-full"></div>
+<div class="h-5 w-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+<div class="h-3 w-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+<div class="h-4 w-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+<div class="h-2 w-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+</div>
+</div>
+<span class="text-xs font-mono text-slate-500">0:14</span>
+</div>
+<div class="flex items-center justify-between mt-3 text-slate-500 dark:text-slate-400">
+<button class="flex items-center gap-1.5 group text-primary transition-colors">
+<span class="material-symbols-filled text-[20px] scale-110">favorite</span>
+<span class="text-xs font-medium">857</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">chat_bubble</span>
+<span class="text-xs font-medium">24</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-green-500 transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">ios_share</span>
+<span class="text-xs font-medium">Share</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<article class="mx-4 mb-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-white/5 p-4 shadow-sm">
+<div class="flex gap-3">
+<div class="shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10" data-alt="User avatar for ProdByMike" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC8GewFZqdXbp-fQAv7UtiW-9_zEDYf3cMRq_OyVicEYiGauJ6hwNNUVy2oTvvHyyIq6xE-Zgwxhu5aJH6ZBoU1_c6PJQMEn5rYeZ41Owfi4FxxcUqlnHK2yRyAVCQiJ3-Uq5EQWfsdvbozDUB6PueDM7189v8H4V_JuuCH7Q7l5OreA-2-3qmZfu72RCEKQIz2CIzXEvCu-r60ks_jvSv7_QJIchYmnvWlyrrM-_py0O1yi4lsrNcPVgZpvFrXz0Bl_GLIseZGb8E");'>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5 overflow-hidden">
+<span class="font-bold text-slate-900 dark:text-white truncate">ProdByMike</span>
+<span class="text-primary text-sm truncate font-medium">@prodmike</span>
+</div>
+<span class="text-slate-500 text-xs whitespace-nowrap">5h</span>
+</div>
+<p class="mt-1 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed">
+                            Anyone down to collab on a hyperpop track? Hit my DMs 📩
+                        </p>
+<div class="flex items-center justify-between mt-3 text-slate-500 dark:text-slate-400">
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">favorite</span>
+<span class="text-xs font-medium">42</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">chat_bubble</span>
+<span class="text-xs font-medium">12</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-green-500 transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">ios_share</span>
+<span class="text-xs font-medium">Share</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<article class="mx-4 mb-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-white/5 p-4 shadow-sm">
+<div class="mb-2 pl-12 flex items-center gap-2 text-slate-500 text-xs font-medium">
+<span class="material-symbols-outlined text-[14px]">repeat</span>
+<span>K-Slaps Reposted</span>
+</div>
+<div class="flex gap-3">
+<div class="shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10" data-alt="User avatar for LilBass" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA-qRcadvcDAB79yFvAcf-zejwum3Fi_0KbEfmzmrYZxpdUbbQAILuk1AeFszKaIs96ChGoK49qLJzmzMF5PrvyzUMLT0ahm69x1As_fSx1KccGVrI9-ac0JctQRzFThMZ97Z7lt0aaeN83fU4H5eGT3Iv6gEah10EL57Kr0H5if1K1wZZpZRtN1SWvEXTjXHi7szwwLjy4l2R8WuNk1iF1Q5d98gk6fuk-ywc0hPbkyjbbVsdXxFnqZmayJ9j0nuhGrp1iTbXUQJ8");'>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5 overflow-hidden">
+<span class="font-bold text-slate-900 dark:text-white truncate">LilBass</span>
+<span class="text-primary text-sm truncate font-medium">@lilbassreal</span>
+</div>
+<span class="text-slate-500 text-xs whitespace-nowrap">8h</span>
+</div>
+<p class="mt-1 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed">
+                           New visuals are out now. Let's go! 🚀
+                        </p>
+<div class="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-black relative">
+<div class="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
+<div class="size-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-primary/80 transition-colors cursor-pointer">
+<span class="material-symbols-filled text-white">play_arrow</span>
+</div>
+</div>
+<div class="aspect-video w-full bg-cover bg-center" data-alt="Abstract colorful music video still" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDeoptXCUdNnThQ_ZvjjO4sPcmodIL80M7JXYnfG0o1PKsm_7pjGt7DUxc3svp4FAcmN7VOXu0GN1Nt9jVmxekOLfGRWjapWtgLDqRIzQJl8aDNmFNJg8wYg8quNPevnLQTw1eAQFwAm8YFUdEcn69zjN7BfU1dTTpDY2TrIJENUUYFoTEoNzcksrvDMdY2FUks_P4iVmB2pfw5-XO92IiMxl_0yzMzvjm8YDCn6D7Jfyd4pc7lUe_tvt1aFpGOOv9pGGSwfQhI9n4");'>
+</div>
+</div>
+<div class="flex items-center justify-between mt-3 text-slate-500 dark:text-slate-400">
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">favorite</span>
+<span class="text-xs font-medium">3.4k</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">chat_bubble</span>
+<span class="text-xs font-medium">156</span>
+</button>
+<button class="flex items-center gap-1.5 group hover:text-green-500 transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">ios_share</span>
+<span class="text-xs font-medium">Share</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+</main>
+<button class="fixed bottom-24 right-4 z-40 flex items-center justify-center size-14 rounded-full bg-primary shadow-lg shadow-primary/40 text-white hover:bg-orange-600 active:scale-90 transition-all">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+<nav class="fixed bottom-0 z-50 w-full bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-white/10 pb-5 pt-3 px-6">
+<ul class="flex items-center justify-between">
+<li>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl">storefront</span>
+<span class="text-[10px] font-medium">Market</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-filled text-2xl">groups</span>
+<span class="text-[10px] font-medium">Hub</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl">build</span>
+<span class="text-[10px] font-medium">Tools</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</body></html>

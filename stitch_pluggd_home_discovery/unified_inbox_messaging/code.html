@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Unified Inbox</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#0a0a0a", // Deep black for Pluggd theme
+                        "surface-dark": "#181411", // Slightly lighter for cards/bars
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.375rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for chips */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-hidden max-w-md mx-auto shadow-2xl">
+<!-- Header -->
+<header class="flex items-center justify-between px-4 pt-6 pb-2 bg-background-light dark:bg-background-dark sticky top-0 z-20">
+<h1 class="text-gray-900 dark:text-white text-3xl font-extrabold leading-tight tracking-tight">Inbox</h1>
+<button class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 dark:bg-[#2A2A2A] text-primary hover:bg-primary hover:text-white transition-colors duration-200">
+<span class="material-symbols-outlined" style="font-size: 24px;">edit_square</span>
+</button>
+</header>
+<!-- Search Bar -->
+<div class="px-4 py-3 bg-background-light dark:bg-background-dark sticky top-[68px] z-10">
+<div class="relative flex items-center w-full h-12 rounded-xl bg-white dark:bg-[#1C1C1E] overflow-hidden focus-within:ring-2 ring-primary/50 transition-all shadow-sm">
+<div class="grid place-items-center h-full w-12 text-gray-400">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="peer h-full w-full outline-none text-sm text-gray-900 dark:text-white bg-transparent pr-4 placeholder-gray-500" id="search" placeholder="Search messages, projects..." type="text"/>
+</div>
+</div>
+<!-- Tabs -->
+<div class="px-4 pb-2 bg-background-light dark:bg-background-dark">
+<div class="flex border-b border-gray-200 dark:border-[#2A2A2A]">
+<button class="flex-1 pb-3 pt-2 text-center relative group">
+<span class="text-primary font-bold text-sm tracking-wide">Messages</span>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-primary rounded-t-full"></div>
+</button>
+<button class="flex-1 pb-3 pt-2 text-center relative group">
+<span class="text-gray-500 dark:text-gray-400 font-medium text-sm tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors">Notifications</span>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-transparent group-hover:bg-gray-300 dark:group-hover:bg-gray-700 rounded-t-full transition-colors"></div>
+</button>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="pl-4 py-3 flex gap-3 overflow-x-auto no-scrollbar bg-background-light dark:bg-background-dark">
+<button class="flex-shrink-0 px-4 h-8 rounded-full bg-gray-900 dark:bg-white text-white dark:text-black text-xs font-bold flex items-center justify-center">
+                All
+            </button>
+<button class="flex-shrink-0 px-4 h-8 rounded-full bg-gray-200 dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 border border-transparent dark:border-[#333] text-xs font-medium flex items-center justify-center whitespace-nowrap">
+                Projects
+            </button>
+<button class="flex-shrink-0 px-4 h-8 rounded-full bg-gray-200 dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 border border-transparent dark:border-[#333] text-xs font-medium flex items-center justify-center whitespace-nowrap">
+                Commissions
+            </button>
+<button class="flex-shrink-0 px-4 h-8 rounded-full bg-gray-200 dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 border border-transparent dark:border-[#333] text-xs font-medium flex items-center justify-center whitespace-nowrap">
+                Direct
+            </button>
+</div>
+<!-- Message List -->
+<div class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark pb-24">
+<!-- Item 1: Commission (Unread) -->
+<div class="group flex items-center gap-4 px-4 py-4 hover:bg-gray-100 dark:hover:bg-[#161616] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#1C1C1E]">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-gray-700 bg-cover bg-center" data-alt="Portrait of a DJ wearing sunglasses" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJA6v6h1TaWvKbQMK5f0ya5aALGomYeJ_lf9QpfLC1f5LUr96UCDiaLyt6OPYAYgqqH4wxscQX3W4-SeZ2El7IpzCYRCd0xycGBM_zoJGBI9cux6S0dSSANlf9D9qOF6XnVd1MjVG50IZXZZkrKGqIpHXmKKbbuZ3KQUJ9d5lHKYCD9o3nDtffmKsF3x-WSLf94wQqzJVZbwrNLnU3vDOGE6MyceWiBv9aTQ72UAK6nXMpO5f1n1VyCpcKPV0v8O9GtZdBBK-KF8A');"></div>
+<div class="absolute -bottom-1 -right-1 bg-background-light dark:bg-background-dark p-[2px] rounded-full">
+<div class="bg-primary text-white text-[10px] p-1 rounded-full flex items-center justify-center h-5 w-5 border border-background-light dark:border-background-dark">
+<span class="material-symbols-outlined text-[12px] font-bold">attach_money</span>
+</div>
+</div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-gray-900 dark:text-white text-base font-bold truncate pr-2">DJ Snake</p>
+<p class="text-primary text-xs font-semibold whitespace-nowrap">2m</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-gray-900 dark:text-gray-100 text-sm font-medium truncate pr-4">New Commission Offer</p>
+<div class="h-2.5 w-2.5 rounded-full bg-primary shrink-0"></div>
+</div>
+<p class="text-gray-500 dark:text-gray-400 text-sm truncate">Sent an offer for the beat pack...</p>
+</div>
+</div>
+<!-- Item 2: Project (Unread) -->
+<div class="group flex items-center gap-4 px-4 py-4 hover:bg-gray-100 dark:hover:bg-[#161616] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#1C1C1E]">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-indigo-900 flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                        SC
+                    </div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-gray-900 dark:text-white text-base font-bold truncate pr-2">Synthwave Collab</p>
+<p class="text-gray-400 text-xs whitespace-nowrap">1h</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-gray-600 dark:text-gray-300 text-sm truncate pr-4"><span class="text-primary">@producer_mike:</span> File updated: final_mix_v3.wav</p>
+<div class="h-2.5 w-2.5 rounded-full bg-primary shrink-0"></div>
+</div>
+</div>
+</div>
+<!-- Item 3: Direct Message (Read) -->
+<div class="group flex items-center gap-4 px-4 py-4 hover:bg-gray-100 dark:hover:bg-[#161616] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#1C1C1E]">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-gray-700 bg-cover bg-center" data-alt="Portrait of a woman with curly hair" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDk9-6gRPGyCPfwE-I6ipVzKEj3E8dk9MbtzkHhj2k-GGHoZJH-0SVqxh8Mwth2WvwTUXT23VF4M3nskvssXPU9EOwm0LS1c1yPJ-CE8kDJYRVEEUTcFsXBsZuxFb0MiIBBdntrgYfdPY1V2i3HytOynONnGO9BFLByb6qdUCsVd9TEqkkKS7Kn0fvZiggt5XBqAqA4SjqLR6joGAWnJFb-nBwTOVI-JykWjCugaVD4qeLcYKvJuR9zYNUCDgzjcDmMbXMWxBYgl-g');"></div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-gray-900 dark:text-white text-base font-bold truncate pr-2">Sarah V.</p>
+<p class="text-gray-400 text-xs whitespace-nowrap">Yesterday</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-gray-500 dark:text-gray-400 text-sm truncate pr-4">Let's link up at the studio tomorrow.</p>
+</div>
+</div>
+</div>
+<!-- Item 4: Direct Message (Read) -->
+<div class="group flex items-center gap-4 px-4 py-4 hover:bg-gray-100 dark:hover:bg-[#161616] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#1C1C1E]">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-gray-700 bg-cover bg-center" data-alt="Black and white portrait of a man" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAn2rI7Yu3G0DxpXKalU0mj78mUerzjfPZ87mcscs6hxUqZBhVIjny7jrNIXjPfq2JnP3H1mUeMEvjCj4jSsv0acjzka4_4xTiLW5g7IWqPHS41_5trhH2Y31hAvVTpR_aREwlPW0fqjcZwQSNXiiKGfnJr8trtxTbSD6NIat4vBqa0PpTQB86dviCVo-J3gjqGugVv3YuEOnU1q8i_AUlGNaLQKizvVEUYH-3b0lalBdukd0RpPmeD7QZA4vyCdo_cASU3alDr1qI');"></div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-gray-900 dark:text-white text-base font-bold truncate pr-2">Marcus Beats</p>
+<p class="text-gray-400 text-xs whitespace-nowrap">Tue</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-gray-500 dark:text-gray-400 text-sm truncate pr-4">Sent you the stems via wetransfer.</p>
+</div>
+</div>
+</div>
+<!-- Item 5: System (Read) -->
+<div class="group flex items-center gap-4 px-4 py-4 hover:bg-gray-100 dark:hover:bg-[#161616] cursor-pointer transition-colors border-b border-gray-100 dark:border-[#1C1C1E]">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-[#1C1C1E] border border-[#333] flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-400">support_agent</span>
+</div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-gray-900 dark:text-white text-base font-bold truncate pr-2">Pluggd Support</p>
+<p class="text-gray-400 text-xs whitespace-nowrap">Last Week</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-gray-500 dark:text-gray-400 text-sm truncate pr-4">Your ticket #8821 has been resolved.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation -->
+<div class="fixed bottom-0 w-full max-w-md bg-white dark:bg-background-dark border-t border-gray-200 dark:border-[#1C1C1E] h-20 px-6 flex items-start justify-between pt-4 pb-6 z-50">
+<button class="flex flex-col items-center gap-1 group w-12">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[28px]">home</span>
+<span class="text-[10px] font-medium text-gray-400 group-hover:text-primary transition-colors">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-12">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[28px]">explore</span>
+<span class="text-[10px] font-medium text-gray-400 group-hover:text-primary transition-colors">Discover</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-12 relative -top-6">
+<div class="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-orange-500/30 text-white">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</div>
+</button>
+<button class="flex flex-col items-center gap-1 group w-12">
+<span class="material-symbols-outlined text-primary text-[28px] fill-1">chat_bubble</span>
+<span class="text-[10px] font-medium text-primary">Inbox</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-12">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[28px]">person</span>
+<span class="text-[10px] font-medium text-gray-400 group-hover:text-primary transition-colors">Profile</span>
+</button>
+</div>
+</div>
+</body></html>

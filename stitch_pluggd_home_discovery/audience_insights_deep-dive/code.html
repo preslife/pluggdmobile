@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Audience Insights - Pluggd</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#050505", /* Adjusted for deeper black feel */
+                        "surface-dark": "#161616",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem", 
+                        "lg": "1.5rem", 
+                        "xl": "2rem", 
+                        "2xl": "2.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar hiding */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased transition-colors duration-200">
+<div class="relative mx-auto flex min-h-screen w-full max-w-md flex-col overflow-x-hidden bg-background-light dark:bg-background-dark shadow-2xl">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-30 flex items-center justify-between bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3">
+<button class="flex h-10 w-10 items-center justify-center rounded-full text-slate-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="flex-1 text-center text-lg font-bold leading-tight">Audience Insights</h1>
+<button class="flex h-10 w-10 items-center justify-center rounded-full text-slate-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
+<span class="material-symbols-outlined">ios_share</span>
+</button>
+</header>
+<!-- Time Range Filters -->
+<div class="w-full px-4 pt-2 pb-4">
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-transform active:scale-95">
+                    Last 7 Days
+                </button>
+<button class="shrink-0 rounded-full bg-white dark:bg-surface-dark px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors active:scale-95">
+                    Last 28 Days
+                </button>
+<button class="shrink-0 rounded-full bg-white dark:bg-surface-dark px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors active:scale-95">
+                    All Time
+                </button>
+</div>
+</div>
+<main class="flex flex-col gap-6 px-4 pb-8">
+<!-- Hero Stats -->
+<div class="flex flex-col gap-1 py-2">
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Listeners</p>
+<div class="flex items-baseline gap-3">
+<h2 class="text-5xl font-bold tracking-tight text-slate-900 dark:text-white">24.5k</h2>
+<div class="flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-1 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">trending_up</span>
+<span>12%</span>
+</div>
+</div>
+</div>
+<!-- Demographics Section -->
+<section class="flex flex-col gap-4">
+<h3 class="text-lg font-bold">Demographics</h3>
+<!-- Age Distribution Card -->
+<div class="rounded-xl bg-white dark:bg-surface-dark p-5 shadow-sm dark:shadow-none">
+<div class="mb-6 flex items-center justify-between">
+<p class="text-base font-semibold">Age Distribution</p>
+<span class="material-symbols-outlined text-slate-400">info</span>
+</div>
+<div class="grid h-48 grid-cols-5 items-end gap-3 px-1">
+<!-- Bar 1 -->
+<div class="group flex flex-col items-center gap-2" style="height: 100%;">
+<div class="flex w-full flex-1 flex-col justify-end">
+<div class="w-full rounded-t-full bg-slate-200 dark:bg-white/10 hover:bg-primary/50 transition-all duration-300" style="height: 40%;"></div>
+</div>
+<span class="text-xs font-medium text-slate-500">13-17</span>
+</div>
+<!-- Bar 2 (Dominant) -->
+<div class="group flex flex-col items-center gap-2" style="height: 100%;">
+<div class="flex w-full flex-1 flex-col justify-end">
+<div class="relative w-full rounded-t-full bg-primary shadow-[0_0_15px_-3px_rgba(236,127,19,0.5)] transition-all duration-300" style="height: 85%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-white px-2 py-1 text-xs font-bold text-black opacity-0 transition-opacity group-hover:opacity-100">42%</div>
+</div>
+</div>
+<span class="text-xs font-bold text-white">18-24</span>
+</div>
+<!-- Bar 3 -->
+<div class="group flex flex-col items-center gap-2" style="height: 100%;">
+<div class="flex w-full flex-1 flex-col justify-end">
+<div class="w-full rounded-t-full bg-slate-200 dark:bg-white/10 hover:bg-primary/50 transition-all duration-300" style="height: 55%;"></div>
+</div>
+<span class="text-xs font-medium text-slate-500">25-34</span>
+</div>
+<!-- Bar 4 -->
+<div class="group flex flex-col items-center gap-2" style="height: 100%;">
+<div class="flex w-full flex-1 flex-col justify-end">
+<div class="w-full rounded-t-full bg-slate-200 dark:bg-white/10 hover:bg-primary/50 transition-all duration-300" style="height: 30%;"></div>
+</div>
+<span class="text-xs font-medium text-slate-500">35-44</span>
+</div>
+<!-- Bar 5 -->
+<div class="group flex flex-col items-center gap-2" style="height: 100%;">
+<div class="flex w-full flex-1 flex-col justify-end">
+<div class="w-full rounded-t-full bg-slate-200 dark:bg-white/10 hover:bg-primary/50 transition-all duration-300" style="height: 15%;"></div>
+</div>
+<span class="text-xs font-medium text-slate-500">45+</span>
+</div>
+</div>
+</div>
+<!-- Gender Split -->
+<div class="rounded-xl bg-white dark:bg-surface-dark p-5 shadow-sm dark:shadow-none">
+<p class="mb-4 text-base font-semibold">Gender Split</p>
+<div class="flex h-4 w-full overflow-hidden rounded-full">
+<div class="h-full bg-primary w-[55%]"></div>
+<div class="h-full bg-slate-700 w-[35%]"></div>
+<div class="h-full bg-slate-800 w-[10%]"></div>
+</div>
+<div class="mt-4 flex justify-between gap-2 text-sm">
+<div class="flex items-center gap-2">
+<div class="h-2 w-2 rounded-full bg-primary"></div>
+<span class="font-medium text-slate-500 dark:text-slate-400">Female</span>
+<span class="font-bold text-slate-900 dark:text-white">55%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="h-2 w-2 rounded-full bg-slate-700"></div>
+<span class="font-medium text-slate-500 dark:text-slate-400">Male</span>
+<span class="font-bold text-slate-900 dark:text-white">35%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="h-2 w-2 rounded-full bg-slate-800"></div>
+<span class="font-medium text-slate-500 dark:text-slate-400">Other</span>
+<span class="font-bold text-slate-900 dark:text-white">10%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Loyalty Section -->
+<section class="flex flex-col gap-4">
+<h3 class="text-lg font-bold">Listener Loyalty</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-5 shadow-sm dark:shadow-none">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">replay</span>
+</div>
+<div>
+<p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Returning</p>
+<p class="text-2xl font-bold text-slate-900 dark:text-white">62%</p>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+<div class="h-full w-[62%] rounded-full bg-primary"></div>
+</div>
+</div>
+<div class="flex flex-col gap-3 rounded-xl bg-white dark:bg-surface-dark p-5 shadow-sm dark:shadow-none">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white">
+<span class="material-symbols-outlined">person_add</span>
+</div>
+<div>
+<p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">New Fans</p>
+<p class="text-2xl font-bold text-slate-900 dark:text-white">38%</p>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+<div class="h-full w-[38%] rounded-full bg-slate-400 dark:bg-slate-600"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Top Tracks Section -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-lg font-bold">Top Tracks</h3>
+<a class="text-sm font-bold text-primary hover:text-primary/80" href="#">View All</a>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Track 1 -->
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-surface-dark p-3 shadow-sm dark:shadow-none hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+<img alt="Abstract album art with orange geometric shapes and dark background" class="h-full w-full object-cover" data-alt="Abstract album art with orange geometric shapes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdcg8J-Ilaptt43RwTvyaLD1Bk_y9bODtlXdBjRGT_mz7eLWYfdT__DqGZpBG0WG4GjJ3zXETgLICIJdR1AKf2jSAxKsBNuMUtjD1Mt5OynO6LASPf1eH-NsLgzisu06Pw_pLcEL0xeNk3rs0wv1yjzcACSgsKzNQy5_FmfkwbfCskvEEb0uj876vQAGIccpkKAWC78FK_TPLcydFZ_52i3uaHk8nbaVmu0fPiB0q3GkcYeMLf2oEe5TLCH8IZJTgOFQeWy_yIZGc"/>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<h4 class="font-bold text-slate-900 dark:text-white line-clamp-1">Midnight Sun</h4>
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400">12.4k streams</p>
+</div>
+<div class="h-8 w-20 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+<svg class="h-full w-full" preserveaspectratio="none" viewbox="0 0 80 32">
+<path d="M0 28 L10 20 L20 24 L30 12 L40 16 L50 8 L60 14 L70 4 L80 10" fill="none" stroke="#ec7f13" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+</div>
+</div>
+<!-- Track 2 -->
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-surface-dark p-3 shadow-sm dark:shadow-none hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+<img alt="Dark moody abstract art with neon orange light streaks" class="h-full w-full object-cover" data-alt="Dark moody abstract art with neon orange light streaks" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVt0AgZtM7uKyCuYyvXNB9Cj_MNYtpJwswuZnUqMjtPXET6rajyFeRRbQ4HKfmw6VBnzkKm9xLe1sVKlZoj8Sp2AzDMxYOP681wAOtZkRoW5TNlPM7dGRRNtZwWuNxgU2d7BN_SH7GEkl_H7YzvtJIDnbLZaIXc5B-mvAvNGGmkbjmuod9o0O4pB_fiRj7mFL-57CzecoHnGvwyEc3WSAw0kpbq2n1SX__8mLTNbbvRBCmTlo4dCJ-2w6xYuDBTs7Cl3ZkuoFAgIs"/>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<h4 class="font-bold text-slate-900 dark:text-white line-clamp-1">Neon Dreams</h4>
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400">8.5k streams</p>
+</div>
+<div class="h-8 w-20 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+<svg class="h-full w-full" preserveaspectratio="none" viewbox="0 0 80 32">
+<path d="M0 24 L10 22 L20 18 L30 20 L40 10 L50 14 L60 8 L70 12 L80 6" fill="none" stroke="#ec7f13" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+</div>
+</div>
+<!-- Track 3 -->
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-surface-dark p-3 shadow-sm dark:shadow-none hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+<img alt="High contrast black and white abstract texture" class="h-full w-full object-cover grayscale opacity-80" data-alt="High contrast black and white abstract texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRdcHevaPKD9R00pnGMMLoFeHkxi75ZYBv7NUebF1b3mA9vhBzQ0N1NgCFTF-VyjImUzUQ4K4a3mi4dk1Vv4oD151nUGlu1Xn1GoeXjDDfK8ZEXdhkV8nFFiJv3t7IaE2l7XFjNkh5sJGV3nd5Wklj_z3t8qLQ1tT9L9GWcb0Zoxvl06stMjoqdFonDzZKehaqrhwp5dARPn1wFOJdd2PKAEU8Yi8mnlUuFqgb4t-hNsQ0FQRhbLlrDLdqr8nuNhGAKzF8g1Nu3s8"/>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<h4 class="font-bold text-slate-900 dark:text-white line-clamp-1">Echoes in Void</h4>
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400">5.1k streams</p>
+</div>
+<div class="h-8 w-20 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+<svg class="h-full w-full" preserveaspectratio="none" viewbox="0 0 80 32">
+<path d="M0 16 L10 20 L20 28 L30 18 L40 22 L50 12 L60 16 L70 8 L80 14" fill="none" stroke="#ec7f13" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button Area -->
+<div class="sticky bottom-6 flex justify-center px-4">
+<button class="flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 hover:bg-primary/90">
+<span class="material-symbols-outlined">analytics</span>
+<span>Export Report</span>
+</button>
+</div>
+</div>
+</body></html>

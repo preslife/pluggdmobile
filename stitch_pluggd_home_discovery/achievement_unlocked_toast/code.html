@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Achievement Unlocked - Pluggd</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(236, 127, 19, 0.5), 0 0 60px rgba(236, 127, 19, 0.3)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom styles for the blurred backdrop effect */
+        .glass-panel {
+            background: rgba(34, 25, 16, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        
+        .achievement-bg {
+            background-image: radial-gradient(circle at center, rgba(236, 127, 19, 0.15) 0%, rgba(34, 25, 16, 0) 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display antialiased text-white bg-background-light dark:bg-black selection:bg-primary selection:text-white overflow-hidden">
+<!-- Main Container: Simulating a Modal Overlay on top of a "blurred" app background -->
+<div class="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden">
+<!-- Fake Background App UI (Blurred out) -->
+<div class="absolute inset-0 z-0 opacity-40 pointer-events-none" data-alt="blurred music app background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDgYtFyBzO7raHIUVbIa8Z0ULhircwlRG1KM5GIy7ytagygbM144Rssu932HZoK86nrV8RD7Tt6eWqsCMjct62z1rmYI0XrxkpIlkCQoXKr0HUqPTGB5sT5oOouyk1Km1_SI2SbXBP8OeeqFQVSfeZZzRTBsjRwNyrwL8qQ5U41yW7xdiihy4VqRTcuievXBhk4fWGFyRgtOjTXCVuDnnFRcmnagreC7-f0Z7BEuLs5nYCCQUwj6CPMFooz9P0EWR36SJARpzu0kJ8'); background-size: cover; background-position: center;"></div>
+<div class="absolute inset-0 z-0 bg-black/80 backdrop-blur-sm"></div>
+<!-- Modal Content -->
+<div class="relative z-10 w-full max-w-sm px-6">
+<!-- Glow Effect behind the card content -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[120%] achievement-bg pointer-events-none z-0"></div>
+<div class="relative z-10 flex flex-col items-center">
+<!-- Achievement Label -->
+<div class="mb-8 animate-fade-in-down">
+<p class="text-primary/90 text-xs font-bold tracking-[0.2em] uppercase text-center">Achievement Unlocked</p>
+</div>
+<!-- Central Icon Badge -->
+<div class="mb-6 relative group">
+<div class="absolute inset-0 bg-primary rounded-full blur-xl opacity-40 animate-pulse"></div>
+<div class="relative w-32 h-32 rounded-full bg-gradient-to-br from-[#2a1f15] to-[#1a120b] border border-primary/30 flex items-center justify-center shadow-glow">
+<!-- Icon Image -->
+<div class="w-20 h-20 bg-contain bg-center bg-no-repeat" data-alt="3d isometric music headphones icon" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCUvFO5dpMcOUlRj96-6tMmKB3mp4IpUxJdznqi3YbCZtOtpRjq3-NEcVZ842lIm6v5nIZT6cFrLYM-PTHxi8C4DJ59x4CSxihZpvSJUg5cBK_lVdrzc5JAeHGvIqr3siE8IFbSFA8BMi5JQf_VDUpjQyhlZOf4hse4fDGo-3QjNrOmbphQil_vO_xecZCKjHOu0jhZnqgajLgXH_5X_H3W-tIoIZUfNQSNJVvc7s6z9kBr8Lnb9vu7r39cEZ8C1llvo32i4rlPLA4'); filter: drop-shadow(0 0 8px rgba(236, 127, 19, 0.8));"></div>
+<!-- Decorative Star elements -->
+<span class="material-symbols-outlined absolute -top-2 -right-2 text-primary text-2xl animate-bounce" style="animation-delay: 0.1s">star</span>
+<span class="material-symbols-outlined absolute bottom-2 -left-2 text-primary text-xl animate-bounce" style="animation-delay: 0.3s">star</span>
+</div>
+</div>
+<!-- Title & Description -->
+<div class="text-center space-y-2 mb-6">
+<h1 class="text-white text-4xl font-bold tracking-tight leading-tight drop-shadow-lg">Super Fan</h1>
+<p class="text-white/70 text-base font-normal leading-relaxed max-w-[280px] mx-auto">
+                        You listened to <span class="text-white font-medium">100 hours</span> of indie tracks this month.
+                    </p>
+</div>
+<!-- XP Chip -->
+<div class="mb-10">
+<div class="inline-flex h-9 items-center justify-center gap-x-2 rounded-full bg-white/10 border border-white/10 pl-4 pr-5 backdrop-blur-md">
+<div class="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+</div>
+<p class="text-white text-sm font-bold leading-normal tracking-wide">+ 250 XP</p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="w-full flex flex-col gap-3">
+<button class="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 px-6 transition-transform active:scale-95 shadow-lg shadow-primary/20 hover:bg-primary/90">
+<span class="material-symbols-outlined text-white text-[20px]">ios_share</span>
+<span class="text-white text-base font-bold tracking-wide">Share to Community</span>
+</button>
+<button class="flex w-full items-center justify-center rounded-full bg-transparent py-3 px-6 text-white/50 hover:text-white transition-colors">
+<span class="text-sm font-medium tracking-wide">Close</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

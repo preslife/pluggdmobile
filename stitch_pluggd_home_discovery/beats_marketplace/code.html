@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Beats Marketplace</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ff5500", 
+                        "primary-hover": "#e64d00",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#000000",
+                        "surface-dark": "#121212",
+                        "surface-dark-highlight": "#262626",
+                        "text-secondary": "#a1a1aa"
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem", 
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }.no-scrollbar {
+            -ms-overflow-style: none;scrollbar-width: none;}
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased selection:bg-primary selection:text-white">
+<div class="relative min-h-screen flex flex-col pb-28">
+<header class="sticky top-0 z-40 w-full bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10">
+<div class="flex items-center justify-between px-4 py-4">
+<h1 class="text-2xl font-bold tracking-tight">Marketplace</h1>
+<div class="flex gap-4">
+<button class="text-slate-600 dark:text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-slate-600 dark:text-white hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">2</span>
+</button>
+</div>
+</div>
+<div class="flex gap-3 px-4 pb-4 overflow-x-auto no-scrollbar items-center">
+<button class="flex items-center gap-1 pr-2 text-slate-500 dark:text-text-secondary text-sm font-medium whitespace-nowrap hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+<span>Filters</span>
+</button>
+<div class="h-6 w-[1px] bg-gray-300 dark:bg-white/10 shrink-0 mx-1"></div>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-white text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20">
+                    Trap
+                </button>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-dark-highlight px-4 text-slate-700 dark:text-white text-sm font-medium transition-colors hover:bg-gray-300 dark:hover:bg-[#353a4b]">
+                    R&amp;B
+                </button>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-dark-highlight px-4 text-slate-700 dark:text-white text-sm font-medium transition-colors hover:bg-gray-300 dark:hover:bg-[#353a4b]">
+                    Lo-Fi
+                </button>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-dark-highlight px-4 text-slate-700 dark:text-white text-sm font-medium transition-colors hover:bg-gray-300 dark:hover:bg-[#353a4b]">
+                    Drill
+                </button>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-dark-highlight px-4 text-slate-700 dark:text-white text-sm font-medium transition-colors hover:bg-gray-300 dark:hover:bg-[#353a4b]">
+                    Afrobeat
+                </button>
+<button class="flex h-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-dark-highlight px-4 text-slate-700 dark:text-white text-sm font-medium transition-colors hover:bg-gray-300 dark:hover:bg-[#353a4b]">
+                    Soul
+                </button>
+</div>
+</header>
+<main class="flex-1 px-4 py-6">
+<div class="flex justify-between items-center mb-4">
+<p class="text-sm font-medium text-text-secondary">Showing 124 Results</p>
+<button class="flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-hover">
+                    Sort by: Trending
+                    <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Dark abstract purple and blue smoke background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDZjbsxwqJDjq6Rqb3FiVN0dyb0wLnsdAgOsp_vxhM-LNW6LKq2QZoFEerZH1Td69eJCPQLuTAHbAIRumJWsvmvZewfXk_fuc_qKKQx2lr3zGAtBMPPqnYgrNWmZhzll2wZnQbiwvi2b_ScHU9ptn8Wh8FYwBkOC7UlU5VuKLkvv7ggG8kWxFs3OrUdUfvQpdEe2yfK39DD7F41tncVFJ-XSrMPWUAMEH7k3na0pSDE1OvkKpLTKko1w-k90JR-hLySFifTfhV2J0M');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-white uppercase tracking-wider shadow-lg shadow-primary/20">Exclusive</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Night Rider</h3>
+<p class="text-sm text-text-secondary truncate">@ProducerX</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">140 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">C Min</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$29.99</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Surreal landscape with neon lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0E7d31pM0JFxuMLwlt5rGkSmXnkyXQ5DnkpO0m2yUKnXVAH6nGKUNGJdP3zOOMZcDpapCxpqbqJvvVXr0ONQxzFoDm-zhNaAwc0RJ-uwZcYl7MdaMvaKBgjNQZL3eDc7p4DNfprcurNIHKopHDcLtsw6a9m0p5WotDVYn5Od1KCiSmTxiR83hmoXS2BPIEgOiwzQo_07fzxounfz3YoLf4la-Z3GQ86kQfeU3q-b3GWtAq-3m4y8ThYITfWvOz-pFKbzV9V81hsI');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Soul Search</h3>
+<p class="text-sm text-text-secondary truncate">@MetroBoomin</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">90 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">A Maj</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$35.00</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Abstract liquid oil painting texture" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDIhsKWbIysJlb5588zdyZoSK9TLv_s5lwkhaeTOvbZtvAuN8OQt94HwPvWikIZjrKT79DZijW79o4EYELEv2ILXOo4h-wQNn3HlUIONXJ5WETMyjPvyldTVenQAn17N_J01AWVnpy0_G9NCBNjzvIpO5xQ87Ri7qE6_4zmnY2Q30b3Qxr9D5Xm8VSwhRUbqCSDv5-hnMdyPB513WkpGVW4tGPWZkFjDr3J5L-xh0i6T-1iS7dlFaTfsize4EwtFc8lns1kv9oEwaY');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Drip Season</h3>
+<p class="text-sm text-text-secondary truncate">@GunnaWunna</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">130 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">F# Min</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$40.00</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Retro synthwave sunset landscape" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAY7iMvXH6ERZwwsDUAwep40l_jWpsGjFlL_kh38khrhGTN_Bn8RAxirGPpBz2XcPqa4LkqQQbC_FoBHTbmR58SgjzN24PPctIkYn2a_XfAVuPSKYKxQ6u1Jpc4VwVAGFO2P6Ui7I-mPmmNmJdfzjucGU1BqQ0-AQx6X_lKO9dK_QIqH_s8FYYTB-pgZfvPpnQAR4nmtHOgIPExuItryXXuCqFa8KgVEphOQn9kiDo7d0oA7Oabk4IN7Ii4Z9hHs4HNEWk3Cca0Xxo');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Late Night</h3>
+<p class="text-sm text-text-secondary truncate">@BeatsByDre</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">85 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">G Maj</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$25.00</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Colorful abstract fluid art" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDWYK3VdGSWaxtzt1PNdMgf-OIGn2nSkLHhWfp85sM1U8v12GBykTzQNsBPoPZK_rdyDdz2mDCmZ25AMoqURx1aCUQdQWueBzAEltLgG-k2FNq1W2JE5R07jLGoxIBM36CMyedQsX6tkQEuEl1LPYuo1N7W_UKn0uuMkcSyPIGaZCBftSwBsAQiyhUpF5Rx0w6rpre-WZH_zwrszYN_UJD2BpgWYxd-UYG8mQb5sof6xBajaC4Jq4LjgHd8s7VnCza0oC61QRt4Dgk');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Space Walk</h3>
+<p class="text-sm text-text-secondary truncate">@AstroBeats</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">128 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">Dm</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$29.99</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-3 group">
+<div class="relative aspect-square w-full rounded-xl overflow-hidden bg-surface-dark shadow-sm ring-1 ring-white/5">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Red neon light aesthetic" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAzxDCVLHictgbt412TFFi3yb6SrGJ3vYjgT3K3b9UUQ7DjGTbQ68Ez4ZMTXf7R0mWvDIMn_nhWqNcfJiDpd9AQsnfJYEP2gmK_TFcROduP5I4bICwN4mwFbGSPh9vayHyOwOfaAOEi6rnTIPz7nEKCvp3GWRhcefTz6A1kGhahYaXkYj0On0jAoemJWdETn1ooHshlhKMdRh6sTMgpDEN-vFo9zZtypsmoj7HH1MzlmJCO4urXoRoNZC76_4mgxMlJU9z3W4PgyCM');"></div>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+<button class="absolute bottom-2 right-2 h-10 w-10 bg-black/40 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-primary hover:border-primary transition-all active:scale-90 shadow-lg">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<div>
+<h3 class="font-bold text-base leading-tight truncate">Red Zone</h3>
+<p class="text-sm text-text-secondary truncate">@TrapLord</p>
+</div>
+<div class="flex flex-wrap gap-2 my-0.5">
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">150 BPM</span>
+<span class="text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded">E Min</span>
+</div>
+<button class="w-full h-9 flex items-center justify-between px-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-primary/20">
+<span>$50.00</span>
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 z-50 p-2">
+<div class="bg-surface-dark/95 backdrop-blur-xl border border-white/5 shadow-2xl rounded-2xl p-2.5 flex items-center gap-3 ring-1 ring-white/10">
+<div class="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden">
+<div class="w-full h-full bg-cover bg-center" data-alt="Thumbnail of currently playing track" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC0Tueq6W_11Vnpi5Oqh_2lbkgQ6KiEAa4fdpDpz3ff9UFOA2vJktc6iuNkmUs1SDSmaxl6QA2fG_gvyw15eUpvUDU6OkXfszZtx7y2-_wPTqZQsE39ZZL8JX3f-v8Kd7NyDVdROix2P0IilSKRlhBVuRUJuVV7rDHvlDJLSyZmDUpV5MlibbP2qWqtW8j5fBioTGEwajFFbosNLu0uCZLsGGirNPPZqzxZ4TR5TTAkn56UldylQg6dOsXcF0bN90mOqZ6wl-ubsJE');"></div>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<h4 class="text-white text-sm font-bold truncate">Night Rider</h4>
+<p class="text-text-secondary text-xs truncate">@ProducerX</p>
+<div class="flex items-end gap-0.5 h-3 mt-1 w-full opacity-60">
+<div class="w-1 bg-primary rounded-t-sm h-[40%] animate-pulse"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[70%]"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[100%] animate-pulse"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[60%]"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[80%] animate-pulse"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[40%]"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[90%]"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[50%] animate-pulse"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[30%]"></div>
+<div class="w-1 bg-primary rounded-t-sm h-[60%]"></div>
+<div class="w-1 bg-white/20 rounded-t-sm h-[40%]"></div>
+<div class="w-1 bg-white/20 rounded-t-sm h-[20%]"></div>
+<div class="w-1 bg-white/20 rounded-t-sm h-[30%]"></div>
+</div>
+</div>
+<div class="flex items-center gap-3 pr-2">
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[32px] filled" data-weight="fill">pause_circle</span>
+</button>
+<button class="flex items-center justify-center h-8 w-8 rounded-full bg-white/10 text-white hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

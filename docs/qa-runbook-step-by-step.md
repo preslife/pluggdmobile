@@ -26,7 +26,7 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
 3) Validate logs: Supabase Dashboard → Logs → filter `function: generate-og-image`. Confirm 200 response and no errors.
 
 ## Creator Growth Analytics (events + Supabase data)
-1) Open Studio → Analytics → Growth. Interact (filter/change date) to trigger events.
+1) Navigate to Dashboard → Creator → Growth (`/dashboard/creator/growth`). Interact (filter/change date) to trigger events.
 2) In a new tab, open Supabase Dashboard → SQL and run:  
    `select event_name, payload->>'profile_id' as profile_id from system_logs where event_name ilike 'creator_growth_%' order by created_at desc limit 20;`
 3) Expect recent `creator_growth_profile_fetch_start/success` rows matching your profile.
@@ -34,7 +34,7 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
    `select event_name, payload from system_logs where event_name like 'generate_referral_code%' or event_name like 'update_referral_code%' order by created_at desc limit 20;`
 
 ## Search Experience & Mobile UX (network debounce)
-1) Open `/search`, type a query, watch the Network tab. Verify requests are ~250 ms after typing stops.
+1) Open `/search`, type a query, watch the Network tab. Verify requests are ~300 ms after typing stops (client debounce is 300 ms).
 2) Keyboard: Use arrow keys/Home/End and Enter; confirm highlighted card opens.
 3) Mobile widths: set devtools to 360–428 px. Ensure buttons meet ~44 px height. Note any horizontal scroll.
 
@@ -59,7 +59,7 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
 
 ## Checkout Observability
 1) Run a successful checkout (test card `4242 4242 4242 4242`) and a declined one (e.g., `4000 0000 0000 0002`).
-2) Supabase Logs: filter `event_name: checkout_*` in `system_logs`.
+2) Supabase Logs: filter `event_name: create_checkout_*` and `create_credits_checkout_*` in `system_logs` (edge functions emit these).
 3) SQL check:  
    `select * from public.vw_checkout_activity_daily order by activity_date desc limit 7;`  
    Expect rows for the dates you tested with status and revenue columns populated.
@@ -86,7 +86,7 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
 2) Make a purchase using credits (split tender if available).
 3) SQL checks:  
    - Ledger: `select * from wallet_ledger order by created_at desc limit 10;`  
-   - Balances: `select * from wallet_balances order by updated_at desc limit 5;`
+   - Balances: `select * from v_wallet_balances order by updated_at desc limit 5;`
    Expect new debit/credit rows matching your actions.
 
 ## Messaging & Inbox (real-time)
@@ -98,7 +98,7 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
 2) SQL:  
    `select status, reporter_id from content_reports order by created_at desc limit 5;`  
    Expect your report with `status = 'pending'`.
-3) Block/unblock a user via the provided UI; confirm RPC success in Network tab (`block_user`, `unblock_user`).
+3) Block/unblock a user via the provided UI; confirm the edge functions `block-user` / `unblock-user` succeed (Network tab → Functions).
 
 ## Notifications v1
 1) Trigger an order, tip, and membership subscription.
@@ -117,15 +117,15 @@ Use this as a companion to `docs/qa-regression-checklist.md`. It focuses on the 
 2) Join as host and as attendee in another browser/incognito.
 3) Confirm Agora connects: in Network tab, look for `create-live-session-token` function call returning 200.
 4) SQL:  
-   `select status, started_at, ended_at from live_sessions order by updated_at desc limit 5;`  
+   `select status, agora_live_started_at, agora_live_ended_at from session_rooms order by updated_at desc limit 5;`  
    Expect the session you created to move to “live” then update on end.
 
 ## Stripe Commerce Flows (Manual)
 1) **Creator onboarding**: Start Stripe Connect onboarding from Studio → Financials. In Stripe test dashboard, confirm account created. Supabase SQL:  
-   `select onboarding_status from stripe_connect_accounts order by updated_at desc limit 5;`
+   `select onboarding_complete, charges_enabled, payouts_enabled from producer_stripe_accounts order by updated_at desc limit 5;`
 2) **Membership purchase**: Buy a membership tier; check Supabase `memberships` table and Stripe test subscription record.
-3) **One-time checkout**: Buy a release/beat bundle; verify order row in `store_orders` (or equivalent order table) via SQL ordered by created_at.
-4) **Dispute simulation**: In Stripe test dashboard, use dispute test card (`4000 0000 0000 0259`), mark evidence submitted; Supabase Logs filter `event.type: charge.dispute.*`.
+3) **One-time checkout**: Buy a release/beat bundle; verify order row in `orders` via SQL ordered by created_at.
+4) **Dispute simulation**: In Stripe test dashboard, use dispute test card (`4000 0000 0000 0259`), mark evidence submitted; Supabase Logs filter `event.type: charge.dispute.*` (webhook dispute handling may need manual review).
 5) **Payout rehearsal**: Trigger a manual payout in Stripe test; SQL:  
    `select * from payout_records order by created_at desc limit 5;`
 

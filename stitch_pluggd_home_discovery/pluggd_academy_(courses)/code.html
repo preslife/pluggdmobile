@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Academy</title>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#181411", // Keeping the provided component dark color for consistency, though plan suggested black. It fits the "dark" request well.
+                        "surface-dark": "#27211c",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for horizontal scroll areas */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#111418] dark:text-white font-display overflow-x-hidden">
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-[480px] mx-auto bg-background-light dark:bg-background-dark shadow-xl">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between border-b border-[#29221c]">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white">
+<span class="material-symbols-outlined text-lg">bolt</span>
+</div>
+<h2 class="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Pluggd Academy</h2>
+</div>
+<div class="flex items-center justify-end gap-3">
+<button class="flex items-center justify-center rounded-full w-10 h-10 bg-transparent text-[#111418] dark:text-white hover:bg-[#29221c] transition-colors">
+<span class="material-symbols-outlined text-2xl">search</span>
+</button>
+<button class="relative flex items-center justify-center rounded-full w-10 h-10 overflow-hidden border-2 border-[#29221c]">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL93v0mCgM5WmvNjWNrZQEoaG90RIG2Q_KipLSwcE4HBFZI9oHsdiBUWxZKEzPgPiTNjoKAOdBjul9Dlhpk3_KOgzkEc8YGubZlbJtHfxflF-Thv-ss9LP8rKSdi4JA_p4PowDDUidQJc6tACk7bpvRAL51pkn8JfWOzCLVrYkkyxE6HCyG8gkBR9e2bjB8P_hsDE253Inxp8i5haJ2c6C7L59XHJ93cdzIA3817mRJXJG9BkIWI0FcqVACGNRbumCWi-GX5l-grY"/>
+</button>
+</div>
+</header>
+<!-- Greeting -->
+<div class="px-4 pt-6 pb-2">
+<h1 class="text-[#111418] dark:text-white text-[28px] font-bold leading-tight tracking-tight">Welcome back, Jay</h1>
+<p class="text-[#9d8b7c] text-sm font-medium pt-1">You're on a 3-day streak! 🔥</p>
+</div>
+<!-- Continue Learning Rail -->
+<section class="flex flex-col gap-3 py-4">
+<div class="flex items-center justify-between px-4">
+<h3 class="text-[#111418] dark:text-white text-lg font-bold leading-tight">Continue Learning</h3>
+<button class="text-primary text-sm font-bold">See All</button>
+</div>
+<div class="flex overflow-x-auto no-scrollbar pb-2 pl-4 pr-4 gap-4">
+<!-- Card 1 -->
+<div class="flex flex-col gap-3 shrink-0 w-[240px]">
+<div class="relative w-full aspect-video rounded-xl overflow-hidden group cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Close up of audio mixing console faders" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBy-AP704om3_iMwXacT9alLWHiNlZPDMmbshghVBliQSjck7k8SnW2AnPeAZW20cUb7rq8ETGvEI-cNL30q0Bz2C-mmu0G0Xn7a0V7aXmPGXjZAbRxm_atLf49Yoz_ToAHJbcwrwlRo5AsFkeXm_MhVcBbC5lznrviGMiexLfDouEE7C9OoHQJI03y_-e9b9sDEWKot7g5gP3_3rYRggDf0QEqh-QpMLENt_IkZGy582GfTzZqZQobsTHgP5v6trIo2AA6VvG8hZQ");'></div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center pl-1 shadow-lg">
+<span class="material-symbols-outlined text-white">play_arrow</span>
+</div>
+</div>
+<div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-[14px]">timer</span>
+<span class="text-white text-[10px] font-bold">12m left</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<h4 class="text-[#111418] dark:text-white text-base font-bold truncate">Mixing Trap Beats</h4>
+<span class="text-primary text-xs font-bold">75%</span>
+</div>
+<div class="w-full bg-[#29221c] rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 75%"></div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="flex flex-col gap-3 shrink-0 w-[240px]">
+<div class="relative w-full aspect-video rounded-xl overflow-hidden group cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Person signing legal documents on desk" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCpznrgLf-KzDNNlBOQujSlVLJIsZUZthugFBy3v2CWKai0zjZgwSBot387mIoeg-mSc2uKK94FWAE6zUCPZeSrtvH2ezFkNX-2521rQ-VsNqBzeX9HKfqsUOkUfgcHwabJ47Je5o41IXSjYXqylEHubrFJt6VM39Xyjmd4jYTjhTdzWqEsE5v-NRkyERq6jRozSSUWiQkNKCTiwjB5T5ll-IYLN_TLByCFj80pN_9DnChjaDdLeHVqSFCUDnPEiwUEQI42GK5gKkA");'></div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center pl-1 shadow-lg">
+<span class="material-symbols-outlined text-white">play_arrow</span>
+</div>
+</div>
+<div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-[14px]">timer</span>
+<span class="text-white text-[10px] font-bold">45m left</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<h4 class="text-[#111418] dark:text-white text-base font-bold truncate">Music Law 101</h4>
+<span class="text-primary text-xs font-bold">20%</span>
+</div>
+<div class="w-full bg-[#29221c] rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 20%"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Browse Catalog Section -->
+<section class="flex flex-col flex-1 pb-24">
+<div class="px-4 pb-4 pt-2">
+<h3 class="text-[#111418] dark:text-white text-lg font-bold leading-tight">Browse Catalog</h3>
+</div>
+<!-- Filters -->
+<div class="flex overflow-x-auto no-scrollbar px-4 pb-6 gap-2">
+<button class="flex items-center justify-center h-8 px-4 rounded-full bg-primary text-white text-sm font-bold whitespace-nowrap">All</button>
+<button class="flex items-center justify-center h-8 px-4 rounded-full bg-[#29221c] text-[#9d8b7c] hover:text-white hover:bg-[#393028] text-sm font-medium whitespace-nowrap transition-colors">Beats</button>
+<button class="flex items-center justify-center h-8 px-4 rounded-full bg-[#29221c] text-[#9d8b7c] hover:text-white hover:bg-[#393028] text-sm font-medium whitespace-nowrap transition-colors">Mixing</button>
+<button class="flex items-center justify-center h-8 px-4 rounded-full bg-[#29221c] text-[#9d8b7c] hover:text-white hover:bg-[#393028] text-sm font-medium whitespace-nowrap transition-colors">Marketing</button>
+<button class="flex items-center justify-center h-8 px-4 rounded-full bg-[#29221c] text-[#9d8b7c] hover:text-white hover:bg-[#393028] text-sm font-medium whitespace-nowrap transition-colors">Theory</button>
+</div>
+<!-- Vertical List -->
+<div class="flex flex-col px-4 gap-4">
+<!-- Catalog Item 1 -->
+<div class="group flex flex-col sm:flex-row gap-4 bg-white dark:bg-[#221910] p-3 rounded-2xl shadow-sm border border-transparent dark:border-[#29221c] hover:border-primary/50 transition-colors cursor-pointer">
+<div class="relative w-full sm:w-32 aspect-video sm:aspect-square rounded-xl overflow-hidden shrink-0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Producer working in a dark recording studio with colorful lights" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB9aR_SzBVk9w8RhE4U7bv0HAwEUvVA5LiA1neYVsnGKA99ddVXpf5orHTrVNde7GDp_2eVrPyl2DscRNkpzxaPYX0pNG7obSOxenocsWnkBDgehWLd46rCpVOw_PU7w26Cc3x7LPJc5sMGqrBWodk085reZNL2UpS7oF1ZlnW9uJ-8L8k5-rHz3tl4SvagIGaIwhiUp_XzE6GV1nq3XWCo7tcmlOM3fD-P5SGnLSyHVVJvVLWjadb8Pz-IkmF9qH2gJJzx3agusQM");'></div>
+<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                            PRO
+                         </div>
+</div>
+<div class="flex flex-col justify-center flex-1 gap-2">
+<div>
+<h4 class="text-[#111418] dark:text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Mastering with Metro</h4>
+<p class="text-[#9d8b7c] text-sm mt-1 line-clamp-2">Learn the secrets of industry standard mastering from the legend himself.</p>
+</div>
+<div class="flex items-center gap-4 text-[#9d8b7c] text-xs font-medium mt-auto">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">library_books</span>
+<span>12 Lessons</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>2h 15m</span>
+</div>
+</div>
+</div>
+<div class="hidden sm:flex items-center justify-center pr-2">
+<span class="material-symbols-outlined text-[#29221c] dark:text-[#393028] group-hover:text-primary text-3xl">chevron_right</span>
+</div>
+</div>
+<!-- Catalog Item 2 -->
+<div class="group flex flex-col sm:flex-row gap-4 bg-white dark:bg-[#221910] p-3 rounded-2xl shadow-sm border border-transparent dark:border-[#29221c] hover:border-primary/50 transition-colors cursor-pointer">
+<div class="relative w-full sm:w-32 aspect-video sm:aspect-square rounded-xl overflow-hidden shrink-0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Crowd at a concert with hands in the air" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDWiVbcQe6ZIx0QILZyZVR9Fw7eTF8Onc_41ziOKxsFrR_VoInKxYAe3wx3-mOiGBFq7SMAyOyePZppMKYHLj1yJu9IUawIIAVfuZ4QF_4Pzp8TUrzFRIVb0t4pzGbieVRvEaFRBcC1Ujo6o07aUFyOb6lxF8EGpgcd7P7gY0HowA7702uw3JzoIQCa4qM5iurkizW1z4f5TjDLGrGxIGWPBy2YIlWrqWn22XTk22E-Tta7CB5rkiw8IqcpV7zOutaLPeWXyDwwIKY");'></div>
+<div class="absolute top-2 left-2 bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                            FREE
+                         </div>
+</div>
+<div class="flex flex-col justify-center flex-1 gap-2">
+<div>
+<h4 class="text-[#111418] dark:text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Building Your Fanbase</h4>
+<p class="text-[#9d8b7c] text-sm mt-1 line-clamp-2">Essential marketing strategies for independent artists in 2024.</p>
+</div>
+<div class="flex items-center gap-4 text-[#9d8b7c] text-xs font-medium mt-auto">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">library_books</span>
+<span>5 Lessons</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>45m</span>
+</div>
+</div>
+</div>
+<div class="hidden sm:flex items-center justify-center pr-2">
+<span class="material-symbols-outlined text-[#29221c] dark:text-[#393028] group-hover:text-primary text-3xl">chevron_right</span>
+</div>
+</div>
+<!-- Catalog Item 3 -->
+<div class="group flex flex-col sm:flex-row gap-4 bg-white dark:bg-[#221910] p-3 rounded-2xl shadow-sm border border-transparent dark:border-[#29221c] hover:border-primary/50 transition-colors cursor-pointer">
+<div class="relative w-full sm:w-32 aspect-video sm:aspect-square rounded-xl overflow-hidden shrink-0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Computer screen showing Logic Pro X audio waves" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBlYujyKjnLISeBhlXYwNeqWs_XaS9AahCNN6tuPL0sPn7uI1QDqO6yBNl0a4V7e8ZzF5Dg0g9d4NNSUgQAqvLSA8WoHQN6qAepU2HoNLaQk1HjMI55LmX2IiIgVDsK77VM7LEvhOzaiYZNjGHkzdFm_JfhQKkdJtK1bIFBPJlNga9yRA6LWLo5va5wdhTnGKQ5CjxTMO42FtXmEzEMIxPcnka73REw3Vjy9N_eRXBTt8766Fn4qpJgT2YU2rqOtOF2U9ICEbv_52M");'></div>
+<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                            PRO
+                         </div>
+</div>
+<div class="flex flex-col justify-center flex-1 gap-2">
+<div>
+<h4 class="text-[#111418] dark:text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Logic Pro X Essentials</h4>
+<p class="text-[#9d8b7c] text-sm mt-1 line-clamp-2">From zero to hero. The complete guide to Apple's flagship DAW.</p>
+</div>
+<div class="flex items-center gap-4 text-[#9d8b7c] text-xs font-medium mt-auto">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">library_books</span>
+<span>20 Lessons</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>4h 10m</span>
+</div>
+</div>
+</div>
+<div class="hidden sm:flex items-center justify-center pr-2">
+<span class="material-symbols-outlined text-[#29221c] dark:text-[#393028] group-hover:text-primary text-3xl">chevron_right</span>
+</div>
+</div>
+<!-- Catalog Item 4 -->
+<div class="group flex flex-col sm:flex-row gap-4 bg-white dark:bg-[#221910] p-3 rounded-2xl shadow-sm border border-transparent dark:border-[#29221c] hover:border-primary/50 transition-colors cursor-pointer">
+<div class="relative w-full sm:w-32 aspect-video sm:aspect-square rounded-xl overflow-hidden shrink-0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Abstract vibrant sound waves visualization" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAtCgqGJPN_EAJnQD3rMUGVo3G95_YFzJ3klRGrYoyo6UtmoHesdMbx_ZHB7cX4iPEGbl10PmBwGVSgF3ZUTV0mzcHW2fpXrh7TWUYhNnzyliC0INtwtwwwSj6xUwfXas3ZmcwzVDwMl5zOFn0PTFre3hWrLWTcaTXCKjpvMA_H_LbJ2am7rhn9G0DwkfxsvygwXwWZWxozqfs5subI0AkdWKDHtBm_hDT1JgBGvIbSDlwFsNdc57pv-GxsZuUw7C_eUTv4KlElCJg");'></div>
+<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                            PRO
+                         </div>
+</div>
+<div class="flex flex-col justify-center flex-1 gap-2">
+<div>
+<h4 class="text-[#111418] dark:text-white text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sound Design Theory</h4>
+<p class="text-[#9d8b7c] text-sm mt-1 line-clamp-2">Understand synthesis, sampling, and how to create unique sonic textures.</p>
+</div>
+<div class="flex items-center gap-4 text-[#9d8b7c] text-xs font-medium mt-auto">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">library_books</span>
+<span>15 Lessons</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>3h 30m</span>
+</div>
+</div>
+</div>
+<div class="hidden sm:flex items-center justify-center pr-2">
+<span class="material-symbols-outlined text-[#29221c] dark:text-[#393028] group-hover:text-primary text-3xl">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-[#181411]/90 backdrop-blur-lg border-t border-[#29221c] max-w-[480px] mx-auto">
+<div class="flex justify-around items-center h-16 px-2">
+<a class="flex flex-col items-center justify-center w-full h-full gap-1 text-[#9d8b7c] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full gap-1 text-primary" href="#">
+<span class="material-symbols-outlined filled">school</span>
+<span class="text-[10px] font-bold">Academy</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full gap-1 text-[#9d8b7c] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="text-[10px] font-medium">Community</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full gap-1 text-[#9d8b7c] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

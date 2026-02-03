@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Checkout - Pluggd</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#f48c25",
+              "background-light": "#f8f7f5",
+              "background-dark": "#221910",
+              "surface-dark": "#2c241b",
+              "surface-border": "#45382e",
+              "text-secondary": "#baab9c",
+            },
+            fontFamily: {
+              "display": ["Spline Sans", "Noto Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-24">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pb-2 justify-between border-b border-surface-border/30">
+<div class="text-white flex size-12 shrink-0 items-center justify-start cursor-pointer hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-12">Checkout</h2>
+</header>
+<!-- Content Wrapper -->
+<main class="flex flex-col gap-6 px-4 pt-6">
+<!-- Item Card -->
+<section class="bg-white dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-slate-200 dark:border-surface-border">
+<div class="flex gap-4 items-center">
+<div class="shrink-0 relative">
+<div class="bg-center bg-no-repeat bg-cover rounded-lg size-[70px] shadow-lg" data-alt="Abstract neon city lights album cover art" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB4K6N5H7PTuZOxt_qsDAsZCnfGa3r5krLR1xQRIbomRndaWoxxvG5fH8skampTDQ6n4AOjwHNKwVsnSFl8NsOd5Sva3RkrC431lipYE5rklyy_LsaNEobfO-_P7fEy5NrcpwJX40h7IQ6KuATBB_zQ8s9Gs2HhmdXDJRoVQNFPqacNvwo7fYIKiFQjwrAL-oXphbLiz8sVk4hG_fKYzPR6dy6-9HHJbMo9S1dgj2nrrpWFAZAykXodmYOYKRXN6zA7yJIY1K_hOE0");'>
+</div>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<div class="flex justify-between items-start mb-1">
+<p class="text-slate-900 dark:text-white text-base font-bold leading-tight truncate pr-2">Midnight City (Beat)</p>
+<p class="text-slate-900 dark:text-white text-base font-bold leading-tight whitespace-nowrap">$29.99</p>
+</div>
+<p class="text-slate-500 dark:text-text-secondary text-sm font-normal leading-normal truncate">Prod. by Xylo</p>
+<div class="mt-2 flex items-center">
+<span class="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">Basic Lease - MP3</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Discount Code -->
+<section>
+<label class="flex flex-col w-full">
+<div class="relative flex w-full items-center rounded-xl overflow-hidden group focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background-dark">
+<div class="absolute left-4 text-slate-400 dark:text-text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">sell</span>
+</div>
+<input class="form-input flex w-full resize-none border-none bg-white dark:bg-surface-dark h-14 placeholder:text-slate-400 dark:placeholder:text-text-secondary pl-11 pr-20 text-base font-normal leading-normal text-slate-900 dark:text-white focus:ring-0" placeholder="Enter discount code" value=""/>
+<button class="absolute right-2 top-2 bottom-2 bg-primary/10 hover:bg-primary/20 text-primary px-4 rounded-lg text-sm font-semibold transition-colors">
+                        Apply
+                    </button>
+</div>
+</label>
+</section>
+<!-- Payment Method -->
+<section>
+<h3 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight mb-3">Payment Method</h3>
+<div class="flex flex-col gap-3">
+<!-- Apple Pay (Active) -->
+<label class="relative flex items-center justify-between p-4 rounded-xl border border-primary bg-primary/5 cursor-pointer transition-all">
+<div class="flex items-center gap-4">
+<div class="bg-white text-black p-1.5 rounded w-12 h-8 flex items-center justify-center shrink-0 border border-slate-200">
+<span class="material-symbols-outlined text-xl">ios</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium">Apple Pay</span>
+</div>
+<div class="flex items-center">
+<input checked="" class="size-5 border-surface-border text-primary focus:ring-primary bg-transparent" name="payment-method" type="radio"/>
+</div>
+</label>
+<!-- Credit Card -->
+<label class="relative flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-surface-border bg-white dark:bg-surface-dark cursor-pointer transition-all hover:border-slate-300 dark:hover:border-surface-border/80">
+<div class="flex items-center gap-4">
+<div class="bg-white text-slate-700 p-1.5 rounded w-12 h-8 flex items-center justify-center shrink-0 border border-slate-200">
+<span class="material-symbols-outlined text-xl">credit_card</span>
+</div>
+<div class="flex flex-col">
+<span class="text-slate-900 dark:text-white font-medium">Visa ending in 4242</span>
+<span class="text-xs text-slate-500 dark:text-text-secondary">Expires 12/26</span>
+</div>
+</div>
+<div class="flex items-center">
+<input class="size-5 border-slate-300 dark:border-surface-border text-primary focus:ring-primary bg-transparent" name="payment-method" type="radio"/>
+</div>
+</label>
+<!-- Google Pay -->
+<label class="relative flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-surface-border bg-white dark:bg-surface-dark cursor-pointer transition-all hover:border-slate-300 dark:hover:border-surface-border/80">
+<div class="flex items-center gap-4">
+<div class="bg-white text-slate-700 p-1.5 rounded w-12 h-8 flex items-center justify-center shrink-0 border border-slate-200">
+<span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+</div>
+<span class="text-slate-900 dark:text-white font-medium">Google Pay</span>
+</div>
+<div class="flex items-center">
+<input class="size-5 border-slate-300 dark:border-surface-border text-primary focus:ring-primary bg-transparent" name="payment-method" type="radio"/>
+</div>
+</label>
+</div>
+</section>
+<!-- Order Summary -->
+<section class="mb-6">
+<h3 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight mb-3">Order Summary</h3>
+<div class="bg-white dark:bg-surface-dark rounded-xl p-5 border border-slate-200 dark:border-surface-border flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<p class="text-slate-500 dark:text-text-secondary text-sm font-normal">Subtotal</p>
+<p class="text-slate-900 dark:text-white text-sm font-medium">$29.99</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-slate-500 dark:text-text-secondary text-sm font-normal">Platform Fee</p>
+<p class="text-slate-900 dark:text-white text-sm font-medium">$2.00</p>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-slate-500 dark:text-text-secondary text-sm font-normal">Taxes</p>
+<p class="text-slate-900 dark:text-white text-sm font-medium">$0.00</p>
+</div>
+<div class="h-px bg-slate-200 dark:bg-surface-border w-full my-1"></div>
+<div class="flex justify-between items-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold">Total</p>
+<p class="text-primary text-xl font-bold tracking-tight">$31.99</p>
+</div>
+</div>
+</section>
+<!-- Secure Badge -->
+<div class="flex justify-center items-center gap-2 mb-8 opacity-60">
+<span class="material-symbols-outlined text-slate-400 dark:text-text-secondary text-sm">lock</span>
+<p class="text-xs text-slate-400 dark:text-text-secondary">Payments are secure and encrypted</p>
+</div>
+</main>
+<!-- Sticky Footer CTA -->
+<div class="fixed bottom-0 left-0 w-full bg-background-light dark:bg-background-dark border-t border-surface-border/30 p-4 pb-8 z-20">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-lg shadow-primary/20">
+<span>Pay $31.99</span>
+<span class="material-symbols-outlined text-xl">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

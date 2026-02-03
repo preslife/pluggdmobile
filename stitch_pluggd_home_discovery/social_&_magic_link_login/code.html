@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#ec7f13",
+              "background-light": "#f8f7f6",
+              "background-dark": "#221910",
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            backgroundImage: {
+                'glow': 'radial-gradient(circle at 50% 100%, rgba(236, 127, 19, 0.3) 0%, rgba(34, 25, 16, 0) 50%)'
+            }
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-black font-display antialiased min-h-screen flex flex-col relative overflow-hidden text-white selection:bg-primary selection:text-white">
+<!-- Background Gradient / Glow Effect -->
+<div class="absolute inset-0 z-0 bg-background-dark"></div>
+<!-- Orange Glow at bottom -->
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-glow z-0 pointer-events-none"></div>
+<!-- Main Container -->
+<div class="relative z-10 flex flex-col flex-1 h-full px-6 py-8 mx-auto w-full max-w-md justify-between">
+<!-- Top Section: Header -->
+<div class="flex flex-col items-center justify-center pt-10 pb-6">
+<h1 class="text-white tracking-tight text-[40px] font-extrabold leading-tight text-center mb-2">Pluggd</h1>
+<p class="text-white/60 text-base font-medium leading-normal text-center">Sign in to connect with creators.</p>
+</div>
+<!-- Middle Section: Actions -->
+<div class="w-full flex flex-col gap-5">
+<!-- Social Buttons Group -->
+<div class="flex flex-col gap-3 w-full">
+<!-- Apple Button -->
+<button class="group flex w-full cursor-pointer items-center justify-center rounded-xl h-14 px-5 bg-white text-black text-base font-bold leading-normal transition-transform active:scale-[0.98] hover:bg-gray-100">
+<svg class="w-5 h-5 mr-3" fill="currentColor" viewbox="0 0 384 512" xmlns="http://www.w3.org/2000/svg">
+<path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 52.3-11.4 69.5-34.3z"></path>
+</svg>
+<span>Continue with Apple</span>
+</button>
+<!-- Google Button -->
+<button class="group flex w-full cursor-pointer items-center justify-center rounded-xl h-14 px-5 bg-white text-black text-base font-bold leading-normal transition-transform active:scale-[0.98] hover:bg-gray-100">
+<svg class="w-5 h-5 mr-3" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" fill="#4285F4"></path>
+<path d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" fill="#34A853"></path>
+<path d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z" fill="#FBBC05"></path>
+<path d="M24 9.5c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 2.48 29.93 0 24 0 15.4 0 7.96 4.93 4.34 12.02l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" fill="#EA4335"></path>
+</svg>
+<span>Continue with Google</span>
+</button>
+</div>
+<!-- Divider -->
+<div class="flex items-center gap-4 py-2">
+<div class="h-px flex-1 bg-white/10"></div>
+<span class="text-[#b9ab9d] text-sm font-medium tracking-wide">— OR —</span>
+<div class="h-px flex-1 bg-white/10"></div>
+</div>
+<!-- Magic Link Section -->
+<div class="flex flex-col gap-4">
+<label class="flex flex-col w-full group">
+<div class="relative flex items-center">
+<span class="absolute left-4 text-[#b9ab9d]">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+</span>
+<input class="form-input flex w-full rounded-xl bg-[#221910] border border-white/10 text-white placeholder:text-[#b9ab9d] focus:border-primary focus:ring-1 focus:ring-primary h-14 pl-12 pr-4 text-base font-normal leading-normal transition-colors" placeholder="Enter your email" type="email" value=""/>
+</div>
+</label>
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] transition-all hover:bg-primary/90 active:scale-[0.98] shadow-[0_0_20px_rgba(236,127,19,0.25)]">
+<span class="material-symbols-outlined mr-2 text-[20px]">magic_button</span>
+<span class="truncate">Send Magic Link</span>
+</button>
+</div>
+</div>
+<!-- Bottom Section: Footer -->
+<div class="w-full pt-8 pb-4">
+<p class="text-white/40 text-xs text-center font-normal leading-relaxed">
+                By continuing, you agree to our <br/>
+<a class="text-white/60 hover:text-primary transition-colors underline decoration-white/20 underline-offset-2" href="#">Terms of Service</a> &amp; 
+                <a class="text-white/60 hover:text-primary transition-colors underline decoration-white/20 underline-offset-2" href="#">Privacy Policy</a>.
+            </p>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Notifications</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#ffffff",
+                        "background-dark": "#000000",
+                        "surface-dark": "#111111",
+                        "surface-highlight": "#1c1c1c",
+                        "text-secondary": "#a1a1aa",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto border-x border-surface-highlight/20 shadow-2xl">
+<!-- Status Bar Area (Visual Placeholder) -->
+<div class="w-full h-11 bg-background-light dark:bg-background-dark shrink-0"></div>
+<!-- Header -->
+<header class="flex items-center justify-between px-5 py-2 bg-background-light dark:bg-background-dark sticky top-0 z-20">
+<h1 class="text-black dark:text-white text-3xl font-extrabold tracking-tight">Notifications</h1>
+<div class="flex items-center gap-4">
+<button class="text-primary text-sm font-bold hover:text-primary/80 transition-colors">
+                    Mark all read
+                </button>
+<button class="flex items-center justify-center text-black dark:text-white hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined text-[28px]">settings</span>
+</button>
+</div>
+</header>
+<!-- Filters (Chips) -->
+<div class="sticky top-[60px] z-10 w-full bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm pt-2 pb-4">
+<div class="flex gap-3 px-5 overflow-x-auto no-scrollbar">
+<!-- Active Chip -->
+<button class="flex h-9 shrink-0 items-center justify-center rounded-full bg-primary px-5 shadow-lg shadow-primary/20 transition-transform active:scale-95">
+<p class="text-white text-sm font-bold">All</p>
+</button>
+<!-- Inactive Chips -->
+<button class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-highlight px-5 border border-transparent dark:border-white/5 transition-transform active:scale-95">
+<p class="text-gray-700 dark:text-gray-300 text-sm font-medium">Sales</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-highlight px-5 border border-transparent dark:border-white/5 transition-transform active:scale-95">
+<p class="text-gray-700 dark:text-gray-300 text-sm font-medium">Social</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-surface-highlight px-5 border border-transparent dark:border-white/5 transition-transform active:scale-95">
+<p class="text-gray-700 dark:text-gray-300 text-sm font-medium">System</p>
+</button>
+</div>
+</div>
+<!-- Feed Content -->
+<main class="flex-1 flex flex-col gap-2 pb-24">
+<!-- Section: Today -->
+<div class="px-5 pt-4 pb-2">
+<h3 class="text-gray-500 dark:text-text-secondary text-sm font-bold uppercase tracking-wider">Today</h3>
+</div>
+<!-- Item 1: Payout (Revenue) -->
+<div class="group relative flex items-start gap-4 px-5 py-4 hover:bg-surface-highlight/30 transition-colors cursor-pointer border-b border-gray-100 dark:border-surface-highlight/50">
+<!-- Icon Badge -->
+<div class="relative shrink-0 flex items-center justify-center size-12 rounded-2xl bg-primary/15 text-primary">
+<span class="material-symbols-outlined" style="font-size: 24px;">attach_money</span>
+<!-- Unread Dot -->
+<span class="absolute top-0 right-0 -mt-1 -mr-1 size-3 rounded-full bg-primary ring-2 ring-white dark:ring-background-dark"></span>
+</div>
+<!-- Content -->
+<div class="flex flex-1 flex-col gap-1">
+<div class="flex justify-between items-start">
+<p class="text-black dark:text-white text-base font-bold leading-tight">Payout Successful</p>
+<span class="text-gray-400 dark:text-zinc-500 text-xs font-medium whitespace-nowrap ml-2">2m ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-400 text-sm leading-normal">
+                        Your monthly earnings of <span class="text-black dark:text-white font-bold">$450.00</span> have been deposited.
+                    </p>
+</div>
+</div>
+<!-- Item 2: Beat Purchased (Sales) -->
+<div class="group relative flex items-start gap-4 px-5 py-4 hover:bg-surface-highlight/30 transition-colors cursor-pointer border-b border-gray-100 dark:border-surface-highlight/50">
+<!-- Icon Badge -->
+<div class="relative shrink-0 flex items-center justify-center size-12 rounded-2xl bg-surface-highlight text-white border border-white/5">
+<span class="material-symbols-outlined text-primary" style="font-size: 24px;">shopping_cart</span>
+</div>
+<!-- Content -->
+<div class="flex flex-1 flex-col gap-1">
+<div class="flex justify-between items-start">
+<p class="text-black dark:text-white text-base font-bold leading-tight">Beat Purchased</p>
+<span class="text-gray-400 dark:text-zinc-500 text-xs font-medium whitespace-nowrap ml-2">1h ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-400 text-sm leading-normal">
+                        User <span class="text-primary font-medium">@TrapStar</span> purchased an Exclusive License for "Nightmare".
+                    </p>
+</div>
+</div>
+<!-- Item 3: New Follower (Social) -->
+<div class="group relative flex items-start gap-4 px-5 py-4 hover:bg-surface-highlight/30 transition-colors cursor-pointer border-b border-gray-100 dark:border-surface-highlight/50">
+<!-- Icon Badge -->
+<div class="relative shrink-0 flex items-center justify-center size-12 rounded-2xl bg-surface-highlight text-white border border-white/5">
+<span class="material-symbols-outlined text-primary" style="font-size: 24px;">person_add</span>
+</div>
+<!-- Content -->
+<div class="flex flex-1 flex-col gap-1">
+<div class="flex justify-between items-start">
+<p class="text-black dark:text-white text-base font-bold leading-tight">New Follower</p>
+<span class="text-gray-400 dark:text-zinc-500 text-xs font-medium whitespace-nowrap ml-2">3h ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-400 text-sm leading-normal">
+<span class="text-black dark:text-white font-semibold">DjKhaledFan</span> joined your network.
+                    </p>
+</div>
+</div>
+<!-- Item 4: Reply in Hub (Community) -->
+<div class="group relative flex items-start gap-4 px-5 py-4 hover:bg-surface-highlight/30 transition-colors cursor-pointer">
+<!-- Icon Badge (Avatar Placeholder) -->
+<div class="relative shrink-0 size-12 rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-700 to-black border border-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-white/50" style="font-size: 24px;">forum</span>
+<!-- Small Icon Overlay -->
+<div class="absolute bottom-0 right-0 bg-primary size-4 flex items-center justify-center rounded-tl-lg">
+<span class="material-symbols-outlined text-white text-[10px]">reply</span>
+</div>
+</div>
+<!-- Content -->
+<div class="flex flex-1 flex-col gap-1">
+<div class="flex justify-between items-start">
+<p class="text-black dark:text-white text-base font-bold leading-tight">Reply in Hub</p>
+<span class="text-gray-400 dark:text-zinc-500 text-xs font-medium whitespace-nowrap ml-2">5h ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-400 text-sm leading-normal">
+<span class="text-black dark:text-white font-semibold">ProducerMike</span> replied to your thread "Mixing Vocals".
+                    </p>
+</div>
+</div>
+<!-- Section: Yesterday -->
+<div class="px-5 pt-6 pb-2">
+<h3 class="text-gray-500 dark:text-text-secondary text-sm font-bold uppercase tracking-wider">Yesterday</h3>
+</div>
+<!-- Item 5: Old Notification -->
+<div class="group relative flex items-start gap-4 px-5 py-4 hover:bg-surface-highlight/30 transition-colors cursor-pointer opacity-75">
+<!-- Icon Badge -->
+<div class="relative shrink-0 flex items-center justify-center size-12 rounded-2xl bg-surface-highlight text-white border border-white/5">
+<span class="material-symbols-outlined text-gray-400" style="font-size: 24px;">info</span>
+</div>
+<!-- Content -->
+<div class="flex flex-1 flex-col gap-1">
+<div class="flex justify-between items-start">
+<p class="text-black dark:text-white text-base font-bold leading-tight">System Update</p>
+<span class="text-gray-400 dark:text-zinc-500 text-xs font-medium whitespace-nowrap ml-2">1d ago</span>
+</div>
+<p class="text-gray-600 dark:text-gray-400 text-sm leading-normal">
+                        Pluggd Studio v2.4 is now available. Check out the new features.
+                    </p>
+</div>
+</div>
+<!-- End of feed message -->
+<div class="flex flex-col items-center justify-center py-10 opacity-50">
+<div class="bg-surface-highlight rounded-full p-4 mb-3">
+<span class="material-symbols-outlined text-primary text-3xl">check</span>
+</div>
+<p class="text-sm text-gray-500">You're all caught up</p>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 z-50 w-full max-w-md bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-gray-200 dark:border-white/5 pb-5 pt-2">
+<div class="flex items-center justify-around w-full">
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-12 text-gray-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[26px]">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-12 text-gray-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[26px]">search</span>
+<span class="text-[10px] font-medium">Discover</span>
+</button>
+<button class="flex items-center justify-center -mt-6 size-14 rounded-full bg-primary text-white shadow-lg shadow-primary/40 ring-4 ring-background-light dark:ring-background-dark transform transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-12 text-primary">
+<span class="material-symbols-outlined text-[26px] font-variation-settings-'FILL'1">notifications</span>
+<span class="text-[10px] font-bold">Alerts</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-12 text-gray-400 hover:text-white transition-colors">
+<div class="size-6 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 border border-white/20" data-alt="User Profile Placeholder"></div>
+<span class="text-[10px] font-medium">Profile</span>
+</button>
+</div>
+</nav>
+</div>
+</body></html>

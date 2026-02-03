@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Unified Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1349ec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101522",
+                        "surface-dark": "#181e2e",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased overflow-hidden">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-y-auto max-w-md mx-auto border-x border-slate-800 bg-background-light dark:bg-background-dark pb-20">
+<!-- Header -->
+<div class="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between px-4 py-3">
+<h2 class="text-2xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Inbox</h2>
+<div class="flex items-center gap-3">
+<button class="flex items-center justify-center size-10 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center size-10 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+</div>
+</div>
+<!-- Search Bar -->
+<div class="px-4 pb-3">
+<label class="relative flex w-full items-center">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="block w-full rounded-lg bg-white dark:bg-surface-dark border-0 py-2.5 pl-10 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6 shadow-sm" placeholder="Search messages, projects, or users..." type="text"/>
+</label>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 px-4 pb-3 overflow-x-auto hide-scrollbar snap-x">
+<button class="snap-start shrink-0 flex h-8 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-white shadow-md">
+                    All
+                </button>
+<button class="snap-start shrink-0 flex h-8 items-center justify-center rounded-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary/50 transition-colors">
+                    Unread
+                    <span class="ml-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-white">3</span>
+</button>
+<button class="snap-start shrink-0 flex h-8 items-center justify-center rounded-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary/50 transition-colors">
+                    Projects
+                </button>
+<button class="snap-start shrink-0 flex h-8 items-center justify-center rounded-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-primary/50 transition-colors">
+                    Commissions
+                </button>
+</div>
+</div>
+<!-- Conversation List -->
+<div class="flex flex-col w-full divide-y divide-slate-100 dark:divide-slate-800/50">
+<!-- Item 1: Direct Message (Unread) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-cover bg-center ring-2 ring-slate-100 dark:ring-slate-800" data-alt="Portrait of a young music producer" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuACVgtwuoEbuw4gaieViTeHWiUgjAWV9afWmyfgrt6WaKoWK830EoiWJNMLuZ10njJL1dEcIt2o96q6hq-lUn7KdMpwYw1rFEGVuTSjzYIkahDVGuOsBrkVvAdGOlyoO3cRJ9vnNty7noghRYi_cDveadd9te_5nqWoV1LeI-P9g3kI9xft6NPWAa8HzQgM6X76hro2Op5s2bJiFxlDezSj66j76wu3iC84YUhU8merKuBviKdNze6IkBnxq6wV2nMa1YLBaN0Tt5o');"></div>
+<span class="absolute bottom-0 right-0 block size-3.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-background-dark"></span>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate pr-2">ProdByJack</p>
+<p class="text-xs font-medium text-primary whitespace-nowrap">2m</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-900 dark:text-white font-medium truncate pr-4">Yo, did you send those stems? I need them for the mix.</p>
+<div class="flex size-2.5 shrink-0 rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Item 2: Project Thread (Unread) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-lg bg-cover bg-center ring-1 ring-slate-100 dark:ring-slate-800" data-alt="Abstract neon lights album cover art" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCQghRp7r-0au-UwrT-FNQk1EYyLmX07j2Zqhb-qwAatPc5c-vaBCc1rrdBL4OAuB3RpAOm3jHvWDa27MxGBKWTvEXfYBZ8fvT7ZitACVCEuVZnvcQiJ8I1iLg2U1bU8TR8Q0wAtrAooCYRY7_Ccy_RHxeCxESIRJisiIyxoOvhQW0x5N-4lt7NRo_VuGF8O1R3-Tbc8B1RabyO-dCffjkPHJhOIJ7taT5OPV2NIr11TsrwWv0ycUQtLYjj3CcOBwHQwADG8uegATE');"></div>
+<!-- Project Icon overlay -->
+<div class="absolute -bottom-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full bg-surface-dark ring-2 ring-background-dark">
+<span class="material-symbols-outlined text-[14px] text-white">album</span>
+</div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate pr-2">Album: Neon Nights</p>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">1h</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-600 dark:text-slate-300 truncate pr-4"><span class="text-slate-900 dark:text-white font-medium">Sarah:</span> Just uploaded the vocal take. Let me know what you think!</p>
+<div class="flex size-2.5 shrink-0 rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Item 3: Commission (Read) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg">
+                        EL
+                    </div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<div class="flex items-center gap-2 overflow-hidden">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate">Exclusive License #402</p>
+<span class="shrink-0 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-500 border border-green-500/20">Sold</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Yesterday</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-500 dark:text-slate-400 truncate pr-4">System: Payment of $500.00 received.</p>
+</div>
+</div>
+</div>
+<!-- Item 4: Direct Message (Read) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-cover bg-center ring-2 ring-slate-100 dark:ring-slate-800" data-alt="Profile picture of a female singer" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBLijjEccFZqOHkWgCkrNaiar4mESfyJil3zAw-dZNriVS51Vj7wALSPkAkfosBr2_6yFDCbkk-toablKAobDUrxqZJZ8Xfz0h_qcEa5mI7O9zLMavfkwzsjdFCXTTnnBqWYODlN0QjFyZXxBCz4xrpq83DwnTp-HyFk95N1VPtpeP1047OK8_3P0yIj4VM4w_534D2kAADYbbUxPjYqhxveLgwRo92oshI0LLV8ui6bUIMFTy9F7z2zl-Hj3hBPCExj0OG8ieprxc');"></div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate pr-2">Maya Beats</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">2d</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-500 dark:text-slate-400 truncate pr-4">Thanks for the feedback!</p>
+<span class="material-symbols-outlined text-[16px] text-primary">done_all</span>
+</div>
+</div>
+</div>
+<!-- Item 5: Commission Inquiry (Unread) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-full bg-cover bg-center ring-2 ring-slate-100 dark:ring-slate-800" data-alt="Profile picture of a rapper" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBQ2R1m2niWqZywUw2z7aBuozz5QPY74vw0vgGJbJlU9NFSHb8Sqh4JXUfnbvuzGve63W0n86J-YIKUCzP_0ibPGL9Qd22dvQon6OF4OIT2BcuEa1JjyuLaijjRlyZhNUmh0lNDBT0rR40RUFuj--YZaoQG43pAHH__k2Za4VC9yBRWsQsk8KoQQk3luOThXxziIOSfdmDhm-MumCSloyFCqBhVPKY0eNBU_xmJ3-MBhD0b8sDviiU2WUWCi6ISa7nm4nRA8QElCgk');"></div>
+<span class="absolute bottom-0 right-0 block size-3.5 rounded-full bg-slate-500 ring-2 ring-white dark:ring-background-dark"></span>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<div class="flex items-center gap-2 overflow-hidden">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate">Lil T-Roy</p>
+<span class="shrink-0 rounded bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-400 border border-indigo-500/20">Inquiry</span>
+</div>
+<p class="text-xs font-medium text-primary whitespace-nowrap">3d</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-900 dark:text-white font-medium truncate pr-4">How much for the exclusive rights to "Midnight"?</p>
+<div class="flex size-2.5 shrink-0 rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Item 6: Project Thread (Read) -->
+<div class="group relative flex cursor-pointer items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="relative shrink-0">
+<div class="h-14 w-14 rounded-lg bg-cover bg-center ring-1 ring-slate-100 dark:ring-slate-800" data-alt="Sound wave pattern graphic" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA57fSXo6sPtjcZKukSItgS0sDMFyRm289YZMcWh43c-eYqcAhYF40WEf_4X6ck7Pgod4ulLukSBLRew1p_X_se12R3FTgXsAaNakEy0YS2GCAONSo2BLYRECIOM0puLsda5sFayWEIQznI9ERyygaJqaNlq4UA7dfmN-Z5tKHG3ZneaOFqrJTVtwnwri8vZW75QG5uEK8nAeosF8hD1DZYTTCxnDigzz71MVKZFEbrfDEXi67O72Fy8Ntgi1M-speabgTx-4kxMDM');"></div>
+<div class="absolute -bottom-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full bg-surface-dark ring-2 ring-background-dark">
+<span class="material-symbols-outlined text-[14px] text-white">groups</span>
+</div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-center justify-between mb-0.5">
+<p class="text-base font-bold text-slate-900 dark:text-white truncate pr-2">Mixing Masterclass Group</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">1w</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-sm text-slate-500 dark:text-slate-400 truncate pr-4"><span class="text-slate-700 dark:text-slate-300">Alex:</span> Can anyone check my EQ settings?</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty state spacing for scrolling -->
+<div class="h-10"></div>
+</div>
+<!-- Bottom Navigation -->
+<div class="fixed bottom-0 z-30 w-full max-w-md left-1/2 -translate-x-1/2 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800">
+<div class="flex h-[72px] items-start justify-around pt-3 pb-6">
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-[10px] font-medium">Discover</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-current">chat_bubble</span>
+<span class="text-[10px] font-medium">Inbox</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</div>
+</body></html>

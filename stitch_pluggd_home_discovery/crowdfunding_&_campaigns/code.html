@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Crowdfunding Campaign - Pluggd</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910", // Deep dark brown/black
+                        "surface-dark": "#2f251b", // Slightly lighter for cards
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hide for cleaner UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-white antialiased selection:bg-primary selection:text-white pb-24">
+<!-- Top Navigation (Absolute/Overlay) -->
+<div class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+<button class="flex size-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex gap-3">
+<button class="flex size-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">favorite_border</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+<!-- Hero Section -->
+<div class="relative w-full h-[45vh] min-h-[400px]">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Band performing live with moody synthwave lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDx5ghwrkykoxqyjQy2HsqzkxvlexdCUugpy_3Sd02wbzmi9-44FaDDTCtslqB15kmfFwX9KQFTSEAjaTpioTcczul7oFE76CVT9fQ4gzHThA5df5GzGAbaTIRseBvl7p6nDSA-mMjRhVx_t7tFJkJcJjiHe4U2RUN2YLsoMi_gCUXnW9uIFUaV_J6xSZxjl4LF4x_JYt4cilqUbsA7luz848UkWHK-4uYkdzhlVl3XDDPYjoO4L-azrrLD8lRefXqcK-ubIzmuW1Y');">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent"></div>
+<!-- Hero Content -->
+<div class="absolute bottom-0 left-0 right-0 p-5 flex flex-col gap-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded text-xs font-bold bg-primary text-white uppercase tracking-wider">New Drop</span>
+<span class="text-gray-300 text-xs font-medium uppercase tracking-wide">Electronic / Synthwave</span>
+</div>
+<h1 class="text-3xl md:text-4xl font-bold leading-tight text-white shadow-sm">Neon Nights: The Debut Album</h1>
+<!-- Creator Mini Profile -->
+<div class="flex items-center gap-3 mt-2">
+<div class="size-8 rounded-full bg-cover bg-center border border-white/20" data-alt="Portrait of the lead singer" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCxNZ8E70V0fowW7DPI5YQWKzBCC2BG8W3xPrYdiWrDlo8FsDS3nn89_oO0QP19Rhj51HjMaxVwA03gR_z8KWxl6YA9k2GVt_PfjWWYbR9DJJLznhFSDcV9xh6DgeqKyK-lKWPTgLRHBNdBVQt6Zdy-TBYLTmW1ZkX8F-K7dS2y_SwFQ82In7zoc9mZiqLYcRN2sIMw1Ga3Rjp_65877fD2JcDSVTa6VEGlFBmkRN7njLrCuvwqYaTezSe2jO9PN3dqjqXtOYSa-Fw')"></div>
+<p class="text-sm text-gray-200">by <span class="font-semibold text-white">The Midnight Wave</span></p>
+</div>
+</div>
+</div>
+<!-- Main Content Container -->
+<div class="flex flex-col gap-6 px-5 pt-4">
+<!-- Stats Block -->
+<div class="flex flex-col gap-4">
+<!-- Progress Bar -->
+<div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 75%;"></div>
+</div>
+<!-- Numbers -->
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-3xl font-bold text-primary">$15,200</span>
+<span class="text-sm text-gray-400">pledged of $10,000 goal</span>
+</div>
+<div class="text-right">
+<span class="block text-xl font-bold text-white">152%</span>
+<span class="text-sm text-gray-400">funded</span>
+</div>
+</div>
+<!-- Secondary Stats Grid -->
+<div class="grid grid-cols-2 gap-4 py-3 border-y border-white/5">
+<div class="flex flex-col gap-1">
+<span class="text-lg font-bold text-white">342</span>
+<span class="text-xs uppercase tracking-wide text-gray-500">Backers</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-lg font-bold text-white">12</span>
+<span class="text-xs uppercase tracking-wide text-gray-500">Days to go</span>
+</div>
+</div>
+</div>
+<!-- Tab Navigation -->
+<div class="flex border-b border-white/10 gap-6">
+<button class="pb-3 border-b-2 border-primary text-primary font-medium text-sm px-1">Story</button>
+<button class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white font-medium text-sm px-1 transition-colors">Updates <span class="ml-1 text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full text-gray-300">2</span></button>
+<button class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white font-medium text-sm px-1 transition-colors">Comments</button>
+</div>
+<!-- Description Text -->
+<div class="flex flex-col gap-3">
+<h2 class="text-lg font-bold text-white">About the project</h2>
+<p class="text-gray-300 leading-relaxed text-sm">
+                We've spent the last two years crafting the perfect retro-future soundscape. Now, we need your help to press our debut synth-wave album on 180g splatter vinyl. 
+            </p>
+<p class="text-gray-300 leading-relaxed text-sm">
+                This campaign funds the mixing, mastering, and the first pressing of "Neon Nights". Join us on this journey into the analog void.
+            </p>
+<div class="w-full h-48 rounded-lg bg-cover bg-center mt-2 relative overflow-hidden group" data-alt="Close up of a vinyl record player" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDmPRiMTsNjsF0nZST-xxGxA4vNYFvA8z5ndxPwm6yboHMy0W0S72382-zMeZYjQ2AXFMhLAUhZ3ITgOwb2L-Rx78Y6lMUXy1XJwPYeBrJB3XTuZBLUaTIXxTZVYwCn7OhCgfkADDJucoLcOehlhR2-hGRJkd-LoSVJXm7oY74nyxlfyGiHPJeadzNAbjU-9bY8GJIU_yISlthAzGkdeQTSEdkcrQ5JYOYSuKEmx3SyMAZFiJRP-BNtZpWP6UFIEoFI0woFahv5DW0')">
+<div class="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+<div class="size-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/40">
+<span class="material-symbols-outlined text-white">play_arrow</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Tiers Section -->
+<div class="flex flex-col gap-4 mt-4">
+<h2 class="text-lg font-bold text-white">Select a Reward</h2>
+<!-- Tier Card 1: Basic -->
+<div class="bg-surface-dark rounded-xl p-5 border border-white/5 flex flex-col gap-3 hover:border-white/20 transition-colors cursor-pointer">
+<div class="flex justify-between items-start">
+<h3 class="text-white font-bold text-lg">Digital Download</h3>
+<span class="text-primary font-bold text-lg">$10</span>
+</div>
+<p class="text-gray-400 text-sm">High-quality WAV &amp; MP3 download of the full album + digital booklet.</p>
+<div class="flex items-center gap-2 mt-2 text-xs text-gray-500">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+<span>Est. delivery Oct 2023</span>
+</div>
+</div>
+<!-- Tier Card 2: Recommended -->
+<div class="bg-surface-dark rounded-xl p-5 border-2 border-primary relative flex flex-col gap-3 cursor-pointer shadow-[0_0_20px_rgba(236,127,19,0.1)]">
+<div class="absolute -top-3 left-4 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider shadow-sm">
+                    Most Popular
+                </div>
+<div class="flex justify-between items-start mt-1">
+<h3 class="text-white font-bold text-lg">Signed Vinyl</h3>
+<span class="text-primary font-bold text-lg">$45</span>
+</div>
+<p class="text-gray-300 text-sm">Limited edition 180g Orange Splatter Vinyl, signed by the band. Includes digital download.</p>
+<ul class="text-sm text-gray-400 space-y-1 my-1">
+<li class="flex gap-2 items-center"><span class="material-symbols-outlined text-primary text-[14px]">check</span> Signed LP</li>
+<li class="flex gap-2 items-center"><span class="material-symbols-outlined text-primary text-[14px]">check</span> Digital Copy</li>
+<li class="flex gap-2 items-center"><span class="material-symbols-outlined text-primary text-[14px]">check</span> Sticker Pack</li>
+</ul>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
+<span class="text-xs text-primary font-medium">Only 14 left!</span>
+<div class="flex items-center gap-2 text-xs text-gray-500">
+<span class="material-symbols-outlined text-[16px]">public</span>
+<span>Ships worldwide</span>
+</div>
+</div>
+</div>
+<!-- Tier Card 3: VIP -->
+<div class="bg-surface-dark rounded-xl p-5 border border-white/5 flex flex-col gap-3 hover:border-white/20 transition-colors cursor-pointer opacity-90">
+<div class="flex justify-between items-start">
+<h3 class="text-white font-bold text-lg">VIP Experience</h3>
+<span class="text-primary font-bold text-lg">$100</span>
+</div>
+<p class="text-gray-400 text-sm">Backstage pass to any show in 2024, meet &amp; greet, plus the signed vinyl and exclusive t-shirt.</p>
+<div class="mt-2 inline-flex self-start px-2 py-1 bg-white/5 rounded text-xs text-gray-400">
+                    Limited to 5 backers
+                </div>
+</div>
+<!-- Spacer for sticky footer -->
+<div class="h-8"></div>
+</div>
+</div>
+<!-- Sticky Footer CTA -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-background-dark/90 backdrop-blur-lg border-t border-white/5 z-40 pb-6 md:pb-4">
+<div class="max-w-xl mx-auto flex items-center gap-4">
+<div class="flex flex-col hidden sm:flex">
+<span class="text-xs text-gray-400 uppercase">You pledged</span>
+<span class="text-white font-bold">$0.00</span>
+</div>
+<button class="flex-1 bg-primary hover:bg-primary/90 text-white font-bold text-base h-12 rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                Back this Project
+            </button>
+</div>
+</div>
+</body></html>

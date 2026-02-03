@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payouts &amp; Transaction Ledger</title>
+<!-- Google Fonts: Manrope -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#181411", // Using the darker shade from examples for better contrast
+                        "surface-dark": "#221910",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden font-display">
+<!-- Top App Bar -->
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<div class="text-slate-900 dark:text-white flex size-12 shrink-0 items-center justify-start cursor-pointer">
+<span class="material-symbols-outlined" style="font-size: 24px;">arrow_back</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Payouts</h2>
+</div>
+<!-- Balance Card -->
+<div class="p-4 pt-2">
+<div class="bg-cover bg-center flex flex-col items-stretch justify-end rounded-xl pt-[40px] shadow-lg relative overflow-hidden" data-alt="Dark abstract gradient background with orange accents" style='background-image: linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuAy20Ey3KrTuj_SsAev_1cPZTGWAbuwlWaLvloeLdEBTfwHuawDx4wG8XecmFvauKgfILsZs_HDcOO-KrmYGJp7o-kdkxLloOQmBak5CnXfuQZMykAjXlwPM_M9de-FUUPVtdPUBCC3UicoctqotYfLFE4gl4jA-pkxdYLnfJgflM8vzc4Fd0SZsYNruIGD4wjTuQEmZG4n4nX1az5Fzfy5EZPTH6GyDa_w4Zj98mF1wOWJGqKH_EvdhW-rH7vjGkBvrvZQWlYIgx4");'>
+<!-- Overlay for readability -->
+<div class="absolute inset-0 bg-black/40"></div>
+<div class="relative z-10 flex w-full flex-col gap-6 p-6">
+<div class="flex flex-col gap-1 text-center">
+<p class="text-gray-300 text-sm font-medium uppercase tracking-wider">Available Balance</p>
+<p class="text-primary tracking-tighter text-5xl font-extrabold leading-tight">$3,450.00</p>
+<p class="text-white/80 text-sm font-medium leading-normal mt-1">Next payout: Nov 14</p>
+</div>
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary hover:bg-orange-600 transition-colors text-[#181411] text-base font-bold leading-normal tracking-[0.015em]">
+<span class="truncate">Withdraw Funds</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Stripe Status -->
+<div class="px-4 py-2">
+<div class="flex items-center gap-4 bg-surface-dark/50 dark:bg-[#2a221a] border border-white/5 rounded-lg p-4 justify-between">
+<div class="flex items-center gap-3">
+<div class="text-green-500 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined filled" style="font-size: 24px; font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col">
+<p class="text-white text-sm font-semibold leading-normal">Stripe Connect Status</p>
+<p class="text-green-500 text-xs font-medium">Connected</p>
+</div>
+</div>
+<div class="shrink-0">
+<button class="flex items-center justify-center h-8 px-2 text-primary text-sm font-bold leading-normal hover:text-orange-400 transition-colors">
+<span class="truncate">Manage Account</span>
+<span class="material-symbols-outlined ml-1" style="font-size: 16px;">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+<div class="h-4"></div>
+<!-- Ledger Header -->
+<div class="flex items-center justify-between px-4 pb-2">
+<h3 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Recent Activity</h3>
+<button class="text-gray-400 text-sm font-medium hover:text-white">View All</button>
+</div>
+<!-- Transaction Ledger List -->
+<div class="flex flex-col">
+<!-- Item 1: Beat Sale -->
+<div class="flex items-center gap-4 px-4 py-4 justify-between border-b border-white/5 hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-white flex items-center justify-center rounded-lg bg-[#393028] shrink-0 size-12">
+<span class="material-symbols-outlined" style="font-size: 24px;">music_note</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold leading-normal line-clamp-1">Beat Sale - 'Night Drive'</p>
+<p class="text-[#b9ab9d] text-sm font-normal leading-normal">Oct 24</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-primary text-base font-bold leading-normal">+$250.00</p>
+</div>
+</div>
+<!-- Item 2: Fan Tip -->
+<div class="flex items-center gap-4 px-4 py-4 justify-between border-b border-white/5 hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-white flex items-center justify-center rounded-lg bg-[#393028] shrink-0 size-12">
+<span class="material-symbols-outlined" style="font-size: 24px; font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold leading-normal line-clamp-1">Tip from @User123</p>
+<p class="text-[#b9ab9d] text-sm font-normal leading-normal">Oct 23</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-primary text-base font-bold leading-normal">+$10.00</p>
+</div>
+</div>
+<!-- Item 3: Withdrawal -->
+<div class="flex items-center gap-4 px-4 py-4 justify-between border-b border-white/5 hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-white flex items-center justify-center rounded-lg bg-gray-700/50 shrink-0 size-12">
+<span class="material-symbols-outlined" style="font-size: 24px;">account_balance</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold leading-normal line-clamp-1">Withdrawal to Bank ****4455</p>
+<p class="text-[#b9ab9d] text-sm font-normal leading-normal">Oct 20</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-slate-400 dark:text-white text-base font-medium leading-normal">-$1,500.00</p>
+</div>
+</div>
+<!-- Item 4: Commission -->
+<div class="flex items-center gap-4 px-4 py-4 justify-between border-b border-white/5 hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-white flex items-center justify-center rounded-lg bg-[#393028] shrink-0 size-12">
+<span class="material-symbols-outlined" style="font-size: 24px;">percent</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold leading-normal line-clamp-1">Commission - 'Summer Vibe'</p>
+<p class="text-[#b9ab9d] text-sm font-normal leading-normal">Oct 18</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-primary text-base font-bold leading-normal">+$75.00</p>
+</div>
+</div>
+<!-- Item 5: Beat Sale -->
+<div class="flex items-center gap-4 px-4 py-4 justify-between border-b border-white/5 hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="text-white flex items-center justify-center rounded-lg bg-[#393028] shrink-0 size-12">
+<span class="material-symbols-outlined" style="font-size: 24px;">music_note</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-white text-base font-semibold leading-normal line-clamp-1">Beat Sale - 'Dark Mode'</p>
+<p class="text-[#b9ab9d] text-sm font-normal leading-normal">Oct 15</p>
+</div>
+</div>
+<div class="shrink-0 text-right">
+<p class="text-primary text-base font-bold leading-normal">+$150.00</p>
+</div>
+</div>
+</div>
+<!-- Spacer for bottom nav if needed -->
+<div class="h-20 bg-background-light dark:bg-background-dark"></div>
+</div>
+</body></html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Live Q&amp;A</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910", // Dark warm black
+                        "surface-dark": "#181411", // Even darker for contrast
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black font-display text-white h-screen w-full flex items-center justify-center">
+<!-- Phone Simulator Container -->
+<div class="relative h-full w-full max-w-[430px] bg-surface-dark overflow-hidden flex flex-col shadow-2xl">
+<!-- Background: Live Video Feed Simulation -->
+<div class="absolute inset-0 z-0 h-full w-full bg-cover bg-center" data-alt="Live concert stage with smoky atmosphere and orange lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCuNDVd-qrPjp6Lu4WwtmcQC65NE_sWPpRCIQ309udkgkj1aBQdNzZiDHLQvVZv2InMNukXb1cdYVst5_5YhaT_u3iUiMZOtB3uNR3Hw5cAHw0OLBEfzT2HekSpH9qx4PslXGn0Um1zVfRZZ5jX33Ri0TJVLq59jf2pUqkFeqNrwvFnmV7PW7WhucBOprFW5Bu6nEx_46yl6-Ale48iRZTq3wiQAa7TRaTDb8fuCZ-PmNzwV_zJd4GPeHp-dBsGifyPF-j--W6jrBY');">
+<!-- Heavy gradient overlay to ensure text readability -->
+<div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/95"></div>
+<div class="absolute inset-0 bg-surface-dark/40 backdrop-blur-[2px]"></div>
+</div>
+<!-- Main Interface Layer -->
+<div class="relative z-10 flex h-full flex-col">
+<!-- Top Bar -->
+<header class="flex items-center justify-between px-5 pt-14 pb-2">
+<div>
+<h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        Live Q&amp;A
+                    </h1>
+<p class="text-white/60 text-xs font-medium pl-4">1.2k listening</p>
+</div>
+<button class="group flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 active:scale-95">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 pt-2">
+<!-- Spotlight: Current Question -->
+<div class="mb-8 mt-2 transform transition-all">
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-[#d96a00] p-5 shadow-lg shadow-primary/20 ring-1 ring-white/10">
+<!-- Decorative glow -->
+<div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl"></div>
+<div class="relative z-10">
+<div class="mb-3 flex items-center justify-between">
+<span class="inline-flex items-center rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+<span class="material-symbols-outlined mr-1 text-[12px] animate-bounce">mic</span>
+                                    Now Answering
+                                </span>
+<span class="text-xs font-medium text-white/80">04:20</span>
+</div>
+<p class="mb-4 text-lg font-bold leading-tight tracking-tight text-white">
+                                "What inspired the bassline on track 3? It sounds totally different from your usual style."
+                            </p>
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-cover bg-center ring-2 ring-white/20" data-alt="Portrait of Sarah M, a young fan" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBpT4nuuh6PcxY2mq3gPk1jNHSoLj-OsiKlWZaZvMsG0cvUbrxl5fKZMADDqnkN7zzJwl_sumLafi6HkY2Efh3o3OFf2Ol_CBNWf8Q1-XJLyEnuDJ4uT2Ldd4MVuygWrPaWzYm9qUPuElhnjxRQQWngYaM6iruhbnaRAIA7wNwjtQ4PaucQ3VaFflQyNFV_TVypB0GxTpskxhs92ldEa3fHzeZdOcXi-06eWTZNK3hHGV3oFXAjTayLLyB-2Z2Zz8tj5WroJETQQ1Y');"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-white">Sarah M.</span>
+<span class="text-[10px] text-white/70">Super Fan</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters -->
+<div class="sticky top-0 z-20 mb-4 flex w-full items-center justify-between py-2 backdrop-blur-xl rounded-xl px-2 border border-white/5 bg-black/20">
+<div class="flex gap-1">
+<button class="rounded-full bg-white text-black px-4 py-1.5 text-xs font-bold shadow-sm transition hover:opacity-90">Top</button>
+<button class="rounded-full px-4 py-1.5 text-xs font-bold text-white/60 hover:bg-white/5 hover:text-white transition">Newest</button>
+</div>
+<button class="text-white/60 hover:text-white p-1">
+<span class="material-symbols-outlined text-[20px]">sort</span>
+</button>
+</div>
+<!-- Question List -->
+<div class="space-y-3">
+<!-- Question Item 1 -->
+<div class="group relative flex gap-3 rounded-xl bg-surface-dark/80 p-4 border border-white/5 backdrop-blur-md transition active:scale-[0.99]">
+<div class="h-10 w-10 shrink-0 rounded-full bg-cover bg-center" data-alt="Portrait of Marcus J" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAe0jUuPoOYvOebe0uV9_uh3rVjJp-PqNzHYLAOdmdj3RSQ48gcFeKHqP8an1OgBo96xPIAcQRm4VH9M2pStqI-cwV6_T3wzzuEj97-3cxbX_avShJT-fqXMkUiD_iTYa35frz5m_t7Ohj5MXm1ACRID7S0oW2aJfmDzIur3tcklLlX65Y76pYE9AR4ELadRLiY98EjHEx3Q_18JngIKmtDbpuBDDKYHWchIraD71Hh7RRji7kw7NEZjsG7RNZeZ5jrCL4QBXc459U');"></div>
+<div class="flex flex-1 flex-col">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-white">Marcus J.</span>
+<span class="text-xs text-white/40">2m ago</span>
+</div>
+</div>
+<p class="mt-1 text-sm text-white/90 leading-relaxed">Will you be touring in Europe this year? Specifically Berlin?</p>
+</div>
+<div class="flex flex-col items-center justify-start gap-1 pt-1 pl-2">
+<button class="group/btn flex flex-col items-center gap-0.5">
+<span class="material-symbols-outlined text-white/40 group-hover/btn:text-primary transition-colors" style="font-variation-settings: 'FILL' 1;">expand_less</span>
+<span class="text-xs font-bold text-primary">452</span>
+</button>
+</div>
+</div>
+<!-- Question Item 2 -->
+<div class="group relative flex gap-3 rounded-xl bg-surface-dark/80 p-4 border border-white/5 backdrop-blur-md transition active:scale-[0.99]">
+<div class="h-10 w-10 shrink-0 rounded-full bg-cover bg-center" data-alt="Portrait of Elena R" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC00WjyIEEsO0pjd3PSTU-6ibyj5vNZrbPr5OXctv4oPVZL9Y5vP-LJ3qHDa9-8hCw7frlw2im-tWLxxWpOISYAjfX0ndMtPCDWYAqn7AVrsxtFLMO73hz68GmE3pf8aQwuV03Hg1jRscz_0X7ndKRP8U1Z8_xgcNuaZE0yqpnc5pKZ4MDGCKhVaC1inKpPyw-1put_VeQeXgtOLskaxpdrl7vCo2gRZfe1CTrLhS0ljPBIaEMmAer2ya36O3Cdj5yM1Nk272KTNXs');"></div>
+<div class="flex flex-1 flex-col">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-white">Elena R.</span>
+<span class="text-xs text-white/40">5m ago</span>
+</div>
+</div>
+<p class="mt-1 text-sm text-white/90 leading-relaxed">Can you show us your pedalboard setup?</p>
+</div>
+<div class="flex flex-col items-center justify-start gap-1 pt-1 pl-2">
+<button class="group/btn flex flex-col items-center gap-0.5">
+<span class="material-symbols-outlined text-white/40 group-hover/btn:text-primary transition-colors">expand_less</span>
+<span class="text-xs font-bold text-white/40 group-hover/btn:text-primary">289</span>
+</button>
+</div>
+</div>
+<!-- Question Item 3 -->
+<div class="group relative flex gap-3 rounded-xl bg-surface-dark/80 p-4 border border-white/5 backdrop-blur-md transition active:scale-[0.99]">
+<div class="h-10 w-10 shrink-0 rounded-full bg-cover bg-center" data-alt="Portrait of Tyrell" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA0Gyo6LOv3TZ5LUq1jn8p9caATSiVHJkzzUg716x8VwxIJT33oEGvIgiFSJcxFgcE7IXIfFgM-ZymL437lK3O3eDhaxVyU4yjoH-fCnV3bNbGRHHZOHvF0nOUaa-Zmj5ulWdQ_b7QSNA_k8tSv2nOzmPcgi0hVVUMIy_t8aWlKDuknLjvd4zDsp21tR_eLrxzSB1Ei2FmNhhB5hZSFfiIzfs71PsrB-ZDZv0LDWtL9KclT269tHTw0H0RgZViHETZtjS1Mn5ss_-w');"></div>
+<div class="flex flex-1 flex-col">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-white">Tyrell</span>
+<span class="text-xs text-white/40">8m ago</span>
+</div>
+</div>
+<p class="mt-1 text-sm text-white/90 leading-relaxed">Any collabs coming up with The Weeknd?</p>
+</div>
+<div class="flex flex-col items-center justify-start gap-1 pt-1 pl-2">
+<button class="group/btn flex flex-col items-center gap-0.5">
+<span class="material-symbols-outlined text-white/40 group-hover/btn:text-primary transition-colors">expand_less</span>
+<span class="text-xs font-bold text-white/40 group-hover/btn:text-primary">142</span>
+</button>
+</div>
+</div>
+<!-- Question Item 4 -->
+<div class="group relative flex gap-3 rounded-xl bg-surface-dark/80 p-4 border border-white/5 backdrop-blur-md transition active:scale-[0.99]">
+<div class="h-10 w-10 shrink-0 rounded-full bg-cover bg-center" data-alt="Portrait of Jordan" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCLUrgPy1UCzdBZRRBIPgrHNEcUHzxwYOmFv1kNiK6CbJ9vBhriTaesc_D7hjM7pG2Ma5ALLQ4oAXxTsCAwk1E4ds8A3veSWdicCLr9xNrU1uzp0s5-mlp7sYB88BFbga1RpE8Jb1lmxU5lo_fu-ggW7MT3UV-4Uf3FDjwR5Hhsh49dYLt9bFZEo7u7_TUI9Ew__1B1toygISbt1rjJ2yhVeR-g84yML5grM6Ej51xVBwnqk29EbqYpgriF2z_3MpbOhxlTbN_jjpk');"></div>
+<div class="flex flex-1 flex-col">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-white">Jordan</span>
+<span class="text-xs text-white/40">12m ago</span>
+</div>
+</div>
+<p class="mt-1 text-sm text-white/90 leading-relaxed">Play "Midnight City" please!!! 🙏</p>
+</div>
+<div class="flex flex-col items-center justify-start gap-1 pt-1 pl-2">
+<button class="group/btn flex flex-col items-center gap-0.5">
+<span class="material-symbols-outlined text-white/40 group-hover/btn:text-primary transition-colors">expand_less</span>
+<span class="text-xs font-bold text-white/40 group-hover/btn:text-primary">89</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Footer -->
+<div class="absolute bottom-0 left-0 right-0 border-t border-white/10 bg-black/80 p-4 pb-8 backdrop-blur-xl">
+<div class="flex items-center gap-3">
+<div class="relative flex-1">
+<input class="w-full rounded-full border-0 bg-white/10 px-5 py-3.5 pr-10 text-sm font-medium text-white placeholder-white/40 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Ask a question..." type="text"/>
+</div>
+<button class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition hover:bg-orange-600 active:scale-95">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

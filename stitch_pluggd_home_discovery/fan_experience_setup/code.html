@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fan Experience Setup - Pluggd</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910",
+                        "surface-dark": "#2C241B",
+                        "surface-light": "#FFFFFF",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for horizontal scroll areas */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased text-gray-900 dark:text-white selection:bg-primary selection:text-white">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-24">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 pt-4 pb-2 flex items-center justify-between">
+<div class="flex items-center justify-center size-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-gray-900 dark:text-white">arrow_back</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center">Personalize Your Feed</h2>
+<div class="flex items-center justify-end w-10">
+<button class="text-gray-500 dark:text-[#b9ab9d] text-sm font-bold hover:text-primary transition-colors">Skip</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col px-4 pt-2">
+<!-- Headline Section -->
+<div class="mb-6">
+<h1 class="text-3xl font-bold leading-tight tracking-tight mb-2">What are you into?</h1>
+<p class="text-gray-600 dark:text-[#b9ab9d] text-base font-normal leading-normal">
+                    Select at least 3 genres to help us curate your feed.
+                </p>
+</div>
+<!-- Search Bar -->
+<div class="mb-8">
+<label class="relative block group">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 dark:text-[#b9ab9d] group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</span>
+<input class="block w-full rounded-xl border-none bg-surface-light dark:bg-[#393028] py-4 pl-12 pr-4 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#b9ab9d] focus:ring-2 focus:ring-primary sm:text-base shadow-sm" name="search" placeholder="Find creators, artists, bands..." type="text"/>
+</label>
+</div>
+<!-- Genres Section -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xl font-bold tracking-tight">Select Genres</h3>
+<span class="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-md">2 selected</span>
+</div>
+<div class="flex flex-wrap gap-3">
+<!-- Selected State -->
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white font-medium shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">
+<span>Hip Hop</span>
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<!-- Unselected State -->
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        R&amp;B
+                    </button>
+<!-- Selected State -->
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white font-medium shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">
+<span>Techno</span>
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<!-- More Unselected States -->
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        House
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Afrobeat
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Drill
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Pop
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Jazz
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Lo-Fi
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-surface-light dark:bg-[#393028] text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-200 dark:hover:bg-[#4a4036] transition-all active:scale-95 border border-transparent dark:border-[#4a4036]">
+                        Alt Rock
+                    </button>
+</div>
+</div>
+<!-- Trending Creators Section -->
+<div class="mb-4">
+<h3 class="text-xl font-bold tracking-tight mb-4">Trending on Pluggd</h3>
+<div class="flex overflow-x-auto no-scrollbar gap-4 pb-4 -mx-4 px-4">
+<!-- Creator Card 1 -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] snap-center">
+<div class="relative group cursor-pointer">
+<div class="size-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
+<img alt="Close up portrait of a male music artist with dreadlocks" class="w-full h-full object-cover" data-alt="Portrait of music artist Marcus V" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPbtB_Nt2Yb-r4_5GUsIVLP6kaQxeG90a5P30owk4RQRF26OFfK50rgknjdMpSsFThv96OeuR2jcEbLD1PTgpRkBptvAsfPwPjmcVRk8UMOxlWfRtWdx123gXDJWBg-5dIIX5peTMOkF458ZTvjTX9v0BBJfgAW6siEJ7HixVIcTln_BvH_E-GyQJA7MvWtYbjpzjcHYrM4L4iUnDJMBA0Nj39wRIwbpuqGbpuFSLMH3z_0RNsVrNeqWCFFOR2DZwAhP3920T33eY"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background-dark text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] font-bold">add</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold leading-tight">Marcus V</p>
+<p class="text-[11px] text-gray-500 dark:text-[#b9ab9d]">1.2M Fans</p>
+</div>
+</div>
+<!-- Creator Card 2 -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] snap-center">
+<div class="relative group cursor-pointer">
+<div class="size-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
+<img alt="Silhouette of a female DJ performing in a dark club" class="w-full h-full object-cover" data-alt="Profile picture of DJ K-Luv" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB41jbBz3P7pL24vdhKR6vxFPsyGx7hH0tnfooRDR_cSS7fQfiO-jWALO2KV8NSDpkQ8nwKot79--d_A8suvtDDP0HeVnJqFCZl2b1cuNL2wfH1ZFpIOEKDCS5_myWKz0kJDE2eu6TcR7lSR_pu006mHqc747ngledSnC4LuLjoiiIPLiWEDLgpwMJF3VKrXweIorpOvTXQ8xynTIzsD5w2M9zRzQaAemGlGZTxm6wrQg96d6-JRhAX9e67h-NQHL9Uv6bVOrlfb3A"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-white dark:bg-[#393028] rounded-full p-1 border-2 border-background-dark text-gray-900 dark:text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold leading-tight text-primary">DJ K-Luv</p>
+<p class="text-[11px] text-gray-500 dark:text-[#b9ab9d]">Following</p>
+</div>
+</div>
+<!-- Creator Card 3 -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] snap-center">
+<div class="relative group cursor-pointer">
+<div class="size-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
+<img alt="Close up of a person singing into a vintage microphone" class="w-full h-full object-cover" data-alt="Portrait of artist The Echoes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBC9nJHToUxakAfn3CU0vZFbYI_-gH1FvTjUjA8oEFH05kQA7hriRZQILfMZtLP4QMsA45oF0ZU811Qzim0mesQtWHewFspYjoVOFePPngE0SUyQv4zJNFuYCHBK2d29KEA7MTH3UgSWqfUkMkNmMwS1u0A8fZPZDvxN4aD0Oy7uRs5aWe_UzGrvdaEkRJoVqoj6jeXiEzXZ35wyjaU0Hf_oLgWfax_scMHaSrAeiDY4YLVxkgBVVkJGrd0p2WR6xQ4Xpg1MKO9aBU"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background-dark text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] font-bold">add</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold leading-tight">The Echoes</p>
+<p class="text-[11px] text-gray-500 dark:text-[#b9ab9d]">850k Fans</p>
+</div>
+</div>
+<!-- Creator Card 4 -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] snap-center">
+<div class="relative group cursor-pointer">
+<div class="size-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
+<img alt="Fashionable woman with sunglasses in neon lighting" class="w-full h-full object-cover" data-alt="Portrait of artist ZARA" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYS5do5s30R9d9kBg8t7A0dbsCzLQgrSjAeIYAkiZ94RA5_xSBPiJrp_5K2OmAROfDpTjY7rUP4MZSK1j1oqhdHdCLXV3HjZmUdVm7_qnPFLel6tYynmeJ1Pa8DOlvCJVg_b2TAwdOxHcXuGcjd8YSqnaBBJGz3TYo6YpbzyqPcQQvIzXN99FTD9yVYYZN-9jH5vUySLajCVEdAD_A3cCIfGvNygS-zj_GThaQbIhAYEl4cE1V-l1wQqNH99eNtWlKSbW5ihgEDcU"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background-dark text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] font-bold">add</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold leading-tight">ZARA</p>
+<p class="text-[11px] text-gray-500 dark:text-[#b9ab9d]">2.3M Fans</p>
+</div>
+</div>
+<!-- Creator Card 5 -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] snap-center">
+<div class="relative group cursor-pointer">
+<div class="size-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
+<img alt="Young female model posing with urban background" class="w-full h-full object-cover" data-alt="Portrait of artist LUNA" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALEMt5xW-EsXaLS-1G4Xh18N9mWzGCnsh6-yggWzfLmhZkNkVgP9pecG8O3zhjPT33PSf4DPnQzVCPcxG8gTDZinH2C9p4p4GWw-ENBrLB9BUG-XFZeE5qT4ZUO1jfoyoINLX3jUHbvjtt5gCuqraXYWRYOHFot6PdHrCp5P-YbM6bwdFm5ti0MJ4vpcObULWQt0SUpcXNEs78cUKPDJEmrqRFYM-F5UDnl4x10-H1ir-Li3EkMmxfVWgUI-2kpmfAsQ4lTjZl9-A"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-primary rounded-full p-1 border-2 border-background-dark text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] font-bold">add</span>
+</div>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold leading-tight">LUNA</p>
+<p class="text-[11px] text-gray-500 dark:text-[#b9ab9d]">400k Fans</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer CTA -->
+<div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark dark:to-transparent pt-12 pb-8 px-4 z-40 pointer-events-none flex justify-center">
+<button class="pointer-events-auto w-full max-w-md bg-primary hover:bg-orange-600 text-white font-bold text-lg py-4 rounded-xl shadow-[0_8px_30px_rgb(236,127,19,0.3)] transition-all active:scale-95 flex items-center justify-center gap-2">
+                Continue to Feed
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

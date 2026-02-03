@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pluggd Home Discovery</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF5200",
+                        "background-light": "#FFFFFF",
+                        "background-dark": "#000000",
+                        "card-dark": "#121212",
+                        "text-secondary": "#9da4b9",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }@keyframes wave {
+            0%, 100% { height: 4px; }
+            50% { height: 16px; }
+        }
+        .waveform-bar {
+            animation: wave 1.2s ease-in-out infinite;
+            background-color: #FF5200;
+            width: 3px;
+            border-radius: 99px;
+        }
+        .waveform-bar:nth-child(odd) { animation-duration: 0.8s; }
+        .waveform-bar:nth-child(2n) { animation-duration: 1.1s; }
+        .waveform-bar:nth-child(3n) { animation-duration: 1.3s; }
+        .waveform-bar:nth-child(4n) { animation-duration: 0.9s; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden selection:bg-primary selection:text-white">
+<div class="relative flex flex-col h-screen w-full max-w-md mx-auto overflow-hidden bg-background-light dark:bg-background-dark shadow-2xl">
+<div class="flex-1 overflow-y-auto no-scrollbar pb-40">
+<div class="sticky top-0 z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 pt-6 pb-2 transition-all duration-300">
+<div class="flex items-center gap-3 mb-4">
+<div class="flex-1 flex items-center bg-white dark:bg-card-dark rounded-xl h-12 px-4 shadow-sm border border-transparent focus-within:border-primary/50 transition-colors">
+<span class="material-symbols-outlined text-primary" style="font-size: 24px;">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white w-full h-full placeholder:text-text-secondary text-base ml-2" placeholder="Find beats, artists, or tracks" type="text"/>
+</div>
+<button class="w-12 h-12 rounded-full overflow-hidden border border-white/10 shrink-0">
+<img class="w-full h-full object-cover" data-alt="User profile picture showing a smiling person" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8oXxKMsVTrh_klN_vSP4Ar-LyFVj3x2nA3Oq0C2MpmyCBkc2zY8wkCM0_zkIwmK69CTF6udHEAlGfFaujg4IQPNKYl0p9sbmTT11_z_YkmPpEQry-WDgxyKUNh0DxE6D0sNHqH1-XjjixYHuFmohsbxN0ESzpru45NU7jwq3HzFCaDBxzXamyGuD4BeFBsnPISBr4foqwd-Ju2RJnlFIbbOl7DgyGZWzOyvovkY5ROD2eVguSBD4byatzORza2SULP4mFXwIYqFk"/>
+</button>
+</div>
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-primary text-white shadow-lg shadow-primary/20 transition-transform active:scale-95">
+<span class="text-sm font-semibold">All</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-white/5 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="text-sm font-medium">Hip Hop</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-white/5 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="text-sm font-medium">Lo-fi</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-white/5 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="text-sm font-medium">R&amp;B</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-white/5 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="text-sm font-medium">Trap</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center px-5 rounded-full bg-white dark:bg-card-dark border border-slate-200 dark:border-white/5 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="text-sm font-medium">Drill</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-8 pb-8 pt-2">
+<section>
+<div class="flex items-center justify-between px-4 mb-4">
+<h3 class="text-xl font-bold tracking-tight text-slate-900 dark:text-primary">New Releases</h3>
+<a class="text-primary text-sm font-semibold hover:text-primary/80" href="#">See all</a>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar px-4 pb-2 snap-x">
+<div class="flex flex-col gap-3 min-w-[160px] w-[160px] snap-start group cursor-pointer">
+<div class="relative aspect-square rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Abstract neon fluid art representing Midnight Drive album cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3UjHwLF30uDypy1GwTl2GDm_Q01qLbyrp-EPjfxbtub6maHsYLAsZcYBLADvQvcSVW4rvoOPHi0ibkHxhn8nkjNAKHFHGjIPPnMXgRy-BgZLkQR_xvxRFbZg162dqr91beGZjYikbmOtChgs9t0hCym_uBcweFGek0qAt3ITg-0Oi_x93ul0PyszAN-uDGLnLZD65EqomCSWRbS7w3BY-A-itnwQzzHh4mg0nPgOrg1RelfhdQmIHiz4A44dM-FpDb9qCvars8jo"/>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
+</div>
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate">Midnight Drive</h4>
+<p class="text-sm text-text-secondary truncate">J. Doe</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-[160px] w-[160px] snap-start group cursor-pointer">
+<div class="relative aspect-square rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Surreal landscape with neon lights representing Neon Lights album cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUJ64nhPPusyfOhrU0hOjU7xiBGil6C3_K4qNLurm5GnFvOi0wLjP125BoL1Jc-7FdsZNctpG4OpLN0JX_69Vu5Z4m2Ftdos4fx2QG1v9YzDeueWKdeNQP0YJ5TloMk3JtRm84l2wSXfryH71AD9ok1tDi3GPf-ivBPolYj7AQYBFkZQ9PF1Mm7AOne8-0qC3V6YL3KMQFf0YuAgqfYg7xlQk_C7u4k7ZMAnGquR3_8GkirsSvWQo8H8cRy_M3OaJdupG1ZdiS2rc"/>
+</div>
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate">Neon Lights</h4>
+<p class="text-sm text-text-secondary truncate">The Vibe</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-[160px] w-[160px] snap-start group cursor-pointer">
+<div class="relative aspect-square rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Abstract oil painting style artwork for Vibe Check album" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsO-3lxn0i9DKBbrDy-DL0dotrWzFbmvvwxi7cJ7VkJxAlbDLMxxCneW0XGIKf9cYAupZAOcnX4fQHK8nRlj6yCG-BEQBYy39Ka4TuBNYgmT9iosX1yyvXuKDd87hAM8zj_6X67zVnQbp7dCdcAZQqFeSfCG-h-K4okOcBkMdl8T6XGyTL1q72hqqdJRiECWAz9PKFpXBW9O8FSHuwIVzsJ9TRgsAgBqEvvJzJiEmbDOukM9O1iSkjwSy5THrkI7Wo3HcoXvn3uOY"/>
+</div>
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate">Vibe Check</h4>
+<p class="text-sm text-text-secondary truncate">Sound Waves</p>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between px-4 mb-4">
+<div class="flex flex-col">
+<h3 class="text-xl font-bold tracking-tight text-slate-900 dark:text-primary">Hot Beats</h3>
+<span class="text-xs text-text-secondary font-medium">Trending in Marketplace</span>
+</div>
+<a class="text-primary text-sm font-semibold hover:text-primary/80" href="#">See all</a>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar px-4 pb-2 snap-x">
+<div class="flex flex-col gap-3 min-w-[200px] w-[200px] snap-start group cursor-pointer">
+<div class="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Close up of music production gear for Soulful Type Beat cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZUQHilYHR-n7iKYcxR-pac3yZfPmBIayg9X4q7fP9hkPfO0SO2v1UP-poQB2VNw19Z68UYp0C8OgH4Rfe7Aus_HYzIKNHHl-aBrbejEFcMBSb4Y8BCUivYbvDYR0Eu5i-K32xPLOiTqcjdgSh-AC_Q0KEGfXgtEv1fu9mPZWUXtDxA8khL9-gPiiFSCK2UMYvBJrvZjsuj7i5mmZzpSH3FBIJs1MJtHp3eLk0gungYY8SMZO3EOOPwfXpWRp618Ebby1Anw7sTrI"/>
+<div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10">
+<span class="text-xs font-bold text-white">140 BPM</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px] fill-current">local_fire_department</span>
+<span class="text-xs font-bold uppercase tracking-wide">Hot</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate max-w-[120px]">Soulful Trap</h4>
+<p class="text-sm text-text-secondary truncate">Prod. Axis</p>
+</div>
+<div class="bg-primary/10 px-2 py-1 rounded-md">
+<p class="text-primary font-bold text-sm">$29.99</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-[200px] w-[200px] snap-start group cursor-pointer">
+<div class="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Dark moody club lighting for Drill Anthem beat cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpY5geDZb2meQbzJDlO1XDbCEPEA6r2RfAwf1crwhE5-phGblHcWJd94FLd_lW5wEBBej6JoZ9ihLBpRKtsksh3fWcPdrsWTdVoDhnZgf6lptuH-VMCSGpduI2pjM_xpmkpJWjF-STfwzSb9NZkdgZaaGEsbgIYiSRa7N_8QX200czy4AbuZf1a8qJG7387_D3F5q_Tei-Yvwexue9QRXYWSL-f7jsQ9PmNEtauk7nN4Tt-27zZ0qtICIXdNAijilS8lpYyrm8a5s"/>
+<div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10">
+<span class="text-xs font-bold text-white">144 BPM</span>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate max-w-[120px]">Drill Anthem</h4>
+<p class="text-sm text-text-secondary truncate">Prod. Keyz</p>
+</div>
+<div class="bg-primary/10 px-2 py-1 rounded-md">
+<p class="text-primary font-bold text-sm">$49.99</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-[200px] w-[200px] snap-start group cursor-pointer">
+<div class="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-lg bg-card-dark">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Abstract digital wave pattern for Cyber Punk beat cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCA2LqZ1dwkCtvLWgOtiCsoHqHWiqQ-OeJEPEfbbWKDs6iW8D07OfQstdtDekbbuDQdxpRiqeVlyCeF8S6vBh61KPXJ-VS3SyX6GrkLFbLCUlQHCzLPuk6EpfuVAD7S4KbncoaKu2RKgDmd-PjwIv2JyxOfwwHbcz4c7qgWbuuPngFVfzUMFmYCP2gF9gHv5ZkkppDJ-cUQiDWAjAD1uDNS8jrurWGpJWR1NJnmMu7K8uBw8AOYdPP9rx9m6yIsii9E5-cnbQWWCBA"/>
+<div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10">
+<span class="text-xs font-bold text-white">128 BPM</span>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate max-w-[120px]">Cyber Punk</h4>
+<p class="text-sm text-text-secondary truncate">Prod. Synth</p>
+</div>
+<div class="bg-primary/10 px-2 py-1 rounded-md">
+<p class="text-primary font-bold text-sm">$19.99</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between px-4 mb-4">
+<h3 class="text-xl font-bold tracking-tight text-slate-900 dark:text-primary">Curated for You</h3>
+<a class="text-primary text-sm font-semibold hover:text-primary/80" href="#">See all</a>
+</div>
+<div class="px-4 flex flex-col gap-3">
+<div class="flex items-center gap-4 p-2 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="w-16 h-16 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Vibrant sound visualizer art for Solar Power track" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASHRNT7D63ezawEFjcYnkbFT4FogDC6sSOKPl40X3f8GlhdxZXsc4DXE9O9e64JW218u7VeACKyRhjDHwHaREcoR6Om3941MkeIT9Oo0TZqgT1ceJrq8FCaqMTAwABfAflZ8XXYEd3nMGrTTuvjSnh2rRFZtw9gkc3Ii5ABGZkgTGrAx4m2SSSn4Cb9hVfTtHld5vr6iUUuyVN3SmRAOCAItrvqPz9vi75QA1mDONaX2CVLs5Uvvc3DxfY3VZpq8CqVEEgMBCMpdM"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">Solar Power</h4>
+<p class="text-sm text-text-secondary truncate">Luna • 3:42</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white hover:bg-primary hover:border-primary hover:text-white transition-all">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+<div class="flex items-center gap-4 p-2 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="w-16 h-16 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Street photography with motion blur for Night Rider track" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ0s8fBO0IsyhviXfPzyR8QwwKtgkSfxysRa45awVlVwWgEaBtOASa0NtHe1-WAEOGcR5f4wUKyIbjRiD7rNa7FljM44GehbFmioGVj3Cp6JAFjNXtPBdlqS157PIYd97RkzfC-LRYscnKsWH9kPwy8tUgo9697rKYW0y9unAyMPLW9BUbLZMHIUqvWxzAURpO-pYEl-RfWNM7PQy84Sl9XIM4LaJYSwT4A_tT1VlMW9KUZXrYzVWtHRkVNCs5pzq4-62Dv6BJMfE"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">Night Rider</h4>
+<p class="text-sm text-text-secondary truncate">Riderz • 2:55</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white hover:bg-primary hover:border-primary hover:text-white transition-all">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</div>
+<div class="absolute bottom-[90px] left-0 right-0 mx-4 z-30">
+<div class="bg-slate-900/90 dark:bg-card-dark/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 pr-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="Album art for Neon Lights showing abstract neon landscape" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkemywlZ0skfp1_Tp49-zM3I6piFn5GR928mYVy_Y5HGtlQem6-35VqDN1T1pFeHbOQO8avxSv8danhIH3hnz8Rxp9Hen-taGzId4f8KmW-dG9fAEwftzbLA_8fAYn--X2I4nciBHMbDZyCePp7O8OiWpWm0vWTA6ba4WqG9BXwa0eGvzZ3VvrppHKgDn9qBMjZocPqV-5ET1PhYaZq1uJELEmFsxWg5x4Uf8AOEokCsVars9gsYdlofuWDmEGS_9Ss8tCz1rJQ10"/>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center gap-1">
+<div class="flex items-center gap-2">
+<p class="text-white text-sm font-bold truncate">Neon Lights</p>
+<span class="text-text-secondary text-xs">•</span>
+<p class="text-text-secondary text-xs truncate">Vibe Check</p>
+</div>
+<div class="flex items-end gap-[3px] h-4 w-32 opacity-80">
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-3"></div>
+<div class="waveform-bar h-1"></div>
+<div class="waveform-bar h-4"></div>
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-3"></div>
+<div class="waveform-bar h-1"></div>
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-4"></div>
+<div class="waveform-bar h-3"></div>
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-1"></div>
+<div class="waveform-bar h-3"></div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[28px] font-light">skip_next</span>
+</button>
+<button class="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/25 transition-transform active:scale-95">
+<span class="material-symbols-outlined fill-1 text-[24px]">pause</span>
+</button>
+</div>
+</div>
+</div>
+<div class="absolute bottom-0 w-full h-[84px] bg-white dark:bg-background-dark border-t border-slate-200 dark:border-white/5 flex justify-between px-6 items-start pt-4 z-40 pb-safe">
+<button class="flex flex-col items-center gap-1 group w-14">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform filled-icon" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] font-medium text-primary">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-14">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors">search</span>
+<span class="text-[10px] font-medium text-slate-400 group-hover:text-white transition-colors">Search</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-14">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors">library_music</span>
+<span class="text-[10px] font-medium text-slate-400 group-hover:text-white transition-colors">Library</span>
+</button>
+<button class="flex flex-col items-center gap-1 group w-14">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors">shopping_bag</span>
+<span class="text-[10px] font-medium text-slate-400 group-hover:text-white transition-colors">Market</span>
+</button>
+</div>
+<div class="pointer-events-none absolute top-[-10%] right-[-20%] w-[400px] h-[400px] bg-primary/20 blur-[120px] rounded-full z-0"></div>
+<div class="pointer-events-none absolute bottom-[-10%] left-[-20%] w-[300px] h-[300px] bg-primary/10 blur-[100px] rounded-full z-0"></div>
+</div>
+</body></html>

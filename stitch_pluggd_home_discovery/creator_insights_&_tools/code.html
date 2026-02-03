@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Creator Insights &amp; Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&amp;family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF5500", // Striking Orange
+                        "background-light": "#FFFFFF",
+                        "background-dark": "#000000", // Pure Black
+                        "card-dark": "#121212", // Almost Black
+                        "surface-dark": "#1C1C1E", // Dark Grey
+                        "accent-green": "#0bda62",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased selection:bg-primary/30">
+<div class="relative flex min-h-screen w-full flex-col overflow-hidden pb-24">
+<header class="flex flex-col gap-4 bg-background-light dark:bg-background-dark p-4 pt-6 sticky top-0 z-20 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-white/10" data-alt="User profile picture showing a young musician" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA149yJiSLjbT1C1mFDeqaHhQDP9EA4J6vlIdFirQlgE2UyBenuWvrE8xKOlm6Vz-aABBil-Qh8VkwmMH1D-L0MQG6Z54KqIwGIBhzBHxH-SpEi9T8C7febpv5pVy8UVzpSoQAT6asVf7XLbaJrc4BEsxjVYZvn2mjcaF-ux0ewhgKj9PW7cT7fsiVJIFaApmCyf0WlS0mZ6SrUS2oQ8DfjECbqcIisSyEI1UDdHJrj6jpTB8lCI2Lc4_xFrmmS7F8mfBi98HiCiJQ");'></div>
+<span class="text-sm font-semibold text-slate-500 dark:text-slate-400">@musicbymarcus</span>
+</div>
+<button class="flex items-center justify-center size-10 rounded-full bg-white dark:bg-surface-dark text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<div class="flex h-12 w-full items-center justify-center rounded-xl bg-slate-100 dark:bg-zinc-900 p-1">
+<label class="group flex cursor-pointer h-full flex-1 items-center justify-center overflow-hidden rounded-lg px-2 text-slate-500 dark:text-zinc-400 transition-all has-[:checked]:bg-white dark:has-[:checked]:bg-surface-dark has-[:checked]:shadow-sm has-[:checked]:text-slate-900 dark:has-[:checked]:text-white">
+<span class="text-sm font-semibold">Fan</span>
+<input class="invisible w-0" name="role_switch" type="radio" value="Fan"/>
+</label>
+<label class="group flex cursor-pointer h-full flex-1 items-center justify-center overflow-hidden rounded-lg px-2 transition-all bg-primary shadow-sm text-white has-[:checked]:bg-primary has-[:checked]:text-white">
+<span class="text-sm font-semibold">Creator</span>
+<input checked="" class="invisible w-0" name="role_switch" type="radio" value="Creator"/>
+</label>
+</div>
+</header>
+<div class="px-4 pb-2">
+<h1 class="text-2xl font-bold leading-tight tracking-tight">Good evening, Marcus</h1>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your music.</p>
+</div>
+<div class="flex overflow-x-auto gap-4 p-4 pb-2 hide-scrollbar snap-x">
+<div class="flex min-w-[240px] snap-center flex-col justify-between rounded-xl p-5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-card-dark shadow-sm relative overflow-hidden group">
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Streams</span>
+<span class="text-3xl font-bold tracking-tight">24.5k</span>
+</div>
+<span class="flex items-center text-accent-green text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> 12%
+                    </span>
+</div>
+<div class="h-12 w-full mt-4 z-10">
+<svg class="w-full h-full stroke-primary fill-none stroke-[2px]" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,25 C10,25 15,15 25,18 C35,21 40,28 50,20 C60,12 70,15 80,10 C90,5 95,2 100,5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div class="absolute -right-4 -bottom-4 size-24 bg-primary/5 rounded-full blur-xl"></div>
+</div>
+<div class="flex min-w-[240px] snap-center flex-col justify-between rounded-xl p-5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-card-dark shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Revenue</span>
+<span class="text-3xl font-bold tracking-tight">$1,204</span>
+</div>
+<span class="flex items-center text-accent-green text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> 8.5%
+                    </span>
+</div>
+<div class="h-12 w-full mt-4 z-10">
+<svg class="w-full h-full stroke-primary fill-none stroke-[2px]" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,28 C15,28 20,20 30,22 C40,24 50,15 60,18 C70,21 80,10 90,8 L100,5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<div class="flex min-w-[240px] snap-center flex-col justify-between rounded-xl p-5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-card-dark shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Followers</span>
+<span class="text-3xl font-bold tracking-tight">4.2k</span>
+</div>
+<span class="flex items-center text-accent-green text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> 3.2%
+                    </span>
+</div>
+<div class="h-12 w-full mt-4 z-10">
+<svg class="w-full h-full stroke-primary fill-none stroke-[2px]" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,20 C20,20 30,25 40,22 C50,19 60,15 70,18 C80,21 90,12 100,10" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+</div>
+<div class="px-4 py-2">
+<button class="w-full relative group overflow-hidden rounded-xl bg-primary p-4 shadow-lg shadow-primary/20 transition hover:shadow-primary/40 active:scale-[0.99]">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">
+<span class="material-symbols-outlined">cloud_upload</span>
+</div>
+<div class="flex flex-col text-left">
+<span class="text-base font-bold text-white leading-tight">Upload New Track</span>
+<span class="text-xs text-white/90 font-medium">Manage catalog &amp; release</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-white">arrow_forward</span>
+</div>
+</button>
+</div>
+<div class="pt-6">
+<div class="flex items-center justify-between px-4 pb-3">
+<h3 class="text-lg font-bold leading-tight">Collab Radar</h3>
+<a class="text-xs font-medium text-primary hover:text-orange-400" href="#">View all</a>
+</div>
+<div class="flex overflow-x-auto gap-3 px-4 pb-2 hide-scrollbar">
+<div class="flex flex-col items-center gap-2 min-w-[80px] group cursor-pointer">
+<div class="relative">
+<div class="size-16 rounded-full bg-cover bg-center ring-2 ring-transparent group-hover:ring-primary transition-all" data-alt="Portrait of artist DJ K-Luv" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCVBVTiKTgWZ7NKLHt4HHyMnkXhZ_9_GXWHLKeE2ql24OHSQhaESPmZszBRmiubn06Dsm0ST_lHpkWBm4x_CuvAgkYfNkeTtB55HgxFjtC5gUW2HfhBR3wTQOKPsO0JuEkBIQfazJhZIr910WnCnfNZY573_EQ-3ZpmKrXlp7QU7bGm7x-GXPhRrFhVq0TmlEDUXaciSAEBMGSR727eoQbCNW-RDayOh71PzLRYtbiL5Po0QLd0kTxzGzDIzTRNQaNJlv__I1YNgY8");'></div>
+<div class="absolute bottom-0 right-0 size-4 bg-primary rounded-full border-2 border-background-light dark:border-background-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px] text-white">bolt</span>
+</div>
+</div>
+<span class="text-xs font-medium text-center truncate w-full">DJ K-Luv</span>
+</div>
+<div class="flex flex-col items-center gap-2 min-w-[80px] group cursor-pointer">
+<div class="relative">
+<div class="size-16 rounded-full bg-cover bg-center ring-2 ring-transparent group-hover:ring-primary transition-all" data-alt="Portrait of artist Sarah V" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAL-S03e6anbF7Ow6lElD8w5AW_riiBuZCnnOmdlhv422SlFci2SFPqbgQokU0kukIZVAXOS7fO-Ph3D4PcrrbR7VtoUvHup-eNKu08uhV2zzeHa6nPHfEVpOLcQnA4g77TrkAC_0skRDBlVfKVmSH5bd83H5BvgjVpVFP5pZeEM4RWjh3Zfn6U22OAGQ0-DZwXczPPB2v14Fk_aqoOxBAP06OK5DPZ2ClVugliGw0IsyO-LR0kjPCypuU9X39RZobp09rdEs09jlY");'></div>
+<div class="absolute bottom-0 right-0 size-4 bg-primary rounded-full border-2 border-background-light dark:border-background-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px] text-white">bolt</span>
+</div>
+</div>
+<span class="text-xs font-medium text-center truncate w-full">Sarah V</span>
+</div>
+<div class="flex flex-col items-center gap-2 min-w-[80px] group cursor-pointer">
+<div class="relative">
+<div class="size-16 rounded-full bg-cover bg-center ring-2 ring-transparent group-hover:ring-primary transition-all" data-alt="Portrait of artist Prod. Mike" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAhaIpk1WJ1egu5WD7K25aM10rLBa0g2jpxXZxpR5tx6qm1oRQj4AkiHIH_bdzlfiqjlHUBFClfbO11XqmRgtQSNwIt61I850YZyPat48Y-ll8LPHXc3dr28z8ci0ylji6NkcveP3CqbAqVpVlDtjlKX0FEbTwvJI3J3n5feZWfAdAZ3Ir8YtlqBqC8djDsSmGpBL0AAdwFSbdTNOg_9HTA-JkbcesjJZ17BHncWubQqrcpOn1u1ciG5OKITlUpzWL0oFtfXaBLJFc");'></div>
+</div>
+<span class="text-xs font-medium text-center truncate w-full">Prod. Mike</span>
+</div>
+<div class="flex flex-col items-center gap-2 min-w-[80px] group cursor-pointer">
+<div class="relative">
+<div class="size-16 rounded-full bg-cover bg-center ring-2 ring-transparent group-hover:ring-primary transition-all" data-alt="Portrait of artist Elara" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCLT61ukSvjr6c7feO2hPhJ2M_jsNNfH-ohJn1X96KHEV-_E2C2zx-1eAgjdyyGrAm9KzrcWtp65O3ycfuIRTERR3CoUG2vgIKLFCRMUPMxEGyJVhtKQL2rG3Zxf0bZyYJFKtln5E-UyExXoTjTs6__tkIje9_7IFiCFJXmxHjn0XGuwX49Jd4jpbTCxqjm46kDt8r4hPLf-bj0KOuvs-sEdHnChnOCnSaSsSUhAresOMuMYDPJExbgtnQHZfCDcGNUE32jCqMiLpM");'></div>
+</div>
+<span class="text-xs font-medium text-center truncate w-full">Elara</span>
+</div>
+<div class="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer">
+<div class="size-16 rounded-full bg-slate-200 dark:bg-surface-dark border-2 border-dashed border-slate-300 dark:border-zinc-700 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</div>
+<span class="text-xs font-medium text-center truncate w-full">Find</span>
+</div>
+</div>
+</div>
+<div class="pt-6 px-4">
+<h3 class="text-lg font-bold leading-tight mb-3">Active Commissions</h3>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-card-dark p-4 border border-slate-200 dark:border-zinc-800 shadow-sm">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">music_note</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-sm font-bold text-slate-900 dark:text-white leading-tight">Custom Beat for @DjX</p>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Due in 2 days</p>
+</div>
+<div class="shrink-0">
+<span class="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">In Progress</span>
+</div>
+</div>
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-card-dark p-4 border border-slate-200 dark:border-zinc-800 shadow-sm">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-sm font-bold text-slate-900 dark:text-white leading-tight">Exclusive Rights: 'Nightfall'</p>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Payment verified</p>
+</div>
+<div class="shrink-0">
+<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 ring-1 ring-inset ring-green-500/20">Sold</span>
+</div>
+</div>
+<div class="flex items-center gap-4 rounded-xl bg-white dark:bg-card-dark p-4 border border-slate-200 dark:border-zinc-800 shadow-sm opacity-60">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-surface-dark text-slate-500">
+<span class="material-symbols-outlined">hourglass_empty</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-sm font-bold text-slate-900 dark:text-white leading-tight">Mixing: 'Summer Vibes'</p>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Awaiting assets</p>
+</div>
+<div class="shrink-0">
+<span class="inline-flex items-center rounded-md bg-slate-400/10 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 ring-1 ring-inset ring-slate-400/20">Pending</span>
+</div>
+</div>
+</div>
+</div>
+<div class="h-10"></div>
+</div>
+<nav class="fixed bottom-0 left-0 z-50 w-full border-t border-slate-200 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur-xl pb-safe">
+<div class="flex h-16 items-center justify-around px-2">
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-primary" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="text-[10px] font-medium">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300" href="#">
+<span class="material-symbols-outlined text-[24px]">storefront</span>
+<span class="text-[10px] font-medium">Market</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300" href="#">
+<span class="material-symbols-outlined text-[24px]">forum</span>
+<span class="text-[10px] font-medium">Community</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+<div class="h-[env(safe-area-inset-bottom)]"></div>
+</nav>
+<style>.hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }.pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+
+</body></html>

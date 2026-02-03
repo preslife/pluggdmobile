@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Purchase History &amp; Receipts</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec7f13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased min-h-screen relative overflow-hidden">
+<!-- Main Content Wrapper -->
+<div class="flex flex-col h-full w-full max-w-md mx-auto bg-background-light dark:bg-background-dark min-h-screen relative shadow-2xl overflow-y-auto pb-24">
+<!-- TopAppBar -->
+<div class="sticky top-0 z-30 flex items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 pb-2 justify-between border-b border-black/5 dark:border-white/5">
+<button class="text-gray-900 dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span>
+</button>
+<h2 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Purchase History</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-gray-900 dark:text-white">
+<span class="material-symbols-outlined text-[24px]">tune</span>
+</button>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="sticky top-[68px] z-20 bg-background-light dark:bg-background-dark pt-2 pb-4">
+<div class="flex gap-3 px-4 overflow-x-auto no-scrollbar">
+<!-- Active Chip -->
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary pl-5 pr-5 shadow-lg shadow-primary/20 transition-transform active:scale-95">
+<p class="text-white text-sm font-bold leading-normal">All</p>
+</button>
+<!-- Inactive Chips -->
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-white/10 pl-5 pr-5 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">
+<p class="text-gray-700 dark:text-white text-sm font-medium leading-normal">Beats</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-white/10 pl-5 pr-5 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">
+<p class="text-gray-700 dark:text-white text-sm font-medium leading-normal">Tickets</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-gray-200 dark:bg-white/10 pl-5 pr-5 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">
+<p class="text-gray-700 dark:text-white text-sm font-medium leading-normal">Tips</p>
+</button>
+</div>
+</div>
+<!-- Order List -->
+<div class="flex flex-col gap-4 px-4 pb-32">
+<!-- ListItem 1: Beat -->
+<div class="group flex flex-col gap-3 bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 active:scale-[0.99] transition-all cursor-pointer">
+<div class="flex justify-between items-start gap-3">
+<div class="flex items-start gap-4 flex-1">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-[70px] shadow-inner" data-alt="Abstract dark purple and neon geometry representing a modern trap music album cover" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDZq3hlm-oOa7jux3n3OIp044Msak2or9kWdhFxz9xGKa7uTn8y7wG-lsnCUgK8gcA6pvaW2PbH_EmfFKr-WxjHfohp8lJGHVi8CboqkHz3rTN2a1F-vSh2jmdROpaezV9k6OBL6THJhVHnesn7Ab5CPxJAs0-9HFbLyw6npg1qnqFW0gHuwZInTnHF1b_1-C5JI_RF_MAFUtki0mwgSqQ2npSr2dwKCPRRamoN8ocGFVRGhfzqGAzdtcjGDIEP3y-24YjnE0d5wto");'>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-tight truncate">Trap Soul Vol. 1</p>
+<p class="text-gray-500 dark:text-white/60 text-xs font-medium mt-1">Prod. by Metro X • Nov 12, 2023</p>
+<div class="flex items-center gap-1 mt-2 text-primary hover:text-primary/80 transition-colors w-fit">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="text-xs font-bold uppercase tracking-wide">Download Receipt</span>
+</div>
+</div>
+</div>
+<div class="shrink-0 flex flex-col items-end">
+<p class="text-primary text-lg font-extrabold leading-normal">$29.99</p>
+<span class="text-[10px] font-bold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded uppercase mt-1">Beat</span>
+</div>
+</div>
+</div>
+<!-- ListItem 2: Ticket -->
+<div class="group flex flex-col gap-3 bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 active:scale-[0.99] transition-all cursor-pointer">
+<div class="flex justify-between items-start gap-3">
+<div class="flex items-start gap-4 flex-1">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-[70px] shadow-inner" data-alt="Blurred stage lights in red and blue at a concert venue" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAwN39EMQaAOrdVVv1wbV_qdWXn88y7VtLWsY1QlwqeE0irV7S8_z0JRScOlp1v-5F_7L9qoPLqNLv3Vh4qrJTaYxUGz3ee2iI6ZpVnYEgee0Bb6GnnA3wGYv7KKs9bXVXqHPsnq-906ajoE-DntDFJvr-xlEolr2RAr57d9TvI28BA38w5DX3lIm7Ru41FWaroyNYoPDyeBifvCOblJ_zgHa-aqBrb78QJsMpCHsg9vLyyUDKBPym4a21tvAR3igU2AZIQzOMNGKo");'>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-tight truncate">Live at the Roxy</p>
+<p class="text-gray-500 dark:text-white/60 text-xs font-medium mt-1">Artist Y • Oct 20, 2023</p>
+<div class="flex items-center gap-1 mt-2 text-primary hover:text-primary/80 transition-colors w-fit">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="text-xs font-bold uppercase tracking-wide">Download Receipt</span>
+</div>
+</div>
+</div>
+<div class="shrink-0 flex flex-col items-end">
+<p class="text-primary text-lg font-extrabold leading-normal">$45.00</p>
+<span class="text-[10px] font-bold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded uppercase mt-1">Ticket</span>
+</div>
+</div>
+</div>
+<!-- ListItem 3: Tip -->
+<div class="group flex flex-col gap-3 bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 active:scale-[0.99] transition-all cursor-pointer">
+<div class="flex justify-between items-start gap-3">
+<div class="flex items-start gap-4 flex-1">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-[70px] shadow-inner flex items-center justify-center bg-gray-100 dark:bg-white/10" data-alt="Simple coffee cup icon representing a tip or donation">
+<span class="material-symbols-outlined text-3xl text-gray-400 dark:text-white/40">coffee</span>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-tight truncate">Coffee Support</p>
+<p class="text-gray-500 dark:text-white/60 text-xs font-medium mt-1">To Artist Z • Oct 15, 2023</p>
+<div class="flex items-center gap-1 mt-2 text-primary hover:text-primary/80 transition-colors w-fit">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="text-xs font-bold uppercase tracking-wide">Download Receipt</span>
+</div>
+</div>
+</div>
+<div class="shrink-0 flex flex-col items-end">
+<p class="text-primary text-lg font-extrabold leading-normal">$5.00</p>
+<span class="text-[10px] font-bold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded uppercase mt-1">Tip</span>
+</div>
+</div>
+</div>
+<!-- ListItem 4: Beat (Previous) -->
+<div class="group flex flex-col gap-3 bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/5 active:scale-[0.99] transition-all cursor-pointer opacity-70">
+<div class="flex justify-between items-start gap-3">
+<div class="flex items-start gap-4 flex-1">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-[70px] shadow-inner" data-alt="Retro vinyl record texture background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCh1LBxum22V_dHYH6wNUIF5EXUzdXtL0MazJYzK70afenCM5JIQ-H8LKPao_2fxULKeUrQvZzcFG2RtPOLygajEy4N-N4ECnpfRYyYZ0BvJo59JNL5v2hdvK2nMkP6un5B8grKFcF2IXAf9oMZh8G0aeOufBPbOKXXd8bRU25UWcgptotxd11VFnqvlxt-NNiAp8_DhK_nemtJTZHcA7jYYQ5EvzECd-NBE1PICQUQo4t1VNIES1wIlH1RJPqiML8Ls5qhJcwNjbs");'>
+</div>
+<div class="flex flex-1 flex-col justify-center min-w-0">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-tight truncate">Lo-Fi Study Pack</p>
+<p class="text-gray-500 dark:text-white/60 text-xs font-medium mt-1">ChillHop • Sep 22, 2023</p>
+<div class="flex items-center gap-1 mt-2 text-primary hover:text-primary/80 transition-colors w-fit">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="text-xs font-bold uppercase tracking-wide">Download Receipt</span>
+</div>
+</div>
+</div>
+<div class="shrink-0 flex flex-col items-end">
+<p class="text-primary text-lg font-extrabold leading-normal">$15.00</p>
+<span class="text-[10px] font-bold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded uppercase mt-1">Beat</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Simulated Bottom Sheet Modal (Open State) -->
+<!-- This demonstrates the "Detailed Breakdown" feature requested -->
+<div class="absolute inset-0 z-50 pointer-events-none flex items-end justify-center">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+<!-- Sheet Content -->
+<div class="pointer-events-auto w-full max-w-md bg-white dark:bg-[#2A221B] rounded-t-3xl p-6 pb-10 shadow-2xl transform transition-transform duration-300 ease-out border-t border-white/10">
+<!-- Handle -->
+<div class="w-12 h-1.5 bg-gray-300 dark:bg-white/20 rounded-full mx-auto mb-6"></div>
+<!-- Header -->
+<div class="flex items-start justify-between mb-8">
+<div>
+<h3 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">Trap Soul Vol. 1</h3>
+<p class="text-gray-500 dark:text-white/50 text-sm font-medium">Order #8493-22 • Nov 12, 2023</p>
+</div>
+<div class="bg-primary/10 px-3 py-1 rounded-lg">
+<p class="text-primary font-bold text-sm">Paid</p>
+</div>
+</div>
+<!-- Details List -->
+<div class="space-y-4 mb-8">
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-500 dark:text-white/60">Payment Method</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gray-900 dark:text-white text-[16px]">credit_card</span>
+<span class="text-gray-900 dark:text-white font-medium">Visa •••• 4242</span>
+</div>
+</div>
+<div class="h-px bg-gray-200 dark:bg-white/5 w-full"></div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-500 dark:text-white/60">Subtotal</span>
+<span class="text-gray-900 dark:text-white font-medium">$29.99</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-gray-500 dark:text-white/60">Tax (0%)</span>
+<span class="text-gray-900 dark:text-white font-medium">$0.00</span>
+</div>
+<div class="h-px bg-gray-200 dark:bg-white/5 w-full my-2"></div>
+<div class="flex justify-between items-center text-lg">
+<span class="text-gray-900 dark:text-white font-bold">Total</span>
+<span class="text-primary font-extrabold">$29.99</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-3">
+<button class="w-full h-12 bg-gray-100 dark:bg-white/5 rounded-xl flex items-center justify-center gap-2 text-gray-900 dark:text-white font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+                    Download PDF Receipt
+                </button>
+<button class="w-full h-12 bg-primary rounded-xl flex items-center justify-center gap-2 text-white font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined">support_agent</span>
+                    Contact Support
+                </button>
+</div>
+</div>
+</div>
+</body></html>
