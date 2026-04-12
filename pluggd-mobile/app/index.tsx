@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../src/lib/supabase';
 import { Database } from '../src/types/supabase';
+import { BottomTabs } from '../components/BottomTabs';
 
 type Release = Database['public']['Tables']['releases']['Row'];
 type Beat = Database['public']['Tables']['beats']['Row'];
@@ -180,6 +181,7 @@ export default function Home() {
                 </View>
 
             </ScrollView>
+            <BottomTabs />
         </View>
     );
 }

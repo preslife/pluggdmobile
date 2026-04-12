@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomTabs } from '../../components/BottomTabs';
 
 export default function Quests() {
     const router = useRouter();
@@ -130,25 +131,7 @@ export default function Quests() {
                 </View>
             </ScrollView>
 
-            {/* Bottom Nav (Mock) */}
-            <View className="absolute bottom-0 left-0 w-full bg-surface-light dark:bg-[#050505] border-t border-zinc-200 dark:border-white/5 pt-2 pb-8 px-6 flex-row justify-between items-center z-50">
-                <TouchableOpacity onPress={() => router.push('/')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-zinc-400">home</Text>
-                    <Text className="text-[10px] font-medium text-zinc-400">Home</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/gamification/courses')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-zinc-400">school</Text>
-                    <Text className="text-[10px] font-medium text-zinc-400">Academy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-primary">trophy</Text>
-                    <Text className="text-[10px] font-medium text-primary">Quests</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/profile')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-zinc-400">person</Text>
-                    <Text className="text-[10px] font-medium text-zinc-400">Profile</Text>
-                </TouchableOpacity>
-            </View>
+            <BottomTabs />
         </View>
     );
 }

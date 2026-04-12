@@ -5,6 +5,8 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../src/lib/supabase';
 import { Database } from '../src/types/supabase';
+import { BottomTabs } from '../components/BottomTabs';
+import { BottomTabs } from '../components/BottomTabs';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -274,13 +276,15 @@ export default function ProfileScreen() {
                 </View>
             </ScrollView>
 
-            {/* Sticky Save Button */}
-            <View className="absolute bottom-0 left-0 right-0 p-4 bg-transparent pt-10 pb-8 bg-gradient-to-t from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark">
+            {/* Sticky Save Button (offset for tabs) */}
+            <View className="absolute bottom-20 left-0 right-0 p-4 bg-transparent pt-10 pb-8 bg-gradient-to-t from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark">
                 <TouchableOpacity onPress={handleSave} className="w-full bg-primary h-14 rounded-full flex-row items-center justify-center shadow-lg shadow-primary/25">
                     <Text className="text-white material-symbols-outlined mr-2">save</Text>
                     <Text className="text-white font-bold text-lg">Save Changes</Text>
                 </TouchableOpacity>
             </View>
+
+            <BottomTabs />
         </View>
     );
 }

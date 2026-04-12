@@ -1,6 +1,7 @@
 
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { BottomTabs } from '../../components/BottomTabs';
 
 export default function Notifications() {
     const router = useRouter();
@@ -153,6 +154,8 @@ export default function Notifications() {
                     <Text className="text-sm text-gray-500">You're all caught up</Text>
                 </View>
             </ScrollView>
+
+            <BottomTabs />
         </View>
     );
 }

@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../src/lib/supabase';
 import { Database } from '../src/types/supabase';
 import MiniPlayer from '../components/MiniPlayer';
+import { BottomTabs } from '../components/BottomTabs';
 
 type Beat = Database['public']['Tables']['beats']['Row'];
 
@@ -107,7 +108,20 @@ export default function Marketplace() {
                                         </View>
                                     )}
                                 </View>
-                                <TouchableOpacity className="w-full h-9 flex-row items-center justify-between px-3 bg-primary rounded-lg mt-1">
+                                <TouchableOpacity
+                                    onPress={() =>
+                                        router.push({
+                                            pathname: "/commerce/checkout",
+                                            params: {
+                                                beatId: beat.id,
+                                                price: beat.price ?? 0,
+                                                title: beat.title,
+                                                artist: beat.producer_name || "Unknown",
+                                            },
+                                        })
+                                    }
+                                    className="w-full h-9 flex-row items-center justify-between px-3 bg-primary rounded-lg mt-1"
+                                >
                                     <Text className="text-white font-bold text-sm">${beat.price || '0.00'}</Text>
                                     <Text className="text-white text-sm material-symbols-outlined">shopping_cart</Text>
                                 </TouchableOpacity>
@@ -118,6 +132,7 @@ export default function Marketplace() {
             </ScrollView>
 
             <MiniPlayer />
+            <BottomTabs />
         </View>
     );
 }

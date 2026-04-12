@@ -1,11 +1,47 @@
 
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Image } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Image, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { launchPaymentSheet } from '../../src/lib/payments';
+import { supabase } from '../../src/lib/supabase';
 
 export default function Checkout() {
     const router = useRouter();
     const [paymentMethod, setPaymentMethod] = useState('apple_pay');
+    const [loading, setLoading] = useState(false);
+    const params = useLocalSearchParams<{ beatId?: string; price?: string; title?: string; artist?: string }>();
+
+    const price = useMemo(() => Number(params.price ?? 29.99), [params.price]);
+    const platformFee = useMemo(() => Math.max(2, price * 0.07), [price]);
+    const total = useMemo(() => price + platformFee, [price, platformFee]);
+
+    const handlePay = async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+            Alert.alert("Sign in required", "Please log in before completing your purchase.");
+            router.push("/auth/login");
+            return;
+        }
+
+        setLoading(true);
+        const result = await launchPaymentSheet({
+            amount: total,
+            metadata: {
+                beat_id: params.beatId ?? "demo",
+                beat_title: params.title ?? "Unknown",
+                artist_name: params.artist ?? "Unknown",
+            },
+        });
+        setLoading(false);
+
+        if (result.status === "success") {
+            Alert.alert("Payment complete", "Thanks for your purchase!", [
+                { text: "OK", onPress: () => router.replace("/commerce/orders") },
+            ]);
+        } else if (result.status === "error") {
+            Alert.alert("Payment failed", result.message);
+        }
+    };
 
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
@@ -29,10 +65,10 @@ export default function Checkout() {
                     </View>
                     <View className="flex-1 justify-center">
                         <View className="flex-row justify-between items-start mb-1">
-                            <Text className="text-slate-900 dark:text-white text-base font-bold flex-1 mr-2" numberOfLines={1}>Midnight City (Beat)</Text>
-                            <Text className="text-slate-900 dark:text-white text-base font-bold">$29.99</Text>
+                            <Text className="text-slate-900 dark:text-white text-base font-bold flex-1 mr-2" numberOfLines={1}>{params.title || 'Beat'}</Text>
+                            <Text className="text-slate-900 dark:text-white text-base font-bold">${price.toFixed(2)}</Text>
                         </View>
-                        <Text className="text-slate-500 dark:text-zinc-400 text-sm mb-2" numberOfLines={1}>Prod. by Xylo</Text>
+                        <Text className="text-slate-500 dark:text-zinc-400 text-sm mb-2" numberOfLines={1}>Prod. by {params.artist || 'Unknown'}</Text>
                         <View className="self-start bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
                             <Text className="text-primary text-xs font-medium">Basic Lease - MP3</Text>
                         </View>
@@ -99,16 +135,16 @@ export default function Checkout() {
                     <View className="bg-white dark:bg-surface-dark rounded-xl p-5 border border-slate-200 dark:border-white/5 gap-4">
                         <View className="flex-row justify-between">
                             <Text className="text-slate-500 dark:text-zinc-400 text-sm">Subtotal</Text>
-                            <Text className="text-slate-900 dark:text-white text-sm font-medium">$29.99</Text>
+                            <Text className="text-slate-900 dark:text-white text-sm font-medium">${price.toFixed(2)}</Text>
                         </View>
                         <View className="flex-row justify-between">
                             <Text className="text-slate-500 dark:text-zinc-400 text-sm">Platform Fee</Text>
-                            <Text className="text-slate-900 dark:text-white text-sm font-medium">$2.00</Text>
+                            <Text className="text-slate-900 dark:text-white text-sm font-medium">${platformFee.toFixed(2)}</Text>
                         </View>
                         <View className="h-px bg-slate-200 dark:bg-white/5 my-1" />
                         <View className="flex-row justify-between items-center">
                             <Text className="text-slate-900 dark:text-white text-base font-semibold">Total</Text>
-                            <Text className="text-primary text-xl font-bold">$31.99</Text>
+                            <Text className="text-primary text-xl font-bold">${total.toFixed(2)}</Text>
                         </View>
                     </View>
                 </View>
@@ -122,8 +158,12 @@ export default function Checkout() {
 
             {/* Footer CTA */}
             <View className="absolute bottom-0 left-0 w-full bg-background-light dark:bg-background-dark border-t border-zinc-200 dark:border-white/10 p-4 pb-8 z-20">
-                <TouchableOpacity className="w-full bg-primary h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg shadow-primary/20">
-                    <Text className="text-white font-bold text-lg">Pay $31.99</Text>
+                <TouchableOpacity
+                    disabled={loading}
+                    onPress={handlePay}
+                    className="w-full bg-primary h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                >
+                    <Text className="text-white font-bold text-lg">{loading ? 'Processing...' : `Pay $${total.toFixed(2)}`}</Text>
                     <Text className="material-symbols-outlined text-white text-xl">arrow_forward</Text>
                 </TouchableOpacity>
             </View>

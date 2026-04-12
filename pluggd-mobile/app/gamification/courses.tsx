@@ -1,6 +1,7 @@
 
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { BottomTabs } from '../../components/BottomTabs';
 
 export default function Courses() {
     const router = useRouter();
@@ -154,25 +155,7 @@ export default function Courses() {
                 </View>
             </ScrollView>
 
-            {/* Bottom Nav (Mock) */}
-            <View className="absolute bottom-0 left-0 w-full bg-[#181411]/90 backdrop-blur-lg border-t border-[#29221c] flex-row justify-around items-center h-16 px-2 z-50">
-                <TouchableOpacity onPress={() => router.push('/')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-[#9d8b7c]">home</Text>
-                    <Text className="text-[10px] font-medium text-[#9d8b7c]">Home</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-primary">school</Text>
-                    <Text className="text-[10px] font-medium text-primary">Academy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/gamification/quests')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-[#9d8b7c]">trophy</Text>
-                    <Text className="text-[10px] font-medium text-[#9d8b7c]">Quests</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/profile')} className="items-center gap-1">
-                    <Text className="material-symbols-outlined text-2xl text-[#9d8b7c]">person</Text>
-                    <Text className="text-[10px] font-medium text-[#9d8b7c]">Profile</Text>
-                </TouchableOpacity>
-            </View>
+            <BottomTabs />
         </View>
     );
 }

@@ -1,6 +1,7 @@
 
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { BottomTabs } from '../../components/BottomTabs';
 
 export default function Inbox() {
     const router = useRouter();
@@ -156,8 +157,10 @@ export default function Inbox() {
                         </View>
                     </TouchableOpacity>
                 ))}
-                <View className="h-10" />
+                <View className="h-24" />
             </ScrollView>
+
+            <BottomTabs />
         </View>
     );
 }

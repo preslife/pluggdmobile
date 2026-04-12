@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomTabs } from '../../components/BottomTabs';
 
 export default function CommunityHub() {
     const router = useRouter();
@@ -181,6 +182,8 @@ export default function CommunityHub() {
             <TouchableOpacity className="absolute bottom-24 right-4 h-14 w-14 rounded-full bg-primary shadow-lg shadow-primary/40 items-center justify-center z-40">
                 <Text className="material-symbols-outlined text-white text-2xl">add</Text>
             </TouchableOpacity>
+
+            <BottomTabs />
         </View>
     );
 }

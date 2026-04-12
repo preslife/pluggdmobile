@@ -1,11 +1,43 @@
 
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../src/lib/supabase';
+import { Database } from '../../src/types/supabase';
+import { BottomTabs } from '../../components/BottomTabs';
+
+type Purchase = Database['public']['Tables']['purchases']['Row'];
 
 export default function Orders() {
     const router = useRouter();
     const [filter, setFilter] = useState('All');
+    const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState<Purchase[]>([]);
+
+    useEffect(() => {
+        loadOrders();
+    }, []);
+
+    const loadOrders = async () => {
+        setLoading(true);
+        const { data } = await supabase
+            .from('purchases')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(30);
+        if (data) setOrders(data);
+        setLoading(false);
+    };
+
+    const filtered = useMemo(() => {
+        if (filter === 'All') return orders;
+        return orders.filter((o) => {
+            if (filter === 'Beats') return !!o.beat_id;
+            if (filter === 'Tickets') return (o.metadata as any)?.type === 'ticket';
+            if (filter === 'Tips') return (o.metadata as any)?.type === 'tip';
+            return true;
+        });
+    }, [orders, filter]);
 
     return (
         <View className="flex-1 bg-background-light dark:bg-background-dark">
@@ -34,87 +66,56 @@ export default function Orders() {
             </View>
 
             <ScrollView className="flex-1 px-4 gap-4 pb-32">
-                {/* Order Item 1 */}
-                <TouchableOpacity className="bg-white dark:bg-white/5 p-4 rounded-xl border border-zinc-100 dark:border-white/5 flex-row gap-3">
-                    <View className="h-[70px] w-[70px] rounded-lg bg-zinc-800 bg-center bg-cover overflow-hidden relative">
-                        {/* Placeholder art */}
-                        <View className="absolute inset-0 bg-indigo-900/50 items-center justify-center">
-                            <Text className="material-symbols-outlined text-white/50 text-3xl">album</Text>
-                        </View>
+                {loading && (
+                    <View className="py-10 items-center">
+                        <ActivityIndicator color="#FF5200" />
+                        <Text className="text-text-secondary mt-2">Loading orders…</Text>
                     </View>
-                    <View className="flex-1 justify-center">
-                        <View className="flex-row justify-between items-start">
-                            <View className="flex-1 mr-2">
-                                <Text className="text-slate-900 dark:text-white text-base font-bold truncate">Trap Soul Vol. 1</Text>
-                                <Text className="text-slate-500 dark:text-zinc-400 text-xs font-medium mt-1">Prod. by Metro X • Nov 12, 2023</Text>
-                            </View>
-                            <View className="items-end">
-                                <Text className="text-primary text-lg font-extrabold">$29.99</Text>
-                                <View className="bg-stone-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-1">
-                                    <Text className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">Beat</Text>
-                                </View>
-                            </View>
-                        </View>
-                        <TouchableOpacity className="flex-row items-center gap-1 mt-2">
-                            <Text className="material-symbols-outlined text-primary text-base">download</Text>
-                            <Text className="text-primary text-xs font-bold uppercase tracking-wide">Download Receipt</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
+                )}
 
-                {/* Order Item 2 */}
-                <TouchableOpacity className="bg-white dark:bg-white/5 p-4 rounded-xl border border-zinc-100 dark:border-white/5 flex-row gap-3">
-                    <View className="h-[70px] w-[70px] rounded-lg bg-zinc-800 bg-center bg-cover overflow-hidden relative">
-                        {/* Placeholder art */}
-                        <View className="absolute inset-0 bg-red-900/50 items-center justify-center">
-                            <Text className="material-symbols-outlined text-white/50 text-3xl">event</Text>
-                        </View>
+                {!loading && filtered.length === 0 && (
+                    <View className="py-10 items-center">
+                        <Text className="text-text-secondary">No orders yet.</Text>
                     </View>
-                    <View className="flex-1 justify-center">
-                        <View className="flex-row justify-between items-start">
-                            <View className="flex-1 mr-2">
-                                <Text className="text-slate-900 dark:text-white text-base font-bold truncate">Live at the Roxy</Text>
-                                <Text className="text-slate-500 dark:text-zinc-400 text-xs font-medium mt-1">Artist Y • Oct 20, 2023</Text>
-                            </View>
-                            <View className="items-end">
-                                <Text className="text-primary text-lg font-extrabold">$45.00</Text>
-                                <View className="bg-stone-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-1">
-                                    <Text className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">Ticket</Text>
-                                </View>
-                            </View>
-                        </View>
-                        <TouchableOpacity className="flex-row items-center gap-1 mt-2">
-                            <Text className="material-symbols-outlined text-primary text-base">download</Text>
-                            <Text className="text-primary text-xs font-bold uppercase tracking-wide">Download Receipt</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
+                )}
 
-                {/* Order Item 3 */}
-                <TouchableOpacity className="bg-white dark:bg-white/5 p-4 rounded-xl border border-zinc-100 dark:border-white/5 flex-row gap-3">
-                    <View className="h-[70px] w-[70px] rounded-lg bg-stone-100 dark:bg-white/10 items-center justify-center">
-                        <Text className="material-symbols-outlined text-stone-400 dark:text-white/40 text-3xl">coffee</Text>
-                    </View>
-                    <View className="flex-1 justify-center">
-                        <View className="flex-row justify-between items-start">
-                            <View className="flex-1 mr-2">
-                                <Text className="text-slate-900 dark:text-white text-base font-bold truncate">Coffee Support</Text>
-                                <Text className="text-slate-500 dark:text-zinc-400 text-xs font-medium mt-1">To Artist Z • Oct 15, 2023</Text>
-                            </View>
-                            <View className="items-end">
-                                <Text className="text-primary text-lg font-extrabold">$5.00</Text>
-                                <View className="bg-stone-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-1">
-                                    <Text className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">Tip</Text>
-                                </View>
+                {filtered.map((order) => (
+                    <TouchableOpacity key={order.id} className="bg-white dark:bg-white/5 p-4 rounded-xl border border-zinc-100 dark:border-white/5 flex-row gap-3">
+                        <View className="h-[70px] w-[70px] rounded-lg bg-zinc-800 bg-center bg-cover overflow-hidden relative">
+                            {/* Placeholder art */}
+                            <View className="absolute inset-0 bg-indigo-900/50 items-center justify-center">
+                                <Text className="material-symbols-outlined text-white/50 text-3xl">album</Text>
                             </View>
                         </View>
-                        <TouchableOpacity className="flex-row items-center gap-1 mt-2">
-                            <Text className="material-symbols-outlined text-primary text-base">download</Text>
-                            <Text className="text-primary text-xs font-bold uppercase tracking-wide">Download Receipt</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
+                        <View className="flex-1 justify-center">
+                            <View className="flex-row justify-between items-start">
+                                <View className="flex-1 mr-2">
+                                    <Text className="text-slate-900 dark:text-white text-base font-bold truncate">
+                                        {(order.metadata as any)?.title || 'Purchase'}
+                                    </Text>
+                                    <Text className="text-slate-500 dark:text-zinc-400 text-xs font-medium mt-1">
+                                        {(order.metadata as any)?.artist_name || 'Unknown'} • {new Date(order.created_at).toLocaleDateString()}
+                                    </Text>
+                                </View>
+                                <View className="items-end">
+                                    <Text className="text-primary text-lg font-extrabold">${(order.amount ?? 0).toFixed(2)}</Text>
+                                    <View className="bg-stone-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-1">
+                                        <Text className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">
+                                            {order.beat_id ? 'Beat' : ((order.metadata as any)?.type || 'Order')}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                            <TouchableOpacity className="flex-row items-center gap-1 mt-2">
+                                <Text className="material-symbols-outlined text-primary text-base">download</Text>
+                                <Text className="text-primary text-xs font-bold uppercase tracking-wide">Download Receipt</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                ))}
             </ScrollView>
+
+            <BottomTabs />
         </View>
     );
 }
