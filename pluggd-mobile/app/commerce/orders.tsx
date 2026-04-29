@@ -6,7 +6,9 @@ import { supabase } from '../../src/lib/supabase';
 import { Database } from '../../src/types/supabase';
 import { BottomTabs } from '../../components/BottomTabs';
 
-type Purchase = Database['public']['Tables']['purchases']['Row'];
+type Purchase = Database['public']['Tables']['purchases']['Row'] & {
+    metadata?: Record<string, any> | null;
+};
 
 export default function Orders() {
     const router = useRouter();

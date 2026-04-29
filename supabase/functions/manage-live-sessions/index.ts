@@ -10,6 +10,15 @@ type ManageLiveSessionsPayload = {
   scheduled_for?: string | null;
   status?: "idle" | "live" | "ended" | string;
   is_public?: boolean;
+  live_mode?: "creator_live" | "collab_live" | "class_live" | "audio_room" | string;
+  allow_stage_requests?: boolean;
+  max_stage_participants?: number;
+  participant_count?: number;
+  mode_config?: Record<string, unknown>;
+  captions_enabled?: boolean;
+  recording_enabled?: boolean;
+  restream_enabled?: boolean;
+  restream_targets?: Record<string, unknown>[];
 };
 
 const corsHeaders = {
@@ -103,6 +112,20 @@ const scheduleReminderIfNeeded = async (
   }
 };
 
+const allowedLiveModes = new Set(["creator_live", "collab_live", "class_live", "audio_room"]);
+
+const normalizeLiveMode = (mode: string | undefined) =>
+  mode && allowedLiveModes.has(mode) ? mode : "creator_live";
+
+const coerceStageLimit = (value: number | undefined, liveMode: string) => {
+  const fallback = liveMode === "creator_live" ? 1 : liveMode === "class_live" ? 8 : 4;
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(16, Math.max(1, Math.round(Number(value))));
+};
+
+const defaultStageRequests = (liveMode: string) =>
+  liveMode === "collab_live" || liveMode === "class_live" || liveMode === "audio_room";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -131,18 +154,28 @@ serve(async (req) => {
       }
 
       const insertPayload = {
+        allow_stage_requests: payload.allow_stage_requests ?? defaultStageRequests(normalizeLiveMode(payload.live_mode)),
         title: payload.title.trim(),
         description: payload.description ?? null,
         host_id: user.id,
         status: payload.status ?? "idle",
         is_public: payload.is_public ?? true,
+        live_mode: normalizeLiveMode(payload.live_mode),
+        max_stage_participants: coerceStageLimit(payload.max_stage_participants, normalizeLiveMode(payload.live_mode)),
+        participant_count: Math.max(0, Math.round(Number(payload.participant_count ?? 0))),
+        mode_config: payload.mode_config ?? {},
+        captions_enabled: payload.captions_enabled ?? false,
+        recording_enabled: payload.recording_enabled ?? true,
+        restream_enabled: payload.restream_enabled ?? false,
+        restream_targets: Array.isArray(payload.restream_targets) ? payload.restream_targets : [],
         scheduled_for: payload.scheduled_for ?? null,
+        agora_live_started_at: payload.status === "live" ? new Date().toISOString() : null,
       };
 
       const { data, error } = await serviceClient
         .from("session_rooms")
         .insert(insertPayload)
-        .select("id, title, status, scheduled_for, is_public, description, host_id")
+        .select("id, title, status, scheduled_for, is_public, description, host_id, live_mode, mode_config, allow_stage_requests, max_stage_participants, participant_count, captions_enabled, recording_enabled, restream_enabled, restream_targets")
         .single();
 
       if (error) {
@@ -171,6 +204,39 @@ serve(async (req) => {
       if (payload.status) updates.status = payload.status;
       if (payload.is_public !== undefined) updates.is_public = payload.is_public;
       if (payload.scheduled_for !== undefined) updates.scheduled_for = payload.scheduled_for;
+      if (payload.live_mode !== undefined) {
+        updates.live_mode = normalizeLiveMode(payload.live_mode);
+      }
+      if (payload.allow_stage_requests !== undefined) {
+        updates.allow_stage_requests = payload.allow_stage_requests;
+      }
+      if (payload.max_stage_participants !== undefined) {
+        updates.max_stage_participants = coerceStageLimit(
+          payload.max_stage_participants,
+          typeof updates.live_mode === "string" ? updates.live_mode : normalizeLiveMode(payload.live_mode),
+        );
+      }
+      if (payload.participant_count !== undefined) {
+        updates.participant_count = Math.max(0, Math.round(Number(payload.participant_count)));
+      }
+      if (payload.mode_config !== undefined) {
+        updates.mode_config = payload.mode_config;
+      }
+      if (payload.captions_enabled !== undefined) {
+        updates.captions_enabled = payload.captions_enabled;
+      }
+      if (payload.recording_enabled !== undefined) {
+        updates.recording_enabled = payload.recording_enabled;
+      }
+      if (payload.restream_enabled !== undefined) {
+        updates.restream_enabled = payload.restream_enabled;
+      }
+      if (payload.restream_targets !== undefined) {
+        updates.restream_targets = Array.isArray(payload.restream_targets) ? payload.restream_targets : [];
+      }
+      if (payload.status === "live") {
+        updates.agora_live_started_at = new Date().toISOString();
+      }
 
       if (Object.keys(updates).length === 0) {
         throw new Error("No updates provided");
@@ -183,7 +249,7 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", payload.room_id)
-        .select("id, title, status, scheduled_for, is_public, description, host_id")
+        .select("id, title, status, scheduled_for, is_public, description, host_id, live_mode, mode_config, allow_stage_requests, max_stage_participants, participant_count, captions_enabled, recording_enabled, restream_enabled, restream_targets")
         .single();
 
       if (error) {

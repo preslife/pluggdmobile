@@ -1,51 +1,109 @@
-
 import { View, Text, Image, TouchableOpacity, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { usePlayback } from '../src/context/PlaybackProvider';
 
 export default function MiniPlayer() {
-    const router = useRouter();
+  const router = useRouter();
+  const {
+    currentTrack,
+    isPlaying,
+    isBuffering,
+    progress,
+    togglePlayPause,
+    skipToNext,
+  } = usePlayback();
 
-    const openPlayer = () => {
-        router.push({
-            pathname: '/player',
-            params: {
-                title: 'Night Rider',
-                artist: '@ProducerX',
-                cover: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0Tueq6W_11Vnpi5Oqh_2lbkgQ6KiEAa4fdpDpz3ff9UFOA2vJktc6iuNkmUs1SDSmaxl6QA2fG_gvyw15eUpvUDU6OkXfszZtx7y2-_wPTqZQsE39ZZL8JX3f-v8Kd7NyDVdROix2P0IilSKRlhBVuRUJuVV7rDHvlDJLSyZmDUpV5MlibbP2qWqtW8j5fBioTGEwajFFbosNLu0uCZLsGGirNPPZqzxZ4TR5TTAkn56UldylQg6dOsXcF0bN90mOqZ6wl-ubsJE'
-            }
-        });
-    };
+  // Don't render if nothing is playing
+  if (!currentTrack) return null;
 
-    return (
-        <View className="absolute bottom-0 left-0 right-0 z-50 p-2">
-            <Pressable onPress={openPlayer} className="bg-surface-dark/95 bg-card-dark backdrop-blur-xl border border-white/5 shadow-2xl rounded-2xl p-2.5 flex-row items-center gap-3">
-                {/* Cover Art */}
-                <View className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-gray-800">
-                    <Image
-                        source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0Tueq6W_11Vnpi5Oqh_2lbkgQ6KiEAa4fdpDpz3ff9UFOA2vJktc6iuNkmUs1SDSmaxl6QA2fG_gvyw15eUpvUDU6OkXfszZtx7y2-_wPTqZQsE39ZZL8JX3f-v8Kd7NyDVdROix2P0IilSKRlhBVuRUJuVV7rDHvlDJLSyZmDUpV5MlibbP2qWqtW8j5fBioTGEwajFFbosNLu0uCZLsGGirNPPZqzxZ4TR5TTAkn56UldylQg6dOsXcF0bN90mOqZ6wl-ubsJE' }}
-                        className="w-full h-full"
-                    />
-                </View>
+  const openPlayer = () => {
+    router.push({
+      pathname: '/player',
+      params: {
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        cover: currentTrack.artwork ?? '',
+      },
+    });
+  };
 
-                {/* Track Info */}
-                <View className="flex-col flex-1 min-w-0">
-                    <Text className="text-white text-sm font-bold truncate">Night Rider</Text>
-                    <Text className="text-text-secondary text-xs truncate">@ProducerX</Text>
-                    {/* Fake Waveform */}
-                    <View className="flex-row items-end gap-0.5 h-3 mt-1 w-full opacity-60">
-                        {[40, 70, 100, 60, 80, 40, 90, 50, 30, 60].map((h, i) => (
-                            <View key={i} className="w-1 bg-primary rounded-t-sm" style={{ height: `${h}%` }} />
-                        ))}
-                    </View>
-                </View>
+  // Progress percentage for the bar
+  const progressPercent =
+    progress.duration > 0
+      ? Math.min((progress.position / progress.duration) * 100, 100)
+      : 0;
 
-                {/* Controls */}
-                <View className="flex-row items-center gap-3 pr-2">
-                    <TouchableOpacity onPress={(e) => e.stopPropagation()}>
-                        <Text className="text-white text-[32px]">⏸</Text>
-                    </TouchableOpacity>
-                </View>
-            </Pressable>
+  return (
+    <View className="absolute bottom-0 left-0 right-0 z-50 p-2">
+      <Pressable
+        onPress={openPlayer}
+        className="bg-card-dark backdrop-blur-xl border border-white/5 shadow-2xl rounded-2xl overflow-hidden"
+      >
+        {/* Progress bar at top of mini player */}
+        <View className="h-[2px] bg-white/10 w-full">
+          <View
+            className="h-full bg-primary"
+            style={{ width: `${progressPercent}%` }}
+          />
         </View>
-    );
+
+        <View className="p-2.5 flex-row items-center gap-3">
+          {/* Cover Art */}
+          <View className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-gray-800">
+            {currentTrack.artwork ? (
+              <Image
+                source={{ uri: currentTrack.artwork }}
+                className="w-full h-full"
+              />
+            ) : (
+              <View className="w-full h-full bg-gray-700 items-center justify-center">
+                <Text className="text-white text-lg">♪</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Track Info */}
+          <View className="flex-col flex-1 min-w-0">
+            <Text
+              className="text-white text-sm font-bold"
+              numberOfLines={1}
+            >
+              {currentTrack.title}
+            </Text>
+            <Text
+              className="text-text-secondary text-xs"
+              numberOfLines={1}
+            >
+              {currentTrack.artist}
+            </Text>
+          </View>
+
+          {/* Controls */}
+          <View className="flex-row items-center gap-2 pr-1">
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                togglePlayPause();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text className="text-white text-[28px]">
+                {isBuffering ? '⏳' : isPlaying ? '⏸' : '▶️'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                skipToNext();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text className="text-white text-[22px]">⏭</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Pressable>
+    </View>
+  );
 }

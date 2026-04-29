@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "pluggd-mobile",
-    "slug": "pluggd-mobile",
+    "name": "Pluggd",
+    "slug": "pluggd",
+    "scheme": "pluggd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -14,10 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera for live streams and profile content.",
-        "NSMicrophoneUsageDescription": "This app uses the microphone for live audio streams and calls."
-      }
+        "NSMicrophoneUsageDescription": "This app uses the microphone for live audio streams and calls.",
+        "NSPhotoLibraryUsageDescription": "This app lets you choose images and media for your profile and creator content.",
+        "NSPhotoLibraryAddUsageDescription": "This app may save exported creator assets to your photo library."
+      },
+      "bundleIdentifier": "com.pluggd.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,11 +31,13 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
         "INTERNET"
-      ]
+      ],
+      "package": "com.pluggd.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -44,19 +51,13 @@
         }
       ],
       [
-        "@config-plugins/react-native-agora",
-        {
-          "appId": "${EXPO_PUBLIC_AGORA_APP_ID}"
-        }
-      ],
-      [
         "expo-build-properties",
         {
           "android": {
             "minSdkVersion": 24
           },
           "ios": {
-            "deploymentTarget": "13.0"
+            "deploymentTarget": "15.1"
           }
         }
       ]

@@ -1,0 +1,627 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { supabase } from '../../src/lib/supabase';
+
+const PLUGGD_ORANGE = '#FF5200';
+
+const GENRES = [
+  'Hip-Hop',
+  'R&B',
+  'Afrobeats',
+  'Electronic',
+  'Drill',
+  'House',
+  'Pop',
+  'Jazz',
+  'Indie',
+  'Grime',
+];
+
+const SUGGESTED_CREATORS = [
+  {
+    id: 'maya_sol',
+    name: 'Maya Sol',
+    role: 'Artist',
+    initials: 'MS',
+    accent: '#B85A24',
+  },
+  {
+    id: 'kairo_beats',
+    name: 'Kairo Beats',
+    role: 'Producer',
+    initials: 'KB',
+    accent: '#7B2D1F',
+  },
+  {
+    id: 'selecta_nia',
+    name: 'Selecta Nia',
+    role: 'DJ',
+    initials: 'SN',
+    accent: '#5A2D91',
+  },
+];
+
+function PluggdWordmark() {
+  return (
+    <View style={styles.logoTextRow}>
+      <Text style={styles.logoText}>PL</Text>
+      <Text style={[styles.logoText, styles.logoAccent]}>U</Text>
+      <Text style={styles.logoText}>GGD</Text>
+    </View>
+  );
+}
+
+export default function FanSetup() {
+  const router = useRouter();
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [eventsNearMe, setEventsNearMe] = useState(false);
+  const [notifications, setNotifications] = useState(false);
+  const [following, setFollowing] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres((current) =>
+      current.includes(genre)
+        ? current.filter((item) => item !== genre)
+        : [...current, genre],
+    );
+  };
+
+  const toggleFollow = (id: string) => {
+    setFollowing((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+  };
+
+  const handleFinish = async () => {
+    setSaving(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace('/auth/login');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_progress')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const existingProgress =
+        profile?.onboarding_progress && typeof profile.onboarding_progress === 'object'
+          ? (profile.onboarding_progress as Record<string, unknown>)
+          : {};
+
+      const nextProgress = {
+        ...existingProgress,
+        version: 3,
+        fan_setup: {
+          genres: selectedGenres,
+          events_near_me: eventsNearMe,
+          notifications,
+          suggested_creator_follows: following,
+          completed_at: new Date().toISOString(),
+        },
+        completed_at: new Date().toISOString(),
+      };
+
+      const { error } = await (supabase.from('profiles').upsert(
+        {
+          user_id: user.id,
+          genres: selectedGenres.length > 0 ? selectedGenres : null,
+          onboarding_progress: nextProgress,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      ) as any);
+
+      if (error) throw error;
+
+      router.replace('/');
+    } catch (error: any) {
+      console.error('Failed to save fan setup:', error);
+      Alert.alert(
+        'Could not finish setup',
+        error?.message ?? 'Please try again in a moment.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.logoWrap}>
+          <PluggdWordmark />
+        </View>
+
+        <View style={styles.progressWrap}>
+          <View style={styles.progressTrack}>
+            <View style={styles.progressFill} />
+            <View style={[styles.progressStep, styles.progressDone]}>
+              <MaterialIcons name="check" size={13} color={PLUGGD_ORANGE} />
+            </View>
+            <View style={[styles.progressStep, styles.progressActive]}>
+              <Text style={styles.progressActiveText}>2</Text>
+            </View>
+            <View style={[styles.progressStep, styles.progressFuture]}>
+              <Text style={styles.progressFutureText}>3</Text>
+            </View>
+          </View>
+          <Text style={styles.stepText}>Step 2 of 3</Text>
+        </View>
+
+        <Text style={styles.title}>Shape your feed</Text>
+        <Text style={styles.subtitle}>
+          Choose sounds, scenes, and creators you want to follow.
+        </Text>
+
+        <Text style={styles.sectionTitle}>Pick your genres</Text>
+
+        <View style={styles.genreGrid}>
+          {GENRES.map((genre) => {
+            const selected = selectedGenres.includes(genre);
+
+            return (
+              <Pressable
+                key={genre}
+                onPress={() => toggleGenre(genre)}
+                style={[styles.genreChip, selected && styles.genreChipSelected]}
+              >
+                <Text
+                  style={[
+                    styles.genreChipText,
+                    selected && styles.genreChipTextSelected,
+                  ]}
+                >
+                  {genre}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <ToggleRow
+          icon="location-on"
+          title="Find events near me"
+          subtitle="Save this preference for event recommendations"
+          enabled={eventsNearMe}
+          onPress={() => setEventsNearMe((value) => !value)}
+        />
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Suggested creators</Text>
+            <Pressable style={styles.seeAllButton}>
+              <Text style={styles.seeAllText}>See all</Text>
+              <MaterialIcons name="chevron-right" size={22} color={PLUGGD_ORANGE} />
+            </Pressable>
+          </View>
+
+          <View style={styles.creatorList}>
+            {SUGGESTED_CREATORS.map((creator, index) => {
+              const isFollowing = following.includes(creator.id);
+
+              return (
+                <View
+                  key={creator.id}
+                  style={[
+                    styles.creatorRow,
+                    index !== SUGGESTED_CREATORS.length - 1 && styles.creatorRowBorder,
+                  ]}
+                >
+                  <View style={[styles.avatar, { borderColor: creator.accent }]}>
+                    <Text style={styles.avatarText}>{creator.initials}</Text>
+                  </View>
+
+                  <View style={styles.creatorInfo}>
+                    <Text style={styles.creatorName}>{creator.name}</Text>
+                    <Text style={styles.creatorRole}>{creator.role}</Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => toggleFollow(creator.id)}
+                    style={[
+                      styles.followButton,
+                      isFollowing && styles.followButtonActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.followButtonText,
+                        isFollowing && styles.followButtonTextActive,
+                      ]}
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        <ToggleRow
+          icon="notifications-none"
+          title="New drops, live rooms, and event reminders"
+          enabled={notifications}
+          onPress={() => setNotifications((value) => !value)}
+        />
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Pressable style={styles.cta} onPress={handleFinish} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.ctaText}>Finish setup</Text>
+          )}
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+type ToggleRowProps = {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  subtitle?: string;
+  enabled: boolean;
+  onPress: () => void;
+};
+
+function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) {
+  return (
+    <Pressable style={styles.toggleRow} onPress={onPress}>
+      <View style={styles.toggleIconBox}>
+        <MaterialIcons name={icon} size={25} color={PLUGGD_ORANGE} />
+      </View>
+
+      <View style={styles.toggleTextWrap}>
+        <Text style={styles.toggleTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.toggleSubtitle}>{subtitle}</Text> : null}
+      </View>
+
+      <View style={[styles.switchTrack, enabled && styles.switchTrackOn]}>
+        <View style={[styles.switchThumb, enabled && styles.switchThumbOn]} />
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#080808',
+  },
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 122,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  logoTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    lineHeight: 44,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  logoAccent: {
+    color: PLUGGD_ORANGE,
+  },
+  progressWrap: {
+    marginTop: 16,
+    marginBottom: 28,
+    alignItems: 'center',
+  },
+  progressTrack: {
+    width: '84%',
+    height: 2,
+    backgroundColor: '#323232',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  progressFill: {
+    position: 'absolute',
+    left: 0,
+    width: '50%',
+    height: 2,
+    backgroundColor: PLUGGD_ORANGE,
+  },
+  progressStep: {
+    position: 'absolute',
+    top: -16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressDone: {
+    left: -1,
+    backgroundColor: '#080808',
+    borderWidth: 2,
+    borderColor: PLUGGD_ORANGE,
+  },
+  progressActive: {
+    left: '50%',
+    marginLeft: -17,
+    backgroundColor: PLUGGD_ORANGE,
+  },
+  progressFuture: {
+    right: -1,
+    backgroundColor: '#080808',
+    borderWidth: 2,
+    borderColor: '#555555',
+  },
+  progressActiveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  progressFutureText: {
+    color: '#A4A4A4',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  stepText: {
+    color: '#A9A9A9',
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 28,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 40,
+    lineHeight: 46,
+    fontWeight: '900',
+  },
+  subtitle: {
+    color: '#B3B3B3',
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '500',
+    marginTop: 14,
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 14,
+  },
+  genreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 24,
+  },
+  genreChip: {
+    minWidth: '22.6%',
+    height: 52,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+    backgroundColor: '#101010',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  genreChipSelected: {
+    backgroundColor: PLUGGD_ORANGE,
+    borderColor: PLUGGD_ORANGE,
+  },
+  genreChipText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  genreChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  toggleRow: {
+    minHeight: 72,
+    backgroundColor: '#151515',
+    borderWidth: 1,
+    borderColor: '#262626',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  toggleIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  toggleTextWrap: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  toggleTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 23,
+  },
+  toggleSubtitle: {
+    color: '#9F9F9F',
+    fontSize: 14,
+    lineHeight: 19,
+    marginTop: 3,
+  },
+  switchTrack: {
+    width: 54,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2C2C2C',
+    padding: 3,
+    justifyContent: 'center',
+  },
+  switchTrackOn: {
+    backgroundColor: PLUGGD_ORANGE,
+  },
+  switchThumb: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#BEBEBE',
+  },
+  switchThumbOn: {
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'flex-end',
+  },
+  card: {
+    backgroundColor: '#151515',
+    borderWidth: 1,
+    borderColor: '#262626',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  cardTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  seeAllText: {
+    color: PLUGGD_ORANGE,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  creatorList: {
+    gap: 0,
+  },
+  creatorRow: {
+    minHeight: 76,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+  },
+  creatorRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    backgroundColor: '#242424',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  creatorInfo: {
+    flex: 1,
+  },
+  creatorName: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  creatorRole: {
+    color: '#B8B8B8',
+    fontSize: 15,
+    marginTop: 4,
+  },
+  followButton: {
+    minWidth: 104,
+    height: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#666666',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  followButtonActive: {
+    borderColor: PLUGGD_ORANGE,
+  },
+  followButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  followButtonTextActive: {
+    color: PLUGGD_ORANGE,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 22,
+    backgroundColor: 'rgba(8,8,8,0.96)',
+    borderTopWidth: 1,
+    borderTopColor: '#151515',
+  },
+  cta: {
+    height: 58,
+    borderRadius: 8,
+    backgroundColor: PLUGGD_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+});

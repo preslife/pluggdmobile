@@ -116,3 +116,12 @@ verify_jwt = true
 
 [functions.inbox-send-discord]
 verify_jwt = true
+
+[functions.manage-live-sessions]
+verify_jwt = true
+
+[functions.validate-iap-receipt]
+verify_jwt = true
+
+[functions.apple-server-notification]
+verify_jwt = false
