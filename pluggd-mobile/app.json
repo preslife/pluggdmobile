@@ -22,7 +22,7 @@
         "NSPhotoLibraryUsageDescription": "This app lets you choose images and media for your profile and creator content.",
         "NSPhotoLibraryAddUsageDescription": "This app may save exported creator assets to your photo library."
       },
-      "bundleIdentifier": "com.pluggd.app"
+      "bundleIdentifier": "com.pluggd.mobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +37,7 @@
         "RECORD_AUDIO",
         "INTERNET"
       ],
-      "package": "com.pluggd.app"
+      "package": "com.pluggd.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -46,7 +46,7 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.pluggd.app",
+          "merchantIdentifier": "merchant.com.pluggd.mobile",
           "enableGooglePay": true
         }
       ],

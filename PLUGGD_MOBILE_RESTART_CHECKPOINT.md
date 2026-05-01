@@ -13,7 +13,7 @@ Date: 2026-04-29
 
 - `npx tsc --noEmit` passes in `pluggd-mobile`.
 - iOS simulator build succeeded.
-- Installed simulator app metadata now shows:
+- Installed simulator app metadata previously showed:
   - Bundle id: `com.pluggd.app`
   - Display name: `Pluggd`
 - `pluggd://live/create` opens the new Create Room screen.
@@ -51,13 +51,13 @@ IAP functions exist in the mobile workspace, but the web repo already has versio
 
 ## Native iOS Note
 
-The generated native iOS project under `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/ios` is ignored by git, but it was patched locally during testing so the simulator launches as `com.pluggd.app` and registers `pluggd://`.
+The generated native iOS project under `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/ios` is ignored by git, but it was patched locally during testing so the simulator launched as `com.pluggd.app` and registered `pluggd://`.
 
 The source config in `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/app.json` already contains the intended persistent settings:
 
 - `expo.scheme = "pluggd"`
-- `expo.ios.bundleIdentifier = "com.pluggd.app"`
-- `expo.android.package = "com.pluggd.app"`
+- `expo.ios.bundleIdentifier = "com.pluggd.mobile"`
+- `expo.android.package = "com.pluggd.mobile"`
 
 ## Next Backend Step
 
@@ -124,5 +124,6 @@ xcrun simctl openurl booted pluggd://live/create
   - `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/src/hooks/useCredits.ts`
   - `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/src/hooks/useSubscription.ts`
 - `npx tsc --noEmit` passes after the change.
-- Confirmed bundle id from `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/app.json`: `com.pluggd.app`.
+- Originally confirmed bundle id from `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/app.json`: `com.pluggd.app`.
+- User registered new Apple Bundle ID `com.pluggd.mobile`; mobile config and Supabase `APPLE_BUNDLE_ID` were updated to match.
 - Next backend step: set Apple App Store Server API secrets in Supabase, then deploy `apple-server-notification` from `/Users/apple/PLUGGD_NEW`, not the mobile workspace copy.

@@ -21,7 +21,7 @@ const PLUGGD_ORANGE = '#FF5200';
 
 const PACK_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   Starter: 'rocket-launch',
-  Popular: 'star-border',
+  Plus: 'star-border',
   Value: 'diamond',
   Premium: 'workspace-premium',
   Ultimate: 'emoji-events',

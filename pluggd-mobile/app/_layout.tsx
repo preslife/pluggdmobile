@@ -36,7 +36,7 @@ export default function Layout() {
       <QueryClientProvider client={queryClient}>
         <StripeProvider
           publishableKey={publishableKey}
-          merchantIdentifier="merchant.com.pluggd.app"
+          merchantIdentifier="merchant.com.pluggd.mobile"
         >
           <AuthProvider>
             <PlaybackProvider>

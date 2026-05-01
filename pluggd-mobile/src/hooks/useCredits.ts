@@ -40,7 +40,7 @@ export type CreditPackSKU = (typeof CREDIT_PACK_SKUS)[number];
 export interface CreditPackDefinition {
   sku: CreditPackSKU;
   label: string;
-  priceGBP: number;
+  fallbackPriceGBP: number;
   baseCredits: number;
   bonusCredits: number;
   bonusPercent: number;
@@ -48,12 +48,13 @@ export interface CreditPackDefinition {
   popular?: boolean;
 }
 
-// Matches PLUGGD_NEW/src/lib/creditPricing.ts.
+// Credit awards match PLUGGD_NEW/src/lib/creditPricing.ts. Fallback display
+// prices use Apple's UK price points; StoreKit localizedPrice wins when loaded.
 export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition> = {
   pluggd_credits_starter: {
     sku: 'pluggd_credits_starter',
     label: 'Starter',
-    priceGBP: 5,
+    fallbackPriceGBP: 4.99,
     baseCredits: 500,
     bonusCredits: 0,
     bonusPercent: 0,
@@ -61,8 +62,8 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   },
   pluggd_credits_popular: {
     sku: 'pluggd_credits_popular',
-    label: 'Popular',
-    priceGBP: 10,
+    label: 'Plus',
+    fallbackPriceGBP: 9.99,
     baseCredits: 1000,
     bonusCredits: 50,
     bonusPercent: 5,
@@ -72,7 +73,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   pluggd_credits_value: {
     sku: 'pluggd_credits_value',
     label: 'Value',
-    priceGBP: 25,
+    fallbackPriceGBP: 24.99,
     baseCredits: 2500,
     bonusCredits: 250,
     bonusPercent: 10,
@@ -81,7 +82,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   pluggd_credits_premium: {
     sku: 'pluggd_credits_premium',
     label: 'Premium',
-    priceGBP: 50,
+    fallbackPriceGBP: 49.99,
     baseCredits: 5000,
     bonusCredits: 750,
     bonusPercent: 15,
@@ -90,7 +91,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   pluggd_credits_ultimate: {
     sku: 'pluggd_credits_ultimate',
     label: 'Ultimate',
-    priceGBP: 100,
+    fallbackPriceGBP: 99.99,
     baseCredits: 10000,
     bonusCredits: 2000,
     bonusPercent: 20,
@@ -113,7 +114,7 @@ export interface CreditPack {
   baseCredits: number;
   bonusCredits: number;
   bonusPercent: number;
-  priceGBP: number;
+  fallbackPriceGBP: number;
   product: Product | null; // null if product not loaded yet
   localizedPrice: string;
   label: string;
@@ -121,8 +122,8 @@ export interface CreditPack {
   popular?: boolean;
 }
 
-function formatExpectedPrice(priceGBP: number) {
-  return `£${priceGBP.toFixed(2)}`;
+function formatExpectedPrice(fallbackPriceGBP: number) {
+  return `£${fallbackPriceGBP.toFixed(2)}`;
 }
 
 function buildCreditPacks(prods: Product[] = []): CreditPack[] {
@@ -136,9 +137,9 @@ function buildCreditPacks(prods: Product[] = []): CreditPack[] {
       baseCredits: definition.baseCredits,
       bonusCredits: definition.bonusCredits,
       bonusPercent: definition.bonusPercent,
-      priceGBP: definition.priceGBP,
+      fallbackPriceGBP: definition.fallbackPriceGBP,
       product,
-      localizedPrice: product?.localizedPrice ?? formatExpectedPrice(definition.priceGBP),
+      localizedPrice: product?.localizedPrice ?? formatExpectedPrice(definition.fallbackPriceGBP),
       label: definition.label,
       bonus:
         definition.bonusPercent > 0
