@@ -270,7 +270,14 @@ export function useCredits() {
       setError(null);
 
       try {
-        await requestPurchase({ sku });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        await requestPurchase({
+          sku,
+          appAccountToken: user.id,
+          andDangerouslyFinishTransactionAutomaticallyIOS: false,
+        });
         // Purchase listener handles the rest
       } catch (err: any) {
         setPurchasing(false);

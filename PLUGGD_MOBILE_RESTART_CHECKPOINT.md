@@ -116,3 +116,13 @@ xcrun simctl openurl booted pluggd://live/create
 
 - The three migrations listed above still need to be applied manually unless confirmed otherwise.
 - `/Users/apple/PLUGGD_NEW` contains untracked Supabase function/migration files from prior work; do not bulk-commit or deploy from there without reviewing its full git status.
+
+## 2026-05-01 IAP Backend Update
+
+- User confirmed the three mobile migrations were applied manually.
+- Mobile StoreKit calls now send the signed-in Supabase user id as Apple `appAccountToken` for both credit packs and subscriptions:
+  - `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/src/hooks/useCredits.ts`
+  - `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/src/hooks/useSubscription.ts`
+- `npx tsc --noEmit` passes after the change.
+- Confirmed bundle id from `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/app.json`: `com.pluggd.app`.
+- Next backend step: set Apple App Store Server API secrets in Supabase, then deploy `apple-server-notification` from `/Users/apple/PLUGGD_NEW`, not the mobile workspace copy.

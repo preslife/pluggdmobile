@@ -239,7 +239,11 @@ export function useSubscription() {
           onConflict: 'fan_id,creator_id',
         });
 
-        await requestSubscription({ sku });
+        await requestSubscription({
+          sku,
+          appAccountToken: user.id,
+          andDangerouslyFinishTransactionAutomaticallyIOS: false,
+        });
         // Purchase listener handles the rest
       } catch (err: any) {
         setPurchasing(false);
