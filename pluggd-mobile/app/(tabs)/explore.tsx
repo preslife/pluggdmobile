@@ -336,7 +336,7 @@ export default function ExploreScreen() {
                       onPress={() => router.push(`/membership/${artist.id}`)}
                       className="flex-row items-center gap-3 p-3 rounded-xl bg-zinc-900/50"
                     >
-                      <View className="size-12 rounded-full overflow-hidden bg-zinc-800">
+                      <View className="w-12 h-12 rounded-full overflow-hidden bg-zinc-800">
                         {artist.avatar_url ? (
                           <Image source={{ uri: artist.avatar_url }} className="w-full h-full" />
                         ) : (
@@ -378,7 +378,7 @@ export default function ExploreScreen() {
                       onLongPress={() => router.push(`/release/${release.id}`)}
                       className="flex-row items-center gap-3 p-3 rounded-xl bg-zinc-900/50"
                     >
-                      <View className="size-12 rounded-lg overflow-hidden bg-zinc-800">
+                      <View className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800">
                         {release.cover_art_url ? (
                           <Image source={{ uri: release.cover_art_url }} className="w-full h-full" />
                         ) : (
@@ -398,7 +398,7 @@ export default function ExploreScreen() {
                       </View>
                       <TouchableOpacity
                         onPress={() => handlePlayRelease(release)}
-                        className="size-10 rounded-full bg-primary/10 items-center justify-center"
+                        className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center"
                       >
                         <SymbolIcon name="play_arrow" className="text-primary text-xl" />
                       </TouchableOpacity>
@@ -419,7 +419,7 @@ export default function ExploreScreen() {
                       onPress={() => handlePlayBeat(beat)}
                       className="flex-row items-center gap-3 p-3 rounded-xl bg-zinc-900/50"
                     >
-                      <View className="size-12 rounded-lg overflow-hidden bg-zinc-800">
+                      <View className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800">
                         {beat.image_url ? (
                           <Image source={{ uri: beat.image_url }} className="w-full h-full" />
                         ) : (
@@ -447,7 +447,7 @@ export default function ExploreScreen() {
                         )}
                         <TouchableOpacity
                           onPress={() => handlePlayBeat(beat)}
-                          className="size-8 rounded-full bg-zinc-800 items-center justify-center"
+                          className="w-8 h-8 rounded-full bg-zinc-800 items-center justify-center"
                         >
                           <SymbolIcon name="play_arrow" className="text-white text-lg" />
                         </TouchableOpacity>
@@ -506,7 +506,7 @@ export default function ExploreScreen() {
                           onPress={() => router.push(`/membership/${artist.id}`)}
                           className="mr-4 w-[100px] items-center"
                         >
-                          <View className="size-20 rounded-full overflow-hidden bg-zinc-800 mb-2 border-2 border-white/10">
+                          <View className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 mb-2 border-2 border-white/10">
                             {artist.avatar_url ? (
                               <Image
                                 source={{ uri: artist.avatar_url }}
@@ -601,7 +601,7 @@ export default function ExploreScreen() {
                           onPress={() => handlePlayBeat(beat)}
                           className="flex-row items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-white/5"
                         >
-                          <View className="size-12 rounded-lg overflow-hidden bg-zinc-800">
+                          <View className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800">
                             {beat.image_url ? (
                               <Image
                                 source={{ uri: beat.image_url }}

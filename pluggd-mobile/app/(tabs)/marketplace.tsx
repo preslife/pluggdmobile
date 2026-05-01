@@ -228,7 +228,7 @@ export default function Marketplace() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="flex-row items-center pb-4"
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 16 }}
         >
           {/* Filter icon + label */}
           <TouchableOpacity className="flex-row items-center gap-1 pr-2">
