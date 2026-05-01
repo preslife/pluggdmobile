@@ -127,3 +127,58 @@ xcrun simctl openurl booted pluggd://live/create
 - Originally confirmed bundle id from `/Users/apple/pluggd-mobile-workspace/pluggd-mobile/app.json`: `com.pluggd.app`.
 - User registered new Apple Bundle ID `com.pluggd.mobile`; mobile config and Supabase `APPLE_BUNDLE_ID` were updated to match.
 - Next backend step: set Apple App Store Server API secrets in Supabase, then deploy `apple-server-notification` from `/Users/apple/PLUGGD_NEW`, not the mobile workspace copy.
+
+## 2026-05-01 End Of Day Simulator Checkpoint
+
+### Saved Commits
+
+- `aef4db0` — aligned Apple IAP bundle id and wallet credit pricing with `com.pluggd.mobile`.
+- `53f92f4` — fixed simulator-discovered Explore and Marketplace render issues.
+
+### Simulator State
+
+- Tested on iPhone 17 Pro simulator.
+- Debug dev-client build is installed as `com.pluggd.mobile`.
+- Release build was not retried because Xcode previously failed with low disk space. Use Debug for simulator QA until more disk is available.
+- Metro was running with `npx expo start --dev-client --localhost` during testing and should be restarted tomorrow if needed.
+
+### Routes Verified On 2026-05-01
+
+- `pluggd:///` — Home/feed loads with real content.
+- `pluggd://explore` — Explore now renders Fresh Beats correctly.
+- `pluggd://marketplace` — Marketplace now renders instead of crashing.
+- `pluggd://wallet` — Wallet loads Apple IAP packs; simulator localized StoreKit prices to dollars, but pack values and product IDs are correct.
+- `pluggd://live` — Live lobby loads; current database has no active/upcoming rooms, so empty states display.
+- `pluggd://live/create` — Create room screen loads.
+- `pluggd://auth/role` — Onboarding role picker loads.
+- `pluggd://auth/fan-setup` — Fan setup loads.
+- `pluggd://creator/dashboard` — Correctly shows unauthenticated state without login.
+- `pluggd://profile` — Redirects to login without login.
+
+### Screenshots Saved
+
+Current screenshot folder:
+
+`/Users/apple/pluggd-mobile-workspace/app-store-screenshots/simulator-pass-2026-05-01`
+
+Files captured:
+
+- `01-home-feed.png`
+- `02-explore.png`
+- `03-marketplace.png`
+- `04-wallet-credits.png`
+- `05-live-lobby.png`
+- `06-create-live-room.png`
+- `07-onboarding-role-picker.png`
+- `08-fan-setup.png`
+
+All current screenshots are `1206 x 2622`.
+
+### Still Needed Tomorrow
+
+- Need a valid Supabase test account email/password, or approval to create one, before verifying and screenshotting:
+  - full Profile/settings
+  - Creator onboarding
+  - Creator Studio/dashboard
+  - real live-session join/start states
+- Old seeded migration credentials (`dyani@example.com`, `elevatetoday@example.com`, `akvr@example.com` with `temp_password_123`) do not work against the current Supabase project.
