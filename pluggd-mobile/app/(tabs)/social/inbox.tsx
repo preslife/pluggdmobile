@@ -1,6 +1,7 @@
 
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SymbolIcon } from '../../../components/SymbolIcon';
 
 export default function Inbox() {
     const router = useRouter();
@@ -54,16 +55,16 @@ export default function Inbox() {
                 <View className="flex-row items-center justify-between mb-4">
                     <View className="flex-row items-center gap-2">
                         <TouchableOpacity onPress={() => router.back()} className="p-1">
-                            <Text className="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_back</Text>
+                            <SymbolIcon name="arrow_back" className="text-slate-800 dark:text-white text-2xl" />
                         </TouchableOpacity>
                         <Text className="text-2xl font-bold text-slate-900 dark:text-white">Inbox</Text>
                     </View>
                     <View className="flex-row items-center gap-3">
                         <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
-                            <Text className="material-symbols-outlined text-slate-600 dark:text-gray-300">settings</Text>
+                            <SymbolIcon name="settings" className="text-slate-600 dark:text-gray-300" />
                         </TouchableOpacity>
                         <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30">
-                            <Text className="material-symbols-outlined text-white">edit_square</Text>
+                            <SymbolIcon name="edit_square" className="text-white" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -71,7 +72,7 @@ export default function Inbox() {
                 {/* Search */}
                 <View className="relative">
                     <View className="absolute inset-y-0 left-0 pl-3 justify-center pointer-events-none z-10">
-                        <Text className="text-slate-400 material-symbols-outlined text-xl">search</Text>
+                        <SymbolIcon name="search" className="text-slate-400 text-xl" />
                     </View>
                     <TextInput
                         className="w-full bg-white dark:bg-surface-dark text-slate-900 dark:text-white h-10 pl-10 pr-4 rounded-lg text-sm font-medium"
@@ -123,7 +124,7 @@ export default function Inbox() {
 
                             {thread.isGroup && (
                                 <View className="absolute -bottom-1.5 -right-1.5 h-6 w-6 bg-surface-dark rounded-full items-center justify-center border-2 border-background-dark">
-                                    <Text className="text-white material-symbols-outlined text-[14px]">{thread.groupIcon}</Text>
+                                    <SymbolIcon name={thread.groupIcon ?? 'groups'} className="text-white text-[14px]" />
                                 </View>
                             )}
                         </View>
@@ -150,7 +151,7 @@ export default function Inbox() {
                                     <View className="h-2.5 w-2.5 bg-primary rounded-full shrink-0" />
                                 )}
                                 {thread.readReceipt && (
-                                    <Text className="text-primary material-symbols-outlined text-base">done_all</Text>
+                                    <SymbolIcon name="done_all" className="text-primary text-base" />
                                 )}
                             </View>
                         </View>

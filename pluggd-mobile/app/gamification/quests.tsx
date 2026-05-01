@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomTabs } from '../../components/BottomTabs';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Quests() {
     const router = useRouter();
@@ -14,7 +15,7 @@ export default function Quests() {
                 <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Quests</Text>
                 <View className="flex-row items-center gap-3">
                     <View className="flex-row items-center gap-1.5 rounded-full bg-surface-dark dark:bg-white/10 px-3 py-1">
-                        <Text className="material-symbols-outlined text-primary text-lg">bolt</Text>
+                        <SymbolIcon name="bolt" className="text-primary text-lg" />
                         <Text className="text-sm font-bold text-white">Lvl 12</Text>
                     </View>
                     <View className="h-10 w-10 rounded-full border-2 border-primary overflow-hidden bg-zinc-800">
@@ -37,7 +38,7 @@ export default function Quests() {
                                 <Text className="text-sm font-medium text-zinc-400">You are on fire! Keep it up.</Text>
                             </View>
                             <View className="h-20 w-20 items-center justify-center rounded-full bg-primary shadow-lg shadow-orange-500/30">
-                                <Text className="material-symbols-outlined text-white text-5xl">local_fire_department</Text>
+                                <SymbolIcon name="local_fire_department" className="text-white text-5xl" />
                             </View>
                         </View>
 
@@ -65,7 +66,7 @@ export default function Quests() {
                             <View className="flex-row justify-between items-start">
                                 <View className="flex-row items-center gap-3">
                                     <View className="h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-surface-dark border border-zinc-200 dark:border-white/10">
-                                        <Text className="material-symbols-outlined text-primary text-xl">headphones</Text>
+                                        <SymbolIcon name="headphones" className="text-primary text-xl" />
                                     </View>
                                     <View>
                                         <Text className="text-base font-bold text-slate-900 dark:text-white">Listen to 5 Beats</Text>
@@ -84,7 +85,7 @@ export default function Quests() {
                             <View className="flex-row justify-between items-start">
                                 <View className="flex-row items-center gap-3">
                                     <View className="h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-surface-dark border border-zinc-200 dark:border-white/10">
-                                        <Text className="material-symbols-outlined text-primary text-xl">forum</Text>
+                                        <SymbolIcon name="forum" className="text-primary text-xl" />
                                     </View>
                                     <View>
                                         <Text className="text-base font-bold text-slate-900 dark:text-white">Post in Hub</Text>
@@ -111,7 +112,7 @@ export default function Quests() {
                     <View className="flex-row flex-wrap justify-between gap-y-3">
                         <View className="w-[48%] items-center justify-center rounded-xl bg-white dark:bg-[#111] p-4 border border-primary/20 shadow-sm">
                             <View className="mb-3 h-16 w-16 items-center justify-center rounded-full bg-primary/10 border border-primary/30">
-                                <Text className="material-symbols-outlined text-primary text-3xl">rocket_launch</Text>
+                                <SymbolIcon name="rocket_launch" className="text-primary text-3xl" />
                             </View>
                             <Text className="text-sm font-bold text-slate-900 dark:text-white text-center">Early Adopter</Text>
                             <Text className="text-[10px] text-zinc-400 mt-1 text-center">Joined in 2023</Text>
@@ -119,10 +120,10 @@ export default function Quests() {
 
                         <View className="w-[48%] items-center justify-center rounded-xl bg-white dark:bg-[#111] p-4 border border-zinc-200 dark:border-white/5 opacity-70">
                             <View className="absolute top-2 right-2 h-6 w-6 items-center justify-center rounded-full bg-black/10 dark:bg-black/40">
-                                <Text className="material-symbols-outlined text-xs text-zinc-500">lock</Text>
+                                <SymbolIcon name="lock" className="text-xs text-zinc-500" />
                             </View>
                             <View className="mb-3 h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10">
-                                <Text className="material-symbols-outlined text-zinc-400 text-3xl">piano</Text>
+                                <SymbolIcon name="piano" className="text-zinc-400 text-3xl" />
                             </View>
                             <Text className="text-sm font-bold text-zinc-400 text-center">Beat Maker</Text>
                             <Text className="text-[10px] text-zinc-400 mt-1 text-center">Upload 10 beats</Text>

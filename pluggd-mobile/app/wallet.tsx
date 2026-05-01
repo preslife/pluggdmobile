@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BrandLogo } from '../components/BrandLogo';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 
@@ -41,13 +42,7 @@ const LEDGER_LABELS: Record<string, string> = {
 };
 
 function PluggdWordmark() {
-  return (
-    <View style={styles.logoTextRow}>
-      <Text style={styles.logoText}>PL</Text>
-      <Text style={[styles.logoText, styles.logoAccent]}>U</Text>
-      <Text style={styles.logoText}>GGD</Text>
-    </View>
-  );
+  return <BrandLogo variant="dark" width={112} height={34} />;
 }
 
 function formatPriceLabel(price: string) {

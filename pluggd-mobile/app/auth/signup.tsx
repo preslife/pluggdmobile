@@ -2,7 +2,9 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { useState } from 'react';
+import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 function getPasswordStrength(pw: string): { level: number; label: string; color: string } {
   if (!pw) return { level: 0, label: '', color: '' };
@@ -58,7 +60,7 @@ export default function SignUp() {
             onPress={() => router.back()}
             className="w-10 h-10 items-center justify-center rounded-full"
           >
-            <Text className="material-symbols-outlined text-white text-2xl">arrow_back</Text>
+            <SymbolIcon name="arrow_back" className="text-white text-2xl" />
           </TouchableOpacity>
           {/* Step progress */}
           <View className="flex-row gap-1">
@@ -76,20 +78,8 @@ export default function SignUp() {
           contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo — tilted icon */}
           <View className="items-center py-8">
-            <View
-              className="w-16 h-16 bg-primary rounded-xl items-center justify-center"
-              style={{
-                transform: [{ rotate: '3deg' }],
-                shadowColor: '#FF5200',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-              }}
-            >
-              <Text className="material-symbols-outlined text-white text-4xl">graphic_eq</Text>
-            </View>
+            <BrandLogo variant="dark" width={156} height={72} />
           </View>
 
           {/* Headline */}
@@ -129,7 +119,7 @@ export default function SignUp() {
                   onChangeText={setEmail}
                 />
                 <View className="absolute right-4 top-0 bottom-0 justify-center">
-                  <Text className="material-symbols-outlined text-[#b9ab9d]">mail</Text>
+                  <SymbolIcon name="mail" className="text-[#b9ab9d]" />
                 </View>
               </View>
             </View>
@@ -150,9 +140,7 @@ export default function SignUp() {
                   onPress={() => setShowPassword(!showPassword)}
                   className="absolute right-0 top-0 bottom-0 px-4 justify-center"
                 >
-                  <Text className="material-symbols-outlined text-[#b9ab9d]">
-                    {showPassword ? 'visibility' : 'visibility_off'}
-                  </Text>
+                  <SymbolIcon name={showPassword ? 'visibility' : 'visibility_off'} className="text-[#b9ab9d]" />
                 </TouchableOpacity>
               </View>
               {/* Password strength bars */}
@@ -189,7 +177,7 @@ export default function SignUp() {
                 {loading ? 'Creating...' : 'Create Account'}
               </Text>
               {!loading && (
-                <Text className="material-symbols-outlined text-white text-[20px]">arrow_forward</Text>
+                <SymbolIcon name="arrow_forward" className="text-white text-[20px]" />
               )}
             </TouchableOpacity>
           </View>
@@ -210,7 +198,7 @@ export default function SignUp() {
               <Text className="text-white font-medium text-sm">Google</Text>
             </TouchableOpacity>
             <TouchableOpacity className="flex-1 h-12 flex-row items-center justify-center gap-2 bg-[#27211c] border border-[#54473b] rounded-lg">
-              <Text className="material-symbols-outlined text-white text-[22px]">ios</Text>
+              <SymbolIcon name="ios" className="text-white text-[22px]" />
               <Text className="text-white font-medium text-sm">Apple</Text>
             </TouchableOpacity>
           </View>

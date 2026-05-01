@@ -1,5 +1,6 @@
 
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { SymbolIcon } from './SymbolIcon';
 
 type AchievementToastProps = {
   visible: boolean;
@@ -46,10 +47,10 @@ export default function AchievementToast({
                 shadowRadius: 20,
               }}
             >
-              <Text className="material-symbols-outlined text-primary" style={{ fontSize: 64 }}>headphones</Text>
+              <SymbolIcon name="headphones" className="text-primary" style={{ fontSize: 64 }} />
               {/* Decorative stars */}
-              <Text className="material-symbols-outlined text-primary text-2xl absolute -top-2 -right-2">star</Text>
-              <Text className="material-symbols-outlined text-primary text-xl absolute bottom-2 -left-2">star</Text>
+              <SymbolIcon name="star" className="text-primary text-2xl absolute -top-2 -right-2" />
+              <SymbolIcon name="star" className="text-primary text-xl absolute bottom-2 -left-2" />
             </View>
           </View>
 
@@ -65,7 +66,7 @@ export default function AchievementToast({
           <View className="mb-10">
             <View className="flex-row h-9 items-center gap-2 rounded-full bg-white/10 border border-white/10 px-4">
               <View className="w-5 h-5 rounded-full bg-primary items-center justify-center">
-                <Text className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>bolt</Text>
+                <SymbolIcon name="bolt" className="text-white" style={{ fontSize: 14 }} />
               </View>
               <Text className="text-white text-sm font-bold tracking-wide">+ {xp} XP</Text>
             </View>
@@ -83,7 +84,7 @@ export default function AchievementToast({
                 shadowRadius: 8,
               }}
             >
-              <Text className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>ios_share</Text>
+              <SymbolIcon name="ios_share" className="text-white" style={{ fontSize: 20 }} />
               <Text className="text-white text-base font-bold tracking-wide">Share to Community</Text>
             </TouchableOpacity>
 

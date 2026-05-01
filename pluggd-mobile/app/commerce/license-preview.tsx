@@ -1,6 +1,8 @@
 
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { BrandLogo } from '../../components/BrandLogo';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type LicenseClause = {
   number: string;
@@ -62,17 +64,17 @@ export default function LicensePreview() {
           onPress={() => router.back()}
           className="h-12 w-12 items-center justify-start"
         >
-          <Text className="material-symbols-outlined text-[#181411]" style={{ fontSize: 28 }}>arrow_back</Text>
+          <SymbolIcon name="arrow_back" className="text-[#181411]" style={{ fontSize: 28 }} />
         </TouchableOpacity>
         <Text className="text-[#181411] text-lg font-bold leading-tight tracking-tight uppercase flex-1 text-center">
           License Preview
         </Text>
         <View className="flex-row items-center gap-3">
           <TouchableOpacity>
-            <Text className="material-symbols-outlined text-[#181411]" style={{ fontSize: 24 }}>download</Text>
+            <SymbolIcon name="download" className="text-[#181411]" style={{ fontSize: 24 }} />
           </TouchableOpacity>
           <TouchableOpacity>
-            <Text className="material-symbols-outlined text-[#181411]" style={{ fontSize: 24 }}>ios_share</Text>
+            <SymbolIcon name="ios_share" className="text-[#181411]" style={{ fontSize: 24 }} />
           </TouchableOpacity>
         </View>
       </View>
@@ -90,11 +92,8 @@ export default function LicensePreview() {
           <View className="p-8 border-b border-gray-100">
             <View className="flex-row justify-between items-start mb-6">
               <View>
-                <View className="flex-row items-center gap-2 mb-1">
-                  <View className="w-6 h-6 rounded-full bg-primary items-center justify-center">
-                    <Text className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>music_note</Text>
-                  </View>
-                  <Text className="font-bold text-xl tracking-tight text-black">PLUGGD</Text>
+                <View className="mb-1">
+                  <BrandLogo variant="light" width={112} height={36} />
                 </View>
                 <Text className="text-xs text-gray-500 font-medium uppercase tracking-wider">
                   Official License Document
@@ -167,7 +166,7 @@ export default function LicensePreview() {
             </View>
 
             <View className="mt-8 flex-row items-center justify-center gap-2" style={{ opacity: 0.5 }}>
-              <Text className="material-symbols-outlined text-gray-500" style={{ fontSize: 16 }}>verified_user</Text>
+              <SymbolIcon name="verified_user" className="text-gray-500" style={{ fontSize: 16 }} />
               <Text className="text-[10px] uppercase tracking-widest text-gray-500">Digitally Verified by Pluggd</Text>
             </View>
           </View>
@@ -188,7 +187,7 @@ export default function LicensePreview() {
             shadowRadius: 8,
           }}
         >
-          <Text className="material-symbols-outlined text-[#181411]">folder_open</Text>
+          <SymbolIcon name="folder_open" className="text-[#181411]" />
           <Text className="text-[#181411] text-base font-bold">Save to Files</Text>
         </TouchableOpacity>
       </View>

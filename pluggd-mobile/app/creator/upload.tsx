@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Upload() {
     const router = useRouter();
@@ -12,7 +13,7 @@ export default function Upload() {
             {/* Header */}
             <View className="sticky top-0 z-20 flex-row items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 pt-12 justify-between border-b border-zinc-800">
                 <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2 rounded-full">
-                    <Text className="material-symbols-outlined text-2xl text-zinc-400">close</Text>
+                    <SymbolIcon name="close" className="text-2xl text-zinc-400" />
                 </TouchableOpacity>
                 <Text className="text-slate-900 dark:text-white text-lg font-bold">New Upload</Text>
                 <TouchableOpacity>
@@ -28,7 +29,7 @@ export default function Upload() {
                         className="flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-zinc-700 bg-surface-dark/30 px-6 py-10"
                     >
                         <View className="h-12 w-12 rounded-full bg-zinc-800 items-center justify-center">
-                            <Text className="material-symbols-outlined text-zinc-400 text-2xl">cloud_upload</Text>
+                            <SymbolIcon name="cloud_upload" className="text-zinc-400 text-2xl" />
                         </View>
                         <View className="items-center gap-1">
                             <Text className="text-slate-900 dark:text-white text-base font-bold text-center">Tap to select audio file</Text>
@@ -75,7 +76,7 @@ export default function Upload() {
                                 placeholderTextColor="#52525b"
                             />
                             <View className="absolute right-4 top-0 bottom-0 justify-center pointer-events-none">
-                                <Text className="material-symbols-outlined text-zinc-500 text-xl">music_note</Text>
+                                <SymbolIcon name="music_note" className="text-zinc-500 text-xl" />
                             </View>
                         </View>
                     </View>
@@ -87,7 +88,7 @@ export default function Upload() {
                                 <Text className="text-zinc-400 text-sm font-medium">Select a genre</Text>
                             </View>
                             <View className="absolute right-4 top-0 bottom-0 justify-center pointer-events-none">
-                                <Text className="material-symbols-outlined text-zinc-500 text-xl">expand_more</Text>
+                                <SymbolIcon name="expand_more" className="text-zinc-500 text-xl" />
                             </View>
                         </View>
                     </View>
@@ -109,7 +110,7 @@ export default function Upload() {
             <View className="absolute bottom-0 left-0 w-full p-4 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-t border-zinc-800 pb-8">
                 <TouchableOpacity className="w-full bg-primary h-12 rounded-lg items-center justify-center flex-row gap-2 shadow-lg shadow-primary/30">
                     <Text className="text-white font-bold text-base">Publish Track</Text>
-                    <Text className="material-symbols-outlined text-white text-xl">arrow_forward</Text>
+                    <SymbolIcon name="arrow_forward" className="text-white text-xl" />
                 </TouchableOpacity>
             </View>
         </View>

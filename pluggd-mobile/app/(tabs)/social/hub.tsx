@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SymbolIcon } from '../../../components/SymbolIcon';
 
 export default function CommunityHub() {
     const router = useRouter();
@@ -38,12 +39,12 @@ export default function CommunityHub() {
                 <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-3">
                         <TouchableOpacity onPress={() => router.back()}>
-                            <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">arrow_back</Text>
+                            <SymbolIcon name="arrow_back" className="text-2xl text-slate-900 dark:text-white" />
                         </TouchableOpacity>
                         <Text className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Community Hub</Text>
                     </View>
                     <TouchableOpacity className="relative p-2 rounded-full hover:bg-white/10">
-                        <Text className="material-symbols-outlined text-slate-600 dark:text-slate-300">notifications</Text>
+                        <SymbolIcon name="notifications" className="text-slate-600 dark:text-slate-300" />
                         <View className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
                     </TouchableOpacity>
                 </View>
@@ -78,7 +79,7 @@ export default function CommunityHub() {
                                 </View>
                             </View>
                             <TouchableOpacity className="h-12 w-12 rounded-full bg-primary items-center justify-center shadow-lg shadow-primary/30">
-                                <Text className="material-symbols-outlined text-white text-2xl">play_arrow</Text>
+                                <SymbolIcon name="play_arrow" className="text-white text-2xl" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -89,7 +90,7 @@ export default function CommunityHub() {
                     <View className="rounded-xl bg-white dark:bg-[#161616] border border-gray-200 dark:border-white/5 p-4 shadow-sm">
                         <View className="flex-row justify-between items-center mb-3">
                             <View className="flex-row items-center gap-2">
-                                <Text className="material-symbols-outlined text-primary">bolt</Text>
+                                <SymbolIcon name="bolt" className="text-primary" />
                                 <Text className="text-sm font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">Daily Quest</Text>
                             </View>
                             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Resets in 4h</Text>
@@ -123,7 +124,7 @@ export default function CommunityHub() {
                                 <View className="flex-row items-baseline justify-between">
                                     <View className="flex-row items-center gap-1.5 flex-1">
                                         <Text className="font-bold text-slate-900 dark:text-white truncate">{post.user}</Text>
-                                        {post.verified && <Text className="material-symbols-outlined text-blue-400 text-[14px]">verified</Text>}
+                                        {post.verified && <SymbolIcon name="verified" className="text-blue-400 text-[14px]" />}
                                         <Text className="text-primary text-sm truncate font-medium">{post.handle}</Text>
                                     </View>
                                     <Text className="text-slate-500 text-xs">{post.time}</Text>
@@ -140,7 +141,7 @@ export default function CommunityHub() {
                                 {post.hasAudio && (
                                     <View className="mt-3 rounded-lg bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-3 flex-row items-center gap-3">
                                         <TouchableOpacity className="h-8 w-8 rounded-full bg-primary items-center justify-center">
-                                            <Text className="material-symbols-outlined text-white text-lg">play_arrow</Text>
+                                            <SymbolIcon name="play_arrow" className="text-white text-lg" />
                                         </TouchableOpacity>
                                         <View className="flex-1">
                                             {/* Fake Waveform */}
@@ -157,16 +158,16 @@ export default function CommunityHub() {
                                 <View className="flex-row items-center justify-between mt-3">
                                     <View className="flex-row gap-4">
                                         <TouchableOpacity className="flex-row items-center gap-1.5">
-                                            <Text className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">favorite</Text>
+                                            <SymbolIcon name="favorite" className="text-slate-500 dark:text-slate-400 text-xl" />
                                             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">{post.stats.likes}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity className="flex-row items-center gap-1.5">
-                                            <Text className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">chat_bubble</Text>
+                                            <SymbolIcon name="chat_bubble" className="text-slate-500 dark:text-slate-400 text-xl" />
                                             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">{post.stats.comments}</Text>
                                         </TouchableOpacity>
                                     </View>
                                     <TouchableOpacity className="flex-row items-center gap-1.5">
-                                        <Text className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">ios_share</Text>
+                                        <SymbolIcon name="ios_share" className="text-slate-500 dark:text-slate-400 text-xl" />
                                         <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Share</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -179,7 +180,7 @@ export default function CommunityHub() {
 
             {/* FAB */}
             <TouchableOpacity className="absolute bottom-24 right-4 h-14 w-14 rounded-full bg-primary shadow-lg shadow-primary/40 items-center justify-center z-40">
-                <Text className="material-symbols-outlined text-white text-2xl">add</Text>
+                <SymbolIcon name="add" className="text-white text-2xl" />
             </TouchableOpacity>
 
         </View>

@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#FF5200';
@@ -96,13 +97,7 @@ function formatNumber(value: number) {
 }
 
 function PluggdWordmark() {
-  return (
-    <View style={styles.logoTextRow}>
-      <Text style={styles.logoText}>PL</Text>
-      <Text style={[styles.logoText, styles.logoAccent]}>U</Text>
-      <Text style={styles.logoText}>GGD</Text>
-    </View>
-  );
+  return <BrandLogo variant="dark" width={106} height={32} />;
 }
 
 export default function CreatorEventsScreen() {

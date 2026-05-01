@@ -19,6 +19,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
 import {
@@ -233,7 +234,7 @@ export default function CreatorMembershipScreen() {
               onPress={() => router.back()}
               className="size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md"
             >
-              <Text className="material-symbols-outlined text-white text-xl">arrow_back</Text>
+              <SymbolIcon name="arrow_back" className="text-white text-xl" />
             </TouchableOpacity>
             <View className="size-10" />
           </View>
@@ -245,7 +246,7 @@ export default function CreatorMembershipScreen() {
                 <Image source={{ uri: creator.avatar_url }} className="w-full h-full" />
               ) : (
                 <View className="w-full h-full items-center justify-center">
-                  <Text className="material-symbols-outlined text-white/50 text-3xl">person</Text>
+                  <SymbolIcon name="person" className="text-white/50 text-3xl" />
                 </View>
               )}
             </View>
@@ -261,7 +262,7 @@ export default function CreatorMembershipScreen() {
         {/* ── Already subscribed banner ── */}
         {existingMembership && (
           <View className="mx-4 mt-4 p-4 rounded-2xl bg-primary/10 border border-primary/20 flex-row items-center gap-3">
-            <Text className="material-symbols-outlined text-primary text-2xl">verified</Text>
+            <SymbolIcon name="verified" className="text-primary text-2xl" />
             <View className="flex-1">
               <Text className="text-white font-bold">
                 You're a {existingMembership.tier_name} member
@@ -286,9 +287,7 @@ export default function CreatorMembershipScreen() {
 
           {tiers.length === 0 && (
             <View className="items-center py-12">
-              <Text className="material-symbols-outlined text-zinc-600 text-5xl mb-3">
-                loyalty
-              </Text>
+              <SymbolIcon name="loyalty" className="text-zinc-600 text-5xl mb-3" />
               <Text className="text-zinc-500 text-base">
                 This creator hasn't set up membership tiers yet.
               </Text>
@@ -332,12 +331,8 @@ export default function CreatorMembershipScreen() {
                         className="size-12 rounded-full items-center justify-center"
                         style={{ backgroundColor: `${accentColor}20` }}
                       >
-                        <Text
-                          className="material-symbols-outlined text-2xl"
-                          style={{ color: accentColor }}
-                        >
-                          {icon}
-                        </Text>
+                        <SymbolIcon name={icon} className="text-2xl"
+                          style={{ color: accentColor }} />
                       </View>
                       <View>
                         <Text className="text-white font-bold text-base">{tier.name}</Text>
@@ -367,12 +362,8 @@ export default function CreatorMembershipScreen() {
                         <View className="gap-2 mb-4">
                           {tier.features.map((feature, i) => (
                             <View key={i} className="flex-row items-start gap-2">
-                              <Text
-                                className="material-symbols-outlined text-sm mt-0.5"
-                                style={{ color: accentColor }}
-                              >
-                                check_circle
-                              </Text>
+                              <SymbolIcon name="check_circle" className="text-sm mt-0.5"
+                                style={{ color: accentColor }} />
                               <Text className="text-zinc-300 text-sm flex-1">{feature}</Text>
                             </View>
                           ))}
@@ -391,9 +382,7 @@ export default function CreatorMembershipScreen() {
                             <ActivityIndicator color="#fff" size="small" />
                           ) : (
                             <>
-                              <Text className="material-symbols-outlined text-white text-xl">
-                                loyalty
-                              </Text>
+                              <SymbolIcon name="loyalty" className="text-white text-xl" />
                               <Text className="text-white font-bold text-base">
                                 Subscribe — {priceLabel}
                               </Text>

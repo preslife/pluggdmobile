@@ -1,6 +1,8 @@
 
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { BrandLogo } from '../../components/BrandLogo';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function BiometricUnlock() {
   const router = useRouter();
@@ -32,12 +34,8 @@ export default function BiometricUnlock() {
         }}
       />
 
-      {/* Header: Logo */}
       <View className="z-10 w-full items-center pt-8">
-        <View className="flex-row items-center gap-2 opacity-90">
-          <Text className="material-symbols-outlined text-white text-2xl">graphic_eq</Text>
-          <Text className="text-white font-bold text-xl tracking-wider uppercase">Pluggd</Text>
-        </View>
+        <BrandLogo width={132} height={56} />
       </View>
 
       {/* Center: Biometric Icon */}
@@ -47,17 +45,13 @@ export default function BiometricUnlock() {
           <View className="absolute bg-primary/20 rounded-full w-40 h-40" />
           <View className="absolute bg-primary/10 rounded-full w-56 h-56" style={{ opacity: 0.5 }} />
           {/* Main fingerprint icon */}
-          <Text
-            className="material-symbols-outlined text-primary z-10"
+          <SymbolIcon name="fingerprint" className="text-primary z-10"
             style={{
               fontSize: 128,
               textShadowColor: 'rgba(236,127,19,0.7)',
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: 25,
-            }}
-          >
-            fingerprint
-          </Text>
+            }} />
         </View>
 
         <View className="items-center gap-2">
@@ -82,7 +76,7 @@ export default function BiometricUnlock() {
             shadowRadius: 20,
           }}
         >
-          <Text className="material-symbols-outlined text-[#181411]" style={{ fontSize: 20 }}>fingerprint</Text>
+          <SymbolIcon name="fingerprint" className="text-[#181411]" style={{ fontSize: 20 }} />
           <Text className="text-[#181411] text-lg font-bold tracking-wide">Use Fingerprint</Text>
         </TouchableOpacity>
 

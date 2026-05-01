@@ -1,8 +1,10 @@
 
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { useState } from 'react';
+import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Login() {
     const router = useRouter();
@@ -30,10 +32,7 @@ export default function Login() {
     return (
         <View className="flex-1 justify-center px-6 py-10 bg-background-dark">
             <View className="items-center mb-12">
-                <View className="w-16 h-16 rounded-2xl bg-primary/20 items-center justify-center mb-6">
-                    <Text className="text-primary material-symbols-outlined text-4xl">equalizer</Text>
-                </View>
-                <Text className="text-primary text-5xl font-extrabold mb-2">Pluggd</Text>
+                <BrandLogo variant="dark" width={156} height={72} />
                 <Text className="text-white/60 text-lg font-medium">Log in to create & connect</Text>
             </View>
 
@@ -42,7 +41,7 @@ export default function Login() {
                     <Text className="text-primary text-sm font-bold uppercase ml-1">Email</Text>
                     <View className="relative">
                         <View className="absolute inset-y-0 left-0 pl-4 justify-center pointer-events-none z-10">
-                            <Text className="text-white/40 material-symbols-outlined text-xl">mail</Text>
+                            <SymbolIcon name="mail" className="text-white/40 text-xl" />
                         </View>
                         <TextInput
                             className="w-full bg-white/5 text-white h-14 pl-12 pr-4 rounded-xl text-base font-medium border border-transparent focus:border-primary focus:bg-white/10"
@@ -59,7 +58,7 @@ export default function Login() {
                     <Text className="text-primary text-sm font-bold uppercase ml-1">Password</Text>
                     <View className="relative">
                         <View className="absolute inset-y-0 left-0 pl-4 justify-center pointer-events-none z-10">
-                            <Text className="text-white/40 material-symbols-outlined text-xl">lock</Text>
+                            <SymbolIcon name="lock" className="text-white/40 text-xl" />
                         </View>
                         <TextInput
                             className="w-full bg-white/5 text-white h-14 pl-12 pr-12 rounded-xl text-base font-medium border border-transparent focus:border-primary focus:bg-white/10"
@@ -70,7 +69,7 @@ export default function Login() {
                             onChangeText={setPassword}
                         />
                         <TouchableOpacity className="absolute inset-y-0 right-0 pr-4 justify-center">
-                            <Text className="text-white/40 material-symbols-outlined text-xl">visibility_off</Text>
+                            <SymbolIcon name="visibility_off" className="text-white/40 text-xl" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -100,7 +99,7 @@ export default function Login() {
                 </View>
                 <View className="flex-row gap-4 justify-center mt-4">
                     <TouchableOpacity className="w-14 h-14 rounded-full bg-white/5 border border-white/5 items-center justify-center">
-                        <Text className="text-white material-symbols-outlined text-2xl">ios</Text>
+                        <SymbolIcon name="ios" className="text-white text-2xl" />
                     </TouchableOpacity>
                     <TouchableOpacity className="w-14 h-14 rounded-full bg-white/5 border border-white/5 items-center justify-center">
                         <View className="w-6 h-6 rounded-full border-2 border-white/60 items-center justify-center">

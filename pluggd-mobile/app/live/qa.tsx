@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingVi
 import { useState } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type Question = {
   id: string;
@@ -65,7 +66,7 @@ export default function LiveQA() {
             onPress={() => router.back()}
             className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
           >
-            <Text className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>close</Text>
+            <SymbolIcon name="close" className="text-white" style={{ fontSize: 20 }} />
           </TouchableOpacity>
         </View>
 
@@ -88,7 +89,7 @@ export default function LiveQA() {
                 <View className="z-10">
                   <View className="flex-row items-center justify-between mb-3">
                     <View className="flex-row items-center bg-black/20 px-2.5 py-1 rounded-full">
-                      <Text className="material-symbols-outlined text-white mr-1" style={{ fontSize: 12 }}>mic</Text>
+                      <SymbolIcon name="mic" className="text-white mr-1" style={{ fontSize: 12 }} />
                       <Text className="text-[10px] font-bold uppercase tracking-wider text-white">Now Answering</Text>
                     </View>
                     <Text className="text-xs font-medium text-white/80">{spotlight.timeAgo}</Text>
@@ -100,7 +101,7 @@ export default function LiveQA() {
 
                   <View className="flex-row items-center gap-3">
                     <View className="h-8 w-8 rounded-full bg-white/20 items-center justify-center">
-                      <Text className="material-symbols-outlined text-white" style={{ fontSize: 16 }}>person</Text>
+                      <SymbolIcon name="person" className="text-white" style={{ fontSize: 16 }} />
                     </View>
                     <View>
                       <Text className="text-xs font-bold text-white">{spotlight.user}</Text>
@@ -132,7 +133,7 @@ export default function LiveQA() {
               ))}
             </View>
             <TouchableOpacity className="p-1">
-              <Text className="material-symbols-outlined text-white/60" style={{ fontSize: 20 }}>sort</Text>
+              <SymbolIcon name="sort" className="text-white/60" style={{ fontSize: 20 }} />
             </TouchableOpacity>
           </View>
 
@@ -145,7 +146,7 @@ export default function LiveQA() {
               >
                 {/* Avatar */}
                 <View className="h-10 w-10 rounded-full bg-[#2a2a2a] items-center justify-center">
-                  <Text className="material-symbols-outlined text-white/40" style={{ fontSize: 18 }}>person</Text>
+                  <SymbolIcon name="person" className="text-white/40" style={{ fontSize: 18 }} />
                 </View>
 
                 {/* Content */}
@@ -159,7 +160,7 @@ export default function LiveQA() {
 
                 {/* Vote */}
                 <TouchableOpacity className="items-center gap-0.5 pt-1 pl-2">
-                  <Text className="material-symbols-outlined text-white/40">expand_less</Text>
+                  <SymbolIcon name="expand_less" className="text-white/40" />
                   <Text className={`text-xs font-bold ${q.votes > 300 ? 'text-primary' : 'text-white/40'}`}>
                     {q.votes}
                   </Text>
@@ -188,7 +189,7 @@ export default function LiveQA() {
                 shadowRadius: 8,
               }}
             >
-              <Text className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>send</Text>
+              <SymbolIcon name="send" className="text-white" style={{ fontSize: 20 }} />
             </TouchableOpacity>
           </View>
         </View>

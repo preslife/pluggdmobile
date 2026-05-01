@@ -19,6 +19,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 const TIER_COLORS: Record<string, string> = {
   Bronze: '#CD7F32',
@@ -167,7 +168,7 @@ export default function CreatorMembershipsScreen() {
           onPress={() => router.back()}
           className="size-10 items-center justify-center rounded-full bg-white/5"
         >
-          <Text className="material-symbols-outlined text-white text-xl">arrow_back</Text>
+          <SymbolIcon name="arrow_back" className="text-white text-xl" />
         </TouchableOpacity>
         <Text className="text-white text-lg font-bold">Memberships</Text>
         <View className="size-10" />
@@ -223,9 +224,7 @@ export default function CreatorMembershipsScreen() {
 
               {tiers.length === 0 ? (
                 <View className="items-center py-12 bg-zinc-900/50 rounded-2xl border border-white/5">
-                  <Text className="material-symbols-outlined text-zinc-600 text-5xl mb-3">
-                    loyalty
-                  </Text>
+                  <SymbolIcon name="loyalty" className="text-zinc-600 text-5xl mb-3" />
                   <Text className="text-white font-bold text-base mb-1">
                     No tiers set up
                   </Text>
@@ -262,12 +261,8 @@ export default function CreatorMembershipsScreen() {
                               opacity: isDraft ? 0.5 : 1,
                             }}
                           >
-                            <Text
-                              className="material-symbols-outlined text-2xl"
-                              style={{ color: accentColor }}
-                            >
-                              {icon}
-                            </Text>
+                            <SymbolIcon name={icon} className="text-2xl"
+                              style={{ color: accentColor }} />
                           </View>
 
                           {/* Info */}
@@ -331,9 +326,7 @@ export default function CreatorMembershipsScreen() {
             {/* ── Info note ── */}
             <View className="px-4 mt-8 items-center">
               <View className="flex-row items-start gap-2 bg-zinc-900/50 rounded-xl p-4 border border-white/5">
-                <Text className="material-symbols-outlined text-primary text-lg mt-0.5">
-                  info
-                </Text>
+                <SymbolIcon name="info" className="text-primary text-lg mt-0.5" />
                 <Text className="text-zinc-500 text-xs flex-1 leading-relaxed">
                   To create new tiers, set prices, and customise perks, use the Pluggd
                   web dashboard. Tiers sync automatically with the mobile app and are
@@ -366,9 +359,7 @@ function StatCard({
         className="size-10 rounded-full items-center justify-center mb-3"
         style={{ backgroundColor: `${accent}15` }}
       >
-        <Text className="material-symbols-outlined text-lg" style={{ color: accent }}>
-          {icon}
-        </Text>
+        <SymbolIcon name={icon} className="text-lg" style={{ color: accent }} />
       </View>
       <Text className="text-white font-bold text-xl">{value}</Text>
       <Text className="text-zinc-500 text-xs mt-0.5">{label}</Text>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/lib/supabase';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type LeaderboardEntry = {
   id: string;
@@ -40,7 +41,7 @@ export default function Battles() {
           Battles
         </Text>
         <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full">
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white">notifications</Text>
+          <SymbolIcon name="notifications" className="text-slate-900 dark:text-white" />
         </TouchableOpacity>
       </View>
 
@@ -83,7 +84,7 @@ export default function Battles() {
                   shadowRadius: 15,
                 }}
               >
-                <Text className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>mic</Text>
+                <SymbolIcon name="mic" className="text-white" style={{ fontSize: 20 }} />
                 <Text className="text-white font-bold text-base">Submit Your Track</Text>
               </TouchableOpacity>
             </View>
@@ -105,13 +106,13 @@ export default function Battles() {
               <View className="absolute top-0 left-0 w-1 h-full bg-primary" />
               <View className="flex-row justify-between items-center mb-4 opacity-60">
                 <Text className="text-xs font-bold uppercase tracking-wider text-white">Semi-Finals</Text>
-                <Text className="material-symbols-outlined text-white text-sm">trophy</Text>
+                <SymbolIcon name="trophy" className="text-white text-sm" />
               </View>
               <View className="flex-row items-center justify-between">
                 {/* Player 1 */}
                 <View className="items-center gap-2" style={{ width: 80 }}>
                   <View className="w-14 h-14 rounded-full border-2 border-primary bg-[#2a2a2a] items-center justify-center">
-                    <Text className="material-symbols-outlined text-white/40">person</Text>
+                    <SymbolIcon name="person" className="text-white/40" />
                   </View>
                   <Text className="text-xs font-bold text-white text-center" numberOfLines={1}>DJ Kicks</Text>
                 </View>
@@ -120,7 +121,7 @@ export default function Battles() {
                 {/* Player 2 */}
                 <View className="items-center gap-2" style={{ width: 80 }}>
                   <View className="w-14 h-14 rounded-full border-2 border-white/10 bg-[#2a2a2a] items-center justify-center">
-                    <Text className="material-symbols-outlined text-white/40">person</Text>
+                    <SymbolIcon name="person" className="text-white/40" />
                   </View>
                   <Text className="text-xs font-bold text-white text-center" numberOfLines={1}>MC Flow</Text>
                 </View>
@@ -142,7 +143,7 @@ export default function Battles() {
                 <Text className="text-2xl font-black text-white/10 italic">VS</Text>
                 <View className="items-center gap-2" style={{ width: 80 }}>
                   <View className="w-14 h-14 rounded-full border-2 border-white/10 bg-[#2a2a2a] items-center justify-center">
-                    <Text className="material-symbols-outlined text-white/40">person</Text>
+                    <SymbolIcon name="person" className="text-white/40" />
                   </View>
                   <Text className="text-xs font-bold text-white text-center" numberOfLines={1}>Apex</Text>
                 </View>
@@ -159,7 +160,7 @@ export default function Battles() {
               <Text className="text-xs text-gray-400">Voting ends in 2h</Text>
             </View>
             <View className="flex-row items-center gap-1 bg-primary/10 px-2 py-1 rounded-lg">
-              <Text className="material-symbols-outlined text-primary" style={{ fontSize: 14 }}>sensors</Text>
+              <SymbolIcon name="sensors" className="text-primary" style={{ fontSize: 14 }} />
               <Text className="text-primary text-xs font-bold">Live Voting</Text>
             </View>
           </View>
@@ -200,7 +201,7 @@ export default function Battles() {
                   {/* Avatar */}
                   <View className="relative z-10">
                     <View className="h-12 w-12 rounded-full bg-[#2a2a2a] border-2 border-[#1E1E1E] items-center justify-center">
-                      <Text className="material-symbols-outlined text-white/40">person</Text>
+                      <SymbolIcon name="person" className="text-white/40" />
                     </View>
                     <View className={`absolute -bottom-1 -right-1 ${isFirst ? 'bg-primary' : 'bg-[#2a2a2a] border border-white/10'} px-1 rounded-sm`}>
                       <Text className={`text-[10px] font-bold ${isFirst ? 'text-black' : 'text-white'}`}>
@@ -213,7 +214,7 @@ export default function Battles() {
                   <View className="flex-1 min-w-0 z-10">
                     <Text className="text-white font-bold text-sm" numberOfLines={1}>{entry.name}</Text>
                     <View className="flex-row items-center gap-1">
-                      <Text className="material-symbols-outlined text-gray-400" style={{ fontSize: 12 }}>music_note</Text>
+                      <SymbolIcon name="music_note" className="text-gray-400" style={{ fontSize: 12 }} />
                       <Text className="text-gray-400 text-xs" numberOfLines={1}>{entry.trackName}</Text>
                     </View>
                   </View>
@@ -224,12 +225,8 @@ export default function Battles() {
                       isFirst ? 'bg-primary' : 'bg-[#2a2a2a] border border-white/10'
                     }`}
                   >
-                    <Text
-                      className={`material-symbols-outlined ${isFirst ? 'text-white' : 'text-gray-400'}`}
-                      style={{ fontSize: 20 }}
-                    >
-                      local_fire_department
-                    </Text>
+                    <SymbolIcon name="local_fire_department" className={`${isFirst ? 'text-white' : 'text-gray-400'}`}
+                      style={{ fontSize: 20 }} />
                   </TouchableOpacity>
                 </View>
               );

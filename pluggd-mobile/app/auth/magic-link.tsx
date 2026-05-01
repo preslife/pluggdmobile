@@ -1,6 +1,7 @@
 
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function MagicLinkSent() {
   const router = useRouter();
@@ -39,9 +40,7 @@ export default function MagicLinkSent() {
               shadowRadius: 20,
             }}
           >
-            <Text className="material-symbols-outlined text-background-dark" style={{ fontSize: 32 }}>
-              check
-            </Text>
+            <SymbolIcon name="check" className="text-background-dark" style={{ fontSize: 32 }} />
           </View>
         </View>
 
@@ -70,7 +69,7 @@ export default function MagicLinkSent() {
               shadowRadius: 8,
             }}
           >
-            <Text className="material-symbols-outlined text-[#181411]" style={{ fontSize: 20 }}>mail</Text>
+            <SymbolIcon name="mail" className="text-[#181411]" style={{ fontSize: 20 }} />
             <Text className="text-[#181411] text-base font-bold">Open Mail App</Text>
           </TouchableOpacity>
 

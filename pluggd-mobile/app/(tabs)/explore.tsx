@@ -25,6 +25,7 @@ import { useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../src/lib/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface ArtistResult {
@@ -236,7 +237,7 @@ export default function ExploreScreen() {
       <View className="pt-14 px-4 pb-3 bg-background-dark/95 border-b border-white/5 z-10">
         <View className="flex-row items-center gap-3">
           <View className="flex-1 flex-row items-center bg-zinc-900 rounded-xl h-12 px-4 border border-white/10">
-            <Text className="material-symbols-outlined text-primary text-xl">search</Text>
+            <SymbolIcon name="search" className="text-primary text-xl" />
             <TextInput
               ref={searchInputRef}
               className="flex-1 ml-2 text-base text-white"
@@ -258,7 +259,7 @@ export default function ExploreScreen() {
                   setReleases([]);
                 }}
               >
-                <Text className="material-symbols-outlined text-zinc-500 text-xl">close</Text>
+                <SymbolIcon name="close" className="text-zinc-500 text-xl" />
               </TouchableOpacity>
             )}
           </View>
@@ -314,9 +315,7 @@ export default function ExploreScreen() {
 
             {!searching && totalResults === 0 && (
               <View className="items-center py-16">
-                <Text className="material-symbols-outlined text-zinc-700 text-5xl mb-3">
-                  search_off
-                </Text>
+                <SymbolIcon name="search_off" className="text-zinc-700 text-5xl mb-3" />
                 <Text className="text-zinc-500 text-base">
                   No results for "{query}"
                 </Text>
@@ -342,7 +341,7 @@ export default function ExploreScreen() {
                           <Image source={{ uri: artist.avatar_url }} className="w-full h-full" />
                         ) : (
                           <View className="w-full h-full items-center justify-center">
-                            <Text className="material-symbols-outlined text-zinc-600">person</Text>
+                            <SymbolIcon name="person" className="text-zinc-600" />
                           </View>
                         )}
                       </View>
@@ -352,9 +351,7 @@ export default function ExploreScreen() {
                             {artist.display_name ?? artist.full_name ?? artist.username ?? 'Unknown'}
                           </Text>
                           {artist.is_verified && (
-                            <Text className="material-symbols-outlined text-primary text-sm">
-                              verified
-                            </Text>
+                            <SymbolIcon name="verified" className="text-primary text-sm" />
                           )}
                         </View>
                         <Text className="text-zinc-500 text-sm capitalize">
@@ -362,7 +359,7 @@ export default function ExploreScreen() {
                           {artist.primary_genre ? ` · ${artist.primary_genre}` : ''}
                         </Text>
                       </View>
-                      <Text className="material-symbols-outlined text-zinc-600">chevron_right</Text>
+                      <SymbolIcon name="chevron_right" className="text-zinc-600" />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -386,7 +383,7 @@ export default function ExploreScreen() {
                           <Image source={{ uri: release.cover_art_url }} className="w-full h-full" />
                         ) : (
                           <View className="w-full h-full items-center justify-center">
-                            <Text className="material-symbols-outlined text-zinc-600">album</Text>
+                            <SymbolIcon name="album" className="text-zinc-600" />
                           </View>
                         )}
                       </View>
@@ -403,9 +400,7 @@ export default function ExploreScreen() {
                         onPress={() => handlePlayRelease(release)}
                         className="size-10 rounded-full bg-primary/10 items-center justify-center"
                       >
-                        <Text className="material-symbols-outlined text-primary text-xl">
-                          play_arrow
-                        </Text>
+                        <SymbolIcon name="play_arrow" className="text-primary text-xl" />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
@@ -429,9 +424,7 @@ export default function ExploreScreen() {
                           <Image source={{ uri: beat.image_url }} className="w-full h-full" />
                         ) : (
                           <View className="w-full h-full items-center justify-center">
-                            <Text className="material-symbols-outlined text-zinc-600">
-                              music_note
-                            </Text>
+                            <SymbolIcon name="music_note" className="text-zinc-600" />
                           </View>
                         )}
                       </View>
@@ -456,9 +449,7 @@ export default function ExploreScreen() {
                           onPress={() => handlePlayBeat(beat)}
                           className="size-8 rounded-full bg-zinc-800 items-center justify-center"
                         >
-                          <Text className="material-symbols-outlined text-white text-lg">
-                            play_arrow
-                          </Text>
+                          <SymbolIcon name="play_arrow" className="text-white text-lg" />
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
@@ -523,9 +514,7 @@ export default function ExploreScreen() {
                               />
                             ) : (
                               <View className="w-full h-full items-center justify-center">
-                                <Text className="material-symbols-outlined text-zinc-600 text-3xl">
-                                  person
-                                </Text>
+                                <SymbolIcon name="person" className="text-zinc-600 text-3xl" />
                               </View>
                             )}
                           </View>
@@ -574,9 +563,7 @@ export default function ExploreScreen() {
                               />
                             ) : (
                               <View className="w-full h-full items-center justify-center">
-                                <Text className="material-symbols-outlined text-zinc-700 text-4xl">
-                                  album
-                                </Text>
+                                <SymbolIcon name="album" className="text-zinc-700 text-4xl" />
                               </View>
                             )}
                           </View>
@@ -622,9 +609,7 @@ export default function ExploreScreen() {
                               />
                             ) : (
                               <View className="w-full h-full items-center justify-center">
-                                <Text className="material-symbols-outlined text-zinc-600">
-                                  music_note
-                                </Text>
+                                <SymbolIcon name="music_note" className="text-zinc-600" />
                               </View>
                             )}
                           </View>
@@ -655,9 +640,7 @@ export default function ExploreScreen() {
                   recentReleases.length === 0 &&
                   recentBeats.length === 0 && (
                     <View className="items-center py-20 px-6">
-                      <Text className="material-symbols-outlined text-zinc-700 text-6xl mb-4">
-                        explore
-                      </Text>
+                      <SymbolIcon name="explore" className="text-zinc-700 text-6xl mb-4" />
                       <Text className="text-white text-lg font-bold mb-2">
                         Start exploring
                       </Text>

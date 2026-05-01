@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function PrivacySettingsScreen() {
   const router = useRouter();
@@ -16,9 +17,7 @@ export default function PrivacySettingsScreen() {
           onPress={() => router.back()}
           className="h-12 w-12 items-center justify-start"
         >
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white" style={{ fontSize: 24 }}>
-            arrow_back
-          </Text>
+          <SymbolIcon name="arrow_back" className="text-slate-900 dark:text-white" style={{ fontSize: 24 }} />
         </TouchableOpacity>
         <Text className="flex-1 pr-12 text-center text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
           Privacy & GDPR
@@ -85,7 +84,7 @@ export default function PrivacySettingsScreen() {
             <View className="gap-5 rounded-xl border border-white/5 bg-surface-dark/50 p-5 dark:bg-[#221910]">
               <View>
                 <View className="mb-2 flex-row items-center gap-2">
-                  <Text className="material-symbols-outlined text-primary">database</Text>
+                  <SymbolIcon name="database" className="text-primary" />
                   <Text className="text-base font-bold text-slate-900 dark:text-white">
                     Your Data
                   </Text>
@@ -99,9 +98,7 @@ export default function PrivacySettingsScreen() {
                 onPress={() => router.push('/settings/data-export')}
                 className="h-12 w-full flex-row items-center justify-center rounded-lg bg-primary px-4 shadow-lg shadow-orange-900/20"
               >
-                <Text className="material-symbols-outlined mr-2 text-[#181411]" style={{ fontSize: 20 }}>
-                  download
-                </Text>
+                <SymbolIcon name="download" className="mr-2 text-[#181411]" style={{ fontSize: 20 }} />
                 <Text className="text-base font-bold tracking-wide text-[#181411]">
                   Request Data Export
                 </Text>
@@ -141,13 +138,11 @@ function SettingsRow({ icon, label }: { icon: string; label: string }) {
     <TouchableOpacity className="flex-row items-center justify-between p-4">
       <View className="flex-row items-center gap-3">
         <View className="h-8 w-8 items-center justify-center rounded-full bg-[#393028]">
-          <Text className="material-symbols-outlined text-[#b9ab9d]" style={{ fontSize: 20 }}>
-            {icon}
-          </Text>
+          <SymbolIcon name={icon} className="text-[#b9ab9d]" style={{ fontSize: 20 }} />
         </View>
         <Text className="text-base font-medium text-slate-900 dark:text-white">{label}</Text>
       </View>
-      <Text className="material-symbols-outlined text-[#b9ab9d]">chevron_right</Text>
+      <SymbolIcon name="chevron_right" className="text-[#b9ab9d]" />
     </TouchableOpacity>
   );
 }

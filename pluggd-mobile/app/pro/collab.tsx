@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function CollabRadar() {
     const router = useRouter();
@@ -17,7 +18,7 @@ export default function CollabRadar() {
                     </View>
                     <Text className="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-wide">Collab Radar</Text>
                     <TouchableOpacity className="relative w-10 h-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/5">
-                        <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">notifications</Text>
+                        <SymbolIcon name="notifications" className="text-2xl text-slate-900 dark:text-white" />
                         <View className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary border-2 border-background-light dark:border-background-dark" />
                     </TouchableOpacity>
                 </View>
@@ -29,14 +30,14 @@ export default function CollabRadar() {
                             onPress={() => setViewMode('map')}
                             className={`flex-1 flex-row items-center justify-center rounded-full h-full gap-2 transition-all ${viewMode === 'map' ? 'bg-primary shadow-sm' : ''}`}
                         >
-                            <Text className={`material-symbols-outlined text-lg ${viewMode === 'map' ? 'text-white' : 'text-slate-500'}`}>map</Text>
+                            <SymbolIcon name="map" className={`text-lg ${viewMode === 'map' ? 'text-white' : 'text-slate-500'}`} />
                             <Text className={`text-sm font-bold ${viewMode === 'map' ? 'text-white' : 'text-slate-500'}`}>Radar Map</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => setViewMode('list')}
                             className={`flex-1 flex-row items-center justify-center rounded-full h-full gap-2 transition-all ${viewMode === 'list' ? 'bg-primary shadow-sm' : ''}`}
                         >
-                            <Text className={`material-symbols-outlined text-lg ${viewMode === 'list' ? 'text-white' : 'text-slate-500'}`}>list</Text>
+                            <SymbolIcon name="list" className={`text-lg ${viewMode === 'list' ? 'text-white' : 'text-slate-500'}`} />
                             <Text className={`text-sm font-bold ${viewMode === 'list' ? 'text-white' : 'text-slate-500'}`}>Briefs List</Text>
                         </TouchableOpacity>
                     </View>
@@ -45,7 +46,7 @@ export default function CollabRadar() {
                 {/* Filters */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }} className="py-2">
                     <TouchableOpacity className="h-9 px-4 rounded-full bg-primary flex-row items-center gap-2">
-                        <Text className="material-symbols-outlined text-white text-base">tune</Text>
+                        <SymbolIcon name="tune" className="text-white text-base" />
                         <Text className="text-white text-sm font-bold">Filters</Text>
                     </TouchableOpacity>
                     {['Hip-Hop', 'Over $500', 'Vocals Needed', 'Remote'].map((f) => (
@@ -88,12 +89,12 @@ export default function CollabRadar() {
                             <View>
                                 <View className="flex-row items-center gap-1">
                                     <Text className="text-sm font-bold text-slate-900 dark:text-white">@LilProducer</Text>
-                                    <Text className="material-symbols-outlined text-blue-500 text-[14px]">verified</Text>
+                                    <SymbolIcon name="verified" className="text-blue-500 text-[14px]" />
                                 </View>
                                 <Text className="text-xs text-slate-500 dark:text-gray-400">2h left • 2.5 mi away</Text>
                             </View>
                         </View>
-                        <Text className="material-symbols-outlined text-slate-400">bookmark_border</Text>
+                        <SymbolIcon name="bookmark_border" className="text-slate-400" />
                     </View>
                     <View>
                         <Text className="text-lg font-bold text-slate-900 dark:text-white mb-1">Summer Single Production</Text>
@@ -133,7 +134,7 @@ export default function CollabRadar() {
                                 <Text className="text-xs text-slate-500 dark:text-gray-400">5h left • Remote</Text>
                             </View>
                         </View>
-                        <Text className="material-symbols-outlined text-slate-400">bookmark_border</Text>
+                        <SymbolIcon name="bookmark_border" className="text-slate-400" />
                     </View>
                     <View>
                         <Text className="text-lg font-bold text-slate-900 dark:text-white mb-1">Keyboardist for Jazz Session</Text>

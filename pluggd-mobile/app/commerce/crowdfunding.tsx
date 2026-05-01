@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useState } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type RewardTier = {
   id: string;
@@ -56,14 +57,14 @@ export default function Crowdfunding() {
           onPress={() => router.back()}
           className="h-10 w-10 rounded-full bg-black/20 items-center justify-center"
         >
-          <Text className="material-symbols-outlined text-white">arrow_back</Text>
+          <SymbolIcon name="arrow_back" className="text-white" />
         </TouchableOpacity>
         <View className="flex-row gap-3">
           <TouchableOpacity className="h-10 w-10 rounded-full bg-black/20 items-center justify-center">
-            <Text className="material-symbols-outlined text-white">favorite_border</Text>
+            <SymbolIcon name="favorite_border" className="text-white" />
           </TouchableOpacity>
           <TouchableOpacity className="h-10 w-10 rounded-full bg-black/20 items-center justify-center">
-            <Text className="material-symbols-outlined text-white">share</Text>
+            <SymbolIcon name="share" className="text-white" />
           </TouchableOpacity>
         </View>
       </View>
@@ -89,7 +90,7 @@ export default function Crowdfunding() {
             </Text>
             <View className="flex-row items-center gap-3 mt-2">
               <View className="w-8 h-8 rounded-full bg-[#2f251b] border border-white/20 items-center justify-center">
-                <Text className="material-symbols-outlined text-white/60" style={{ fontSize: 16 }}>person</Text>
+                <SymbolIcon name="person" className="text-white/60" style={{ fontSize: 16 }} />
               </View>
               <Text className="text-sm text-gray-200">
                 by <Text className="font-semibold text-white">The Midnight Wave</Text>
@@ -199,7 +200,7 @@ export default function Crowdfunding() {
                 <View className="gap-1 my-1">
                   {tier.perks.map((perk) => (
                     <View key={perk} className="flex-row items-center gap-2">
-                      <Text className="material-symbols-outlined text-primary" style={{ fontSize: 14 }}>check</Text>
+                      <SymbolIcon name="check" className="text-primary" style={{ fontSize: 14 }} />
                       <Text className="text-sm text-gray-400">{perk}</Text>
                     </View>
                   ))}

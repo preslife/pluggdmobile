@@ -1,6 +1,7 @@
 
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SymbolIcon } from '../../../components/SymbolIcon';
 
 export default function Notifications() {
     const router = useRouter();
@@ -70,13 +71,13 @@ export default function Notifications() {
                 <View className="flex-row items-center justify-between mb-4">
                     <View className="flex-row items-center gap-2">
                         <TouchableOpacity onPress={() => router.back()} className="p-1">
-                            <Text className="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_back</Text>
+                            <SymbolIcon name="arrow_back" className="text-slate-800 dark:text-white text-2xl" />
                         </TouchableOpacity>
                         <Text className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Notifications</Text>
                     </View>
                     <TouchableOpacity className="flex-row items-center">
                         <Text className="text-primary text-sm font-bold mr-4">Mark all read</Text>
-                        <Text className="material-symbols-outlined text-slate-900 dark:text-white text-2xl">settings</Text>
+                        <SymbolIcon name="settings" className="text-slate-900 dark:text-white text-2xl" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -108,7 +109,7 @@ export default function Notifications() {
                 {notifications.filter(n => !n.isOld).map((n) => (
                     <TouchableOpacity key={n.id} className="flex-row items-start gap-4 px-5 py-4 border-b border-gray-100 dark:border-white/5 bg-transparent active:bg-white/5">
                         <View className={`relative shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl ${n.type === 'revenue' ? 'bg-primary/15' : 'bg-gray-100 dark:bg-[#1c1c1c] border border-transparent dark:border-white/5'}`}>
-                            <Text className={`material-symbols-outlined text-2xl ${n.type === 'revenue' ? 'text-primary' : (n.type === 'sale' ? 'text-primary' : 'text-gray-400 dark:text-white')}`}>{getIcon(n.type)}</Text>
+                            <SymbolIcon name={getIcon(n.type)} className={`text-2xl ${n.type === 'revenue' ? 'text-primary' : (n.type === 'sale' ? 'text-primary' : 'text-gray-400 dark:text-white')}`} />
                             {n.unread && (
                                 <View className="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 rounded-full bg-primary ring-2 ring-white dark:ring-background-dark" />
                             )}
@@ -132,7 +133,7 @@ export default function Notifications() {
                 {notifications.filter(n => n.isOld).map((n) => (
                     <TouchableOpacity key={n.id} className="flex-row items-start gap-4 px-5 py-4 opacity-75 active:bg-white/5">
                         <View className="relative shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl bg-gray-100 dark:bg-[#1c1c1c] border border-transparent dark:border-white/5">
-                            <Text className="material-symbols-outlined text-gray-400 text-2xl">info</Text>
+                            <SymbolIcon name="info" className="text-gray-400 text-2xl" />
                         </View>
                         <View className="flex-1 gap-1">
                             <View className="flex-row justify-between items-start">
@@ -148,7 +149,7 @@ export default function Notifications() {
 
                 <View className="items-center py-10 opacity-50">
                     <View className="bg-gray-200 dark:bg-[#1c1c1c] rounded-full p-4 mb-3">
-                        <Text className="material-symbols-outlined text-primary text-3xl">check</Text>
+                        <SymbolIcon name="check" className="text-primary text-3xl" />
                     </View>
                     <Text className="text-sm text-gray-500">You're all caught up</Text>
                 </View>

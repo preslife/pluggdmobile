@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Analytics() {
     const router = useRouter();
@@ -11,11 +12,11 @@ export default function Analytics() {
             {/* Top App Bar */}
             <View className="sticky top-0 z-50 flex-row items-center justify-between bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-3 pt-12">
                 <TouchableOpacity onPress={() => router.back()} className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">arrow_back</Text>
+                    <SymbolIcon name="arrow_back" className="text-2xl text-slate-900 dark:text-white" />
                 </TouchableOpacity>
                 <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Analytics</Text>
                 <TouchableOpacity className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">more_horiz</Text>
+                    <SymbolIcon name="more_horiz" className="text-2xl text-slate-900 dark:text-white" />
                 </TouchableOpacity>
             </View>
 
@@ -24,7 +25,7 @@ export default function Analytics() {
                 <View className="px-4 py-2 mb-2">
                     <TouchableOpacity className="flex-row items-center gap-x-2 rounded-full bg-stone-200 dark:bg-surface-dark border border-transparent dark:border-white/5 px-4 h-9 self-start">
                         <Text className="text-sm font-medium text-slate-900 dark:text-white">Last 28 Days</Text>
-                        <Text className="material-symbols-outlined text-sm text-slate-900 dark:text-white">expand_more</Text>
+                        <SymbolIcon name="expand_more" className="text-sm text-slate-900 dark:text-white" />
                     </TouchableOpacity>
                 </View>
 
@@ -36,7 +37,7 @@ export default function Analytics() {
                             <View className="flex-row justify-between items-start mb-2">
                                 <Text className="text-stone-500 dark:text-stone-400 font-medium text-sm">Total Streams</Text>
                                 <View className="flex-row items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
-                                    <Text className="material-symbols-outlined text-sm font-bold text-primary">trending_up</Text>
+                                    <SymbolIcon name="trending_up" className="text-sm font-bold text-primary" />
                                     <Text className="text-xs font-bold text-primary">+5.4%</Text>
                                 </View>
                             </View>
@@ -51,7 +52,7 @@ export default function Analytics() {
                                 <View>
                                     <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">$4,250</Text>
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-base text-primary">trending_up</Text>
+                                        <SymbolIcon name="trending_up" className="text-base text-primary" />
                                         <Text className="text-sm font-bold text-primary">+12%</Text>
                                     </View>
                                 </View>
@@ -63,7 +64,7 @@ export default function Analytics() {
                                 <View>
                                     <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">+850</Text>
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-base text-primary">trending_up</Text>
+                                        <SymbolIcon name="trending_up" className="text-base text-primary" />
                                         <Text className="text-sm font-bold text-primary">+2.1%</Text>
                                     </View>
                                 </View>
@@ -81,7 +82,7 @@ export default function Analytics() {
                                 <Text className="text-2xl font-bold text-slate-900 dark:text-white">Daily Activity</Text>
                             </View>
                             <View className="w-8 h-8 rounded-full bg-primary items-center justify-center">
-                                <Text className="material-symbols-outlined text-lg text-white">show_chart</Text>
+                                <SymbolIcon name="show_chart" className="text-lg text-white" />
                             </View>
                         </View>
 
@@ -137,19 +138,19 @@ export default function Analytics() {
             {/* Bottom Nav (Mock) */}
             <View className="absolute bottom-0 left-0 w-full bg-surface-light dark:bg-[#1a130c] border-t border-stone-200 dark:border-white/5 pt-2 pb-8 px-6 flex-row justify-between items-center z-50">
                 <TouchableOpacity onPress={() => router.push('/')} className="items-center gap-1 w-16">
-                    <Text className="material-symbols-outlined text-2xl text-stone-400 dark:text-stone-500">home</Text>
+                    <SymbolIcon name="home" className="text-2xl text-stone-400 dark:text-stone-500" />
                     <Text className="text-[10px] font-medium text-stone-400 dark:text-stone-500">Home</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/creator/upload')} className="items-center gap-1 w-16">
-                    <Text className="material-symbols-outlined text-2xl text-stone-400 dark:text-stone-500">upload</Text>
+                    <SymbolIcon name="upload" className="text-2xl text-stone-400 dark:text-stone-500" />
                     <Text className="text-[10px] font-medium text-stone-400 dark:text-stone-500">Upload</Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="items-center gap-1 w-16">
-                    <Text className="material-symbols-outlined text-2xl text-primary">analytics</Text>
+                    <SymbolIcon name="analytics" className="text-2xl text-primary" />
                     <Text className="text-[10px] font-medium text-primary">Analytics</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/profile')} className="items-center gap-1 w-16">
-                    <Text className="material-symbols-outlined text-2xl text-stone-400 dark:text-stone-500">person</Text>
+                    <SymbolIcon name="person" className="text-2xl text-stone-400 dark:text-stone-500" />
                     <Text className="text-[10px] font-medium text-stone-400 dark:text-stone-500">Profile</Text>
                 </TouchableOpacity>
             </View>

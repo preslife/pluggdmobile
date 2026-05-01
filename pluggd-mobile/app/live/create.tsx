@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#FF5200';
@@ -101,13 +102,7 @@ function combineDateTime(dateInput: string, timeInput: string) {
 }
 
 function PluggdWordmark() {
-  return (
-    <View style={styles.logoTextRow}>
-      <Text style={styles.logoText}>PL</Text>
-      <Text style={[styles.logoText, styles.logoAccent]}>U</Text>
-      <Text style={styles.logoText}>GGD</Text>
-    </View>
-  );
+  return <BrandLogo variant="dark" width={112} height={34} />;
 }
 
 export default function CreateLiveRoomScreen() {

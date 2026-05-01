@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BottomTabs } from '../../components/BottomTabs';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Courses() {
     const router = useRouter();
@@ -12,13 +13,13 @@ export default function Courses() {
             <View className="sticky top-0 z-50 flex-row items-center bg-background-light dark:bg-background-dark p-4 pt-12 pb-2 justify-between border-b border-zinc-200 dark:border-[#29221c]">
                 <View className="flex-row items-center gap-3">
                     <View className="items-center justify-center w-8 h-8 rounded-full bg-primary">
-                        <Text className="material-symbols-outlined text-lg text-white">bolt</Text>
+                        <SymbolIcon name="bolt" className="text-lg text-white" />
                     </View>
                     <Text className="text-slate-900 dark:text-white text-lg font-bold">Pluggd Academy</Text>
                 </View>
                 <View className="flex-row items-center gap-3">
                     <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-[#29221c]">
-                        <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">search</Text>
+                        <SymbolIcon name="search" className="text-2xl text-slate-900 dark:text-white" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -42,10 +43,10 @@ export default function Courses() {
                             <View className="relative w-full aspect-video rounded-xl bg-zinc-800 overflow-hidden">
                                 {/* Placeholder */}
                                 <View className="absolute inset-0 bg-blue-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-4xl">graphic_eq</Text>
+                                    <SymbolIcon name="graphic_eq" className="text-white/50 text-4xl" />
                                 </View>
                                 <View className="absolute top-2 right-2 bg-black/60 rounded-full px-2 py-1 flex-row items-center gap-1">
-                                    <Text className="material-symbols-outlined text-primary text-[14px]">timer</Text>
+                                    <SymbolIcon name="timer" className="text-primary text-[14px]" />
                                     <Text className="text-white text-[10px] font-bold">12m left</Text>
                                 </View>
                             </View>
@@ -65,10 +66,10 @@ export default function Courses() {
                             <View className="relative w-full aspect-video rounded-xl bg-zinc-800 overflow-hidden">
                                 {/* Placeholder */}
                                 <View className="absolute inset-0 bg-purple-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-4xl">gavel</Text>
+                                    <SymbolIcon name="gavel" className="text-white/50 text-4xl" />
                                 </View>
                                 <View className="absolute top-2 right-2 bg-black/60 rounded-full px-2 py-1 flex-row items-center gap-1">
-                                    <Text className="material-symbols-outlined text-primary text-[14px]">timer</Text>
+                                    <SymbolIcon name="timer" className="text-primary text-[14px]" />
                                     <Text className="text-white text-[10px] font-bold">45m left</Text>
                                 </View>
                             </View>
@@ -104,7 +105,7 @@ export default function Courses() {
                         <TouchableOpacity className="bg-white dark:bg-[#221910] p-3 rounded-2xl flex-row gap-4 shadow-sm border border-transparent dark:border-[#29221c]">
                             <View className="w-24 h-24 rounded-xl bg-zinc-800 relative overflow-hidden">
                                 <View className="absolute inset-0 bg-orange-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-3xl">mic_external_on</Text>
+                                    <SymbolIcon name="mic_external_on" className="text-white/50 text-3xl" />
                                 </View>
                                 <View className="absolute top-2 left-2 bg-primary px-2 py-0.5 rounded-full">
                                     <Text className="text-white text-[10px] font-bold">PRO</Text>
@@ -115,11 +116,11 @@ export default function Courses() {
                                 <Text className="text-[#9d8b7c] text-sm" numberOfLines={2}>Learn the secrets of industry standard mastering from the legend himself.</Text>
                                 <View className="flex-row gap-4 mt-2">
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-[#9d8b7c] text-xs">library_books</Text>
+                                        <SymbolIcon name="library_books" className="text-[#9d8b7c] text-xs" />
                                         <Text className="text-[#9d8b7c] text-xs font-medium">12 Lessons</Text>
                                     </View>
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-[#9d8b7c] text-xs">schedule</Text>
+                                        <SymbolIcon name="schedule" className="text-[#9d8b7c] text-xs" />
                                         <Text className="text-[#9d8b7c] text-xs font-medium">2h 15m</Text>
                                     </View>
                                 </View>
@@ -130,7 +131,7 @@ export default function Courses() {
                         <TouchableOpacity className="bg-white dark:bg-[#221910] p-3 rounded-2xl flex-row gap-4 shadow-sm border border-transparent dark:border-[#29221c]">
                             <View className="w-24 h-24 rounded-xl bg-zinc-800 relative overflow-hidden">
                                 <View className="absolute inset-0 bg-green-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-3xl">groups</Text>
+                                    <SymbolIcon name="groups" className="text-white/50 text-3xl" />
                                 </View>
                                 <View className="absolute top-2 left-2 bg-white px-2 py-0.5 rounded-full">
                                     <Text className="text-black text-[10px] font-bold">FREE</Text>
@@ -141,11 +142,11 @@ export default function Courses() {
                                 <Text className="text-[#9d8b7c] text-sm" numberOfLines={2}>Essential marketing strategies for independent artists.</Text>
                                 <View className="flex-row gap-4 mt-2">
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-[#9d8b7c] text-xs">library_books</Text>
+                                        <SymbolIcon name="library_books" className="text-[#9d8b7c] text-xs" />
                                         <Text className="text-[#9d8b7c] text-xs font-medium">5 Lessons</Text>
                                     </View>
                                     <View className="flex-row items-center gap-1">
-                                        <Text className="material-symbols-outlined text-[#9d8b7c] text-xs">schedule</Text>
+                                        <SymbolIcon name="schedule" className="text-[#9d8b7c] text-xs" />
                                         <Text className="text-[#9d8b7c] text-xs font-medium">45m</Text>
                                     </View>
                                 </View>

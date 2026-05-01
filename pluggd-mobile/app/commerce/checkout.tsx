@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { launchPaymentSheet } from '../../src/lib/payments';
 import { supabase } from '../../src/lib/supabase';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function Checkout() {
     const router = useRouter();
@@ -48,7 +49,7 @@ export default function Checkout() {
             {/* Header */}
             <View className="sticky top-0 z-10 flex-row items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pt-12 pb-2 justify-between border-b border-zinc-200 dark:border-white/10">
                 <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">arrow_back_ios_new</Text>
+                    <SymbolIcon name="arrow_back_ios_new" className="text-2xl text-slate-900 dark:text-white" />
                 </TouchableOpacity>
                 <Text className="text-slate-900 dark:text-white text-lg font-bold">Checkout</Text>
                 <View className="w-10" />
@@ -60,7 +61,7 @@ export default function Checkout() {
                     <View className="h-[70px] w-[70px] rounded-lg bg-zinc-800 shadow-lg overflow-hidden">
                         {/* Placeholder for cover art */}
                         <View className="w-full h-full bg-primary/20 items-center justify-center">
-                            <Text className="material-symbols-outlined text-primary text-2xl">music_note</Text>
+                            <SymbolIcon name="music_note" className="text-primary text-2xl" />
                         </View>
                     </View>
                     <View className="flex-1 justify-center">
@@ -77,7 +78,7 @@ export default function Checkout() {
 
                 {/* Discount Code */}
                 <View className="relative flex-row items-center bg-white dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-white/5 h-14 px-4">
-                    <Text className="material-symbols-outlined text-slate-400 text-xl mr-3">sell</Text>
+                    <SymbolIcon name="sell" className="text-slate-400 text-xl mr-3" />
                     <TextInput
                         className="flex-1 text-base text-slate-900 dark:text-white h-full"
                         placeholder="Enter discount code"
@@ -99,7 +100,7 @@ export default function Checkout() {
                         >
                             <View className="flex-row items-center gap-4">
                                 <View className="bg-white w-12 h-8 rounded border border-slate-200 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-xl text-black">ios</Text>
+                                    <SymbolIcon name="ios" className="text-xl text-black" />
                                 </View>
                                 <Text className="text-slate-900 dark:text-white font-medium">Apple Pay</Text>
                             </View>
@@ -115,7 +116,7 @@ export default function Checkout() {
                         >
                             <View className="flex-row items-center gap-4">
                                 <View className="bg-white w-12 h-8 rounded border border-slate-200 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-xl text-slate-700">credit_card</Text>
+                                    <SymbolIcon name="credit_card" className="text-xl text-slate-700" />
                                 </View>
                                 <View>
                                     <Text className="text-slate-900 dark:text-white font-medium">Visa ending in 4242</Text>
@@ -151,7 +152,7 @@ export default function Checkout() {
 
                 {/* Secure Badge */}
                 <View className="flex-row justify-center items-center gap-2 mb-8 opacity-60">
-                    <Text className="material-symbols-outlined text-slate-400 text-sm">lock</Text>
+                    <SymbolIcon name="lock" className="text-slate-400 text-sm" />
                     <Text className="text-xs text-slate-400">Payments are secure and encrypted</Text>
                 </View>
             </ScrollView>
@@ -164,7 +165,7 @@ export default function Checkout() {
                     className="w-full bg-primary h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg shadow-primary/20"
                 >
                     <Text className="text-white font-bold text-lg">{loading ? 'Processing...' : `Pay $${total.toFixed(2)}`}</Text>
-                    <Text className="material-symbols-outlined text-white text-xl">arrow_forward</Text>
+                    <SymbolIcon name="arrow_forward" className="text-white text-xl" />
                 </TouchableOpacity>
             </View>
         </View>

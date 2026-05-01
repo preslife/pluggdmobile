@@ -1,6 +1,7 @@
 
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function OrderSuccess() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function OrderSuccess() {
           onPress={() => router.replace('/')}
           className="h-10 w-10 items-center justify-center rounded-full"
         >
-          <Text className="material-symbols-outlined text-white text-2xl">close</Text>
+          <SymbolIcon name="close" className="text-white text-2xl" />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-white">Confirmation</Text>
         <Text className="text-text-secondary text-sm font-bold">Help</Text>
@@ -49,9 +50,7 @@ export default function OrderSuccess() {
                 shadowRadius: 20,
               }}
             >
-              <Text className="material-symbols-outlined text-background-dark" style={{ fontSize: 40, fontWeight: '700' }}>
-                check
-              </Text>
+              <SymbolIcon name="check" className="text-background-dark" style={{ fontSize: 40, fontWeight: '700' }} />
             </View>
           </View>
 
@@ -69,17 +68,13 @@ export default function OrderSuccess() {
         {/* Action Buttons — 2-column */}
         <View className="flex-row gap-3 mb-8">
           <TouchableOpacity className="flex-1 items-center justify-center gap-2 h-24 bg-primary rounded-xl p-3">
-            <Text className="material-symbols-outlined text-background-dark" style={{ fontSize: 28 }}>
-              download
-            </Text>
+            <SymbolIcon name="download" className="text-background-dark" style={{ fontSize: 28 }} />
             <Text className="text-background-dark text-sm font-bold text-center leading-tight">
               Download Stems
             </Text>
           </TouchableOpacity>
           <TouchableOpacity className="flex-1 items-center justify-center gap-2 h-24 bg-[#27211b] border border-white/10 rounded-xl p-3">
-            <Text className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>
-              description
-            </Text>
+            <SymbolIcon name="description" className="text-primary" style={{ fontSize: 28 }} />
             <Text className="text-white text-sm font-bold text-center leading-tight">
               View License PDF
             </Text>
@@ -97,7 +92,7 @@ export default function OrderSuccess() {
                 <Image source={{ uri: params.cover }} className="w-full h-full" />
               ) : (
                 <View className="w-full h-full bg-primary/20 items-center justify-center">
-                  <Text className="material-symbols-outlined text-primary text-2xl">music_note</Text>
+                  <SymbolIcon name="music_note" className="text-primary text-2xl" />
                 </View>
               )}
             </View>
@@ -106,7 +101,7 @@ export default function OrderSuccess() {
                 {params.title || 'Beat'} (WAV + Stems)
               </Text>
               <View className="flex-row items-center gap-1.5">
-                <Text className="material-symbols-outlined text-primary text-[14px]">verified</Text>
+                <SymbolIcon name="verified" className="text-primary text-[14px]" />
                 <Text className="text-text-secondary text-sm font-medium" numberOfLines={1}>
                   @{params.artist || 'Unknown'}
                 </Text>
@@ -131,7 +126,7 @@ export default function OrderSuccess() {
               <Text className="text-primary text-lg font-bold">${total.toFixed(2)}</Text>
             </View>
             <View className="flex-row items-center gap-2 bg-white/5 p-2 rounded mt-2 self-start">
-              <Text className="material-symbols-outlined text-text-secondary text-sm">credit_card</Text>
+              <SymbolIcon name="credit_card" className="text-text-secondary text-sm" />
               <Text className="text-text-secondary text-xs">Paid with Apple Pay</Text>
             </View>
           </View>
@@ -147,7 +142,7 @@ export default function OrderSuccess() {
           className="w-full h-12 rounded-full bg-white flex-row items-center justify-center gap-2"
         >
           <Text className="text-black font-bold text-base">Continue Shopping</Text>
-          <Text className="material-symbols-outlined text-black text-[20px]">arrow_forward</Text>
+          <SymbolIcon name="arrow_forward" className="text-black text-[20px]" />
         </TouchableOpacity>
       </View>
     </View>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../src/lib/supabase';
 import { Database } from '../../src/types/supabase';
 import { BottomTabs } from '../../components/BottomTabs';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type Purchase = Database['public']['Tables']['purchases']['Row'] & {
     metadata?: Record<string, any> | null;
@@ -46,11 +47,11 @@ export default function Orders() {
             {/* Header */}
             <View className="sticky top-0 z-30 flex-row items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 pt-12 pb-2 justify-between border-b border-zinc-200 dark:border-white/5">
                 <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">arrow_back_ios_new</Text>
+                    <SymbolIcon name="arrow_back_ios_new" className="text-2xl text-slate-900 dark:text-white" />
                 </TouchableOpacity>
                 <Text className="text-slate-900 dark:text-white text-lg font-bold">Purchase History</Text>
                 <View className="w-10 h-10 items-center justify-center">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">tune</Text>
+                    <SymbolIcon name="tune" className="text-2xl text-slate-900 dark:text-white" />
                 </View>
             </View>
 
@@ -86,7 +87,7 @@ export default function Orders() {
                         <View className="h-[70px] w-[70px] rounded-lg bg-zinc-800 bg-center bg-cover overflow-hidden relative">
                             {/* Placeholder art */}
                             <View className="absolute inset-0 bg-indigo-900/50 items-center justify-center">
-                                <Text className="material-symbols-outlined text-white/50 text-3xl">album</Text>
+                                <SymbolIcon name="album" className="text-white/50 text-3xl" />
                             </View>
                         </View>
                         <View className="flex-1 justify-center">
@@ -109,7 +110,7 @@ export default function Orders() {
                                 </View>
                             </View>
                             <TouchableOpacity className="flex-row items-center gap-1 mt-2">
-                                <Text className="material-symbols-outlined text-primary text-base">download</Text>
+                                <SymbolIcon name="download" className="text-primary text-base" />
                                 <Text className="text-primary text-xs font-bold uppercase tracking-wide">Download Receipt</Text>
                             </TouchableOpacity>
                         </View>

@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Switch } from 'react-native';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type LicenseTier = {
   key: string;
@@ -80,9 +81,7 @@ export default function Licensing() {
           onPress={() => router.back()}
           className="h-10 w-10 items-center justify-center rounded-full"
         >
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white text-2xl">
-            arrow_back_ios_new
-          </Text>
+          <SymbolIcon name="arrow_back_ios_new" className="text-slate-900 dark:text-white text-2xl" />
         </TouchableOpacity>
         <Text className="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
           Licensing & Pricing
@@ -130,16 +129,12 @@ export default function Licensing() {
                           : 'bg-gray-100 dark:bg-[#393028]'
                       }`}
                     >
-                      <Text
-                        className={`material-symbols-outlined ${
+                      <SymbolIcon name={tier.icon} className={`${
                           isActive
                             ? 'text-primary'
                             : 'text-slate-500 dark:text-[#8a7f75]'
                         }`}
-                        style={{ fontSize: 24 }}
-                      >
-                        {tier.icon}
-                      </Text>
+                        style={{ fontSize: 24 }} />
                     </View>
                     <View>
                       <Text className="text-base font-bold leading-tight text-slate-900 dark:text-white">
@@ -173,9 +168,7 @@ export default function Licensing() {
                     </Text>
                     {isActive && !isExclusive && (
                       <View className="absolute right-5 top-4 z-10">
-                        <Text className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>
-                          edit
-                        </Text>
+                        <SymbolIcon name="edit" className="text-primary" style={{ fontSize: 18 }} />
                       </View>
                     )}
                     {isExclusive && !isActive ? (
@@ -201,16 +194,12 @@ export default function Licensing() {
                 {/* Card Footer */}
                 <View className="flex-row items-center justify-between border-t border-gray-100 dark:border-white/5 pt-4 mt-4">
                   <TouchableOpacity className="flex-row items-center gap-1.5">
-                    <Text
-                      className={`material-symbols-outlined ${
+                    <SymbolIcon name="article" className={`${
                         isActive
                           ? 'text-primary'
                           : 'text-slate-400 dark:text-[#8a7f75]'
                       }`}
-                      style={{ fontSize: 18 }}
-                    >
-                      article
-                    </Text>
+                      style={{ fontSize: 18 }} />
                     <Text
                       className={`text-xs font-bold ${
                         isActive
@@ -240,9 +229,7 @@ export default function Licensing() {
 
           {/* Pro Tip */}
           <View className="mt-2 mb-6 flex-row items-start gap-3 rounded-2xl bg-primary/10 p-4 border border-primary/20">
-            <Text className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>
-              tips_and_updates
-            </Text>
+            <SymbolIcon name="tips_and_updates" className="text-primary" style={{ fontSize: 20 }} />
             <Text className="flex-1 text-xs text-slate-600 dark:text-[#b9ab9d] leading-normal font-medium">
               <Text className="font-bold text-primary">Pro Tip: </Text>
               Enabling "Exclusive Rights" will automatically remove this track from the marketplace once it is purchased.
@@ -268,9 +255,7 @@ export default function Licensing() {
             {saving ? 'Saving...' : 'Save & Publish'}
           </Text>
           {!saving && (
-            <Text className="material-symbols-outlined text-white" style={{ fontSize: 18 }}>
-              arrow_forward
-            </Text>
+            <SymbolIcon name="arrow_forward" className="text-white" style={{ fontSize: 18 }} />
           )}
         </TouchableOpacity>
       </View>

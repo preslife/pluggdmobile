@@ -19,6 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 import { useAuth } from '../../src/context/AuthProvider';
 import {
   useSubscription,
@@ -79,7 +80,7 @@ export default function MyMembershipsScreen() {
     return (
       <View className="flex-1 bg-background-dark items-center justify-center px-6">
         <Stack.Screen options={{ headerShown: false }} />
-        <Text className="material-symbols-outlined text-zinc-600 text-6xl mb-4">lock</Text>
+        <SymbolIcon name="lock" className="text-zinc-600 text-6xl mb-4" />
         <Text className="text-white text-xl font-bold mb-2">Sign in required</Text>
         <Text className="text-zinc-500 text-center mb-6">
           Log in to view your memberships and subscriptions.
@@ -104,14 +105,14 @@ export default function MyMembershipsScreen() {
           onPress={() => router.back()}
           className="size-10 items-center justify-center rounded-full bg-white/5"
         >
-          <Text className="material-symbols-outlined text-white text-xl">arrow_back</Text>
+          <SymbolIcon name="arrow_back" className="text-white text-xl" />
         </TouchableOpacity>
         <Text className="text-white text-lg font-bold">My Memberships</Text>
         <TouchableOpacity
           onPress={openSubscriptionSettings}
           className="size-10 items-center justify-center rounded-full bg-white/5"
         >
-          <Text className="material-symbols-outlined text-white text-xl">settings</Text>
+          <SymbolIcon name="settings" className="text-white text-xl" />
         </TouchableOpacity>
       </View>
 
@@ -134,7 +135,7 @@ export default function MyMembershipsScreen() {
           /* Empty state */
           <View className="items-center px-6 pt-16">
             <View className="size-24 rounded-full bg-zinc-900 items-center justify-center mb-6">
-              <Text className="material-symbols-outlined text-zinc-600 text-5xl">loyalty</Text>
+              <SymbolIcon name="loyalty" className="text-zinc-600 text-5xl" />
             </View>
             <Text className="text-white text-xl font-bold mb-2">No memberships yet</Text>
             <Text className="text-zinc-500 text-center text-sm mb-8 leading-relaxed">
@@ -151,7 +152,7 @@ export default function MyMembershipsScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Text className="material-symbols-outlined text-white text-lg">restore</Text>
+                  <SymbolIcon name="restore" className="text-white text-lg" />
                   <Text className="text-white font-medium">Restore Purchases</Text>
                 </>
               )}
@@ -176,9 +177,7 @@ export default function MyMembershipsScreen() {
                 onPress={openSubscriptionSettings}
                 className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-white/10"
               >
-                <Text className="material-symbols-outlined text-zinc-400 text-lg">
-                  open_in_new
-                </Text>
+                <SymbolIcon name="open_in_new" className="text-zinc-400 text-lg" />
                 <Text className="text-zinc-400 font-medium text-sm">
                   Manage in iOS Settings
                 </Text>
@@ -227,12 +226,8 @@ function MembershipCard({
           className="size-14 rounded-full items-center justify-center"
           style={{ backgroundColor: `${accentColor}20` }}
         >
-          <Text
-            className="material-symbols-outlined text-2xl"
-            style={{ color: accentColor }}
-          >
-            {icon}
-          </Text>
+          <SymbolIcon name={icon} className="text-2xl"
+            style={{ color: accentColor }} />
         </View>
 
         {/* Info */}
@@ -264,9 +259,7 @@ function MembershipCard({
         </View>
 
         {/* Arrow */}
-        <Text className="material-symbols-outlined text-zinc-600 text-xl">
-          chevron_right
-        </Text>
+        <SymbolIcon name="chevron_right" className="text-zinc-600 text-xl" />
       </View>
 
       {/* Period end info */}

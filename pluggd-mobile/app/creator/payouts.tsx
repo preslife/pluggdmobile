@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/lib/supabase';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type Transaction = {
   id: string;
@@ -37,9 +38,7 @@ export default function Payouts() {
           onPress={() => router.back()}
           className="h-12 w-12 items-center justify-start"
         >
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white" style={{ fontSize: 24 }}>
-            arrow_back
-          </Text>
+          <SymbolIcon name="arrow_back" className="text-slate-900 dark:text-white" style={{ fontSize: 24 }} />
         </TouchableOpacity>
         <Text className="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white flex-1 text-center pr-12">
           Payouts
@@ -78,9 +77,7 @@ export default function Payouts() {
         <View className="px-4 py-2">
           <View className="flex-row items-center justify-between bg-[#2a221a] border border-white/5 rounded-lg p-4">
             <View className="flex-row items-center gap-3">
-              <Text className="material-symbols-outlined text-green-500" style={{ fontSize: 24 }}>
-                check_circle
-              </Text>
+              <SymbolIcon name="check_circle" className="text-green-500" style={{ fontSize: 24 }} />
               <View>
                 <Text className="text-white text-sm font-semibold">Stripe Connect Status</Text>
                 <Text className="text-green-500 text-xs font-medium">Connected</Text>
@@ -88,7 +85,7 @@ export default function Payouts() {
             </View>
             <TouchableOpacity className="flex-row items-center">
               <Text className="text-primary text-sm font-bold">Manage Account</Text>
-              <Text className="material-symbols-outlined text-primary ml-1" style={{ fontSize: 16 }}>open_in_new</Text>
+              <SymbolIcon name="open_in_new" className="text-primary ml-1" style={{ fontSize: 16 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -114,14 +111,10 @@ export default function Payouts() {
             >
               <View className="flex-row items-center gap-4 flex-1">
                 <View className={`h-12 w-12 rounded-lg ${tx.iconBg} items-center justify-center`}>
-                  <Text
-                    className="material-symbols-outlined text-white"
+                  <SymbolIcon name={tx.icon} className="text-white"
                     style={{
                       fontSize: 24,
-                    }}
-                  >
-                    {tx.icon}
-                  </Text>
+                    }} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-slate-900 dark:text-white text-base font-semibold" numberOfLines={1}>

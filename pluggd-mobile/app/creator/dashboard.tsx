@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useWallet } from '../../src/hooks/useWallet';
 import { supabase } from '../../src/lib/supabase';
@@ -1017,13 +1018,7 @@ function getRoleTools(
 }
 
 function PluggdWordmark() {
-  return (
-    <View style={styles.logoTextRow}>
-      <Text style={styles.logoText}>PL</Text>
-      <Text style={[styles.logoText, styles.logoAccent]}>U</Text>
-      <Text style={styles.logoText}>GGD</Text>
-    </View>
-  );
+  return <BrandLogo variant="dark" width={106} height={32} />;
 }
 
 function QuickAction({

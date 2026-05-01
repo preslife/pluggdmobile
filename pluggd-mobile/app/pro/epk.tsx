@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 export default function EPKBuilder() {
     const router = useRouter();
@@ -12,7 +13,7 @@ export default function EPKBuilder() {
             {/* Header */}
             <View className="sticky top-0 z-50 flex-row items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 pt-12 pb-2 justify-between border-b border-zinc-200 dark:border-white/5">
                 <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-                    <Text className="material-symbols-outlined text-2xl text-slate-900 dark:text-white">arrow_back_ios_new</Text>
+                    <SymbolIcon name="arrow_back_ios_new" className="text-2xl text-slate-900 dark:text-white" />
                 </TouchableOpacity>
                 <Text className="text-slate-900 dark:text-white text-lg font-bold">Edit Press Kit</Text>
                 <TouchableOpacity className="items-center justify-center">
@@ -24,7 +25,7 @@ export default function EPKBuilder() {
                 {/* Context Hint */}
                 <View className="flex-row items-center justify-between px-1">
                     <Text className="text-slate-500 dark:text-zinc-500 text-xs font-bold uppercase tracking-wider">Drag to reorder sections</Text>
-                    <Text className="material-symbols-outlined text-slate-400 text-sm">info</Text>
+                    <SymbolIcon name="info" className="text-slate-400 text-sm" />
                 </View>
 
                 {/* Card 1: Press Photos */}
@@ -33,7 +34,7 @@ export default function EPKBuilder() {
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
                         <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Press Photos</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
-                            <Text className="material-symbols-outlined text-primary text-lg">edit</Text>
+                            <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>
                     </View>
 
@@ -44,31 +45,31 @@ export default function EPKBuilder() {
                             <View className="w-[48%] aspect-square bg-zinc-800 rounded-lg overflow-hidden relative">
                                 {/* Placeholder */}
                                 <View className="absolute inset-0 bg-orange-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-2xl">image</Text>
+                                    <SymbolIcon name="image" className="text-white/50 text-2xl" />
                                 </View>
                             </View>
                             {/* Photo 2 */}
                             <View className="w-[48%] aspect-square bg-zinc-800 rounded-lg overflow-hidden relative">
                                 {/* Placeholder */}
                                 <View className="absolute inset-0 bg-blue-900/40 items-center justify-center">
-                                    <Text className="material-symbols-outlined text-white/50 text-2xl">image</Text>
+                                    <SymbolIcon name="image" className="text-white/50 text-2xl" />
                                 </View>
                             </View>
                             {/* Add Photo */}
                             <TouchableOpacity className="w-[48%] aspect-square bg-slate-50 dark:bg-white/5 rounded-lg border border-dashed border-slate-300 dark:border-white/20 items-center justify-center gap-1">
-                                <Text className="material-symbols-outlined text-primary text-2xl">add_circle</Text>
+                                <SymbolIcon name="add_circle" className="text-primary text-2xl" />
                                 <Text className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold uppercase">Add Photo</Text>
                             </TouchableOpacity>
                         </View>
                         <View className="flex-row items-center gap-1 mt-3">
-                            <Text className="material-symbols-outlined text-primary text-sm">check_circle</Text>
+                            <SymbolIcon name="check_circle" className="text-primary text-sm" />
                             <Text className="text-xs text-slate-500 dark:text-zinc-400 font-medium">3 Photos Selected</Text>
                         </View>
                     </View>
 
                     {/* Drag Handle (Visual) */}
                     <View className="absolute left-0 top-1/2 -translate-y-1/2 p-2 opacity-30">
-                        <Text className="material-symbols-outlined text-slate-400">drag_indicator</Text>
+                        <SymbolIcon name="drag_indicator" className="text-slate-400" />
                     </View>
                 </View>
 
@@ -77,7 +78,7 @@ export default function EPKBuilder() {
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
                         <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Biography</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
-                            <Text className="material-symbols-outlined text-primary text-lg">edit</Text>
+                            <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>
                     </View>
                     <View className="pl-6 pr-4 pb-4">
@@ -88,7 +89,7 @@ export default function EPKBuilder() {
                         </View>
                     </View>
                     <View className="absolute left-0 top-1/2 -translate-y-1/2 p-2 opacity-30">
-                        <Text className="material-symbols-outlined text-slate-400">drag_indicator</Text>
+                        <SymbolIcon name="drag_indicator" className="text-slate-400" />
                     </View>
                 </View>
 
@@ -97,7 +98,7 @@ export default function EPKBuilder() {
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
                         <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Notable Press</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
-                            <Text className="material-symbols-outlined text-primary text-lg">edit</Text>
+                            <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>
                     </View>
                     <View className="pl-6 pr-4 pb-4 gap-2">
@@ -108,7 +109,7 @@ export default function EPKBuilder() {
                                 </View>
                                 <Text className="text-sm font-medium text-slate-700 dark:text-zinc-200">Pitchfork Review</Text>
                             </View>
-                            <Text className="material-symbols-outlined text-slate-400 text-lg">open_in_new</Text>
+                            <SymbolIcon name="open_in_new" className="text-slate-400 text-lg" />
                         </TouchableOpacity>
                         <TouchableOpacity className="flex-row items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5">
                             <View className="flex-row items-center gap-3">
@@ -117,11 +118,11 @@ export default function EPKBuilder() {
                                 </View>
                                 <Text className="text-sm font-medium text-slate-700 dark:text-zinc-200">Complex Magazine</Text>
                             </View>
-                            <Text className="material-symbols-outlined text-slate-400 text-lg">open_in_new</Text>
+                            <SymbolIcon name="open_in_new" className="text-slate-400 text-lg" />
                         </TouchableOpacity>
                     </View>
                     <View className="absolute left-0 top-1/2 -translate-y-1/2 p-2 opacity-30">
-                        <Text className="material-symbols-outlined text-slate-400">drag_indicator</Text>
+                        <SymbolIcon name="drag_indicator" className="text-slate-400" />
                     </View>
                 </View>
 
@@ -129,7 +130,7 @@ export default function EPKBuilder() {
                 <View className="flex-row items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 shadow-sm mb-4">
                     <View className="flex-row items-start gap-3">
                         <View className="p-2 rounded-full bg-primary/20">
-                            <Text className="material-symbols-outlined text-primary">analytics</Text>
+                            <SymbolIcon name="analytics" className="text-primary" />
                         </View>
                         <View>
                             <Text className="text-slate-900 dark:text-white font-bold text-sm">Show Analytics</Text>
@@ -149,7 +150,7 @@ export default function EPKBuilder() {
             <View className="absolute bottom-0 w-full bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/5 p-4 pb-8 z-40">
                 <TouchableOpacity className="w-full bg-primary h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg shadow-primary/20">
                     <Text className="text-white font-bold text-lg">Generate Shareable Link</Text>
-                    <Text className="material-symbols-outlined text-white text-xl">link</Text>
+                    <SymbolIcon name="link" className="text-white text-xl" />
                 </TouchableOpacity>
             </View>
         </View>

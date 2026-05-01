@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 const TIME_RANGES = ['Last 7 Days', 'Last 28 Days', 'All Time'];
 
@@ -39,13 +40,13 @@ export default function AudienceInsights() {
           onPress={() => router.back()}
           className="h-10 w-10 items-center justify-center rounded-full"
         >
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</Text>
+          <SymbolIcon name="arrow_back" className="text-slate-900 dark:text-white" />
         </TouchableOpacity>
         <Text className="flex-1 text-center text-lg font-bold leading-tight text-slate-900 dark:text-white">
           Audience Insights
         </Text>
         <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full">
-          <Text className="material-symbols-outlined text-slate-900 dark:text-white">ios_share</Text>
+          <SymbolIcon name="ios_share" className="text-slate-900 dark:text-white" />
         </TouchableOpacity>
       </View>
 
@@ -87,7 +88,7 @@ export default function AudienceInsights() {
           <View className="flex-row items-baseline gap-3">
             <Text className="text-5xl font-bold tracking-tight text-slate-900 dark:text-white">24.5k</Text>
             <View className="flex-row items-center gap-0.5 rounded-full bg-primary/10 px-2 py-1">
-              <Text className="material-symbols-outlined text-primary" style={{ fontSize: 16 }}>trending_up</Text>
+              <SymbolIcon name="trending_up" className="text-primary" style={{ fontSize: 16 }} />
               <Text className="text-sm font-bold text-primary">12%</Text>
             </View>
           </View>
@@ -101,7 +102,7 @@ export default function AudienceInsights() {
           <View className="rounded-xl bg-white dark:bg-[#161616] p-5">
             <View className="flex-row items-center justify-between mb-6">
               <Text className="text-base font-semibold text-slate-900 dark:text-white">Age Distribution</Text>
-              <Text className="material-symbols-outlined text-slate-400">info</Text>
+              <SymbolIcon name="info" className="text-slate-400" />
             </View>
 
             <View className="flex-row items-end justify-between" style={{ height: 180 }}>
@@ -159,7 +160,7 @@ export default function AudienceInsights() {
             {/* Returning */}
             <View className="flex-1 rounded-xl bg-white dark:bg-[#161616] p-5 gap-3">
               <View className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center">
-                <Text className="material-symbols-outlined text-primary">replay</Text>
+                <SymbolIcon name="replay" className="text-primary" />
               </View>
               <View>
                 <Text className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Returning</Text>
@@ -173,7 +174,7 @@ export default function AudienceInsights() {
             {/* New Fans */}
             <View className="flex-1 rounded-xl bg-white dark:bg-[#161616] p-5 gap-3">
               <View className="h-10 w-10 rounded-full bg-gray-100 dark:bg-white/10 items-center justify-center">
-                <Text className="material-symbols-outlined text-slate-900 dark:text-white">person_add</Text>
+                <SymbolIcon name="person_add" className="text-slate-900 dark:text-white" />
               </View>
               <View>
                 <Text className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">New Fans</Text>
@@ -202,7 +203,7 @@ export default function AudienceInsights() {
                 className="flex-row items-center gap-4 rounded-xl bg-white dark:bg-[#161616] p-3"
               >
                 <View className="h-14 w-14 rounded-lg bg-[#121212] items-center justify-center">
-                  <Text className="material-symbols-outlined text-white/20" style={{ fontSize: 24 }}>music_note</Text>
+                  <SymbolIcon name="music_note" className="text-white/20" style={{ fontSize: 24 }} />
                 </View>
                 <View className="flex-1">
                   <Text className="font-bold text-slate-900 dark:text-white" numberOfLines={1}>{track.title}</Text>
@@ -225,7 +226,7 @@ export default function AudienceInsights() {
             shadowRadius: 16,
           }}
         >
-          <Text className="material-symbols-outlined text-white">analytics</Text>
+          <SymbolIcon name="analytics" className="text-white" />
           <Text className="text-white font-bold">Export Report</Text>
         </TouchableOpacity>
       </View>

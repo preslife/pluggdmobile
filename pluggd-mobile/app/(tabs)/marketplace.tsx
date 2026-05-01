@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../src/lib/supabase';
 import { Database } from '../../src/types/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
+import { SymbolIcon } from '../../components/SymbolIcon';
 
 type Beat = Database['public']['Tables']['beats']['Row'];
 
@@ -131,9 +132,7 @@ export default function Marketplace() {
             className="absolute bottom-2 right-2 h-10 w-10 rounded-full items-center justify-center border border-white/30"
             style={{ backgroundColor: isThisPlaying ? '#FF5200' : 'rgba(0,0,0,0.4)' }}
           >
-            <Text className="material-symbols-outlined text-white text-2xl">
-              {isThisPlaying ? 'pause' : 'play_arrow'}
-            </Text>
+            <SymbolIcon name={isThisPlaying ? 'pause' : 'play_arrow'} className="text-white text-2xl" />
           </View>
 
           {/* Exclusive badge — top left */}
@@ -186,9 +185,7 @@ export default function Marketplace() {
             <Text className="text-white text-sm font-bold">
               ${beat.price || '—'}
             </Text>
-            <Text className="material-symbols-outlined text-white text-[18px]">
-              add_shopping_cart
-            </Text>
+            <SymbolIcon name="add_shopping_cart" className="text-white text-[18px]" />
           </TouchableOpacity>
         </View>
       </View>
@@ -215,14 +212,10 @@ export default function Marketplace() {
           </Text>
           <View className="flex-row gap-4 items-center">
             <TouchableOpacity onPress={() => setShowSearch(!showSearch)}>
-              <Text className="material-symbols-outlined text-slate-600 dark:text-white text-2xl">
-                search
-              </Text>
+              <SymbolIcon name="search" className="text-slate-600 dark:text-white text-2xl" />
             </TouchableOpacity>
             <TouchableOpacity className="relative">
-              <Text className="material-symbols-outlined text-slate-600 dark:text-white text-2xl">
-                shopping_cart
-              </Text>
+              <SymbolIcon name="shopping_cart" className="text-slate-600 dark:text-white text-2xl" />
               {/* Cart badge */}
               <View className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary items-center justify-center">
                 <Text className="text-[10px] font-bold text-white">0</Text>
@@ -239,9 +232,7 @@ export default function Marketplace() {
         >
           {/* Filter icon + label */}
           <TouchableOpacity className="flex-row items-center gap-1 pr-2">
-            <Text className="material-symbols-outlined text-slate-500 dark:text-text-secondary text-[20px]">
-              tune
-            </Text>
+            <SymbolIcon name="tune" className="text-slate-500 dark:text-text-secondary text-[20px]" />
             <Text className="text-slate-500 dark:text-text-secondary text-sm font-medium">
               Filters
             </Text>
@@ -290,9 +281,7 @@ export default function Marketplace() {
             <Text className="text-sm font-bold text-primary">
               Sort by: {sortBy}
             </Text>
-            <Text className="material-symbols-outlined text-primary text-[18px]">
-              keyboard_arrow_down
-            </Text>
+            <SymbolIcon name="keyboard_arrow_down" className="text-primary text-[18px]" />
           </TouchableOpacity>
         </View>
 

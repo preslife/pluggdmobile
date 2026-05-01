@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { usePlayback } from '../src/context/PlaybackProvider';
 import { RepeatMode } from 'react-native-track-player';
 import TipModal from '../components/TipModal';
+import { SymbolIcon } from '../components/SymbolIcon';
 
 function formatTime(seconds: number): string {
   if (!seconds || !isFinite(seconds)) return '0:00';
@@ -110,17 +111,13 @@ export default function Player() {
             onPress={() => router.back()}
             className="h-10 w-10 items-center justify-center rounded-full"
           >
-            <Text className="material-symbols-outlined text-white" style={{ fontSize: 28 }}>
-              expand_more
-            </Text>
+            <SymbolIcon name="expand_more" className="text-white" style={{ fontSize: 28 }} />
           </TouchableOpacity>
           <Text className="text-white/90 text-sm font-semibold uppercase tracking-widest">
             Now Playing
           </Text>
           <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full">
-            <Text className="material-symbols-outlined text-white" style={{ fontSize: 24 }}>
-              more_horiz
-            </Text>
+            <SymbolIcon name="more_horiz" className="text-white" style={{ fontSize: 24 }} />
           </TouchableOpacity>
         </View>
 
@@ -141,9 +138,7 @@ export default function Player() {
               <Image source={{ uri: cover as string }} className="w-full h-full" resizeMode="cover" />
             ) : (
               <View className="w-full h-full bg-[#121212] items-center justify-center">
-                <Text className="material-symbols-outlined text-white/20" style={{ fontSize: 80 }}>
-                  music_note
-                </Text>
+                <SymbolIcon name="music_note" className="text-white/20" style={{ fontSize: 80 }} />
               </View>
             )}
           </View>
@@ -161,9 +156,7 @@ export default function Player() {
               </Text>
             </View>
             <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full mt-1">
-              <Text className="material-symbols-outlined text-white/40" style={{ fontSize: 24 }}>
-                favorite
-              </Text>
+              <SymbolIcon name="favorite" className="text-white/40" style={{ fontSize: 24 }} />
             </TouchableOpacity>
           </View>
           {/* Genre badge */}
@@ -216,24 +209,16 @@ export default function Player() {
         {/* Playback Controls — shuffle, prev, play/pause, next, repeat */}
         <View className="flex-row items-center justify-between mb-8 px-2">
           <TouchableOpacity onPress={toggleShuffle} className="p-2 relative">
-            <Text
-              className={`material-symbols-outlined ${shuffleMode === 'on' ? 'text-primary' : 'text-white/40'}`}
-              style={{ fontSize: 24 }}
-            >
-              shuffle
-            </Text>
+            <SymbolIcon name="shuffle" className={`${shuffleMode === 'on' ? 'text-primary' : 'text-white/40'}`}
+              style={{ fontSize: 24 }} />
             {shuffleMode === 'on' && (
               <View className="absolute -bottom-1 left-1/2 w-1 h-1 bg-primary rounded-full" style={{ marginLeft: -2 }} />
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={skipToPrevious} className="p-2">
-            <Text
-              className="material-symbols-outlined text-white"
-              style={{ fontSize: 40 }}
-            >
-              skip_previous
-            </Text>
+            <SymbolIcon name="skip_previous" className="text-white"
+              style={{ fontSize: 40 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -247,30 +232,18 @@ export default function Player() {
               elevation: 15,
             }}
           >
-            <Text
-              className="material-symbols-outlined text-white"
-              style={{ fontSize: 48 }}
-            >
-              {isBuffering ? 'hourglass_empty' : isPlaying ? 'pause' : 'play_arrow'}
-            </Text>
+            <SymbolIcon name={isBuffering ? 'hourglass_empty' : isPlaying ? 'pause' : 'play_arrow'} className="text-white"
+              style={{ fontSize: 48 }} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={skipToNext} className="p-2">
-            <Text
-              className="material-symbols-outlined text-white"
-              style={{ fontSize: 40 }}
-            >
-              skip_next
-            </Text>
+            <SymbolIcon name="skip_next" className="text-white"
+              style={{ fontSize: 40 }} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={toggleRepeat} className="p-2">
-            <Text
-              className={`material-symbols-outlined ${repeatMode !== RepeatMode.Off ? 'text-primary' : 'text-white/40'}`}
-              style={{ fontSize: 24 }}
-            >
-              {repeatMode === RepeatMode.Track ? 'repeat_one' : 'repeat'}
-            </Text>
+            <SymbolIcon name={repeatMode === RepeatMode.Track ? 'repeat_one' : 'repeat'} className={`${repeatMode !== RepeatMode.Off ? 'text-primary' : 'text-white/40'}`}
+              style={{ fontSize: 24 }} />
           </TouchableOpacity>
         </View>
 
@@ -281,27 +254,21 @@ export default function Player() {
             className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-primary border border-primary/50"
             style={{ shadowColor: '#FF5500', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 }}
           >
-            <Text className="material-symbols-outlined text-white" style={{ fontSize: 24 }}>
-              monetization_on
-            </Text>
+            <SymbolIcon name="monetization_on" className="text-white" style={{ fontSize: 24 }} />
             <Text className="text-[10px] font-bold text-white uppercase tracking-wide">
               Tip Artist
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-            <Text className="material-symbols-outlined text-white/90" style={{ fontSize: 24 }}>
-              playlist_add
-            </Text>
+            <SymbolIcon name="playlist_add" className="text-white/90" style={{ fontSize: 24 }} />
             <Text className="text-[10px] font-semibold text-white/80 uppercase tracking-wide">
               Playlist
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-            <Text className="material-symbols-outlined text-white/90" style={{ fontSize: 24 }}>
-              download
-            </Text>
+            <SymbolIcon name="download" className="text-white/90" style={{ fontSize: 24 }} />
             <Text className="text-[10px] font-semibold text-white/80 uppercase tracking-wide">
               Download
             </Text>
