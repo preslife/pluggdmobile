@@ -81,3 +81,38 @@ Then open:
 xcrun simctl openurl booted pluggd://live/create
 ```
 
+## 2026-05-01 Update
+
+### Mobile Checkpoints Added
+
+- `8a547b9` — added supplied Pluggd brand assets, app icon/splash assets, reusable `BrandLogo`, and `SymbolIcon` compatibility layer.
+- `e0a4c95` — fixed NativeWind transformation so className-based screens render correctly in the native iOS build.
+
+### Verified On Simulator
+
+- `npx tsc --noEmit` passes in `/Users/apple/pluggd-mobile-workspace/pluggd-mobile`.
+- Metro starts with:
+  `npx expo start --dev-client --port 8081 --host localhost --clear`
+- Verified screenshots/routes:
+  - `pluggd://` home feed
+  - `pluggd://auth/login`
+  - `pluggd://auth/signup`
+  - `pluggd://live/create`
+  - `pluggd://wallet`
+- Metro showed only repeated `onAnimatedValueUpdate` warnings during spot checks; no JS runtime errors were seen.
+
+### Edge Functions
+
+- Deployed `validate-iap-receipt` to Supabase project `qkwvqmubhyondemhasjp` from `/Users/apple/PLUGGD_NEW`.
+- The deployed credit SKU mapping is:
+  - `pluggd_credits_starter` → 500 credits
+  - `pluggd_credits_popular` → 1,050 credits
+  - `pluggd_credits_value` → 2,750 credits
+  - `pluggd_credits_premium` → 5,750 credits
+  - `pluggd_credits_ultimate` → 12,000 credits
+- No live-session Edge Functions were deployed on 2026-05-01. Keep using `/Users/apple/PLUGGD_NEW` as the safe source before any live backend deploy.
+
+### Still Outstanding
+
+- The three migrations listed above still need to be applied manually unless confirmed otherwise.
+- `/Users/apple/PLUGGD_NEW` contains untracked Supabase function/migration files from prior work; do not bulk-commit or deploy from there without reviewing its full git status.
