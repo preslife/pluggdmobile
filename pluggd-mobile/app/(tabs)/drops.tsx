@@ -17,7 +17,7 @@ import { usePlayback } from '../../src/context/PlaybackProvider';
 
 const FILTERS = ['All', 'New', 'Paid', 'Free'];
 
-export default function DropsScreen() {
+export default function MusicScreen() {
   const router = useRouter();
   const { playTrack, playQueue } = usePlayback();
   const [activeFilter, setActiveFilter] = useState('All');
@@ -61,8 +61,8 @@ export default function DropsScreen() {
 
   return (
     <ScreenShell
-      title="Drops"
-      subtitle="Music releases from Pluggd artists, producers, DJs and curators."
+      title="Music"
+      subtitle="Singles, EPs, albums and tracks from Pluggd artists, producers, DJs and curators."
       action={
         <Pressable style={styles.actionButton} onPress={() => playable.length && playQueue(playable as any)}>
           <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
@@ -81,12 +81,12 @@ export default function DropsScreen() {
       ) : null}
 
       {!loading && filtered.length === 0 ? (
-        <EmptyState title="No drops found" body="Fresh releases will appear here as creators publish them." />
+        <EmptyState title="No music found" body="Fresh releases will appear here as creators publish them." />
       ) : null}
 
       {filtered.length > 0 ? (
         <>
-          <SectionTitle title="Featured drops" />
+          <SectionTitle title="Featured music" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
             {filtered.slice(0, 8).map((release) => (
               <PosterCard

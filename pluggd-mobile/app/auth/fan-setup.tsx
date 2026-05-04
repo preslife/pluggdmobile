@@ -263,7 +263,7 @@ export default function FanSetup() {
 
         <ToggleRow
           icon="notifications-none"
-          title="New drops, live rooms, and event reminders"
+          title="New music, live rooms, and event reminders"
           enabled={notifications}
           onPress={() => setNotifications((value) => !value)}
         />

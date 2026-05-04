@@ -48,7 +48,7 @@ const ROLE_OPTIONS: RoleOption[] = [
     description: 'Vocalist, rapper, songwriter, performer',
     category: 'Creator',
     icon: 'mic',
-    modules: ['Drops', 'Memberships', 'Split Engine'],
+    modules: ['Releases', 'Memberships', 'Split Engine'],
   },
   {
     value: 'producer',

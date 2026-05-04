@@ -15,7 +15,7 @@ export default function CommunityHub() {
             avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDWMi8sH-jB2N_Ps5XnZDiOLrKv-qu-kuEkXGMCH7Fg7osG4zmWvhUbUhHufsEL0428W2sYIm5KwhU2i8V3fMdTg6E3LRcZn8s8xC-5x23Ss3wL7bs7cLw3kjpnnmUKoiirDupYuXHsUKMJXZ_t559bHxzN0y9boXyyNgoRVOyFCDkIpF72x80QEqHIKxNqa2J5_SLDKkJCqPDGt6z6fbkXkagiY8fL6luGK1WkJyRy9pt5x15gB3clU0cfo2Q0UI3jEMZl0j5wKng',
             time: '2h',
             verified: true,
-            content: "Just dropped a new sample pack in the marketplace! It's got those heavy 808s you've been asking for. Check it out 🎹🔥",
+            content: "Just added new samples in Market! It's got those heavy 808s you've been asking for. Check it out 🎹🔥",
             media: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDLn53ljzSmT_up07t2h_dZ8fJUxDnBjhn0V-s5cIKtIOIhb24RZ9HVZeJbfl8f5KH1ByRag4eFglPBVomyBttDOiDfe9loQOFzBt2TpHtvYNMC2f-kcWmEw2_tSuOh4J3wMGqKzGpDm11CrtJ6uuVOONDoDCM-tu2xVAP-IK0EFwUlc9D1ZzSYQeZg_or5qMKBPOdQtX0RM5z6v171Zfc0maXkKeSeAbEpMkomXUc-pAB8_9dZcc8JPTE_ClgG5txA-749Lwopufk',
             stats: { likes: '1.2k', comments: '48' }
         },
@@ -107,7 +107,7 @@ export default function CommunityHub() {
 
                 {/* Filters */}
                 <View className="px-4 py-2 mt-2 flex-row items-center justify-between">
-                    <Text className="text-lg font-bold text-slate-900 dark:text-white">Latest Drops</Text>
+                    <Text className="text-lg font-bold text-slate-900 dark:text-white">Latest Music</Text>
                     <View className="flex-row gap-3">
                         <Text className="text-primary text-sm font-medium">Hot</Text>
                         <Text className="text-slate-500 dark:text-slate-400 text-sm font-medium">New</Text>

@@ -8,7 +8,7 @@ import { useAuth } from '../../src/context/AuthProvider';
 import { supabase } from '../../src/lib/supabase';
 import { FanMapPlugItem, PLUGGD_ORANGE, SocialPostItem, formatCompact } from '../../src/lib/mobileContent';
 
-const TABS = ['Feed', 'Forum', 'Map', 'Hubs'];
+const TABS = ['Feed', 'Map', 'Battles', 'Collabs', 'Challenges', 'Scenes'];
 
 export default function CommunityScreen() {
   const router = useRouter();
@@ -59,7 +59,7 @@ export default function CommunityScreen() {
   return (
     <ScreenShell
       title="Community"
-      subtitle="Feed, forum signals, fan map, and scene activity from across Pluggd."
+      subtitle="Feed, map, battles, collabs, challenges and scene activity from across Pluggd."
       action={
         <Pressable style={styles.actionButton} onPress={() => setActiveTab('Map')}>
           <MaterialIcons name="map" size={19} color="#FFFFFF" />
@@ -90,7 +90,7 @@ export default function CommunityScreen() {
                 multiline
               />
               <View style={styles.composerFooter}>
-                <Text style={styles.composerHint}>Hashtags, updates, drops, events</Text>
+                <Text style={styles.composerHint}>Hashtags, updates, music, events</Text>
                 <Pressable style={styles.postButton} onPress={publishPost}>
                   <Text style={styles.postButtonText}>Post</Text>
                 </Pressable>
@@ -119,12 +119,11 @@ export default function CommunityScreen() {
         </>
       ) : null}
 
-      {!loading && activeTab === 'Forum' ? (
+      {!loading && activeTab === 'Battles' ? (
         <>
-          <SectionTitle title="Forum signals" />
-          <ListCard title="Collaboration requests" subtitle="Find producers, vocalists, DJs and promoters" meta={`${formatCompact(posts.length)} recent community posts`} icon="chevron-right" onPress={() => router.push('/pro/collab' as any)} />
-          <ListCard title="Trending hashtags" subtitle="#newmusic #opendecks #beats #soundboards" meta="Community topics" icon="chevron-right" />
-          <ListCard title="Daily prompt" subtitle="What are you working on today?" meta="Post to join the thread" icon="chevron-right" />
+          <SectionTitle title="Battles" />
+          <ListCard title="Live battles" subtitle="Creator matchups, voting and leaderboard moments" meta="Community battles" icon="chevron-right" onPress={() => router.push('/gamification/battles' as any)} />
+          <ListCard title="Open decks" subtitle="DJs, producers and selectors competing for the next slot" meta="Scene competitions" icon="chevron-right" onPress={() => router.push('/gamification/battles' as any)} />
         </>
       ) : null}
 
@@ -151,7 +150,24 @@ export default function CommunityScreen() {
         </>
       ) : null}
 
-      {!loading && activeTab === 'Hubs' ? (
+      {!loading && activeTab === 'Collabs' ? (
+        <>
+          <SectionTitle title="Collabs" />
+          <ListCard title="Collaboration requests" subtitle="Find producers, vocalists, DJs and promoters" meta={`${formatCompact(posts.length)} recent community posts`} icon="chevron-right" onPress={() => router.push('/pro/collab' as any)} />
+          <ListCard title="Trending hashtags" subtitle="#newmusic #opendecks #beats #soundboards" meta="Community topics" icon="chevron-right" />
+          <ListCard title="Daily prompt" subtitle="What are you working on today?" meta="Post to join the thread" icon="chevron-right" />
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Challenges' ? (
+        <>
+          <SectionTitle title="Challenges" />
+          <ListCard title="Creator quests" subtitle="Daily and weekly actions to grow your profile" meta="Challenges" onPress={() => router.push('/gamification/quests' as any)} />
+          <ListCard title="Academy paths" subtitle="Courses, skills and progress for creators" meta="Learning" onPress={() => router.push('/gamification/courses' as any)} />
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Scenes' ? (
         <>
           <SectionTitle title="Scene hubs" />
           <ListCard title="Soundboards" subtitle="Open creator boards and process rooms" meta="Community workspace" onPress={() => router.push('/soundboards' as any)} />
@@ -290,4 +306,3 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 });
-

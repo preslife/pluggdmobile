@@ -11,27 +11,43 @@ type DockItem = {
 };
 
 const FAN_DOCK: DockItem[] = [
-  { label: 'Home', route: '/', icon: 'home-filled', aliases: ['/(tabs)'] },
-  { label: 'Discover', route: '/explore', icon: 'explore', aliases: ['/(tabs)/explore'] },
-  { label: 'Drops', route: '/drops', icon: 'album', aliases: ['/(tabs)/drops', '/release'] },
-  { label: 'Market', route: '/marketplace', icon: 'shopping-bag', aliases: ['/(tabs)/marketplace', '/beat', '/sample-pack'] },
-  { label: 'Mixes', route: '/mixes', icon: 'headphones', aliases: ['/(tabs)/mixes', '/mix'] },
+  { label: 'Home', route: '/', icon: 'home-filled', aliases: ['/(tabs)', '/home'] },
+  {
+    label: 'Discover',
+    route: '/discover',
+    icon: 'explore',
+    aliases: [
+      '/explore',
+      '/(tabs)/explore',
+      '/music',
+      '/drops',
+      '/(tabs)/drops',
+      '/release',
+      '/mixes',
+      '/(tabs)/mixes',
+      '/soundboards',
+      '/(tabs)/soundboards',
+      '/membership',
+    ],
+  },
+  { label: 'Community', route: '/community', icon: 'forum', aliases: ['/(tabs)/community', '/social', '/gamification', '/pro/collab'] },
   { label: 'Events', route: '/events', icon: 'event', aliases: ['/(tabs)/events'] },
-  { label: 'Live', route: '/live', icon: 'settings-input-antenna', aliases: ['/(tabs)/live'] },
-  { label: 'Community', route: '/community', icon: 'forum', aliases: ['/(tabs)/community', '/social'] },
-  { label: 'Boards', route: '/soundboards', icon: 'dashboard-customize', aliases: ['/(tabs)/soundboards', '/soundboard'] },
-  { label: 'Profile', route: '/profile', icon: 'person', aliases: ['/(tabs)/profile', '/wallet', '/commerce/orders', '/library'] },
+  { label: 'Market', route: '/market', icon: 'storefront', aliases: ['/(tabs)/marketplace', '/marketplace', '/beat', '/sample-pack', '/commerce'] },
 ];
 
 const CREATOR_DOCK: DockItem[] = [
-  { label: 'Studio', route: '/creator/dashboard', icon: 'space-dashboard', aliases: ['/creator'] },
-  { label: 'Catalog', route: '/creator/upload', icon: 'library-music' },
-  { label: 'Live', route: '/live', icon: 'settings-input-antenna' },
+  { label: 'Dashboard', route: '/creator/dashboard', icon: 'space-dashboard', aliases: ['/creator/dashboard'] },
+  { label: 'Releases', route: '/creator/upload', icon: 'library-music' },
+  { label: 'Beats', route: '/creator/upload?action=beat', icon: 'headphones' },
+  { label: 'Mixes', route: '/creator/upload?action=mix', icon: 'graphic-eq' },
+  { label: 'Soundboards', route: '/soundboards', icon: 'dashboard-customize' },
   { label: 'Events', route: '/creator/events', icon: 'event' },
-  { label: 'Analytics', route: '/creator/analytics', icon: 'timeline' },
+  { label: 'Live', route: '/live/create', icon: 'settings-input-antenna' },
+  { label: 'Members', route: '/creator/memberships', icon: 'workspace-premium' },
   { label: 'Wallet', route: '/wallet', icon: 'account-balance-wallet' },
-  { label: 'Profile', route: '/profile', icon: 'person' },
-  { label: 'Hub', route: '/', icon: 'home-filled' },
+  { label: 'Analytics', route: '/creator/analytics', icon: 'timeline' },
+  { label: 'Contracts', route: '/creator/licensing', icon: 'description' },
+  { label: 'Settings', route: '/profile', icon: 'settings' },
 ];
 
 function normalize(pathname: string | null) {
@@ -122,4 +138,3 @@ const styles = StyleSheet.create({
     color: PLUGGD_ORANGE,
   },
 });
-

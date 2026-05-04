@@ -15,13 +15,15 @@ import {
   toTrack,
 } from '../../src/lib/mobileContent';
 
-const TABS = ['Beats', 'Sample Packs'];
+const TABS = ['All', 'Beats', 'Samples', 'Services', 'Licenses', 'Offers'];
+const SAMPLE_FILTERS = ['All', 'Sample Packs', 'Drum Kits', 'Loop Packs', 'One-Shots', 'MIDI Kits', 'Vocal Packs', 'Presets'];
 const GENRES = ['All', 'Hip Hop', 'R&B', 'Drill', 'Afrobeats', 'Trap', 'Electronic'];
 
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { playTrack, playQueue } = usePlayback();
-  const [activeTab, setActiveTab] = useState('Beats');
+  const [activeTab, setActiveTab] = useState('All');
+  const [sampleFilter, setSampleFilter] = useState('All');
   const [genre, setGenre] = useState('All');
   const [beats, setBeats] = useState<BeatItem[]>([]);
   const [packs, setPacks] = useState<SamplePackItem[]>([]);
@@ -64,7 +66,13 @@ export default function MarketplaceScreen() {
     () => (genre === 'All' ? packs : packs.filter((pack) => (pack.genre || '').toLowerCase() === genre.toLowerCase())),
     [packs, genre],
   );
-  const activeItems = activeTab === 'Beats' ? visibleBeats : visiblePacks;
+  const hasCommerceItems = activeTab === 'All'
+    ? visibleBeats.length + visiblePacks.length > 0
+    : activeTab === 'Beats'
+      ? visibleBeats.length > 0
+      : activeTab === 'Samples'
+        ? visiblePacks.length > 0
+        : true;
 
   const playBeat = (beat: BeatItem) => {
     const track = toTrack(beat, 'beat');
@@ -80,14 +88,19 @@ export default function MarketplaceScreen() {
     const tracks =
       activeTab === 'Beats'
         ? visibleBeats.map((beat) => toTrack(beat, 'beat')).filter(Boolean)
-        : visiblePacks.map((pack) => toTrack(pack, 'sample_pack')).filter(Boolean);
+        : activeTab === 'Samples'
+          ? visiblePacks.map((pack) => toTrack(pack, 'sample_pack')).filter(Boolean)
+          : [
+              ...visibleBeats.map((beat) => toTrack(beat, 'beat')).filter(Boolean),
+              ...visiblePacks.map((pack) => toTrack(pack, 'sample_pack')).filter(Boolean),
+            ];
     if (tracks.length) playQueue(tracks as any);
   };
 
   return (
     <ScreenShell
       title="Market"
-      subtitle="Beats, licenses, and sample packs for creators building the next record."
+      subtitle="Commerce, licensing, services and creator tools: beats, samples, licenses and offers."
       action={
         <Pressable style={styles.actionButton} onPress={playAll}>
           <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
@@ -98,7 +111,12 @@ export default function MarketplaceScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={TABS} active={activeTab} onChange={setActiveTab} />
-      <ContextRail tabs={GENRES} active={genre} onChange={setGenre} />
+      {['All', 'Beats', 'Samples'].includes(activeTab) ? (
+        <ContextRail tabs={GENRES} active={genre} onChange={setGenre} />
+      ) : null}
+      {activeTab === 'Samples' ? (
+        <ContextRail tabs={SAMPLE_FILTERS} active={sampleFilter} onChange={setSampleFilter} />
+      ) : null}
 
       {loading ? (
         <View style={styles.loading}>
@@ -106,11 +124,11 @@ export default function MarketplaceScreen() {
         </View>
       ) : null}
 
-      {!loading && activeItems.length === 0 ? (
+      {!loading && !hasCommerceItems ? (
         <EmptyState title="Nothing here yet" body="Try another genre or check back as creators upload new market items." />
       ) : null}
 
-      {!loading && activeTab === 'Beats' && visibleBeats.length > 0 ? (
+      {!loading && (activeTab === 'All' || activeTab === 'Beats') && visibleBeats.length > 0 ? (
         <>
           <SectionTitle title="Featured beats" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
@@ -127,7 +145,7 @@ export default function MarketplaceScreen() {
             ))}
           </ScrollView>
 
-          <SectionTitle title="Beats" />
+          {activeTab === 'Beats' ? <SectionTitle title="Beats" /> : null}
           {visibleBeats.map((beat) => (
             <ListCard
               key={beat.id}
@@ -144,15 +162,15 @@ export default function MarketplaceScreen() {
         </>
       ) : null}
 
-      {!loading && activeTab === 'Sample Packs' && visiblePacks.length > 0 ? (
+      {!loading && (activeTab === 'All' || activeTab === 'Samples') && visiblePacks.length > 0 ? (
         <>
-          <SectionTitle title="Sample pack previews" />
+          <SectionTitle title={activeTab === 'All' ? 'Sample previews' : `${sampleFilter === 'All' ? 'Samples' : sampleFilter}`} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
             {visiblePacks.slice(0, 8).map((pack) => (
               <PosterCard
                 key={pack.id}
                 title={pack.title || 'Untitled pack'}
-                subtitle={pack.genre || 'Sample pack'}
+                subtitle={pack.genre || 'Samples'}
                 meta={formatGBP(pack.price)}
                 imageUrl={pack.cover_art_url}
                 onPress={() => router.push(`/sample-pack/${pack.id}` as any)}
@@ -161,18 +179,42 @@ export default function MarketplaceScreen() {
             ))}
           </ScrollView>
 
-          <SectionTitle title="Sample packs" />
+          {activeTab === 'Samples' ? <SectionTitle title="Samples" /> : null}
           {visiblePacks.map((pack) => (
             <ListCard
               key={pack.id}
               title={pack.title || 'Untitled pack'}
-              subtitle={pack.description || pack.genre || 'Sample pack'}
+              subtitle={pack.description || pack.genre || 'Samples'}
               meta={`${pack.sample_count ?? 0} samples · ${pack.bpm_range || 'Any BPM'} · ${formatCompact(pack.total_downloads)} downloads · ${formatGBP(pack.price)}`}
               imageUrl={pack.cover_art_url}
               onPress={() => router.push(`/sample-pack/${pack.id}` as any)}
               onPlay={() => playPack(pack)}
             />
           ))}
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Services' ? (
+        <>
+          <SectionTitle title="Services" />
+          <ListCard title="Find a service provider" subtitle="Engineers, designers, marketers and specialists" meta="Creator services" icon="chevron-right" onPress={() => router.push('/discover' as any)} />
+          <ListCard title="Offer your services" subtitle="Set up your profile and accept work" meta="Studio setup" icon="chevron-right" onPress={() => router.push('/creator/dashboard' as any)} />
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Licenses' ? (
+        <>
+          <SectionTitle title="Licenses" />
+          <ListCard title="Beat licenses" subtitle="Usage rights for leases, exclusives and custom terms" meta="Market licensing" icon="chevron-right" onPress={() => router.push('/creator/licensing' as any)} />
+          <ListCard title="Contract tools" subtitle="Review rights, split terms and license records" meta="Creator tools" icon="chevron-right" onPress={() => router.push('/creator/licensing' as any)} />
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Offers' ? (
+        <>
+          <SectionTitle title="Creator offers" />
+          <ListCard title="Limited creator bundles" subtitle="Campaigns, services and unlockable fan offers" meta="Coming into Market" icon="chevron-right" />
+          <ListCard title="Membership offers" subtitle="Exclusive access from creators you follow" meta="Creator offers" icon="chevron-right" onPress={() => router.push('/membership' as any)} />
         </>
       ) : null}
     </ScreenShell>

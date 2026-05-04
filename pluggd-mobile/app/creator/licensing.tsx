@@ -232,7 +232,7 @@ export default function Licensing() {
             <SymbolIcon name="tips_and_updates" className="text-primary" style={{ fontSize: 20 }} />
             <Text className="flex-1 text-xs text-slate-600 dark:text-[#b9ab9d] leading-normal font-medium">
               <Text className="font-bold text-primary">Pro Tip: </Text>
-              Enabling "Exclusive Rights" will automatically remove this track from the marketplace once it is purchased.
+              Enabling "Exclusive Rights" will automatically remove this track from Market once it is purchased.
             </Text>
           </View>
         </View>

@@ -11,7 +11,6 @@ import {
   ViewStyle,
 } from 'react-native';
 import { PLUGGD_ORANGE, contentInitials } from '../src/lib/mobileContent';
-import { BrandLogo } from './BrandLogo';
 
 export function ScreenShell({
   title,
@@ -28,7 +27,6 @@ export function ScreenShell({
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <BrandLogo variant="dark" width={104} height={30} />
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
@@ -223,6 +221,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#080808',
+    paddingTop: 92,
   },
   header: {
     paddingHorizontal: 14,
@@ -445,4 +444,3 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 });
-

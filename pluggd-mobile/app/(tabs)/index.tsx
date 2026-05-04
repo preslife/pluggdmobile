@@ -12,11 +12,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#FF5200';
-const TABS = ['For You', 'Drops', 'Market', 'Mixes', 'Events', 'Live'];
 
 type ReleaseRow = {
   id: string;
@@ -78,7 +76,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Maya Sol',
     tag: '£2.99',
     tagType: 'paid',
-    route: '/drops',
+    route: '/music',
     color: '#B45309',
   },
   {
@@ -87,7 +85,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Kairo Beats',
     tag: 'Free',
     tagType: 'free',
-    route: '/drops',
+    route: '/music',
     color: '#15803D',
   },
   {
@@ -96,7 +94,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Selecta Nia',
     tag: '£1.99',
     tagType: 'paid',
-    route: '/drops',
+    route: '/music',
     color: '#6D28D9',
   },
 ];
@@ -122,13 +120,8 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={104} height={30} />;
-}
-
 export default function Home() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('For You');
   const [releases, setReleases] = useState<ReleaseRow[]>([]);
   const [beats, setBeats] = useState<BeatRow[]>([]);
   const [liveRooms, setLiveRooms] = useState<LiveRoomRow[]>([]);
@@ -211,23 +204,8 @@ export default function Home() {
 
     if (releaseDrops.length > 0) return releaseDrops;
 
-    const beatDrops = beats.slice(0, 3).map((beat, index) => {
-      const tag = formatGBP(beat.price ?? 0);
-
-      return {
-        id: beat.id,
-        title: beat.title,
-        creator: beat.producer_name || 'Producer',
-        imageUrl: beat.image_url,
-        tag,
-        tagType: tag === 'Free' ? 'free' as const : 'paid' as const,
-        route: '/marketplace',
-        color: ['#B45309', '#15803D', '#6D28D9'][index % 3],
-      };
-    });
-
-    return beatDrops.length > 0 ? beatDrops : FALLBACK_DROPS;
-  }, [beats, releases]);
+    return FALLBACK_DROPS;
+  }, [releases]);
 
   const liveItems = liveRooms.length > 0
     ? liveRooms.slice(0, 4).map((room, index) => ({
@@ -244,15 +222,6 @@ export default function Home() {
   const eventVenue = eventLocationParts[0]?.trim() || 'Venue TBA';
   const eventCity = eventLocationParts.slice(1).join(',').trim() || 'London';
 
-  const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
-    if (tab === 'Drops') router.push('/drops' as any);
-    if (tab === 'Market') router.push('/marketplace' as any);
-    if (tab === 'Mixes') router.push('/mixes' as any);
-    if (tab === 'Events') router.push('/events' as any);
-    if (tab === 'Live') router.push('/live' as any);
-  };
-
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="light" />
@@ -265,46 +234,9 @@ export default function Home() {
         <View style={styles.header}>
           <View style={styles.headerTitleWrap}>
             <Text style={styles.headerTitle}>Today on Pluggd</Text>
-            <PluggdWordmark />
-          </View>
-
-          <View style={styles.headerActions}>
-            <Pressable style={styles.iconButton} onPress={() => router.push('/explore' as any)}>
-              <MaterialIcons name="search" size={23} color="#FFFFFF" />
-            </Pressable>
-
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => router.push('/social/notifications' as any)}
-            >
-              <MaterialIcons name="notifications-none" size={23} color="#FFFFFF" />
-              <View style={styles.notificationDot} />
-            </Pressable>
+            <Text style={styles.headerSubtitle}>Music, mixes, scenes, events, market updates and live activity.</Text>
           </View>
         </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.segmentTabs}
-          style={styles.segmentTabsScroll}
-        >
-          {TABS.map((tab) => {
-            const selected = activeTab === tab;
-
-            return (
-              <Pressable
-                key={tab}
-                onPress={() => handleTabPress(tab)}
-                style={[styles.segmentTab, selected && styles.segmentTabActive]}
-              >
-                <Text style={[styles.segmentTabText, selected && styles.segmentTabTextActive]}>
-                  {tab}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
 
         {loading ? (
           <View style={styles.loadingBlock}>
@@ -390,7 +322,7 @@ export default function Home() {
           ))}
         </ScrollView>
 
-        <SectionHeader title="New drops" onPress={() => router.push('/drops' as any)} />
+        <SectionHeader title="New music" onPress={() => router.push('/music' as any)} />
 
         <ScrollView
           horizontal
@@ -493,15 +425,15 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 100,
     paddingBottom: 180,
   },
   header: {
-    minHeight: 58,
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   headerTitleWrap: {
     flex: 1,
@@ -512,76 +444,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '900',
   },
-  logoTextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  logoAccent: {
-    color: PLUGGD_ORANGE,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 9,
-    paddingTop: 2,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#151515',
-    borderWidth: 1,
-    borderColor: '#262626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 10,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: PLUGGD_ORANGE,
-  },
-  segmentTabs: {
-    flexDirection: 'row',
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-    borderRadius: 8,
-    padding: 4,
-  },
-  segmentTabsScroll: {
-    marginBottom: 14,
-  },
-  segmentTab: {
-    minWidth: 92,
-    height: 36,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentTabActive: {
-    backgroundColor: '#23140E',
-    borderWidth: 1,
-    borderColor: PLUGGD_ORANGE,
-  },
-  segmentTabText: {
+  headerSubtitle: {
     color: '#AFAFAF',
     fontSize: 14,
-    fontWeight: '800',
-  },
-  segmentTabTextActive: {
-    color: PLUGGD_ORANGE,
+    lineHeight: 20,
+    fontWeight: '700',
+    marginTop: 7,
   },
   loadingBlock: {
     minHeight: 92,

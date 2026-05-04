@@ -59,7 +59,10 @@ interface ReleaseResult {
   genre: string | null;
 }
 
-type SearchTab = 'all' | 'artists' | 'beats' | 'releases';
+type SearchTab = 'all' | 'creators' | 'beats' | 'music';
+type DiscoverTab = 'All' | 'Music' | 'Mixes' | 'Creators' | 'Soundboards' | 'Trending' | 'New';
+
+const DISCOVER_TABS: DiscoverTab[] = ['All', 'Music', 'Mixes', 'Creators', 'Soundboards', 'Trending', 'New'];
 
 // ─── Genre tags ──────────────────────────────────────────────────────
 const GENRES = [
@@ -84,6 +87,7 @@ export default function ExploreScreen() {
 
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
+  const [discoverTab, setDiscoverTab] = useState<DiscoverTab>('All');
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -223,9 +227,9 @@ export default function ExploreScreen() {
   };
 
   // ── Filter results by active tab ──
-  const showArtists = activeTab === 'all' || activeTab === 'artists';
+  const showArtists = activeTab === 'all' || activeTab === 'creators';
   const showBeats = activeTab === 'all' || activeTab === 'beats';
-  const showReleases = activeTab === 'all' || activeTab === 'releases';
+  const showReleases = activeTab === 'all' || activeTab === 'music';
   const totalResults = artists.length + beats.length + releases.length;
 
   return (
@@ -234,14 +238,14 @@ export default function ExploreScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Search Header ── */}
-      <View className="pt-14 px-4 pb-3 bg-background-dark/95 border-b border-white/5 z-10">
+      <View className="pt-24 px-4 pb-3 bg-background-dark/95 border-b border-white/5 z-10">
         <View className="flex-row items-center gap-3">
           <View className="flex-1 flex-row items-center bg-zinc-900 rounded-xl h-12 px-4 border border-white/10">
             <SymbolIcon name="search" className="text-primary text-xl" />
             <TextInput
               ref={searchInputRef}
               className="flex-1 ml-2 text-base text-white"
-              placeholder="Search drops, beats, mixes, events, boards..."
+              placeholder="Search music, beats, mixes, events, creators..."
               placeholderTextColor="#71717a"
               value={query}
               onChangeText={handleSearch}
@@ -265,6 +269,31 @@ export default function ExploreScreen() {
           </View>
         </View>
 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-3"
+          contentContainerStyle={{ gap: 8 }}
+        >
+          {DISCOVER_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => {
+                setDiscoverTab(tab);
+                if (tab === 'Music') setActiveTab('music');
+                if (tab === 'Creators') setActiveTab('creators');
+              }}
+              className={`px-4 py-1.5 rounded-full ${
+                discoverTab === tab ? 'bg-primary' : 'bg-zinc-900 border border-white/10'
+              }`}
+            >
+              <Text className={`text-sm font-semibold ${discoverTab === tab ? 'text-white' : 'text-zinc-400'}`}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         {/* Search tabs — only show when searching */}
         {hasSearched && (
           <ScrollView
@@ -273,7 +302,7 @@ export default function ExploreScreen() {
             className="mt-3"
             contentContainerStyle={{ gap: 8 }}
           >
-            {(['all', 'artists', 'beats', 'releases'] as SearchTab[]).map((tab) => (
+            {(['all', 'creators', 'beats', 'music'] as SearchTab[]).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab)}
@@ -288,7 +317,7 @@ export default function ExploreScreen() {
                     activeTab === tab ? 'text-white' : 'text-zinc-400'
                   }`}
                 >
-                  {tab}
+                  {tab === 'creators' ? 'Creators' : tab === 'music' ? 'Music' : tab}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -328,7 +357,7 @@ export default function ExploreScreen() {
             {/* Artists */}
             {showArtists && artists.length > 0 && (
               <View className="mb-6">
-                <Text className="text-white font-bold text-lg mb-3">Artists</Text>
+                <Text className="text-white font-bold text-lg mb-3">Creators</Text>
                 <View className="gap-2">
                   {artists.map((artist) => (
                     <TouchableOpacity
@@ -366,10 +395,10 @@ export default function ExploreScreen() {
               </View>
             )}
 
-            {/* Releases */}
+            {/* Music */}
             {showReleases && releases.length > 0 && (
               <View className="mb-6">
-                <Text className="text-white font-bold text-lg mb-3">Releases</Text>
+                <Text className="text-white font-bold text-lg mb-3">Music</Text>
                 <View className="gap-2">
                   {releases.map((release) => (
                     <TouchableOpacity
@@ -468,8 +497,8 @@ export default function ExploreScreen() {
               <Text className="text-white font-bold text-lg px-4 mb-3">Explore Pluggd</Text>
               <View className="px-4 flex-row flex-wrap gap-2 mb-5">
                 {[
-                  ['Drops', '/drops', 'album'],
-                  ['Market', '/marketplace', 'shopping_bag'],
+                  ['Music', '/music', 'album'],
+                  ['Market', '/market', 'shopping_bag'],
                   ['Mixes', '/mixes', 'headphones'],
                   ['Events', '/events', 'event'],
                   ['Community', '/community', 'forum'],
@@ -513,10 +542,10 @@ export default function ExploreScreen() {
             ) : (
               <>
                 {/* Trending Artists */}
-                {trendingArtists.length > 0 && (
+                {['All', 'Creators', 'Trending'].includes(discoverTab) && trendingArtists.length > 0 && (
                   <View className="mt-8">
                     <Text className="text-white font-bold text-lg px-4 mb-3">
-                      Featured Artists
+                      Featured Creators
                     </Text>
                     <ScrollView
                       horizontal
@@ -560,11 +589,13 @@ export default function ExploreScreen() {
                 )}
 
                 {/* Recent Releases */}
-                {recentReleases.length > 0 && (
+                {['All', 'Music', 'New'].includes(discoverTab) && recentReleases.length > 0 && (
                   <View className="mt-8">
                     <View className="flex-row items-center justify-between px-4 mb-3">
-                      <Text className="text-white font-bold text-lg">New Releases</Text>
-                      <Text className="text-primary text-sm font-semibold">See all</Text>
+                      <Text className="text-white font-bold text-lg">New Music</Text>
+                      <TouchableOpacity onPress={() => router.push('/music' as any)}>
+                        <Text className="text-primary text-sm font-semibold">See all</Text>
+                      </TouchableOpacity>
                     </View>
                     <ScrollView
                       horizontal
@@ -609,12 +640,12 @@ export default function ExploreScreen() {
                 )}
 
                 {/* Recent Beats */}
-                {recentBeats.length > 0 && (
+                {['All', 'Trending'].includes(discoverTab) && recentBeats.length > 0 && (
                   <View className="mt-8 px-4">
                     <View className="flex-row items-center justify-between mb-3">
                       <Text className="text-white font-bold text-lg">Fresh Beats</Text>
-                      <TouchableOpacity onPress={() => router.push('/(tabs)/marketplace')}>
-                        <Text className="text-primary text-sm font-semibold">Marketplace</Text>
+                      <TouchableOpacity onPress={() => router.push('/market' as any)}>
+                        <Text className="text-primary text-sm font-semibold">Market</Text>
                       </TouchableOpacity>
                     </View>
                     <View className="gap-2">

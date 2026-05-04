@@ -7,7 +7,7 @@ import { ContextRail, EmptyState, ListCard, ScreenShell, SectionTitle } from '..
 import { supabase } from '../../src/lib/supabase';
 import { EventItem, PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 
-const TABS = ['List', 'Map', 'Opportunities'];
+const TABS = ['Local Events', 'Featured Events', 'Promoted Events', 'Promoters', 'Venues', 'Ticket Links', 'RSVPs'];
 
 export default function EventsScreen() {
   const router = useRouter();
@@ -49,13 +49,7 @@ export default function EventsScreen() {
   return (
     <ScreenShell
       title="Events"
-      subtitle="Discover events, live rooms, tickets, and apply-to-play opportunities."
-      action={
-        <Pressable style={styles.actionButton} onPress={() => router.push('/creator/events' as any)}>
-          <MaterialIcons name="add" size={19} color="#FFFFFF" />
-          <Text style={styles.actionText}>Create</Text>
-        </Pressable>
-      }
+      subtitle="Real-world events, promoters, venues, ticket links, RSVPs and apply-to-play opportunities."
     >
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
@@ -71,9 +65,9 @@ export default function EventsScreen() {
         <EmptyState title="No upcoming events" body="Events and ticket links will appear here once promoters and venues publish them." />
       ) : null}
 
-      {!loading && activeTab === 'List' ? (
+      {!loading && ['Local Events', 'Featured Events', 'Promoted Events'].includes(activeTab) ? (
         <>
-          <SectionTitle title="Upcoming" />
+          <SectionTitle title={activeTab === 'Local Events' ? 'Upcoming near you' : activeTab} />
           {events.map((event) => (
             <ListCard
               key={event.id}
@@ -87,31 +81,48 @@ export default function EventsScreen() {
         </>
       ) : null}
 
-      {!loading && activeTab === 'Map' ? (
+      {!loading && activeTab === 'Promoters' ? (
         <>
-          <SectionTitle title="Map view" />
-          <View style={styles.mapFallback}>
-            <MaterialIcons name="map" size={36} color={PLUGGD_ORANGE} />
-            <Text style={styles.mapTitle}>Native map fallback</Text>
-            <Text style={styles.mapBody}>
-              Map data is grouped by city until the production native map token is wired.
-            </Text>
-          </View>
-          {cityGroups.map(([city, rows]) => (
+          <SectionTitle title="Promoters" />
+          <ListCard title="Promoter directory" subtitle="Find promoters by city, genre and event type" meta="Promoter profiles" icon="chevron-right" onPress={() => router.push('/discover' as any)} />
+          <ListCard title="Promote an event" subtitle="Create an event, add ticket links and apply-to-play details" meta="Creator tools" icon="chevron-right" onPress={() => router.push('/creator/events' as any)} />
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Venues' ? (
+        <>
+          <SectionTitle title="Venues" />
+          {cityGroups.length > 0 ? cityGroups.map(([city, rows]) => (
             <Pressable key={city} style={styles.cityCard}>
               <View>
                 <Text style={styles.cityName}>{city}</Text>
                 <Text style={styles.cityMeta}>{rows.length} upcoming event{rows.length === 1 ? '' : 's'}</Text>
               </View>
-              <MaterialIcons name="place" size={24} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="apartment" size={24} color={PLUGGD_ORANGE} />
             </Pressable>
+          )) : <EmptyState title="No venues yet" body="Venue profiles will appear here as they publish events." />}
+        </>
+      ) : null}
+
+      {!loading && activeTab === 'Ticket Links' ? (
+        <>
+          <SectionTitle title="Ticket links" />
+          {events.map((event) => (
+            <ListCard
+              key={event.id}
+              title={event.title || 'Untitled event'}
+              subtitle={event.location || 'Location TBA'}
+              meta={`${formatDate(event.starts_at)} · ${formatGBP(event.price_cents, { cents: true })}`}
+              imageUrl={event.cover_image_url}
+              onPress={() => router.push(`/events/${event.id}` as any)}
+            />
           ))}
         </>
       ) : null}
 
-      {!loading && activeTab === 'Opportunities' ? (
+      {!loading && activeTab === 'RSVPs' ? (
         <>
-          <SectionTitle title="Apply to play" />
+          <SectionTitle title="RSVPs and opportunities" />
           {events.map((event) => (
             <Pressable key={event.id} style={styles.opportunityCard} onPress={() => router.push(`/events/${event.id}` as any)}>
               <View style={styles.opportunityIcon}>
@@ -258,4 +269,3 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 });
-

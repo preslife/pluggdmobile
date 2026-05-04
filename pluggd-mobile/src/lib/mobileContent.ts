@@ -309,7 +309,7 @@ export function toTrack(
       id: sample.id,
       url: sample.file_url,
       title: sample.title || 'Sample preview',
-      artist: sample.category || 'Sample pack',
+      artist: sample.category || 'Samples',
       duration: Number(sample.duration_seconds ?? 0) || undefined,
       sampleId: sample.id,
       samplePackId: sample.sample_pack_id,
@@ -324,8 +324,8 @@ export function toTrack(
     return {
       id: pack.id,
       url: pack.preview_url,
-      title: pack.title || 'Sample pack preview',
-      artist: pack.genre || 'Sample pack',
+      title: pack.title || 'Samples preview',
+      artist: pack.genre || 'Samples',
       artwork: pack.cover_art_url || undefined,
       samplePackId: pack.id,
       type: 'sample_pack',
@@ -459,4 +459,3 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
 
   return { releases, beats, samplePacks, mixes, events, soundboards, profiles, posts, mapPlugs };
 }
-

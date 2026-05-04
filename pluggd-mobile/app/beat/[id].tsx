@@ -62,7 +62,7 @@ export default function BeatDetailScreen() {
               {beat.image_url ? <Image source={{ uri: beat.image_url }} style={styles.heroImage} /> : null}
               {!beat.image_url ? <MaterialIcons name="headphones" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
-            <Text style={styles.eyebrow}>Beat Marketplace</Text>
+            <Text style={styles.eyebrow}>Market / Beats</Text>
             <Text style={styles.title}>{beat.title || 'Untitled beat'}</Text>
             <Text style={styles.subtitle}>{beat.producer_name || 'Producer'}</Text>
 
@@ -164,4 +164,3 @@ const styles = StyleSheet.create({
   buyButton: { marginTop: 13, height: 48, borderRadius: 8, backgroundColor: '#21130E', borderWidth: 1, borderColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
   buyButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontWeight: '900' },
 });
-

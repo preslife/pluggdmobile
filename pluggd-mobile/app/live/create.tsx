@@ -53,7 +53,7 @@ const LIVE_MODES: Array<{
   {
     key: 'creator_live',
     title: 'Creator Live',
-    description: 'Solo broadcast for drops, updates, performances, and fan Q&A.',
+    description: 'Solo broadcast for release updates, performances, and fan Q&A.',
     icon: 'videocam',
     defaultStage: false,
     maxStage: 1,
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 100,
     paddingBottom: 120,
   },
   topBar: {

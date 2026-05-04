@@ -68,7 +68,7 @@ export default function LibraryScreen() {
               id: item.id,
               type: 'sample_pack' as const,
               title: item.title || 'Untitled pack',
-              subtitle: item.genre || 'Sample pack',
+              subtitle: item.genre || 'Samples',
               imageUrl: item.cover_art_url,
               route: `/sample-pack/${item.id}`,
             }))
@@ -84,7 +84,7 @@ export default function LibraryScreen() {
   }, []);
 
   return (
-    <ScreenShell title="Library" subtitle="Owned and saved releases, beats, sample packs, memberships and downloads.">
+    <ScreenShell title="Library" subtitle="Owned and saved music, beats, samples, memberships and downloads.">
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       {loading ? (
@@ -107,4 +107,3 @@ export default function LibraryScreen() {
     </ScreenShell>
   );
 }
-

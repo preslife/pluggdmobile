@@ -138,7 +138,7 @@ export default function OrderSuccess() {
       {/* Bottom CTA */}
       <View className="absolute bottom-0 left-0 right-0 bg-background-dark/95 border-t border-white/5 p-4 pb-10">
         <TouchableOpacity
-          onPress={() => router.replace('/marketplace')}
+          onPress={() => router.replace('/market')}
           className="w-full h-12 rounded-full bg-white flex-row items-center justify-center gap-2"
         >
           <Text className="text-black font-bold text-base">Continue Shopping</Text>

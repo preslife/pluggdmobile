@@ -13,7 +13,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useWallet } from '../../src/hooks/useWallet';
 import { supabase } from '../../src/lib/supabase';
@@ -291,7 +290,7 @@ function routeForAction(action: string) {
     case 'release':
       return '/creator/upload';
     case 'live':
-      return '/live';
+      return '/live/create';
     case 'events':
       return '/creator/events';
     case 'post':
@@ -308,6 +307,10 @@ function routeForAction(action: string) {
       return '/creator/memberships';
     case 'licensing':
       return '/creator/licensing';
+    case 'soundboards':
+      return '/soundboards';
+    case 'settings':
+      return '/profile';
     case 'profile':
       return '/profile';
     default:
@@ -635,7 +638,7 @@ export default function CreatorDashboard() {
       ...data.beats.slice(0, 2).map((beat) => ({
         id: `beat-${beat.id}`,
         title: beat.title,
-        subtitle: beat.is_published ? 'Beat live in marketplace' : 'Beat draft',
+        subtitle: beat.is_published ? 'Beat live in Market' : 'Beat draft',
         value: beat.price ? formatCurrency(Number(beat.price)) : '',
         valueLabel: beat.price ? 'price' : '',
         icon: 'headphones' as keyof typeof MaterialIcons.glyphMap,
@@ -767,7 +770,6 @@ export default function CreatorDashboard() {
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <PluggdWordmark />
             <Text style={styles.pageTitle}>Studio</Text>
           </View>
 
@@ -786,14 +788,18 @@ export default function CreatorDashboard() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.studioRail}
         >
-          <StudioRailItem label="Drops" icon="album" onPress={() => navigateAction('release')} />
+          <StudioRailItem label="Dashboard" icon="space-dashboard" onPress={() => router.push('/creator/dashboard' as any)} />
+          <StudioRailItem label="Releases" icon="album" onPress={() => navigateAction('release')} />
           <StudioRailItem label="Beats" icon="headphones" onPress={() => navigateAction('upload')} />
           <StudioRailItem label="Mixes" icon="graphic-eq" onPress={() => navigateAction('upload')} />
+          <StudioRailItem label="Soundboards" icon="dashboard-customize" onPress={() => navigateAction('soundboards')} />
           <StudioRailItem label="Events" icon="event" onPress={() => navigateAction('events')} />
-          <StudioRailItem label="Soundboards" icon="dashboard-customize" onPress={() => router.push('/soundboards' as any)} />
-          <StudioRailItem label="Members" icon="workspace-premium" onPress={() => navigateAction('memberships')} />
-          <StudioRailItem label="Payouts" icon="account-balance-wallet" onPress={() => navigateAction('payouts')} />
+          <StudioRailItem label="Live" icon="settings-input-antenna" onPress={() => navigateAction('live')} />
+          <StudioRailItem label="Memberships" icon="workspace-premium" onPress={() => navigateAction('memberships')} />
+          <StudioRailItem label="Wallet" icon="account-balance-wallet" onPress={() => navigateAction('payouts')} />
           <StudioRailItem label="Analytics" icon="timeline" onPress={() => navigateAction('analytics')} />
+          <StudioRailItem label="Contracts" icon="description" onPress={() => navigateAction('licensing')} />
+          <StudioRailItem label="Settings" icon="settings" onPress={() => navigateAction('settings')} />
         </ScrollView>
 
         {loading ? (
@@ -973,7 +979,7 @@ export default function CreatorDashboard() {
             <View style={styles.card}>
               <SectionHeader title="Upcoming" icon="event" action="Live" onPress={() => navigateAction('live')} />
               {upcoming.length === 0 ? (
-                <EmptyCardText text="No upcoming drops, rooms, or events yet." />
+                <EmptyCardText text="No upcoming releases, rooms, or events yet." />
               ) : (
                 <View style={styles.upcomingList}>
                   {upcoming.map((item, index) => (
@@ -1030,7 +1036,7 @@ function getRoleTools(
 
   if (role === 'curator') {
     return [
-      { label: 'Drops', value: formatNumber(counts.releases), icon: 'library-music' as const, route: 'upload' },
+      { label: 'Releases', value: formatNumber(counts.releases), icon: 'library-music' as const, route: 'upload' },
       { label: 'Audience', value: formatNumber(activeSupporters), icon: 'groups' as const, route: 'audience' },
       { label: 'Live rooms', value: formatNumber(counts.rooms), icon: 'settings-input-antenna' as const, route: 'live' },
       { label: 'Insights', value: 'Open', icon: 'timeline' as const, route: 'analytics' },
@@ -1043,10 +1049,6 @@ function getRoleTools(
     { label: 'Live rooms', value: formatNumber(counts.rooms), icon: 'settings-input-antenna' as const, route: 'live' },
     { label: 'Audience', value: formatNumber(activeSupporters), icon: 'groups' as const, route: 'audience' },
   ];
-}
-
-function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={106} height={32} />;
 }
 
 function QuickAction({
@@ -1244,7 +1246,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 100,
     paddingBottom: 210,
   },
   topBar: {

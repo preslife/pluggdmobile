@@ -14,7 +14,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 import { Database } from '../../src/types/supabase';
 
@@ -141,10 +140,6 @@ async function syncRoleSelection(
   }
 }
 
-function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={112} height={34} />;
-}
-
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -172,6 +167,7 @@ export default function ProfileScreen() {
   const username = profile?.username || profile?.slug || 'user';
   const displayName = fullName.trim() || profile?.username || 'Pluggd user';
   const avatarInitial = displayName.trim().charAt(0).toUpperCase() || 'P';
+  const creatorAccess = selectedRoles.some((role) => role !== 'fan');
 
   const fetchProfile = async () => {
     try {
@@ -371,7 +367,6 @@ export default function ProfileScreen() {
 
           <View style={styles.titleLogoWrap}>
             <Text style={styles.topBarTitle}>Profile</Text>
-            <PluggdWordmark />
           </View>
 
           <Pressable style={styles.iconButton} onPress={() => router.push('/settings/privacy')}>
@@ -421,7 +416,9 @@ export default function ProfileScreen() {
             <HubAction icon="workspace-premium" label="Memberships" value="Creator subscriptions" onPress={() => router.push('/membership' as any)} />
             <HubAction icon="notifications-none" label="Notifications" value="Activity and alerts" onPress={() => router.push('/social/notifications' as any)} />
             <HubAction icon="mail-outline" label="Inbox" value="Messages" onPress={() => router.push('/social/inbox' as any)} />
-            <HubAction icon="space-dashboard" label="Studio" value="Creator tools" onPress={() => router.push('/creator/dashboard' as any)} />
+            {creatorAccess ? (
+              <HubAction icon="space-dashboard" label="Studio" value="Creator tools" onPress={() => router.push('/creator/dashboard' as any)} />
+            ) : null}
           </HubGrid>
         </Section>
 
@@ -687,11 +684,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 100,
     paddingBottom: 146,
   },
   topBar: {
-    minHeight: 70,
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

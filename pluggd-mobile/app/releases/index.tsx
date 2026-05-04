@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
 
-export default function DropsRedirect() {
+export default function ReleasesRedirect() {
   return <Redirect href="/music" />;
 }

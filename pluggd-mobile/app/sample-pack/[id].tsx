@@ -78,7 +78,7 @@ export default function SamplePackDetailScreen() {
             <Text style={styles.eyebrow}>Sample Pack</Text>
             <Text style={styles.title}>{pack.title || 'Untitled pack'}</Text>
             <Text style={styles.subtitle}>
-              {pack.genre || 'Sample pack'} · {pack.bpm_range || 'Any BPM'} · {formatGBP(pack.price)}
+              {pack.genre || 'Samples'} · {pack.bpm_range || 'Any BPM'} · {formatGBP(pack.price)}
             </Text>
             {pack.description ? <Text style={styles.description}>{pack.description}</Text> : null}
 
@@ -138,4 +138,3 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },
 });
-

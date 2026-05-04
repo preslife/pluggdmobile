@@ -1,6 +1,7 @@
 import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import MiniPlayer from './MiniPlayer';
+import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
 
 const HIDDEN_PREFIXES = ['/auth', '/player'];
@@ -16,15 +17,18 @@ export function AppChrome() {
   if (hidden) return null;
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
-      <MiniPlayer />
-      <PluggdDock />
-    </View>
+    <>
+      <MobileHeader />
+      <View pointerEvents="box-none" style={styles.bottomWrap}>
+        <MiniPlayer />
+        <PluggdDock />
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  bottomWrap: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -32,4 +36,3 @@ const styles = StyleSheet.create({
     zIndex: 80,
   },
 });
-
