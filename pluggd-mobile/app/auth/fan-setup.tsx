@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -385,12 +385,12 @@ const styles = StyleSheet.create({
   progressActiveText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   progressFutureText: {
     color: '#A4A4A4',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   stepText: {
     color: '#A9A9A9',
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 40,
     lineHeight: 46,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   subtitle: {
     color: '#B3B3B3',
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 14,
   },
   genreGrid: {
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   toggleTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 23,
   },
   toggleSubtitle: {
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     color: PLUGGD_ORANGE,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   creatorList: {
     gap: 0,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   creatorInfo: {
     flex: 1,
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   creatorName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   creatorRole: {
     color: '#B8B8B8',
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   followButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   followButtonTextActive: {
     color: PLUGGD_ORANGE,
@@ -617,6 +617,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

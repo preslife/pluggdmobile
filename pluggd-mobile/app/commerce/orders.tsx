@@ -101,7 +101,7 @@ export default function Orders() {
                                     </Text>
                                 </View>
                                 <View className="items-end">
-                                    <Text className="text-primary text-lg font-extrabold">${(order.amount ?? 0).toFixed(2)}</Text>
+                                    <Text className="text-primary text-lg font-bold">${(order.amount ?? 0).toFixed(2)}</Text>
                                     <View className="bg-stone-100 dark:bg-white/10 px-1.5 py-0.5 rounded mt-1">
                                         <Text className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">
                                             {order.beat_id ? 'Beat' : ((order.metadata as any)?.type || 'Order')}

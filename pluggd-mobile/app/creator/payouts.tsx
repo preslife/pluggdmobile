@@ -59,7 +59,7 @@ export default function Payouts() {
                 <Text className="text-gray-300 text-sm font-medium uppercase tracking-wider">
                   Available Balance
                 </Text>
-                <Text className="text-primary text-5xl font-extrabold tracking-tighter leading-tight">
+                <Text className="text-primary text-5xl font-bold tracking-tighter leading-tight">
                   $3,450.00
                 </Text>
                 <Text className="text-white/80 text-sm font-medium mt-1">

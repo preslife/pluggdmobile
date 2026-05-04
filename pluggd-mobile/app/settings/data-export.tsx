@@ -42,7 +42,7 @@ export default function DataExportScreen() {
 
         <View className="w-full gap-6">
           <View className="items-center gap-4">
-            <Text className="text-center text-3xl font-extrabold tracking-tight text-white">
+            <Text className="text-center text-3xl font-bold tracking-tight text-white">
               Preparing Archive
             </Text>
             <Text className="px-4 text-center text-base leading-relaxed text-gray-400">

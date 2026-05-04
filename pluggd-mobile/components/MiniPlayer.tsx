@@ -3,9 +3,13 @@ import { View, Text, Image, TouchableOpacity, Pressable, StyleSheet } from 'reac
 import { useRouter } from 'expo-router';
 import { usePlayback } from '../src/context/PlaybackProvider';
 import { PLUGGD_ORANGE, formatGBP } from '../src/lib/mobileContent';
+import { impactHaptic, selectionHaptic } from '../src/design/haptics';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { PluggdGlassSurface } from './PluggdPrimitives';
 
 export default function MiniPlayer() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const {
     currentTrack,
     isPlaying,
@@ -20,6 +24,7 @@ export default function MiniPlayer() {
   if (!currentTrack) return null;
 
   const openPlayer = () => {
+    selectionHaptic();
     router.push({
       pathname: '/player',
       params: {
@@ -38,80 +43,93 @@ export default function MiniPlayer() {
 
   return (
     <View style={styles.wrap}>
-      <Pressable onPress={openPlayer} style={styles.card}>
-        {/* Progress bar at top of mini player */}
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
-        </View>
-
-        <View style={styles.content}>
-          {/* Cover Art */}
-          <View style={styles.artwork}>
-            {currentTrack.artwork ? (
-              <Image source={{ uri: currentTrack.artwork }} style={styles.artworkImage} />
-            ) : (
-              <View style={styles.artworkFallback}>
-                <MaterialIcons name="music-note" size={20} color="#FFFFFF" />
-              </View>
-            )}
-            {currentTrack.isLocked ? (
-              <View style={styles.lockBadge}>
-                <MaterialIcons name="lock" size={10} color="#080808" />
-              </View>
-            ) : null}
+      <Pressable onPress={openPlayer}>
+        <PluggdGlassSurface
+          interactive
+          glassEffectStyle="regular"
+          blurIntensity={58}
+          borderColor={theme.scheme === 'light' ? '#D5D5D2' : theme.colors.border}
+          fallbackColor={theme.scheme === 'light' ? 'rgba(255,255,255,0.96)' : theme.colors.glassFallback}
+          tintColor={theme.scheme === 'light' ? 'rgba(255,255,255,0.78)' : theme.colors.glassTint}
+          style={[styles.card, { shadowColor: theme.colors.shadow }]}
+        >
+          {/* Progress bar at top of mini player */}
+          <View style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}>
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
 
-          {/* Track Info */}
-          <View style={styles.trackInfo}>
-            <Text style={styles.title} numberOfLines={1}>
-              {currentTrack.title}
-            </Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {currentTrack.artist}
-              {currentTrack.price ? ` · ${formatGBP(currentTrack.price)}` : ''}
-            </Text>
+          <View style={styles.content}>
+            {/* Cover Art */}
+            <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
+              {currentTrack.artwork ? (
+                <Image source={{ uri: currentTrack.artwork }} style={styles.artworkImage} />
+              ) : (
+                <View style={[styles.artworkFallback, { backgroundColor: theme.colors.artworkBase }]}>
+                  <MaterialIcons name="music-note" size={20} color="#FFFFFF" />
+                </View>
+              )}
+              {currentTrack.isLocked ? (
+                <View style={styles.lockBadge}>
+                  <MaterialIcons name="lock" size={10} color="#080808" />
+                </View>
+              ) : null}
+            </View>
+
+            {/* Track Info */}
+            <View style={styles.trackInfo}>
+              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
+                {currentTrack.title}
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]} numberOfLines={1}>
+                {currentTrack.artist}
+                {currentTrack.price ? ` · ${formatGBP(currentTrack.price)}` : ''}
+              </Text>
+            </View>
+
+            {/* Controls */}
+            <View style={styles.controls}>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  selectionHaptic();
+                  skipToPrevious();
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.iconButton}
+              >
+                <MaterialIcons name="skip-previous" size={21} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  impactHaptic();
+                  togglePlayPause();
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={[styles.playButton, { backgroundColor: PLUGGD_ORANGE, borderColor: PLUGGD_ORANGE }]}
+              >
+                <MaterialIcons
+                  name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
+                  size={23}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  selectionHaptic();
+                  skipToNext();
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.iconButton}
+              >
+                <MaterialIcons name="skip-next" size={21} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
           </View>
-
-          {/* Controls */}
-          <View style={styles.controls}>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation?.();
-                skipToPrevious();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.iconButton}
-            >
-              <MaterialIcons name="skip-previous" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation?.();
-                togglePlayPause();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.playButton}
-            >
-              <MaterialIcons
-                name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
-                size={23}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation?.();
-                skipToNext();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.iconButton}
-            >
-              <MaterialIcons name="skip-next" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        </PluggdGlassSurface>
       </Pressable>
     </View>
   );
@@ -119,16 +137,14 @@ export default function MiniPlayer() {
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    backgroundColor: 'rgba(8,8,8,0.96)',
+    paddingHorizontal: 12,
+    paddingTop: 4,
   },
   card: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#292929',
-    backgroundColor: '#151515',
-    overflow: 'hidden',
+    borderRadius: 16,
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
   },
   progressTrack: {
     height: 3,
@@ -140,16 +156,16 @@ const styles = StyleSheet.create({
     backgroundColor: PLUGGD_ORANGE,
   },
   content: {
-    minHeight: 62,
-    paddingHorizontal: 9,
-    paddingVertical: 8,
+    minHeight: 54,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   artwork: {
-    width: 46,
-    height: 46,
+    width: 40,
+    height: 40,
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#242424',
@@ -181,32 +197,30 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 13.5,
+    fontWeight: '700',
   },
   subtitle: {
-    color: '#A4A4A4',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11.5,
+    fontWeight: '600',
     marginTop: 2,
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   iconButton: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   playButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
     alignItems: 'center',

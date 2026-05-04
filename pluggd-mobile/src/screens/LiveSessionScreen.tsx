@@ -25,9 +25,11 @@ import {
   createAgoraRtcEngine,
 } from 'react-native-agora';
 import { useAuth } from '../context/AuthProvider';
+import { impactHaptic, selectionHaptic } from '../design/haptics';
 import { useWallet } from '../hooks/useWallet';
 import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
+import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 
 const PLUGGD_ORANGE = '#FF5200';
 const REACTION_TTL_MS = 2400;
@@ -658,6 +660,7 @@ export default function LiveSessionScreen() {
   };
 
   const sendReaction = async (kind: LiveReaction['kind']) => {
+    impactHaptic();
     const reaction: LiveReaction = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       kind,
@@ -673,6 +676,7 @@ export default function LiveSessionScreen() {
   };
 
   const sendGift = async () => {
+    impactHaptic();
     if (!currentRoomId || sendingGift) return;
     if (session?.status !== 'live') {
       Alert.alert('Gift unavailable', 'Gifts can be sent once the room is live.');
@@ -751,6 +755,7 @@ export default function LiveSessionScreen() {
   };
 
   const toggleMute = () => {
+    selectionHaptic();
     const next = !muted;
     setMuted(next);
 
@@ -763,6 +768,7 @@ export default function LiveSessionScreen() {
   };
 
   const shareRoom = async () => {
+    selectionHaptic();
     await Share.share({
       message: `Join ${session?.title ?? 'this live room'} on Pluggd.`,
     });
@@ -788,6 +794,7 @@ export default function LiveSessionScreen() {
   };
 
   const leave = () => {
+    selectionHaptic();
     if (streamRole === 'host' && sessionRef.current?.status === 'live') {
       Alert.alert('Leave live room?', 'You can end the live now or leave it running.', [
         { text: 'Cancel', style: 'cancel' },
@@ -902,8 +909,10 @@ export default function LiveSessionScreen() {
               </View>
             </View>
 
-            <Pressable style={styles.closeButton} onPress={leave}>
-              <MaterialIcons name="keyboard-arrow-down" size={30} color="#FFFFFF" />
+            <Pressable onPress={leave} accessibilityRole="button" accessibilityLabel="Leave live room">
+              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.closeButton}>
+                <MaterialIcons name="keyboard-arrow-down" size={30} color="#FFFFFF" />
+              </PluggdGlassSurface>
             </Pressable>
           </View>
 
@@ -1052,7 +1061,13 @@ export default function LiveSessionScreen() {
               </View>
             ) : null}
 
-            <View style={styles.chatPanel}>
+            <PluggdGlassSurface
+              glassEffectStyle="regular"
+              blurIntensity={62}
+              fallbackColor="rgba(10,10,10,0.9)"
+              borderColor="rgba(255,255,255,0.13)"
+              style={styles.chatPanel}
+            >
               <View style={styles.chatHeader}>
                 <Text style={styles.chatTitle}>Live chat</Text>
                 <Text style={styles.chatFilter}>Top</Text>
@@ -1083,7 +1098,12 @@ export default function LiveSessionScreen() {
               </ScrollView>
 
               <View style={styles.composerRow}>
-                <View style={styles.inputWrap}>
+                <PluggdGlassSurface
+                  glassEffectStyle="clear"
+                  fallbackColor="#151515"
+                  borderColor="#303030"
+                  style={styles.inputWrap}
+                >
                   <TextInput
                     value={messageInput}
                     onChangeText={setMessageInput}
@@ -1096,13 +1116,13 @@ export default function LiveSessionScreen() {
                   <Pressable style={styles.emojiButton} onPress={() => sendReaction('boost')}>
                     <MaterialIcons name="bolt" size={22} color="#BDBDBD" />
                   </Pressable>
-                </View>
+                </PluggdGlassSurface>
 
                 <Pressable style={styles.sendButton} onPress={sendMessage}>
                   <MaterialIcons name="send" size={20} color="#FFFFFF" />
                 </Pressable>
               </View>
-            </View>
+            </PluggdGlassSurface>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1122,25 +1142,39 @@ function RailButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.railButton} onPress={onPress} disabled={loading}>
+    <Pressable onPress={onPress} disabled={loading} accessibilityRole="button" accessibilityLabel={label}>
+      <PluggdGlassSurface
+        interactive
+        disabled={loading}
+        glassEffectStyle="clear"
+        fallbackColor="rgba(0,0,0,0.38)"
+        borderColor="rgba(255,255,255,0.14)"
+        style={styles.railButton}
+      >
       {loading ? (
         <ActivityIndicator color={PLUGGD_ORANGE} size="small" />
       ) : (
         <MaterialIcons name={icon} size={24} color="#FFFFFF" />
       )}
       <Text style={styles.railLabel}>{label}</Text>
+      </PluggdGlassSurface>
     </Pressable>
   );
 }
 
 function SignalPill({ icon, label }: { icon: keyof typeof MaterialIcons.glyphMap; label: string }) {
   return (
-    <View style={styles.signalPill}>
+    <PluggdGlassSurface
+      glassEffectStyle="clear"
+      fallbackColor="rgba(0,0,0,0.42)"
+      borderColor="rgba(255,255,255,0.13)"
+      style={styles.signalPill}
+    >
       <MaterialIcons name={icon} size={14} color={PLUGGD_ORANGE} />
       <Text style={styles.signalText} numberOfLines={1}>
         {label}
       </Text>
-    </View>
+    </PluggdGlassSurface>
   );
 }
 
@@ -1249,7 +1283,7 @@ const styles = StyleSheet.create({
   hostAvatarText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   hostTextWrap: {
     flex: 1,
@@ -1263,7 +1297,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: '#FFFFFF',
     fontSize: 21,
-    fontWeight: '900',
+    fontWeight: '700',
     maxWidth: 170,
   },
   liveMetaRow: {
@@ -1289,7 +1323,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   viewerBadge: {
     minHeight: 25,
@@ -1305,7 +1339,7 @@ const styles = StyleSheet.create({
   viewerText: {
     color: '#D8D8D8',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   modeBadge: {
     minHeight: 25,
@@ -1319,15 +1353,12 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   closeButton: {
     width: 44,
     height: 44,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.38)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
@@ -1341,7 +1372,7 @@ const styles = StyleSheet.create({
   placeholderTitle: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 14,
     textAlign: 'center',
   },
@@ -1362,10 +1393,7 @@ const styles = StyleSheet.create({
   railButton: {
     width: 58,
     minHeight: 58,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.38)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 7,
@@ -1373,7 +1401,7 @@ const styles = StyleSheet.create({
   railLabel: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 3,
   },
   reactionLayer: {
@@ -1403,7 +1431,7 @@ const styles = StyleSheet.create({
   sessionTitle: {
     color: '#FFFFFF',
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   sessionSubtitle: {
     color: '#D1D1D1',
@@ -1421,10 +1449,7 @@ const styles = StyleSheet.create({
   signalPill: {
     height: 30,
     maxWidth: 172,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 9,
@@ -1433,7 +1458,7 @@ const styles = StyleSheet.create({
   signalText: {
     color: '#EDEDED',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   primaryActions: {
     height: 52,
@@ -1453,7 +1478,7 @@ const styles = StyleSheet.create({
   primaryActionText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   secondaryActionButton: {
     flex: 1,
@@ -1469,7 +1494,7 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     color: PLUGGD_ORANGE,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   stageRequestBox: {
     borderRadius: 8,
@@ -1482,7 +1507,7 @@ const styles = StyleSheet.create({
   stageRequestTitle: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   stageRequestBody: {
     color: '#B8B8B8',
@@ -1513,7 +1538,7 @@ const styles = StyleSheet.create({
   stageRequestButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   hostOpsRow: {
     flexDirection: 'row',
@@ -1535,7 +1560,7 @@ const styles = StyleSheet.create({
   hostRequestName: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   hostRequestNote: {
     color: '#AFAFAF',
@@ -1564,10 +1589,7 @@ const styles = StyleSheet.create({
   chatPanel: {
     maxHeight: 278,
     minHeight: 208,
-    borderRadius: 8,
-    backgroundColor: 'rgba(10,10,10,0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 16,
     padding: 10,
   },
   chatHeader: {
@@ -1579,12 +1601,12 @@ const styles = StyleSheet.create({
   chatTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   chatFilter: {
     color: '#BDBDBD',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   messageList: {
     maxHeight: 156,
@@ -1617,7 +1639,7 @@ const styles = StyleSheet.create({
   messageAvatarText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   messageContent: {
     flex: 1,
@@ -1626,7 +1648,7 @@ const styles = StyleSheet.create({
   messageMeta: {
     color: '#A8A8A8',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   messageText: {
     color: '#FFFFFF',
@@ -1645,10 +1667,7 @@ const styles = StyleSheet.create({
   inputWrap: {
     flex: 1,
     height: 46,
-    borderRadius: 8,
-    backgroundColor: '#151515',
-    borderWidth: 1,
-    borderColor: '#303030',
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 12,
@@ -1695,12 +1714,12 @@ const styles = StyleSheet.create({
   audioTitle: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   audioSubtitle: {
     color: '#C9C9C9',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 5,
   },
   waveform: {

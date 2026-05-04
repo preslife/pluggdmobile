@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     lineHeight: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -534,13 +534,13 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 2,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 10,
   },
   modeGrid: {
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   modeTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   modeDescription: {
     color: '#AFAFAF',
@@ -612,13 +612,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 19,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 10,
   },
   fieldLabel: {
     color: '#BEBEBE',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     textTransform: 'uppercase',
     marginTop: 10,
     marginBottom: 6,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
   segmentButtonText: {
     color: '#AFAFAF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   segmentButtonTextActive: {
     color: PLUGGD_ORANGE,
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   rowSubtitle: {
     color: '#A5A5A5',
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   stepperValue: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
     minWidth: 28,
     textAlign: 'center',
   },
@@ -783,6 +783,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

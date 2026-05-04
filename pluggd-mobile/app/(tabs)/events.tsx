@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ContextRail, EmptyState, ListCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { EventItem, PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 
@@ -11,6 +12,7 @@ const TABS = ['Local Events', 'Featured Events', 'Promoted Events', 'Promoters',
 
 export default function EventsScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const [activeTab, setActiveTab] = useState('List');
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function EventsScreen() {
       title="Events"
       subtitle="Real-world events, promoters, venues, ticket links, RSVPs and apply-to-play opportunities."
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
@@ -93,10 +95,19 @@ export default function EventsScreen() {
         <>
           <SectionTitle title="Venues" />
           {cityGroups.length > 0 ? cityGroups.map(([city, rows]) => (
-            <Pressable key={city} style={styles.cityCard}>
+            <Pressable
+              key={city}
+              style={[
+                styles.cityCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
               <View>
-                <Text style={styles.cityName}>{city}</Text>
-                <Text style={styles.cityMeta}>{rows.length} upcoming event{rows.length === 1 ? '' : 's'}</Text>
+                <Text style={[styles.cityName, { color: theme.colors.text }]}>{city}</Text>
+                <Text style={[styles.cityMeta, { color: theme.colors.textMuted }]}>{rows.length} upcoming event{rows.length === 1 ? '' : 's'}</Text>
               </View>
               <MaterialIcons name="apartment" size={24} color={PLUGGD_ORANGE} />
             </Pressable>
@@ -124,13 +135,23 @@ export default function EventsScreen() {
         <>
           <SectionTitle title="RSVPs and opportunities" />
           {events.map((event) => (
-            <Pressable key={event.id} style={styles.opportunityCard} onPress={() => router.push(`/events/${event.id}` as any)}>
-              <View style={styles.opportunityIcon}>
+            <Pressable
+              key={event.id}
+              style={[
+                styles.opportunityCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={() => router.push(`/events/${event.id}` as any)}
+            >
+              <View style={[styles.opportunityIcon, { backgroundColor: theme.colors.surfaceStrong }]}>
                 <MaterialIcons name="campaign" size={23} color={PLUGGD_ORANGE} />
               </View>
               <View style={styles.opportunityText}>
-                <Text style={styles.opportunityTitle} numberOfLines={1}>{event.title || 'Event opportunity'}</Text>
-                <Text style={styles.opportunityMeta} numberOfLines={1}>
+                <Text style={[styles.opportunityTitle, { color: theme.colors.text }]} numberOfLines={1}>{event.title || 'Event opportunity'}</Text>
+                <Text style={[styles.opportunityMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
                   {event.location || 'Location TBA'} · {formatDate(event.starts_at)}
                 </Text>
               </View>
@@ -162,7 +183,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   loading: {
     minHeight: 160,
@@ -183,7 +204,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 8,
   },
   mapBody: {
@@ -208,7 +229,7 @@ const styles = StyleSheet.create({
   cityName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   cityMeta: {
     color: '#AFAFAF',
@@ -243,7 +264,7 @@ const styles = StyleSheet.create({
   opportunityTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   opportunityMeta: {
     color: '#AFAFAF',
@@ -254,7 +275,7 @@ const styles = StyleSheet.create({
   applyText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   smallButton: {
     borderRadius: 8,
@@ -266,6 +287,6 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

@@ -2,9 +2,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ContextRail, EmptyState, ListCard, PosterCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import {
   BeatItem,
@@ -21,6 +22,7 @@ const GENRES = ['All', 'Hip Hop', 'R&B', 'Drill', 'Afrobeats', 'Trap', 'Electron
 
 export default function MarketplaceScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const { playTrack, playQueue } = usePlayback();
   const [activeTab, setActiveTab] = useState('All');
   const [sampleFilter, setSampleFilter] = useState('All');
@@ -102,13 +104,12 @@ export default function MarketplaceScreen() {
       title="Market"
       subtitle="Commerce, licensing, services and creator tools: beats, samples, licenses and offers."
       action={
-        <Pressable style={styles.actionButton} onPress={playAll}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Play all market previews" style={styles.actionButton} onPress={playAll}>
           <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
-          <Text style={styles.actionText}>Play all</Text>
         </Pressable>
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={TABS} active={activeTab} onChange={setActiveTab} />
       {['All', 'Beats', 'Samples'].includes(activeTab) ? (
@@ -223,18 +224,14 @@ export default function MarketplaceScreen() {
 
 const styles = StyleSheet.create({
   actionButton: {
-    minHeight: 42,
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: PLUGGD_ORANGE,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     gap: 5,
-  },
-  actionText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
   },
   loading: {
     minHeight: 160,
@@ -242,6 +239,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rail: {
-    paddingBottom: 18,
+    paddingBottom: 12,
   },
 });

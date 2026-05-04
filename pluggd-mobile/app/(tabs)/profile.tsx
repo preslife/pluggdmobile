@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { Database } from '../../src/types/supabase';
 
@@ -142,6 +144,8 @@ async function syncRoleSelection(
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const isDark = theme.scheme === 'dark';
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -343,17 +347,21 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingScreen}>
-        <StatusBar style="light" />
+      <View style={[styles.loadingScreen, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator color={PLUGGD_ORANGE} />
+        <ActivityIndicator color={theme.colors.accent} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={isDark ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
+        style={StyleSheet.absoluteFill}
+      />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -361,50 +369,91 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.topBar}>
-          <Pressable style={styles.iconButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={27} color="#FFFFFF" />
+          <Pressable
+            style={[
+              styles.iconButton,
+              { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border },
+            ]}
+            onPress={() => router.back()}
+          >
+            <MaterialIcons name="chevron-left" size={27} color={theme.colors.text} />
           </Pressable>
 
           <View style={styles.titleLogoWrap}>
-            <Text style={styles.topBarTitle}>Profile</Text>
+            <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Profile</Text>
           </View>
 
-          <Pressable style={styles.iconButton} onPress={() => router.push('/settings/privacy')}>
-            <MaterialIcons name="settings" size={22} color="#FFFFFF" />
+          <Pressable
+            style={[
+              styles.iconButton,
+              { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border },
+            ]}
+            onPress={() => router.push('/settings/privacy')}
+          >
+            <MaterialIcons name="settings" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
 
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
+        <View
+          style={[
+            styles.profileCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.avatar,
+              { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.accent },
+            ]}
+          >
             {profile?.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{avatarInitial}</Text>
+              <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarInitial}</Text>
             )}
-            <View style={styles.cameraBadge}>
+            <View style={[styles.cameraBadge, { borderColor: theme.colors.surface }]}>
               <MaterialIcons name="photo-camera" size={13} color="#FFFFFF" />
             </View>
           </View>
 
           <View style={styles.profileInfo}>
-            <Text style={styles.displayName}>{displayName}</Text>
-            <Text style={styles.username}>@{username}</Text>
+            <Text style={[styles.displayName, { color: theme.colors.text }]}>{displayName}</Text>
+            <Text style={[styles.username, { color: theme.colors.textMuted }]}>@{username}</Text>
 
             <View style={styles.roleChipRow}>
-              <View style={styles.primaryChip}>
-                <MaterialIcons name="star" size={14} color={PLUGGD_ORANGE} />
-                <Text style={styles.primaryChipText}>{ROLE_LABELS[primaryRole]}</Text>
+              <View
+                style={[
+                  styles.primaryChip,
+                  { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.accent },
+                ]}
+              >
+                <MaterialIcons name="star" size={14} color={theme.colors.accent} />
+                <Text style={[styles.primaryChipText, { color: theme.colors.accent }]}>
+                  {ROLE_LABELS[primaryRole]}
+                </Text>
               </View>
 
               {secondaryRoleLabels.slice(0, 2).map((label) => (
-                <View key={label} style={styles.secondaryChipSmall}>
-                  <Text style={styles.secondaryChipSmallText}>{label}</Text>
+                <View
+                  key={label}
+                  style={[
+                    styles.secondaryChipSmall,
+                    { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+                  ]}
+                >
+                  <Text style={[styles.secondaryChipSmallText, { color: theme.colors.textMuted }]}>
+                    {label}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <MaterialIcons name="chevron-right" size={25} color="#8E8E8E" />
+          <MaterialIcons name="chevron-right" size={25} color={theme.colors.textSubtle} />
         </View>
 
         <Section title="Account hub">
@@ -430,31 +479,46 @@ export default function ProfileScreen() {
         </Section>
 
         <Section title="Roles">
-          <View style={styles.primaryRoleSelector}>
-            <View style={styles.rowIconBox}>
+          <View
+            style={[
+              styles.primaryRoleSelector,
+              { borderBottomColor: theme.colors.borderSubtle },
+            ]}
+          >
+            <View style={[styles.rowIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
               <MaterialIcons
                 name={ROLE_ICONS[primaryRole] ?? 'star-border'}
                 size={22}
-                color={PLUGGD_ORANGE}
+                color={theme.colors.accent}
               />
             </View>
 
             <View style={styles.rowTextWrap}>
-              <Text style={styles.rowLabel}>Primary role</Text>
-              <Text style={styles.rowValue}>{ROLE_LABELS[primaryRole]}</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text }]}>Primary role</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.textMuted }]}>
+                {ROLE_LABELS[primaryRole]}
+              </Text>
             </View>
 
             <Pressable
-              style={styles.dropdownPill}
+              style={[
+                styles.dropdownPill,
+                { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.accent },
+              ]}
               onPress={() => setShowPrimaryPicker((current) => !current)}
             >
-              <Text style={styles.dropdownText}>Change</Text>
-              <MaterialIcons name="keyboard-arrow-down" size={18} color={PLUGGD_ORANGE} />
+              <Text style={[styles.dropdownText, { color: theme.colors.accent }]}>Change</Text>
+              <MaterialIcons name="keyboard-arrow-down" size={18} color={theme.colors.accent} />
             </Pressable>
           </View>
 
           {showPrimaryPicker && (
-            <View style={styles.primaryPickerGrid}>
+            <View
+              style={[
+                styles.primaryPickerGrid,
+                { borderBottomColor: theme.colors.borderSubtle },
+              ]}
+            >
               {ROLE_OPTIONS.map((role) => {
                 const selected = primaryRole === role.value;
 
@@ -462,13 +526,24 @@ export default function ProfileScreen() {
                   <Pressable
                     key={role.value}
                     onPress={() => choosePrimaryRole(role.value)}
-                    style={[styles.roleChip, selected && styles.roleChipSelected]}
+                    style={[
+                      styles.roleChip,
+                      {
+                        backgroundColor: selected ? theme.colors.surfaceStrong : theme.colors.surfaceAlt,
+                        borderColor: selected ? theme.colors.accent : theme.colors.border,
+                      },
+                    ]}
                   >
-                    <Text style={[styles.roleChipText, selected && styles.roleChipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.roleChipText,
+                        { color: selected ? theme.colors.text : theme.colors.textMuted },
+                      ]}
+                    >
                       {role.label}
                     </Text>
                     {selected ? (
-                      <MaterialIcons name="check-circle" size={16} color={PLUGGD_ORANGE} />
+                      <MaterialIcons name="check-circle" size={16} color={theme.colors.accent} />
                     ) : null}
                   </Pressable>
                 );
@@ -476,7 +551,7 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <Text style={styles.multiSelectLabel}>Secondary roles</Text>
+          <Text style={[styles.multiSelectLabel, { color: theme.colors.text }]}>Secondary roles</Text>
 
           <View style={styles.roleGrid}>
             {ROLE_OPTIONS.map((role) => {
@@ -489,24 +564,30 @@ export default function ProfileScreen() {
                   onPress={() => toggleSecondaryRole(role.value)}
                   style={[
                     styles.roleChip,
-                    selected && styles.roleChipSelected,
+                    {
+                      backgroundColor: selected ? theme.colors.surfaceStrong : theme.colors.surfaceAlt,
+                      borderColor: selected ? theme.colors.accent : theme.colors.border,
+                    },
                     locked && styles.roleChipLocked,
                   ]}
                 >
                   <MaterialIcons
                     name={role.icon}
                     size={17}
-                    color={selected ? PLUGGD_ORANGE : '#D4D4D4'}
+                    color={selected ? theme.colors.accent : theme.colors.textMuted}
                   />
                   <Text
                     numberOfLines={1}
-                    style={[styles.roleChipText, selected && styles.roleChipTextSelected]}
+                    style={[
+                      styles.roleChipText,
+                      { color: selected ? theme.colors.text : theme.colors.textMuted },
+                    ]}
                   >
                     {role.label}
                   </Text>
 
                   {selected ? (
-                    <MaterialIcons name="check-circle" size={16} color={PLUGGD_ORANGE} />
+                    <MaterialIcons name="check-circle" size={16} color={theme.colors.accent} />
                   ) : null}
                 </Pressable>
               );
@@ -519,13 +600,15 @@ export default function ProfileScreen() {
             style={styles.toggleRow}
             onPress={() => setPrivateAccount((value) => !value)}
           >
-            <View style={styles.rowIconBox}>
-              <MaterialIcons name="lock-outline" size={22} color={PLUGGD_ORANGE} />
+            <View style={[styles.rowIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
+              <MaterialIcons name="lock-outline" size={22} color={theme.colors.accent} />
             </View>
 
             <View style={styles.rowTextWrap}>
-              <Text style={styles.rowLabel}>Private account</Text>
-              <Text style={styles.rowValue}>Only approved users can follow you</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.text }]}>Private account</Text>
+              <Text style={[styles.rowValue, { color: theme.colors.textMuted }]}>
+                Only approved users can follow you
+              </Text>
             </View>
 
             <View style={[styles.switchTrack, privateAccount && styles.switchTrackOn]}>
@@ -554,7 +637,15 @@ export default function ProfileScreen() {
         </Section>
       </ScrollView>
 
-      <View style={styles.bottomArea}>
+      <View
+        style={[
+          styles.bottomArea,
+          {
+            backgroundColor: theme.colors.glassFallback,
+            borderTopColor: theme.colors.borderSubtle,
+          },
+        ]}
+      >
         <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
           {saving ? (
             <ActivityIndicator color="#fff" />
@@ -568,10 +659,19 @@ export default function ProfileScreen() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const theme = usePluggdTheme();
+
   return (
     <View style={styles.sectionWrap}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionCard}>{children}</View>
+      <Text style={[styles.sectionTitle, { color: theme.colors.textSubtle }]}>{title}</Text>
+      <View
+        style={[
+          styles.sectionCard,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -591,15 +691,23 @@ function HubAction({
   value: string;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <Pressable style={styles.hubAction} onPress={onPress}>
-      <View style={styles.hubIconBox}>
-        <MaterialIcons name={icon} size={21} color={PLUGGD_ORANGE} />
+    <Pressable
+      style={[
+        styles.hubAction,
+        { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.hubIconBox, { backgroundColor: theme.colors.surfaceStrong }]}>
+        <MaterialIcons name={icon} size={21} color={theme.colors.accent} />
       </View>
-      <Text style={styles.hubLabel} numberOfLines={1}>
+      <Text style={[styles.hubLabel, { color: theme.colors.text }]} numberOfLines={1}>
         {label}
       </Text>
-      <Text style={styles.hubValue} numberOfLines={2}>
+      <Text style={[styles.hubValue, { color: theme.colors.textMuted }]} numberOfLines={2}>
         {value}
       </Text>
     </Pressable>
@@ -619,21 +727,33 @@ function EditableRow({
   onChangeText: (value: string) => void;
   multiline?: boolean;
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <View style={[styles.settingsRow, multiline && styles.settingsRowTall]}>
-      <View style={styles.rowIconBox}>
-        <MaterialIcons name={icon} size={22} color={PLUGGD_ORANGE} />
+    <View
+      style={[
+        styles.settingsRow,
+        { borderBottomColor: theme.colors.borderSubtle },
+        multiline && styles.settingsRowTall,
+      ]}
+    >
+      <View style={[styles.rowIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
+        <MaterialIcons name={icon} size={22} color={theme.colors.accent} />
       </View>
 
       <View style={styles.rowTextWrap}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{label}</Text>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={label === 'City' ? 'London, UK' : label}
-          placeholderTextColor="#686868"
+          placeholderTextColor={theme.colors.textSubtle}
           multiline={multiline}
-          style={[styles.rowInput, multiline && styles.rowInputMultiline]}
+          style={[
+            styles.rowInput,
+            { color: theme.colors.textMuted },
+            multiline && styles.rowInputMultiline,
+          ]}
         />
       </View>
     </View>
@@ -653,20 +773,27 @@ function SettingsRow({
   danger?: boolean;
   onPress?: () => void;
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <Pressable style={styles.settingsRow} onPress={onPress}>
-      <View style={styles.rowIconBox}>
-        <MaterialIcons name={icon} size={22} color={danger ? '#FF5C5C' : PLUGGD_ORANGE} />
+    <Pressable
+      style={[styles.settingsRow, { borderBottomColor: theme.colors.borderSubtle }]}
+      onPress={onPress}
+    >
+      <View style={[styles.rowIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
+        <MaterialIcons name={icon} size={22} color={danger ? theme.colors.danger : theme.colors.accent} />
       </View>
 
       <View style={styles.rowTextWrap}>
-        <Text style={[styles.rowLabel, danger && styles.dangerText]}>{label}</Text>
-        <Text style={styles.rowValue} numberOfLines={1}>
+        <Text style={[styles.rowLabel, { color: danger ? theme.colors.danger : theme.colors.text }]}>
+          {label}
+        </Text>
+        <Text style={[styles.rowValue, { color: theme.colors.textMuted }]} numberOfLines={1}>
           {value}
         </Text>
       </View>
 
-      <MaterialIcons name="chevron-right" size={24} color="#737373" />
+      <MaterialIcons name="chevron-right" size={24} color={theme.colors.textSubtle} />
     </Pressable>
   );
 }
@@ -684,8 +811,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 100,
-    paddingBottom: 146,
+    paddingTop: 82,
+    paddingBottom: 132,
   },
   topBar: {
     minHeight: 50,
@@ -694,9 +821,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   topBarTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: -3,
   },
@@ -711,7 +837,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 26,
     lineHeight: 34,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -737,6 +863,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   avatar: {
     width: 74,
@@ -757,9 +886,8 @@ const styles = StyleSheet.create({
     borderRadius: 37,
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '700',
   },
   cameraBadge: {
     position: 'absolute',
@@ -779,12 +907,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   displayName: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 26,
+    fontWeight: '700',
   },
   username: {
-    color: '#AFAFAF',
     fontSize: 16,
     fontWeight: '700',
     marginTop: 2,
@@ -807,9 +933,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   primaryChipText: {
-    color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   secondaryChipSmall: {
     borderRadius: 8,
@@ -820,17 +945,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   secondaryChipSmallText: {
-    color: '#DADADA',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   sectionWrap: {
     marginBottom: 16,
   },
   sectionTitle: {
-    color: '#8E8E8E',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 8,
@@ -868,12 +991,10 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   hubLabel: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   hubValue: {
-    color: '#A5A5A5',
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
@@ -905,18 +1026,15 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rowLabel: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   rowValue: {
-    color: '#A5A5A5',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 4,
   },
   rowInput: {
-    color: '#A5A5A5',
     fontSize: 14,
     fontWeight: '700',
     marginTop: 2,
@@ -952,7 +1070,7 @@ const styles = StyleSheet.create({
   dropdownText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   primaryPickerGrid: {
     flexDirection: 'row',
@@ -965,9 +1083,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#252525',
   },
   multiSelectLabel: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
     paddingHorizontal: 13,
     paddingTop: 13,
     paddingBottom: 9,
@@ -1000,7 +1117,7 @@ const styles = StyleSheet.create({
   roleChipText: {
     color: '#D4D4D4',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   roleChipTextSelected: {
     color: '#FFFFFF',
@@ -1055,6 +1172,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

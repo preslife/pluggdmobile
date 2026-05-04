@@ -178,9 +178,10 @@ function styleFromClassName(className: string | undefined, colorScheme: 'light' 
 
 export function SymbolIcon({ name, className, color, size, style }: SymbolIconProps) {
   const colorScheme = useColorScheme();
+  const resolvedColorScheme = colorScheme === 'light' || colorScheme === 'dark' ? colorScheme : null;
   const classStyle = useMemo(
-    () => styleFromClassName(className, colorScheme),
-    [className, colorScheme],
+    () => styleFromClassName(className, resolvedColorScheme),
+    [className, resolvedColorScheme],
   );
 
   return (

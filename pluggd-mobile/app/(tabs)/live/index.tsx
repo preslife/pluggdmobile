@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 36,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   createRoomButton: {
     minWidth: 40,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   createRoomText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 23,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   loader: {
     paddingVertical: 28,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   liveInfo: {
     flex: 1,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   liveTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 10,
   },
   hostRow: {
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   hostAvatarText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   hostTextWrap: {
     flex: 1,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   metaRow: {
     flexDirection: 'row',
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   roleBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   modeBadge: {
     borderRadius: 999,
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     color: '#D8D8D8',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   viewerRow: {
     flexDirection: 'row',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   joinButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   upcomingList: {
     gap: 9,
@@ -644,12 +644,12 @@ const styles = StyleSheet.create({
   timeText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   dateText: {
     color: '#BDBDBD',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 2,
   },
   timeIcon: {
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   upcomingAvatarText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   upcomingInfo: {
     flex: 1,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   upcomingTitle: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   upcomingHost: {
     color: '#9E9E9E',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   reminderText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   emptyCard: {
     minHeight: 120,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 10,
   },
   emptyBody: {
@@ -750,6 +750,6 @@ const styles = StyleSheet.create({
   startRoomText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

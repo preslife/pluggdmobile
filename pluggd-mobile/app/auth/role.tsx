@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 36,
-    fontWeight: '800',
+    fontWeight: '700',
     textAlign: 'center',
   },
   subtitle: {
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 10,
   },
   primaryList: {
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   roleName: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 2,
   },
   roleDescription: {
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   radio: {
     width: 22,
@@ -655,6 +655,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
 });

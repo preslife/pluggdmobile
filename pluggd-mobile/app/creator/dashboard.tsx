@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../src/context/AuthProvider';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { useWallet } from '../../src/hooks/useWallet';
 import { supabase } from '../../src/lib/supabase';
 
@@ -320,6 +322,8 @@ function routeForAction(action: string) {
 
 export default function CreatorDashboard() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const isDark = theme.scheme === 'dark';
   const { user, loading: authLoading } = useAuth();
   const { balance, refreshBalance, refreshLedger } = useWallet();
   const [data, setData] = useState<StudioData>(EMPTY_DATA);
@@ -725,12 +729,12 @@ export default function CreatorDashboard() {
 
   if (authLoading) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.emptyState}>
-          <ActivityIndicator color={PLUGGD_ORANGE} />
-          <Text style={styles.emptyTitle}>Opening Studio...</Text>
+          <ActivityIndicator color={theme.colors.accent} />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Opening Studio...</Text>
         </View>
       </SafeAreaView>
     );
@@ -738,12 +742,12 @@ export default function CreatorDashboard() {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.emptyState}>
-          <MaterialIcons name="lock-outline" size={42} color={PLUGGD_ORANGE} />
-          <Text style={styles.emptyTitle}>Sign in to open Studio</Text>
+          <MaterialIcons name="lock-outline" size={42} color={theme.colors.accent} />
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Sign in to open Studio</Text>
           <Pressable style={styles.primaryButton} onPress={() => router.push('/auth/login')}>
             <Text style={styles.primaryButtonText}>Log in</Text>
           </Pressable>
@@ -752,9 +756,23 @@ export default function CreatorDashboard() {
     );
   }
 
+  const cardChrome = {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    shadowColor: theme.colors.shadow,
+  };
+  const insetChrome = {
+    backgroundColor: theme.colors.surfaceAlt,
+    borderColor: theme.colors.border,
+  };
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={isDark ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
+        style={StyleSheet.absoluteFill}
+      />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -765,20 +783,20 @@ export default function CreatorDashboard() {
         }
       >
         <View style={styles.topBar}>
-          <Pressable style={styles.headerIconButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={27} color="#FFFFFF" />
+          <Pressable style={[styles.headerIconButton, insetChrome]} onPress={() => router.back()}>
+            <MaterialIcons name="chevron-left" size={27} color={theme.colors.text} />
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.pageTitle}>Studio</Text>
+            <Text style={[styles.pageTitle, { color: theme.colors.text }]}>Studio</Text>
           </View>
 
           <View style={styles.headerActions}>
-            <Pressable style={styles.headerIconButton} onPress={() => router.push('/social/notifications' as any)}>
-              <MaterialIcons name="notifications-none" size={22} color="#FFFFFF" />
+            <Pressable style={[styles.headerIconButton, insetChrome]} onPress={() => router.push('/social/notifications' as any)}>
+              <MaterialIcons name="notifications-none" size={22} color={theme.colors.text} />
             </Pressable>
-            <Pressable style={styles.headerIconButton} onPress={() => navigateAction('profile')}>
-              <MaterialIcons name="settings" size={21} color="#FFFFFF" />
+            <Pressable style={[styles.headerIconButton, insetChrome]} onPress={() => navigateAction('profile')}>
+              <MaterialIcons name="settings" size={21} color={theme.colors.text} />
             </Pressable>
           </View>
         </View>
@@ -804,21 +822,29 @@ export default function CreatorDashboard() {
 
         {loading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator color={PLUGGD_ORANGE} />
-            <Text style={styles.loadingText}>Loading Studio...</Text>
+            <ActivityIndicator color={theme.colors.accent} />
+            <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>Loading Studio...</Text>
           </View>
         ) : (
           <>
             <View style={styles.identityRow}>
               <View>
-                <Text style={styles.greeting}>Hi, {displayName(data.profile, user.email)}</Text>
-                <Text style={styles.subGreeting}>
+                <Text style={[styles.greeting, { color: theme.colors.text }]}>
+                  Hi, {displayName(data.profile, user.email)}
+                </Text>
+                <Text style={[styles.subGreeting, { color: theme.colors.textMuted }]}>
                   {ROLE_LABELS[selectedRole]} workspace - {data.counts.releases + data.counts.beats} catalog items
                 </Text>
               </View>
-              <Pressable style={styles.compactButton} onPress={() => navigateAction('analytics')}>
-                <MaterialIcons name="timeline" size={16} color={PLUGGD_ORANGE} />
-                <Text style={styles.compactButtonText}>Insights</Text>
+              <Pressable
+                style={[
+                  styles.compactButton,
+                  { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+                ]}
+                onPress={() => navigateAction('analytics')}
+              >
+                <MaterialIcons name="timeline" size={16} color={theme.colors.accent} />
+                <Text style={[styles.compactButtonText, { color: theme.colors.accent }]}>Insights</Text>
               </Pressable>
             </View>
 
@@ -833,14 +859,25 @@ export default function CreatorDashboard() {
                   <Pressable
                     key={role}
                     onPress={() => setSelectedRole(role)}
-                    style={[styles.roleChip, selected && styles.roleChipSelected]}
+                    style={[
+                      styles.roleChip,
+                      {
+                        backgroundColor: selected ? theme.colors.surfaceStrong : theme.colors.surfaceAlt,
+                        borderColor: selected ? theme.colors.accent : theme.colors.border,
+                      },
+                    ]}
                   >
                     <MaterialIcons
                       name={ROLE_ICONS[role]}
                       size={16}
-                      color={selected ? PLUGGD_ORANGE : '#9F9F9F'}
+                      color={selected ? theme.colors.accent : theme.colors.textMuted}
                     />
-                    <Text style={[styles.roleChipText, selected && styles.roleChipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.roleChipText,
+                        { color: selected ? theme.colors.accent : theme.colors.textMuted },
+                      ]}
+                    >
                       {ROLE_LABELS[role]}
                     </Text>
                   </Pressable>
@@ -848,10 +885,12 @@ export default function CreatorDashboard() {
               })}
             </ScrollView>
 
-            <View style={styles.summaryCard}>
+            <View style={[styles.summaryCard, cardChrome]}>
               <View style={styles.summaryColumn}>
-                <Text style={styles.summaryLabel}>Estimated earnings</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(estimatedEarnings)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.colors.textMuted }]}>Estimated earnings</Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.text }]}>
+                  {formatCurrency(estimatedEarnings)}
+                </Text>
                 <Text style={styles.positiveText}>
                   {topTrend >= 0 ? '+' : ''}
                   {topTrend.toFixed(0)}% vs prior period
@@ -859,36 +898,43 @@ export default function CreatorDashboard() {
                 <SparkBars values={revenueBars} />
               </View>
 
-              <View style={styles.summaryDivider} />
+              <View style={[styles.summaryDivider, { backgroundColor: theme.colors.border }]} />
 
               <View style={styles.summaryColumn}>
-                <Text style={styles.summaryLabel}>Available credits</Text>
+                <Text style={[styles.summaryLabel, { color: theme.colors.textMuted }]}>Available credits</Text>
                 <View style={styles.creditRow}>
-                  <Text style={styles.summaryValue}>{formatNumber(balance.available_credits)}</Text>
-                  <Text style={styles.creditText}>credits</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>
+                    {formatNumber(balance.available_credits)}
+                  </Text>
+                  <Text style={[styles.creditText, { color: theme.colors.textMuted }]}>credits</Text>
                 </View>
                 <Pressable style={styles.walletLink} onPress={() => navigateAction('wallet')}>
                   <Text style={styles.walletLinkText}>View wallet</Text>
-                  <MaterialIcons name="arrow-forward" size={16} color={PLUGGD_ORANGE} />
+                  <MaterialIcons name="arrow-forward" size={16} color={theme.colors.accent} />
                 </Pressable>
               </View>
             </View>
 
-            <View style={styles.quickActionsCard}>
-              <QuickAction label="New Drop" icon="music-note" onPress={() => navigateAction('release')} />
+            <View style={[styles.quickActionsCard, cardChrome]}>
+              <QuickAction label="New Release" icon="music-note" onPress={() => navigateAction('release')} />
               <QuickAction label="Upload" icon="file-upload" onPress={() => navigateAction('upload')} />
               <QuickAction label="Start Live" icon="settings-input-antenna" onPress={() => navigateAction('live')} />
               <QuickAction label="Post" icon="edit" onPress={() => navigateAction('post')} />
             </View>
 
-            <View style={styles.nextActionCard}>
-              <View style={styles.nextActionIcon}>
-                <MaterialIcons name={nextAction.icon} size={27} color={PLUGGD_ORANGE} />
+            <View style={[styles.nextActionCard, cardChrome]}>
+              <View
+                style={[
+                  styles.nextActionIcon,
+                  { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.borderAccent },
+                ]}
+              >
+                <MaterialIcons name={nextAction.icon} size={27} color={theme.colors.accent} />
               </View>
               <View style={styles.nextActionContent}>
-                <Text style={styles.nextActionEyebrow}>{nextAction.eyebrow}</Text>
-                <Text style={styles.nextActionTitle}>{nextAction.title}</Text>
-                <Text style={styles.nextActionSubtitle}>{nextAction.subtitle}</Text>
+                <Text style={[styles.nextActionEyebrow, { color: theme.colors.textMuted }]}>{nextAction.eyebrow}</Text>
+                <Text style={[styles.nextActionTitle, { color: theme.colors.text }]}>{nextAction.title}</Text>
+                <Text style={[styles.nextActionSubtitle, { color: theme.colors.textMuted }]}>{nextAction.subtitle}</Text>
                 <ProgressBlocks value={nextAction.progress} total={5} />
               </View>
               <Pressable style={styles.continueButton} onPress={() => navigateAction(nextAction.route)}>
@@ -896,7 +942,7 @@ export default function CreatorDashboard() {
               </Pressable>
             </View>
 
-            <View style={styles.performanceCard}>
+            <View style={[styles.performanceCard, cardChrome]}>
               <SectionHeader title="Performance snapshot" icon="timeline" action="View all" onPress={() => navigateAction('analytics')} />
               <View style={styles.performanceGrid}>
                 <PerformanceTile icon="headset" label="Streams" value={formatNumber(streams)} bars={streamBars} />
@@ -906,14 +952,18 @@ export default function CreatorDashboard() {
               </View>
             </View>
 
-            <View style={styles.roleToolsCard}>
+            <View style={[styles.roleToolsCard, cardChrome]}>
               <SectionHeader title={`${ROLE_LABELS[selectedRole]} tools`} icon={ROLE_ICONS[selectedRole]} />
               <View style={styles.toolGrid}>
                 {roleTools.map((tool) => (
-                  <Pressable key={tool.label} style={styles.toolTile} onPress={() => navigateAction(tool.route)}>
-                    <MaterialIcons name={tool.icon} size={20} color={PLUGGD_ORANGE} />
-                    <Text style={styles.toolLabel}>{tool.label}</Text>
-                    <Text style={styles.toolValue}>{tool.value}</Text>
+                  <Pressable
+                    key={tool.label}
+                    style={[styles.toolTile, insetChrome]}
+                    onPress={() => navigateAction(tool.route)}
+                  >
+                    <MaterialIcons name={tool.icon} size={20} color={theme.colors.accent} />
+                    <Text style={[styles.toolLabel, { color: theme.colors.text }]}>{tool.label}</Text>
+                    <Text style={[styles.toolValue, { color: theme.colors.textMuted }]}>{tool.value}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -942,7 +992,7 @@ export default function CreatorDashboard() {
               />
             </View>
 
-            <View style={styles.card}>
+            <View style={[styles.card, cardChrome]}>
               <SectionHeader title="Recent activity" icon="history" action="View all" onPress={() => navigateAction('analytics')} />
               {recentActivity.length === 0 ? (
                 <EmptyCardText text="Activity will appear after uploads, sales, gifts, or live rooms." />
@@ -953,11 +1003,13 @@ export default function CreatorDashboard() {
               )}
             </View>
 
-            <View style={styles.revenueCard}>
+            <View style={[styles.revenueCard, cardChrome]}>
               <SectionHeader title="Revenue" icon="monetization-on" action="Payouts" onPress={() => navigateAction('payouts')} />
               <View style={styles.revenueBody}>
                 <View style={styles.revenueLeft}>
-                  <Text style={styles.revenueValue}>{formatCurrency(estimatedEarnings)}</Text>
+                  <Text style={[styles.revenueValue, { color: theme.colors.text }]}>
+                    {formatCurrency(estimatedEarnings)}
+                  </Text>
                   <Text style={styles.positiveText}>
                     {formatNumber(positiveLedgerCredits)} positive credits logged
                   </Text>
@@ -967,7 +1019,7 @@ export default function CreatorDashboard() {
                     ))}
                   </View>
                 </View>
-                <View style={styles.revenueBreakdown}>
+                <View style={[styles.revenueBreakdown, { borderLeftColor: theme.colors.border }]}>
                   <RevenueRow label="Fan revenue" value={formatCurrency(fanRevenueCents / 100)} active />
                   <RevenueRow label="Sales" value={formatNumber(Number(latestMetric?.sales_count ?? 0))} />
                   <RevenueRow label="Subs MRR" value={formatCurrency(Number(latestMetric?.subs_mrr_cents ?? 0) / 100)} />
@@ -976,7 +1028,7 @@ export default function CreatorDashboard() {
               </View>
             </View>
 
-            <View style={styles.card}>
+            <View style={[styles.card, cardChrome]}>
               <SectionHeader title="Upcoming" icon="event" action="Live" onPress={() => navigateAction('live')} />
               {upcoming.length === 0 ? (
                 <EmptyCardText text="No upcoming releases, rooms, or events yet." />
@@ -987,9 +1039,9 @@ export default function CreatorDashboard() {
                       <View style={[styles.upcomingIcon, { borderColor: item.accent }]}>
                         <MaterialIcons name={item.icon} size={19} color={item.accent} />
                       </View>
-                      <Text style={styles.upcomingEyebrow}>{item.eyebrow}</Text>
-                      <Text style={styles.upcomingTitle} numberOfLines={2}>{item.title}</Text>
-                      <Text style={styles.upcomingDate}>{item.date}</Text>
+                      <Text style={[styles.upcomingEyebrow, { color: theme.colors.textMuted }]}>{item.eyebrow}</Text>
+                      <Text style={[styles.upcomingTitle, { color: theme.colors.text }]} numberOfLines={2}>{item.title}</Text>
+                      <Text style={[styles.upcomingDate, { color: theme.colors.textMuted }]}>{item.date}</Text>
                     </View>
                   ))}
                 </View>
@@ -1060,10 +1112,12 @@ function QuickAction({
   icon: keyof typeof MaterialIcons.glyphMap;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+
   return (
     <Pressable style={styles.quickAction} onPress={onPress}>
-      <MaterialIcons name={icon} size={20} color={PLUGGD_ORANGE} />
-      <Text style={styles.quickActionText} numberOfLines={1}>{label}</Text>
+      <MaterialIcons name={icon} size={20} color={theme.colors.accent} />
+      <Text style={[styles.quickActionText, { color: theme.colors.text }]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
 }
@@ -1077,10 +1131,18 @@ function StudioRailItem({
   icon: keyof typeof MaterialIcons.glyphMap;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <Pressable style={styles.studioRailItem} onPress={onPress}>
-      <MaterialIcons name={icon} size={18} color={PLUGGD_ORANGE} />
-      <Text style={styles.studioRailLabel}>{label}</Text>
+    <Pressable
+      style={[
+        styles.studioRailItem,
+        { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+      ]}
+      onPress={onPress}
+    >
+      <MaterialIcons name={icon} size={18} color={theme.colors.accent} />
+      <Text style={[styles.studioRailLabel, { color: theme.colors.text }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -1096,11 +1158,13 @@ function SectionHeader({
   action?: string;
   onPress?: () => void;
 }) {
+  const theme = usePluggdTheme();
+
   return (
     <View style={styles.cardHeader}>
       <View style={styles.cardHeaderLeft}>
-        <MaterialIcons name={icon} size={20} color={PLUGGD_ORANGE} />
-        <Text style={styles.cardTitle}>{title}</Text>
+        <MaterialIcons name={icon} size={20} color={theme.colors.accent} />
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{title}</Text>
       </View>
       {action ? (
         <Pressable onPress={onPress}>
@@ -1122,13 +1186,20 @@ function PerformanceTile({
   value: string;
   bars: number[];
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <View style={styles.performanceTile}>
+    <View
+      style={[
+        styles.performanceTile,
+        { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+      ]}
+    >
       <View style={styles.performanceLabelRow}>
-        <MaterialIcons name={icon} size={16} color="#BDBDBD" />
-        <Text style={styles.performanceLabel} numberOfLines={1}>{label}</Text>
+        <MaterialIcons name={icon} size={16} color={theme.colors.textMuted} />
+        <Text style={[styles.performanceLabel, { color: theme.colors.textMuted }]} numberOfLines={1}>{label}</Text>
       </View>
-      <Text style={styles.performanceValue}>{value}</Text>
+      <Text style={[styles.performanceValue, { color: theme.colors.text }]}>{value}</Text>
       <SparkBars values={bars} small />
     </View>
   );
@@ -1143,18 +1214,25 @@ function MiniStatCard({
   icon: keyof typeof MaterialIcons.glyphMap;
   rows: string[][];
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <View style={styles.miniCard}>
+    <View
+      style={[
+        styles.miniCard,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+      ]}
+    >
       <View style={styles.miniHeader}>
         <View style={styles.cardHeaderLeft}>
-          <MaterialIcons name={icon} size={19} color={PLUGGD_ORANGE} />
-          <Text style={styles.miniTitle}>{title}</Text>
+          <MaterialIcons name={icon} size={19} color={theme.colors.accent} />
+          <Text style={[styles.miniTitle, { color: theme.colors.text }]}>{title}</Text>
         </View>
       </View>
       {rows.map(([label, value]) => (
         <View key={label} style={styles.miniRow}>
-          <Text style={styles.miniRowLabel}>{label}</Text>
-          <Text style={styles.miniRowValue}>{value}</Text>
+          <Text style={[styles.miniRowLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+          <Text style={[styles.miniRowValue, { color: theme.colors.text }]}>{value}</Text>
         </View>
       ))}
     </View>
@@ -1175,19 +1253,27 @@ function ActivityRow({
   };
   isLast: boolean;
 }) {
+  const theme = usePluggdTheme();
+
   return (
-    <View style={[styles.activityRow, !isLast && styles.activityBorder]}>
-      <View style={[styles.activityIconBox, { borderColor: item.accent }]}>
+    <View
+      style={[
+        styles.activityRow,
+        !isLast && styles.activityBorder,
+        !isLast && { borderBottomColor: theme.colors.borderSubtle },
+      ]}
+    >
+      <View style={[styles.activityIconBox, { borderColor: item.accent, backgroundColor: theme.colors.surfaceAlt }]}>
         <MaterialIcons name={item.icon} size={20} color={item.accent} />
       </View>
       <View style={styles.activityText}>
-        <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.activitySubtitle} numberOfLines={1}>{item.subtitle}</Text>
+        <Text style={[styles.activityTitle, { color: theme.colors.text }]} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.activitySubtitle, { color: theme.colors.textMuted }]} numberOfLines={1}>{item.subtitle}</Text>
       </View>
       {item.value ? (
         <View style={styles.activityValueWrap}>
-          <Text style={styles.activityValue}>{item.value}</Text>
-          {item.valueLabel ? <Text style={styles.activityValueLabel}>{item.valueLabel}</Text> : null}
+          <Text style={[styles.activityValue, { color: theme.colors.text }]}>{item.value}</Text>
+          {item.valueLabel ? <Text style={[styles.activityValueLabel, { color: theme.colors.textMuted }]}>{item.valueLabel}</Text> : null}
         </View>
       ) : null}
     </View>
@@ -1195,13 +1281,15 @@ function ActivityRow({
 }
 
 function RevenueRow({ label, value, active }: { label: string; value: string; active?: boolean }) {
+  const theme = usePluggdTheme();
+
   return (
     <View style={styles.revenueRow}>
       <View style={styles.revenueRowLeft}>
         <View style={[styles.revenueDot, active ? styles.revenueDotActive : styles.revenueDotMuted]} />
-        <Text style={styles.revenueRowLabel}>{label}</Text>
+        <Text style={[styles.revenueRowLabel, { color: theme.colors.textMuted }]}>{label}</Text>
       </View>
-      <Text style={styles.revenueRowValue}>{value}</Text>
+      <Text style={[styles.revenueRowValue, { color: theme.colors.text }]}>{value}</Text>
     </View>
   );
 }
@@ -1236,7 +1324,8 @@ function SparkBars({ values, small }: { values: number[]; small?: boolean }) {
 }
 
 function EmptyCardText({ text }: { text: string }) {
-  return <Text style={styles.emptyCardText}>{text}</Text>;
+  const theme = usePluggdTheme();
+  return <Text style={[styles.emptyCardText, { color: theme.colors.textMuted }]}>{text}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -1246,8 +1335,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 100,
-    paddingBottom: 210,
+    paddingTop: 82,
+    paddingBottom: 180,
   },
   topBar: {
     minHeight: 54,
@@ -1277,7 +1366,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     lineHeight: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -1286,7 +1375,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 2,
   },
   headerActions: {
@@ -1312,7 +1401,7 @@ const styles = StyleSheet.create({
   studioRailLabel: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   identityRow: {
     minHeight: 56,
@@ -1324,7 +1413,7 @@ const styles = StyleSheet.create({
   greeting: {
     color: '#FFFFFF',
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.4,
   },
   subGreeting: {
@@ -1347,7 +1436,7 @@ const styles = StyleSheet.create({
   compactButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   roleSwitcher: {
     flexDirection: 'row',
@@ -1374,7 +1463,7 @@ const styles = StyleSheet.create({
   roleChipText: {
     color: '#AFAFAF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   roleChipTextSelected: {
     color: PLUGGD_ORANGE,
@@ -1402,19 +1491,19 @@ const styles = StyleSheet.create({
   summaryLabel: {
     color: '#A6A6A6',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   summaryValue: {
     color: '#FFFFFF',
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.8,
     marginTop: 10,
   },
   positiveText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 5,
   },
   creditRow: {
@@ -1437,7 +1526,7 @@ const styles = StyleSheet.create({
   walletLinkText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   miniSparkline: {
     position: 'absolute',
@@ -1475,7 +1564,7 @@ const styles = StyleSheet.create({
   quickActionText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   nextActionCard: {
     minHeight: 132,
@@ -1506,12 +1595,12 @@ const styles = StyleSheet.create({
   nextActionEyebrow: {
     color: '#DADADA',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   nextActionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 4,
   },
   nextActionSubtitle: {
@@ -1551,7 +1640,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
   },
   performanceCard: {
@@ -1578,12 +1667,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   cardLink: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   performanceGrid: {
     flexDirection: 'row',
@@ -1606,12 +1695,12 @@ const styles = StyleSheet.create({
   performanceLabel: {
     color: '#BDBDBD',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   performanceValue: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 7,
   },
   tinySparkline: {
@@ -1651,13 +1740,13 @@ const styles = StyleSheet.create({
   toolLabel: {
     color: '#D8D8D8',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 8,
   },
   toolValue: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 3,
   },
   twoColumnGrid: {
@@ -1681,7 +1770,7 @@ const styles = StyleSheet.create({
   miniTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   miniRow: {
     flexDirection: 'row',
@@ -1696,7 +1785,7 @@ const styles = StyleSheet.create({
   miniRowValue: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   card: {
     backgroundColor: '#151515',
@@ -1740,7 +1829,7 @@ const styles = StyleSheet.create({
   activityTitle: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   activitySubtitle: {
     color: '#9D9D9D',
@@ -1756,7 +1845,7 @@ const styles = StyleSheet.create({
   activityValue: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   activityValueLabel: {
     color: '#A0A0A0',
@@ -1781,7 +1870,7 @@ const styles = StyleSheet.create({
   revenueValue: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   revenueChart: {
     height: 54,
@@ -1831,7 +1920,7 @@ const styles = StyleSheet.create({
   revenueRowValue: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   upcomingList: {
     flexDirection: 'row',
@@ -1857,12 +1946,12 @@ const styles = StyleSheet.create({
   upcomingEyebrow: {
     color: '#A0A0A0',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   upcomingTitle: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 2,
     minHeight: 29,
   },
@@ -1893,7 +1982,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
   },
   primaryButton: {
@@ -1907,6 +1996,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

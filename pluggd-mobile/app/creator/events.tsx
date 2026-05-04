@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     lineHeight: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 2,
   },
   summaryGrid: {
@@ -656,12 +656,12 @@ const styles = StyleSheet.create({
   summaryValue: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   summaryLabel: {
     color: '#AFAFAF',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   formCard: {
     borderRadius: 8,
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   formTitle: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   closeButton: {
     width: 34,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: '#BEBEBE',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     textTransform: 'uppercase',
     marginTop: 10,
     marginBottom: 6,
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
   segmentButtonText: {
     color: '#AFAFAF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   segmentButtonTextActive: {
     color: PLUGGD_ORANGE,
@@ -803,12 +803,12 @@ const styles = StyleSheet.create({
   eventMonth: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   eventDay: {
     color: '#FFFFFF',
     fontSize: 26,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 2,
   },
   eventBody: {
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   eventActions: {
     flexDirection: 'row',
@@ -843,7 +843,7 @@ const styles = StyleSheet.create({
   eventMeta: {
     color: '#D8D8D8',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 7,
   },
   eventLocation: {
@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
   eventPillText: {
     color: '#DADADA',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   emptyCard: {
     minHeight: 180,
@@ -887,7 +887,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 19,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 10,
   },
   emptyBody: {
@@ -910,6 +910,6 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

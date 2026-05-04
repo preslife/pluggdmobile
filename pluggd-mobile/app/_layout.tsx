@@ -10,6 +10,7 @@ import "../global.css";
 import { AppChrome } from "../components/AppChrome";
 import { AuthProvider } from "../src/context/AuthProvider";
 import { PlaybackProvider } from "../src/context/PlaybackProvider";
+import { PluggdThemeProvider, usePluggdTheme } from "../src/design/usePluggdTheme";
 import { PlaybackService } from "../src/lib/playback-service";
 
 // Register the playback service once at module scope
@@ -34,6 +35,16 @@ export default function Layout() {
   }
 
   return (
+    <PluggdThemeProvider>
+      <LayoutContent />
+    </PluggdThemeProvider>
+  );
+}
+
+function LayoutContent() {
+  const theme = usePluggdTheme();
+
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <StripeProvider
@@ -42,7 +53,7 @@ export default function Layout() {
         >
           <AuthProvider>
             <PlaybackProvider>
-              <View style={{ flex: 1, backgroundColor: "#080808" }}>
+              <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
                 <Slot />
                 <AppChrome />
               </View>

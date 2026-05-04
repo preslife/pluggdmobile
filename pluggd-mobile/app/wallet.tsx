@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { BrandLogo } from '../components/BrandLogo';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 
@@ -42,7 +44,7 @@ const LEDGER_LABELS: Record<string, string> = {
 };
 
 function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={112} height={34} />;
+  return <BrandLogo variant="auto" width={112} height={34} />;
 }
 
 function formatPriceLabel(price: string) {
@@ -64,11 +66,12 @@ function buildPackSubtext(pack: CreditPack) {
 }
 
 function LedgerRow({ entry }: { entry: WalletLedgerEntry }) {
+  const theme = usePluggdTheme();
   const isCredit = entry.amount_credits > 0;
 
   return (
-    <View style={styles.ledgerRow}>
-      <View style={styles.ledgerIcon}>
+    <View style={[styles.ledgerRow, { borderTopColor: theme.colors.borderSubtle }]}>
+      <View style={[styles.ledgerIcon, { backgroundColor: theme.colors.surfaceAlt }]}>
         <MaterialIcons
           name={isCredit ? 'add' : 'remove'}
           size={18}
@@ -76,8 +79,12 @@ function LedgerRow({ entry }: { entry: WalletLedgerEntry }) {
         />
       </View>
       <View style={styles.ledgerTextWrap}>
-        <Text style={styles.ledgerTitle}>{LEDGER_LABELS[entry.kind] ?? entry.kind}</Text>
-        <Text style={styles.ledgerDate}>{formatDate(entry.created_at)}</Text>
+        <Text style={[styles.ledgerTitle, { color: theme.colors.text }]}>
+          {LEDGER_LABELS[entry.kind] ?? entry.kind}
+        </Text>
+        <Text style={[styles.ledgerDate, { color: theme.colors.textSubtle }]}>
+          {formatDate(entry.created_at)}
+        </Text>
       </View>
       <Text style={[styles.ledgerAmount, isCredit ? styles.ledgerCredit : styles.ledgerDebit]}>
         {isCredit ? '+' : ''}
@@ -88,6 +95,8 @@ function LedgerRow({ entry }: { entry: WalletLedgerEntry }) {
 }
 
 export default function WalletScreen() {
+  const theme = usePluggdTheme();
+  const isDark = theme.scheme === 'dark';
   const { balance, ledger, loading, refreshBalance, refreshLedger } = useWallet();
   const {
     packs,
@@ -132,8 +141,12 @@ export default function WalletScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={isDark ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
+        style={StyleSheet.absoluteFill}
+      />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -147,7 +160,10 @@ export default function WalletScreen() {
           <PluggdWordmark />
 
           <Pressable
-            style={styles.infoButton}
+            style={[
+              styles.infoButton,
+              { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border },
+            ]}
             onPress={() =>
               Alert.alert(
                 'Pluggd credits',
@@ -155,22 +171,38 @@ export default function WalletScreen() {
               )
             }
           >
-            <MaterialIcons name="info-outline" size={22} color="#FFFFFF" />
+            <MaterialIcons name="info-outline" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
 
-        <Text style={styles.pageTitle}>Wallet</Text>
+        <Text style={[styles.pageTitle, { color: theme.colors.text }]}>Wallet</Text>
 
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceIconBox}>
-            <MaterialIcons name="account-balance-wallet" size={30} color={PLUGGD_ORANGE} />
+        <View
+          style={[
+            styles.balanceCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.balanceIconBox,
+              { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.borderAccent },
+            ]}
+          >
+            <MaterialIcons name="account-balance-wallet" size={30} color={theme.colors.accent} />
           </View>
 
           <View style={styles.balanceContent}>
-            <Text style={styles.balanceAmount}>
+            <Text style={[styles.balanceAmount, { color: theme.colors.text }]}>
               {balance.available_credits.toLocaleString()} credits
             </Text>
-            <Text style={styles.balanceLabel}>Available balance</Text>
+            <Text style={[styles.balanceLabel, { color: theme.colors.textMuted }]}>
+              Available balance
+            </Text>
 
             <Pressable
               style={styles.activityLink}
@@ -179,7 +211,7 @@ export default function WalletScreen() {
               <Text style={styles.activityLinkText}>
                 {showActivity ? 'Hide activity' : 'View activity'}
               </Text>
-              <MaterialIcons name="chevron-right" size={19} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="chevron-right" size={19} color={theme.colors.accent} />
             </Pressable>
           </View>
 
@@ -191,8 +223,13 @@ export default function WalletScreen() {
         </View>
 
         {balance.pending_credits > 0 && (
-          <View style={styles.pendingCard}>
-            <Text style={styles.pendingText}>
+          <View
+            style={[
+              styles.pendingCard,
+              { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.borderAccent },
+            ]}
+          >
+            <Text style={[styles.pendingText, { color: theme.colors.accent }]}>
               {balance.pending_credits.toLocaleString()} credits pending
             </Text>
           </View>
@@ -206,8 +243,8 @@ export default function WalletScreen() {
         ) : null}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Buy credits</Text>
-          <Text style={styles.balanceValue}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Buy credits</Text>
+          <Text style={[styles.balanceValue, { color: theme.colors.textSubtle }]}>
             ~£{creditsToGBP(balance.available_credits).toFixed(2)}
           </Text>
         </View>
@@ -222,19 +259,31 @@ export default function WalletScreen() {
               <Pressable
                 key={pack.sku}
                 onPress={() => setSelectedSku(pack.sku)}
-                style={[styles.packCard, selected && styles.packCardSelected]}
+                style={[
+                  styles.packCard,
+                  {
+                    backgroundColor: selected ? theme.colors.surfaceStrong : theme.colors.surface,
+                    borderColor: selected ? theme.colors.accent : theme.colors.border,
+                    shadowColor: theme.colors.shadow,
+                  },
+                ]}
               >
-                <View style={styles.packIconBox}>
+                <View style={[styles.packIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
                   <MaterialIcons
                     name={icon}
                     size={24}
-                    color={selected ? PLUGGD_ORANGE : '#D8D8D8'}
+                    color={selected ? theme.colors.accent : theme.colors.textMuted}
                   />
                 </View>
 
                 <View style={styles.packTextWrap}>
                   <View style={styles.packTitleRow}>
-                    <Text style={[styles.packName, selected && styles.packNameSelected]}>
+                    <Text
+                      style={[
+                        styles.packName,
+                        { color: selected ? theme.colors.accent : theme.colors.text },
+                      ]}
+                    >
                       {pack.label}
                     </Text>
 
@@ -245,17 +294,29 @@ export default function WalletScreen() {
                     ) : null}
                   </View>
 
-                  <Text style={styles.packCredits}>
+                  <Text style={[styles.packCredits, { color: theme.colors.textMuted }]}>
                     {pack.credits.toLocaleString()} credits
                   </Text>
 
-                  {subtext ? <Text style={styles.packSubtext}>{subtext}</Text> : null}
+                  {subtext ? (
+                    <Text style={[styles.packSubtext, { color: theme.colors.textMuted }]}>
+                      {subtext}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.packRight}>
-                  <Text style={styles.packPrice}>{formatPriceLabel(pack.localizedPrice)}</Text>
+                  <Text style={[styles.packPrice, { color: theme.colors.text }]}>
+                    {formatPriceLabel(pack.localizedPrice)}
+                  </Text>
 
-                  <View style={[styles.selectCircle, selected && styles.selectCircleActive]}>
+                  <View
+                    style={[
+                      styles.selectCircle,
+                      { borderColor: selected ? theme.colors.accent : theme.colors.textSubtle },
+                      selected && styles.selectCircleActive,
+                    ]}
+                  >
                     {selected ? <MaterialIcons name="check" size={16} color="#080808" /> : null}
                   </View>
                 </View>
@@ -277,25 +338,35 @@ export default function WalletScreen() {
         </Pressable>
 
         <Pressable onPress={restorePurchases} disabled={restoring} style={styles.restoreButton}>
-          <Text style={styles.restoreText}>
+          <Text style={[styles.restoreText, { color: theme.colors.textSubtle }]}>
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>
         </Pressable>
 
-        <View style={styles.noteCard}>
-          <MaterialIcons name="info-outline" size={20} color={PLUGGD_ORANGE} />
-          <Text style={styles.noteText}>
+        <View
+          style={[
+            styles.noteCard,
+            { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border },
+          ]}
+        >
+          <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
+          <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
             Credits can be used for eligible in-app purchases, tips, boosts, and platform features.
           </Text>
         </View>
 
         {showActivity && (
-          <View style={styles.activityCard}>
-            <Text style={styles.activityTitle}>Recent activity</Text>
+          <View
+            style={[
+              styles.activityCard,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          >
+            <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Recent activity</Text>
             {loading ? (
-              <ActivityIndicator color={PLUGGD_ORANGE} style={styles.activityLoader} />
+              <ActivityIndicator color={theme.colors.accent} style={styles.activityLoader} />
             ) : ledger.length === 0 ? (
-              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={[styles.emptyText, { color: theme.colors.textSubtle }]}>No transactions yet</Text>
             ) : (
               ledger.slice(0, 8).map((entry) => <LedgerRow key={entry.id} entry={entry} />)
             )}
@@ -313,8 +384,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 100,
-    paddingBottom: 128,
+    paddingTop: 82,
+    paddingBottom: 132,
   },
   topBar: {
     height: 48,
@@ -330,7 +401,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 26,
     lineHeight: 34,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -347,9 +418,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pageTitle: {
-    color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '700',
     marginTop: 6,
     marginBottom: 14,
   },
@@ -364,6 +434,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     marginBottom: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   balanceIconBox: {
     width: 56,
@@ -381,12 +454,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   balanceAmount: {
-    color: '#FFFFFF',
-    fontSize: 29,
-    fontWeight: '900',
+    fontSize: 27,
+    fontWeight: '700',
   },
   balanceLabel: {
-    color: '#A8A8A8',
     fontSize: 15,
     fontWeight: '700',
     marginTop: 2,
@@ -400,7 +471,7 @@ const styles = StyleSheet.create({
   activityLinkText: {
     color: PLUGGD_ORANGE,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   balanceGraphic: {
     width: 50,
@@ -440,7 +511,7 @@ const styles = StyleSheet.create({
   pendingText: {
     color: '#FFB089',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   errorCard: {
     backgroundColor: '#2A1111',
@@ -468,14 +539,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 23,
-    fontWeight: '900',
+    fontSize: 21,
+    fontWeight: '700',
   },
   balanceValue: {
     color: '#8F8F8F',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   packList: {
     gap: 9,
@@ -490,6 +560,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   packCardSelected: {
     borderColor: PLUGGD_ORANGE,
@@ -514,12 +587,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   packName: {
-    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
-  },
-  packNameSelected: {
-    color: PLUGGD_ORANGE,
+    fontWeight: '700',
   },
   badge: {
     backgroundColor: '#3A1D0E',
@@ -532,12 +601,11 @@ const styles = StyleSheet.create({
   badgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   packCredits: {
-    color: '#D7D7D7',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 4,
   },
   packSubtext: {
@@ -552,9 +620,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   packPrice: {
-    color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   selectCircle: {
     width: 22,
@@ -583,7 +650,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   restoreButton: {
     paddingVertical: 12,
@@ -592,7 +659,7 @@ const styles = StyleSheet.create({
     color: '#8F8F8F',
     textAlign: 'center',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     textDecorationLine: 'underline',
   },
   noteCard: {
@@ -621,9 +688,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   activityTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 8,
   },
   activityLoader: {
@@ -657,9 +723,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   ledgerTitle: {
-    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   ledgerDate: {
     color: '#8F8F8F',
@@ -669,7 +734,7 @@ const styles = StyleSheet.create({
   },
   ledgerAmount: {
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   ledgerCredit: {
     color: '#41D17D',

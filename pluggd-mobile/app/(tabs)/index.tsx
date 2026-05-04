@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
@@ -12,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#FF5200';
@@ -122,6 +124,7 @@ function initials(name: string) {
 
 export default function Home() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const [releases, setReleases] = useState<ReleaseRow[]>([]);
   const [beats, setBeats] = useState<BeatRow[]>([]);
   const [liveRooms, setLiveRooms] = useState<LiveRoomRow[]>([]);
@@ -221,10 +224,19 @@ export default function Home() {
   const eventLocationParts = (event.location || FALLBACK_EVENT.location || '').split(',');
   const eventVenue = eventLocationParts[0]?.trim() || 'Venue TBA';
   const eventCity = eventLocationParts.slice(1).join(',').trim() || 'London';
+  const screenGradient =
+    theme.scheme === 'dark'
+      ? (['#080808', '#0C0C0C', '#080808'] as const)
+      : (['#FAFAF8', '#FFFFFF', '#F4F2EE'] as const);
+  const artworkGradient =
+    theme.scheme === 'dark'
+      ? (['rgba(255,82,0,0.18)', 'rgba(255,82,0,0.02)'] as const)
+      : (['rgba(255,82,0,0.18)', 'rgba(255,255,255,0.12)'] as const);
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient colors={screenGradient} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -233,33 +245,46 @@ export default function Home() {
       >
         <View style={styles.header}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Today on Pluggd</Text>
-            <Text style={styles.headerSubtitle}>Music, mixes, scenes, events, market updates and live activity.</Text>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Today on Pluggd</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textMuted }]}>Music, mixes, scenes, events, market updates and live activity.</Text>
           </View>
         </View>
 
         {loading ? (
           <View style={styles.loadingBlock}>
             <ActivityIndicator color={PLUGGD_ORANGE} />
-            <Text style={styles.loadingText}>Loading your feed...</Text>
+            <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>Loading your feed...</Text>
           </View>
         ) : null}
 
         <Pressable
-          style={styles.featuredCreatorCard}
+          style={[
+            styles.featuredCreatorCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
           onPress={() => {
             if (featured?.id) router.push(`/release/${featured.id}` as any);
           }}
         >
+          <LinearGradient
+            colors={theme.scheme === 'dark' ? ['rgba(255,82,0,0.11)', 'rgba(255,82,0,0)'] : ['rgba(255,82,0,0.08)', 'rgba(255,255,255,0)']}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.featuredText}>
             <View style={styles.badgeRow}>
               <MaterialIcons name="stars" size={16} color={PLUGGD_ORANGE} />
               <Text style={styles.badgeText}>Featured creator</Text>
             </View>
 
-            <Text style={styles.creatorName}>{featuredName}</Text>
-            <Text style={styles.creatorRole}>Artist</Text>
-            <Text style={styles.creatorDescription} numberOfLines={3}>
+            <Text style={[styles.creatorName, { color: theme.colors.text }]}>{featuredName}</Text>
+            <Text style={[styles.creatorRole, { color: theme.colors.textMuted }]}>Artist</Text>
+            <Text style={[styles.creatorDescription, { color: theme.colors.textMuted }]} numberOfLines={3}>
               {featured ? featuredTitle : 'New release, live room tonight, and fresh updates.'}
             </Text>
 
@@ -270,23 +295,40 @@ export default function Home() {
               </Pressable>
 
               <Pressable style={styles.followButton}>
-                <Text style={styles.followButtonText}>Follow</Text>
+                <Text style={[styles.followButtonText, { color: theme.colors.text }]}>Follow</Text>
               </Pressable>
             </View>
           </View>
 
           <View style={styles.creatorImageWrap}>
-            <View style={styles.creatorImageGlow} />
-            <View style={styles.creatorImage}>
+            <View style={[styles.creatorImageGlow, { backgroundColor: PLUGGD_ORANGE }]} />
+            <View
+              style={[
+                styles.creatorImage,
+                {
+                  backgroundColor: theme.colors.artworkBase,
+                  borderColor: theme.colors.borderAccent,
+                },
+              ]}
+            >
+              <LinearGradient colors={artworkGradient} style={StyleSheet.absoluteFill} />
               {featured?.cover_art_url ? (
                 <Image source={{ uri: featured.cover_art_url }} style={styles.creatorImageMedia} />
               ) : (
-                <Text style={styles.creatorInitials}>{initials(featuredName)}</Text>
+                <Text style={[styles.creatorInitials, { color: theme.colors.text }]}>{initials(featuredName)}</Text>
               )}
             </View>
-            <View style={styles.newReleaseBadge}>
+            <View
+              style={[
+                styles.newReleaseBadge,
+                {
+                  backgroundColor: theme.colors.surfaceAlt,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
               <MaterialIcons name="music-note" size={13} color={PLUGGD_ORANGE} />
-              <Text style={styles.newReleaseText}>New release</Text>
+              <Text style={[styles.newReleaseText, { color: theme.colors.text }]}>New release</Text>
             </View>
           </View>
         </Pressable>
@@ -314,10 +356,10 @@ export default function Home() {
                 </View>
               </View>
 
-              <Text style={styles.liveName} numberOfLines={1}>
+              <Text style={[styles.liveName, { color: theme.colors.text }]} numberOfLines={1}>
                 {room.title}
               </Text>
-              <Text style={styles.liveViewers}>{room.viewers} watching</Text>
+              <Text style={[styles.liveViewers, { color: theme.colors.textSubtle }]}>{room.viewers} watching</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -332,7 +374,14 @@ export default function Home() {
           {drops.map((drop) => (
             <Pressable
               key={drop.id}
-              style={styles.dropCard}
+              style={[
+                styles.dropCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  shadowColor: theme.colors.shadow,
+                },
+              ]}
               onPress={() => router.push(drop.route as any)}
             >
               <View style={[styles.dropArtwork, { backgroundColor: drop.color }]}>
@@ -346,10 +395,10 @@ export default function Home() {
                 </View>
               </View>
 
-              <Text style={styles.dropTitle} numberOfLines={1}>
+              <Text style={[styles.dropTitle, { color: theme.colors.text }]} numberOfLines={1}>
                 {drop.title}
               </Text>
-              <Text style={styles.dropCreator} numberOfLines={1}>
+              <Text style={[styles.dropCreator, { color: theme.colors.textMuted }]} numberOfLines={1}>
                 {drop.creator}
               </Text>
 
@@ -364,18 +413,36 @@ export default function Home() {
 
         <SectionHeader title="Events near you" onPress={() => router.push('/events' as any)} />
 
-        <Pressable style={styles.eventCard} onPress={() => router.push(`/events/${event.id}` as any)}>
-          <View style={styles.eventDateBox}>
+        <Pressable
+          style={[
+            styles.eventCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.shadow,
+            },
+          ]}
+          onPress={() => router.push(`/events/${event.id}` as any)}
+        >
+          <View
+            style={[
+              styles.eventDateBox,
+              {
+                backgroundColor: theme.colors.surfaceStrong,
+                borderColor: theme.colors.borderAccent,
+              },
+            ]}
+          >
             <Text style={styles.eventDay}>
               {eventDate.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase()}
             </Text>
-            <Text style={styles.eventDate}>{eventDate.getDate()}</Text>
-            <Text style={styles.eventMonth}>
+            <Text style={[styles.eventDate, { color: theme.colors.text }]}>{eventDate.getDate()}</Text>
+            <Text style={[styles.eventMonth, { color: theme.colors.textMuted }]}>
               {eventDate.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
             </Text>
           </View>
 
-          <View style={styles.eventImage}>
+          <View style={[styles.eventImage, { backgroundColor: theme.colors.surfaceAlt }]}>
             {event.cover_image_url ? (
               <Image source={{ uri: event.cover_image_url }} style={styles.eventImageMedia} />
             ) : (
@@ -384,22 +451,22 @@ export default function Home() {
           </View>
 
           <View style={styles.eventInfo}>
-            <Text style={styles.eventTitle} numberOfLines={1}>
+            <Text style={[styles.eventTitle, { color: theme.colors.text }]} numberOfLines={1}>
               {event.title}
             </Text>
-            <Text style={styles.eventVenue} numberOfLines={1}>
+            <Text style={[styles.eventVenue, { color: theme.colors.textMuted }]} numberOfLines={1}>
               {eventVenue}
             </Text>
 
             <View style={styles.eventLocationRow}>
-              <MaterialIcons name="location-on" size={15} color="#9B9B9B" />
-              <Text style={styles.eventCity} numberOfLines={1}>
+              <MaterialIcons name="location-on" size={15} color={theme.colors.textSubtle} />
+              <Text style={[styles.eventCity, { color: theme.colors.textSubtle }]} numberOfLines={1}>
                 {eventCity}
               </Text>
             </View>
           </View>
 
-          <MaterialIcons name="chevron-right" size={25} color="#777777" />
+          <MaterialIcons name="chevron-right" size={25} color={theme.colors.textSubtle} />
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -407,9 +474,10 @@ export default function Home() {
 }
 
 function SectionHeader({ title, onPress }: { title: string; onPress?: () => void }) {
+  const theme = usePluggdTheme();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
       <Pressable style={styles.seeAll} onPress={onPress}>
         <Text style={styles.seeAllText}>See all</Text>
         <MaterialIcons name="chevron-right" size={20} color={PLUGGD_ORANGE} />
@@ -425,31 +493,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 100,
-    paddingBottom: 180,
+    paddingTop: 54,
+    paddingBottom: 146,
   },
   header: {
-    minHeight: 76,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 7,
   },
   headerTitleWrap: {
     flex: 1,
     paddingRight: 10,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   headerSubtitle: {
     color: '#AFAFAF',
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-    marginTop: 7,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+    marginTop: 5,
   },
   loadingBlock: {
     minHeight: 92,
@@ -463,15 +531,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   featuredCreatorCard: {
-    minHeight: 176,
+    minHeight: 128,
     backgroundColor: '#151515',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
     overflow: 'hidden',
-    padding: 14,
+    padding: 10,
     flexDirection: 'row',
-    marginBottom: 18,
+    marginBottom: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
   },
   featuredText: {
     flex: 1,
@@ -481,39 +552,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginBottom: 9,
+    marginBottom: 7,
   },
   badgeText: {
     color: PLUGGD_ORANGE,
-    fontSize: 11,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   creatorName: {
-    color: '#FFFFFF',
-    fontSize: 29,
-    fontWeight: '900',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   creatorRole: {
     color: '#BEBEBE',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     marginTop: 2,
   },
   creatorDescription: {
     color: '#B8B8B8',
-    fontSize: 14,
-    lineHeight: 19,
-    marginTop: 10,
+    fontSize: 12.5,
+    lineHeight: 17,
+    marginTop: 8,
   },
   creatorActions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 13,
+    marginTop: 11,
   },
   supportButton: {
-    height: 38,
+    height: 32,
     borderRadius: 8,
     backgroundColor: PLUGGD_ORANGE,
     flexDirection: 'row',
@@ -524,11 +595,11 @@ const styles = StyleSheet.create({
   },
   supportButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   followButton: {
-    height: 38,
+    height: 32,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#4A4A4A',
@@ -538,26 +609,26 @@ const styles = StyleSheet.create({
   },
   followButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '700',
   },
   creatorImageWrap: {
-    width: 118,
+    width: 88,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   creatorImageGlow: {
     position: 'absolute',
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: '#58210B',
-    opacity: 0.55,
+    opacity: 0.28,
   },
   creatorImage: {
-    width: 102,
-    height: 128,
+    width: 78,
+    height: 98,
     borderRadius: 8,
     backgroundColor: '#2A1711',
     borderWidth: 1,
@@ -573,7 +644,7 @@ const styles = StyleSheet.create({
   creatorInitials: {
     color: '#FFFFFF',
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   newReleaseBadge: {
     position: 'absolute',
@@ -592,19 +663,18 @@ const styles = StyleSheet.create({
   newReleaseText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 11,
+    marginBottom: 7,
   },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '700',
   },
   seeAll: {
     flexDirection: 'row',
@@ -612,38 +682,38 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     color: PLUGGD_ORANGE,
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '700',
   },
   liveList: {
     paddingRight: 14,
-    gap: 14,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 12,
   },
   liveAvatarItem: {
-    width: 86,
+    width: 68,
     alignItems: 'center',
   },
   liveAvatarRing: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   liveAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   liveAvatarText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '700',
   },
   liveBadge: {
     position: 'absolute',
@@ -656,39 +726,42 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   liveName: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: 9,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
     maxWidth: 82,
   },
   liveViewers: {
     color: '#8D8D8D',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
     maxWidth: 86,
   },
   dropList: {
     paddingRight: 14,
-    gap: 12,
-    marginBottom: 20,
+    gap: 9,
+    marginBottom: 12,
   },
   dropCard: {
-    width: 126,
+    width: 108,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 8,
-    padding: 9,
+    padding: 7,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
   },
   dropArtwork: {
-    height: 94,
+    height: 78,
     borderRadius: 8,
-    marginBottom: 9,
+    marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -712,12 +785,12 @@ const styles = StyleSheet.create({
   },
   dropTitle: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '700',
   },
   dropCreator: {
     color: '#A4A4A4',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 3,
   },
@@ -734,25 +807,28 @@ const styles = StyleSheet.create({
   },
   dropTagText: {
     color: PLUGGD_ORANGE,
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '700',
   },
   dropTagFreeText: {
     color: '#41D17D',
   },
   eventCard: {
-    minHeight: 92,
+    minHeight: 80,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 8,
-    padding: 11,
+    padding: 9,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
   },
   eventDateBox: {
-    width: 54,
-    height: 68,
+    width: 48,
+    height: 58,
     borderRadius: 8,
     backgroundColor: '#20130E',
     borderWidth: 1,
@@ -764,22 +840,22 @@ const styles = StyleSheet.create({
   eventDay: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   eventDate: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     lineHeight: 28,
   },
   eventMonth: {
     color: '#BDBDBD',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   eventImage: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: 8,
     backgroundColor: '#202020',
     alignItems: 'center',
@@ -797,12 +873,12 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '700',
   },
   eventVenue: {
     color: '#AFAFAF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 3,
   },

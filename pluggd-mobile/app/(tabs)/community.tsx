@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ContextRail, EmptyState, ListCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
 import { useAuth } from '../../src/context/AuthProvider';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { FanMapPlugItem, PLUGGD_ORANGE, SocialPostItem, formatCompact } from '../../src/lib/mobileContent';
 
@@ -13,6 +14,7 @@ const TABS = ['Feed', 'Map', 'Battles', 'Collabs', 'Challenges', 'Scenes'];
 export default function CommunityScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const theme = usePluggdTheme();
   const [activeTab, setActiveTab] = useState('Feed');
   const [posts, setPosts] = useState<SocialPostItem[]>([]);
   const [plugs, setPlugs] = useState<FanMapPlugItem[]>([]);
@@ -67,7 +69,7 @@ export default function CommunityScreen() {
         </Pressable>
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
@@ -80,17 +82,25 @@ export default function CommunityScreen() {
       {!loading && activeTab === 'Feed' ? (
         <>
           {user ? (
-            <View style={styles.composerCard}>
+            <View
+              style={[
+                styles.composerCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
               <TextInput
                 value={composer}
                 onChangeText={setComposer}
                 placeholder="Post to the Pluggd community..."
-                placeholderTextColor="#777777"
-                style={styles.composerInput}
+                placeholderTextColor={theme.colors.textSubtle}
+                style={[styles.composerInput, { color: theme.colors.text }]}
                 multiline
               />
               <View style={styles.composerFooter}>
-                <Text style={styles.composerHint}>Hashtags, updates, music, events</Text>
+                <Text style={[styles.composerHint, { color: theme.colors.textSubtle }]}>Hashtags, updates, music, events</Text>
                 <Pressable style={styles.postButton} onPress={publishPost}>
                   <Text style={styles.postButtonText}>Post</Text>
                 </Pressable>
@@ -101,13 +111,22 @@ export default function CommunityScreen() {
           <SectionTitle title="Live feed" />
           {posts.length === 0 ? <EmptyState title="No posts yet" body="Creator posts and community updates will appear here." /> : null}
           {posts.map((post) => (
-            <Pressable key={post.id} style={styles.postCard}>
-              <View style={styles.avatar}>
+            <Pressable
+              key={post.id}
+              style={[
+                styles.postCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceStrong }]}>
                 <MaterialIcons name="person" size={21} color={PLUGGD_ORANGE} />
               </View>
               <View style={styles.postText}>
-                <Text style={styles.postAuthor}>Pluggd member</Text>
-                <Text style={styles.postBody}>{post.body}</Text>
+                <Text style={[styles.postAuthor, { color: theme.colors.text }]}>Pluggd member</Text>
+                <Text style={[styles.postBody, { color: theme.colors.textMuted }]}>{post.body}</Text>
                 <View style={styles.postActions}>
                   <Text style={styles.postAction}>Like</Text>
                   <Text style={styles.postAction}>Comment</Text>
@@ -130,10 +149,18 @@ export default function CommunityScreen() {
       {!loading && activeTab === 'Map' ? (
         <>
           <SectionTitle title="Fan Map" />
-          <View style={styles.mapFallback}>
+          <View
+            style={[
+              styles.mapFallback,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
             <MaterialIcons name="public" size={38} color={PLUGGD_ORANGE} />
-            <Text style={styles.mapTitle}>Pluggd Map</Text>
-            <Text style={styles.mapBody}>
+            <Text style={[styles.mapTitle, { color: theme.colors.text }]}>Pluggd Map</Text>
+            <Text style={[styles.mapBody, { color: theme.colors.textMuted }]}>
               Native map rendering can be enabled once the production map token is wired. This list uses the live Fan Map data.
             </Text>
           </View>
@@ -192,7 +219,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   loading: {
     minHeight: 160,
@@ -236,7 +263,7 @@ const styles = StyleSheet.create({
   postButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   postCard: {
     borderRadius: 8,
@@ -262,7 +289,7 @@ const styles = StyleSheet.create({
   postAuthor: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   postBody: {
     color: '#D8D8D8',
@@ -279,7 +306,7 @@ const styles = StyleSheet.create({
   postAction: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   mapFallback: {
     minHeight: 150,
@@ -295,7 +322,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 8,
   },
   mapBody: {

@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   progressActiveText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   stepText: {
     color: '#A9A9A9',
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 38,
     lineHeight: 44,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   subtitle: {
     color: '#B3B3B3',
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
   overline: {
     color: '#8E8E8E',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -681,18 +681,18 @@ const styles = StyleSheet.create({
   primaryRole: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   secondaryRoles: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 22,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 12,
   },
   checklist: {
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   checklistTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
     lineHeight: 21,
   },
   checklistDescription: {
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   statusProgressText: {
     color: PLUGGD_ORANGE,
@@ -803,7 +803,7 @@ const styles = StyleSheet.create({
   },
   helperLink: {
     color: PLUGGD_ORANGE,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   footer: {
     position: 'absolute',
@@ -827,6 +827,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

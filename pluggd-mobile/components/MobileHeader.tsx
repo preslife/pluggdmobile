@@ -2,7 +2,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Image,
   Modal,
   Pressable,
   SafeAreaView,
@@ -12,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../src/context/AuthProvider';
+import { impactHaptic, selectionHaptic } from '../src/design/haptics';
+import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../src/design/usePluggdTheme';
 import {
   CreateAction,
   PLUGGD_ORANGE,
@@ -24,6 +25,7 @@ import {
 } from '../src/lib/mobileNavigation';
 import { supabase } from '../src/lib/supabase';
 import { BrandLogo } from './BrandLogo';
+import { PluggdAvatar, PluggdGlassSurface, PluggdSheet } from './PluggdPrimitives';
 
 type AccountItem = {
   label: string;
@@ -52,6 +54,8 @@ export function MobileHeader() {
   const router = useRouter();
   const pathname = usePathname() || '/';
   const { user, signOut } = useAuth();
+  const theme = usePluggdTheme();
+  const { mode, setMode } = usePluggdThemeMode();
   const [profile, setProfile] = useState<NavProfile | null>(null);
   const [roleRows, setRoleRows] = useState<ProfileRoleRow[]>([]);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -97,11 +101,13 @@ export function MobileHeader() {
   const liveActive = pathname.startsWith('/live') || pathname.startsWith('/(tabs)/live');
 
   const closeAccountAndGo = (route: string) => {
+    selectionHaptic();
     setAccountOpen(false);
     router.push(route as any);
   };
 
   const closeCreateAndGo = (route: string) => {
+    selectionHaptic();
     setCreateOpen(false);
     router.push(route as any);
   };
@@ -145,71 +151,163 @@ export function MobileHeader() {
   return (
     <>
       <SafeAreaView pointerEvents="box-none" style={styles.safeArea}>
-        <View style={styles.header}>
-          <Pressable style={styles.logoButton} onPress={() => router.push('/' as any)}>
-            <BrandLogo variant="dark" width={106} height={32} />
+        <PluggdGlassSurface
+          glassEffectStyle="regular"
+          blurIntensity={58}
+          borderColor={theme.colors.borderSubtle}
+          fallbackColor={theme.colors.glassFallback}
+          style={styles.header}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go to Home"
+            style={styles.logoButton}
+            onPress={() => {
+              selectionHaptic();
+              router.push('/' as any);
+            }}
+          >
+            <BrandLogo variant="auto" width={96} height={29} />
           </Pressable>
 
           <View style={styles.actions}>
             <Pressable
-              style={[styles.livePill, liveActive && styles.livePillActive]}
-              onPress={() => router.push('/live' as any)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: liveActive }}
+              onPress={() => {
+                impactHaptic();
+                router.push('/live' as any);
+              }}
             >
-              <MaterialIcons
-                name="settings-input-antenna"
-                size={16}
-                color={liveActive ? '#080808' : PLUGGD_ORANGE}
-              />
-              <Text style={[styles.liveText, liveActive && styles.liveTextActive]}>Live</Text>
-            </Pressable>
-
-            <Pressable style={styles.iconButton} onPress={() => router.push('/discover' as any)}>
-              <MaterialIcons name="search" size={22} color="#FFFFFF" />
+              <PluggdGlassSurface
+                interactive
+                glassEffectStyle={liveActive ? 'regular' : 'clear'}
+                borderColor={liveActive ? PLUGGD_ORANGE : theme.colors.borderAccent}
+                fallbackColor={liveActive ? PLUGGD_ORANGE : theme.colors.glassFallback}
+                tintColor={liveActive ? 'rgba(255,82,0,0.7)' : theme.colors.glassTint}
+                style={[styles.livePill, liveActive && styles.livePillActive]}
+              >
+                <MaterialIcons
+                  name="settings-input-antenna"
+                  size={15}
+                  color={liveActive ? '#FFFFFF' : PLUGGD_ORANGE}
+                />
+                <Text style={[styles.liveText, liveActive && styles.liveTextActive]}>Live</Text>
+              </PluggdGlassSurface>
             </Pressable>
 
             <Pressable
-              style={styles.avatarButton}
+              accessibilityRole="button"
+              accessibilityLabel="Search"
               onPress={() => {
+                selectionHaptic();
+                router.push('/discover' as any);
+              }}
+            >
+              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.iconButton}>
+                <MaterialIcons name="search" size={20} color={theme.colors.text} />
+              </PluggdGlassSurface>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open account"
+              onPress={() => {
+                selectionHaptic();
                 if (!user) router.push('/auth/login' as any);
                 else setAccountOpen(true);
               }}
             >
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{avatarInitial}</Text>
-              )}
+              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.avatarShell}>
+                <PluggdAvatar
+                  uri={profile?.avatar_url}
+                  label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
+                  size={32}
+                />
+              </PluggdGlassSurface>
             </Pressable>
           </View>
-        </View>
+        </PluggdGlassSurface>
       </SafeAreaView>
 
       {creatorAccess && createActions.length > 0 ? (
-        <Pressable style={styles.createButton} onPress={() => setCreateOpen(true)}>
-          <MaterialIcons name="add" size={22} color="#FFFFFF" />
-          <Text style={styles.createButtonText}>Create</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Create"
+          style={styles.createButtonWrap}
+          onPress={() => {
+            impactHaptic();
+            setCreateOpen(true);
+          }}
+        >
+          <PluggdGlassSurface
+            interactive
+            glassEffectStyle="regular"
+            tintColor="rgba(255,82,0,0.72)"
+            fallbackColor="rgba(255,82,0,0.92)"
+            borderColor={PLUGGD_ORANGE}
+            style={styles.createButton}
+          >
+            <MaterialIcons name="add" size={22} color="#FFFFFF" />
+            <Text style={styles.createButtonText}>Create</Text>
+          </PluggdGlassSurface>
         </Pressable>
       ) : null}
 
       <Modal visible={accountOpen} transparent animationType="slide" onRequestClose={() => setAccountOpen(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setAccountOpen(false)}>
-          <Pressable style={styles.sheet}>
-            <View style={styles.sheetHandle} />
+          <Pressable>
+            <PluggdSheet>
             <View style={styles.accountHeader}>
-              <View style={styles.sheetAvatar}>
-                {profile?.avatar_url ? (
-                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-                ) : (
-                  <Text style={styles.sheetAvatarText}>{avatarInitial}</Text>
-                )}
-              </View>
+              <PluggdAvatar
+                uri={profile?.avatar_url}
+                label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
+                size={48}
+                style={styles.sheetAvatar}
+              />
               <View style={styles.accountCopy}>
-                <Text style={styles.accountName} numberOfLines={1}>
+                <Text style={[styles.accountName, { color: theme.colors.text }]} numberOfLines={1}>
                   {profile?.display_name || profile?.full_name || user?.email || 'Pluggd'}
                 </Text>
-                <Text style={styles.accountMeta} numberOfLines={1}>
+                <Text style={[styles.accountMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
                   {creatorAccess ? 'Creator account' : 'Fan account'}
                 </Text>
+              </View>
+            </View>
+
+            <View
+              style={[
+                styles.appearanceBlock,
+                {
+                  backgroundColor: theme.colors.surfaceAlt,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.appearanceLabel, { color: theme.colors.textMuted }]}>Appearance</Text>
+              <View style={styles.appearanceOptions}>
+                {(['system', 'light', 'dark'] as PluggdThemeMode[]).map((item) => {
+                  const active = mode === item;
+                  return (
+                    <Pressable
+                      key={item}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      style={[
+                        styles.appearancePill,
+                        {
+                          backgroundColor: active ? theme.colors.surfaceStrong : 'transparent',
+                          borderColor: active ? theme.colors.borderAccent : 'transparent',
+                        },
+                      ]}
+                      onPress={() => setMode(item)}
+                    >
+                      <Text style={[styles.appearancePillText, { color: active ? theme.colors.accent : theme.colors.textMuted }]}>
+                        {item === 'system' ? 'System' : item === 'light' ? 'Light' : 'Dark'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
@@ -217,40 +315,74 @@ export function MobileHeader() {
               {accountItems.map((item) => (
                 <Pressable
                   key={`${item.label}-${item.route ?? 'action'}`}
-                  style={styles.sheetRow}
+                  style={[
+                    styles.sheetRow,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
                   onPress={() => {
+                    selectionHaptic();
                     if (item.onPress) item.onPress();
                     else if (item.route) closeAccountAndGo(item.route);
                   }}
                 >
-                  <View style={[styles.rowIcon, item.danger && styles.rowIconDanger]}>
+                  <View
+                    style={[
+                      styles.rowIcon,
+                      {
+                        backgroundColor: item.danger ? 'rgba(255,92,92,0.12)' : theme.colors.surfaceStrong,
+                      },
+                    ]}
+                  >
                     <MaterialIcons name={item.icon} size={21} color={item.danger ? '#FF5C5C' : PLUGGD_ORANGE} />
                   </View>
-                  <Text style={[styles.rowLabel, item.danger && styles.rowLabelDanger]}>{item.label}</Text>
-                  {!item.danger ? <MaterialIcons name="chevron-right" size={22} color="#777777" /> : null}
+                  <Text
+                    style={[
+                      styles.rowLabel,
+                      { color: item.danger ? theme.colors.danger : theme.colors.text },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {!item.danger ? <MaterialIcons name="chevron-right" size={22} color={theme.colors.textSubtle} /> : null}
                 </Pressable>
               ))}
             </ScrollView>
+            </PluggdSheet>
           </Pressable>
         </Pressable>
       </Modal>
 
       <Modal visible={createOpen} transparent animationType="slide" onRequestClose={() => setCreateOpen(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setCreateOpen(false)}>
-          <Pressable style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Create</Text>
-            <Text style={styles.sheetSubtitle}>Choose the next thing you want to publish or manage.</Text>
+          <Pressable>
+            <PluggdSheet
+              title="Create"
+              subtitle="Choose the next thing you want to publish or manage."
+            >
 
             {createActions.map((action) => (
-              <Pressable key={action.key} style={styles.sheetRow} onPress={() => closeCreateAndGo(action.route)}>
-                <View style={styles.rowIcon}>
+              <Pressable
+                key={action.key}
+                style={[
+                  styles.sheetRow,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+                onPress={() => closeCreateAndGo(action.route)}
+              >
+                <View style={[styles.rowIcon, { backgroundColor: theme.colors.surfaceStrong }]}>
                   <MaterialIcons name={ACTION_ICONS[action.key]} size={21} color={PLUGGD_ORANGE} />
                 </View>
-                <Text style={styles.rowLabel}>{action.label}</Text>
-                <MaterialIcons name="chevron-right" size={22} color="#777777" />
+                <Text style={[styles.rowLabel, { color: theme.colors.text }]}>{action.label}</Text>
+                <MaterialIcons name="chevron-right" size={22} color={theme.colors.textSubtle} />
               </Pressable>
             ))}
+            </PluggdSheet>
           </Pressable>
         </Pressable>
       </Modal>
@@ -265,16 +397,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
-    backgroundColor: 'rgba(8,8,8,0.97)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#171717',
   },
   header: {
-    height: 58,
-    paddingHorizontal: 14,
+    height: 48,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   logoButton: {
     minHeight: 44,
@@ -283,69 +413,53 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
   },
   livePill: {
-    height: 38,
+    height: 32,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#3A261A',
-    backgroundColor: '#151515',
-    paddingHorizontal: 12,
+    paddingHorizontal: 9,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
   livePillActive: {
-    backgroundColor: PLUGGD_ORANGE,
-    borderColor: PLUGGD_ORANGE,
+    shadowColor: PLUGGD_ORANGE,
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
   },
   liveText: {
     color: PLUGGD_ORANGE,
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   liveTextActive: {
-    color: '#080808',
+    color: '#FFFFFF',
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#151515',
+    width: 32,
+    height: 32,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: '#3A261A',
-    backgroundColor: '#20130E',
+  avatarShell: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  createButton: {
+  createButtonWrap: {
     position: 'absolute',
     right: 14,
-    bottom: 154,
+    bottom: 136,
     zIndex: 90,
-    height: 48,
+  },
+  createButton: {
+    height: 44,
     borderRadius: 999,
-    backgroundColor: PLUGGD_ORANGE,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,32 +471,13 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '700',
   },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.58)',
-  },
-  sheet: {
-    maxHeight: '78%',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#0B0B0B',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 26,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#3A3A3A',
-    marginBottom: 14,
   },
   accountHeader: {
     flexDirection: 'row',
@@ -390,21 +485,35 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sheetAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: PLUGGD_ORANGE,
-    backgroundColor: '#20130E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
     marginRight: 12,
   },
-  sheetAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
+  appearanceBlock: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 12,
+  },
+  appearanceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 7,
+  },
+  appearanceOptions: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  appearancePill: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appearancePillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   accountCopy: {
     flex: 1,
@@ -413,26 +522,13 @@ const styles = StyleSheet.create({
   accountName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   accountMeta: {
     color: '#A7A7A7',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 3,
-  },
-  sheetTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  sheetSubtitle: {
-    color: '#A7A7A7',
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-    marginTop: 4,
-    marginBottom: 12,
   },
   sheetRow: {
     minHeight: 58,
@@ -461,7 +557,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   rowLabelDanger: {
     color: '#FF5C5C',

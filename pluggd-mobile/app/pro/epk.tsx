@@ -32,7 +32,7 @@ export default function EPKBuilder() {
                 <View className="relative bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
                     {/* Header */}
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
-                        <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Press Photos</Text>
+                        <Text className="text-slate-900 dark:text-white text-sm font-bold uppercase tracking-wider">Press Photos</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
                             <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>
@@ -76,7 +76,7 @@ export default function EPKBuilder() {
                 {/* Card 2: Biography */}
                 <View className="relative bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
-                        <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Biography</Text>
+                        <Text className="text-slate-900 dark:text-white text-sm font-bold uppercase tracking-wider">Biography</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
                             <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>
@@ -96,7 +96,7 @@ export default function EPKBuilder() {
                 {/* Card 3: Notable Press */}
                 <View className="relative bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
                     <View className="pl-6 pr-4 pt-4 pb-2 flex-row justify-between items-center">
-                        <Text className="text-slate-900 dark:text-white text-sm font-extrabold uppercase tracking-wider">Notable Press</Text>
+                        <Text className="text-slate-900 dark:text-white text-sm font-bold uppercase tracking-wider">Notable Press</Text>
                         <TouchableOpacity className="size-8 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10">
                             <SymbolIcon name="edit" className="text-primary text-lg" />
                         </TouchableOpacity>

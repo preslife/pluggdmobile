@@ -73,7 +73,7 @@ export default function Notifications() {
                         <TouchableOpacity onPress={() => router.back()} className="p-1">
                             <SymbolIcon name="arrow_back" className="text-slate-800 dark:text-white text-2xl" />
                         </TouchableOpacity>
-                        <Text className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Notifications</Text>
+                        <Text className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Notifications</Text>
                     </View>
                     <TouchableOpacity className="flex-row items-center">
                         <Text className="text-primary text-sm font-bold mr-4">Mark all read</Text>

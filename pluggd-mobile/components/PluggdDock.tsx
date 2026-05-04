@@ -2,6 +2,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
+import { selectionHaptic } from '../src/design/haptics';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { PluggdGlassSurface } from './PluggdPrimitives';
 
 type DockItem = {
   label: string;
@@ -66,75 +69,104 @@ export function PluggdDock() {
   const rawPathname = usePathname();
   const pathname = normalize(rawPathname);
   const router = useRouter();
+  const theme = usePluggdTheme();
   const isStudioContext = pathname.startsWith('/creator');
   const items = isStudioContext ? CREATOR_DOCK : FAN_DOCK;
 
   return (
     <View style={styles.wrap}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+      <PluggdGlassSurface
+        glassEffectStyle="regular"
+        blurIntensity={58}
+        borderColor={theme.colors.borderSubtle}
+        fallbackColor={theme.colors.glassFallback}
+        style={styles.dockGlass}
       >
-        {items.map((item) => {
-          const active = isActive(pathname, item);
-          return (
-            <Pressable
-              key={`${isStudioContext ? 'creator' : 'fan'}-${item.route}`}
-              onPress={() => router.push(item.route as any)}
-              style={[styles.item, active && styles.itemActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <MaterialIcons
-                name={item.icon}
-                size={22}
-                color={active ? PLUGGD_ORANGE : '#9B9B9B'}
-              />
-              <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+        >
+          {items.map((item) => {
+            const active = isActive(pathname, item);
+            return (
+              <Pressable
+                key={`${isStudioContext ? 'creator' : 'fan'}-${item.route}`}
+                onPress={() => {
+                  selectionHaptic();
+                  router.push(item.route as any);
+                }}
+                style={styles.itemPressable}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <View style={[styles.item, active && styles.itemActive]}>
+                  <MaterialIcons
+                    name={item.icon}
+                    size={19}
+                    color={active ? PLUGGD_ORANGE : theme.colors.textMuted}
+                  />
+                  <Text style={[styles.label, { color: theme.colors.textMuted }, active && styles.labelActive]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {active ? <View style={styles.activeBar} /> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </PluggdGlassSurface>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: 'rgba(8,8,8,0.98)',
-    borderTopWidth: 1,
-    borderTopColor: '#202020',
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingTop: 2,
+    paddingBottom: 7,
+  },
+  dockGlass: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    paddingTop: 4,
+    paddingBottom: 0,
   },
   content: {
-    paddingHorizontal: 8,
-    gap: 7,
+    paddingHorizontal: 10,
+    gap: 4,
+  },
+  itemPressable: {
+    borderRadius: 12,
   },
   item: {
-    width: 76,
-    minHeight: 58,
-    borderRadius: 8,
+    width: 62,
+    minHeight: 38,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    backgroundColor: 'transparent',
+    gap: 2,
   },
   itemActive: {
-    borderColor: '#3A261A',
-    backgroundColor: '#1D120C',
+    shadowColor: PLUGGD_ORANGE,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   label: {
-    color: '#9B9B9B',
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 9.25,
+    fontWeight: '600',
   },
   labelActive: {
     color: PLUGGD_ORANGE,
+    fontWeight: '700',
+  },
+  activeBar: {
+    width: 18,
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: PLUGGD_ORANGE,
+    marginTop: 1,
   },
 });

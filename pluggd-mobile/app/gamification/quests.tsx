@@ -34,7 +34,7 @@ export default function Quests() {
                                 <View className="self-start rounded-full bg-primary/20 px-2.5 py-0.5">
                                     <Text className="text-xs font-bold uppercase tracking-wider text-primary">Daily Streak</Text>
                                 </View>
-                                <Text className="text-4xl font-extrabold tracking-tight text-white">12 Days</Text>
+                                <Text className="text-4xl font-bold tracking-tight text-white">12 Days</Text>
                                 <Text className="text-sm font-medium text-zinc-400">You are on fire! Keep it up.</Text>
                             </View>
                             <View className="h-20 w-20 items-center justify-center rounded-full bg-primary shadow-lg shadow-orange-500/30">

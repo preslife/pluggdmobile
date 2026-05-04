@@ -22,23 +22,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    const clearStaleSession = async () => {
+      await supabase.auth.signOut({ scope: 'local' });
+      if (!mounted) return;
+      setSession(null);
+      setUser(null);
+    };
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      })
+      .catch(async (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.toLowerCase().includes('refresh token')) {
+          await clearStaleSession();
+          return;
+        }
+        console.error('[AuthProvider] Failed to restore session:', error);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
     });
     return () => {
+      mounted = false;
       sub.subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     setUser(null);
     setSession(null);
   };

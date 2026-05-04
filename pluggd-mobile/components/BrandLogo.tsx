@@ -2,8 +2,8 @@ import {
   Image,
   type ImageStyle,
   type StyleProp,
-  useColorScheme,
 } from 'react-native';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 const darkLogo = require('../assets/brand/pluggd-logo-dark.png');
 const lightLogo = require('../assets/brand/pluggd-logo-light.png');
@@ -23,8 +23,8 @@ export function BrandLogo({
   variant = 'auto',
   style,
 }: BrandLogoProps) {
-  const colorScheme = useColorScheme();
-  const useLightLogo = variant === 'light' || (variant === 'auto' && colorScheme === 'light');
+  const theme = usePluggdTheme();
+  const useLightLogo = variant === 'light' || (variant === 'auto' && theme.scheme === 'light');
 
   return (
     <Image

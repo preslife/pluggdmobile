@@ -1,9 +1,12 @@
 import { Tabs } from "expo-router";
 import { View } from "react-native";
+import { usePluggdTheme } from "../../src/design/usePluggdTheme";
 
 export default function TabLayout() {
+  const theme = usePluggdTheme();
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
         screenOptions={{
           headerShown: false,
