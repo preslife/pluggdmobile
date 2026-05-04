@@ -241,7 +241,7 @@ export default function ExploreScreen() {
             <TextInput
               ref={searchInputRef}
               className="flex-1 ml-2 text-base text-white"
-              placeholder="Search artists, beats, releases..."
+              placeholder="Search drops, beats, mixes, events, boards..."
               placeholderTextColor="#71717a"
               value={query}
               onChangeText={handleSearch}
@@ -465,6 +465,29 @@ export default function ExploreScreen() {
           <>
             {/* Genre Tags */}
             <View className="pt-4">
+              <Text className="text-white font-bold text-lg px-4 mb-3">Explore Pluggd</Text>
+              <View className="px-4 flex-row flex-wrap gap-2 mb-5">
+                {[
+                  ['Drops', '/drops', 'album'],
+                  ['Market', '/marketplace', 'shopping_bag'],
+                  ['Mixes', '/mixes', 'headphones'],
+                  ['Events', '/events', 'event'],
+                  ['Community', '/community', 'forum'],
+                  ['Soundboards', '/soundboards', 'dashboard_customize'],
+                  ['Library', '/library', 'library_music'],
+                  ['Radio', '/gamification/quests', 'radio'],
+                ].map(([label, route, icon]) => (
+                  <TouchableOpacity
+                    key={label}
+                    onPress={() => router.push(route as any)}
+                    className="w-[48.7%] min-h-[76px] rounded-xl bg-zinc-900/70 border border-white/10 p-3 justify-between"
+                  >
+                    <SymbolIcon name={icon as any} className="text-primary text-2xl" />
+                    <Text className="text-white font-bold text-base">{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <Text className="text-white font-bold text-lg px-4 mb-3">Browse by Genre</Text>
               <ScrollView
                 horizontal

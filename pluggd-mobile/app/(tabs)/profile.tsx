@@ -412,6 +412,19 @@ export default function ProfileScreen() {
           <MaterialIcons name="chevron-right" size={25} color="#8E8E8E" />
         </View>
 
+        <Section title="Account hub">
+          <HubGrid>
+            <HubAction icon="account-balance-wallet" label="Wallet" value="Credits and activity" onPress={() => router.push('/wallet' as any)} />
+            <HubAction icon="library-music" label="Library" value="Owned music and packs" onPress={() => router.push('/library' as any)} />
+            <HubAction icon="favorite-border" label="Favorites" value="Saved content" onPress={() => router.push('/favorites' as any)} />
+            <HubAction icon="receipt-long" label="Orders" value="Purchases and receipts" onPress={() => router.push('/commerce/orders' as any)} />
+            <HubAction icon="workspace-premium" label="Memberships" value="Creator subscriptions" onPress={() => router.push('/membership' as any)} />
+            <HubAction icon="notifications-none" label="Notifications" value="Activity and alerts" onPress={() => router.push('/social/notifications' as any)} />
+            <HubAction icon="mail-outline" label="Inbox" value="Messages" onPress={() => router.push('/social/inbox' as any)} />
+            <HubAction icon="space-dashboard" label="Studio" value="Creator tools" onPress={() => router.push('/creator/dashboard' as any)} />
+          </HubGrid>
+        </Section>
+
         <Section title="Profile basics">
           <EditableRow icon="person-outline" label="Name" value={fullName} onChangeText={setFullName} />
           <EditableRow icon="edit" label="Bio" value={bio} onChangeText={setBio} multiline />
@@ -563,6 +576,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.sectionCard}>{children}</View>
     </View>
+  );
+}
+
+function HubGrid({ children }: { children: React.ReactNode }) {
+  return <View style={styles.hubGrid}>{children}</View>;
+}
+
+function HubAction({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.hubAction} onPress={onPress}>
+      <View style={styles.hubIconBox}>
+        <MaterialIcons name={icon} size={21} color={PLUGGD_ORANGE} />
+      </View>
+      <Text style={styles.hubLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.hubValue} numberOfLines={2}>
+        {value}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -802,6 +845,42 @@ const styles = StyleSheet.create({
     borderColor: '#262626',
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  hubGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 10,
+  },
+  hubAction: {
+    width: '48.7%',
+    minHeight: 104,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#262626',
+    backgroundColor: '#101010',
+    padding: 11,
+  },
+  hubIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#21130E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 9,
+  },
+  hubLabel: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  hubValue: {
+    color: '#A5A5A5',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+    marginTop: 4,
   },
   settingsRow: {
     minHeight: 66,

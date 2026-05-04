@@ -16,7 +16,7 @@ import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#FF5200';
-const TABS = ['For You', 'Drops', 'Events', 'Live'];
+const TABS = ['For You', 'Drops', 'Market', 'Mixes', 'Events', 'Live'];
 
 type ReleaseRow = {
   id: string;
@@ -78,7 +78,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Maya Sol',
     tag: '£2.99',
     tagType: 'paid',
-    route: '/marketplace',
+    route: '/drops',
     color: '#B45309',
   },
   {
@@ -87,7 +87,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Kairo Beats',
     tag: 'Free',
     tagType: 'free',
-    route: '/marketplace',
+    route: '/drops',
     color: '#15803D',
   },
   {
@@ -96,7 +96,7 @@ const FALLBACK_DROPS: DropCardItem[] = [
     creator: 'Selecta Nia',
     tag: '£1.99',
     tagType: 'paid',
-    route: '/marketplace',
+    route: '/drops',
     color: '#6D28D9',
   },
 ];
@@ -246,6 +246,10 @@ export default function Home() {
 
   const handleTabPress = (tab: string) => {
     setActiveTab(tab);
+    if (tab === 'Drops') router.push('/drops' as any);
+    if (tab === 'Market') router.push('/marketplace' as any);
+    if (tab === 'Mixes') router.push('/mixes' as any);
+    if (tab === 'Events') router.push('/events' as any);
     if (tab === 'Live') router.push('/live' as any);
   };
 
@@ -279,7 +283,12 @@ export default function Home() {
           </View>
         </View>
 
-        <View style={styles.segmentTabs}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.segmentTabs}
+          style={styles.segmentTabsScroll}
+        >
           {TABS.map((tab) => {
             const selected = activeTab === tab;
 
@@ -295,7 +304,7 @@ export default function Home() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {loading ? (
           <View style={styles.loadingBlock}>
@@ -381,7 +390,7 @@ export default function Home() {
           ))}
         </ScrollView>
 
-        <SectionHeader title="New drops" onPress={() => router.push('/marketplace' as any)} />
+        <SectionHeader title="New drops" onPress={() => router.push('/drops' as any)} />
 
         <ScrollView
           horizontal
@@ -421,9 +430,9 @@ export default function Home() {
           ))}
         </ScrollView>
 
-        <SectionHeader title="Events near you" />
+        <SectionHeader title="Events near you" onPress={() => router.push('/events' as any)} />
 
-        <Pressable style={styles.eventCard}>
+        <Pressable style={styles.eventCard} onPress={() => router.push(`/events/${event.id}` as any)}>
           <View style={styles.eventDateBox}>
             <Text style={styles.eventDay}>
               {eventDate.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase()}
@@ -550,10 +559,12 @@ const styles = StyleSheet.create({
     borderColor: '#262626',
     borderRadius: 8,
     padding: 4,
+  },
+  segmentTabsScroll: {
     marginBottom: 14,
   },
   segmentTab: {
-    flex: 1,
+    minWidth: 92,
     height: 36,
     borderRadius: 7,
     alignItems: 'center',

@@ -317,7 +317,7 @@ function routeForAction(action: string) {
 
 export default function CreatorDashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { balance, refreshBalance, refreshLedger } = useWallet();
   const [data, setData] = useState<StudioData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
@@ -720,6 +720,19 @@ export default function CreatorDashboard() {
     await loadDashboard();
   };
 
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <StatusBar style="light" />
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.emptyState}>
+          <ActivityIndicator color={PLUGGD_ORANGE} />
+          <Text style={styles.emptyTitle}>Opening Studio...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!user) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -767,6 +780,21 @@ export default function CreatorDashboard() {
             </Pressable>
           </View>
         </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.studioRail}
+        >
+          <StudioRailItem label="Drops" icon="album" onPress={() => navigateAction('release')} />
+          <StudioRailItem label="Beats" icon="headphones" onPress={() => navigateAction('upload')} />
+          <StudioRailItem label="Mixes" icon="graphic-eq" onPress={() => navigateAction('upload')} />
+          <StudioRailItem label="Events" icon="event" onPress={() => navigateAction('events')} />
+          <StudioRailItem label="Soundboards" icon="dashboard-customize" onPress={() => router.push('/soundboards' as any)} />
+          <StudioRailItem label="Members" icon="workspace-premium" onPress={() => navigateAction('memberships')} />
+          <StudioRailItem label="Payouts" icon="account-balance-wallet" onPress={() => navigateAction('payouts')} />
+          <StudioRailItem label="Analytics" icon="timeline" onPress={() => navigateAction('analytics')} />
+        </ScrollView>
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -1038,6 +1066,23 @@ function QuickAction({
   );
 }
 
+function StudioRailItem({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.studioRailItem} onPress={onPress}>
+      <MaterialIcons name={icon} size={18} color={PLUGGD_ORANGE} />
+      <Text style={styles.studioRailLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function SectionHeader({
   title,
   icon,
@@ -1200,7 +1245,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 8,
-    paddingBottom: 32,
+    paddingBottom: 210,
   },
   topBar: {
     minHeight: 54,
@@ -1246,6 +1291,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  studioRail: {
+    gap: 8,
+    paddingBottom: 13,
+  },
+  studioRailItem: {
+    minHeight: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+    backgroundColor: '#111111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  studioRailLabel: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
   },
   identityRow: {
     minHeight: 56,

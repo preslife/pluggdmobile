@@ -28,6 +28,15 @@ import TrackPlayer, {
 } from 'react-native-track-player';
 
 // ─── Types ────────────────────────────────────────────────────────────
+export type PluggdTrackKind =
+  | 'release'
+  | 'beat'
+  | 'sample_pack'
+  | 'sample'
+  | 'mix'
+  | 'soundboard'
+  | 'preview';
+
 export type PluggdTrack = Omit<Track, 'type'> & {
   id: string;
   url: string;
@@ -38,9 +47,20 @@ export type PluggdTrack = Omit<Track, 'type'> & {
   // Pluggd-specific metadata
   releaseId?: string;
   beatId?: string;
-  type?: 'release' | 'beat' | 'preview';
+  mixId?: string;
+  samplePackId?: string;
+  sampleId?: string;
+  soundboardId?: string;
+  soundboardItemId?: string;
+  type?: PluggdTrackKind;
+  sourceType?: PluggdTrackKind;
   isLocked?: boolean;
   creditsPrice?: number;
+  price?: number;
+  currency?: 'GBP' | 'credits' | string;
+  purchaseRoute?: string;
+  previewStart?: number;
+  previewEnd?: number;
 };
 
 export type ShuffleMode = 'off' | 'on';
@@ -120,6 +140,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [queue, setQueue] = useState<PluggdTrack[]>([]);
   const [shuffleMode, setShuffleMode] = useState<ShuffleMode>('off');
+  const [repeatMode, setRepeatModeState] = useState<RepeatMode>(RepeatMode.Off);
   const originalQueue = useRef<PluggdTrack[]>([]);
 
   const playbackState = usePlaybackState();
@@ -158,6 +179,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       if (!isReady) return;
       await TrackPlayer.reset();
       await TrackPlayer.add(track as any);
+      originalQueue.current = [track];
       await TrackPlayer.play();
       syncQueue();
     },
@@ -245,15 +267,37 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           ? RepeatMode.Track
           : RepeatMode.Off;
     await TrackPlayer.setRepeatMode(next);
+    setRepeatModeState(next);
   }, []);
 
-  const toggleShuffle = useCallback(() => {
-    setShuffleMode((prev) => (prev === 'off' ? 'on' : 'off'));
-    // Note: actual shuffle logic would re-order the queue
-    // but keep the current playing track in place.
-    // For now we toggle the flag; full shuffle reorder
-    // can be implemented when queue UI is built.
-  }, []);
+  const toggleShuffle = useCallback(async () => {
+    if (!isReady) return;
+    const nextMode = shuffleMode === 'off' ? 'on' : 'off';
+    setShuffleMode(nextMode);
+
+    const active = (await TrackPlayer.getActiveTrack()) as PluggdTrack | undefined;
+    const source = nextMode === 'on' ? [...queue] : [...originalQueue.current];
+    if (!active || source.length <= 1) return;
+
+    const currentIndex = source.findIndex((track) => track.id === active.id);
+    const withoutActive = source.filter((track) => track.id !== active.id);
+    const nextQueue =
+      nextMode === 'on'
+        ? [
+            active,
+            ...withoutActive
+              .map((track) => ({ track, sort: Math.random() }))
+              .sort((a, b) => a.sort - b.sort)
+              .map(({ track }) => track),
+          ]
+        : source;
+
+    await TrackPlayer.reset();
+    await TrackPlayer.add(nextQueue as any);
+    await TrackPlayer.skip(nextMode === 'on' ? 0 : Math.max(currentIndex, 0));
+    await TrackPlayer.play();
+    await syncQueue();
+  }, [isReady, queue, shuffleMode, syncQueue]);
 
   const currentTrack = (activeTrack as PluggdTrack) ?? null;
 
@@ -270,7 +314,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           buffered: progress.buffered,
         },
         queue,
-        repeatMode: RepeatMode.Off, // read from player in a real implementation
+        repeatMode,
         shuffleMode,
         playTrack,
         playQueue,

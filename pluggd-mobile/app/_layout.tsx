@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TrackPlayer from "react-native-track-player";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
+import { View } from "react-native";
 import "../global.css";
+import { AppChrome } from "../components/AppChrome";
 import { AuthProvider } from "../src/context/AuthProvider";
 import { PlaybackProvider } from "../src/context/PlaybackProvider";
 import { PlaybackService } from "../src/lib/playback-service";
@@ -40,7 +42,10 @@ export default function Layout() {
         >
           <AuthProvider>
             <PlaybackProvider>
-              <Slot />
+              <View style={{ flex: 1, backgroundColor: "#080808" }}>
+                <Slot />
+                <AppChrome />
+              </View>
             </PlaybackProvider>
           </AuthProvider>
         </StripeProvider>

@@ -1,305 +1,205 @@
-
-import { View, Text, ScrollView, Image, TouchableOpacity, Alert, Dimensions } from 'react-native';
-import { useEffect, useState, useCallback } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ContextRail, EmptyState, ListCard, PosterCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
+import { usePlayback } from '../../src/context/PlaybackProvider';
 import { supabase } from '../../src/lib/supabase';
-import { Database } from '../../src/types/supabase';
-import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
-import { SymbolIcon } from '../../components/SymbolIcon';
+import {
+  BeatItem,
+  PLUGGD_ORANGE,
+  SamplePackItem,
+  formatCompact,
+  formatGBP,
+  toTrack,
+} from '../../src/lib/mobileContent';
 
-type Beat = Database['public']['Tables']['beats']['Row'];
+const TABS = ['Beats', 'Sample Packs'];
+const GENRES = ['All', 'Hip Hop', 'R&B', 'Drill', 'Afrobeats', 'Trap', 'Electronic'];
 
-const GENRES = ['All', 'Trap', 'R&B', 'Lo-Fi', 'Drill', 'Afrobeat', 'Soul'];
-const SORT_OPTIONS = ['Trending', 'Newest', 'Price: Low', 'Price: High'];
-
-export default function Marketplace() {
-  const [beats, setBeats] = useState<Beat[]>([]);
-  const [selectedGenre, setSelectedGenre] = useState('All');
-  const [savedBeats, setSavedBeats] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState('Trending');
-  const [showSearch, setShowSearch] = useState(false);
+export default function MarketplaceScreen() {
   const router = useRouter();
-  const { playTrack, currentTrack, isPlaying, togglePlayPause } = usePlayback();
-
-  const screenWidth = Dimensions.get('window').width;
-  const cardWidth = (screenWidth - 48) / 2; // 16px padding each side + 16px gap
+  const { playTrack, playQueue } = usePlayback();
+  const [activeTab, setActiveTab] = useState('Beats');
+  const [genre, setGenre] = useState('All');
+  const [beats, setBeats] = useState<BeatItem[]>([]);
+  const [packs, setPacks] = useState<SamplePackItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBeats();
-    fetchSavedBeats();
-  }, [selectedGenre]);
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      const [beatRes, packRes] = await Promise.all([
+        supabase
+          .from('beats')
+          .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(60),
+        (supabase as any)
+          .from('sample_packs')
+          .select('id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
+          .order('created_at', { ascending: false })
+          .limit(60),
+      ]);
 
-  const fetchBeats = async () => {
-    let query = supabase.from('beats').select('*').limit(30);
-    if (selectedGenre !== 'All') {
-      query = query.eq('genre', selectedGenre);
-    }
-    const { data } = await query.order('created_at', { ascending: false });
-    if (data) setBeats(data);
-  };
-
-  const fetchSavedBeats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from('favorites' as any)
-      .select('item_id')
-      .eq('user_id', user.id)
-      .eq('item_type', 'beat');
-    if (data) {
-      setSavedBeats(new Set(data.map((f: any) => f.item_id)));
-    }
-  };
-
-  const handleSaveBeat = useCallback(async (beatId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      Alert.alert('Sign In', 'Please sign in to save beats.');
-      return;
-    }
-
-    if (savedBeats.has(beatId)) {
-      await supabase
-        .from('favorites' as any)
-        .delete()
-        .eq('user_id', user.id)
-        .eq('item_id', beatId)
-        .eq('item_type', 'beat');
-      setSavedBeats((prev) => {
-        const next = new Set(prev);
-        next.delete(beatId);
-        return next;
-      });
-    } else {
-      await supabase.from('favorites' as any).insert({
-        user_id: user.id,
-        item_id: beatId,
-        item_type: 'beat',
-      });
-      setSavedBeats((prev) => new Set(prev).add(beatId));
-    }
-  }, [savedBeats]);
-
-  const handlePlayBeat = (beat: Beat) => {
-    if (!beat.audio_url) return;
-
-    // If already playing this beat, toggle
-    if (currentTrack?.beatId === beat.id) {
-      togglePlayPause();
-      return;
-    }
-
-    const track: PluggdTrack = {
-      id: beat.id,
-      url: beat.audio_url,
-      title: beat.title || 'Untitled',
-      artist: beat.producer_name || 'Unknown',
-      artwork: beat.image_url || undefined,
-      beatId: beat.id,
-      type: 'beat',
+      if (!mounted) return;
+      setBeats(Array.isArray(beatRes.data) ? (beatRes.data as BeatItem[]) : []);
+      setPacks(Array.isArray(packRes.data) ? (packRes.data as SamplePackItem[]) : []);
+      setLoading(false);
     };
-    playTrack(track);
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const visibleBeats = useMemo(
+    () => (genre === 'All' ? beats : beats.filter((beat) => (beat.genre || '').toLowerCase() === genre.toLowerCase())),
+    [beats, genre],
+  );
+  const visiblePacks = useMemo(
+    () => (genre === 'All' ? packs : packs.filter((pack) => (pack.genre || '').toLowerCase() === genre.toLowerCase())),
+    [packs, genre],
+  );
+  const activeItems = activeTab === 'Beats' ? visibleBeats : visiblePacks;
+
+  const playBeat = (beat: BeatItem) => {
+    const track = toTrack(beat, 'beat');
+    if (track) playTrack(track);
   };
 
-  const renderBeatCard = (beat: Beat) => {
-    const isThisPlaying = currentTrack?.beatId === beat.id && isPlaying;
-
-    return (
-      <View key={beat.id} style={{ width: cardWidth }} className="mb-4">
-        {/* Square Image */}
-        <TouchableOpacity
-          onPress={() => handlePlayBeat(beat)}
-          activeOpacity={0.8}
-          className="relative rounded-xl overflow-hidden bg-[#121212] mb-3"
-          style={{ width: cardWidth, height: cardWidth }}
-        >
-          {beat.image_url ? (
-            <Image
-              source={{ uri: beat.image_url }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-full h-full bg-[#121212]" />
-          )}
-
-          {/* Dark overlay */}
-          <View className="absolute inset-0 bg-black/20" />
-
-          {/* Play button — bottom right */}
-          <View
-            className="absolute bottom-2 right-2 h-10 w-10 rounded-full items-center justify-center border border-white/30"
-            style={{ backgroundColor: isThisPlaying ? '#FF5200' : 'rgba(0,0,0,0.4)' }}
-          >
-            <SymbolIcon name={isThisPlaying ? 'pause' : 'play_arrow'} className="text-white text-2xl" />
-          </View>
-
-          {/* Exclusive badge — top left */}
-          {beat.is_featured && (
-            <View className="absolute top-2 left-2">
-              <View className="px-2 py-0.5 rounded bg-primary">
-                <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
-                  Exclusive
-                </Text>
-              </View>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Beat Info */}
-        <View className="gap-1.5">
-          <View>
-            <Text className="font-bold text-base text-slate-900 dark:text-white" numberOfLines={1}>
-              {beat.title || 'Untitled'}
-            </Text>
-            <Text className="text-sm text-text-secondary" numberOfLines={1}>
-              @{beat.producer_name || 'Unknown'}
-            </Text>
-          </View>
-
-          {/* BPM / Key badges — orange tint style */}
-          <View className="flex-row flex-wrap gap-2 my-0.5">
-            {beat.bpm && (
-              <View className="bg-primary/10 border border-primary/20 px-2 py-1 rounded">
-                <Text className="text-[10px] font-bold text-primary">
-                  {beat.bpm} BPM
-                </Text>
-              </View>
-            )}
-            {beat.key && (
-              <View className="bg-primary/10 border border-primary/20 px-2 py-1 rounded">
-                <Text className="text-[10px] font-bold text-primary">
-                  {beat.key}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Price button — full width orange */}
-          <TouchableOpacity
-            onPress={() => router.push(`/beat/${beat.id}`)}
-            className="w-full h-9 flex-row items-center justify-between px-3 bg-primary rounded-lg"
-            style={{ shadowColor: '#FF5200', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 }}
-          >
-            <Text className="text-white text-sm font-bold">
-              ${beat.price || '—'}
-            </Text>
-            <SymbolIcon name="add_shopping_cart" className="text-white text-[18px]" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  const playPack = (pack: SamplePackItem) => {
+    const track = toTrack(pack, 'sample_pack');
+    if (track) playTrack(track);
   };
 
-  // Build 2-column rows
-  const rows: Beat[][] = [];
-  for (let i = 0; i < beats.length; i += 2) {
-    rows.push(beats.slice(i, i + 2));
-  }
+  const playAll = () => {
+    const tracks =
+      activeTab === 'Beats'
+        ? visibleBeats.map((beat) => toTrack(beat, 'beat')).filter(Boolean)
+        : visiblePacks.map((pack) => toTrack(pack, 'sample_pack')).filter(Boolean);
+    if (tracks.length) playQueue(tracks as any);
+  };
 
   return (
-    <View className="flex-1 bg-background-light dark:bg-background-dark">
-      <StatusBar style="auto" />
+    <ScreenShell
+      title="Market"
+      subtitle="Beats, licenses, and sample packs for creators building the next record."
+      action={
+        <Pressable style={styles.actionButton} onPress={playAll}>
+          <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
+          <Text style={styles.actionText}>Play all</Text>
+        </Pressable>
+      }
+    >
+      <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
+      <ContextRail tabs={TABS} active={activeTab} onChange={setActiveTab} />
+      <ContextRail tabs={GENRES} active={genre} onChange={setGenre} />
 
-      {/* Header */}
-      <View className="pt-14 px-4 pb-0 bg-background-light/95 dark:bg-background-dark/95 border-b border-gray-200 dark:border-white/10">
-        {/* Title + Icons row */}
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Marketplace
-          </Text>
-          <View className="flex-row gap-4 items-center">
-            <TouchableOpacity onPress={() => setShowSearch(!showSearch)}>
-              <SymbolIcon name="search" className="text-slate-600 dark:text-white text-2xl" />
-            </TouchableOpacity>
-            <TouchableOpacity className="relative">
-              <SymbolIcon name="shopping_cart" className="text-slate-600 dark:text-white text-2xl" />
-              {/* Cart badge */}
-              <View className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary items-center justify-center">
-                <Text className="text-[10px] font-bold text-white">0</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={PLUGGD_ORANGE} />
         </View>
+      ) : null}
 
-        {/* Filters bar */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 16 }}
-        >
-          {/* Filter icon + label */}
-          <TouchableOpacity className="flex-row items-center gap-1 pr-2">
-            <SymbolIcon name="tune" className="text-slate-500 dark:text-text-secondary text-[20px]" />
-            <Text className="text-slate-500 dark:text-text-secondary text-sm font-medium">
-              Filters
-            </Text>
-          </TouchableOpacity>
+      {!loading && activeItems.length === 0 ? (
+        <EmptyState title="Nothing here yet" body="Try another genre or check back as creators upload new market items." />
+      ) : null}
 
-          {/* Vertical separator */}
-          <View className="h-6 w-[1px] bg-gray-300 dark:bg-white/10 mx-2" />
+      {!loading && activeTab === 'Beats' && visibleBeats.length > 0 ? (
+        <>
+          <SectionTitle title="Featured beats" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+            {visibleBeats.slice(0, 8).map((beat) => (
+              <PosterCard
+                key={beat.id}
+                title={beat.title || 'Untitled beat'}
+                subtitle={beat.producer_name || 'Producer'}
+                meta={formatGBP(beat.price)}
+                imageUrl={beat.image_url}
+                onPress={() => router.push(`/beat/${beat.id}` as any)}
+                onPlay={() => playBeat(beat)}
+              />
+            ))}
+          </ScrollView>
 
-          {/* Genre pills */}
-          {GENRES.filter(g => g !== 'All').map((genre) => (
-            <TouchableOpacity
-              key={genre}
-              onPress={() => setSelectedGenre(selectedGenre === genre ? 'All' : genre)}
-              className={`h-8 justify-center items-center rounded-full px-4 mr-2 ${
-                selectedGenre === genre
-                  ? 'bg-primary'
-                  : 'bg-gray-200 dark:bg-[#262626]'
-              }`}
-              style={selectedGenre === genre ? { shadowColor: '#FF5200', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 } : undefined}
-            >
-              <Text
-                className={`text-sm ${
-                  selectedGenre === genre
-                    ? 'text-white font-bold'
-                    : 'text-slate-700 dark:text-white font-medium'
-                }`}
-              >
-                {genre}
-              </Text>
-            </TouchableOpacity>
+          <SectionTitle title="Beats" />
+          {visibleBeats.map((beat) => (
+            <ListCard
+              key={beat.id}
+              title={beat.title || 'Untitled beat'}
+              subtitle={beat.producer_name || 'Producer'}
+              meta={[beat.genre, beat.bpm ? `${beat.bpm} BPM` : null, beat.key, formatGBP(beat.price)]
+                .filter(Boolean)
+                .join(' · ')}
+              imageUrl={beat.image_url}
+              onPress={() => router.push(`/beat/${beat.id}` as any)}
+              onPlay={() => playBeat(beat)}
+            />
           ))}
-        </ScrollView>
-      </View>
+        </>
+      ) : null}
 
-      {/* Main Content */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 140 }}
-      >
-        {/* Results count + Sort */}
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-sm font-medium text-text-secondary">
-            Showing {beats.length} Results
-          </Text>
-          <TouchableOpacity className="flex-row items-center gap-1">
-            <Text className="text-sm font-bold text-primary">
-              Sort by: {sortBy}
-            </Text>
-            <SymbolIcon name="keyboard_arrow_down" className="text-primary text-[18px]" />
-          </TouchableOpacity>
-        </View>
+      {!loading && activeTab === 'Sample Packs' && visiblePacks.length > 0 ? (
+        <>
+          <SectionTitle title="Sample pack previews" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+            {visiblePacks.slice(0, 8).map((pack) => (
+              <PosterCard
+                key={pack.id}
+                title={pack.title || 'Untitled pack'}
+                subtitle={pack.genre || 'Sample pack'}
+                meta={formatGBP(pack.price)}
+                imageUrl={pack.cover_art_url}
+                onPress={() => router.push(`/sample-pack/${pack.id}` as any)}
+                onPlay={() => playPack(pack)}
+              />
+            ))}
+          </ScrollView>
 
-        {/* 2-Column Grid */}
-        {rows.map((row, idx) => (
-          <View key={idx} className="flex-row justify-between">
-            {row.map((beat) => renderBeatCard(beat))}
-            {/* If odd row, add spacer */}
-            {row.length === 1 && <View style={{ width: cardWidth }} />}
-          </View>
-        ))}
-
-        {beats.length === 0 && (
-          <View className="py-20 items-center">
-            <Text className="text-text-secondary text-base">No beats found</Text>
-          </View>
-        )}
-      </ScrollView>
-    </View>
+          <SectionTitle title="Sample packs" />
+          {visiblePacks.map((pack) => (
+            <ListCard
+              key={pack.id}
+              title={pack.title || 'Untitled pack'}
+              subtitle={pack.description || pack.genre || 'Sample pack'}
+              meta={`${pack.sample_count ?? 0} samples · ${pack.bpm_range || 'Any BPM'} · ${formatCompact(pack.total_downloads)} downloads · ${formatGBP(pack.price)}`}
+              imageUrl={pack.cover_art_url}
+              onPress={() => router.push(`/sample-pack/${pack.id}` as any)}
+              onPlay={() => playPack(pack)}
+            />
+          ))}
+        </>
+      ) : null}
+    </ScreenShell>
   );
 }
+
+const styles = StyleSheet.create({
+  actionButton: {
+    minHeight: 42,
+    borderRadius: 8,
+    backgroundColor: PLUGGD_ORANGE,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  loading: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rail: {
+    paddingBottom: 18,
+  },
+});

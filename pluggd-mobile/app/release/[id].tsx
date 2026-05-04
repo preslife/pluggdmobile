@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/lib/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
 import { useWallet } from '../../src/hooks/useWallet';
-import MiniPlayer from '../../components/MiniPlayer';
 
 interface ReleaseDetail {
   id: string;
@@ -384,7 +383,6 @@ export default function ReleaseDetailScreen() {
         )}
       </ScrollView>
 
-      <MiniPlayer />
     </View>
   );
 }

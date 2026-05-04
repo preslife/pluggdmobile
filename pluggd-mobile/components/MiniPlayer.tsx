@@ -1,6 +1,8 @@
-import { View, Text, Image, TouchableOpacity, Pressable } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, Image, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePlayback } from '../src/context/PlaybackProvider';
+import { PLUGGD_ORANGE, formatGBP } from '../src/lib/mobileContent';
 
 export default function MiniPlayer() {
   const router = useRouter();
@@ -10,6 +12,7 @@ export default function MiniPlayer() {
     isBuffering,
     progress,
     togglePlayPause,
+    skipToPrevious,
     skipToNext,
   } = usePlayback();
 
@@ -34,62 +37,67 @@ export default function MiniPlayer() {
       : 0;
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 z-50 p-2">
-      <Pressable
-        onPress={openPlayer}
-        className="bg-card-dark backdrop-blur-xl border border-white/5 shadow-2xl rounded-2xl overflow-hidden"
-      >
+    <View style={styles.wrap}>
+      <Pressable onPress={openPlayer} style={styles.card}>
         {/* Progress bar at top of mini player */}
-        <View className="h-[2px] bg-white/10 w-full">
-          <View
-            className="h-full bg-primary"
-            style={{ width: `${progressPercent}%` }}
-          />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
         </View>
 
-        <View className="p-2.5 flex-row items-center gap-3">
+        <View style={styles.content}>
           {/* Cover Art */}
-          <View className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-gray-800">
+          <View style={styles.artwork}>
             {currentTrack.artwork ? (
-              <Image
-                source={{ uri: currentTrack.artwork }}
-                className="w-full h-full"
-              />
+              <Image source={{ uri: currentTrack.artwork }} style={styles.artworkImage} />
             ) : (
-              <View className="w-full h-full bg-gray-700 items-center justify-center">
-                <Text className="text-white text-lg">♪</Text>
+              <View style={styles.artworkFallback}>
+                <MaterialIcons name="music-note" size={20} color="#FFFFFF" />
               </View>
             )}
+            {currentTrack.isLocked ? (
+              <View style={styles.lockBadge}>
+                <MaterialIcons name="lock" size={10} color="#080808" />
+              </View>
+            ) : null}
           </View>
 
           {/* Track Info */}
-          <View className="flex-col flex-1 min-w-0">
-            <Text
-              className="text-white text-sm font-bold"
-              numberOfLines={1}
-            >
+          <View style={styles.trackInfo}>
+            <Text style={styles.title} numberOfLines={1}>
               {currentTrack.title}
             </Text>
-            <Text
-              className="text-text-secondary text-xs"
-              numberOfLines={1}
-            >
+            <Text style={styles.subtitle} numberOfLines={1}>
               {currentTrack.artist}
+              {currentTrack.price ? ` · ${formatGBP(currentTrack.price)}` : ''}
             </Text>
           </View>
 
           {/* Controls */}
-          <View className="flex-row items-center gap-2 pr-1">
+          <View style={styles.controls}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                skipToPrevious();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.iconButton}
+            >
+              <MaterialIcons name="skip-previous" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation?.();
                 togglePlayPause();
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.playButton}
             >
-              <Text className="text-white text-[28px]">
-                {isBuffering ? '⏳' : isPlaying ? '⏸' : '▶️'}
-              </Text>
+              <MaterialIcons
+                name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
+                size={23}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -98,8 +106,9 @@ export default function MiniPlayer() {
                 skipToNext();
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.iconButton}
             >
-              <Text className="text-white text-[22px]">⏭</Text>
+              <MaterialIcons name="skip-next" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -107,3 +116,100 @@ export default function MiniPlayer() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    backgroundColor: 'rgba(8,8,8,0.96)',
+  },
+  card: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#292929',
+    backgroundColor: '#151515',
+    overflow: 'hidden',
+  },
+  progressTrack: {
+    height: 3,
+    width: '100%',
+    backgroundColor: '#303030',
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: PLUGGD_ORANGE,
+  },
+  content: {
+    minHeight: 62,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  artwork: {
+    width: 46,
+    height: 46,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#242424',
+    position: 'relative',
+  },
+  artworkImage: {
+    width: '100%',
+    height: '100%',
+  },
+  artworkFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2A1711',
+  },
+  lockBadge: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PLUGGD_ORANGE,
+  },
+  trackInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  subtitle: {
+    color: '#A4A4A4',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: PLUGGD_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
