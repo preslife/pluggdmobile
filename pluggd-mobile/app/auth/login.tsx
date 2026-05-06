@@ -74,6 +74,7 @@ export default function Login() {
               onPress={() => router.replace('/' as any)}
             >
               <MaterialIcons name="home" size={21} color={theme.colors.text} />
+              <Text style={[styles.topButtonText, { color: theme.colors.text }]}>Home</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
   content: {
     minHeight: '100%',
     paddingHorizontal: 18,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 38,
     justifyContent: 'flex-start',
   },
@@ -263,12 +264,19 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   topButton: {
-    width: 38,
+    minWidth: 82,
     height: 38,
     borderRadius: 19,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  topButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   modeButton: {
     height: 38,

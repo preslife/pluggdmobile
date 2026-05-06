@@ -40,6 +40,13 @@ export default function MiniPlayer() {
     progress.duration > 0
       ? Math.min((progress.position / progress.duration) * 100, 100)
       : 0;
+  const highContrast = theme.scheme === 'light';
+  const playerSurface = highContrast ? 'rgba(14,14,14,0.96)' : theme.colors.glassFallback;
+  const playerTint = highContrast ? 'rgba(16,16,16,0.72)' : theme.colors.glassTint;
+  const playerBorder = highContrast ? 'rgba(255,82,0,0.32)' : theme.colors.border;
+  const playerText = highContrast ? '#FFFFFF' : theme.colors.text;
+  const playerMuted = highContrast ? 'rgba(255,255,255,0.7)' : theme.colors.textMuted;
+  const playerTrack = highContrast ? 'rgba(255,255,255,0.18)' : theme.colors.border;
 
   return (
     <View style={styles.wrap}>
@@ -48,13 +55,13 @@ export default function MiniPlayer() {
           interactive
           glassEffectStyle="regular"
           blurIntensity={58}
-          borderColor={theme.scheme === 'light' ? '#D5D5D2' : theme.colors.border}
-          fallbackColor={theme.scheme === 'light' ? 'rgba(255,255,255,0.96)' : theme.colors.glassFallback}
-          tintColor={theme.scheme === 'light' ? 'rgba(255,255,255,0.78)' : theme.colors.glassTint}
+          borderColor={playerBorder}
+          fallbackColor={playerSurface}
+          tintColor={playerTint}
           style={[styles.card, { shadowColor: theme.colors.shadow }]}
         >
           {/* Progress bar at top of mini player */}
-          <View style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}>
+          <View style={[styles.progressTrack, { backgroundColor: playerTrack }]}>
             <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
 
@@ -77,10 +84,10 @@ export default function MiniPlayer() {
 
             {/* Track Info */}
             <View style={styles.trackInfo}>
-              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
+              <Text style={[styles.title, { color: playerText }]} numberOfLines={1}>
                 {currentTrack.title}
               </Text>
-              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.subtitle, { color: playerMuted }]} numberOfLines={1}>
                 {currentTrack.artist}
                 {currentTrack.price ? ` · ${formatGBP(currentTrack.price)}` : ''}
               </Text>
@@ -97,7 +104,7 @@ export default function MiniPlayer() {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.iconButton}
               >
-                <MaterialIcons name="skip-previous" size={21} color={theme.colors.textMuted} />
+                <MaterialIcons name="skip-previous" size={21} color={playerMuted} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -125,7 +132,7 @@ export default function MiniPlayer() {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.iconButton}
               >
-                <MaterialIcons name="skip-next" size={21} color={theme.colors.textMuted} />
+                <MaterialIcons name="skip-next" size={21} color={playerMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -138,13 +145,13 @@ export default function MiniPlayer() {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: 12,
-    paddingTop: 4,
+    paddingTop: 2,
   },
   card: {
-    borderRadius: 16,
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
+    borderRadius: 18,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
   },
   progressTrack: {
     height: 3,
@@ -156,17 +163,17 @@ const styles = StyleSheet.create({
     backgroundColor: PLUGGD_ORANGE,
   },
   content: {
-    minHeight: 54,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    minHeight: 58,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   artwork: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#242424',
     position: 'relative',
@@ -197,13 +204,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 13.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
   },
   subtitle: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 3,
   },
   controls: {
     flexDirection: 'row',
@@ -218,9 +225,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
     alignItems: 'center',

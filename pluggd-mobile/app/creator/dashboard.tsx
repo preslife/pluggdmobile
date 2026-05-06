@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 13,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
@@ -1375,7 +1375,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 2,
   },
   headerActions: {
@@ -1389,7 +1389,7 @@ const styles = StyleSheet.create({
   },
   studioRailItem: {
     minHeight: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333333',
     backgroundColor: '#111111',
@@ -1401,7 +1401,7 @@ const styles = StyleSheet.create({
   studioRailLabel: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   identityRow: {
     minHeight: 56,
@@ -1412,19 +1412,19 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     letterSpacing: -0.4,
   },
   subGreeting: {
     color: '#AFAFAF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 3,
   },
   compactButton: {
     height: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#343434',
     backgroundColor: '#111111',
@@ -1436,7 +1436,7 @@ const styles = StyleSheet.create({
   compactButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   roleSwitcher: {
     flexDirection: 'row',
@@ -1446,7 +1446,7 @@ const styles = StyleSheet.create({
   roleChip: {
     height: 38,
     minWidth: 86,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333333',
     backgroundColor: '#111111',
@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     minHeight: 122,
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 14,
@@ -1495,15 +1495,15 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '700',
+    fontSize: 29,
+    fontWeight: '800',
     letterSpacing: -0.8,
     marginTop: 10,
   },
   positiveText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 5,
   },
   creditRow: {
@@ -1526,7 +1526,7 @@ const styles = StyleSheet.create({
   walletLinkText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   miniSparkline: {
     position: 'absolute',
@@ -1544,7 +1544,7 @@ const styles = StyleSheet.create({
   },
   quickActionsCard: {
     height: 58,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
@@ -1564,12 +1564,12 @@ const styles = StyleSheet.create({
   quickActionText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   nextActionCard: {
     minHeight: 132,
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 13,
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
   nextActionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 4,
   },
   nextActionSubtitle: {
@@ -1630,7 +1630,7 @@ const styles = StyleSheet.create({
   continueButton: {
     minWidth: 96,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1640,12 +1640,12 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
   },
   performanceCard: {
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 12,
@@ -1667,12 +1667,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   cardLink: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   performanceGrid: {
     flexDirection: 'row',
@@ -1681,7 +1681,7 @@ const styles = StyleSheet.create({
   performanceTile: {
     flex: 1,
     minHeight: 76,
-    borderRadius: 8,
+    borderRadius: 13,
     backgroundColor: '#101010',
     borderWidth: 1,
     borderColor: '#262626',
@@ -1700,7 +1700,7 @@ const styles = StyleSheet.create({
   performanceValue: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 7,
   },
   tinySparkline: {
@@ -1716,7 +1716,7 @@ const styles = StyleSheet.create({
   },
   roleToolsCard: {
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 12,
@@ -1730,7 +1730,7 @@ const styles = StyleSheet.create({
   toolTile: {
     width: '48.6%',
     minHeight: 78,
-    borderRadius: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#101010',
@@ -1746,7 +1746,7 @@ const styles = StyleSheet.create({
   toolValue: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 3,
   },
   twoColumnGrid: {
@@ -1759,7 +1759,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 12,
   },
   miniHeader: {
@@ -1770,7 +1770,7 @@ const styles = StyleSheet.create({
   miniTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   miniRow: {
     flexDirection: 'row',
@@ -1789,7 +1789,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 12,
@@ -1815,7 +1815,7 @@ const styles = StyleSheet.create({
   activityIconBox: {
     width: 38,
     height: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#101010',
     borderWidth: 1,
     alignItems: 'center',
@@ -1829,7 +1829,7 @@ const styles = StyleSheet.create({
   activityTitle: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   activitySubtitle: {
     color: '#9D9D9D',
@@ -1854,7 +1854,7 @@ const styles = StyleSheet.create({
   },
   revenueCard: {
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 12,
@@ -1870,7 +1870,7 @@ const styles = StyleSheet.create({
   revenueValue: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   revenueChart: {
     height: 54,
@@ -1936,7 +1936,7 @@ const styles = StyleSheet.create({
   upcomingIcon: {
     width: 38,
     height: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     backgroundColor: '#101010',
     alignItems: 'center',
@@ -1951,7 +1951,7 @@ const styles = StyleSheet.create({
   upcomingTitle: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 2,
     minHeight: 29,
   },
@@ -1982,12 +1982,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
   },
   primaryButton: {
     height: 48,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: PLUGGD_ORANGE,
     paddingHorizontal: 22,
     alignItems: 'center',
@@ -1996,6 +1996,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

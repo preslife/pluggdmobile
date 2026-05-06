@@ -99,6 +99,11 @@ export function MobileHeader() {
   const createActions = useMemo(() => getCreateActions(roles), [roles]);
   const avatarInitial = initialFor(profile, user?.email);
   const liveActive = pathname.startsWith('/live') || pathname.startsWith('/(tabs)/live');
+  const forceDarkChrome = liveActive;
+  const chromeText = forceDarkChrome ? '#FFFFFF' : theme.colors.text;
+  const chromeFallback = forceDarkChrome ? 'rgba(8,8,8,0.9)' : theme.colors.glassFallback;
+  const chromeBorder = forceDarkChrome ? 'rgba(255,255,255,0.1)' : theme.colors.borderSubtle;
+  const chromeTint = forceDarkChrome ? 'rgba(8,8,8,0.72)' : theme.colors.glassTint;
 
   const closeAccountAndGo = (route: string) => {
     selectionHaptic();
@@ -154,8 +159,10 @@ export function MobileHeader() {
         <PluggdGlassSurface
           glassEffectStyle="regular"
           blurIntensity={58}
-          borderColor={theme.colors.borderSubtle}
-          fallbackColor={theme.colors.glassFallback}
+          borderColor={chromeBorder}
+          fallbackColor={chromeFallback}
+          tintColor={chromeTint}
+          colorScheme={forceDarkChrome ? 'dark' : undefined}
           style={styles.header}
         >
           <Pressable
@@ -167,7 +174,7 @@ export function MobileHeader() {
               router.push('/' as any);
             }}
           >
-            <BrandLogo variant="auto" width={96} height={29} />
+            <BrandLogo variant={forceDarkChrome ? 'dark' : 'auto'} width={96} height={29} />
           </Pressable>
 
           <View style={styles.actions}>
@@ -204,8 +211,16 @@ export function MobileHeader() {
                 router.push('/discover' as any);
               }}
             >
-              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.iconButton}>
-                <MaterialIcons name="search" size={20} color={theme.colors.text} />
+              <PluggdGlassSurface
+                interactive
+                glassEffectStyle="clear"
+                borderColor={forceDarkChrome ? 'rgba(255,255,255,0.12)' : theme.colors.border}
+                fallbackColor={forceDarkChrome ? 'rgba(255,255,255,0.04)' : theme.colors.glassFallback}
+                tintColor={chromeTint}
+                colorScheme={forceDarkChrome ? 'dark' : undefined}
+                style={styles.iconButton}
+              >
+                <MaterialIcons name="search" size={20} color={chromeText} />
               </PluggdGlassSurface>
             </Pressable>
 
@@ -218,7 +233,15 @@ export function MobileHeader() {
                 else setAccountOpen(true);
               }}
             >
-              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.avatarShell}>
+              <PluggdGlassSurface
+                interactive
+                glassEffectStyle="clear"
+                borderColor={forceDarkChrome ? 'rgba(255,82,0,0.24)' : theme.colors.border}
+                fallbackColor={forceDarkChrome ? 'rgba(255,82,0,0.08)' : theme.colors.glassFallback}
+                tintColor={chromeTint}
+                colorScheme={forceDarkChrome ? 'dark' : undefined}
+                style={styles.avatarShell}
+              >
                 <PluggdAvatar
                   uri={profile?.avatar_url}
                   label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
@@ -399,8 +422,8 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   header: {
-    height: 48,
-    paddingHorizontal: 12,
+    height: 52,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -416,9 +439,9 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   livePill: {
-    height: 32,
+    height: 34,
     borderRadius: 999,
-    paddingHorizontal: 9,
+    paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -431,34 +454,34 @@ const styles = StyleSheet.create({
   },
   liveText: {
     color: PLUGGD_ORANGE,
-    fontSize: 11.5,
-    fontWeight: '700',
+    fontSize: 12.5,
+    fontWeight: '800',
   },
   liveTextActive: {
     color: '#FFFFFF',
   },
   iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarShell: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   createButtonWrap: {
     position: 'absolute',
     right: 14,
-    bottom: 136,
+    bottom: 154,
     zIndex: 90,
   },
   createButton: {
-    height: 44,
+    height: 46,
     borderRadius: 999,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -472,7 +495,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   modalBackdrop: {
     flex: 1,

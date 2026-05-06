@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { selectionHaptic } from '../src/design/haptics';
@@ -70,16 +71,21 @@ export function PluggdDock() {
   const pathname = normalize(rawPathname);
   const router = useRouter();
   const theme = usePluggdTheme();
+  const insets = useSafeAreaInsets();
   const isStudioContext = pathname.startsWith('/creator');
+  const forceDarkChrome = pathname.startsWith('/live');
+  const inactiveColor = forceDarkChrome ? 'rgba(255,255,255,0.62)' : theme.colors.textMuted;
   const items = isStudioContext ? CREATOR_DOCK : FAN_DOCK;
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 7) }]}>
       <PluggdGlassSurface
         glassEffectStyle="regular"
         blurIntensity={58}
-        borderColor={theme.colors.borderSubtle}
-        fallbackColor={theme.colors.glassFallback}
+        borderColor={forceDarkChrome ? 'rgba(255,255,255,0.1)' : theme.colors.borderSubtle}
+        fallbackColor={forceDarkChrome ? 'rgba(8,8,8,0.92)' : theme.colors.glassFallback}
+        tintColor={forceDarkChrome ? 'rgba(8,8,8,0.72)' : theme.colors.glassTint}
+        colorScheme={forceDarkChrome ? 'dark' : undefined}
         style={styles.dockGlass}
       >
         <ScrollView
@@ -104,9 +110,9 @@ export function PluggdDock() {
                   <MaterialIcons
                     name={item.icon}
                     size={19}
-                    color={active ? PLUGGD_ORANGE : theme.colors.textMuted}
+                    color={active ? PLUGGD_ORANGE : inactiveColor}
                   />
-                  <Text style={[styles.label, { color: theme.colors.textMuted }, active && styles.labelActive]} numberOfLines={1}>
+                  <Text style={[styles.label, { color: inactiveColor }, active && styles.labelActive]} numberOfLines={1}>
                     {item.label}
                   </Text>
                   {active ? <View style={styles.activeBar} /> : null}
@@ -123,27 +129,26 @@ export function PluggdDock() {
 const styles = StyleSheet.create({
   wrap: {
     paddingTop: 2,
-    paddingBottom: 7,
   },
   dockGlass: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
     borderRightWidth: 0,
-    paddingTop: 4,
+    paddingTop: 5,
     paddingBottom: 0,
   },
   content: {
-    paddingHorizontal: 10,
-    gap: 4,
+    paddingHorizontal: 8,
+    gap: 3,
   },
   itemPressable: {
     borderRadius: 12,
   },
   item: {
-    width: 62,
-    minHeight: 38,
-    borderRadius: 10,
+    width: 67,
+    minHeight: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
@@ -155,7 +160,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   label: {
-    fontSize: 9.25,
+    fontSize: 10,
     fontWeight: '600',
   },
   labelActive: {
@@ -163,7 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeBar: {
-    width: 18,
+    width: 20,
     height: 2,
     borderRadius: 999,
     backgroundColor: PLUGGD_ORANGE,

@@ -485,13 +485,13 @@ function CreatorAvatar({ artist, onPress }: { artist: ArtistResult; onPress: () 
 
 const styles = StyleSheet.create({
   searchWrap: {
-    minHeight: 48,
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    minHeight: 46,
+    borderRadius: 14,
+    paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 10,
   },
   searchInput: {
     flex: 1,
@@ -507,27 +507,27 @@ const styles = StyleSheet.create({
   ecosystemGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+    gap: 9,
+    marginBottom: 18,
   },
   ecosystemPressable: {
     width: '48.4%',
   },
   ecosystemCard: {
-    minHeight: 108,
+    minHeight: 112,
     padding: 12,
     justifyContent: 'space-between',
   },
   ecosystemIcon: {
     width: 38,
     height: 38,
-    borderRadius: 8,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ecosystemTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 10,
   },
   ecosystemBody: {
@@ -539,16 +539,16 @@ const styles = StyleSheet.create({
   genreRail: {
     gap: 8,
     paddingRight: 8,
-    marginBottom: 22,
+    marginBottom: 18,
   },
   genreChip: {
-    minHeight: 40,
+    minHeight: 38,
     borderRadius: 999,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     justifyContent: 'center',
   },
   genreText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   creatorRail: {
@@ -585,8 +585,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   creatorRow: {
-    minHeight: 74,
-    borderRadius: 8,
+    minHeight: 72,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 10,
     flexDirection: 'row',
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   creatorName: {
     flexShrink: 1,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   creatorMeta: {
     fontSize: 12,

@@ -819,10 +819,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   topBarTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     textAlign: 'center',
     marginBottom: -3,
   },
@@ -846,7 +847,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 13,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
@@ -854,16 +855,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileCard: {
-    minHeight: 118,
+    minHeight: 116,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 16,
+    padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    shadowOpacity: 0.1,
+    marginBottom: 18,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
   },
@@ -887,7 +888,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 30,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   cameraBadge: {
     position: 'absolute',
@@ -907,12 +908,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   displayName: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 25,
+    fontWeight: '800',
   },
   username: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     marginTop: 2,
   },
   roleChipRow: {
@@ -922,7 +923,7 @@ const styles = StyleSheet.create({
     marginTop: 11,
   },
   primaryChip: {
-    borderRadius: 8,
+    borderRadius: 999,
     backgroundColor: '#24150E',
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
@@ -934,10 +935,10 @@ const styles = StyleSheet.create({
   },
   primaryChipText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   secondaryChipSmall: {
-    borderRadius: 8,
+    borderRadius: 999,
     backgroundColor: '#101010',
     borderWidth: 1,
     borderColor: '#343434',
@@ -953,7 +954,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 8,
@@ -963,7 +964,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   hubGrid: {
@@ -974,8 +975,8 @@ const styles = StyleSheet.create({
   },
   hubAction: {
     width: '48.7%',
-    minHeight: 104,
-    borderRadius: 8,
+    minHeight: 100,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#101010',
@@ -984,7 +985,7 @@ const styles = StyleSheet.create({
   hubIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#21130E',
     alignItems: 'center',
     justifyContent: 'center',
@@ -992,7 +993,7 @@ const styles = StyleSheet.create({
   },
   hubLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   hubValue: {
     fontSize: 12,
@@ -1015,7 +1016,7 @@ const styles = StyleSheet.create({
   rowIconBox: {
     width: 42,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#222222',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1027,16 +1028,16 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   rowValue: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 4,
   },
   rowInput: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 2,
     paddingVertical: 0,
   },
@@ -1058,7 +1059,7 @@ const styles = StyleSheet.create({
   },
   dropdownPill: {
     height: 36,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#1C120E',
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
@@ -1070,7 +1071,7 @@ const styles = StyleSheet.create({
   dropdownText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   primaryPickerGrid: {
     flexDirection: 'row',
@@ -1084,7 +1085,7 @@ const styles = StyleSheet.create({
   },
   multiSelectLabel: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     paddingHorizontal: 13,
     paddingTop: 13,
     paddingBottom: 9,
@@ -1098,7 +1099,7 @@ const styles = StyleSheet.create({
   },
   roleChip: {
     minHeight: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#343434',
     backgroundColor: '#101010',

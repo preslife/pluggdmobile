@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 100,
+    paddingTop: 96,
     paddingBottom: 150,
   },
   topBar: {
@@ -438,13 +438,13 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     color: '#FFFFFF',
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
   },
   createRoomButton: {
     minWidth: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: '#2E2E2E',
     backgroundColor: '#151515',
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   createRoomText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -469,8 +469,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: '#FFFFFF',
-    fontSize: 23,
-    fontWeight: '700',
+    fontSize: 21,
+    fontWeight: '800',
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   loader: {
     paddingVertical: 28,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   liveThumbnail: {
     width: 92,
     height: 92,
-    borderRadius: 8,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   liveInfo: {
     flex: 1,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   liveTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 10,
   },
   hostRow: {
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   hostAvatarText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   hostTextWrap: {
     flex: 1,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   metaRow: {
     flexDirection: 'row',
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   roleBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   modeBadge: {
     borderRadius: 999,
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     height: 39,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
     alignItems: 'center',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   joinButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   upcomingList: {
     gap: 9,
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 14,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   timeBox: {
     width: 64,
     height: 56,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#20130E',
     borderWidth: 1,
     borderColor: '#3B261A',
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
   timeText: {
     color: PLUGGD_ORANGE,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   dateText: {
     color: '#BDBDBD',
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   upcomingAvatarText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   upcomingInfo: {
     flex: 1,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   upcomingTitle: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   upcomingHost: {
     color: '#9E9E9E',
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
   },
   reminderButton: {
     height: 36,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#111111',
     borderWidth: 1,
     borderColor: '#343434',
@@ -700,14 +700,14 @@ const styles = StyleSheet.create({
   reminderText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   emptyCard: {
     minHeight: 120,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 10,
   },
   emptyBody: {
@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
   },
   startRoomButton: {
     height: 54,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -750,6 +750,6 @@ const styles = StyleSheet.create({
   startRoomText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

@@ -13,7 +13,7 @@ const TABS = ['Local Events', 'Featured Events', 'Promoted Events', 'Promoters',
 export default function EventsScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
-  const [activeTab, setActiveTab] = useState('List');
+  const [activeTab, setActiveTab] = useState('Local Events');
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -173,9 +173,9 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   actionButton: {
     minHeight: 42,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: PLUGGD_ORANGE,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   loading: {
     minHeight: 160,
@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mapFallback: {
-    minHeight: 150,
-    borderRadius: 8,
+    minHeight: 144,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 8,
   },
   mapBody: {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   cityCard: {
     minHeight: 76,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
@@ -224,12 +224,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 9,
+    marginBottom: 8,
   },
   cityName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   cityMeta: {
     color: '#AFAFAF',
@@ -239,19 +239,19 @@ const styles = StyleSheet.create({
   },
   opportunityCard: {
     minHeight: 78,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
     padding: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 9,
+    marginBottom: 8,
   },
   opportunityIcon: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#21130E',
     alignItems: 'center',
     justifyContent: 'center',
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   opportunityTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   opportunityMeta: {
     color: '#AFAFAF',
@@ -275,10 +275,10 @@ const styles = StyleSheet.create({
   applyText: {
     color: PLUGGD_ORANGE,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   smallButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: PLUGGD_ORANGE,
     paddingHorizontal: 10,
@@ -287,6 +287,6 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

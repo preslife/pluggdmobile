@@ -209,9 +209,9 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   actionButton: {
     minHeight: 42,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: PLUGGD_ORANGE,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   loading: {
     minHeight: 160,
@@ -227,18 +227,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   composerCard: {
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
-    padding: 12,
-    marginBottom: 16,
+    padding: 13,
+    marginBottom: 14,
   },
   composerInput: {
-    minHeight: 76,
+    minHeight: 72,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlignVertical: 'top',
   },
   composerFooter: {
@@ -252,27 +252,28 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#888888',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   postButton: {
-    borderRadius: 8,
+    minHeight: 36,
+    borderRadius: 12,
     backgroundColor: PLUGGD_ORANGE,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   postButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   postCard: {
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
     padding: 12,
     flexDirection: 'row',
-    marginBottom: 9,
+    marginBottom: 8,
   },
   avatar: {
     width: 42,
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
   postAuthor: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   postBody: {
     color: '#D8D8D8',
@@ -300,8 +301,8 @@ const styles = StyleSheet.create({
   },
   postActions: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 10,
+    gap: 14,
+    marginTop: 9,
   },
   postAction: {
     color: PLUGGD_ORANGE,
@@ -309,8 +310,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mapFallback: {
-    minHeight: 150,
-    borderRadius: 8,
+    minHeight: 144,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#151515',
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 8,
   },
   mapBody: {
