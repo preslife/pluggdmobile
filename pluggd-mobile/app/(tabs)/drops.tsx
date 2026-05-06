@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ContextRail, EmptyState, ListCard, PosterCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
 import { supabase } from '../../src/lib/supabase';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import {
   PLUGGD_ORANGE,
   ReleaseItem,
@@ -19,6 +20,7 @@ const FILTERS = ['All', 'New', 'Paid', 'Free'];
 
 export default function MusicScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const { playTrack, playQueue } = usePlayback();
   const [activeFilter, setActiveFilter] = useState('All');
   const [releases, setReleases] = useState<ReleaseItem[]>([]);
@@ -70,7 +72,7 @@ export default function MusicScreen() {
         </Pressable>
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={FILTERS} active={activeFilter} onChange={setActiveFilter} />
 
@@ -122,7 +124,7 @@ export default function MusicScreen() {
 const styles = StyleSheet.create({
   actionButton: {
     minHeight: 42,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   loading: {
     minHeight: 160,

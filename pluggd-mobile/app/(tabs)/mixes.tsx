@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ContextRail, EmptyState, ListCard, PosterCard, ScreenShell, SectionTitle } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { MixItem, PLUGGD_ORANGE, formatCompact, formatDuration, toTrack } from '../../src/lib/mobileContent';
 
@@ -12,6 +13,7 @@ const FILTERS = ['All', 'DJ Sets', 'Live', 'Studio', 'Saved'];
 
 export default function MixesScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const { playTrack, playQueue } = usePlayback();
   const [filter, setFilter] = useState('All');
   const [mixes, setMixes] = useState<MixItem[]>([]);
@@ -67,7 +69,7 @@ export default function MixesScreen() {
         </Pressable>
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ContextRail tabs={FILTERS} active={filter} onChange={setFilter} />
 
@@ -121,7 +123,7 @@ export default function MixesScreen() {
 const styles = StyleSheet.create({
   actionButton: {
     minHeight: 42,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   loading: {
     minHeight: 160,
@@ -142,4 +144,3 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
 });
-

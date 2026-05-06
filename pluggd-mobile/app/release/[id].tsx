@@ -1,4 +1,7 @@
 import {
+  MaterialIcons,
+} from '@expo/vector-icons';
+import {
   View,
   Text,
   Image,
@@ -207,7 +210,7 @@ export default function ReleaseDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-[#0A0A1A] items-center justify-center">
+      <View className="flex-1 bg-[#080808] items-center justify-center">
         <ActivityIndicator size="large" color="#FF5200" />
       </View>
     );
@@ -215,7 +218,7 @@ export default function ReleaseDetailScreen() {
 
   if (!release) {
     return (
-      <View className="flex-1 bg-[#0A0A1A] items-center justify-center">
+      <View className="flex-1 bg-[#080808] items-center justify-center">
         <Text className="text-white text-lg">Release not found</Text>
         <TouchableOpacity onPress={() => router.back()} className="mt-4">
           <Text className="text-[#FF5200]">Go back</Text>
@@ -229,11 +232,11 @@ export default function ReleaseDetailScreen() {
   const trackList = buildTrackList();
 
   return (
-    <View className="flex-1 bg-[#0A0A1A]">
+    <View className="flex-1 bg-[#080808]">
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 118, paddingBottom: 196 }}>
         {/* Hero */}
         <View className="relative">
           <View className="w-full aspect-square">
@@ -249,7 +252,7 @@ export default function ReleaseDetailScreen() {
             )}
           </View>
           <LinearGradient
-            colors={['transparent', 'rgba(10,10,26,0.8)', '#0A0A1A']}
+            colors={['transparent', 'rgba(8,8,8,0.82)', '#080808']}
             className="absolute bottom-0 left-0 right-0 h-40"
           />
 
@@ -258,7 +261,7 @@ export default function ReleaseDetailScreen() {
             onPress={() => router.back()}
             className="absolute top-14 left-4 h-10 w-10 rounded-full bg-black/50 items-center justify-center"
           >
-            <Text className="text-white text-lg">←</Text>
+            <MaterialIcons name="chevron-left" size={26} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
@@ -293,11 +296,9 @@ export default function ReleaseDetailScreen() {
         <View className="flex-row gap-3 px-4 mt-5">
           <TouchableOpacity
             onPress={isCurrentlyPlaying ? togglePlayPause : handlePlayAll}
-            className="flex-1 bg-[#FF5200] rounded-xl py-3.5 items-center flex-row justify-center gap-2"
+            className="flex-1 bg-[#FF5200] rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
           >
-            <Text className="text-white text-lg">
-              {isCurrentlyPlaying && isPlaying ? '⏸' : '▶️'}
-            </Text>
+            <MaterialIcons name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play-arrow'} size={22} color="#FFFFFF" />
             <Text className="text-white font-bold">
               {isCurrentlyPlaying && isPlaying ? 'Pause' : 'Play All'}
             </Text>
@@ -307,13 +308,13 @@ export default function ReleaseDetailScreen() {
             <TouchableOpacity
               onPress={handleUnlock}
               disabled={unlocking}
-              className="flex-1 bg-white/10 border border-[#FF5200]/50 rounded-xl py-3.5 items-center flex-row justify-center gap-2"
+              className="flex-1 bg-white/10 border border-[#FF5200]/50 rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
             >
               {unlocking ? (
                 <ActivityIndicator size="small" color="#FF5200" />
               ) : (
                 <>
-                  <Text className="text-[#FF5200] text-lg">🔓</Text>
+                  <MaterialIcons name="lock-open" size={20} color="#FF5200" />
                   <Text className="text-[#FF5200] font-bold">
                     {creditsNeeded} Credits
                   </Text>
@@ -323,8 +324,8 @@ export default function ReleaseDetailScreen() {
           )}
 
           {isOwned && (
-            <View className="flex-1 bg-green-500/20 border border-green-500/50 rounded-xl py-3.5 items-center flex-row justify-center gap-2">
-              <Text className="text-green-400 text-lg">✓</Text>
+            <View className="flex-1 bg-green-500/20 border border-green-500/50 rounded-2xl py-3.5 items-center flex-row justify-center gap-2">
+              <MaterialIcons name="check-circle" size={20} color="#4ADE80" />
               <Text className="text-green-400 font-bold">Owned</Text>
             </View>
           )}
