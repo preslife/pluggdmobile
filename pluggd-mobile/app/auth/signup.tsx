@@ -87,10 +87,11 @@ export default function SignUp() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Go back"
-              style={[styles.backButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.glassFallback }]}
+              style={[styles.topButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.glassFallback }]}
               onPress={() => router.back()}
             >
-              <MaterialIcons name="chevron-left" size={24} color={theme.colors.text} />
+              <MaterialIcons name="chevron-left" size={22} color={theme.colors.text} />
+              <Text style={[styles.topButtonText, { color: theme.colors.text }]}>Back</Text>
             </Pressable>
             <View style={styles.progressTrack}>
               <View style={styles.progressActive} />
@@ -100,7 +101,7 @@ export default function SignUp() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Switch appearance"
-              style={[styles.backButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.glassFallback }]}
+              style={[styles.modeButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.glassFallback }]}
               onPress={cycleThemeMode}
             >
               <MaterialIcons
@@ -108,6 +109,9 @@ export default function SignUp() {
                 size={19}
                 color={theme.colors.accent}
               />
+              <Text style={[styles.modeText, { color: theme.colors.textMuted }]}>
+                {mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}
+              </Text>
             </Pressable>
           </View>
 
@@ -271,13 +275,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 18,
   },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  topButton: {
+    minWidth: 78,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 11,
+  },
+  topButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modeButton: {
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 11,
+  },
+  modeText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   progressTrack: {
     flexDirection: 'row',
@@ -301,14 +326,14 @@ const styles = StyleSheet.create({
   kicker: {
     marginTop: 14,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 1.1,
   },
   title: {
     marginTop: 8,
-    fontSize: 25,
-    lineHeight: 31,
-    fontWeight: '700',
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '800',
   },
   subtitle: {
     marginTop: 8,
@@ -317,21 +342,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   formCard: {
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    padding: 13,
   },
   inputGroup: {
     marginBottom: 12,
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     textTransform: 'uppercase',
     marginBottom: 7,
   },
   inputShell: {
     minHeight: 50,
-    borderRadius: 8,
+    borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,7 +388,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     minHeight: 42,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 11,
     flexDirection: 'row',
@@ -378,7 +403,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     minHeight: 50,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -392,7 +417,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   dividerRow: {
     marginTop: 18,
@@ -417,7 +442,7 @@ const styles = StyleSheet.create({
   socialButton: {
     flex: 1,
     minHeight: 46,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -426,7 +451,7 @@ const styles = StyleSheet.create({
   },
   socialText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   footerText: {
     marginTop: 22,
@@ -435,6 +460,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerLink: {
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

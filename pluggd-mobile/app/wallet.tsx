@@ -14,7 +14,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BrandLogo } from '../components/BrandLogo';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
@@ -42,10 +41,6 @@ const LEDGER_LABELS: Record<string, string> = {
   spend_gift: 'Gift Sent',
   earn_gift: 'Gift Received',
 };
-
-function PluggdWordmark() {
-  return <BrandLogo variant="auto" width={112} height={34} />;
-}
 
 function formatPriceLabel(price: string) {
   return price.replace(/\.00$/, '');
@@ -156,9 +151,8 @@ export default function WalletScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PLUGGD_ORANGE} />
         }
       >
-        <View style={styles.topBar}>
-          <PluggdWordmark />
-
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageTitle, { color: theme.colors.text }]}>Wallet</Text>
           <Pressable
             style={[
               styles.infoButton,
@@ -174,8 +168,6 @@ export default function WalletScreen() {
             <MaterialIcons name="info-outline" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
-
-        <Text style={[styles.pageTitle, { color: theme.colors.text }]}>Wallet</Text>
 
         <View
           style={[
@@ -383,15 +375,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#080808',
   },
   scrollContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 82,
     paddingBottom: 132,
   },
-  topBar: {
-    height: 48,
+  pageHeader: {
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 14,
   },
   logoTextRow: {
     flexDirection: 'row',
@@ -410,7 +403,7 @@ const styles = StyleSheet.create({
   infoButton: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 13,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
@@ -419,29 +412,27 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 30,
-    fontWeight: '700',
-    marginTop: 6,
-    marginBottom: 14,
+    fontWeight: '800',
   },
   balanceCard: {
     minHeight: 124,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 16,
+    padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
     marginBottom: 12,
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
   },
   balanceIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: 14,
     backgroundColor: '#21130E',
     borderWidth: 1,
     borderColor: '#3B261A',
@@ -455,11 +446,11 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontSize: 27,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   balanceLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 2,
   },
   activityLink: {
@@ -471,7 +462,7 @@ const styles = StyleSheet.create({
   activityLinkText: {
     color: PLUGGD_ORANGE,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   balanceGraphic: {
     width: 50,
@@ -504,20 +495,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#21130E',
     borderWidth: 1,
     borderColor: '#3B261A',
-    borderRadius: 8,
+    borderRadius: 13,
     padding: 10,
     marginBottom: 12,
   },
   pendingText: {
     color: '#FFB089',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   errorCard: {
     backgroundColor: '#2A1111',
     borderWidth: 1,
     borderColor: '#5A2424',
-    borderRadius: 8,
+    borderRadius: 13,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -540,7 +531,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 21,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   balanceValue: {
     color: '#8F8F8F',
@@ -555,14 +546,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
   },
   packCardSelected: {
     borderColor: PLUGGD_ORANGE,
@@ -571,7 +562,7 @@ const styles = StyleSheet.create({
   packIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#222222',
     alignItems: 'center',
     justifyContent: 'center',
@@ -588,7 +579,7 @@ const styles = StyleSheet.create({
   },
   packName: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   badge: {
     backgroundColor: '#3A1D0E',
@@ -601,17 +592,17 @@ const styles = StyleSheet.create({
   badgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   packCredits: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 4,
   },
   packSubtext: {
     color: '#9F9F9F',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 2,
   },
   packRight: {
@@ -621,7 +612,7 @@ const styles = StyleSheet.create({
   },
   packPrice: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   selectCircle: {
     width: 22,
@@ -638,7 +629,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     height: 54,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -650,7 +641,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   restoreButton: {
     paddingVertical: 12,
@@ -659,14 +650,14 @@ const styles = StyleSheet.create({
     color: '#8F8F8F',
     textAlign: 'center',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     textDecorationLine: 'underline',
   },
   noteCard: {
     backgroundColor: '#111111',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -683,13 +674,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 14,
     marginTop: 16,
   },
   activityTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 8,
   },
   activityLoader: {
@@ -712,7 +703,7 @@ const styles = StyleSheet.create({
   ledgerIcon: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#202020',
     alignItems: 'center',
     justifyContent: 'center',
@@ -724,7 +715,7 @@ const styles = StyleSheet.create({
   },
   ledgerTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   ledgerDate: {
     color: '#8F8F8F',
@@ -734,7 +725,7 @@ const styles = StyleSheet.create({
   },
   ledgerAmount: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   ledgerCredit: {
     color: '#41D17D',

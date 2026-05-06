@@ -1,5 +1,5 @@
 
-import { View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useState, useMemo } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -35,6 +35,7 @@ function generateWaveform(seed: string, count: number): number[] {
 export default function Player() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { width } = useWindowDimensions();
   const {
     currentTrack,
     isPlaying,
@@ -61,7 +62,7 @@ export default function Player() {
       ? Math.min((progress.position / progress.duration) * 100, 100)
       : 0;
 
-  const screenWidth = Dimensions.get('window').width - 48; // minus padding
+  const screenWidth = Math.max(width - 48, 1); // minus horizontal padding
   const BAR_COUNT = 23;
   const waveformHeights = useMemo(() => generateWaveform(title as string, BAR_COUNT), [title]);
 
@@ -148,10 +149,10 @@ export default function Player() {
         <View className="w-full mb-6">
           <View className="flex-row justify-between items-start w-full">
             <View className="flex-1 mr-4">
-              <Text className="text-white text-3xl font-bold leading-tight tracking-tight mb-1">
+              <Text numberOfLines={2} className="text-white text-3xl font-bold leading-tight tracking-tight mb-1">
                 {title}
               </Text>
-              <Text className="text-white/60 text-lg font-medium">
+              <Text numberOfLines={1} className="text-white/60 text-lg font-medium">
                 {artist}
               </Text>
             </View>
@@ -191,7 +192,7 @@ export default function Player() {
                       : i === activeBarIndex
                         ? '#FF5500'
                         : 'rgba(255,255,255,0.2)',
-                  opacity: i < activeBarIndex ? (0.4 + (i / activeBarIndex) * 0.6) : 1,
+                  opacity: i < activeBarIndex && activeBarIndex > 0 ? (0.45 + (i / activeBarIndex) * 0.55) : 1,
                 }}
               />
             ))}

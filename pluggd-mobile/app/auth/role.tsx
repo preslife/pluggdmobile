@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -56,7 +57,7 @@ const ROLE_OPTIONS: RoleOption[] = [
     description: 'Beatmaker, composer, studio creator',
     category: 'Creator',
     icon: 'tune',
-    modules: ['Beats', 'Sound Packs', 'Licensing'],
+    modules: ['Beats', 'Samples', 'Licensing'],
   },
   {
     value: 'dj',
@@ -275,6 +276,7 @@ export default function RoleSelection() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -416,9 +418,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#080808',
   },
   scrollContent: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 112,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 116,
   },
   logoWrap: {
     alignItems: 'center',
@@ -478,9 +480,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '700',
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
     textAlign: 'center',
   },
   subtitle: {
@@ -495,20 +497,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 10,
   },
   primaryList: {
-    gap: 7,
+    gap: 8,
   },
   roleCard: {
-    minHeight: 56,
+    minHeight: 58,
     backgroundColor: '#151515',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -519,7 +521,7 @@ const styles = StyleSheet.create({
   roleIconBox: {
     width: 38,
     height: 38,
-    borderRadius: 7,
+    borderRadius: 12,
     backgroundColor: '#242424',
     alignItems: 'center',
     justifyContent: 'center',
@@ -532,7 +534,7 @@ const styles = StyleSheet.create({
   roleName: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 2,
   },
   roleDescription: {
@@ -557,7 +559,7 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   radio: {
     width: 22,
@@ -594,7 +596,7 @@ const styles = StyleSheet.create({
   secondaryChip: {
     width: '48.8%',
     minHeight: 40,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2A2A2A',
     backgroundColor: '#151515',
@@ -611,7 +613,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#E5E5E5',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   secondaryChipTextSelected: {
     color: '#FFFFFF',
@@ -619,7 +621,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 1.5,
     borderColor: '#666666',
     alignItems: 'center',
@@ -634,16 +636,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: 22,
     backgroundColor: 'rgba(8,8,8,0.96)',
     borderTopWidth: 1,
     borderTopColor: '#151515',
   },
   cta: {
     height: 56,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -655,6 +657,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
