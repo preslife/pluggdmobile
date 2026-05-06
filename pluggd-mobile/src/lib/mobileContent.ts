@@ -19,7 +19,9 @@ export type ReleaseItem = {
   title: string | null;
   artist: string | null;
   cover_art_url: string | null;
-  audio_url: string | null;
+  audio_url?: string | null;
+  preview_url?: string | null;
+  download_url?: string | null;
   genre: string | null;
   price: number | null;
   download_price: number | null;
@@ -206,6 +208,9 @@ export type FeedBundle = {
   mapPlugs: FanMapPlugItem[];
 };
 
+export const RELEASE_LIST_SELECT =
+  'id,title,artist,cover_art_url,preview_url,download_url,genre,price,download_price,minimum_price,created_at';
+
 export function formatGBP(value?: number | null, options?: { cents?: boolean }) {
   const numeric = Number(value ?? 0);
   const amount = options?.cents ? numeric / 100 : numeric;
@@ -257,6 +262,14 @@ export function priceForRelease(item: ReleaseItem) {
   return item.price ?? item.download_price ?? item.minimum_price ?? 0;
 }
 
+export function releasePlayableUrl(item: {
+  preview_url?: string | null;
+  audio_url?: string | null;
+  download_url?: string | null;
+}) {
+  return item.preview_url || item.audio_url || item.download_url || null;
+}
+
 export function toTrack(
   item:
     | ReleaseItem
@@ -269,10 +282,11 @@ export function toTrack(
 ): PluggdTrack | null {
   if (kind === 'release') {
     const release = item as ReleaseItem;
-    if (!release.audio_url) return null;
+    const url = releasePlayableUrl(release);
+    if (!url) return null;
     return {
       id: release.id,
-      url: release.audio_url,
+      url,
       title: release.title || 'Untitled release',
       artist: release.artist || 'Pluggd Creator',
       artwork: release.cover_art_url || undefined,
@@ -388,7 +402,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<ReleaseItem>(
       supabase
         .from('releases')
-        .select('id,title,artist,cover_art_url,audio_url,genre,price,download_price,minimum_price,created_at')
+        .select(RELEASE_LIST_SELECT)
         .order('created_at', { ascending: false })
         .limit(limit),
     ),

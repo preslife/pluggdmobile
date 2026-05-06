@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../src/lib/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
 import { useWallet } from '../../src/hooks/useWallet';
+import { releasePlayableUrl } from '../../src/lib/mobileContent';
 
 interface ReleaseDetail {
   id: string;
@@ -28,7 +29,9 @@ interface ReleaseDetail {
   genre: string | null;
   price: number | null;
   credits_price: number | null;
-  audio_url: string | null;
+  audio_url?: string | null;
+  preview_url: string | null;
+  download_url: string | null;
   user_id: string | null;
   available_at: string | null;
 }
@@ -39,7 +42,7 @@ interface ReleaseTrack {
   track_number: number;
   duration: number | null;
   audio_url: string | null;
-  preview_url: string | null;
+  preview_url?: string | null;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -84,7 +87,7 @@ export default function ReleaseDetailScreen() {
 
       // Fetch tracks for this release
       const { data: tracksData } = await supabase
-        .from('release_tracks' as any)
+        .from('tracks' as any)
         .select('*')
         .eq('release_id', id)
         .order('track_number', { ascending: true });
@@ -130,11 +133,12 @@ export default function ReleaseDetailScreen() {
     }
 
     // Single-track release
-    if (release.audio_url) {
+    const releaseUrl = releasePlayableUrl(release);
+    if (releaseUrl) {
       return [
         {
           id: release.id,
-          url: release.audio_url,
+          url: releaseUrl,
           title: release.title,
           artist: release.artist || 'Unknown',
           artwork: release.cover_art_url || undefined,

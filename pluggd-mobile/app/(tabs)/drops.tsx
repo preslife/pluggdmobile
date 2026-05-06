@@ -8,6 +8,7 @@ import { supabase } from '../../src/lib/supabase';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import {
   PLUGGD_ORANGE,
+  RELEASE_LIST_SELECT,
   ReleaseItem,
   formatGBP,
   formatDate,
@@ -32,11 +33,12 @@ export default function MusicScreen() {
       setLoading(true);
       const { data, error } = await (supabase as any)
         .from('releases')
-        .select('id,title,artist,cover_art_url,audio_url,genre,price,download_price,minimum_price,created_at')
+        .select(RELEASE_LIST_SELECT)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (mounted) {
+        if (error) console.warn('[Music] releases query failed:', error.message);
         setReleases(error || !Array.isArray(data) ? [] : (data as ReleaseItem[]));
         setLoading(false);
       }

@@ -24,7 +24,7 @@ import {
 import { PluggdGlassSurface, PluggdSurface } from '../../components/PluggdPrimitives';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
-import { PLUGGD_ORANGE, formatGBP } from '../../src/lib/mobileContent';
+import { PLUGGD_ORANGE, RELEASE_LIST_SELECT, formatGBP, releasePlayableUrl } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
 
 interface ArtistResult {
@@ -54,7 +54,9 @@ interface ReleaseResult {
   title: string | null;
   artist: string | null;
   cover_art_url: string | null;
-  audio_url: string | null;
+  audio_url?: string | null;
+  preview_url?: string | null;
+  download_url?: string | null;
   genre: string | null;
 }
 
@@ -111,7 +113,7 @@ export default function ExploreScreen() {
           .limit(12),
         supabase
           .from('releases')
-          .select('id, title, artist, cover_art_url, audio_url, genre')
+          .select(RELEASE_LIST_SELECT)
           .order('created_at', { ascending: false })
           .limit(10),
         supabase
@@ -162,7 +164,7 @@ export default function ExploreScreen() {
             .limit(10),
           supabase
             .from('releases')
-            .select('id, title, artist, cover_art_url, audio_url, genre')
+            .select(RELEASE_LIST_SELECT)
             .or(`title.ilike.${searchTerm},artist.ilike.${searchTerm}`)
             .limit(10),
         ]);
@@ -185,13 +187,14 @@ export default function ExploreScreen() {
   };
 
   const handlePlayRelease = (release: ReleaseResult) => {
-    if (!release.audio_url) {
+    const url = releasePlayableUrl(release);
+    if (!url) {
       router.push(`/release/${release.id}` as any);
       return;
     }
     const track: PluggdTrack = {
       id: release.id,
-      url: release.audio_url,
+      url,
       title: release.title || 'Untitled',
       artist: release.artist || 'Unknown',
       artwork: release.cover_art_url || undefined,
