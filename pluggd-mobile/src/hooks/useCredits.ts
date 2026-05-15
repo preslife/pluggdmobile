@@ -28,7 +28,6 @@ import { useWalletStore } from './useWallet';
 
 // ─── SKU Definitions ──────────────────────────────────────────────────
 export const CREDIT_PACK_SKUS = [
-  'pluggd_credits_starter',
   'pluggd_credits_popular',
   'pluggd_credits_value',
   'pluggd_credits_premium',
@@ -48,21 +47,13 @@ export interface CreditPackDefinition {
   popular?: boolean;
 }
 
-// Credit awards match PLUGGD_NEW/src/lib/creditPricing.ts. Fallback display
-// prices use Apple's UK price points; StoreKit localizedPrice wins when loaded.
+// Approved iOS credit packs. The production PLUGGD packs are GBP-priced;
+// sandbox/simulator storefronts can report another localized currency, so UI
+// copy falls back to the approved GBP label unless StoreKit also returns GBP.
 export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition> = {
-  pluggd_credits_starter: {
-    sku: 'pluggd_credits_starter',
-    label: 'Starter',
-    fallbackPriceGBP: 4.99,
-    baseCredits: 500,
-    bonusCredits: 0,
-    bonusPercent: 0,
-    totalCredits: 500,
-  },
   pluggd_credits_popular: {
     sku: 'pluggd_credits_popular',
-    label: 'Plus',
+    label: 'Plus Credits',
     fallbackPriceGBP: 9.99,
     baseCredits: 1000,
     bonusCredits: 50,
@@ -72,7 +63,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   },
   pluggd_credits_value: {
     sku: 'pluggd_credits_value',
-    label: 'Value',
+    label: 'Value Credits',
     fallbackPriceGBP: 24.99,
     baseCredits: 2500,
     bonusCredits: 250,
@@ -81,7 +72,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   },
   pluggd_credits_premium: {
     sku: 'pluggd_credits_premium',
-    label: 'Premium',
+    label: 'Premium Credits',
     fallbackPriceGBP: 49.99,
     baseCredits: 5000,
     bonusCredits: 750,
@@ -90,7 +81,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
   },
   pluggd_credits_ultimate: {
     sku: 'pluggd_credits_ultimate',
-    label: 'Ultimate',
+    label: 'Ultimate Credits',
     fallbackPriceGBP: 99.99,
     baseCredits: 10000,
     bonusCredits: 2000,
@@ -101,7 +92,6 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
 
 // Maps SKU → total credits awarded (must match App Store Connect + backend)
 export const SKU_CREDITS_MAP: Record<CreditPackSKU, number> = {
-  pluggd_credits_starter: 500,
   pluggd_credits_popular: 1050,
   pluggd_credits_value: 2750,
   pluggd_credits_premium: 5750,
@@ -126,6 +116,13 @@ function formatExpectedPrice(fallbackPriceGBP: number) {
   return `£${fallbackPriceGBP.toFixed(2)}`;
 }
 
+function displayPriceForProduct(product: Product | null, fallbackPriceGBP: number) {
+  const expectedPrice = formatExpectedPrice(fallbackPriceGBP);
+  if (!product?.localizedPrice) return expectedPrice;
+  if (product.currency === 'GBP' || product.localizedPrice.includes('£')) return product.localizedPrice;
+  return expectedPrice;
+}
+
 function buildCreditPacks(prods: Product[] = []): CreditPack[] {
   return CREDIT_PACK_SKUS.map((sku) => {
     const definition = CREDIT_PACK_DEFINITIONS[sku];
@@ -139,7 +136,7 @@ function buildCreditPacks(prods: Product[] = []): CreditPack[] {
       bonusPercent: definition.bonusPercent,
       fallbackPriceGBP: definition.fallbackPriceGBP,
       product,
-      localizedPrice: product?.localizedPrice ?? formatExpectedPrice(definition.fallbackPriceGBP),
+      localizedPrice: displayPriceForProduct(product, definition.fallbackPriceGBP),
       label: definition.label,
       bonus:
         definition.bonusPercent > 0

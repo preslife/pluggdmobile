@@ -400,7 +400,7 @@ export default function CreatorOnboarding() {
 
         <Pressable
           style={styles.roleSummaryCard}
-          onPress={() => router.push('/(tabs)/profile' as any)}
+          onPress={() => router.push('/profile' as any)}
         >
           <View style={styles.roleAvatar}>
             <MaterialIcons

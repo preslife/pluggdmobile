@@ -1,9 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -29,29 +30,43 @@ const GENRES = [
   'Grime',
 ];
 
-const SUGGESTED_CREATORS = [
-  {
-    id: 'maya_sol',
-    name: 'Maya Sol',
-    role: 'Artist',
-    initials: 'MS',
-    accent: '#B85A24',
-  },
-  {
-    id: 'kairo_beats',
-    name: 'Kairo Beats',
-    role: 'Producer',
-    initials: 'KB',
-    accent: '#7B2D1F',
-  },
-  {
-    id: 'selecta_nia',
-    name: 'Selecta Nia',
-    role: 'DJ',
-    initials: 'SN',
-    accent: '#5A2D91',
-  },
-];
+type SuggestedCreator = {
+  id: string;
+  userId: string;
+  name: string;
+  role: string;
+  initials: string;
+  avatarUrl: string | null;
+};
+
+type ProfileRow = {
+  id?: string | null;
+  user_id?: string | null;
+  full_name?: string | null;
+  username?: string | null;
+  avatar_url?: string | null;
+  user_type?: string | null;
+  profile_type?: string | null;
+  is_creator?: boolean | null;
+};
+
+function creatorDisplayName(profile: ProfileRow) {
+  return profile.full_name?.trim() || profile.username?.trim() || 'PLUGGD creator';
+}
+
+function creatorRole(profile: ProfileRow) {
+  const raw = profile.profile_type || profile.user_type || (profile.is_creator ? 'creator' : 'creator');
+  return raw.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function creatorInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'P';
+}
 
 function PluggdWordmark() {
   return <BrandLogo variant="dark" width={122} height={44} />;
@@ -63,7 +78,58 @@ export default function FanSetup() {
   const [eventsNearMe, setEventsNearMe] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
+  const [suggestedCreators, setSuggestedCreators] = useState<SuggestedCreator[]>([]);
+  const [creatorsLoading, setCreatorsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCreators = async () => {
+      setCreatorsLoading(true);
+
+      try {
+        const { data, error } = await (supabase as any)
+          .from('profiles')
+          .select('id,user_id,full_name,username,avatar_url,user_type,profile_type,is_creator')
+          .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
+          .limit(6);
+
+        if (!mounted) return;
+        if (error) {
+          console.error('Failed to load suggested creators:', error);
+          setSuggestedCreators([]);
+          return;
+        }
+
+        const creators = (Array.isArray(data) ? (data as ProfileRow[]) : [])
+          .map((profile) => {
+            const userId = profile.user_id || profile.id || '';
+            const name = creatorDisplayName(profile);
+
+            return {
+              id: userId,
+              userId,
+              name,
+              role: creatorRole(profile),
+              initials: creatorInitials(name),
+              avatarUrl: profile.avatar_url || null,
+            };
+          })
+          .filter((creator) => Boolean(creator.userId));
+
+        setSuggestedCreators(creators);
+      } finally {
+        if (mounted) setCreatorsLoading(false);
+      }
+    };
+
+    void loadCreators();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((current) =>
@@ -130,6 +196,30 @@ export default function FanSetup() {
       ) as any);
 
       if (error) throw error;
+
+      const creatorIdsToFollow = Array.from(new Set(following)).filter((creatorId) => creatorId && creatorId !== user.id);
+      if (creatorIdsToFollow.length > 0) {
+        const { data: existingFollows, error: existingError } = await (supabase as any)
+          .from('user_follows')
+          .select('following_id')
+          .eq('follower_id', user.id)
+          .in('following_id', creatorIdsToFollow);
+
+        if (existingError) throw existingError;
+
+        const existingIds = new Set((Array.isArray(existingFollows) ? existingFollows : []).map((row: any) => row.following_id));
+        const newFollows = creatorIdsToFollow
+          .filter((creatorId) => !existingIds.has(creatorId))
+          .map((creatorId) => ({
+            follower_id: user.id,
+            following_id: creatorId,
+          }));
+
+        if (newFollows.length > 0) {
+          const { error: followError } = await (supabase as any).from('user_follows').insert(newFollows);
+          if (followError) throw followError;
+        }
+      }
 
       router.replace('/');
     } catch (error: any) {
@@ -209,17 +299,28 @@ export default function FanSetup() {
           onPress={() => setEventsNearMe((value) => !value)}
         />
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Suggested creators</Text>
-            <Pressable style={styles.seeAllButton}>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Suggested creators</Text>
+            <Pressable style={styles.seeAllButton} onPress={() => router.push('/search' as any)}>
               <Text style={styles.seeAllText}>See all</Text>
               <MaterialIcons name="chevron-right" size={22} color={PLUGGD_ORANGE} />
             </Pressable>
           </View>
 
           <View style={styles.creatorList}>
-            {SUGGESTED_CREATORS.map((creator, index) => {
+            {creatorsLoading ? (
+              <View style={styles.creatorLoading}>
+                <ActivityIndicator color={PLUGGD_ORANGE} />
+                <Text style={styles.creatorEmptyText}>Loading creators from PLUGGD...</Text>
+              </View>
+            ) : null}
+
+            {!creatorsLoading && suggestedCreators.length === 0 ? (
+              <Text style={styles.creatorEmptyText}>Creators will appear here once your account can access the live directory.</Text>
+            ) : null}
+
+            {suggestedCreators.map((creator, index) => {
               const isFollowing = following.includes(creator.id);
 
               return (
@@ -227,11 +328,12 @@ export default function FanSetup() {
                   key={creator.id}
                   style={[
                     styles.creatorRow,
-                    index !== SUGGESTED_CREATORS.length - 1 && styles.creatorRowBorder,
+                    index !== suggestedCreators.length - 1 && styles.creatorRowBorder,
                   ]}
                 >
-                  <View style={[styles.avatar, { borderColor: creator.accent }]}>
-                    <Text style={styles.avatarText}>{creator.initials}</Text>
+                  <View style={styles.avatar}>
+                    {creator.avatarUrl ? <Image source={{ uri: creator.avatarUrl }} style={styles.avatarImage} /> : null}
+                    {!creator.avatarUrl ? <Text style={styles.avatarText}>{creator.initials}</Text> : null}
                   </View>
 
                   <View style={styles.creatorInfo}>
@@ -551,15 +653,33 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     borderWidth: 1.5,
+    borderColor: '#333333',
     backgroundColor: '#242424',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  creatorLoading: {
+    minHeight: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  creatorEmptyText: {
+    color: '#AFAFAF',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
   },
   creatorInfo: {
     flex: 1,

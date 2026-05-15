@@ -1,4 +1,7 @@
-export const PLUGGD_ORANGE = '#FF5200';
+import { pluggdFonts } from './typography';
+
+export const PLUGGD_ORANGE = '#FF5A00';
+export const PLUGGD_VIOLET = '#7C3AED';
 
 export const pluggdRadii = {
   compact: 8,
@@ -17,6 +20,7 @@ export const pluggdSpacing = {
 };
 
 export const pluggdTypography = {
+  fonts: pluggdFonts,
   micro: 10,
   caption: 11,
   meta: 12,
@@ -40,15 +44,15 @@ export const pluggdDark = {
   scheme: 'dark' as const,
   colors: {
     accent: PLUGGD_ORANGE,
-    background: '#080808',
-    backgroundElevated: '#0D0D0D',
-    surface: '#151515',
-    surfaceAlt: '#101010',
-    surfaceStrong: '#20130D',
-    surfacePressed: '#20140F',
-    border: '#262626',
-    borderSubtle: '#1C1C1C',
-    borderAccent: '#3F2417',
+    background: '#08080C',
+    backgroundElevated: '#0D0D11',
+    surface: '#12121A',
+    surfaceAlt: '#1F1F2E',
+    surfaceStrong: '#171724',
+    surfacePressed: '#1B1B2A',
+    border: '#1F1F2E',
+    borderSubtle: '#181824',
+    borderAccent: '#3B281D',
     text: '#FFFFFF',
     textMuted: '#AFAFAF',
     textSubtle: '#777777',
@@ -57,7 +61,7 @@ export const pluggdDark = {
     glassTint: 'rgba(8,8,8,0.62)',
     glassFallback: 'rgba(12,12,12,0.9)',
     shadow: '#000000',
-    artworkBase: '#24120C',
+    artworkBase: '#111827',
   },
 };
 

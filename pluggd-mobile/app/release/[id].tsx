@@ -52,6 +52,18 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function getReleaseCreditPrice(release: ReleaseDetail): number {
+  if (release.credits_price && release.credits_price > 0) {
+    return Math.ceil(release.credits_price);
+  }
+
+  if (release.price && release.price > 0) {
+    return Math.ceil(release.price * 100);
+  }
+
+  return 0;
+}
+
 export default function ReleaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -163,7 +175,7 @@ export default function ReleaseDetailScreen() {
 
   async function handleUnlock() {
     if (!release) return;
-    const creditsNeeded = release.credits_price || release.price || 0;
+    const creditsNeeded = getReleaseCreditPrice(release);
 
     if (creditsNeeded <= 0) {
       Alert.alert('Free Release', 'This release is free to stream.');
@@ -231,7 +243,7 @@ export default function ReleaseDetailScreen() {
     );
   }
 
-  const creditsNeeded = release.credits_price || release.price || 0;
+  const creditsNeeded = getReleaseCreditPrice(release);
   const isCurrentlyPlaying = currentTrack?.releaseId === release.id;
   const trackList = buildTrackList();
 

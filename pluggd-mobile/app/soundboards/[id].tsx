@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { supabase } from '../../src/lib/supabase';
@@ -21,6 +21,8 @@ export default function SoundboardDetailScreen() {
   const [board, setBoard] = useState<SoundboardItem | null>(null);
   const [items, setItems] = useState<SoundboardContentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFollowingCreator, setIsFollowingCreator] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -51,11 +53,94 @@ export default function SoundboardDetailScreen() {
     };
   }, [id]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const checkFollow = async () => {
+      if (!board?.creator_id) {
+        setIsFollowingCreator(false);
+        return;
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!mounted || !user) {
+        if (mounted) setIsFollowingCreator(false);
+        return;
+      }
+
+      const { data } = await (supabase as any)
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', board.creator_id)
+        .maybeSingle();
+
+      if (mounted) setIsFollowingCreator(Boolean(data));
+    };
+
+    void checkFollow();
+
+    return () => {
+      mounted = false;
+    };
+  }, [board?.creator_id]);
+
   const audioItems = items.filter((item) => item.item_type === 'audio' && item.media_url);
 
   const playAll = () => {
     const tracks = audioItems.map((item) => toTrack(item, 'soundboard')).filter(Boolean);
-    if (tracks.length) playQueue(tracks as any);
+    if (tracks.length) {
+      playQueue(tracks as any);
+      return;
+    }
+
+    Alert.alert('No public audio', 'This soundboard does not have playable public audio yet.');
+  };
+
+  const toggleCreatorFollow = async () => {
+    if (!board?.creator_id || followLoading) {
+      Alert.alert('Follow unavailable', 'This soundboard is not linked to a creator profile yet.');
+      return;
+    }
+
+    setFollowLoading(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/auth/login' as any);
+        return;
+      }
+
+      if (isFollowingCreator) {
+        const { error } = await (supabase as any)
+          .from('user_follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', board.creator_id);
+        if (error) throw error;
+        setIsFollowingCreator(false);
+        return;
+      }
+
+      const { error } = await (supabase as any).from('user_follows').insert({
+        follower_id: user.id,
+        following_id: board.creator_id,
+      });
+
+      if (error) throw error;
+      setIsFollowingCreator(true);
+    } catch (error: any) {
+      Alert.alert('Follow failed', error?.message ?? 'Could not update this follow right now.');
+    } finally {
+      setFollowLoading(false);
+    }
   };
 
   return (
@@ -91,9 +176,13 @@ export default function SoundboardDetailScreen() {
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Play audio</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton}>
-                <MaterialIcons name="favorite-border" size={20} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryButtonText}>Follow</Text>
+              <Pressable style={[styles.secondaryButton, followLoading && styles.disabledButton]} onPress={toggleCreatorFollow} disabled={followLoading}>
+                {followLoading ? (
+                  <ActivityIndicator color={PLUGGD_ORANGE} />
+                ) : (
+                  <MaterialIcons name={isFollowingCreator ? 'favorite' : 'favorite-border'} size={20} color={PLUGGD_ORANGE} />
+                )}
+                <Text style={styles.secondaryButtonText}>{isFollowingCreator ? 'Following' : 'Follow creator'}</Text>
               </Pressable>
             </View>
 
@@ -147,7 +236,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   secondaryButton: { flex: 1, height: 54, borderRadius: 8, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontWeight: '700' },
+  disabledButton: { opacity: 0.62 },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },
 });
-

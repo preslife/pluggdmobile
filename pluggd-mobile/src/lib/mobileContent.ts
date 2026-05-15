@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { PluggdTrack, PluggdTrackKind } from '../context/PlaybackProvider';
 
-export const PLUGGD_ORANGE = '#FF5200';
+export const PLUGGD_ORANGE = '#FF5A00';
 
 export type ContentKind =
   | 'release'
@@ -159,7 +159,7 @@ export type SoundboardContentItem = {
 export type ProfileItem = {
   user_id: string | null;
   id?: string | null;
-  display_name: string | null;
+  display_name?: string | null;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
@@ -167,17 +167,27 @@ export type ProfileItem = {
   profile_type: string | null;
   is_creator: boolean | null;
   is_verified: boolean | null;
-  primary_genre: string | null;
+  primary_genre?: string | null;
   city: string | null;
 };
 
 export type SocialPostItem = {
   id: string;
   body: string;
+  content?: string | null;
+  title?: string | null;
   user_id: string | null;
   destinations: string[] | null;
   media_paths: string[] | null;
+  images?: string[] | null;
+  video?: string | null;
+  audio?: string | null;
   status: string | null;
+  post_type?: string | null;
+  likes_count?: number | null;
+  reposts_count?: number | null;
+  comments_count?: number | null;
+  is_deleted?: boolean | null;
   created_at: string | null;
 };
 
@@ -381,9 +391,14 @@ export function toTrack(
 }
 
 async function list<T>(query: PromiseLike<{ data: unknown; error: unknown }>, fallback: T[] = []) {
-  const { data, error } = await query;
-  if (error || !Array.isArray(data)) return fallback;
-  return data as T[];
+  try {
+    const { data, error } = await query;
+    if (error || !Array.isArray(data)) return fallback;
+    return data as T[];
+  } catch (error) {
+    console.warn('[mobileContent] Supabase list query failed', error);
+    return fallback;
+  }
 }
 
 export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
@@ -450,17 +465,51 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<ProfileItem>(
       (supabase as any)
         .from('profiles')
-        .select('user_id,id,display_name,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,primary_genre,city')
+        .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
         .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
         .limit(limit),
+    ).then((rows) =>
+      rows.map((profile) => ({
+        ...profile,
+        display_name: null,
+        primary_genre: null,
+      })),
     ),
-    list<SocialPostItem>(
+    list<any>(
       (supabase as any)
         .from('social_posts')
-        .select('id,body,user_id,destinations,media_paths,status,created_at')
-        .eq('status', 'published')
+        .select('id,content,title,user_id,images,video,audio,post_type,likes_count,reposts_count,comments_count,is_deleted,created_at')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(limit),
+    ).then((rows) =>
+      rows.map((post) => {
+        const mediaPaths = [
+          ...(Array.isArray(post.images) ? post.images : []),
+          post.video,
+          post.audio,
+        ].filter(Boolean) as string[];
+
+        return {
+          id: post.id,
+          body: post.content || post.title || '',
+          content: post.content,
+          title: post.title,
+          user_id: post.user_id,
+          destinations: post.post_type ? [post.post_type] : null,
+          media_paths: mediaPaths.length > 0 ? mediaPaths : null,
+          images: Array.isArray(post.images) ? post.images : null,
+          video: post.video,
+          audio: post.audio,
+          status: post.is_deleted ? 'deleted' : 'published',
+          post_type: post.post_type,
+          likes_count: post.likes_count,
+          reposts_count: post.reposts_count,
+          comments_count: post.comments_count,
+          is_deleted: post.is_deleted,
+          created_at: post.created_at,
+        } satisfies SocialPostItem;
+      }),
     ),
     list<FanMapPlugItem>(
       (supabase as any)

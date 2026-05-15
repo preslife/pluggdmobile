@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SymbolIcon } from '../../components/SymbolIcon';
 
@@ -71,9 +71,9 @@ export default function PrivacySettingsScreen() {
               Safety
             </Text>
             <View className="overflow-hidden rounded-xl border border-white/5 bg-surface-dark/50 dark:bg-[#221910]">
-              <SettingsRow icon="block" label="Blocked Users" />
+              <SettingsRow icon="block" label="Blocked Users" onPress={() => Alert.alert('Blocked users', 'Blocked-user management will appear here once the moderation backend is enabled for mobile.')} />
               <View className="h-px bg-white/5" />
-              <SettingsRow icon="filter_list" label="Content Filters" />
+              <SettingsRow icon="filter_list" label="Content Filters" onPress={() => Alert.alert('Content filters', 'Content filter controls will appear here once mobile moderation preferences are enabled.')} />
             </View>
           </View>
 
@@ -115,7 +115,10 @@ export default function PrivacySettingsScreen() {
                     Permanently remove your account and data
                   </Text>
                 </View>
-                <TouchableOpacity className="rounded-lg px-3 py-2">
+                <TouchableOpacity
+                  className="rounded-lg px-3 py-2"
+                  onPress={() => Alert.alert('Account deletion', 'For safety, account deletion must be completed through account support or web account settings until mobile deletion confirmation is enabled.')}
+                >
                   <Text className="text-sm font-bold text-red-500">Delete</Text>
                 </TouchableOpacity>
               </View>
@@ -133,9 +136,9 @@ export default function PrivacySettingsScreen() {
   );
 }
 
-function SettingsRow({ icon, label }: { icon: string; label: string }) {
+function SettingsRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity className="flex-row items-center justify-between p-4">
+    <TouchableOpacity className="flex-row items-center justify-between p-4" onPress={onPress}>
       <View className="flex-row items-center gap-3">
         <View className="h-8 w-8 items-center justify-center rounded-full bg-[#393028]">
           <SymbolIcon name={icon} className="text-[#b9ab9d]" style={{ fontSize: 20 }} />

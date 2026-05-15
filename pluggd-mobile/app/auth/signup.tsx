@@ -17,7 +17,9 @@ import {
 } from 'react-native';
 import { BrandLogo } from '../../components/BrandLogo';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
+import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
+import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
 
@@ -38,9 +40,11 @@ export default function SignUp() {
   const router = useRouter();
   const theme = usePluggdTheme();
   const { mode, setMode } = usePluggdThemeMode();
+  const { launchAccessNotice, clearLaunchAccessNotice } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,19 +57,45 @@ export default function SignUp() {
   const handleSignUp = async () => {
     setLoading(true);
     setError('');
+    await clearLaunchAccessNotice();
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
+    try {
+      const normalizedEmail = email.trim();
+      const code = accessCode.trim();
 
-    setLoading(false);
+      if (!code) {
+        setError('Access code required for new accounts during early access.');
+        setLoading(false);
+        return;
+      }
 
-    if (signUpError) setError(signUpError.message);
-    else router.replace('/auth/role' as any);
+      const validation = await validateAccessCode(code, normalizedEmail);
+      if (!validation.valid) {
+        setError(validation.message);
+        setLoading(false);
+        return;
+      }
+
+      await storePendingAccessCode(validation.code);
+
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            access_code: validation.code,
+          },
+        },
+      });
+
+      if (signUpError) setError(signUpError.message);
+      else router.replace('/auth/role' as any);
+    } catch (authError: any) {
+      setError(authError?.message ?? 'Unable to create account.');
+    } finally {
+      setLoading(false);
+    }
   };
   const cycleThemeMode = () => {
     const nextMode: PluggdThemeMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
@@ -160,6 +190,14 @@ export default function SignUp() {
                 </Pressable>
               }
             />
+            <InputField
+              label="Access code"
+              icon="confirmation-number"
+              value={accessCode}
+              onChangeText={setAccessCode}
+              placeholder="Required during early access"
+              autoCapitalize="characters"
+            />
 
             {password.length > 0 ? (
               <View style={styles.strengthWrap}>
@@ -178,10 +216,12 @@ export default function SignUp() {
               </View>
             ) : null}
 
-            {error ? (
+            {launchAccessNotice || error ? (
               <View style={[styles.errorBox, { borderColor: theme.colors.danger, backgroundColor: 'rgba(255,92,92,0.1)' }]}>
                 <MaterialIcons name="error-outline" size={18} color={theme.colors.danger} />
-                <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+                  {error || launchAccessNotice}
+                </Text>
               </View>
             ) : null}
 
@@ -194,17 +234,6 @@ export default function SignUp() {
               {!loading ? <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /> : null}
             </Pressable>
           </PluggdGlassSurface>
-
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSubtle }]}>or continue with</Text>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          </View>
-
-          <View style={styles.socialRow}>
-            <SocialButton label="Apple" icon="apple" />
-            <SocialButton label="Google" icon="g-translate" />
-          </View>
 
           <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
             Already have an account?{' '}
@@ -242,16 +271,6 @@ function InputField({
         {rightAction}
       </View>
     </View>
-  );
-}
-
-function SocialButton({ label, icon }: { label: string; icon: keyof typeof MaterialIcons.glyphMap }) {
-  const theme = usePluggdTheme();
-  return (
-    <Pressable style={[styles.socialButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <MaterialIcons name={icon} size={22} color={theme.colors.text} />
-      <Text style={[styles.socialText, { color: theme.colors.text }]}>{label}</Text>
-    </Pressable>
   );
 }
 

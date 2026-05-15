@@ -26,6 +26,7 @@ import {
 } from 'react-native-agora';
 import { useAuth } from '../context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../design/haptics';
+import { reportLiveRoom } from '../features/culture/mobileServices';
 import { useWallet } from '../hooks/useWallet';
 import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
@@ -774,6 +775,26 @@ export default function LiveSessionScreen() {
     });
   };
 
+  const reportRoom = () => {
+    selectionHaptic();
+    if (!currentRoomId || !session?.host_id) {
+      Alert.alert('Report unavailable', 'This room does not expose enough backend data to file a report.');
+      return;
+    }
+
+    Alert.alert('Report live room?', 'This sends a moderation report for the host profile with the current live room attached for review.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Report',
+        style: 'destructive',
+        onPress: async () => {
+          const result = await reportLiveRoom(currentRoomId, session.host_id);
+          Alert.alert(result.success ? 'Report submitted' : 'Report failed', result.success ? 'Thanks. The PLUGGD moderation queue will review it.' : result.error || 'Please try again.');
+        },
+      },
+    ]);
+  };
+
   const endLive = async () => {
     if (!currentRoomId) return;
 
@@ -921,6 +942,7 @@ export default function LiveSessionScreen() {
             <RailButton icon="local-fire-department" label="Boost" onPress={() => sendReaction('fire')} />
             <RailButton icon="card-giftcard" label="Gift" loading={sendingGift} onPress={sendGift} />
             <RailButton icon="ios-share" label="Share" onPress={shareRoom} />
+            <RailButton icon="flag" label="Report" onPress={reportRoom} />
             <RailButton icon={muted ? 'mic-off' : 'mic'} label={muted ? 'Muted' : 'Mute'} onPress={toggleMute} />
           </View>
 

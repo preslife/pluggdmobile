@@ -86,9 +86,9 @@ export default function MixDetailScreen() {
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Play mix</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton}>
-                <MaterialIcons name="bookmark-border" size={20} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryButtonText}>Save</Text>
+              <Pressable style={styles.secondaryButton} onPress={() => router.push('/library' as any)}>
+                <MaterialIcons name="library-music" size={20} color={PLUGGD_ORANGE} />
+                <Text style={styles.secondaryButtonText}>Library</Text>
               </Pressable>
             </View>
 
@@ -137,4 +137,3 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },
 });
-

@@ -98,10 +98,10 @@ export default function BeatDetailScreen() {
             <View style={styles.licenseCard}>
               <Text style={styles.cardTitle}>Licensing</Text>
               <Text style={styles.cardBody}>
-                Choose MP3 lease, premium WAV, stems, or exclusive licensing at checkout.
+                Beat licensing will unlock through PLUGGD credits when backend entitlements are available for this item.
               </Text>
-              <Pressable style={styles.buyButton}>
-                <Text style={styles.buyButtonText}>Start checkout</Text>
+              <Pressable style={styles.buyButton} onPress={() => router.push('/wallet' as any)}>
+                <Text style={styles.buyButtonText}>Open Wallet</Text>
               </Pressable>
             </View>
           </>

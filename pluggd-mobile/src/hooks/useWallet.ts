@@ -5,7 +5,7 @@
  * Differences from web:
  *  - No React Context wrapper (uses Zustand store for global state)
  *  - topUpCredits() is NOT here (IAP purchases go through useCredits hook)
- *  - spendCredits() calls the same Supabase RPC as web
+ *  - spendCredits() calls the current entitlement-aware Supabase function
  *  - cashOutCredits() calls the same edge function as web
  */
 import { useEffect, useCallback } from 'react';
@@ -160,11 +160,10 @@ export function useWallet() {
           if (metadata[key] === undefined) delete metadata[key];
         });
 
-        const { error } = await supabase.functions.invoke(
-          'process-credits-transaction',
+        const { data, error } = await supabase.functions.invoke(
+          'spend-credits',
           {
             body: {
-              user_id: user.id,
               amount_credits: amount,
               kind,
               ...metadata,
@@ -174,8 +173,11 @@ export function useWallet() {
 
         if (error) throw error;
 
-        // Refresh after spend
-        await refreshBalance();
+        if (data?.balance) {
+          setBalance(data.balance);
+        } else {
+          await refreshBalance();
+        }
         await refreshLedger();
 
         return { success: true };
@@ -184,7 +186,7 @@ export function useWallet() {
         return { success: false, error: err?.message ?? 'Transaction failed' };
       }
     },
-    [balance.available_credits, refreshBalance, refreshLedger],
+    [balance.available_credits, refreshBalance, refreshLedger, setBalance],
   );
 
   const cashOutCredits = useCallback(

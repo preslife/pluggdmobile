@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { supabase } from '../../src/lib/supabase';
@@ -15,6 +15,7 @@ export default function SamplePackDetailScreen() {
   const [pack, setPack] = useState<SamplePackItem | null>(null);
   const [samples, setSamples] = useState<SampleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -54,6 +55,66 @@ export default function SamplePackDetailScreen() {
     if (sampleTracks.length) playQueue(sampleTracks as any);
   };
 
+  const handlePackAccess = async () => {
+    if (!pack || claiming) return;
+
+    const price = Number(pack.price ?? 0);
+
+    if (price > 0) {
+      Alert.alert(
+        'Use PLUGGD credits',
+        'Paid sample pack unlocks in the iOS app must be completed with Apple-compliant PLUGGD credits. Add credits in Wallet, then unlock once this pack has a backend credit entitlement.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
+        ],
+      );
+      return;
+    }
+
+    setClaiming(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/auth/login' as any);
+        return;
+      }
+
+      const { data: existing, error: existingError } = await (supabase as any)
+        .from('sample_pack_purchases')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('sample_pack_id', pack.id)
+        .maybeSingle();
+
+      if (existingError && existingError.code !== 'PGRST116') throw existingError;
+
+      if (!existing) {
+        const { error } = await (supabase as any).from('sample_pack_purchases').insert({
+          user_id: user.id,
+          sample_pack_id: pack.id,
+          amount_paid: 0,
+          download_url: pack.download_url ?? null,
+        });
+
+        if (error) throw error;
+      }
+
+      Alert.alert('Pack added', 'This free sample pack is now in your purchases.', [
+        { text: 'View Purchases', onPress: () => router.push('/purchases' as any) },
+        { text: 'Done', style: 'cancel' },
+      ]);
+    } catch (error: any) {
+      Alert.alert('Pack unavailable', error?.message ?? 'Could not claim this pack right now.');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -87,9 +148,9 @@ export default function SamplePackDetailScreen() {
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Preview pack</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton}>
-                <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryButtonText}>{pack.price ? 'Buy pack' : 'Claim pack'}</Text>
+              <Pressable style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
+                {claiming ? <ActivityIndicator color={PLUGGD_ORANGE} /> : <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />}
+                <Text style={styles.secondaryButtonText}>{pack.price ? 'Use credits' : 'Claim pack'}</Text>
               </Pressable>
             </View>
 
@@ -135,6 +196,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   secondaryButton: { flex: 1, height: 54, borderRadius: 16, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontWeight: '800' },
+  disabledButton: { opacity: 0.62 },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },
 });

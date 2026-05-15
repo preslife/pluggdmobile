@@ -6,6 +6,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +19,9 @@ import {
 } from 'react-native';
 import { BrandLogo } from '../../components/BrandLogo';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
+import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
+import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
 
@@ -26,8 +29,10 @@ export default function Login() {
   const router = useRouter();
   const theme = usePluggdTheme();
   const { mode, setMode } = usePluggdThemeMode();
+  const { launchAccessNotice, clearLaunchAccessNotice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,18 +44,58 @@ export default function Login() {
   const handleLogin = async () => {
     setLoading(true);
     setError('');
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setLoading(false);
+    await clearLaunchAccessNotice();
 
-    if (loginError) {
-      setError(loginError.message);
-    } else {
-      router.replace('/');
+    try {
+      const normalizedEmail = email.trim();
+      const code = accessCode.trim();
+
+      if (code) {
+        const validation = await validateAccessCode(code, normalizedEmail);
+        if (!validation.valid) {
+          setError(validation.message);
+          setLoading(false);
+          return;
+        }
+        await storePendingAccessCode(validation.code);
+      }
+
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (loginError) {
+        setError(loginError.message);
+      } else {
+        router.replace('/');
+      }
+    } catch (authError: any) {
+      setError(authError?.message ?? 'Unable to sign in.');
+    } finally {
+      setLoading(false);
     }
+
   };
+
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim();
+    setError('');
+
+    if (!normalizedEmail) {
+      setError('Enter your email address first so we can send a reset link.');
+      return;
+    }
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    Alert.alert('Reset link sent', 'Check your inbox for the PLUGGD password reset link.');
+  };
+
   const cycleThemeMode = () => {
     const nextMode: PluggdThemeMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
     setMode(nextMode);
@@ -134,11 +179,21 @@ export default function Login() {
                 </Pressable>
               }
             />
+            <InputRow
+              label="Access code"
+              icon="confirmation-number"
+              value={accessCode}
+              onChangeText={setAccessCode}
+              placeholder="Optional for existing accounts"
+              autoCapitalize="characters"
+            />
 
-            {error ? (
+            {launchAccessNotice || error ? (
               <View style={[styles.errorBox, { backgroundColor: 'rgba(255,92,92,0.1)', borderColor: theme.colors.danger }]}>
                 <MaterialIcons name="error-outline" size={18} color={theme.colors.danger} />
-                <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+                  {error || launchAccessNotice}
+                </Text>
               </View>
             ) : null}
 
@@ -146,7 +201,7 @@ export default function Login() {
               <Pressable onPress={() => router.push('/auth/magic-link' as any)}>
                 <Text style={[styles.linkText, { color: theme.colors.textMuted }]}>Use magic link</Text>
               </Pressable>
-              <Pressable>
+              <Pressable onPress={handleForgotPassword}>
                 <Text style={[styles.linkText, { color: theme.colors.accent }]}>Forgot password?</Text>
               </Pressable>
             </View>
@@ -159,17 +214,6 @@ export default function Login() {
               {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Log in</Text>}
             </Pressable>
           </PluggdGlassSurface>
-
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSubtle }]}>or continue with</Text>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          </View>
-
-          <View style={styles.socialRow}>
-            <SocialButton label="Apple" icon="apple" />
-            <SocialButton label="Google" icon="g-translate" />
-          </View>
 
           <Text style={[styles.signupText, { color: theme.colors.textMuted }]}>
             Don't have an account?{' '}
@@ -215,30 +259,6 @@ function InputRow({
         {rightAction}
       </View>
     </View>
-  );
-}
-
-function SocialButton({
-  label,
-  icon,
-}: {
-  label: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-}) {
-  const theme = usePluggdTheme();
-  return (
-    <Pressable
-      style={[
-        styles.socialButton,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
-    >
-      <MaterialIcons name={icon} size={22} color={theme.colors.text} />
-      <Text style={[styles.socialText, { color: theme.colors.text }]}>{label}</Text>
-    </Pressable>
   );
 }
 

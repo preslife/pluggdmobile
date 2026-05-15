@@ -1,5 +1,5 @@
 import { Redirect } from "expo-router";
 
 export default function InboxRedirect() {
-  return <Redirect href="/(tabs)/social/inbox" />;
+  return <Redirect href="/notifications" />;
 }

@@ -1,7 +1,8 @@
 
-import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SymbolIcon } from '../../components/SymbolIcon';
+import { supabase } from '../../src/lib/supabase';
 
 export default function MagicLinkSent() {
   const router = useRouter();
@@ -10,6 +11,21 @@ export default function MagicLinkSent() {
 
   const handleOpenMail = () => {
     Linking.openURL('message://');
+  };
+
+  const handleResend = async () => {
+    if (!params.email) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({ email: params.email });
+    if (error) {
+      Alert.alert('Magic link failed', error.message);
+      return;
+    }
+
+    Alert.alert('Link sent again', `Check ${params.email} for a fresh magic link.`);
   };
 
   return (
@@ -74,7 +90,7 @@ export default function MagicLinkSent() {
           </TouchableOpacity>
 
           {/* Secondary: Resend */}
-          <TouchableOpacity className="w-full h-12 items-center justify-center">
+          <TouchableOpacity className="w-full h-12 items-center justify-center" onPress={handleResend}>
             <Text className="text-gray-500 dark:text-gray-400 text-sm font-bold">
               Didn't receive it? <Text className="text-primary">Resend Link</Text>
             </Text>

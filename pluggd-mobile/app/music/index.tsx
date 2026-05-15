@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
 
 export default function MusicRedirect() {
-  return <Redirect href="/(tabs)/drops" />;
+  return <Redirect href="/stage" />;
 }

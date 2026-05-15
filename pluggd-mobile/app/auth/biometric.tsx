@@ -8,8 +8,7 @@ export default function BiometricUnlock() {
   const router = useRouter();
 
   const handleBiometric = async () => {
-    // TODO: integrate expo-local-authentication
-    router.replace('/');
+    router.replace('/auth/login');
   };
 
   const handlePasscode = () => {
@@ -56,10 +55,10 @@ export default function BiometricUnlock() {
 
         <View className="items-center gap-2">
           <Text className="text-slate-900 dark:text-white tracking-tight text-[32px] font-bold leading-tight">
-            Unlock Pluggd
+            Secure sign-in
           </Text>
           <Text className="text-slate-500 dark:text-white/60 text-base">
-            Scan to continue
+            Continue with your PLUGGD account credentials
           </Text>
         </View>
       </View>
@@ -76,15 +75,15 @@ export default function BiometricUnlock() {
             shadowRadius: 20,
           }}
         >
-          <SymbolIcon name="fingerprint" className="text-[#181411]" style={{ fontSize: 20 }} />
-          <Text className="text-[#181411] text-lg font-bold tracking-wide">Use Fingerprint</Text>
+          <SymbolIcon name="login" className="text-[#181411]" style={{ fontSize: 20 }} />
+          <Text className="text-[#181411] text-lg font-bold tracking-wide">Continue to login</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handlePasscode}
           className="w-full h-12 rounded-xl items-center justify-center"
         >
-          <Text className="text-slate-600 dark:text-white/80 text-base font-medium">Use Passcode</Text>
+          <Text className="text-slate-600 dark:text-white/80 text-base font-medium">Back to login</Text>
         </TouchableOpacity>
       </View>
     </View>

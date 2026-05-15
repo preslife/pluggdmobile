@@ -10,6 +10,7 @@ const HIDDEN_EXACT = new Set(['/live/session']);
 export function AppChrome() {
   const pathname = usePathname() || '/';
   const normalized = pathname.replace('/(tabs)', '') || '/';
+  const ownsHeader = normalized === '/stage' || normalized === '/live' || normalized === '/backstage' || normalized === '/search';
   const hidden =
     HIDDEN_EXACT.has(normalized) ||
     HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
@@ -18,7 +19,7 @@ export function AppChrome() {
 
   return (
     <>
-      <MobileHeader />
+      {ownsHeader ? null : <MobileHeader />}
       <View pointerEvents="box-none" style={styles.bottomWrap}>
         <MiniPlayer />
         <PluggdDock />

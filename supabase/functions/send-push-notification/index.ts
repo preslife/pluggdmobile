@@ -16,6 +16,12 @@ interface PushNotificationPayload {
   actions?: Array<{ action: string; title: string; icon?: string }>;
 }
 
+interface MobilePushToken {
+  id: string;
+  expo_push_token: string;
+  platform: 'ios' | 'android';
+}
+
 const vapidKeys = {
   publicKey: Deno.env.get('VAPID_PUBLIC_KEY'),
   privateKey: Deno.env.get('VAPID_PRIVATE_KEY'),
@@ -64,11 +70,17 @@ serve(async (req) => {
       );
     }
 
-    // Get user's push subscriptions
-    const { data: subscriptions, error: subscriptionsError } = await supabase
-      .from('web_push_subscriptions')
-      .select('*')
-      .eq('user_id', userId);
+    const [{ data: subscriptions, error: subscriptionsError }, { data: mobileTokens, error: mobileTokensError }] = await Promise.all([
+      supabase
+        .from('web_push_subscriptions')
+        .select('*')
+        .eq('user_id', userId),
+      supabase
+        .from('mobile_push_tokens')
+        .select('id,expo_push_token,platform')
+        .eq('user_id', userId)
+        .eq('is_active', true),
+    ]);
 
     if (subscriptionsError) {
       console.error('Error fetching subscriptions:', subscriptionsError);
@@ -81,11 +93,12 @@ serve(async (req) => {
       );
     }
 
-    if (!subscriptions || subscriptions.length === 0) {
+    if (mobileTokensError) {
+      console.error('Error fetching mobile push tokens:', mobileTokensError);
       return new Response(
-        JSON.stringify({ message: 'No push subscriptions found for user' }),
+        JSON.stringify({ error: 'Failed to fetch mobile push tokens' }),
         { 
-          status: 200, 
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -100,8 +113,8 @@ serve(async (req) => {
       actions: actions || [],
     };
 
-    // Send notifications to all user's subscriptions
-    const sendPromises = subscriptions.map(async (subscription) => {
+    // Send notifications to all user's web subscriptions.
+    const sendWebPromises = (subscriptions ?? []).map(async (subscription) => {
       try {
         // Create Web Push notification
         const pushSubscription = {
@@ -143,8 +156,61 @@ serve(async (req) => {
       }
     });
 
-    const results = await Promise.all(sendPromises);
-    const successCount = results.filter(r => r.success).length;
+    const webResults = await Promise.all(sendWebPromises);
+
+    const mobileResults: Array<{ success: boolean; token?: string; error?: string }> = [];
+    const activeMobileTokens = (mobileTokens ?? []) as MobilePushToken[];
+    if (activeMobileTokens.length > 0) {
+      try {
+        const expoPayload = activeMobileTokens.map((token) => ({
+          to: token.expo_push_token,
+          title,
+          body,
+          sound: 'default',
+          data: {
+            url: url || '/',
+            tag: tag || 'default',
+          },
+        }));
+
+        const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(expoPayload),
+        });
+        const expoJson = await expoResponse.json();
+        const expoItems = Array.isArray(expoJson?.data) ? expoJson.data : [];
+
+        for (let index = 0; index < activeMobileTokens.length; index += 1) {
+          const token = activeMobileTokens[index];
+          const receipt = expoItems[index];
+          if (receipt?.status === 'ok') {
+            mobileResults.push({ success: true, token: token.id });
+            continue;
+          }
+
+          const errorCode = receipt?.details?.error ?? receipt?.message ?? 'Expo push failed';
+          mobileResults.push({ success: false, token: token.id, error: errorCode });
+          if (errorCode === 'DeviceNotRegistered') {
+            await supabase
+              .from('mobile_push_tokens')
+              .update({ is_active: false })
+              .eq('id', token.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error sending Expo push notification:', error);
+        for (const token of activeMobileTokens) {
+          mobileResults.push({ success: false, token: token.id, error: error.message });
+        }
+      }
+    }
+
+    const webSuccessCount = webResults.filter(r => r.success).length;
+    const mobileSuccessCount = mobileResults.filter(r => r.success).length;
 
     // Also create a database notification
     await supabase
@@ -154,15 +220,23 @@ serve(async (req) => {
         type: 'push',
         title,
         message: body,
-        data: { url: url || '/' },
+        payload: { url: url || '/' },
       });
 
     return new Response(
       JSON.stringify({ 
         message: `Push notifications sent`,
-        sent: successCount,
-        total: subscriptions.length,
-        results 
+        sent: webSuccessCount + mobileSuccessCount,
+        web: {
+          sent: webSuccessCount,
+          total: subscriptions?.length ?? 0,
+          results: webResults,
+        },
+        mobile: {
+          sent: mobileSuccessCount,
+          total: activeMobileTokens.length,
+          results: mobileResults,
+        },
       }),
       { 
         status: 200, 

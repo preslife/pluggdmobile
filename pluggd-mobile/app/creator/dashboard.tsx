@@ -716,7 +716,7 @@ export default function CreatorDashboard() {
   const navigateAction = (action: string) => {
     const route = routeForAction(action);
     if (!route) {
-      Alert.alert('Coming soon', 'This Studio tool is available on the web dashboard for now.');
+      Alert.alert('Desktop Studio required', 'This heavier creator tool is managed in PLUGGD web Creator Studio, not the mobile fan shell.');
       return;
     }
     router.push(route as any);

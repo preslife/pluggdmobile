@@ -1,10 +1,9 @@
 /**
  * useStorefront — detects the user's Apple App Store storefront/region.
  *
- * Used to determine which beat licensing CTA to show:
- * - US storefront → external purchase links allowed
- * - Entitled regions → use entitlement if approved
- * - Restricted regions → fallback UI (Save/Email/Info)
+ * Used for future region-aware compliance decisions. Digital purchase CTAs in
+ * the iOS app still default to no external checkout unless PLUGGD has a
+ * confirmed native entitlement/payment contract for that item.
  *
  * Uses react-native-iap's getStorefront() which wraps SKStorefront.
  */
@@ -15,7 +14,6 @@ import { create } from 'zustand';
 // ─── Storefront config ────────────────────────────────────────────────
 export type StorefrontRegion = 'us' | 'entitled' | 'restricted';
 
-// US allows external purchase links under current rules
 const US_STOREFRONTS = ['USA'];
 
 // Regions where Apple has approved external purchase entitlements
@@ -102,6 +100,6 @@ export function useStorefront() {
     isUS: store.region === 'us',
     isEntitled: store.region === 'entitled',
     isRestricted: store.region === 'restricted',
-    canShowExternalLink: store.region === 'us' || store.region === 'entitled',
+    canShowExternalLink: false,
   };
 }

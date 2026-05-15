@@ -1,4 +1,4 @@
-export const PLUGGD_ORANGE = '#FF5200';
+export const PLUGGD_ORANGE = '#FF5A00';
 
 export type EcosystemRole =
   | 'artist'
@@ -119,15 +119,15 @@ export function getCreateActions(roles: EcosystemRole[] = []): CreateAction[] {
   const canMix = roleSet.has('dj') || roleSet.has('curator') || roleSet.has('artist');
   const canEvent = roleSet.has('promoter') || roleSet.has('venue') || roleSet.has('dj') || roleSet.has('manager');
 
-  if (canRelease) add(actions, { key: 'release', label: 'Upload Release', route: '/creator/upload?action=release' });
-  if (canBeat) add(actions, { key: 'beat', label: 'Upload Beat', route: '/creator/upload?action=beat' });
-  if (canMix) add(actions, { key: 'mix', label: 'Upload Mix', route: '/creator/upload?action=mix' });
+  if (canRelease) add(actions, { key: 'release', label: 'Release Tools', route: '/creator-mode' });
+  if (canBeat) add(actions, { key: 'beat', label: 'Beat Tools', route: '/creator-mode' });
+  if (canMix) add(actions, { key: 'mix', label: 'Mix Tools', route: '/creator-mode' });
   if (canRelease || canMix || roleSet.has('curator')) {
     add(actions, { key: 'soundboard', label: 'Create Soundboard', route: '/soundboards' });
   }
   if (canEvent) add(actions, { key: 'event', label: 'Create Event', route: '/creator/events' });
   add(actions, { key: 'live', label: 'Start Live', route: '/live/create' });
-  add(actions, { key: 'studio', label: 'Go to Studio', route: '/creator/dashboard' });
+  add(actions, { key: 'studio', label: 'Creator Mode', route: '/creator-mode' });
 
   return actions;
 }

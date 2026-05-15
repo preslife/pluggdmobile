@@ -1,57 +1,59 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
-import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { selectionHaptic } from '../src/design/haptics';
-import { usePluggdTheme } from '../src/design/usePluggdTheme';
-import { PluggdGlassSurface } from './PluggdPrimitives';
 
-type DockItem = {
+type TabItem = {
   label: string;
   route: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   aliases?: string[];
+  primary?: boolean;
 };
 
-const FAN_DOCK: DockItem[] = [
-  { label: 'Home', route: '/', icon: 'home-filled', aliases: ['/(tabs)', '/home'] },
+const CORE_TABS: TabItem[] = [
+  { label: 'Home', route: '/', icon: 'home', aliases: ['/(tabs)', '/home'] },
   {
-    label: 'Discover',
-    route: '/discover',
-    icon: 'explore',
+    label: 'Stage',
+    route: '/stage',
+    icon: 'music-note',
     aliases: [
       '/explore',
       '/(tabs)/explore',
+      '/(tabs)/stage',
+      '/discover',
       '/music',
-      '/drops',
-      '/(tabs)/drops',
+      '/releases',
       '/release',
-      '/mixes',
-      '/(tabs)/mixes',
+      '/drops',
+      '/beat',
+      '/sample-pack',
       '/soundboards',
-      '/(tabs)/soundboards',
+      '/mixes',
       '/membership',
+      '/library',
+      '/favorites',
     ],
   },
-  { label: 'Community', route: '/community', icon: 'forum', aliases: ['/(tabs)/community', '/social', '/gamification', '/pro/collab'] },
-  { label: 'Events', route: '/events', icon: 'event', aliases: ['/(tabs)/events'] },
-  { label: 'Market', route: '/market', icon: 'storefront', aliases: ['/(tabs)/marketplace', '/marketplace', '/beat', '/sample-pack', '/commerce'] },
-];
-
-const CREATOR_DOCK: DockItem[] = [
-  { label: 'Dashboard', route: '/creator/dashboard', icon: 'space-dashboard', aliases: ['/creator/dashboard'] },
-  { label: 'Releases', route: '/creator/upload', icon: 'library-music' },
-  { label: 'Beats', route: '/creator/upload?action=beat', icon: 'headphones' },
-  { label: 'Mixes', route: '/creator/upload?action=mix', icon: 'graphic-eq' },
-  { label: 'Soundboards', route: '/soundboards', icon: 'dashboard-customize' },
-  { label: 'Events', route: '/creator/events', icon: 'event' },
-  { label: 'Live', route: '/live/create', icon: 'settings-input-antenna' },
-  { label: 'Members', route: '/creator/memberships', icon: 'workspace-premium' },
-  { label: 'Wallet', route: '/wallet', icon: 'account-balance-wallet' },
-  { label: 'Analytics', route: '/creator/analytics', icon: 'timeline' },
-  { label: 'Contracts', route: '/creator/licensing', icon: 'description' },
-  { label: 'Settings', route: '/profile', icon: 'settings' },
+  {
+    label: 'Live',
+    route: '/live',
+    icon: 'videocam',
+    aliases: ['/(tabs)/live', '/live/session', '/live/create'],
+  },
+  {
+    label: 'Backstage',
+    route: '/backstage',
+    icon: 'groups',
+    aliases: ['/(tabs)/backstage', '/community', '/social/hub'],
+  },
+  {
+    label: 'Search',
+    route: '/search',
+    icon: 'search',
+    aliases: ['/(tabs)/search'],
+  },
 ];
 
 function normalize(pathname: string | null) {
@@ -59,7 +61,7 @@ function normalize(pathname: string | null) {
   return pathname.replace('/(tabs)', '') || '/';
 }
 
-function isActive(pathname: string, item: DockItem) {
+function isActive(pathname: string, item: TabItem) {
   const target = normalize(item.route);
   if (target === '/') return pathname === '/' || pathname === '';
   const candidates = [target, ...(item.aliases ?? []).map(normalize)];
@@ -70,108 +72,89 @@ export function PluggdDock() {
   const rawPathname = usePathname();
   const pathname = normalize(rawPathname);
   const router = useRouter();
-  const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
-  const isStudioContext = pathname.startsWith('/creator');
-  const forceDarkChrome = pathname.startsWith('/live');
-  const inactiveColor = forceDarkChrome ? 'rgba(255,255,255,0.62)' : theme.colors.textMuted;
-  const items = isStudioContext ? CREATOR_DOCK : FAN_DOCK;
+  const inactiveColor = '#62627A';
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 7) }]}>
-      <PluggdGlassSurface
-        glassEffectStyle="regular"
-        blurIntensity={58}
-        borderColor={forceDarkChrome ? 'rgba(255,255,255,0.1)' : theme.colors.borderSubtle}
-        fallbackColor={forceDarkChrome ? 'rgba(8,8,8,0.92)' : theme.colors.glassFallback}
-        tintColor={forceDarkChrome ? 'rgba(8,8,8,0.72)' : theme.colors.glassTint}
-        colorScheme={forceDarkChrome ? 'dark' : undefined}
-        style={styles.dockGlass}
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-        >
-          {items.map((item) => {
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={styles.dockGlass}>
+        <View style={styles.tabRow}>
+          {CORE_TABS.map((item) => {
             const active = isActive(pathname, item);
+            const iconColor = active ? '#FFFFFF' : inactiveColor;
+
             return (
               <Pressable
-                key={`${isStudioContext ? 'creator' : 'fan'}-${item.route}`}
+                key={item.route}
                 onPress={() => {
                   selectionHaptic();
                   router.push(item.route as any);
                 }}
-                style={styles.itemPressable}
-                accessibilityRole="button"
+                style={styles.tabPressable}
+                accessibilityRole="tab"
+                accessibilityLabel={`${item.label} tab`}
                 accessibilityState={{ selected: active }}
               >
-                <View style={[styles.item, active && styles.itemActive]}>
-                  <MaterialIcons
-                    name={item.icon}
-                    size={19}
-                    color={active ? PLUGGD_ORANGE : inactiveColor}
-                  />
-                  <Text style={[styles.label, { color: inactiveColor }, active && styles.labelActive]} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                  {active ? <View style={styles.activeBar} /> : null}
+                <View style={styles.tabItem}>
+                  <View style={styles.iconShell}>
+                    <MaterialIcons name={item.icon} size={21} color={iconColor} />
+                  </View>
+                  <View style={[styles.activeIndicator, active && styles.activeIndicatorOn]} />
                 </View>
               </Pressable>
             );
           })}
-        </ScrollView>
-      </PluggdGlassSurface>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingTop: 2,
+    paddingTop: 0,
+    paddingHorizontal: 0,
+    backgroundColor: '#0D0D11',
   },
   dockGlass: {
+    backgroundColor: '#0D0D11',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    paddingTop: 5,
+    borderTopColor: '#1F1F2E',
+    paddingTop: 0,
+    paddingHorizontal: 8,
     paddingBottom: 0,
   },
-  content: {
-    paddingHorizontal: 8,
-    gap: 3,
+  tabRow: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
   },
-  itemPressable: {
-    borderRadius: 12,
+  tabPressable: {
+    flex: 1,
+    height: 56,
   },
-  item: {
-    width: 67,
-    minHeight: 44,
-    borderRadius: 12,
+  tabItem: {
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 5,
   },
-  itemActive: {
-    shadowColor: PLUGGD_ORANGE,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  labelActive: {
-    color: PLUGGD_ORANGE,
-    fontWeight: '700',
-  },
-  activeBar: {
-    width: 20,
-    height: 2,
+  iconShell: {
+    width: 34,
+    height: 24,
     borderRadius: 999,
-    backgroundColor: PLUGGD_ORANGE,
-    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeIndicator: {
+    width: 24,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  activeIndicatorOn: {
+    backgroundColor: '#FF5A00',
   },
 });

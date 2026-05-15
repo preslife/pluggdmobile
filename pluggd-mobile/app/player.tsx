@@ -1,43 +1,25 @@
-
-import { View, Text, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
-import { useState, useMemo } from 'react';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePlayback } from '../src/context/PlaybackProvider';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RepeatMode } from 'react-native-track-player';
-import TipModal from '../components/TipModal';
-import { SymbolIcon } from '../components/SymbolIcon';
+import { usePlayback } from '../src/context/PlaybackProvider';
+import { impactHaptic, selectionHaptic } from '../src/design/haptics';
+import { formatDuration } from '../src/lib/mobileContent';
+import { toggleSavedContent } from '../src/features/culture/mobileServices';
 
-function formatTime(seconds: number): string {
-  if (!seconds || !isFinite(seconds)) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+const ORANGE = '#FF5200';
 
-// Generate deterministic waveform bar heights from title string
-function generateWaveform(seed: string, count: number): number[] {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const bars: number[] = [];
-  for (let i = 0; i < count; i++) {
-    hash = ((hash << 5) - hash) + i;
-    hash |= 0;
-    bars.push(12 + Math.abs(hash % 36)); // heights between 12-48
-  }
-  return bars;
-}
-
-export default function Player() {
+export default function PlayerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const {
     currentTrack,
+    queue,
     isPlaying,
     isBuffering,
     progress,
@@ -51,247 +33,216 @@ export default function Player() {
     repeatMode,
   } = usePlayback();
 
-  const [tipVisible, setTipVisible] = useState(false);
+  const title = String(currentTrack?.title || params.title || 'No track selected');
+  const artist = String(currentTrack?.artist || params.artist || 'PLUGGD');
+  const cover = String(currentTrack?.artwork || params.cover || '');
+  const progressPercent = progress.duration > 0 ? Math.min((progress.position / progress.duration) * 100, 100) : 0;
+  const scrubberWidth = Math.max(width - 32, 1);
 
-  const title = currentTrack?.title || params.title || 'No Track';
-  const artist = currentTrack?.artist || params.artist || '';
-  const cover = currentTrack?.artwork || (params.cover as string) || '';
-
-  const progressPercent =
-    progress.duration > 0
-      ? Math.min((progress.position / progress.duration) * 100, 100)
-      : 0;
-
-  const screenWidth = Math.max(width - 48, 1); // minus horizontal padding
-  const BAR_COUNT = 23;
-  const waveformHeights = useMemo(() => generateWaveform(title as string, BAR_COUNT), [title]);
-
-  const handleScrubberPress = (event: any) => {
-    const { locationX } = event.nativeEvent;
-    const seekPosition = (locationX / screenWidth) * progress.duration;
-    if (seekPosition >= 0 && seekPosition <= progress.duration) {
-      seekTo(seekPosition);
-    }
+  const handleScrub = (event: any) => {
+    if (!progress.duration) return;
+    const seekPosition = (event.nativeEvent.locationX / scrubberWidth) * progress.duration;
+    seekTo(Math.max(0, Math.min(progress.duration, seekPosition)));
   };
 
-  // Which bar index represents current playback position
-  const activeBarIndex = Math.floor((progressPercent / 100) * BAR_COUNT);
+  const handleShare = async () => {
+    selectionHaptic();
+    await Share.share({
+      title,
+      message: `Listen to ${title} by ${artist} on PLUGGD.`,
+    });
+  };
+
+  const handleSave = async () => {
+    selectionHaptic();
+
+    if (!currentTrack) {
+      Alert.alert('Nothing playing', 'Start a track first, then save it from the player.');
+      return;
+    }
+
+    if (currentTrack.beatId) {
+      const result = await toggleSavedContent('beat', currentTrack.beatId);
+      if (!result.success) {
+        if (result.error?.toLowerCase().includes('sign in')) router.push('/auth/login' as any);
+        else Alert.alert('Save failed', result.error || 'This item could not be saved.');
+        return;
+      }
+      Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your saved beats.`);
+      return;
+    }
+
+    if (currentTrack.releaseId) {
+      const result = await toggleSavedContent('release', currentTrack.releaseId);
+      if (!result.success) {
+        if (result.error?.toLowerCase().includes('sign in')) router.push('/auth/login' as any);
+        else Alert.alert('Save failed', result.error || 'This release could not be saved.');
+        return;
+      }
+      Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your saved releases.`);
+      return;
+    }
+
+    if (currentTrack.mixId) {
+      const result = await toggleSavedContent('mix', currentTrack.mixId);
+      Alert.alert('Save unavailable', result.error || 'Open the mix page for library actions.');
+      router.push(`/mixes/${currentTrack.mixId}` as any);
+      return;
+    }
+
+    router.push('/library' as any);
+  };
 
   return (
-    <View className="flex-1 bg-[#050505]">
+    <View style={styles.screen}>
+      <LinearGradient colors={['#080808', '#0B0B0B', '#080808']} style={StyleSheet.absoluteFill} />
+      {cover ? <Image source={{ uri: cover }} style={styles.backdrop} blurRadius={46} /> : null}
+      <LinearGradient colors={['rgba(8,8,8,0.7)', '#080808']} style={StyleSheet.absoluteFill} />
       <StatusBar style="light" />
-      <Stack.Screen
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
 
-      {/* Blurred background artwork */}
-      <View className="absolute inset-0 z-0 overflow-hidden">
-        {cover ? (
-          <Image
-            source={{ uri: cover as string }}
-            className="w-full h-full"
-            resizeMode="cover"
-            blurRadius={80}
-            style={{ opacity: 0.3, transform: [{ scale: 1.1 }] }}
-          />
-        ) : null}
-        <LinearGradient
-          colors={['rgba(5,5,5,0.8)', 'rgba(5,5,5,0.95)', '#050505']}
-          className="absolute inset-0"
-        />
-      </View>
-
-      <View className="flex-1 px-6 pt-2 pb-6 z-10 justify-between">
-        {/* Header — expand_more + Now Playing + more_horiz */}
-        <View className="flex-row items-center justify-between py-4 mt-10">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="h-10 w-10 items-center justify-center rounded-full"
-          >
-            <SymbolIcon name="expand_more" className="text-white" style={{ fontSize: 28 }} />
-          </TouchableOpacity>
-          <Text className="text-white/90 text-sm font-semibold uppercase tracking-widest">
-            Now Playing
-          </Text>
-          <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full">
-            <SymbolIcon name="more_horiz" className="text-white" style={{ fontSize: 24 }} />
-          </TouchableOpacity>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 12, 46), paddingBottom: insets.bottom + 34 }]}
+      >
+        <View style={styles.topBar}>
+          <Pressable style={styles.topButton} onPress={() => router.back()}>
+            <MaterialIcons name="expand-more" size={30} color="#FFFFFF" />
+          </Pressable>
+          <Text style={styles.topTitle}>Now Playing</Text>
+          <Pressable style={styles.topButton} onPress={handleShare}>
+            <MaterialIcons name="ios-share" size={21} color="#FFFFFF" />
+          </Pressable>
         </View>
 
-        {/* Album Art — large square with shadow + ring */}
-        <View className="items-center justify-center my-4">
-          <View
-            className="w-full aspect-square rounded-2xl overflow-hidden border border-white/10"
-            style={{
-              maxHeight: 380,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 20 },
-              shadowOpacity: 0.9,
-              shadowRadius: 50,
-              elevation: 20,
+        <View style={styles.heroArt}>
+          {cover ? <Image source={{ uri: cover }} style={styles.fill} /> : <MaterialIcons name="music-note" size={78} color="#3F2417" />}
+        </View>
+
+        <View style={styles.trackHeader}>
+          <View style={styles.trackCopy}>
+            <Text style={styles.trackTitle} numberOfLines={2}>{title}</Text>
+            <Pressable onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
+              <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.saveButton} onPress={handleSave}>
+            <MaterialIcons name="bookmark-border" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
+
+        <Pressable style={styles.progressWrap} onPress={handleScrub}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+          </View>
+        </Pressable>
+        <View style={styles.timeRow}>
+          <Text style={styles.timeText}>{formatDuration(progress.position)}</Text>
+          <Text style={styles.timeText}>{formatDuration(progress.duration)}</Text>
+        </View>
+
+        <View style={styles.controls}>
+          <Pressable onPress={toggleShuffle} style={styles.controlButton}>
+            <MaterialIcons name="shuffle" size={23} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
+          </Pressable>
+          <Pressable onPress={skipToPrevious} style={styles.skipButton}>
+            <MaterialIcons name="skip-previous" size={38} color="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              impactHaptic();
+              togglePlayPause();
             }}
+            style={styles.playButton}
           >
-            {cover ? (
-              <Image source={{ uri: cover as string }} className="w-full h-full" resizeMode="cover" />
-            ) : (
-              <View className="w-full h-full bg-[#121212] items-center justify-center">
-                <SymbolIcon name="music_note" className="text-white/20" style={{ fontSize: 80 }} />
-              </View>
-            )}
-          </View>
+            <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={44} color="#FFFFFF" />
+          </Pressable>
+          <Pressable onPress={skipToNext} style={styles.skipButton}>
+            <MaterialIcons name="skip-next" size={38} color="#FFFFFF" />
+          </Pressable>
+          <Pressable onPress={toggleRepeat} style={styles.controlButton}>
+            <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={23} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
+          </Pressable>
         </View>
 
-        {/* Track Info + Favorite + Genre badge */}
-        <View className="w-full mb-6">
-          <View className="flex-row justify-between items-start w-full">
-            <View className="flex-1 mr-4">
-              <Text numberOfLines={2} className="text-white text-3xl font-bold leading-tight tracking-tight mb-1">
-                {title}
-              </Text>
-              <Text numberOfLines={1} className="text-white/60 text-lg font-medium">
-                {artist}
-              </Text>
-            </View>
-            <TouchableOpacity className="h-10 w-10 items-center justify-center rounded-full mt-1">
-              <SymbolIcon name="favorite" className="text-white/40" style={{ fontSize: 24 }} />
-            </TouchableOpacity>
-          </View>
-          {/* Genre badge */}
-          {currentTrack?.type && (
-            <View className="mt-3">
-              <View className="self-start px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                <Text className="text-xs font-medium text-white/70 capitalize">
-                  {currentTrack.type === 'beat' ? 'Beat' : currentTrack.type === 'release' ? 'Release' : 'Track'}
-                </Text>
+        <View style={styles.actionRow}>
+          <PlayerAction icon="forum" label="Backstage" onPress={() => router.push('/backstage' as any)} />
+          <PlayerAction icon="chat-bubble-outline" label="Comments" onPress={() => router.push('/backstage' as any)} />
+          <PlayerAction icon="playlist-add" label="Queue" />
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>Queue</Text>
+          {queue.length === 0 ? <Text style={styles.infoBody}>Queue will appear here as you keep listening.</Text> : null}
+          {queue.slice(0, 8).map((track) => (
+            <View key={track.id} style={styles.queueRow}>
+              <View style={styles.queueDot} />
+              <View style={styles.queueCopy}>
+                <Text style={styles.queueTitle} numberOfLines={1}>{track.title}</Text>
+                <Text style={styles.queueArtist} numberOfLines={1}>{track.artist}</Text>
               </View>
             </View>
-          )}
+          ))}
         </View>
 
-        {/* Waveform Scrubber */}
-        <View className="w-full mb-2">
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={handleScrubberPress}
-            className="flex-row items-center justify-between h-12 px-1"
-          >
-            {waveformHeights.map((h, i) => (
-              <View
-                key={i}
-                className="rounded-full"
-                style={{
-                  width: 6,
-                  height: h,
-                  backgroundColor:
-                    i < activeBarIndex
-                      ? '#FF5500'
-                      : i === activeBarIndex
-                        ? '#FF5500'
-                        : 'rgba(255,255,255,0.2)',
-                  opacity: i < activeBarIndex && activeBarIndex > 0 ? (0.45 + (i / activeBarIndex) * 0.55) : 1,
-                }}
-              />
-            ))}
-          </TouchableOpacity>
-          <View className="flex-row justify-between mt-1">
-            <Text className="text-xs font-medium text-white/40" style={{ fontFamily: 'Courier' }}>
-              {formatTime(progress.position)}
-            </Text>
-            <Text className="text-xs font-medium text-white/40" style={{ fontFamily: 'Courier' }}>
-              {formatTime(progress.duration)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Playback Controls — shuffle, prev, play/pause, next, repeat */}
-        <View className="flex-row items-center justify-between mb-8 px-2">
-          <TouchableOpacity onPress={toggleShuffle} className="p-2 relative">
-            <SymbolIcon name="shuffle" className={`${shuffleMode === 'on' ? 'text-primary' : 'text-white/40'}`}
-              style={{ fontSize: 24 }} />
-            {shuffleMode === 'on' && (
-              <View className="absolute -bottom-1 left-1/2 w-1 h-1 bg-primary rounded-full" style={{ marginLeft: -2 }} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={skipToPrevious} className="p-2">
-            <SymbolIcon name="skip_previous" className="text-white"
-              style={{ fontSize: 40 }} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={togglePlayPause}
-            className="h-20 w-20 rounded-full bg-primary items-center justify-center"
-            style={{
-              shadowColor: '#FF5500',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 40,
-              elevation: 15,
-            }}
-          >
-            <SymbolIcon name={isBuffering ? 'hourglass_empty' : isPlaying ? 'pause' : 'play_arrow'} className="text-white"
-              style={{ fontSize: 48 }} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={skipToNext} className="p-2">
-            <SymbolIcon name="skip_next" className="text-white"
-              style={{ fontSize: 40 }} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={toggleRepeat} className="p-2">
-            <SymbolIcon name={repeatMode === RepeatMode.Track ? 'repeat_one' : 'repeat'} className={`${repeatMode !== RepeatMode.Off ? 'text-primary' : 'text-white/40'}`}
-              style={{ fontSize: 24 }} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Action buttons — 3-column grid matching Stitch */}
-        <View className="flex-row gap-3 w-full mb-6">
-          <TouchableOpacity
-            onPress={() => setTipVisible(true)}
-            className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-primary border border-primary/50"
-            style={{ shadowColor: '#FF5500', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 }}
-          >
-            <SymbolIcon name="monetization_on" className="text-white" style={{ fontSize: 24 }} />
-            <Text className="text-[10px] font-bold text-white uppercase tracking-wide">
-              Tip Artist
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-            <SymbolIcon name="playlist_add" className="text-white/90" style={{ fontSize: 24 }} />
-            <Text className="text-[10px] font-semibold text-white/80 uppercase tracking-wide">
-              Playlist
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-1 items-center justify-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-            <SymbolIcon name="download" className="text-white/90" style={{ fontSize: 24 }} />
-            <Text className="text-[10px] font-semibold text-white/80 uppercase tracking-wide">
-              Download
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Credits & Lyrics hint */}
-        <View className="items-center pt-2 pb-1" style={{ opacity: 0.6 }}>
-          <View className="w-12 h-1 bg-white/30 rounded-full mb-2" />
-          <Text className="text-xs font-medium text-white tracking-wider uppercase">
-            Credits & Lyrics
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>Related culture</Text>
+          <Text style={styles.infoBody}>
+            Related releases, mixes, event threads and community discussions appear here when the backend links them to this media.
           </Text>
         </View>
-
-        {/* Tip Modal */}
-        <TipModal
-          visible={tipVisible}
-          onClose={() => setTipVisible(false)}
-          artistName={artist as string}
-          artistId={currentTrack?.releaseId || ''}
-        />
-      </View>
+      </ScrollView>
     </View>
   );
 }
+
+function PlayerAction({ icon, label, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; onPress?: () => void }) {
+  return (
+    <Pressable
+      style={styles.playerAction}
+      onPress={() => {
+        selectionHaptic();
+        onPress?.();
+      }}
+    >
+      <MaterialIcons name={icon} size={22} color={ORANGE} />
+      <Text style={styles.playerActionText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#080808' },
+  backdrop: { ...StyleSheet.absoluteFillObject, opacity: 0.28 },
+  content: { paddingHorizontal: 16 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+  topButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  topTitle: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  heroArt: { aspectRatio: 1, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)', backgroundColor: '#151515', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  fill: { width: '100%', height: '100%' },
+  trackHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 22 },
+  trackCopy: { flex: 1, minWidth: 0 },
+  trackTitle: { color: '#FFFFFF', fontSize: 31, lineHeight: 36, fontWeight: '900' },
+  trackArtist: { color: '#B3B3B3', fontSize: 17, fontWeight: '700', marginTop: 5 },
+  saveButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  progressWrap: { height: 28, justifyContent: 'center', marginTop: 22 },
+  progressTrack: { height: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' },
+  progressFill: { height: 5, borderRadius: 999, backgroundColor: ORANGE },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  timeText: { color: '#737373', fontSize: 12, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 25, marginBottom: 18 },
+  controlButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  skipButton: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  playButton: { width: 76, height: 76, borderRadius: 38, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  actionRow: { flexDirection: 'row', gap: 9, marginBottom: 14 },
+  playerAction: { flex: 1, minHeight: 70, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  playerActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  infoCard: { borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 14, marginBottom: 12 },
+  infoTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginBottom: 7 },
+  infoBody: { color: '#B3B3B3', fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  queueRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  queueDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ORANGE },
+  queueCopy: { flex: 1, minWidth: 0 },
+  queueTitle: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '800' },
+  queueArtist: { color: '#737373', fontSize: 12, fontWeight: '700', marginTop: 2 },
+});

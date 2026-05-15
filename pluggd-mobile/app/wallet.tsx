@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,15 +18,15 @@ import {
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
+import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
 const PLUGGD_ORANGE = '#FF5200';
 
 const PACK_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  Starter: 'rocket-launch',
-  Plus: 'star-border',
-  Value: 'diamond',
-  Premium: 'workspace-premium',
-  Ultimate: 'emoji-events',
+  'Plus Credits': 'star-border',
+  'Value Credits': 'diamond',
+  'Premium Credits': 'workspace-premium',
+  'Ultimate Credits': 'emoji-events',
 };
 
 const LEDGER_LABELS: Record<string, string> = {
@@ -104,6 +105,7 @@ export default function WalletScreen() {
   const [selectedSku, setSelectedSku] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
 
   const selectedPack = useMemo(
     () =>
@@ -115,9 +117,9 @@ export default function WalletScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshBalance(), refreshLedger()]);
+    await Promise.all([refreshBalance(), refreshLedger(), library.refetch()]);
     setRefreshing(false);
-  }, [refreshBalance, refreshLedger]);
+  }, [library, refreshBalance, refreshLedger]);
 
   const handlePurchase = () => {
     if (!selectedPack) return;
@@ -161,7 +163,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'Pluggd credits',
-                'Credits can be used for eligible in-app purchases, tips, boosts, and platform features.',
+                '100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and platform-native purchases.',
               )
             }
           >
@@ -343,8 +345,36 @@ export default function WalletScreen() {
         >
           <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
           <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
-            Credits can be used for eligible in-app purchases, tips, boosts, and platform features.
+            100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and platform-native purchases.
           </Text>
+        </View>
+
+        <View
+          style={[
+            styles.entitlementCard,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Wallet vault</Text>
+          {library.isLoading ? (
+            <ActivityIndicator color={theme.colors.accent} style={styles.activityLoader} />
+          ) : null}
+          {!library.isLoading && !library.data?.entitlements.length ? (
+            <Text style={[styles.emptyText, { color: theme.colors.textSubtle }]}>
+              Tickets, rewards and purchases will appear here when backed by account data.
+            </Text>
+          ) : null}
+          {library.data?.entitlements.slice(0, 8).map((item) => (
+            <View key={`${item.kind}-${item.id}`} style={[styles.entitlementRow, { borderTopColor: theme.colors.borderSubtle }]}>
+              <View style={[styles.ledgerIcon, { backgroundColor: theme.colors.surfaceAlt }]}>
+                <MaterialIcons name={item.kind === 'ticket' ? 'confirmation-number' : item.kind === 'credits' ? 'paid' : 'lock-open'} size={18} color={theme.colors.accent} />
+              </View>
+              <View style={styles.ledgerTextWrap}>
+                <Text style={[styles.ledgerTitle, { color: theme.colors.text }]} numberOfLines={1}>{item.title}</Text>
+                <Text style={[styles.ledgerDate, { color: theme.colors.textSubtle }]}>{item.kind.replace('_', ' ')} · {item.status}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         {showActivity && (
@@ -677,6 +707,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginTop: 16,
+  },
+  entitlementCard: {
+    borderWidth: 1,
+    borderColor: '#262626',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  entitlementRow: {
+    minHeight: 58,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   activityTitle: {
     fontSize: 18,

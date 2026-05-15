@@ -1,5 +1,5 @@
-import { Redirect } from "expo-router";
+import { ProfileHubScreen } from '../src/features/culture/CultureScreens';
 
 export default function ProfileRedirect() {
-  return <Redirect href="/(tabs)/profile" />;
+  return <ProfileHubScreen />;
 }
