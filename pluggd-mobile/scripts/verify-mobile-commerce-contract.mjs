@@ -29,7 +29,7 @@ const expectedCreditSkus = [
 assert.deepEqual(
   extractArray(creditsSource, 'CREDIT_PACK_SKUS'),
   expectedCreditSkus,
-  'iOS credit catalog must expose only the approved four StoreKit credit packs',
+  'iOS credit catalog must expose only the approved five StoreKit credit packs',
 );
 
 for (const label of ['Plus Credits', 'Value Credits', 'Premium Credits', 'Ultimate Credits']) {

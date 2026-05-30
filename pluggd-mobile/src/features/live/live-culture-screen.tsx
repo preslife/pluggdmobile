@@ -614,13 +614,15 @@ function UpcomingSessionCard({
   const title = roomTitle(room);
   const canRemind = canRemindRoom(room);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${title}`} onPress={onOpen} style={styles.upcomingCard}>
-      <Text style={styles.cardTitle} numberOfLines={2}>{title}</Text>
-      <Text style={styles.cardMeta} numberOfLines={1}>{roomHost(room)}</Text>
-      <View style={styles.countdownRow}>
-        <MaterialIcons name="schedule" size={13} color={COLORS.muted} />
-        <Text style={styles.countdownText}>{formatDate(room.scheduled_for, 'Time TBA')} · {eventCountdown(room.scheduled_for)}</Text>
-      </View>
+    <View style={styles.upcomingCard}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Open ${title}`} onPress={onOpen} style={styles.upcomingDetailsButton}>
+        <Text style={styles.cardTitle} numberOfLines={2}>{title}</Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>{roomHost(room)}</Text>
+        <View style={styles.countdownRow}>
+          <MaterialIcons name="schedule" size={13} color={COLORS.muted} />
+          <Text style={styles.countdownText}>{formatDate(room.scheduled_for, 'Time TBA')} · {eventCountdown(room.scheduled_for)}</Text>
+        </View>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={reminded ? `Remove reminder for ${title}` : `Set reminder for ${title}`}
@@ -633,7 +635,7 @@ function UpcomingSessionCard({
       >
         <Text style={[styles.compactCTAText, reminded && styles.compactCTATextOn]}>{canRemind ? (reminded ? 'Reminder Set' : 'Set Reminder') : 'View Details'}</Text>
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 
@@ -671,16 +673,20 @@ function WideSessionCard({
 }) {
   const isLive = isRealLiveRoom(room);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomTitle(room)}`} onPress={() => onJoin(room)} style={styles.wideCard}>
-      <LiveArtwork uri={mediaImageForRoom(room)} title={roomTitle(room)} style={styles.wideImage} />
-      <LinearGradient colors={['rgba(8,8,12,0.04)', 'rgba(8,8,12,0.86)']} style={StyleSheet.absoluteFill} />
+    <View style={styles.wideCard}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomTitle(room)}`} onPress={() => onJoin(room)} style={StyleSheet.absoluteFill}>
+        <LiveArtwork uri={mediaImageForRoom(room)} title={roomTitle(room)} style={styles.wideImage} />
+        <LinearGradient colors={['rgba(8,8,12,0.04)', 'rgba(8,8,12,0.86)']} style={StyleSheet.absoluteFill} />
+      </Pressable>
       <View style={styles.wideContent}>
-        <View style={[styles.miniTag, isLive && styles.miniTagLive]}>
-          {isLive ? <View style={styles.liveDotSmall} /> : null}
-          <Text style={styles.miniTagText}>{isLive ? 'LIVE' : label}</Text>
-        </View>
-        <Text style={styles.wideTitle} numberOfLines={2}>{roomTitle(room)}</Text>
-        <Text style={styles.wideMeta} numberOfLines={1}>{roomHost(room)} · {room.category || 'Session'}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomTitle(room)}`} onPress={() => onJoin(room)} style={styles.wideTextHitArea}>
+          <View style={[styles.miniTag, isLive && styles.miniTagLive]}>
+            {isLive ? <View style={styles.liveDotSmall} /> : null}
+            <Text style={styles.miniTagText}>{isLive ? 'LIVE' : label}</Text>
+          </View>
+          <Text style={styles.wideTitle} numberOfLines={2}>{roomTitle(room)}</Text>
+          <Text style={styles.wideMeta} numberOfLines={1}>{roomHost(room)} · {room.category || 'Session'}</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={(event) => {
@@ -693,7 +699,7 @@ function WideSessionCard({
           <Text style={styles.wideCTAText}>{isLive ? 'Join' : reminded ? 'Reminder Set' : 'Set Reminder'}</Text>
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -708,15 +714,19 @@ function EventLiveCard({
 }) {
   const router = useRouter();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={styles.wideCard}>
-      <LiveArtwork uri={event.cover_image_url} title={eventTitle(event)} style={styles.wideImage} />
-      <LinearGradient colors={['rgba(8,8,12,0.05)', 'rgba(8,8,12,0.88)']} style={StyleSheet.absoluteFill} />
+    <View style={styles.wideCard}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={StyleSheet.absoluteFill}>
+        <LiveArtwork uri={event.cover_image_url} title={eventTitle(event)} style={styles.wideImage} />
+        <LinearGradient colors={['rgba(8,8,12,0.05)', 'rgba(8,8,12,0.88)']} style={StyleSheet.absoluteFill} />
+      </Pressable>
       <View style={styles.wideContent}>
-        <View style={styles.miniTag}>
-          <Text style={styles.miniTagText}>{event.stream_url ? 'EVENT LIVE' : 'REPLAY'}</Text>
-        </View>
-        <Text style={styles.wideTitle} numberOfLines={2}>{eventTitle(event)}</Text>
-        <Text style={styles.wideMeta} numberOfLines={1}>{eventHost(event)} · {eventCountdown(event.starts_at)}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={styles.wideTextHitArea}>
+          <View style={styles.miniTag}>
+            <Text style={styles.miniTagText}>{event.stream_url ? 'EVENT LIVE' : 'REPLAY'}</Text>
+          </View>
+          <Text style={styles.wideTitle} numberOfLines={2}>{eventTitle(event)}</Text>
+          <Text style={styles.wideMeta} numberOfLines={1}>{eventHost(event)} · {eventCountdown(event.starts_at)}</Text>
+        </Pressable>
         <View style={styles.wideSplitActions}>
           <Pressable accessibilityRole="button" onPress={() => router.push(`/events/${event.id}` as any)} style={styles.wideSmallCTA}>
             <Text style={styles.wideCTAText}>Open Event Hub</Text>
@@ -728,7 +738,7 @@ function EventLiveCard({
           ) : null}
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -1334,6 +1344,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: 13,
   },
+  upcomingDetailsButton: { flex: 1 },
   cardTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
   cardMeta: { marginTop: 5, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '700' },
   countdownRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -1372,6 +1383,7 @@ const styles = StyleSheet.create({
   },
   wideImage: { width: '100%', height: '100%' },
   wideContent: { position: 'absolute', left: 12, right: 12, bottom: 12, top: 12, justifyContent: 'flex-end' },
+  wideTextHitArea: { flex: 1, justifyContent: 'flex-end' },
   miniTag: { alignSelf: 'flex-start', height: 23, borderRadius: 8, paddingHorizontal: 8, backgroundColor: 'rgba(18,18,26,0.78)', flexDirection: 'row', alignItems: 'center', gap: 5 },
   miniTagLive: { backgroundColor: COLORS.coral },
   miniTagText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 10, lineHeight: 12 },
