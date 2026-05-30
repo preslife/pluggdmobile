@@ -612,7 +612,7 @@ Current status after the first implementation pass:
 - Remove or replace inert CTA buttons.
 - Replace the custom dock with a native tab structure.
 - Refactor credit spending to current backend functions.
-- Refactor wallet packs to the approved four-pack list unless `starter` is explicitly retained.
+- Refactor wallet packs to the approved five StoreKit credit product IDs: `pluggd_credits_starter`, `pluggd_credits_popular`, `pluggd_credits_value`, `pluggd_credits_premium`, and `pluggd_credits_ultimate`.
 - Refactor community into the current social feed model.
 - Refactor beat/sample/soundboard purchase actions only after backend entitlement contracts are confirmed.
 
@@ -1032,7 +1032,7 @@ Open items:
 
 ### 6. Implement Wallet And Apple IAP
 
-- Restrict UI to the approved four credit packs unless the starter SKU is confirmed.
+- Restrict UI to the approved five StoreKit credit product IDs: `pluggd_credits_starter`, `pluggd_credits_popular`, `pluggd_credits_value`, `pluggd_credits_premium`, and `pluggd_credits_ultimate`.
 - Update wallet copy to current model.
 - Verify StoreKit product fetch.
 - Verify receipt validation and ledger update.
