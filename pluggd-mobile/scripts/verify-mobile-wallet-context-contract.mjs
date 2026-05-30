@@ -8,12 +8,13 @@ const headerSource = read('components/MobileHeader.tsx');
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');
 
-for (const label of ['Home', 'Explore', 'Create', 'Community', 'Profile']) {
+for (const label of ['Home', 'Discover', 'Community', 'Events', 'Market']) {
   assert.match(dockSource, new RegExp(`label:\\s*'${label}'`), `${label} must be in the locked primary nav`);
 }
 assert.doesNotMatch(dockSource, /label:\s*'Search'/, 'Search must stay in top/header access, not bottom nav');
-assert.doesNotMatch(dockSource, /label:\s*'(Wallet|Marketplace|Discover|Events|Market|Stage|Live|Backstage|MyPLUGGD)'/, 'wallet/secondary tabs must not return as primary nav tabs');
+assert.doesNotMatch(dockSource, /label:\s*'(Wallet|Marketplace|Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)'/, 'wallet/old native tabs must not return as primary nav tabs');
 assert.match(headerSource, /Wallet \/ Credits|Wallet \/ Earnings/, 'wallet must be available from avatar menu with web account copy');
+assert.match(headerSource, /Memberships/, 'memberships must be available from avatar menu');
 assert.match(headerSource, /Tickets/, 'tickets must be available from avatar menu');
 assert.match(walletSource, /100 credits = £1/, 'wallet must preserve credit conversion copy');
 

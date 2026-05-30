@@ -48,8 +48,13 @@ assert.doesNotMatch(
 
 assert.doesNotMatch(
   beatDetailSource,
-  /Start checkout|checkout|Choose MP3 lease, premium WAV, stems, or exclusive licensing at checkout/i,
+  /Start checkout|checkout|Open Wallet|router\.push\('\/wallet'|Choose MP3 lease, premium WAV, stems, or exclusive licensing at checkout/i,
   'Beat detail must not expose external or stale checkout language',
+);
+assert.match(
+  beatDetailSource,
+  /Save Beat|View license options|License on web|Licensing coming soon/,
+  'Beat detail must use an App Review-safe professional licensing CTA',
 );
 
 console.log('mobile market contract verified');

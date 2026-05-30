@@ -64,10 +64,10 @@ export default function ProductDetailRoute() {
   const purchase = () => {
     impactHaptic();
     Alert.alert(
-      'Checkout coming soon',
-      'Save this product or check back later for purchase options.',
+      'Purchase options',
+      'This item does not have a mobile purchase route connected yet. Browse Market for available items and creator details.',
       [
-        { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
+        { text: 'Back to Market', onPress: () => router.push('/market' as any) },
         { text: 'OK', style: 'cancel' },
       ],
     );

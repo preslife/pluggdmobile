@@ -29,7 +29,8 @@ assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release detail must ke
 assert.match(release, /Save[\s\S]*Post[\s\S]*Share/, 'release detail must keep save, post-to-feed and share actions');
 
 assert.match(beat, /professional beat licensing/i, 'beat detail must frame licensing as professional/off-app use, not generic in-app checkout');
-assert.match(beat, /Open Wallet/, 'beat detail must keep unsupported purchase routed through wallet/credits context');
+assert.doesNotMatch(beat, /Open Wallet|router\.push\('\/wallet'/, 'beat licensing must not route professional/off-app licensing into the Apple credits wallet');
+assert.match(beat, /Save Beat|View license options|License on web|Licensing coming soon/, 'beat licensing must use an App Review-safe CTA');
 
 assert.match(event, /Tickets \/ RSVP/, 'event detail must preserve tickets and RSVP entry points');
 assert.match(event, /Event thread/, 'event detail must preserve event-thread social handoff');

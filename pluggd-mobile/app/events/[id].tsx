@@ -177,7 +177,7 @@ export default function EventDetailScreen() {
                 <MaterialIcons name="confirmation-number" size={24} color={PLUGGD_ORANGE} />
                 <View style={styles.liveText}>
                   <Text style={styles.liveTitle}>Ticket linked to this account</Text>
-                  <Text style={styles.liveMeta}>Open Wallet Tickets for verified status. QR appears only when a real payload exists.</Text>
+                  <Text style={styles.liveMeta}>Open Tickets for verified status. QR appears only when a real payload exists.</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={24} color="#777777" />
               </Pressable>

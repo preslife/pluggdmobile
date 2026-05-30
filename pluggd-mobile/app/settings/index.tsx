@@ -7,9 +7,13 @@ import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 const SETTINGS = [
   { label: 'Profile', route: '/profile', icon: 'person' },
   { label: 'Wallet', route: '/wallet', icon: 'account-balance-wallet' },
+  { label: 'Purchases', route: '/purchases', icon: 'inventory-2' },
+  { label: 'Memberships', route: '/membership', icon: 'card-membership' },
+  { label: 'Tickets', route: '/tickets', icon: 'confirmation-number' },
   { label: 'Notifications', route: '/notifications', icon: 'notifications' },
   { label: 'Privacy', route: '/settings/privacy', icon: 'lock' },
   { label: 'Data export', route: '/settings/data-export', icon: 'download' },
+  { label: 'Restore Purchases', route: '/wallet', icon: 'restore' },
   { label: 'Creator tools', route: '/creator-mode', icon: 'space-dashboard' },
 ] as const;
 

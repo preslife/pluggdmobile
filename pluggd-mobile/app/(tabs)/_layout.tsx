@@ -22,15 +22,9 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="explore"
+          name="discover"
           options={{
-            title: "Explore",
-          }}
-        />
-        <Tabs.Screen
-          name="create"
-          options={{
-            title: "Create",
+            title: "Discover",
           }}
         />
         <Tabs.Screen
@@ -40,14 +34,20 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile"
+          name="events"
           options={{
-            title: "Profile",
+            title: "Events",
           }}
         />
-        <Tabs.Screen name="discover" options={{ href: null }} />
-        <Tabs.Screen name="events" options={{ href: null }} />
-        <Tabs.Screen name="market" options={{ href: null }} />
+        <Tabs.Screen
+          name="market"
+          options={{
+            title: "Market",
+          }}
+        />
+        <Tabs.Screen name="explore" options={{ href: null }} />
+        <Tabs.Screen name="create" options={{ href: null }} />
+        <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen
           name="stage"
           options={{

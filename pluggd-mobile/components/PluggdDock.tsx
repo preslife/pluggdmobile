@@ -10,7 +10,6 @@ type TabItem = {
   route: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   aliases?: string[];
-  primary?: boolean;
 };
 
 const CORE_TABS: TabItem[] = [
@@ -21,12 +20,11 @@ const CORE_TABS: TabItem[] = [
     aliases: ['/(tabs)', '/home'],
   },
   {
-    label: 'Explore',
-    route: '/explore',
+    label: 'Discover',
+    route: '/discover',
     icon: 'explore',
     aliases: [
       '/(tabs)/explore',
-      '/discover',
       '/(tabs)/discover',
       '/explore',
       '/stage',
@@ -37,34 +35,6 @@ const CORE_TABS: TabItem[] = [
       '/mixes',
       '/search',
       '/directory',
-      '/events',
-      '/beat',
-      '/beats',
-      '/beat-marketplace',
-      '/market',
-      '/marketplace',
-      '/sample-pack',
-      '/sample-packs',
-      '/store',
-      '/product',
-    ],
-  },
-  {
-    label: 'Create',
-    route: '/create',
-    icon: 'add-circle-outline',
-    primary: true,
-    aliases: [
-      '/(tabs)/create',
-      '/create-post',
-      '/creator-mode',
-      '/creator/onboarding',
-      '/creator/upload',
-      '/creator/events',
-      '/upload-clip',
-      '/live/create',
-      '/studio',
-      '/backstage',
     ],
   },
   {
@@ -85,21 +55,25 @@ const CORE_TABS: TabItem[] = [
     ],
   },
   {
-    label: 'Profile',
-    route: '/profile',
-    icon: 'person',
+    label: 'Events',
+    route: '/events',
+    icon: 'event',
+    aliases: ['/(tabs)/events', '/event', '/tickets', '/ticket-scan', '/creator/events'],
+  },
+  {
+    label: 'Market',
+    route: '/market',
+    icon: 'storefront',
     aliases: [
-      '/(tabs)/profile',
-      '/my-pluggd',
-      '/u',
-      '/user',
-      '/settings',
-      '/edit-profile',
-      '/wallet',
-      '/membership',
-      '/tickets',
-      '/purchases',
-      '/badges',
+      '/(tabs)/market',
+      '/marketplace',
+      '/beat',
+      '/beats',
+      '/beat-marketplace',
+      '/sample-pack',
+      '/sample-packs',
+      '/store',
+      '/product',
     ],
   },
 ];
@@ -139,27 +113,24 @@ export function PluggdDock() {
                   selectionHaptic();
                   router.push(item.route as any);
                 }}
-                style={[styles.tabPressable, item.primary && styles.primaryPressable]}
+                style={styles.tabPressable}
                 accessibilityRole="tab"
                 accessibilityLabel={`${item.label} tab`}
                 accessibilityState={{ selected: active }}
               >
-                <View
-                  style={[
-                    styles.tabItem,
-                    item.primary && {
-                      backgroundColor: active ? theme.colors.accent : theme.colors.surfaceStrong,
-                      borderColor: active ? theme.colors.borderAccent : theme.colors.border,
-                    },
-                  ]}
-                >
-                  <View style={[styles.iconShell, active && !item.primary && { backgroundColor: theme.colors.surfaceStrong }]}>
-                    <MaterialIcons name={item.icon} size={item.primary ? 26 : 24} color={item.primary && active ? '#08080C' : iconColor} />
+                <View style={styles.tabItem}>
+                  <View style={[styles.iconShell, active && { backgroundColor: theme.colors.surfaceStrong }]}>
+                    <MaterialIcons name={item.icon} size={24} color={iconColor} />
                   </View>
-                  <Text style={[styles.tabLabel, { color: item.primary && active ? '#08080C' : iconColor }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.tabLabel, { color: iconColor }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                  >
                     {item.label}
                   </Text>
-                  {!item.primary ? <View style={[styles.activeIndicator, active && { backgroundColor: theme.colors.accent }]} /> : null}
+                  <View style={[styles.activeIndicator, active && { backgroundColor: theme.colors.accent }]} />
                 </View>
               </Pressable>
             );
@@ -178,7 +149,7 @@ const styles = StyleSheet.create({
   dockGlass: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 28,
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
     paddingVertical: 8,
     overflow: 'hidden',
   },
@@ -187,14 +158,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 7,
+    gap: 2,
   },
   tabPressable: {
     flex: 1,
     height: 70,
-  },
-  primaryPressable: {
-    flex: 1.1,
   },
   tabItem: {
     height: 70,
@@ -220,7 +188,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: 'Satoshi-Medium',
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 14,
   },
 });

@@ -27,7 +27,8 @@ assert.match(release, /spendCredits/, 'release detail must preserve credit unloc
 assert.match(release, /release_purchases/, 'release detail must preserve owned-release detection');
 
 assert.match(beat, /license_prices|available_licenses/, 'beat detail must expose backend license metadata when present');
-assert.match(beat, /Open Wallet/, 'beat detail must keep unsupported purchase routed through wallet/credits context, not external checkout');
+assert.doesNotMatch(beat, /Open Wallet|router\.push\('\/wallet'/, 'beat detail must not send professional/off-app licensing to the Apple credits wallet');
+assert.match(beat, /Save Beat|View license options|License on web|Licensing coming soon/, 'beat detail must expose an App Review-safe licensing CTA');
 
 assert.match(mix, /mix_tracklist_items/, 'mix detail must preserve real tracklist loading');
 assert.match(samplePack, /sample_pack_purchases/, 'sample pack detail must preserve real free-claim purchases');

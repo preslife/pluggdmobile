@@ -1,5 +1,6 @@
 import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { CreateActionSheet } from './CreateActionSheet';
 import MiniPlayer from './MiniPlayer';
 import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
@@ -32,6 +33,7 @@ export function AppChrome() {
   return (
     <>
       {ownsHeader ? null : <MobileHeader />}
+      <CreateActionSheet />
       <View pointerEvents="box-none" style={styles.bottomWrap}>
         <MiniPlayer />
         <PluggdDock />

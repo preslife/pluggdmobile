@@ -373,6 +373,10 @@ export async function loadDiscoverParity(): Promise<ParityPayload> {
     kicker: 'Current PLUGGD culture',
     summary: 'Find new drops, creators, events, soundboards, and live moments moving through PLUGGD right now.',
     hero: mixed[0] || null,
+    actions: [
+      { id: 'search', label: 'Search', route: '/search' },
+      { id: 'live', label: 'Live rooms', route: '/live' },
+    ],
     sections: [
       { id: 'featured', title: 'Featured now', subtitle: 'Music, BeatPlug, mixes, events, live, and soundboards worth catching.', items: mixed, emptyText: 'Fresh picks will appear here soon.' },
       { id: 'music', title: 'Music', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available yet.' },
@@ -475,7 +479,7 @@ export async function loadMarketParity(section?: string | string[] | null): Prom
     summary: 'Browse beats, sample packs, releases, merch, services, and creator offers in one place.',
     hero: bundle.beats[0] ? beatCard(bundle.beats[0]) : bundle.samplePacks[0] ? samplePackCard(bundle.samplePacks[0]) : null,
     actions: [
-      { id: 'credits', label: 'Open Wallet', route: '/wallet' },
+      { id: 'credits', label: 'Credits wallet', route: '/wallet' },
       { id: 'orders', label: 'Purchases', route: '/purchases' },
     ],
     sections: [
@@ -567,6 +571,10 @@ export async function loadEventsParity(): Promise<ParityPayload> {
     kicker: 'Ticket culture',
     summary: 'Upcoming PLUGGD events, live-linked nights, RSVP context, and Community discussion entry points.',
     hero: events[0] ? eventCard(events[0]) : null,
+    actions: [
+      { id: 'tickets', label: 'My tickets', route: '/tickets' },
+      { id: 'live', label: 'Live sessions', route: '/live' },
+    ],
     sections: [
       { id: 'upcoming', title: 'Upcoming', items: events.map(eventCard), emptyText: 'No upcoming events are published.' },
       { id: 'from-feed', title: 'Event signals', items: bundle.events.map(eventCard), emptyText: 'No event signals are available.' },

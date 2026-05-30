@@ -35,6 +35,7 @@ const screenSource = read('src/features/parity/AppWideParityScreens.tsx');
 const studioScreenSource = read('src/features/studio/StudioScreens.tsx');
 const studioDataSource = read('src/features/studio/studio-data.ts');
 const sharedContentSource = read('src/lib/mobileContent.ts');
+const dockSource = read('components/PluggdDock.tsx');
 const dataSource = `${serviceSource}\n${sharedContentSource}`;
 
 for (const token of [
@@ -121,5 +122,16 @@ assert.doesNotMatch(
 
 const chromeSource = read('components/AppChrome.tsx');
 assert.match(chromeSource, /'\/studio'/, 'AppChrome must hide public chrome for native Studio routes');
+assert.match(chromeSource, /CreateActionSheet/, 'AppChrome must mount the role-aware floating Create sheet');
+for (const [label, route] of [
+  ['Home', '/'],
+  ['Discover', '/discover'],
+  ['Community', '/community'],
+  ['Events', '/events'],
+  ['Market', '/market'],
+]) {
+  assert.match(dockSource, new RegExp(`label:\\s*'${label}'[\\s\\S]*?route:\\s*'${route.replace('/', '\\/')}'`), `web-parity dock must expose ${label} -> ${route}`);
+}
+assert.doesNotMatch(dockSource, /label:\s*'(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)'/, 'web-parity dock must not regress to old native-tab labels');
 
 console.log('mobile app-wide web parity contract verified');

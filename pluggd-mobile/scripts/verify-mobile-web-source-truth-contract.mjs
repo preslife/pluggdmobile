@@ -7,6 +7,7 @@ const audit = read('docs/PLUGGD_IOS_WEB_SOURCE_AUDIT_2026-05-28.md');
 const plan = read('docs/superpowers/plans/2026-05-28-pluggd-ios-web-parity-rebuild.md');
 const dock = read('components/PluggdDock.tsx');
 const tabs = read('app/(tabs)/_layout.tsx');
+const chrome = read('components/AppChrome.tsx');
 const services = read('src/features/parity/appWideParityServices.ts');
 const screens = read('src/features/parity/AppWideParityScreens.tsx');
 const appCommunity = read('app/community.tsx');
@@ -15,16 +16,26 @@ const explore = read('app/explore.tsx');
 const tabExplore = read('app/(tabs)/explore.tsx');
 const tabStage = read('app/(tabs)/stage.tsx');
 
-assert.match(audit, /Home \/ Discover \/ Community \/ Events \/ Market|Home \/ Explore \/ Create \/ Community \/ Profile/, 'Audit must record the mobile dock source of truth');
+assert.match(audit, /Home \/ Discover \/ Community \/ Events \/ Market/, 'Audit must record the web-parity mobile dock source of truth');
 assert.match(plan, /Treat the web mobile dock as the native source of truth/, 'Implementation plan must declare web mobile dock source of truth');
 
-assert.match(dock, /label:\s*'Explore'[\s\S]*route:\s*'\/explore'/, 'Dock must use Explore as the primary discovery route');
-assert.match(dock, /label:\s*'Create'[\s\S]*route:\s*'\/create'/, 'Dock must expose Create as a first-class tab');
-assert.match(dock, /label:\s*'Profile'[\s\S]*route:\s*'\/profile'/, 'Dock must expose Profile as a first-class tab');
-assert.doesNotMatch(dock, /label:\s*'(Discover|Events|Market|MyPLUGGD|Backstage|Stage)'/, 'Dock must not expose compatibility or secondary labels as primary tabs');
+for (const [label, route] of [
+  ['Home', '/'],
+  ['Discover', '/discover'],
+  ['Community', '/community'],
+  ['Events', '/events'],
+  ['Market', '/market'],
+]) {
+  assert.match(dock, new RegExp(`label:\\s*'${label}'[\\s\\S]*?route:\\s*'${route.replace('/', '\\/')}'`), `Dock must expose ${label} -> ${route}`);
+}
+assert.doesNotMatch(dock, /label:\s*'(Explore|Create|Profile|MyPLUGGD|Backstage|Stage|Live)'/, 'Dock must not expose old native-tab or compatibility labels as primary tabs');
+assert.match(chrome, /CreateActionSheet/, 'Create must be exposed through the role-aware floating action sheet');
 
-for (const name of ['explore', 'create', 'community', 'profile']) {
+for (const name of ['index', 'discover', 'community', 'events', 'market']) {
   assert.match(tabs, new RegExp(`name="${name}"`), `${name} must be registered as a tab route`);
+}
+for (const hidden of ['explore', 'create', 'profile', 'stage', 'live', 'backstage', 'my-pluggd']) {
+  assert.match(tabs, new RegExp(`name="${hidden}"[\\s\\S]*href:\\s*null`), `${hidden} must remain registered but hidden from the tab bar`);
 }
 
 assert.match(services, /export async function loadCommunityParity/, 'Community must have a web-source parity loader');
@@ -42,6 +53,6 @@ assert.match(appCommunity, /CommunityParityScreen/, 'Top-level Community route m
 assert.match(tabCommunity, /CommunityParityScreen/, 'Tab Community route must use parity screen');
 assert.match(explore, /ExploreParityScreen/, 'Explore route must render the primary discovery parity screen');
 assert.match(tabExplore, /ExploreParityScreen/, 'Tab Explore route must render the primary discovery parity screen');
-assert.match(tabStage, /Redirect[\s\S]*href="\/explore"/, 'Old Stage route must redirect to Explore');
+assert.match(tabStage, /Redirect[\s\S]*href="\/discover"/, 'Old Stage route must redirect to Discover');
 
 console.log('mobile web source truth contract verified');

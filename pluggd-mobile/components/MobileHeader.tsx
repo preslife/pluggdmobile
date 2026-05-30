@@ -106,19 +106,22 @@ export function MobileHeader() {
     creatorAccess
       ? { label: 'Wallet / Earnings', route: '/creator/payouts', icon: 'account-balance-wallet' }
       : { label: 'Wallet / Credits', route: '/wallet', icon: 'account-balance-wallet' },
+    { label: 'Library / Purchases', route: '/purchases', icon: 'inventory-2' },
+    { label: 'Memberships', route: '/membership', icon: 'card-membership' },
     { label: 'Tickets', route: '/tickets', icon: 'confirmation-number' },
+    { label: 'Restore Purchases', route: '/wallet', icon: 'restore' },
     { label: 'Analytics', route: creatorAccess ? '/studio/analytics' : '/notifications', icon: 'query-stats' },
     { label: 'Settings', route: '/settings', icon: 'settings' },
   ];
 
   if (roleSet.has('promoter') || roleSet.has('venue')) {
-    accountItems.splice(5, 0, { label: 'Ticket Scan', route: '/ticket-scan', icon: 'qr-code-scanner' });
+    accountItems.splice(8, 0, { label: 'Ticket Scan', route: '/ticket-scan', icon: 'qr-code-scanner' });
   }
 
   if (creatorAccess) {
-    accountItems.splice(6, 0, { label: 'Connect Card', route: '/studio/connect-card', icon: 'badge' });
+    accountItems.splice(9, 0, { label: 'Connect Card', route: '/studio/connect-card', icon: 'badge' });
   } else {
-    accountItems.splice(6, 0, { label: 'Become a Creator', route: '/creator-mode', icon: 'auto-awesome' });
+    accountItems.splice(9, 0, { label: 'Become a Creator', route: '/creator-mode', icon: 'auto-awesome' });
   }
 
   accountItems.push(

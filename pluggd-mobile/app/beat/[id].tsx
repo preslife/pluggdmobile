@@ -130,9 +130,9 @@ export default function BeatDetailScreen() {
                 <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/wallet' as any)}>
-                <MaterialIcons name="account-balance-wallet" size={19} color={PLUGGD_ORANGE} />
-                <Text style={styles.quickActionText}>Wallet</Text>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push('/market' as any)}>
+                <MaterialIcons name="storefront" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Market</Text>
               </Pressable>
             </View>
 
@@ -152,8 +152,8 @@ export default function BeatDetailScreen() {
                   Professional beat licensing is for tracks, campaigns, and projects you make outside PLUGGD. Review the available license types, save the beat, or share it with collaborators before you commit.
                 </Text>
               )}
-              <Pressable style={styles.buyButton} onPress={() => router.push('/wallet' as any)}>
-                <Text style={styles.buyButtonText}>Open Wallet</Text>
+              <Pressable style={styles.licenseButton} onPress={saveBeat} disabled={saving}>
+                <Text style={styles.licenseButtonText}>{saving ? 'Saving' : 'Save Beat'}</Text>
               </Pressable>
             </View>
           </>
@@ -220,6 +220,6 @@ const styles = StyleSheet.create({
   licenseRow: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#1F1F2E', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   licenseName: { color: '#FFFFFF', fontSize: 13, fontWeight: '900', textTransform: 'capitalize' },
   licensePrice: { color: PLUGGD_ORANGE, fontSize: 12, fontWeight: '900' },
-  buyButton: { marginTop: 13, height: 48, borderRadius: 14, backgroundColor: '#21130E', borderWidth: 1, borderColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
-  buyButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontWeight: '800' },
+  licenseButton: { marginTop: 13, height: 48, borderRadius: 14, backgroundColor: '#21130E', borderWidth: 1, borderColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
+  licenseButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontWeight: '800' },
 });
