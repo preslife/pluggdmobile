@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { SoundboardsParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function SoundboardsRedirect() {
-  return <Redirect href="/stage" />;
+export default function SoundboardsIndexRoute() {
+  return <SoundboardsParityScreen />;
 }

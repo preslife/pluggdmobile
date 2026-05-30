@@ -17,11 +17,15 @@ import {
   StyleProp,
   StyleSheet,
   Text,
+  TextProps,
+  TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
+import { PluggdImage } from '../src/components/PluggdImage';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { PLUGGD_ORANGE, pluggdRadii } from '../src/design/tokens';
+import { pluggdTextStyles } from '../src/design/typography';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 type GlassSurfaceProps = {
@@ -36,6 +40,57 @@ type GlassSurfaceProps = {
   interactive?: boolean;
   disabled?: boolean;
 };
+
+type PluggdTextProps = TextProps & {
+  children?: ReactNode;
+  style?: StyleProp<TextStyle>;
+};
+
+function createTextPrimitive(baseStyle: TextStyle) {
+  return function PluggdTextPrimitive({ children, style, ...props }: PluggdTextProps) {
+    const theme = usePluggdTheme();
+    return (
+      <Text {...props} style={[baseStyle, { color: theme.colors.text }, style]}>
+        {children}
+      </Text>
+    );
+  };
+}
+
+export const PluggdTitle = createTextPrimitive(pluggdTextStyles.appTitle);
+export const PluggdHeading = createTextPrimitive(pluggdTextStyles.heading);
+export const PluggdSectionTitle = createTextPrimitive(pluggdTextStyles.sectionTitle);
+export const PluggdBody = createTextPrimitive(pluggdTextStyles.body);
+export const PluggdMeta = createTextPrimitive(pluggdTextStyles.meta);
+export const PluggdCTA = createTextPrimitive(pluggdTextStyles.cta);
+
+export function PluggdHitTarget({
+  children,
+  accessibilityLabel,
+  accessibilityRole = 'button',
+  disabled,
+  onPress,
+  style,
+}: {
+  children?: ReactNode;
+  accessibilityLabel?: string;
+  accessibilityRole?: 'button' | 'link' | 'tab';
+  disabled?: boolean;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <Pressable
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.hitTarget, style]}
+    >
+      {children}
+    </Pressable>
+  );
+}
 
 function useReduceTransparency() {
   const [reduceTransparency, setReduceTransparency] = useState(false);
@@ -226,6 +281,7 @@ export function PluggdIconButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      style={styles.hitTarget}
       onPress={() => {
         selectionHaptic();
         onPress?.();
@@ -260,6 +316,7 @@ export function PluggdChip({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
+      style={styles.hitTargetHorizontal}
       onPress={() => {
         selectionHaptic();
         onPress?.();
@@ -393,6 +450,260 @@ export function PluggdBadge({
   );
 }
 
+type PremiumTone = 'accent' | 'live' | 'community' | 'muted';
+
+function premiumToneColor(theme: ReturnType<typeof usePluggdTheme>, tone: PremiumTone = 'accent') {
+  if (tone === 'live') return theme.colors.live;
+  if (tone === 'community') return theme.colors.backstage;
+  if (tone === 'muted') return theme.colors.textMuted;
+  return theme.colors.accent;
+}
+
+export function PremiumScreenBackdrop({
+  children,
+  tone = 'accent',
+  style,
+}: {
+  children?: ReactNode;
+  tone?: PremiumTone;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+  const accent = premiumToneColor(theme, tone);
+
+  return (
+    <View style={[premiumStyles.backdrop, { backgroundColor: theme.colors.canvas }, style]}>
+      <LinearGradient
+        colors={[
+          `${accent}2B`,
+          theme.colors.background,
+          theme.colors.artworkBase,
+          theme.colors.background,
+        ]}
+        locations={[0, 0.36, 0.64, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={premiumStyles.backdropVignette} />
+      {children}
+    </View>
+  );
+}
+
+export function PremiumScreenHeader({
+  eyebrow,
+  title,
+  subtitle,
+  tone = 'accent',
+  actions,
+  style,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  tone?: PremiumTone;
+  actions?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+  const accent = premiumToneColor(theme, tone);
+
+  return (
+    <View style={[premiumStyles.header, style]}>
+      <View style={premiumStyles.headerCopy}>
+        {eyebrow ? <Text style={[premiumStyles.eyebrow, { color: accent }]}>{eyebrow}</Text> : null}
+        <Text style={[premiumStyles.headerTitle, { color: theme.colors.text }]} numberOfLines={2}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[premiumStyles.headerSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={3}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {actions ? <View style={premiumStyles.headerActions}>{actions}</View> : null}
+    </View>
+  );
+}
+
+export function PremiumHeroCard({
+  eyebrow,
+  title,
+  subtitle,
+  meta,
+  imageUrl,
+  badge,
+  ctaLabel,
+  onPress,
+  tone = 'accent',
+  compact = false,
+  style,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  imageUrl?: string | null;
+  badge?: string;
+  ctaLabel?: string;
+  onPress?: () => void;
+  tone?: PremiumTone;
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+  const accent = premiumToneColor(theme, tone);
+
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : 'text'}
+      disabled={!onPress}
+      onPress={() => {
+        impactHaptic();
+        onPress?.();
+      }}
+      style={[
+        premiumStyles.hero,
+        compact && premiumStyles.heroCompact,
+        { borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surfaceStrong },
+        style,
+      ]}
+    >
+      <LinearGradient
+        colors={[`${accent}40`, 'rgba(8,8,12,0.2)', theme.colors.backgroundElevated]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[premiumStyles.heroArtwork, { backgroundColor: theme.colors.artworkBase }]}>
+        {imageUrl ? <PluggdImage uri={imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        <LinearGradient colors={['transparent', 'rgba(8,8,12,0.78)']} style={StyleSheet.absoluteFill} />
+      </View>
+      <View style={[premiumStyles.heroCopy, compact && premiumStyles.heroCopyCompact]}>
+        <View style={premiumStyles.heroTopLine}>
+          {eyebrow ? <Text style={[premiumStyles.eyebrow, { color: accent }]}>{eyebrow}</Text> : null}
+          {badge ? <PluggdBadge label={badge} tone={tone === 'live' ? 'danger' : tone === 'muted' ? 'muted' : 'accent'} /> : null}
+        </View>
+        <Text style={[premiumStyles.heroTitle, { color: theme.colors.text }]} numberOfLines={2}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[premiumStyles.heroSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={3}>
+            {subtitle}
+          </Text>
+        ) : null}
+        <View style={premiumStyles.heroFooter}>
+          {meta ? <Text style={[premiumStyles.heroMeta, { color: theme.colors.textMuted }]}>{meta}</Text> : null}
+          {ctaLabel ? (
+            <View style={[premiumStyles.heroCta, { backgroundColor: accent }]}>
+              <Text style={premiumStyles.heroCtaText}>{ctaLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+export function PremiumMediaRail({
+  title,
+  action,
+  children,
+  style,
+}: {
+  title: string;
+  action?: string;
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+
+  return (
+    <View style={[premiumStyles.rail, style]}>
+      <View style={premiumStyles.railHeader}>
+        <Text style={[premiumStyles.railTitle, { color: theme.colors.text }]}>{title}</Text>
+        {action ? <Text style={[premiumStyles.railAction, { color: theme.colors.accent }]}>{action}</Text> : null}
+      </View>
+      <View style={premiumStyles.railContent}>{children}</View>
+    </View>
+  );
+}
+
+export function PremiumListRow({
+  title,
+  subtitle,
+  meta,
+  imageUrl,
+  icon = 'chevron-right',
+  tone = 'accent',
+  onPress,
+  style,
+}: {
+  title: string;
+  subtitle?: string | null;
+  meta?: string | null;
+  imageUrl?: string | null;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  tone?: PremiumTone;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+  const accent = premiumToneColor(theme, tone);
+
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : 'text'}
+      disabled={!onPress}
+      onPress={() => {
+        selectionHaptic();
+        onPress?.();
+      }}
+      style={[premiumStyles.listRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, style]}
+    >
+      <View style={[premiumStyles.listArtwork, { backgroundColor: theme.colors.artworkBase }]}>
+        {imageUrl ? <PluggdImage uri={imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        {!imageUrl ? <MaterialIcons name={icon} size={21} color={accent} /> : null}
+      </View>
+      <View style={premiumStyles.listCopy}>
+        <Text style={[premiumStyles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[premiumStyles.listSubtitle, { color: theme.colors.textMuted }]} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {meta ? <Text style={[premiumStyles.listMeta, { color: accent }]}>{meta}</Text> : null}
+    </Pressable>
+  );
+}
+
+export function PremiumEmptyState({
+  icon = 'auto-awesome',
+  title,
+  body,
+  tone = 'accent',
+  style,
+}: {
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  body: string;
+  tone?: PremiumTone;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = usePluggdTheme();
+  const accent = premiumToneColor(theme, tone);
+
+  return (
+    <View style={[premiumStyles.empty, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, style]}>
+      <View style={[premiumStyles.emptyIcon, { backgroundColor: `${accent}1F` }]}>
+        <MaterialIcons name={icon} size={24} color={accent} />
+      </View>
+      <Text style={[premiumStyles.emptyTitle, { color: theme.colors.text }]}>{title}</Text>
+      <Text style={[premiumStyles.emptyBody, { color: theme.colors.textMuted }]}>{body}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   glassBase: {
     overflow: 'hidden',
@@ -401,6 +712,17 @@ const styles = StyleSheet.create({
   surface: {
     borderRadius: pluggdRadii.compact,
     borderWidth: 1,
+  },
+  hitTarget: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hitTargetHorizontal: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   button: {
     minHeight: 44,
@@ -413,8 +735,10 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   buttonText: {
+    fontFamily: 'Satoshi-Bold',
     fontSize: 14,
-    fontWeight: '800',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   iconButton: {
     width: 38,
@@ -431,8 +755,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipText: {
+    fontFamily: 'Satoshi-Medium',
     fontSize: 13,
-    fontWeight: '700',
   },
   sheet: {
     maxHeight: '78%',
@@ -450,13 +774,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sheetTitle: {
+    fontFamily: 'Satoshi-Black',
     fontSize: 23,
-    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   sheetSubtitle: {
     fontSize: 13.5,
     lineHeight: 20,
-    fontWeight: '600',
     marginTop: 4,
     marginBottom: 12,
   },
@@ -471,8 +795,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
+    fontFamily: 'Satoshi-Bold',
     fontSize: 15,
-    fontWeight: '700',
   },
   badge: {
     alignSelf: 'flex-start',
@@ -482,8 +806,211 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   badgeText: {
+    fontFamily: 'Satoshi-Bold',
     fontSize: 11,
-    fontWeight: '700',
+  },
+});
+
+const premiumStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  backdropVignette: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+  },
+  eyebrow: {
+    fontFamily: 'Satoshi-Black',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    fontFamily: 'Satoshi-Black',
+    fontSize: 31,
+    lineHeight: 35,
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  hero: {
+    minHeight: 236,
+    borderRadius: pluggdRadii.sheet,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  heroArtwork: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroCopy: {
+    flex: 1,
+    minHeight: 236,
+    justifyContent: 'flex-end',
+    padding: 18,
+    gap: 8,
+  },
+  heroCompact: {
+    minHeight: 164,
+  },
+  heroCopyCompact: {
+    minHeight: 164,
+    padding: 16,
+  },
+  heroTopLine: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  heroTitle: {
+    fontFamily: 'Satoshi-Black',
+    fontSize: 27,
+    lineHeight: 31,
+    letterSpacing: 0,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  heroFooter: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 4,
+  },
+  heroMeta: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontVariant: ['tabular-nums'],
+  },
+  heroCta: {
+    minHeight: 44,
+    borderRadius: pluggdRadii.pill,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCtaText: {
+    color: '#FFFFFF',
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 12,
+    lineHeight: 15,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  rail: {
+    gap: 10,
+  },
+  railHeader: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  railTitle: {
+    fontFamily: 'Satoshi-Black',
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  railAction: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 12,
+    lineHeight: 16,
+    textTransform: 'uppercase',
+  },
+  railContent: {
+    gap: 10,
+  },
+  listRow: {
+    minHeight: 72,
+    borderRadius: pluggdRadii.card,
+    borderWidth: 1,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  listArtwork: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  listTitle: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 15,
+    lineHeight: 19,
+  },
+  listSubtitle: {
+    fontSize: 12.5,
+    lineHeight: 17,
+  },
+  listMeta: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 11,
+    lineHeight: 14,
+    fontVariant: ['tabular-nums'],
+    textTransform: 'uppercase',
+  },
+  empty: {
+    borderRadius: pluggdRadii.card,
+    borderWidth: 1,
+    padding: 18,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 16,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
   },
 });
 

@@ -10,7 +10,7 @@ import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { formatDuration } from '../src/lib/mobileContent';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 
-const ORANGE = '#FF5200';
+const ORANGE = '#FF5A00';
 
 export default function PlayerScreen() {
   const router = useRouter();
@@ -166,7 +166,7 @@ export default function PlayerScreen() {
         </View>
 
         <View style={styles.actionRow}>
-          <PlayerAction icon="forum" label="Backstage" onPress={() => router.push('/backstage' as any)} />
+          <PlayerAction icon="forum" label="Community" onPress={() => router.push('/backstage' as any)} />
           <PlayerAction icon="chat-bubble-outline" label="Comments" onPress={() => router.push('/backstage' as any)} />
           <PlayerAction icon="playlist-add" label="Queue" />
         </View>
@@ -188,7 +188,7 @@ export default function PlayerScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Related culture</Text>
           <Text style={styles.infoBody}>
-            Related releases, mixes, event threads and community discussions appear here when the backend links them to this media.
+            Related releases, mixes, event threads, and community discussions will appear here.
           </Text>
         </View>
       </ScrollView>

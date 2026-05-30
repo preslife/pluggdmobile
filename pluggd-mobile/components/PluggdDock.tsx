@@ -1,8 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selectionHaptic } from '../src/design/haptics';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 type TabItem = {
   label: string;
@@ -13,46 +14,93 @@ type TabItem = {
 };
 
 const CORE_TABS: TabItem[] = [
-  { label: 'Home', route: '/', icon: 'home', aliases: ['/(tabs)', '/home'] },
   {
-    label: 'Stage',
-    route: '/stage',
-    icon: 'music-note',
+    label: 'Home',
+    route: '/',
+    icon: 'home',
+    aliases: ['/(tabs)', '/home'],
+  },
+  {
+    label: 'Explore',
+    route: '/explore',
+    icon: 'explore',
     aliases: [
-      '/explore',
       '/(tabs)/explore',
-      '/(tabs)/stage',
       '/discover',
+      '/(tabs)/discover',
+      '/explore',
+      '/stage',
       '/music',
       '/releases',
       '/release',
-      '/drops',
-      '/beat',
-      '/sample-pack',
       '/soundboards',
       '/mixes',
-      '/membership',
-      '/library',
-      '/favorites',
+      '/search',
+      '/directory',
+      '/events',
+      '/beat',
+      '/beats',
+      '/beat-marketplace',
+      '/market',
+      '/marketplace',
+      '/sample-pack',
+      '/sample-packs',
+      '/store',
+      '/product',
     ],
   },
   {
-    label: 'Live',
-    route: '/live',
-    icon: 'videocam',
-    aliases: ['/(tabs)/live', '/live/session', '/live/create'],
+    label: 'Create',
+    route: '/create',
+    icon: 'add-circle-outline',
+    primary: true,
+    aliases: [
+      '/(tabs)/create',
+      '/create-post',
+      '/creator-mode',
+      '/creator/onboarding',
+      '/creator/upload',
+      '/creator/events',
+      '/upload-clip',
+      '/live/create',
+      '/studio',
+      '/backstage',
+    ],
   },
   {
-    label: 'Backstage',
-    route: '/backstage',
+    label: 'Community',
+    route: '/community',
     icon: 'groups',
-    aliases: ['/(tabs)/backstage', '/community', '/social/hub'],
+    aliases: [
+      '/(tabs)/community',
+      '/backstage',
+      '/community/boards',
+      '/community/events',
+      '/hubs',
+      '/social/hub',
+      '/post',
+      '/story',
+      '/inbox',
+      '/notifications',
+    ],
   },
   {
-    label: 'Search',
-    route: '/search',
-    icon: 'search',
-    aliases: ['/(tabs)/search'],
+    label: 'Profile',
+    route: '/profile',
+    icon: 'person',
+    aliases: [
+      '/(tabs)/profile',
+      '/my-pluggd',
+      '/u',
+      '/user',
+      '/settings',
+      '/edit-profile',
+      '/wallet',
+      '/membership',
+      '/tickets',
+      '/purchases',
+      '/badges',
+    ],
   },
 ];
 
@@ -73,15 +121,16 @@ export function PluggdDock() {
   const pathname = normalize(rawPathname);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const inactiveColor = '#62627A';
+  const theme = usePluggdTheme();
+  const inactiveColor = theme.colors.inactive;
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      <View style={styles.dockGlass}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <View style={[styles.dockGlass, { backgroundColor: theme.colors.shell, borderColor: theme.colors.divider }]}>
         <View style={styles.tabRow}>
           {CORE_TABS.map((item) => {
             const active = isActive(pathname, item);
-            const iconColor = active ? '#FFFFFF' : inactiveColor;
+            const iconColor = active ? theme.colors.text : inactiveColor;
 
             return (
               <Pressable
@@ -90,16 +139,27 @@ export function PluggdDock() {
                   selectionHaptic();
                   router.push(item.route as any);
                 }}
-                style={styles.tabPressable}
+                style={[styles.tabPressable, item.primary && styles.primaryPressable]}
                 accessibilityRole="tab"
                 accessibilityLabel={`${item.label} tab`}
                 accessibilityState={{ selected: active }}
               >
-                <View style={styles.tabItem}>
-                  <View style={styles.iconShell}>
-                    <MaterialIcons name={item.icon} size={21} color={iconColor} />
+                <View
+                  style={[
+                    styles.tabItem,
+                    item.primary && {
+                      backgroundColor: active ? theme.colors.accent : theme.colors.surfaceStrong,
+                      borderColor: active ? theme.colors.borderAccent : theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View style={[styles.iconShell, active && !item.primary && { backgroundColor: theme.colors.surfaceStrong }]}>
+                    <MaterialIcons name={item.icon} size={item.primary ? 26 : 24} color={item.primary && active ? '#08080C' : iconColor} />
                   </View>
-                  <View style={[styles.activeIndicator, active && styles.activeIndicatorOn]} />
+                  <Text style={[styles.tabLabel, { color: item.primary && active ? '#08080C' : iconColor }]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {!item.primary ? <View style={[styles.activeIndicator, active && { backgroundColor: theme.colors.accent }]} /> : null}
                 </View>
               </Pressable>
             );
@@ -112,38 +172,42 @@ export function PluggdDock() {
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingTop: 0,
-    paddingHorizontal: 0,
-    backgroundColor: '#0D0D11',
+    paddingTop: 8,
+    paddingHorizontal: 14,
   },
   dockGlass: {
-    backgroundColor: '#0D0D11',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#1F1F2E',
-    paddingTop: 0,
-    paddingHorizontal: 8,
-    paddingBottom: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 28,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    overflow: 'hidden',
   },
   tabRow: {
-    height: 56,
+    height: 70,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 4,
+    gap: 7,
   },
   tabPressable: {
     flex: 1,
-    height: 56,
+    height: 70,
+  },
+  primaryPressable: {
+    flex: 1.1,
   },
   tabItem: {
-    height: 56,
+    height: 70,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 3,
   },
   iconShell: {
-    width: 34,
-    height: 24,
+    width: 38,
+    height: 30,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -154,7 +218,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'transparent',
   },
-  activeIndicatorOn: {
-    backgroundColor: '#FF5A00',
+  tabLabel: {
+    fontFamily: 'Satoshi-Medium',
+    fontSize: 12,
+    lineHeight: 14,
   },
 });

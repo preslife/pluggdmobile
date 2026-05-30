@@ -17,7 +17,7 @@ import {
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 
 type LiveMode = 'creator_live' | 'collab_live' | 'class_live' | 'audio_room';
 type ScheduleMode = 'now' | 'later';

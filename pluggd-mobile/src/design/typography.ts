@@ -1,80 +1,83 @@
-import { StyleSheet, Text, TextInput } from 'react-native';
+import type { TextStyle } from 'react-native';
 
 export const pluggdFonts = {
-  heading: 'Neue Montreal',
-  body: 'Neue Haas Grotesk',
-  campaign: 'ABC Diatype Monument',
-  fallback: 'System',
+  appTitle: 'PluggdSans5-Regular',
+  satoshiLight: 'Satoshi-Light',
+  satoshiRegular: 'Satoshi-Regular',
+  satoshiMedium: 'Satoshi-Medium',
+  satoshiBold: 'Satoshi-Bold',
+  satoshiBlack: 'Satoshi-Black',
+  interSemiBold: 'Inter-SemiBold',
+  system: undefined,
 } as const;
 
-const HEADING_KEY = /(title|heading|headline|display|hero|section|header|name|wordmark|brand)/i;
-const CAMPAIGN_KEY = /(campaign|poster|limited|ticket|badge|kicker|eyebrow|drop|countdown|cta)/i;
-const BODY_KEY = /(body|copy|subtitle|meta|caption|label|text|input|value|description|message|comment|note|pill|chip)/i;
-
-type StyleRecord = Record<string, any>;
-
-let configured = false;
-let originalCreate: typeof StyleSheet.create | null = null;
-
-function isTextStyle(style: unknown) {
-  if (!style || typeof style !== 'object' || Array.isArray(style)) return false;
-  const value = style as StyleRecord;
-  return (
-    value.fontSize != null ||
-    value.fontWeight != null ||
-    value.lineHeight != null ||
-    value.letterSpacing != null ||
-    value.textTransform != null ||
-    value.fontVariant != null ||
-    value.includeFontPadding != null
-  );
-}
-
-function fontForStyleKey(key: string) {
-  if (CAMPAIGN_KEY.test(key)) return pluggdFonts.campaign;
-  if (HEADING_KEY.test(key)) return pluggdFonts.heading;
-  if (BODY_KEY.test(key)) return pluggdFonts.body;
-  return pluggdFonts.body;
-}
-
-function applyTypography<T extends StyleRecord>(styles: T): T {
-  const next: StyleRecord = {};
-
-  for (const [key, style] of Object.entries(styles)) {
-    if (!isTextStyle(style) || style.fontFamily) {
-      next[key] = style;
-      continue;
-    }
-
-    next[key] = {
-      ...style,
-      fontFamily: fontForStyleKey(key),
-    };
-  }
-
-  return next as T;
-}
+export const pluggdTextStyles = {
+  appTitle: {
+    fontFamily: pluggdFonts.appTitle,
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: -0.64,
+    textTransform: 'uppercase',
+  },
+  appTitleLarge: {
+    fontFamily: pluggdFonts.appTitle,
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -0.68,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.48,
+  },
+  heading: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+  },
+  sectionTitle: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 18,
+    lineHeight: 22,
+    letterSpacing: -0.24,
+  },
+  secondaryHeading: {
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: -0.16,
+  },
+  pill: {
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  cta: {
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 13,
+    lineHeight: 16,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  meta: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  backstageActivity: {
+    fontFamily: pluggdFonts.interSemiBold,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+} satisfies Record<string, TextStyle>;
 
 export function configurePluggdTypography() {
-  if (configured) return;
-  configured = true;
-
-  const textDefaultProps = (Text as any).defaultProps ?? {};
-  (Text as any).defaultProps = {
-    ...textDefaultProps,
-    style: [textDefaultProps.style, { fontFamily: pluggdFonts.body }],
-  };
-
-  const inputDefaultProps = (TextInput as any).defaultProps ?? {};
-  (TextInput as any).defaultProps = {
-    ...inputDefaultProps,
-    style: [inputDefaultProps.style, { fontFamily: pluggdFonts.body }],
-  };
-
-  originalCreate = originalCreate ?? StyleSheet.create.bind(StyleSheet);
-  (StyleSheet as any).create = function createWithPluggdTypography<T extends StyleRecord>(styles: T): T {
-    return originalCreate?.(applyTypography(styles)) ?? styles;
-  };
+  // Kept as a compatibility no-op while older imports are migrated.
+  // Typography is now applied through explicit primitives and styles.
 }
-
-configurePluggdTypography();

@@ -69,7 +69,7 @@ export default function BiometricUnlock() {
           onPress={handleBiometric}
           className="w-full h-14 rounded-xl bg-primary flex-row items-center justify-center gap-2"
           style={{
-            shadowColor: '#FF5200',
+            shadowColor: '#FF5A00',
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.3,
             shadowRadius: 20,

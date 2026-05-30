@@ -4,11 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { addComment, loadPostDetail, toggleLike } from '../../src/features/culture/mobileServices';
+import { toggleSocialBookmark, toggleSocialRepost, voteMobilePoll } from '../../src/features/culture/mobileSocial';
+import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPostCard';
 
 const ORANGE = '#FF5A00';
 const CANVAS = '#08080C';
@@ -53,10 +55,46 @@ export default function SocialPostDetailRoute() {
     onError: (error) => Alert.alert('Comment failed', error instanceof Error ? error.message : String(error)),
   });
 
+  const bookmarkMutation = useMutation({
+    mutationFn: () => toggleSocialBookmark(String(id)),
+    onSuccess: (result) => {
+      if (!result.success) throw new Error(result.error);
+      impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
+    },
+    onError: (error) => Alert.alert('Save failed', error instanceof Error ? error.message : String(error)),
+  });
+
+  const repostMutation = useMutation({
+    mutationFn: () => toggleSocialRepost(String(id)),
+    onSuccess: (result) => {
+      if (!result.success) throw new Error(result.error);
+      impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
+    },
+    onError: (error) => Alert.alert('Repost failed', error instanceof Error ? error.message : String(error)),
+  });
+
+  const pollMutation = useMutation({
+    mutationFn: (optionId: string) => voteMobilePoll(String(id), optionId),
+    onSuccess: (result) => {
+      if (!result.success) throw new Error(result.error);
+      impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
+    },
+    onError: (error) => Alert.alert('Vote failed', error instanceof Error ? error.message : String(error)),
+  });
+
   const post = query.data?.post;
-  const postBody = post ? (post.body || (post as any).content || '') : '';
-  const title = post?.title || postBody || 'Post';
-  const imageMedia = Array.isArray((post as any)?.images) ? (post as any).images[0] : null;
+  const postBody = post?.content || '';
+  const title = postBody || (post?.is_repost ? 'Repost' : 'Post');
+  const imageMedia = post?.images?.[0] || null;
+  const displayName = post?.display_name || post?.username || 'PLUGGD user';
+  const handle = post?.username ? `@${post.username}` : 'pluggd';
+  const threadPosts = query.data?.threadPosts || [];
 
   return (
     <View style={styles.screen}>
@@ -83,46 +121,34 @@ export default function SocialPostDetailRoute() {
         {!query.isLoading && !post ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>Post unavailable</Text>
-            <Text style={styles.emptyBody}>This post could not be loaded from the current backend.</Text>
+            <Text style={styles.emptyBody}>This post is unavailable or has been removed.</Text>
           </View>
         ) : null}
 
         {post ? (
           <>
-            <View style={styles.postCard}>
-              <View style={styles.postHeader}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{contentInitials(post.title || postBody || 'PL')}</Text>
-                </View>
-                <View style={styles.postCopy}>
-                  <Text style={styles.postAuthor}>PLUGGD community</Text>
-                  <Text style={styles.postTime}>{formatDate(post.created_at)}</Text>
-                </View>
-              </View>
-              <Text style={styles.postTitle}>{title}</Text>
-              {postBody && post.title ? <Text style={styles.postBody}>{postBody}</Text> : null}
-              {imageMedia ? (
-                <View style={styles.mediaWrap}>
-                  <Image source={{ uri: imageMedia }} style={styles.fill} />
-                </View>
-              ) : null}
-              <View style={styles.actionRow}>
-                <Pressable
-                  style={[styles.actionButton, query.data?.liked && styles.actionButtonActive]}
-                  onPress={() => {
-                    selectionHaptic();
-                    likeMutation.mutate();
-                  }}
-                >
-                  <MaterialIcons name={query.data?.liked ? 'favorite' : 'favorite-border'} size={19} color={query.data?.liked ? '#08080C' : '#FFFFFF'} />
-                  <Text style={[styles.actionText, query.data?.liked && styles.actionTextActive]}>{formatCompact(post.likes_count)}</Text>
-                </Pressable>
-                <View style={styles.actionButton}>
-                  <MaterialIcons name="chat-bubble-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.actionText}>{formatCompact(query.data?.comments.length)}</Text>
-                </View>
-              </View>
+            <View style={styles.postShell}>
+              <MobileSocialPostCard
+                post={post}
+                variant="thread"
+                onMutated={() => {
+                  void query.refetch();
+                }}
+              />
             </View>
+
+            {threadPosts.length > 1 ? (
+              <>
+                <Text style={styles.sectionTitle}>Thread</Text>
+                {threadPosts.filter((item) => item.id !== post.id).map((item) => (
+                  <Pressable key={item.id} style={styles.threadItem} onPress={() => router.push(`/post/${item.id}` as any)}>
+                    <Text style={styles.commentAuthor}>{item.display_name || item.username || 'PLUGGD user'}</Text>
+                    <Text style={styles.commentBody}>{item.content}</Text>
+                    <Text style={styles.postTime}>{formatDate(item.created_at)}</Text>
+                  </Pressable>
+                ))}
+              </>
+            ) : null}
 
             <View style={styles.composer}>
               <TextInput
@@ -150,7 +176,7 @@ export default function SocialPostDetailRoute() {
             )) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>No comments yet</Text>
-                <Text style={styles.emptyBody}>Start the discussion if the backend accepts comments for this post type.</Text>
+              <Text style={styles.emptyBody}>Start the discussion with a real social reply.</Text>
               </View>
             )}
           </>
@@ -166,6 +192,7 @@ const styles = StyleSheet.create({
   backButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
+  postShell: { marginHorizontal: 16 },
   postCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 12 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#1F1F2E', alignItems: 'center', justifyContent: 'center' },
@@ -175,8 +202,21 @@ const styles = StyleSheet.create({
   postTime: { color: MUTED, fontSize: 11, fontWeight: '700', marginTop: 2 },
   postTitle: { color: '#FFFFFF', fontSize: 20, lineHeight: 26, fontWeight: '900' },
   postBody: { color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '600' },
+  destinationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  destinationPill: { minHeight: 26, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)', backgroundColor: 'rgba(255,90,0,0.1)', paddingHorizontal: 10, justifyContent: 'center' },
+  destinationText: { color: ORANGE, fontSize: 11, fontWeight: '900' },
   mediaWrap: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: '#1F1F2E' },
   fill: { width: '100%', height: '100%' },
+  quoteCard: { borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: '#1F1F2E', padding: 12, gap: 5 },
+  quoteAuthor: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  quoteText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  pollCard: { borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: '#1F1F2E', padding: 12, gap: 9 },
+  pollQuestion: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  pollOption: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pollOptionSelected: { borderColor: 'rgba(255,90,0,0.72)' },
+  pollFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,90,0,0.18)' },
+  pollOptionText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', flex: 1 },
+  pollPct: { color: MUTED, fontSize: 12, fontWeight: '900' },
   actionRow: { flexDirection: 'row', gap: 10 },
   actionButton: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
   actionButtonActive: { backgroundColor: ORANGE, borderColor: ORANGE },
@@ -187,6 +227,7 @@ const styles = StyleSheet.create({
   sendButton: { height: 42, borderRadius: 21, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   sendText: { color: '#08080C', fontSize: 13, fontWeight: '900' },
   sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginHorizontal: 16, marginTop: 6, marginBottom: 10 },
+  threadItem: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, gap: 6 },
   commentCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, flexDirection: 'row', gap: 10 },
   commentAuthor: { color: ORANGE, fontSize: 12, fontWeight: '900', width: 36 },
   commentCopy: { flex: 1, minWidth: 0 },

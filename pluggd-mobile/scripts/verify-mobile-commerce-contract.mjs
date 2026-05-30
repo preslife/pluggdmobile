@@ -19,6 +19,7 @@ function extractArray(source, exportName) {
 }
 
 const expectedCreditSkus = [
+  'pluggd_credits_starter',
   'pluggd_credits_popular',
   'pluggd_credits_value',
   'pluggd_credits_premium',
@@ -35,7 +36,9 @@ for (const label of ['Plus Credits', 'Value Credits', 'Premium Credits', 'Ultima
   assert.match(creditsSource, new RegExp(`label:\\s*'${label}'`), `${label} label missing`);
 }
 
-for (const price of ['9.99', '24.99', '49.99', '99.99']) {
+assert.match(creditsSource, /label:\s*'Starter Credits'/, 'Starter Credits label missing');
+
+for (const price of ['5', '9.99', '24.99', '49.99', '99.99']) {
   assert.match(creditsSource, new RegExp(`fallbackPriceGBP:\\s*${price.replace('.', '\\.')}`), `approved GBP price ${price} missing`);
 }
 
@@ -45,10 +48,10 @@ assert.match(
   'credit pack UI must not display non-GBP StoreKit sandbox prices for approved PLUGGD credit packs',
 );
 
-assert.doesNotMatch(
+assert.match(
   creditsSource,
-  /pluggd_credits_starter/,
-  'starter credit SKU must stay out of the iOS purchase catalog unless explicitly re-approved',
+  /pluggd_credits_starter[\s\S]*totalCredits:\s*500/,
+  'starter credit SKU must remain an active 500 credit pack',
 );
 
 assert.match(
@@ -100,8 +103,14 @@ assert.doesNotMatch(
 
 assert.match(
   beatLicenseSource,
-  /native entitlement flow|No external checkout link is opened in iOS/,
-  'beat licensing CTA must explain the native entitlement requirement instead of opening checkout',
+  /Licensing coming soon|Save this beat/,
+  'beat licensing CTA must use polished customer-facing unavailable-state copy',
+);
+
+assert.doesNotMatch(
+  beatLicenseSource,
+  /native entitlement|external checkout|payment contract|web purchase|unsupported payment/i,
+  'beat licensing CTA must not expose implementation or App Review copy',
 );
 
 console.log('mobile commerce contract verified');

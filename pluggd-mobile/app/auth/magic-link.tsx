@@ -50,7 +50,7 @@ export default function MagicLinkSent() {
           <View
             className="relative w-16 h-16 rounded-full bg-primary items-center justify-center"
             style={{
-              shadowColor: '#FF5200',
+              shadowColor: '#FF5A00',
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.4,
               shadowRadius: 20,
@@ -79,7 +79,7 @@ export default function MagicLinkSent() {
             onPress={handleOpenMail}
             className="w-full h-14 rounded-lg bg-primary flex-row items-center justify-center gap-2"
             style={{
-              shadowColor: '#FF5200',
+              shadowColor: '#FF5A00',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
               shadowRadius: 8,

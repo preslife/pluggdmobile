@@ -1,5 +1,4 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
@@ -9,20 +8,21 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { PremiumScreenBackdrop, PremiumScreenHeader } from '../components/PluggdPrimitives';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 
 const PACK_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+  'Starter Credits': 'bolt',
   'Plus Credits': 'star-border',
   'Value Credits': 'diamond',
   'Premium Credits': 'workspace-premium',
@@ -138,11 +138,7 @@ export default function WalletScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-      <LinearGradient
-        colors={isDark ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
-        style={StyleSheet.absoluteFill}
-      />
+    <PremiumScreenBackdrop tone="muted" style={styles.screen}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -154,7 +150,12 @@ export default function WalletScreen() {
         }
       >
         <View style={styles.pageHeader}>
-          <Text style={[styles.pageTitle, { color: theme.colors.text }]}>Wallet</Text>
+          <PremiumScreenHeader
+            eyebrow="PLUGGD CREDITS"
+            title="Wallet"
+            subtitle="Buy credits, restore purchases, and review wallet activity."
+            style={styles.walletHeader}
+          />
           <Pressable
             style={[
               styles.infoButton,
@@ -163,7 +164,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'Pluggd credits',
-                '100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and platform-native purchases.',
+                '100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and account purchases.',
               )
             }
           >
@@ -345,7 +346,7 @@ export default function WalletScreen() {
         >
           <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
           <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
-            100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and platform-native purchases.
+            100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, and fan interactions.
           </Text>
         </View>
 
@@ -361,7 +362,7 @@ export default function WalletScreen() {
           ) : null}
           {!library.isLoading && !library.data?.entitlements.length ? (
             <Text style={[styles.emptyText, { color: theme.colors.textSubtle }]}>
-              Tickets, rewards and purchases will appear here when backed by account data.
+              Tickets, rewards, and purchases will appear here.
             </Text>
           ) : null}
           {library.data?.entitlements.slice(0, 8).map((item) => (
@@ -395,7 +396,7 @@ export default function WalletScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </PremiumScreenBackdrop>
   );
 }
 
@@ -406,15 +407,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 82,
+    paddingTop: 148,
     paddingBottom: 132,
   },
   pageHeader: {
-    minHeight: 52,
+    minHeight: 80,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 14,
+    gap: 12,
+  },
+  walletHeader: {
+    flex: 1,
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   logoTextRow: {
     flexDirection: 'row',

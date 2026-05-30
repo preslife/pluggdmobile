@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { SymbolIcon } from '../../components/SymbolIcon';
+import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
 import {
@@ -204,15 +205,15 @@ export default function CreatorMembershipScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-background-dark items-center justify-center">
+      <PremiumScreenBackdrop tone="accent" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color="#FF5200" />
-      </View>
+        <ActivityIndicator size="large" color="#FF5A00" />
+      </PremiumScreenBackdrop>
     );
   }
 
   return (
-    <View className="flex-1 bg-background-dark">
+    <PremiumScreenBackdrop tone="accent">
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
@@ -296,7 +297,7 @@ export default function CreatorMembershipScreen() {
 
           <View className="gap-4">
             {tiers.map((tier) => {
-              const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#FF5200';
+              const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#FF5A00';
               const icon = TIER_ICONS[tier.name] ?? 'star';
               const sku = TIER_ORDER_TO_SKU[tier.tier_order];
               const appleProduct = sku
@@ -412,6 +413,6 @@ export default function CreatorMembershipScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </PremiumScreenBackdrop>
   );
 }

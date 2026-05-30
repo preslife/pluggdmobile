@@ -41,7 +41,7 @@ export default function AchievementToast({
             <View
               className="relative w-32 h-32 rounded-full bg-[#2a1f15] border border-primary/30 items-center justify-center"
               style={{
-                shadowColor: '#FF5200',
+                shadowColor: '#FF5A00',
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.5,
                 shadowRadius: 20,
@@ -78,7 +78,7 @@ export default function AchievementToast({
               onPress={onShare || onClose}
               className="w-full flex-row items-center justify-center gap-2 rounded-full bg-primary py-4 px-6"
               style={{
-                shadowColor: '#FF5200',
+                shadowColor: '#FF5A00',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.2,
                 shadowRadius: 8,

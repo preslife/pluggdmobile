@@ -6,6 +6,6 @@ type DisabledPaymentResult = {
 export async function launchPaymentSheet(): Promise<DisabledPaymentResult> {
   return {
     status: 'disabled',
-    message: 'Digital purchases in the iOS app must use PLUGGD credits purchased through Apple IAP.',
+    message: 'Add PLUGGD credits in Wallet, then return to unlock eligible items.',
   };
 }

@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { CommunityParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function LegacyCommunityTabRedirect() {
-  return <Redirect href="/backstage" />;
+export default function CommunityTabRoute() {
+  return <CommunityParityScreen />;
 }

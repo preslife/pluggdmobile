@@ -1,5 +1,3 @@
-import { Redirect } from 'expo-router';
+import { ExploreParityScreen } from '../src/features/parity/AppWideParityScreens';
 
-export default function ExploreRedirect() {
-  return <Redirect href="/search" />;
-}
+export default ExploreParityScreen;

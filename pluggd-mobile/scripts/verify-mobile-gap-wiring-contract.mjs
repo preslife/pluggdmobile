@@ -23,7 +23,7 @@ const mobileHeader = read('components/MobileHeader.tsx');
 
 assert.match(backstageDetail, /loadBackstageDetail/, 'Backstage detail route must load a selected community detail, not reuse only overview data');
 assert.match(backstageDetail, /joinBackstage|leaveBackstage/, 'Backstage detail must expose persisted join or leave actions');
-assert.match(backstageDetail, /Posts.*Threads.*Live Rooms.*Events.*Drops/s, 'Backstage detail must expose required community tabs');
+assert.match(backstageDetail, /Posts.*Threads.*Rooms.*Events.*Soundboards.*Drops/s, 'Backstage detail must expose required community tabs');
 
 assert.match(eventDetail, /loadEventDetail/, 'Event detail must use shared event detail service');
 assert.match(eventDetail, /setEventRsvp/, 'Event detail must persist RSVP state');
@@ -70,7 +70,8 @@ assert.match(localNotifications, /addNotificationResponseReceivedListener/, 'Loc
 assert.match(localNotifications, /Linking\.openURL/, 'Notification taps must deep-link back into the app');
 assert.match(localNotifications, /SchedulableTriggerInputTypes\.DATE/, 'Local reminders must schedule against real event/session times');
 assert.match(localNotifications, /upsert_mobile_push_token/, 'Native push tokens must be registered against the mobile push backend contract');
-assert.match(notifications, /roomId=\$\{item\.related_id\}/, 'Live notification deep links must pass roomId to the live session route');
+assert.match(notifications, /loadMobileNotifications/, 'Activity route must use the shared notification/deep-link service');
+assert.match(mobileServices, /\/live\/session\?roomId=\$\{relatedId\}/, 'Live notification deep links must pass roomId to the live session route');
 assert.match(notifications, /invalidateQueries\(\{\s*queryKey:\s*\['culture',\s*'notifications',\s*'unread'\]/, 'Activity route must refresh unread header badges after read mutations');
 assert.match(live, /loadUnreadNotifications/, 'Live header must use real unread notification count');
 assert.match(backstageDetail, /loadBackstageDetail/, 'Backstage detail route must load a selected community detail, not reuse only overview data');
@@ -90,7 +91,7 @@ assert.match(ticketScan, /verifyTicketEntryToken/, 'Ticket scan route must verif
 assert.match(ticketScan, /checked_in_at/, 'Ticket scan route must attempt real check-in state updates');
 assert.match(ticketScan, /CameraView/, 'Ticket scan route must expose native camera scanning once expo-camera is installed');
 assert.match(ticketScan, /barcodeScannerSettings=\{\{ barcodeTypes: \['qr'\] \}\}/, 'Ticket scan route must scan QR payloads only');
-assert.match(ticketScan, /Apple Wallet passes still require pass-signing credentials/, 'Ticket scan route must keep unsupported Apple Wallet pass features explicit');
+assert.match(ticketScan, /Apple Wallet passes are not available until pass signing is connected/, 'Ticket scan route must keep unsupported Apple Wallet pass features explicit');
 assert.match(read('app/upload-clip.tsx'), /createMobileClipRecord/, 'Upload clip route must create a backend mobile clip record');
 assert.match(mobileServices, /content_reports/, 'Live/reporting flows must create real content_reports');
 

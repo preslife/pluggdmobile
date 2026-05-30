@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -22,6 +21,8 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
+import { pluggdTextStyles } from '../../design/typography';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   contentInitials,
   formatCompact,
@@ -32,28 +33,40 @@ import {
   type MixItem,
   type ProfileItem,
   type ReleaseItem,
-  type SocialPostItem,
+  type SamplePackItem,
+  type SoundboardContentItem,
+  type SoundboardItem,
 } from '../../lib/mobileContent';
-import { useHomeFeed, useLiveRooms, type LiveRoomItem } from '../culture/useCultureData';
-import { loadLibraryBundle, toggleSavedContent } from '../culture/mobileServices';
+import { supabase } from '../../lib/supabase';
+import {
+  loadLibraryBundle,
+  loadMobilePlaylists,
+  loadRecentlyPlayedLibraryItems,
+  safeList,
+  toggleSavedContent,
+} from '../culture/mobileServices';
+import { useHomeFeed } from '../culture/useCultureData';
+import type { MobilePlaylist, SavedContentKind, SavedContentItem, VideoItem } from '../culture/mobileTypes';
 
 const COLORS = {
   canvas: '#08080C',
+  shell: '#0D0D11',
   surface: '#12121A',
   surface2: '#1F1F2E',
-  line: '#262637',
+  border: '#262626',
   orange: '#FF5A00',
   coral: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
   muted: '#8E8E9F',
   dim: '#62627A',
+  violet: '#7C3AED',
 };
 
-const FILTERS = ['For You', 'Releases', 'Mixes', 'Videos', 'Beats', 'Challenges'] as const;
+const FILTERS = ['For You', 'Releases', 'Mixes', 'Videos', 'Beats', 'Soundboards', 'Playlists'] as const;
 type StageFilter = (typeof FILTERS)[number];
-
-type StageItemKind = 'release' | 'mix' | 'beat';
+type ChartTab = 'Beats' | 'Releases' | 'Mixes' | 'Creators';
+type StageItemKind = 'release' | 'mix' | 'video' | 'beat' | 'soundboard' | 'playlist' | 'sample_pack';
 
 type StageItem = {
   id: string;
@@ -62,233 +75,249 @@ type StageItem = {
   creator: string;
   imageUrl?: string | null;
   route: string;
-  metadata: string;
-  plays?: number | null;
+  metadata?: string | null;
+  metric?: string | null;
   release?: ReleaseItem;
   mix?: MixItem;
+  video?: VideoItem;
   beat?: BeatItem;
+  soundboard?: SoundboardItem;
+  playlist?: MobilePlaylist;
+  samplePack?: SamplePackItem;
+  latestItemType?: string | null;
+  backstageRoute?: string | null;
 };
 
-type CreatorCard = {
-  id: string;
-  name: string;
-  handle: string;
-  route: string;
-  imageUrl?: string | null;
-  verified?: boolean | null;
+type StageExtras = {
+  videos: VideoItem[];
+  playlists: MobilePlaylist[];
+  latestSoundboardItems: Record<string, SoundboardContentItem>;
 };
 
-type ChallengeCard = {
-  id: string;
-  title: string;
-  meta: string;
-  imageUrl?: string | null;
-  comments?: number | null;
-  route: string;
-};
-
+const GENRES = ['Hip-Hop', 'R&B', 'Afrobeats', 'Drill', 'Trap', 'House', 'Amapiano', 'Dancehall', 'Garage', 'Electronic'];
+const CHART_TABS: ChartTab[] = ['Beats', 'Releases', 'Mixes', 'Creators'];
 const IMAGE_GRADIENTS: readonly (readonly [string, string, string])[] = [
-  ['#1F3442', '#14151D', '#07070A'],
+  ['#1D3240', '#11151D', '#07070A'],
   ['#3C1711', '#17121A', '#07070A'],
-  ['#25204A', '#14151D', '#07070A'],
-  ['#12312A', '#14151D', '#07070A'],
+  ['#241D45', '#14151D', '#07070A'],
+  ['#12312A', '#12151B', '#07070A'],
   ['#372116', '#15151D', '#07070A'],
 ];
 
 function hashIndex(value: string | null | undefined, modulo: number) {
   const source = value || 'pluggd-stage';
   let hash = 0;
-  for (let index = 0; index < source.length; index += 1) {
-    hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
-  }
+  for (let index = 0; index < source.length; index += 1) hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
   return hash % modulo;
 }
 
-function waveformFor(id: string, bars = 18) {
-  const seed = hashIndex(id, 91) + 5;
-  return Array.from({ length: bars }, (_, index) => 8 + ((seed * (index + 3)) % 32));
+function waveformFor(id: string, bars = 22) {
+  const seed = hashIndex(id, 91) + 7;
+  return Array.from({ length: bars }, (_, index) => 7 + ((seed * (index + 4)) % 30));
 }
 
 function profileName(profile: ProfileItem) {
   return profile.display_name || profile.full_name || profile.username || 'PLUGGD Creator';
 }
 
-function profileHandle(profile: ProfileItem) {
-  if (profile.username) return `@${profile.username}`;
-  return profile.city || profile.user_type || 'Creator';
-}
-
 function profileRoute(profile: ProfileItem) {
   if (profile.username) return `/creator/${profile.username}`;
-  if (profile.user_id) return `/profile/${profile.user_id}`;
+  if (profile.user_id) return `/user/${profile.user_id}`;
   return '/search';
 }
 
-function formatMixMeta(mix: MixItem) {
-  const parts = [mix.city, mix.recording_type, mix.genre_tags?.[0]].filter(Boolean);
-  return parts.join(' · ') || 'Mix';
+function profileMeta(profile: ProfileItem) {
+  return profile.primary_genre || profile.city || profile.user_type || profile.profile_type || 'Creator';
+}
+
+function formatDuration(seconds?: number | null) {
+  const value = Number(seconds || 0);
+  if (!value) return null;
+  const minutes = Math.floor(value / 60);
+  const remaining = Math.floor(value % 60).toString().padStart(2, '0');
+  return `${minutes}:${remaining}`;
 }
 
 function formatBeatMeta(beat: BeatItem) {
-  const parts = [beat.genre, beat.bpm ? `${beat.bpm} BPM` : null, beat.key].filter(Boolean);
-  return parts.join(' · ') || 'Producer drop';
+  return [beat.bpm ? `${beat.bpm} BPM` : null, beat.key, beat.genre].filter(Boolean).join(' · ') || 'Producer drop';
 }
 
-function mapStageItems(bundle?: FeedBundle): StageItem[] {
-  if (!bundle) return [];
+function formatPrice(value?: number | null) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 'Free';
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(numeric);
+}
 
-  const releases = bundle.releases.map<StageItem>((release) => ({
+async function loadStageExtras(soundboardIds: string[]): Promise<StageExtras> {
+  const [videos, playlists, soundboardItems] = await Promise.all([
+    safeList<VideoItem>(
+      (supabase as any)
+        .from('videos')
+        .select('id,title,description,thumbnail_url,youtube_url,artist_id,created_at')
+        .order('created_at', { ascending: false })
+        .limit(18),
+    ),
+    loadMobilePlaylists(null, 18),
+    soundboardIds.length
+      ? safeList<SoundboardContentItem>(
+          (supabase as any)
+            .from('soundboard_items')
+            .select('id,soundboard_id,item_type,title,description,content_text,media_url,external_url,duration_seconds,is_pinned,plays_count,likes_count,comments_count,position,created_at')
+            .in('soundboard_id', soundboardIds)
+            .order('created_at', { ascending: false })
+            .limit(80),
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const latestSoundboardItems = soundboardItems.reduce<Record<string, SoundboardContentItem>>((map, item) => {
+    if (item.soundboard_id && !map[item.soundboard_id]) map[item.soundboard_id] = item;
+    return map;
+  }, {});
+
+  return { videos, playlists, latestSoundboardItems };
+}
+
+function mapReleases(bundle?: FeedBundle): StageItem[] {
+  return (bundle?.releases || []).map((release) => ({
     id: release.id,
     kind: 'release',
     title: release.title || 'Untitled release',
     creator: release.artist || 'PLUGGD Creator',
     imageUrl: release.cover_art_url,
     route: `/release/${release.id}`,
-    metadata: release.genre || 'Release',
+    metadata: [release.genre, release.created_at ? formatDate(release.created_at) : null].filter(Boolean).join(' · ') || 'Release',
     release,
   }));
+}
 
-  const mixes = bundle.mixes.map<StageItem>((mix) => ({
+function mapMixes(bundle?: FeedBundle): StageItem[] {
+  return (bundle?.mixes || []).map((mix) => ({
     id: mix.id,
     kind: 'mix',
     title: mix.title || 'Untitled mix',
     creator: mix.event_name || mix.city || 'PLUGGD DJ',
     imageUrl: mix.cover_url,
-    route: `/mixes/${mix.id}`,
-    metadata: formatMixMeta(mix),
-    plays: mix.play_count,
+    route: `/mixes/${mix.slug || mix.id}`,
+    metadata: [formatDuration(mix.duration_seconds), mix.genre_tags?.[0], mix.city].filter(Boolean).join(' · ') || 'Mix',
+    metric: mix.play_count ? `${formatCompact(mix.play_count)} plays` : null,
     mix,
   }));
+}
 
-  const beats = bundle.beats.map<StageItem>((beat) => ({
+function mapBeats(bundle?: FeedBundle): StageItem[] {
+  return (bundle?.beats || []).map((beat) => ({
     id: beat.id,
     kind: 'beat',
-    title: beat.title || 'Untitled producer drop',
+    title: beat.title || 'Untitled beat',
     creator: beat.producer_name || 'Producer',
     imageUrl: beat.image_url,
     route: `/beat/${beat.id}`,
     metadata: formatBeatMeta(beat),
     beat,
   }));
-
-  return [...releases, ...mixes, ...beats];
 }
 
-function filterStageItems(items: StageItem[], active: StageFilter) {
-  if (active === 'Releases') return items.filter((item) => item.kind === 'release');
-  if (active === 'Mixes') return items.filter((item) => item.kind === 'mix');
-  if (active === 'Beats') return items.filter((item) => item.kind === 'beat');
-  if (active === 'Videos') return [];
-  if (active === 'Challenges') return [];
-  return items.filter((item) => item.kind !== 'beat').concat(items.filter((item) => item.kind === 'beat').slice(0, 2));
+function mapVideos(videos: VideoItem[]): StageItem[] {
+  return videos.map((video) => ({
+    id: video.id,
+    kind: 'video',
+    title: video.title || 'Untitled video',
+    creator: video.description || 'PLUGGD video',
+    imageUrl: video.thumbnail_url,
+    route: `/videos/${video.id}`,
+    metadata: video.created_at ? formatDate(video.created_at) : 'Video',
+    video,
+  }));
 }
 
-function mapCreators(bundle?: FeedBundle): CreatorCard[] {
-  if (!bundle) return [];
-
-  const creators = bundle.profiles.map<CreatorCard>((profile) => {
-    const name = profileName(profile);
+function mapSoundboards(bundle: FeedBundle | undefined, latest: Record<string, SoundboardContentItem>): StageItem[] {
+  return (bundle?.soundboards || []).map((soundboard) => {
+    const latestItem = latest[soundboard.id];
     return {
-      id: profile.user_id || profile.id || profile.username || name,
-      name,
-      handle: profileHandle(profile),
-      route: profileRoute(profile),
-      imageUrl: profile.avatar_url,
-      verified: profile.is_verified,
+      id: soundboard.id,
+      kind: 'soundboard',
+      title: soundboard.title || 'Untitled soundboard',
+      creator: soundboard.description || 'Soundboard',
+      imageUrl: soundboard.cover_image_url,
+      route: `/soundboards/${soundboard.slug || soundboard.id}`,
+      metadata: [latestItem?.item_type ? `Latest: ${latestItem.item_type}` : null, soundboard.item_count ? `${formatCompact(soundboard.item_count)} items` : null].filter(Boolean).join(' · ') || 'Soundboard',
+      metric: soundboard.comment_count ? `${formatCompact(soundboard.comment_count)} comments` : null,
+      latestItemType: latestItem?.item_type || null,
+      soundboard,
     };
   });
-
-  const seen = new Set(creators.map((creator) => creator.name.toLowerCase()));
-  bundle.releases.forEach((release) => {
-    const name = release.artist?.trim();
-    if (!name || seen.has(name.toLowerCase())) return;
-    seen.add(name.toLowerCase());
-    creators.push({
-      id: `release-${release.id}`,
-      name,
-      handle: release.genre || 'Release artist',
-      route: `/release/${release.id}`,
-      imageUrl: release.cover_art_url,
-    });
-  });
-
-  bundle.beats.forEach((beat) => {
-    const name = beat.producer_name?.trim();
-    if (!name || seen.has(name.toLowerCase())) return;
-    seen.add(name.toLowerCase());
-    creators.push({
-      id: `beat-${beat.id}`,
-      name,
-      handle: beat.genre || 'Producer',
-      route: `/beat/${beat.id}`,
-      imageUrl: beat.image_url,
-    });
-  });
-
-  return creators.slice(0, 10);
 }
 
-function mapChallenges(posts?: SocialPostItem[]): ChallengeCard[] {
-  if (!posts) return [];
-  return posts
-    .filter((post) => {
-      const text = `${post.post_type ?? ''} ${post.title ?? ''} ${post.body ?? ''}`.toLowerCase();
-      return text.includes('challenge') || text.includes('open verse') || text.includes('feedback') || text.includes('verse');
-    })
-    .map((post) => ({
-      id: post.id,
-      title: post.title || post.body || 'Open creator thread',
-      meta: post.post_type?.replace(/_/g, ' ') || 'Open now',
-      imageUrl: Array.isArray(post.images) ? post.images[0] : null,
-      comments: post.comments_count,
-      route: '/backstage',
-    }))
-    .slice(0, 6);
+function mapPlaylists(playlists: MobilePlaylist[]): StageItem[] {
+  return playlists.map((playlist) => ({
+    id: playlist.id,
+    kind: 'playlist',
+    title: playlist.name || 'Untitled playlist',
+    creator: playlist.owner_name || 'PLUGGD',
+    imageUrl: playlist.cover_url,
+    route: playlist.route,
+    metadata: [playlist.track_count ? `${formatCompact(playlist.track_count)} tracks` : null, playlist.is_public ? 'Public playlist' : null].filter(Boolean).join(' · ') || 'Playlist',
+    metric: playlist.follower_count ? `${formatCompact(playlist.follower_count)} followers` : null,
+    playlist,
+  }));
 }
 
-function isPlayable(item: StageItem) {
-  return Boolean(getItemTrack(item));
+function mapSamplePacks(bundle?: FeedBundle): StageItem[] {
+  return (bundle?.samplePacks || []).map((pack) => ({
+    id: pack.id,
+    kind: 'sample_pack',
+    title: pack.title || 'Untitled sample pack',
+    creator: pack.genre || 'Sample pack',
+    imageUrl: pack.cover_art_url,
+    route: `/sample-pack/${pack.id}`,
+    metadata: [pack.sample_count ? `${formatCompact(pack.sample_count)} files` : null, pack.bpm_range, formatPrice(pack.price)].filter(Boolean).join(' · ') || 'Sample pack',
+    metric: pack.total_downloads ? `${formatCompact(pack.total_downloads)} downloads` : null,
+    samplePack: pack,
+  }));
+}
+
+function kindLabel(kind: StageItemKind) {
+  if (kind === 'sample_pack') return 'Sample Pack';
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
 function getItemTrack(item: StageItem) {
   if (item.release) return toTrack(item.release, 'release');
   if (item.mix) return toTrack(item.mix, 'mix');
   if (item.beat) return toTrack(item.beat, 'beat');
+  if (item.samplePack) return toTrack(item.samplePack, 'sample_pack');
   return null;
 }
 
-function sectionTitleForFilter(active: StageFilter) {
-  if (active === 'Releases') return 'NEW RELEASES';
-  if (active === 'Mixes') return 'MIXES IN ROTATION';
-  if (active === 'Videos') return 'VIDEOS';
-  if (active === 'Beats') return 'PRODUCER DROPS';
-  if (active === 'Challenges') return 'OPEN VERSE CHALLENGES';
-  return 'TRENDING NOW';
+function isPlayable(item: StageItem) {
+  return Boolean(getItemTrack(item));
 }
 
-function StageArtwork({
-  uri,
-  title,
-  gradientIndex,
-  style,
-}: {
-  uri?: string | null;
-  title: string;
-  gradientIndex: number;
-  style?: object;
-}) {
-  const colors = IMAGE_GRADIENTS[gradientIndex % IMAGE_GRADIENTS.length];
-  return (
-    <LinearGradient colors={colors as any} style={[styles.artworkBase, style]}>
-      {uri ? <PluggdImage uri={uri} style={styles.imageFill} resizeMode="cover" /> : null}
-      {!uri ? <Text style={styles.fallbackInitials}>{contentInitials(title)}</Text> : null}
-    </LinearGradient>
-  );
+function filterItems(active: StageFilter, groups: Record<StageItemKind, StageItem[]>) {
+  if (active === 'Releases') return groups.release;
+  if (active === 'Mixes') return groups.mix;
+  if (active === 'Videos') return groups.video;
+  if (active === 'Beats') return groups.beat;
+  if (active === 'Soundboards') return groups.soundboard;
+  if (active === 'Playlists') return groups.playlist;
+  return [
+    ...groups.release.slice(0, 4),
+    ...groups.mix.slice(0, 4),
+    ...groups.video.slice(0, 3),
+    ...groups.soundboard.slice(0, 3),
+    ...groups.beat.slice(0, 2),
+  ];
 }
 
-function Waveform({ id, active = false, compact = false }: { id: string; active?: boolean; compact?: boolean }) {
-  const bars = waveformFor(id, compact ? 18 : 22);
-  const activeCount = active ? Math.ceil(bars.length * 0.54) : Math.ceil(bars.length * 0.34);
+function heroFor(active: StageFilter, groups: Record<StageItemKind, StageItem[]>) {
+  const pool = filterItems(active, groups);
+  return pool.find((item) => item.imageUrl) || pool[0] || filterItems('For You', groups)[0];
+}
+
+function Waveform({ id, compact = false }: { id: string; compact?: boolean }) {
+  const bars = waveformFor(id, compact ? 18 : 24);
+  const activeCount = Math.ceil(bars.length * 0.42);
   return (
     <View style={[styles.waveform, compact && styles.waveformCompact]}>
       {bars.map((height, index) => (
@@ -297,9 +326,8 @@ function Waveform({ id, active = false, compact = false }: { id: string; active?
           style={[
             styles.waveBar,
             {
-              height: compact ? Math.max(5, height * 0.55) : height,
-              backgroundColor: index < activeCount ? COLORS.orange : 'rgba(255,255,255,0.23)',
-              opacity: active || index < activeCount ? 1 : 0.62,
+              height: compact ? Math.max(5, height * 0.54) : height,
+              backgroundColor: index < activeCount ? COLORS.orange : 'rgba(255,255,255,0.22)',
             },
           ]}
         />
@@ -308,50 +336,51 @@ function Waveform({ id, active = false, compact = false }: { id: string; active?
   );
 }
 
+function StageArtwork({ item, style }: { item: Pick<StageItem, 'id' | 'title' | 'imageUrl'>; style: object }) {
+  const colors = IMAGE_GRADIENTS[hashIndex(item.id, IMAGE_GRADIENTS.length)];
+  return (
+    <LinearGradient colors={colors as any} style={[styles.artworkBase, style]}>
+      {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={styles.imageFill} resizeMode="cover" /> : null}
+      {!item.imageUrl ? <Text style={styles.fallbackInitials}>{contentInitials(item.title)}</Text> : null}
+    </LinearGradient>
+  );
+}
+
 function StageHeader() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const theme = usePluggdTheme();
   const label = user?.email || 'PLUGGD';
-
   return (
-    <View style={[styles.header, { height: Math.max(insets.top + 72, 112), paddingTop: insets.top + 18 }]}>
-      <Text style={styles.headerTitle}>STAGE</Text>
+    <View
+      style={[
+        styles.header,
+        {
+          height: Math.max(insets.top + 62, 96),
+          paddingTop: insets.top + 12,
+          backgroundColor: theme.colors.headerGlass,
+          borderBottomColor: theme.colors.divider,
+        },
+      ]}
+    >
+      <Text style={[styles.headerTitle, { color: theme.colors.text }]}>STAGE</Text>
       <View style={styles.headerActions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open wallet"
-          onPress={() => {
-            selectionHaptic();
-            router.push('/wallet' as any);
-          }}
-          style={styles.headerIcon}
-        >
-          <MaterialIcons name="account-balance-wallet" size={22} color={COLORS.soft} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Search PLUGGD" style={styles.headerIcon} onPress={() => router.push('/search' as any)}>
+          <MaterialIcons name="search" size={23} color={theme.colors.textSecondary} />
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open profile"
-          onPress={() => {
-            selectionHaptic();
-            router.push(user ? '/profile' : '/auth/login' as any);
-          }}
-          style={styles.avatarButton}
-        >
-          <Text style={styles.avatarInitials}>{contentInitials(label)}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open notifications" style={styles.headerIcon} onPress={() => router.push('/notifications' as any)}>
+          <MaterialIcons name="notifications-none" size={23} color={theme.colors.textSecondary} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open profile" style={[styles.avatarButton, { borderColor: theme.colors.divider, backgroundColor: theme.colors.surface }]} onPress={() => router.push(user ? '/profile' : '/auth/login' as any)}>
+          <Text style={[styles.avatarInitials, { color: theme.colors.text }]}>{contentInitials(label)}</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-function FilterPills({
-  active,
-  onChange,
-}: {
-  active: StageFilter;
-  onChange: (filter: StageFilter) => void;
-}) {
+function FilterPills({ active, onChange }: { active: StageFilter; onChange: (filter: StageFilter) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
       {FILTERS.map((filter) => {
@@ -360,6 +389,7 @@ function FilterPills({
           <Pressable
             key={filter}
             accessibilityRole="button"
+            accessibilityLabel={`${filter} Stage filter`}
             accessibilityState={{ selected }}
             onPress={() => {
               selectionHaptic();
@@ -375,38 +405,47 @@ function FilterPills({
   );
 }
 
+function ContinueListening({ item, onOpen }: { item?: SavedContentItem; onOpen: () => void }) {
+  if (!item) return null;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Continue ${item.title}`} style={styles.continueCard} onPress={onOpen}>
+      <View style={styles.continueArt}>
+        {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={styles.imageFill} /> : <MaterialIcons name="graphic-eq" size={24} color={COLORS.orange} />}
+      </View>
+      <View style={styles.continueCopy}>
+        <Text style={styles.continueKicker}>CONTINUE</Text>
+        <Text style={styles.continueTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.continueMeta} numberOfLines={1}>{item.subtitle || 'Recently played'}</Text>
+        <View style={styles.continueProgress}><View style={styles.continueProgressFill} /></View>
+      </View>
+      <View style={styles.continueButton}>
+        <MaterialIcons name="play-arrow" size={22} color={COLORS.canvas} />
+      </View>
+    </Pressable>
+  );
+}
+
 function FeaturedHero({
   item,
-  onPlay,
-  onOpenBackstage,
-  onToggleSave,
   saved,
-  active,
-  playing,
+  onPlay,
+  onOpen,
+  onBackstage,
+  onSave,
 }: {
   item?: StageItem;
-  onPlay: (item: StageItem) => void;
-  onOpenBackstage: () => void;
-  onToggleSave: (id: string) => void;
   saved: boolean;
-  active: boolean;
-  playing: boolean;
+  onPlay: () => void;
+  onOpen: () => void;
+  onBackstage: () => void;
+  onSave: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
-
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(scale, {
-          toValue: 1.08,
-          duration: 9000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: 9000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(scale, { toValue: 1.07, duration: 9500, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 9500, useNativeDriver: true }),
       ]),
     );
     loop.start();
@@ -416,69 +455,38 @@ function FeaturedHero({
   if (!item) {
     return (
       <View style={styles.heroEmpty}>
-        <Text style={styles.emptyTitle}>Your sound is loading.</Text>
-        <Text style={styles.emptyBody}>Published releases and mixes will shape this discovery card.</Text>
+        <Text style={styles.emptyTitle}>Stage is loading.</Text>
+        <Text style={styles.emptyBody}>Published PLUGGD media will shape this editorial feature.</Text>
       </View>
     );
   }
 
-  const gradientIndex = hashIndex(item.id, IMAGE_GRADIENTS.length);
   const playable = isPlayable(item);
-
+  const backstageRoute = item.backstageRoute;
   return (
     <View style={styles.heroCard}>
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale }] }]}>
-        <StageArtwork uri={item.imageUrl} title={item.title} gradientIndex={gradientIndex} style={styles.heroArtwork} />
+        <StageArtwork item={item} style={styles.heroArtwork} />
       </Animated.View>
-      <LinearGradient
-        colors={['rgba(8,8,12,0.08)', 'rgba(8,8,12,0.58)', 'rgba(8,8,12,0.94)']}
-        locations={[0, 0.46, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(255,90,0,0.18)', 'rgba(124,58,237,0.06)', 'rgba(8,8,12,0)']}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={['rgba(8,8,12,0.03)', 'rgba(8,8,12,0.54)', 'rgba(8,8,12,0.96)']} locations={[0, 0.44, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.heroContent}>
         <View style={styles.heroTag}>
-          <MaterialIcons name="graphic-eq" size={13} color={COLORS.orange} />
-          <Text style={styles.heroTagText}>{item.kind === 'mix' ? 'IMMERSIVE MIX' : item.kind === 'beat' ? 'PRODUCER DROP' : 'FEATURED DISCOVERY'}</Text>
+          <Text style={styles.heroTagText}>{kindLabel(item.kind)}</Text>
         </View>
-        <Text style={styles.heroTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.heroCreator} numberOfLines={1}>
-          creator: <Text style={styles.heroCreatorStrong}>{item.creator}</Text>
-        </Text>
-        <Text style={styles.heroMeta} numberOfLines={1}>
-          {item.metadata}
-        </Text>
+        <Text style={styles.heroTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.heroCreator} numberOfLines={1}>{item.creator}</Text>
+        {item.metadata ? <Text style={styles.heroMeta} numberOfLines={1}>{item.metadata}</Text> : null}
         <View style={styles.heroActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={playable ? (active && playing ? `Pause ${item.title}` : `Play ${item.title}`) : `Open ${item.title}`}
-            onPress={() => onPlay(item)}
-            style={styles.heroPlay}
-          >
-            <MaterialIcons name={playable ? (active && playing ? 'pause' : 'play-arrow') : 'open-in-new'} size={21} color={COLORS.canvas} />
-            <Text style={styles.heroPlayText}>{playable ? (active && playing ? 'Pause' : 'Play') : 'Open'}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={playable ? `Play ${item.title}` : `Open ${item.title}`} style={styles.heroPlay} onPress={playable ? onPlay : onOpen}>
+            <MaterialIcons name={playable ? 'play-arrow' : 'open-in-new'} size={21} color={COLORS.canvas} />
+            <Text style={styles.heroPlayText}>{playable ? 'Play' : 'Open'}</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Enter Backstage"
-            onPress={onOpenBackstage}
-            style={styles.backstageButton}
-          >
-            <Text style={styles.backstageButtonText}>Enter Backstage</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={saved ? 'Unsave track' : 'Save track'}
-            onPress={() => onToggleSave(item.id)}
-            style={styles.saveHero}
-          >
+          {backstageRoute ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Open community" style={styles.backstageButton} onPress={onBackstage}>
+              <Text style={styles.backstageButtonText}>Community</Text>
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Unsave media' : 'Save media'} style={styles.saveHero} onPress={onSave}>
             <MaterialIcons name={saved ? 'bookmark' : 'bookmark-border'} size={24} color={saved ? COLORS.orange : COLORS.soft} />
           </Pressable>
         </View>
@@ -487,20 +495,33 @@ function FeaturedHero({
   );
 }
 
-function SectionHeader({
-  title,
-  action,
-  onAction,
-}: {
-  title: string;
-  action?: string;
-  onAction?: () => void;
-}) {
+function SwipeBeatsPromo() {
+  const router = useRouter();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="Start Swipe Beats" style={styles.swipeCard} onPress={() => router.push('/swipe-beats' as any)}>
+      <LinearGradient colors={['rgba(255,90,0,0.22)', 'rgba(18,18,26,0.96)']} style={StyleSheet.absoluteFill} />
+      <View style={styles.swipeCopy}>
+        <Text style={styles.swipeTitle}>Swipe Beats</Text>
+        <Text style={styles.swipeBody}>Find beats fast. Save, skip, license.</Text>
+        <View style={styles.swipeCTA}><Text style={styles.swipeCTAText}>Start Swiping</Text></View>
+      </View>
+      <View style={styles.swipeStack}>
+        {[0, 1, 2].map((index) => (
+          <View key={`swipe-preview-${index}`} style={[styles.swipePreview, { right: 18 + index * 24, transform: [{ rotate: `${index * -7}deg` }] }]}>
+            <MaterialIcons name="graphic-eq" size={22} color={index === 0 ? COLORS.orange : COLORS.soft} />
+          </View>
+        ))}
+      </View>
+    </Pressable>
+  );
+}
+
+function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      {action ? (
-        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={10}>
+      {action && onAction ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={action} style={styles.sectionActionTap} onPress={onAction}>
           <Text style={styles.sectionAction}>{action}</Text>
         </Pressable>
       ) : null}
@@ -508,235 +529,108 @@ function SectionHeader({
   );
 }
 
-function TrendingCard({
-  item,
-  saved,
-  active,
-  playing,
-  onPress,
-  onPlay,
-  onToggleSave,
-}: {
-  item: StageItem;
-  saved: boolean;
-  active: boolean;
-  playing: boolean;
-  onPress: () => void;
-  onPlay: () => void;
-  onToggleSave: () => void;
-}) {
+function MediaCard({ item, saved, onOpen, onPlay, onSave }: { item: StageItem; saved: boolean; onOpen: () => void; onPlay: () => void; onSave: () => void }) {
   const playable = isPlayable(item);
-
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} onPress={onPress} style={styles.trendingCard}>
-      <StageArtwork uri={item.imageUrl} title={item.title} gradientIndex={hashIndex(item.id, IMAGE_GRADIENTS.length)} style={styles.trendingArtwork} />
-      <LinearGradient
-        colors={['rgba(8,8,12,0.02)', 'rgba(8,8,12,0.82)', 'rgba(8,8,12,0.96)']}
-        locations={[0, 0.52, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.trendingKind}>
-        <Text style={styles.trendingKindText}>{item.kind}</Text>
-      </View>
-      <View style={styles.trendingCopy}>
-        <Text style={styles.trendingTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.trendingCreator} numberOfLines={1}>
-          {item.creator}
-        </Text>
-        <Waveform id={item.id} active={active && playing} compact />
-        <View style={styles.trendingFooter}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={playable ? (active && playing ? `Pause ${item.title}` : `Play ${item.title}`) : `Open ${item.title}`}
-            onPress={(event) => {
-              event.stopPropagation();
-              onPlay();
-            }}
-            style={styles.inlinePlay}
-          >
-            <MaterialIcons name={playable ? (active && playing ? 'pause' : 'play-arrow') : 'open-in-new'} size={16} color={COLORS.soft} />
-            <Text style={styles.inlinePlayText}>{playable ? (item.plays ? `${formatCompact(item.plays)} plays` : 'Play') : 'Open'}</Text>
-          </Pressable>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={saved ? 'Unsave item' : 'Save item'}
-            onPress={(event) => {
-              event.stopPropagation();
-              onToggleSave();
-            }}
-            style={styles.saveSmall}
-          >
-            <MaterialIcons name={saved ? 'bookmark' : 'bookmark-border'} size={20} color={saved ? COLORS.orange : COLORS.muted} />
-          </TouchableOpacity>
-        </View>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.mediaCard} onPress={onOpen}>
+      <StageArtwork item={item} style={styles.mediaArtwork} />
+      <Text style={styles.mediaTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.mediaMeta} numberOfLines={1}>{item.creator}</Text>
+      <View style={styles.mediaFooter}>
+        <Pressable accessibilityRole="button" accessibilityLabel={playable ? `Play ${item.title}` : `Open ${item.title}`} style={styles.inlineAction} onPress={(event) => { event.stopPropagation(); playable ? onPlay() : onOpen(); }}>
+          <MaterialIcons name={playable ? 'play-arrow' : 'open-in-new'} size={16} color={COLORS.soft} />
+          <Text style={styles.inlineActionText}>{item.metric || (playable ? 'Play' : 'Open')}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Unsave item' : 'Save item'} style={styles.saveSmall} onPress={(event) => { event.stopPropagation(); onSave(); }}>
+          <MaterialIcons name={saved ? 'bookmark' : 'bookmark-border'} size={20} color={saved ? COLORS.orange : COLORS.muted} />
+        </Pressable>
       </View>
     </Pressable>
   );
 }
 
-function LiveCard({ room }: { room: LiveRoomItem }) {
-  const router = useRouter();
-  const status = room.status || 'scheduled';
-  const isLive = status === 'live';
-  const viewers = Number(room.viewer_count ?? 0);
-  const title = room.title || room.description || 'Creator session';
-  const imageUrl = room.thumbnail_url || room.creator_avatar_url;
-
+function VideoCard({ item, onOpen }: { item: StageItem; onOpen: () => void }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Join ${title}`}
-      onPress={() => {
-        selectionHaptic();
-        router.push({ pathname: '/live/session', params: { roomId: room.id } } as any);
-      }}
-      style={[styles.liveCard, isLive && styles.liveCardActive]}
-    >
-      <StageArtwork uri={imageUrl} title={title} gradientIndex={hashIndex(room.id, IMAGE_GRADIENTS.length)} style={styles.liveArtwork} />
-      <LinearGradient colors={['rgba(8,8,12,0.18)', 'rgba(8,8,12,0.86)']} style={StyleSheet.absoluteFill} />
-      <View style={[styles.livePill, isLive && styles.livePillOn]}>
-        <View style={[styles.liveDot, isLive && styles.liveDotOn]} />
-        <Text style={styles.livePillText}>{isLive ? 'LIVE' : 'SOON'}</Text>
-      </View>
-      <View style={styles.liveCopy}>
-        <Text style={styles.liveTitle} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text style={styles.liveSubtitle} numberOfLines={1}>
-          {room.category || 'Live creator session'}
-        </Text>
-        <Text style={styles.liveMeta} numberOfLines={1}>
-          {viewers > 0 ? `${formatCompact(viewers)} viewers` : formatDate(room.scheduled_for, 'Scheduled')}
-        </Text>
-        <View style={styles.joinLiveButton}>
-          <Text style={styles.joinLiveText}>Join Live</Text>
-        </View>
-      </View>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.videoCard} onPress={onOpen}>
+      <StageArtwork item={item} style={styles.videoArtwork} />
+      <View style={styles.videoPlay}><MaterialIcons name="play-arrow" size={22} color={COLORS.canvas} /></View>
+      <Text style={styles.videoTitle} numberOfLines={1}>{item.title}</Text>
+      <Text style={styles.videoMeta} numberOfLines={1}>{item.metadata || item.creator}</Text>
     </Pressable>
   );
 }
 
-function ProducerRow({
-  item,
-  active,
-  playing,
-  onPlay,
-}: {
-  item: StageItem;
-  active: boolean;
-  playing: boolean;
-  onPlay: () => void;
-}) {
-  const router = useRouter();
+function SoundboardCard({ item, onOpen }: { item: StageItem; onOpen: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.soundboardCard} onPress={onOpen}>
+      <View style={styles.soundboardIcon}><MaterialIcons name="dashboard-customize" size={23} color={COLORS.orange} /></View>
+      <View style={styles.soundboardCopy}>
+        <Text style={styles.soundboardTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.soundboardMeta} numberOfLines={2}>{item.metadata || 'Soundboard'}</Text>
+      </View>
+      <MaterialIcons name="chevron-right" size={22} color={COLORS.muted} />
+    </Pressable>
+  );
+}
+
+function BeatRow({ item, saved, onOpen, onPlay, onSave }: { item: StageItem; saved: boolean; onOpen: () => void; onPlay: () => void; onSave: () => void }) {
   const playable = isPlayable(item);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${item.title}`}
-      style={styles.producerRow}
-      onPress={() => {
-        selectionHaptic();
-        router.push(item.route as any);
-      }}
-    >
-      <StageArtwork uri={item.imageUrl} title={item.title} gradientIndex={hashIndex(item.id, IMAGE_GRADIENTS.length)} style={styles.producerArt} />
-      <View style={styles.producerCopy}>
-        <Text style={styles.producerTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.producerMeta} numberOfLines={1}>
-          {item.creator}
-        </Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.beatRow} onPress={onOpen}>
+      <StageArtwork item={item} style={styles.beatArt} />
+      <View style={styles.beatCopy}>
+        <Text style={styles.beatTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.beatMeta} numberOfLines={1}>{item.creator} · {item.metadata}</Text>
       </View>
-      <Waveform id={item.id} active={active && playing} compact />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={playable ? (active && playing ? `Pause ${item.title}` : `Play ${item.title}`) : `Open ${item.title}`}
-        onPress={(event) => {
-          event.stopPropagation();
-          onPlay();
-        }}
-        style={styles.producerPlay}
-      >
-        <MaterialIcons name={playable ? (active && playing ? 'pause' : 'play-arrow') : 'open-in-new'} size={18} color={COLORS.canvas} />
+      <Waveform id={item.id} compact />
+      <Pressable accessibilityRole="button" accessibilityLabel={playable ? `Play ${item.title}` : `Open ${item.title}`} style={styles.beatPlay} onPress={(event) => { event.stopPropagation(); playable ? onPlay() : onOpen(); }}>
+        <MaterialIcons name={playable ? 'play-arrow' : 'open-in-new'} size={18} color={COLORS.canvas} />
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Unsave beat' : 'Save beat'} style={styles.beatSave} onPress={(event) => { event.stopPropagation(); onSave(); }}>
+        <MaterialIcons name={saved ? 'bookmark' : 'bookmark-border'} size={20} color={saved ? COLORS.orange : COLORS.muted} />
       </Pressable>
     </Pressable>
   );
 }
 
-function ChallengeCardView({
-  item,
-  creators,
-}: {
-  item: ChallengeCard;
-  creators: CreatorCard[];
-}) {
+function ChartRow({ rank, title, meta, imageUrl, route }: { rank: number; title: string; meta?: string | null; imageUrl?: string | null; route: string }) {
   const router = useRouter();
-  const visibleCreators = creators.slice(0, 3);
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${item.title}`}
-      onPress={() => {
-        selectionHaptic();
-        router.push(item.route as any);
-      }}
-      style={styles.challengeCard}
-    >
-      <StageArtwork uri={item.imageUrl} title={item.title} gradientIndex={hashIndex(item.id, IMAGE_GRADIENTS.length)} style={styles.challengeArt} />
-      <LinearGradient colors={['rgba(8,8,12,0.1)', 'rgba(8,8,12,0.92)']} style={StyleSheet.absoluteFill} />
-      <View style={styles.challengeCopy}>
-        <Text style={styles.challengeDays} numberOfLines={1}>
-          {item.meta || 'Open now'}
-        </Text>
-        <Text style={styles.challengeTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View style={styles.challengeMetaRow}>
-          <View style={styles.participantStack}>
-            {visibleCreators.map((creator, index) => (
-              <View key={creator.id} style={[styles.participantAvatar, index > 0 && { marginLeft: -8 }]}>
-                {creator.imageUrl ? <PluggdImage uri={creator.imageUrl} style={styles.imageFill} /> : <Text style={styles.participantInitial}>{contentInitials(creator.name)}</Text>}
-              </View>
-            ))}
-          </View>
-          <Text style={styles.challengeComments}>{formatCompact(item.comments ?? 0)} comments</Text>
-        </View>
-        <View style={styles.challengeButton}>
-          <Text style={styles.challengeButtonText}>JOIN CHALLENGE</Text>
-        </View>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${title}`} style={styles.chartRow} onPress={() => router.push(route as any)}>
+      <Text style={styles.chartRank}>{rank}</Text>
+      <View style={styles.chartArt}>{imageUrl ? <PluggdImage uri={imageUrl} style={styles.imageFill} /> : <Text style={styles.chartInitial}>{contentInitials(title)}</Text>}</View>
+      <View style={styles.chartCopy}>
+        <Text style={styles.chartTitle} numberOfLines={1}>{title}</Text>
+        {meta ? <Text style={styles.chartMeta} numberOfLines={1}>{meta}</Text> : null}
       </View>
     </Pressable>
   );
 }
 
-function CreatorRecommendation({ creator }: { creator: CreatorCard }) {
+function GenreHubs() {
   const router = useRouter();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${creator.name}`}
-      onPress={() => {
-        selectionHaptic();
-        router.push(creator.route as any);
-      }}
-      style={styles.creatorCard}
-    >
-      <View style={styles.creatorAvatar}>
-        {creator.imageUrl ? <PluggdImage uri={creator.imageUrl} style={styles.imageFill} /> : <Text style={styles.creatorInitials}>{contentInitials(creator.name)}</Text>}
-      </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.genreRail}>
+      {GENRES.map((genre) => (
+        <Pressable key={genre} accessibilityRole="button" accessibilityLabel={`Open ${genre}`} style={styles.genreChip} onPress={() => router.push(`/genre/${encodeURIComponent(genre)}` as any)}>
+          <Text style={styles.genreText}>{genre}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+function CreatorRow({ creator, live }: { creator: ProfileItem; live: boolean }) {
+  const router = useRouter();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${profileName(creator)}`} style={styles.creatorRow} onPress={() => router.push(profileRoute(creator) as any)}>
+      <View style={styles.creatorAvatar}>{creator.avatar_url ? <PluggdImage uri={creator.avatar_url} style={styles.imageFill} /> : <Text style={styles.creatorInitial}>{contentInitials(profileName(creator))}</Text>}</View>
       <View style={styles.creatorCopy}>
-        <Text style={styles.creatorName} numberOfLines={1}>
-          {creator.name}
-        </Text>
-        <Text style={styles.creatorHandle} numberOfLines={1}>
-          {creator.handle}
-        </Text>
+        <Text style={styles.creatorName} numberOfLines={1}>{profileName(creator)}</Text>
+        <Text style={styles.creatorMeta} numberOfLines={1}>{profileMeta(creator)}</Text>
       </View>
-      {creator.verified ? <MaterialIcons name="verified" size={18} color={COLORS.orange} /> : null}
+      {live ? <View style={styles.creatorLive}><Text style={styles.creatorLiveText}>LIVE</Text></View> : null}
+      <View style={styles.followButton}><Text style={styles.followText}>Follow</Text></View>
     </Pressable>
   );
 }
@@ -755,52 +649,55 @@ export function StageDiscoveryScreen() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const home = useHomeFeed();
-  const live = useLiveRooms();
-  const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayback();
+  const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
+  const recentlyPlayed = useQuery({ queryKey: ['culture', 'stage-recently-played'], queryFn: () => loadRecentlyPlayedLibraryItems(8) });
+  const soundboardIds = useMemo(() => (home.data?.soundboards || []).map((item) => item.id), [home.data?.soundboards]);
+  const extras = useQuery({ queryKey: ['culture', 'stage-extras', soundboardIds.join(',')], queryFn: () => loadStageExtras(soundboardIds), enabled: Boolean(home.data) });
   const [activeFilter, setActiveFilter] = useState<StageFilter>('For You');
+  const [chartTab, setChartTab] = useState<ChartTab>('Beats');
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
 
-  const allItems = useMemo(() => mapStageItems(home.data), [home.data]);
-  const filteredItems = useMemo(() => filterStageItems(allItems, activeFilter), [activeFilter, allItems]);
-  const heroItem = useMemo(() => filteredItems.find((item) => item.imageUrl) ?? filteredItems[0] ?? allItems[0], [allItems, filteredItems]);
-  const trending = useMemo(() => filteredItems.filter((item) => item.id !== heroItem?.id).slice(0, 12), [filteredItems, heroItem?.id]);
-  const producerDrops = useMemo(() => allItems.filter((item) => item.kind === 'beat').slice(0, 5), [allItems]);
-  const creators = useMemo(() => mapCreators(home.data), [home.data]);
-  const challenges = useMemo(() => mapChallenges(home.data?.posts), [home.data?.posts]);
-  const liveRooms = useMemo(() => (live.data ?? []).slice(0, 8), [live.data]);
-  const loading = home.isLoading || live.isLoading;
-  const refreshing = home.isRefetching || live.isRefetching;
-  const heroSaved = heroItem ? savedIds.has(heroItem.id) : false;
+  const groups = useMemo<Record<StageItemKind, StageItem[]>>(() => ({
+    release: mapReleases(home.data),
+    mix: mapMixes(home.data),
+    video: mapVideos(extras.data?.videos || []),
+    beat: mapBeats(home.data),
+    soundboard: mapSoundboards(home.data, extras.data?.latestSoundboardItems || {}),
+    playlist: mapPlaylists(extras.data?.playlists || []),
+    sample_pack: mapSamplePacks(home.data),
+  }), [extras.data?.latestSoundboardItems, extras.data?.playlists, extras.data?.videos, home.data]);
+
+  const mixedItems = useMemo(() => filterItems(activeFilter, groups), [activeFilter, groups]);
+  const heroItem = useMemo(() => heroFor(activeFilter, groups), [activeFilter, groups]);
+  const recentlyPlayedItem = recentlyPlayed.data?.[0];
+  const loading = home.isLoading || extras.isLoading;
+  const refreshing = home.isRefetching || extras.isRefetching || recentlyPlayed.isRefetching;
   const bottomPadding = Math.max(insets.bottom + 154, 176);
-  const heroHeight = Math.min(260, Math.max(224, width * 0.62));
+  const heroHeight = Math.min(270, Math.max(230, width * 0.64));
+  const liveCreatorIds = new Set<string>();
 
   useEffect(() => {
     if (!library.data?.saved) return;
-    const ids = library.data.saved
-      .filter((item) => item.kind === 'beat' || item.kind === 'release')
-      .map((item) => item.route.split('/').pop())
-      .filter((item): item is string => Boolean(item));
-    setSavedIds(new Set(ids));
+    setSavedIds(new Set(library.data.saved.map((item) => item.route.split('/').pop()).filter((id): id is string => Boolean(id))));
   }, [library.data?.saved]);
 
   const currentTrackMatches = (item: StageItem) => {
-    return (
-      currentTrack?.id === item.id ||
-      currentTrack?.releaseId === item.id ||
-      currentTrack?.mixId === item.id ||
-      currentTrack?.beatId === item.id
-    );
+    return currentTrack?.id === item.id || currentTrack?.releaseId === item.id || currentTrack?.mixId === item.id || currentTrack?.beatId === item.id || currentTrack?.samplePackId === item.id;
   };
 
-  const handlePlay = async (item: StageItem) => {
+  const openItem = (item: StageItem) => {
+    selectionHaptic();
+    router.push(item.route as any);
+  };
+
+  const playItem = async (item: StageItem) => {
     const track = getItemTrack(item);
     impactHaptic();
     if (!track) {
-      router.push(item.route as any);
+      openItem(item);
       return;
     }
-
     try {
       if (currentTrack?.id === track.id) {
         await togglePlayPause();
@@ -809,13 +706,13 @@ export function StageDiscoveryScreen() {
       await playTrack(track);
     } catch (error) {
       console.warn('[Stage] playback failed', error);
-      router.push(item.route as any);
+      openItem(item);
     }
   };
 
-  const toggleSave = async (item: StageItem) => {
+  const saveItem = async (item: StageItem) => {
     impactHaptic();
-    const result = await toggleSavedContent(item.kind === 'beat' ? 'beat' : item.kind === 'mix' ? 'mix' : 'release', item.id);
+    const result = await toggleSavedContent(item.kind as SavedContentKind, item.id);
     if (!result.success) {
       Alert.alert(result.supported === false ? 'Save unavailable' : 'Save failed', result.error || 'This item could not be saved.');
       return;
@@ -831,7 +728,52 @@ export function StageDiscoveryScreen() {
 
   const refetchAll = () => {
     void home.refetch();
-    void live.refetch();
+    void extras.refetch();
+    void recentlyPlayed.refetch();
+    void library.refetch();
+  };
+
+  const renderMediaShelf = (title: string, items: StageItem[], variant: 'card' | 'video' | 'soundboard' = 'card') => {
+    if (!items.length) return <EmptyInline title={`No ${title.toLowerCase()} yet.`} body="Fresh media will appear here soon." />;
+    return (
+      <>
+        <SectionHeader title={title} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mediaShelf}>
+          {items.map((item) => {
+            if (variant === 'video') return <VideoCard key={`${item.kind}-${item.id}`} item={item} onOpen={() => openItem(item)} />;
+            if (variant === 'soundboard') return <SoundboardCard key={`${item.kind}-${item.id}`} item={item} onOpen={() => openItem(item)} />;
+            return (
+              <MediaCard
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                saved={savedIds.has(item.id)}
+                onOpen={() => openItem(item)}
+                onPlay={() => playItem(item)}
+                onSave={() => saveItem(item)}
+              />
+            );
+          })}
+        </ScrollView>
+      </>
+    );
+  };
+
+  const renderFiltered = () => {
+    if (activeFilter === 'Releases') return renderMediaShelf('NEW DROPS / RELEASES', groups.release);
+    if (activeFilter === 'Mixes') return renderMediaShelf('MIXES', groups.mix);
+    if (activeFilter === 'Videos') return renderMediaShelf('VIDEOS', groups.video, 'video');
+    if (activeFilter === 'Soundboards') return renderMediaShelf('SOUNDBOARDS', groups.soundboard, 'soundboard');
+    if (activeFilter === 'Playlists') return renderMediaShelf('PLAYLISTS', groups.playlist);
+    if (activeFilter === 'Beats') {
+      return (
+        <>
+          <SwipeBeatsPromo />
+          <SectionHeader title="BEATS / PRODUCER DROPS" />
+          <View style={styles.rowList}>{groups.beat.map((item) => <BeatRow key={item.id} item={item} saved={savedIds.has(item.id)} onOpen={() => openItem(item)} onPlay={() => playItem(item)} onSave={() => saveItem(item)} />)}</View>
+        </>
+      );
+    }
+    return null;
   };
 
   return (
@@ -846,824 +788,191 @@ export function StageDiscoveryScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
       >
         <FilterPills active={activeFilter} onChange={setActiveFilter} />
-
-        {loading ? (
-          <PremiumSkeleton compact label="Loading Stage data..." style={styles.loadingBlock} />
-        ) : null}
+        <ContinueListening item={recentlyPlayedItem} onOpen={() => recentlyPlayedItem && router.push(recentlyPlayedItem.route as any)} />
+        {loading ? <PremiumSkeleton compact label="Loading Stage media..." style={styles.loadingBlock} /> : null}
 
         <View style={[styles.heroWrap, { height: heroHeight }]}>
           <FeaturedHero
             item={heroItem}
-            onPlay={handlePlay}
-            onOpenBackstage={() => {
-              selectionHaptic();
-              router.push('/backstage' as any);
-            }}
-            onToggleSave={() => heroItem && void toggleSave(heroItem)}
-            saved={heroSaved}
-            active={heroItem ? currentTrackMatches(heroItem) : false}
-            playing={isPlaying}
+            saved={heroItem ? savedIds.has(heroItem.id) : false}
+            onPlay={() => heroItem && playItem(heroItem)}
+            onOpen={() => heroItem && openItem(heroItem)}
+            onBackstage={() => heroItem?.backstageRoute && router.push(heroItem.backstageRoute as any)}
+            onSave={() => heroItem && saveItem(heroItem)}
           />
         </View>
 
-        <View style={styles.sectionBlock}>
-          <SectionHeader
-            title={sectionTitleForFilter(activeFilter)}
-            action="VIEW ALL"
-            onAction={() => {
-              selectionHaptic();
-              router.push('/search' as any);
-            }}
-          />
-          {trending.length === 0 ? (
-            <EmptyInline
-              title={activeFilter === 'Videos' ? 'No videos available yet.' : 'No Stage media found.'}
-              body="Real releases, mixes, videos and producer drops from Supabase will appear here."
-            />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingShelf}>
-              {trending.map((item) => {
-                const active = currentTrackMatches(item);
-                return (
-                  <TrendingCard
-                    key={`${item.kind}-${item.id}`}
-                    item={item}
-                    saved={savedIds.has(item.id)}
-                    active={active}
-                    playing={isPlaying}
-                    onPress={() => {
-                      selectionHaptic();
-                      router.push(item.route as any);
-                    }}
-                    onPlay={() => handlePlay(item)}
-                    onToggleSave={() => void toggleSave(item)}
-                  />
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="LIVE CREATOR SESSIONS" />
-          {liveRooms.length === 0 ? (
-            <EmptyInline title="No live sessions right now." body="Approved creator livestreams and scheduled rooms will appear here when available." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveShelf}>
-              {liveRooms.map((room) => (
-                <LiveCard key={room.id} room={room} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <Text style={styles.producerHeading}>FEATURED PRODUCER DROPS</Text>
-          <Text style={styles.producerSubheading}>Discover premium producers inside the culture ecosystem.</Text>
-          {producerDrops.length === 0 ? (
-            <EmptyInline title="No producer drops yet." body="Published beats with preview audio will appear here." />
-          ) : (
-            <View style={styles.producerList}>
-              {producerDrops.map((item) => {
-                const active = currentTrackMatches(item);
-                return (
-                  <ProducerRow
-                    key={`producer-${item.id}`}
-                    item={item}
-                    active={active}
-                    playing={isPlaying}
-                    onPlay={() => handlePlay(item)}
-                  />
-                );
-              })}
+        {activeFilter !== 'For You' ? (
+          <View style={styles.sectionBlock}>{renderFiltered()}</View>
+        ) : (
+          <>
+            <View style={styles.sectionBlock}>
+              <SwipeBeatsPromo />
             </View>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="OPEN VERSE CHALLENGES" />
-          {challenges.length === 0 ? (
-            <EmptyInline title="No open challenges yet." body="Challenge and feedback posts will appear here when the backend has them." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.challengeShelf}>
-              {challenges.map((challenge) => (
-                <ChallengeCardView key={challenge.id} item={challenge} creators={creators} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="RECOMMENDED CREATORS" />
-          {creators.length === 0 ? (
-            <EmptyInline title="No creator recommendations yet." body="Creator profiles from Supabase will appear here when available." />
-          ) : (
-            <View style={styles.creatorGrid}>
-              {creators.slice(0, 6).map((creator) => (
-                <CreatorRecommendation key={creator.id} creator={creator} />
-              ))}
+            <View style={styles.sectionBlock}>{renderMediaShelf('TRENDING NOW', mixedItems.slice(0, 12))}</View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('NEW DROPS / RELEASES', groups.release)}</View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('MIXES', groups.mix)}</View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('VIDEOS', groups.video, 'video')}</View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('SOUNDBOARDS', groups.soundboard, 'soundboard')}</View>
+            <View style={styles.sectionBlock}>
+              <SectionHeader title="BEATS / PRODUCER DROPS" />
+              <View style={styles.rowList}>{groups.beat.slice(0, 6).map((item) => <BeatRow key={item.id} item={item} saved={savedIds.has(item.id)} onOpen={() => openItem(item)} onPlay={() => playItem(item)} onSave={() => saveItem(item)} />)}</View>
             </View>
-          )}
-        </View>
+            <View style={styles.sectionBlock}>
+              <SectionHeader title="CHARTS" />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartTabs}>
+                {CHART_TABS.map((tab) => (
+                  <Pressable key={tab} style={[styles.chartTab, chartTab === tab && styles.chartTabActive]} onPress={() => setChartTab(tab)}>
+                    <Text style={[styles.chartTabText, chartTab === tab && styles.chartTabTextActive]}>{tab}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <View style={styles.chartList}>
+                {(chartTab === 'Beats' ? groups.beat : chartTab === 'Releases' ? groups.release : chartTab === 'Mixes' ? groups.mix : []).slice(0, 5).map((item, index) => (
+                  <ChartRow key={`${chartTab}-${item.id}`} rank={index + 1} title={item.title} meta={[item.creator, item.metric || item.metadata].filter(Boolean).join(' · ')} imageUrl={item.imageUrl} route={item.route} />
+                ))}
+                {chartTab === 'Creators' ? (home.data?.profiles || []).slice(0, 5).map((profile, index) => (
+                  <ChartRow key={`creator-chart-${profile.user_id || index}`} rank={index + 1} title={profileName(profile)} meta={profileMeta(profile)} imageUrl={profile.avatar_url} route={profileRoute(profile)} />
+                )) : null}
+              </View>
+            </View>
+            <View style={styles.sectionBlock}>
+              <SectionHeader title="GENRE HUBS" />
+              <GenreHubs />
+            </View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('PLAYLISTS', groups.playlist)}</View>
+            <View style={styles.sectionBlock}>{renderMediaShelf('SAMPLE PACKS', groups.sample_pack)}</View>
+            <View style={styles.sectionBlock}>
+              <SectionHeader title="RECOMMENDED CREATORS" />
+              {(home.data?.profiles || []).length ? (
+                <View style={styles.creatorList}>
+                  {(home.data?.profiles || []).slice(0, 8).map((profile) => (
+                    <CreatorRow key={profile.user_id || profile.username || profile.full_name || Math.random().toString()} creator={profile} live={Boolean(profile.user_id && liveCreatorIds.has(profile.user_id))} />
+                  ))}
+                </View>
+              ) : <EmptyInline title="No creator recommendations yet." body="Creator profiles will appear here when available." />}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: COLORS.canvas,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(31,31,46,0.84)',
-    backgroundColor: 'rgba(8,8,12,0.92)',
-    zIndex: 3,
-  },
-  headerTitle: {
-    color: COLORS.white,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: '800',
-    letterSpacing: 0,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.72)',
-  },
-  avatarButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-  },
-  avatarInitials: {
-    color: COLORS.white,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '800',
-  },
-  scrollContent: {
-    paddingTop: 14,
-  },
-  filters: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    gap: 8,
-  },
-  filterPill: {
-    height: 34,
-    paddingHorizontal: 14,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(31,31,46,0.72)',
-  },
-  filterPillActive: {
-    borderColor: 'rgba(255,90,0,0.72)',
-    backgroundColor: 'rgba(255,90,0,0.16)',
-  },
-  filterText: {
-    color: COLORS.muted,
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  filterTextActive: {
-    color: COLORS.orange,
-  },
-  loadingBlock: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '700',
-  },
-  heroWrap: {
-    marginHorizontal: 16,
-    marginTop: 6,
-    marginBottom: 28,
-  },
-  heroCard: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: COLORS.surface,
-    shadowColor: COLORS.orange,
-    shadowOpacity: 0.18,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 12 },
-  },
-  heroArtwork: {
-    width: '100%',
-    height: '100%',
-  },
-  artworkBase: {
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-  },
-  imageFill: {
-    width: '100%',
-    height: '100%',
-  },
-  fallbackInitials: {
-    color: 'rgba(255,255,255,0.86)',
-    fontSize: 36,
-    lineHeight: 42,
-    fontWeight: '900',
-  },
-  heroContent: {
-    position: 'absolute',
-    left: 18,
-    right: 14,
-    bottom: 16,
-  },
-  heroTag: {
-    alignSelf: 'flex-start',
-    height: 26,
-    borderRadius: 13,
-    paddingHorizontal: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.35)',
-    backgroundColor: 'rgba(8,8,12,0.62)',
-  },
-  heroTagText: {
-    color: COLORS.soft,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-  },
-  heroTitle: {
-    marginTop: 14,
-    color: COLORS.white,
-    fontSize: 23,
-    lineHeight: 28,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  heroCreator: {
-    marginTop: 6,
-    color: COLORS.muted,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
-  },
-  heroCreatorStrong: {
-    color: COLORS.white,
-    fontWeight: '900',
-  },
-  heroMeta: {
-    marginTop: 6,
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  heroActions: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  heroPlay: {
-    height: 44,
-    minWidth: 122,
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    backgroundColor: COLORS.white,
-  },
-  disabledButton: {
-    opacity: 0.74,
-  },
-  heroPlayText: {
-    color: COLORS.canvas,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  backstageButton: {
-    height: 44,
-    borderRadius: 22,
-    paddingHorizontal: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(18,18,26,0.62)',
-  },
-  backstageButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '800',
-  },
-  saveHero: {
-    marginLeft: 'auto',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(8,8,12,0.52)',
-  },
-  heroEmpty: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  sectionBlock: {
-    marginBottom: 30,
-  },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: COLORS.white,
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  sectionAction: {
-    color: COLORS.orange,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '900',
-  },
-  trendingShelf: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  trendingCard: {
-    width: 150,
-    height: 252,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.09)',
-    backgroundColor: COLORS.surface,
-  },
-  trendingArtwork: {
-    width: '100%',
-    height: '100%',
-  },
-  trendingKind: {
-    position: 'absolute',
-    left: 10,
-    top: 10,
-    minHeight: 24,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(8,8,12,0.68)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  trendingKindText: {
-    color: COLORS.soft,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  trendingCopy: {
-    position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: 10,
-  },
-  trendingTitle: {
-    color: COLORS.white,
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '900',
-  },
-  trendingCreator: {
-    marginTop: 4,
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  waveform: {
-    height: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  waveformCompact: {
-    height: 28,
-    marginTop: 6,
-  },
-  waveBar: {
-    width: 2,
-    borderRadius: 2,
-  },
-  trendingFooter: {
-    marginTop: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  inlinePlay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  inlinePlayText: {
-    color: COLORS.muted,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
-  },
-  saveSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(8,8,12,0.44)',
-  },
-  liveShelf: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  liveCard: {
-    width: 176,
-    height: 246,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: COLORS.surface,
-  },
-  liveCardActive: {
-    borderColor: 'rgba(255,71,87,0.44)',
-    shadowColor: COLORS.coral,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  liveArtwork: {
-    width: '100%',
-    height: '100%',
-  },
-  livePill: {
-    position: 'absolute',
-    left: 10,
-    top: 10,
-    height: 24,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(8,8,12,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  livePillOn: {
-    backgroundColor: 'rgba(255,71,87,0.95)',
-    borderColor: 'rgba(255,71,87,1)',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.dim,
-  },
-  liveDotOn: {
-    backgroundColor: COLORS.white,
-  },
-  livePillText: {
-    color: COLORS.white,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-  },
-  liveCopy: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
-  },
-  liveTitle: {
-    color: COLORS.white,
-    fontSize: 16,
-    lineHeight: 19,
-    fontWeight: '900',
-  },
-  liveSubtitle: {
-    marginTop: 7,
-    color: COLORS.soft,
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  liveMeta: {
-    marginTop: 4,
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  joinLiveButton: {
-    marginTop: 12,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-  },
-  joinLiveText: {
-    color: COLORS.canvas,
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '900',
-  },
-  producerHeading: {
-    paddingHorizontal: 16,
-    color: COLORS.white,
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  producerSubheading: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    maxWidth: 320,
-    color: COLORS.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-  },
-  producerList: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-  },
-  producerRow: {
-    minHeight: 72,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.surface2,
-  },
-  producerArt: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-  },
-  producerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  producerTitle: {
-    color: COLORS.white,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  producerMeta: {
-    marginTop: 3,
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  producerPlay: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-  },
-  challengeShelf: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  challengeCard: {
-    width: 228,
-    height: 226,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: COLORS.surface,
-  },
-  challengeArt: {
-    width: '100%',
-    height: '100%',
-  },
-  challengeCopy: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
-  },
-  challengeDays: {
-    color: COLORS.soft,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  challengeTitle: {
-    marginTop: 8,
-    color: COLORS.white,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: '900',
-  },
-  challengeMetaRow: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  participantStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  participantAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-  },
-  participantInitial: {
-    color: COLORS.white,
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '900',
-  },
-  challengeComments: {
-    color: COLORS.muted,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
-  },
-  challengeButton: {
-    marginTop: 12,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(18,18,26,0.64)',
-  },
-  challengeButtonText: {
-    color: COLORS.white,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '900',
-  },
-  creatorGrid: {
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  creatorCard: {
-    height: 76,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-  },
-  creatorAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: COLORS.surface2,
-  },
-  creatorInitials: {
-    color: COLORS.white,
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '900',
-  },
-  creatorCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  creatorName: {
-    color: COLORS.white,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  creatorHandle: {
-    marginTop: 3,
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  emptyInline: {
-    marginHorizontal: 16,
-    minHeight: 104,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyTitle: {
-    color: COLORS.white,
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  emptyBody: {
-    marginTop: 6,
-    color: COLORS.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  screen: { flex: 1, backgroundColor: COLORS.canvas },
+  header: { paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, zIndex: 3 },
+  headerTitle: { ...pluggdTextStyles.appTitle, fontSize: 32, lineHeight: 36 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1 },
+  avatarInitials: { fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  scrollContent: { paddingTop: 12 },
+  filters: { minHeight: 44, paddingHorizontal: 16, paddingBottom: 10, gap: 8, alignItems: 'center' },
+  filterPill: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 2 },
+  filterPillActive: {},
+  filterText: { height: 32, paddingHorizontal: 14, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(31,31,46,0.72)', borderWidth: 1, borderColor: COLORS.surface2, color: COLORS.muted, fontFamily: 'Satoshi-Medium', fontSize: 13, lineHeight: 31 },
+  filterTextActive: { color: COLORS.orange, borderColor: 'rgba(255,90,0,0.72)', backgroundColor: 'rgba(255,90,0,0.16)' },
+  continueCard: { height: 84, marginHorizontal: 16, marginTop: 4, marginBottom: 14, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  continueArt: { width: 58, height: 58, borderRadius: 13, overflow: 'hidden', backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
+  continueCopy: { flex: 1, minWidth: 0 },
+  continueKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 0.7 },
+  continueTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, marginTop: 2 },
+  continueMeta: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  continueProgress: { height: 3, borderRadius: 2, backgroundColor: COLORS.surface2, marginTop: 7, overflow: 'hidden' },
+  continueProgressFill: { width: '42%', height: '100%', backgroundColor: COLORS.orange },
+  continueButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center' },
+  loadingBlock: { marginHorizontal: 16, marginBottom: 12, height: 46, borderRadius: 12, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  heroWrap: { marginHorizontal: 16, marginTop: 4, marginBottom: 22 },
+  heroCard: { flex: 1, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: COLORS.surface, shadowColor: COLORS.orange, shadowOpacity: 0.16, shadowRadius: 22, shadowOffset: { width: 0, height: 12 } },
+  heroArtwork: { width: '100%', height: '100%' },
+  heroContent: { position: 'absolute', left: 18, right: 14, bottom: 16 },
+  heroTag: { alignSelf: 'flex-start', minHeight: 24, borderRadius: 12, paddingHorizontal: 9, justifyContent: 'center', backgroundColor: 'rgba(8,8,12,0.66)', borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)' },
+  heroTagText: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase' },
+  heroTitle: { ...pluggdTextStyles.heroTitle, marginTop: 12, color: COLORS.white, fontSize: 29, lineHeight: 32 },
+  heroCreator: { marginTop: 5, color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  heroMeta: { marginTop: 5, color: COLORS.muted, fontSize: 12 },
+  heroActions: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroPlay: { height: 44, minWidth: 118, borderRadius: 22, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: COLORS.white },
+  heroPlayText: { fontFamily: 'Satoshi-Bold', color: COLORS.canvas, fontSize: 15 },
+  backstageButton: { height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(18,18,26,0.62)' },
+  backstageButtonText: { fontFamily: 'Satoshi-Bold', color: COLORS.white, fontSize: 13 },
+  saveHero: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(8,8,12,0.52)' },
+  heroEmpty: { flex: 1, borderRadius: 24, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  artworkBase: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  imageFill: { width: '100%', height: '100%' },
+  fallbackInitials: { color: 'rgba(255,255,255,0.86)', fontFamily: 'Satoshi-Black', fontSize: 34 },
+  sectionBlock: { marginBottom: 26 },
+  sectionHeader: { paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { ...pluggdTextStyles.sectionTitle, color: COLORS.white, fontSize: 18, lineHeight: 22 },
+  sectionActionTap: { minHeight: 44, justifyContent: 'center' },
+  sectionAction: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  mediaShelf: { paddingHorizontal: 16, gap: 12 },
+  mediaCard: { width: 158, height: 232, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 8 },
+  mediaArtwork: { width: 140, height: 140, borderRadius: 13, marginBottom: 8 },
+  mediaTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17 },
+  mediaMeta: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
+  mediaFooter: { position: 'absolute', left: 8, right: 8, bottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inlineAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  inlineActionText: { color: COLORS.muted, fontSize: 11, fontFamily: 'Satoshi-Bold' },
+  saveSmall: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  videoCard: { width: 240, height: 166, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+  videoArtwork: { width: '100%', height: 112 },
+  videoPlay: { position: 'absolute', top: 39, left: 99, width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center' },
+  videoTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14, marginHorizontal: 10, marginTop: 8 },
+  videoMeta: { color: COLORS.muted, fontSize: 11, marginHorizontal: 10, marginTop: 2 },
+  soundboardCard: { width: 206, height: 144, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  soundboardIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
+  soundboardCopy: { flex: 1, minWidth: 0 },
+  soundboardTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  soundboardMeta: { color: COLORS.muted, fontSize: 12, lineHeight: 16, marginTop: 4 },
+  swipeCard: { height: 136, marginHorizontal: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,90,0,0.28)', backgroundColor: COLORS.surface },
+  swipeCopy: { position: 'absolute', left: 16, top: 14, bottom: 14, width: '62%', justifyContent: 'center' },
+  swipeTitle: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 21 },
+  swipeBody: { color: COLORS.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  swipeCTA: { alignSelf: 'flex-start', minHeight: 34, borderRadius: 17, paddingHorizontal: 13, justifyContent: 'center', backgroundColor: COLORS.orange, marginTop: 12 },
+  swipeCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 12, textTransform: 'uppercase' },
+  swipeStack: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 150, justifyContent: 'center' },
+  swipePreview: { position: 'absolute', width: 74, height: 92, borderRadius: 16, backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  rowList: { paddingHorizontal: 16, gap: 8 },
+  beatRow: { minHeight: 82, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  beatArt: { width: 58, height: 58, borderRadius: 13 },
+  beatCopy: { flex: 1, minWidth: 0 },
+  beatTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  beatMeta: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
+  waveform: { height: 34, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  waveformCompact: { width: 72 },
+  waveBar: { width: 2, borderRadius: 2 },
+  beatPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center' },
+  beatSave: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  chartTabs: { paddingHorizontal: 16, gap: 8, marginBottom: 8 },
+  chartTab: { minHeight: 34, borderRadius: 17, paddingHorizontal: 14, justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+  chartTabActive: { backgroundColor: 'rgba(255,90,0,0.16)', borderColor: 'rgba(255,90,0,0.62)' },
+  chartTabText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  chartTabTextActive: { color: COLORS.orange },
+  chartList: { paddingHorizontal: 16, gap: 7 },
+  chartRow: { minHeight: 64, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 9, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  chartRank: { width: 24, textAlign: 'center', color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 15 },
+  chartArt: { width: 46, height: 46, borderRadius: 12, backgroundColor: COLORS.surface2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  chartInitial: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 14 },
+  chartCopy: { flex: 1, minWidth: 0 },
+  chartTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  chartMeta: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  genreRail: { paddingHorizontal: 16, gap: 8 },
+  genreChip: { minHeight: 38, borderRadius: 19, paddingHorizontal: 15, justifyContent: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+  genreText: { color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  creatorList: { paddingHorizontal: 16, gap: 8 },
+  creatorRow: { minHeight: 72, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  creatorAvatar: { width: 50, height: 50, borderRadius: 25, overflow: 'hidden', backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
+  creatorInitial: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 14 },
+  creatorCopy: { flex: 1, minWidth: 0 },
+  creatorName: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15 },
+  creatorMeta: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  creatorLive: { minHeight: 22, borderRadius: 11, paddingHorizontal: 8, justifyContent: 'center', backgroundColor: COLORS.coral },
+  creatorLiveText: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 10 },
+  followButton: { minWidth: 74, minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
+  followText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  emptyInline: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16 },
+  emptyTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16 },
+  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
 });

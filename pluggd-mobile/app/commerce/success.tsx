@@ -16,9 +16,9 @@ export default function LegacyOrderRoute() {
           <MaterialIcons name="receipt-long" size={32} color={theme.colors.accent} />
         </View>
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>Order route unavailable</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Order status</Text>
         <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-          This legacy route is disabled while mobile digital purchases are handled through PLUGGD credits and backend entitlements.
+          Open Wallet to review credits, purchases, and recent activity.
         </Text>
 
         <Pressable

@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { MarketParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function MarketRedirect() {
-  return <Redirect href="/stage" />;
+export default function MarketIndexRoute() {
+  return <MarketParityScreen />;
 }

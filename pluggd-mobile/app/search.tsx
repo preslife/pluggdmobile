@@ -1,3 +1,3 @@
-import { SearchScreen } from '../src/features/culture/CultureScreens';
+import { SearchDiscoveryScreen } from '../src/features/search/search-discovery-screen';
 
-export default SearchScreen;
+export default SearchDiscoveryScreen;

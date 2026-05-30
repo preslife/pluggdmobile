@@ -13,14 +13,19 @@ import {
 import {
   loadBackstageOverview,
   loadLiveRooms,
+  loadMobilePlaylists,
+  loadMobileStories,
   safeList,
 } from './mobileServices';
+import { searchSocialContent } from './mobileSocial';
 export type {
   BackstageCommunity,
+  BackstageBoard,
   BackstageRoom,
   BackstageThread,
   CultureSearchResults,
   LiveRoomItem,
+  MobileSocialPost,
   StageMediaItem,
   VideoItem,
 } from './mobileTypes';
@@ -118,7 +123,23 @@ export function useUniversalSearch(term: string) {
     enabled: normalized.length >= 2,
     queryFn: async (): Promise<CultureSearchResults> => {
       const pattern = `%${normalized.replace(/[%_]/g, '')}%`;
-      const [creators, tracks, mixes, beats, videos, events, communityRows, hubRows, users, liveStreams] = await Promise.all([
+      const [
+        creators,
+        tracks,
+        mixes,
+        beats,
+        videos,
+        events,
+        communityRows,
+        hubRows,
+        users,
+        liveStreams,
+        social,
+        playlists,
+        stories,
+        storefront,
+        memberships,
+      ] = await Promise.all([
         safeList<any>(
           (supabase as any)
             .from('profiles')
@@ -178,7 +199,7 @@ export function useUniversalSearch(term: string) {
           rows.map((hub) => ({
             id: hub.id,
             slug: hub.slug,
-            title: hub.name || 'Backstage',
+            title: hub.name || 'Community',
             description: hub.tagline || hub.description,
             cover_image_url: hub.banner_url || hub.cover_image_url,
             avatar_url: hub.avatar_url,
@@ -204,7 +225,7 @@ export function useUniversalSearch(term: string) {
           rows.map((hub) => ({
             id: hub.id,
             slug: hub.slug,
-            title: hub.title || 'Backstage',
+            title: hub.title || 'Community',
             description: hub.subtitle || hub.description,
             cover_image_url: hub.hero_image_url,
             avatar_url: null,
@@ -244,10 +265,71 @@ export function useUniversalSearch(term: string) {
             creator_id: room.host_id,
           }) as LiveRoomItem),
         ),
+        searchSocialContent(normalized),
+        loadMobilePlaylists(normalized, 12),
+        loadMobileStories({ limit: 20 }).then((rows) =>
+          rows.filter((story) => `${story.caption || ''} ${story.author?.full_name || ''} ${story.author?.username || ''}`.toLowerCase().includes(normalized.toLowerCase())).slice(0, 12),
+        ),
+        safeList<any>(
+          (supabase as any)
+            .from('store_products')
+            .select('*')
+            .or(`title.ilike.${pattern},name.ilike.${pattern},description.ilike.${pattern}`)
+            .limit(12),
+        ).then((rows) =>
+          rows.map((row) => ({
+            id: row.id,
+            creator_id: row.creator_id || row.user_id || null,
+            title: row.title || row.name || 'Store item',
+            description: row.description || null,
+            image_url: row.image_url || row.cover_image_url || null,
+            price_cents: row.price_cents ?? null,
+            currency: row.currency || 'GBP',
+            kind: row.kind || row.product_type || 'merch',
+            route: row.route || null,
+            purchaseSupported: !/digital|credit|unlock/i.test(String(row.kind || row.product_type || '')),
+          })),
+        ),
+        safeList<any>(
+          (supabase as any)
+            .from('membership_tiers')
+            .select('*')
+            .or(`title.ilike.${pattern},name.ilike.${pattern},description.ilike.${pattern}`)
+            .limit(12),
+        ).then((rows) =>
+          rows.map((row) => ({
+            id: row.id,
+            creator_id: row.creator_id || null,
+            title: row.title || row.name || 'Membership',
+            description: row.description || null,
+            price_cents: row.price_cents ?? null,
+            currency: row.currency || 'GBP',
+            member_count: row.member_count ?? null,
+            is_member: Boolean(row.is_member),
+            route: row.creator_id ? `/membership/${row.creator_id}` : null,
+          })),
+        ),
       ]);
 
       const communities = [...communityRows, ...hubRows].slice(0, 16);
-      return { creators, tracks, mixes, beats, videos, events, communities, users, liveStreams };
+      return {
+        creators,
+        tracks,
+        mixes,
+        beats,
+        videos,
+        events,
+        communities,
+        users,
+        liveStreams,
+        posts: social.posts,
+        boards: social.boards,
+        hashtags: social.hashtags,
+        playlists,
+        stories,
+        storefront,
+        memberships,
+      };
     },
     staleTime: 1000 * 60,
   });

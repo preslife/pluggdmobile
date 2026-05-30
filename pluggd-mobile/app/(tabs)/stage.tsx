@@ -1,3 +1,5 @@
-import { StageDiscoveryScreen } from '../../src/features/stage/stage-discovery-screen';
+import { Redirect } from 'expo-router';
 
-export default StageDiscoveryScreen;
+export default function StageCompatibilityRedirect() {
+  return <Redirect href="/explore" />;
+}

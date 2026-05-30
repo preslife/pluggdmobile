@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, createElement, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { useColorScheme } from 'react-native';
 import { pluggdDark, pluggdLight, type PluggdTheme } from './tokens';
 
 export type PluggdThemeMode = 'system' | 'light' | 'dark';
@@ -13,13 +14,17 @@ type ThemeModeContextValue = {
 
 const ThemeModeContext = createContext<ThemeModeContextValue | null>(null);
 
+function isThemeMode(value: string | null): value is PluggdThemeMode {
+  return value === 'system' || value === 'light' || value === 'dark';
+}
+
 export function PluggdThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<PluggdThemeMode>('dark');
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_MODE_KEY)
       .then((stored) => {
-        if (stored === 'dark') {
+        if (isThemeMode(stored)) {
           setModeState(stored);
         }
       })
@@ -53,5 +58,7 @@ export function usePluggdThemeMode() {
 
 export function usePluggdTheme(): PluggdTheme {
   const { mode } = usePluggdThemeMode();
-  return mode === 'light' ? pluggdLight : pluggdDark;
+  const systemScheme = useColorScheme();
+  const resolvedMode = mode === 'system' ? systemScheme : mode;
+  return resolvedMode === 'light' ? pluggdLight : pluggdDark;
 }

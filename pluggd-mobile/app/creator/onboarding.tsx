@@ -57,7 +57,7 @@ type ChecklistItem = {
   params?: Record<string, string>;
 };
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 const REQUIRED_TASKS: TaskId[] = ['profile_basics', 'first_role_action'];
 
 const ROLE_LABELS: Record<EcosystemRole, string> = {

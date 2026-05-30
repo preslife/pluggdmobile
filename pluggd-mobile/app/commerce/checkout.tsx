@@ -29,7 +29,7 @@ export default function CheckoutUnavailable() {
 
         <Text style={[styles.title, { color: theme.colors.text }]}>Use credits in app</Text>
         <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-          Digital goods in the iOS app use PLUGGD credits purchased with Apple IAP. Add credits in Wallet, then unlock eligible items from their detail page.
+          Add credits in Wallet, then unlock eligible releases and creator content from their detail pages.
         </Text>
 
         <Pressable

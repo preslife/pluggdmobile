@@ -626,3 +626,20 @@ Still external/product-gated:
 - Apple Wallet passes need PassKit certificate, pass type identifier, signing service, and payload design.
 - Signed-in fan/creator/promoter QA needs real role-bearing accounts and permissions.
 - Licensed font binaries for Neue Montreal, Neue Haas Grotesk, and ABC Diatype Monument must be supplied before those families can render on real devices.
+
+## 2026-05-16 Web-Parity Social Gap Closure Update
+
+Closed in the current mobile workspace:
+- Added a mobile web-parity social service layer for `social_posts`, `social_post_destinations`, `social_comments`, `social_likes`, `social_bookmarks`, `social_reposts`, `social_poll_votes`, `vote_social_poll`, `fn_for_you_feed`, `community_boards`, and `community_board_members`.
+- Rewired post/thread detail away from stale generic `comments`/`likes` and onto the canonical PLUGGD social tables, including replies, likes, bookmarks, reposts, quote metadata, poll voting, and thread chains.
+- Upgraded the mobile composer to write destination-aware social posts for global feed/profile defaults plus Backstage communities, boards, events, releases, beats, mixes, challenges, and quote posts.
+- Added a mobile poll composer using the same web-backed poll JSON shape and `vote_social_poll` voting path.
+- Added a real Home social feed surface with `FOR YOU`, `FOLLOWING`, and `BACKSTAGE` modes, powered by the web-backed social service and wired like/comment/repost/save/share actions.
+- Added Backstage board/thread routing so community boards can start real destination-scoped threads and thread cards open the real post/thread route.
+- Expanded Search with posts, boards, and hashtags alongside the existing music, event, creator, user, community, live, beat, video, and mix results.
+- Added `scripts/verify-mobile-social-web-parity-contract.mjs` to prevent regressions to stale generic social tables or non-destination posts.
+
+Still product/QA-gated:
+- Media upload, polls-in-composer, and advanced scheduling should only be exposed after the mobile storage/editor UX is verified against live accounts.
+- Full signed-in create/reply/repost/quote/bookmark/poll manual QA still needs real fan/creator/promoter accounts with the expected permissions.
+- The visual system now has a stronger social layer, but a deeper screenshot-driven polish pass is still needed for final world-class feel across every route.

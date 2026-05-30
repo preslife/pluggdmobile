@@ -478,8 +478,8 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<any>(
       (supabase as any)
         .from('social_posts')
-        .select('id,content,title,user_id,images,video,audio,post_type,likes_count,reposts_count,comments_count,is_deleted,created_at')
-        .eq('is_deleted', false)
+        .select('*')
+        .is('parent_id', null)
         .order('created_at', { ascending: false })
         .limit(limit),
     ).then((rows) =>
@@ -506,7 +506,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
           likes_count: post.likes_count,
           reposts_count: post.reposts_count,
           comments_count: post.comments_count,
-          is_deleted: post.is_deleted,
+          is_deleted: Boolean(post.is_deleted),
           created_at: post.created_at,
         } satisfies SocialPostItem;
       }),

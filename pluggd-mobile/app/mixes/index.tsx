@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { MixesParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function MixesRedirect() {
-  return <Redirect href="/stage" />;
+export default function MixesIndexRoute() {
+  return <MixesParityScreen />;
 }

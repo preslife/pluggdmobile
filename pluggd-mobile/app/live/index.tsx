@@ -1,5 +1,3 @@
-import { Redirect } from "expo-router";
+import { LiveCultureScreen } from "../../src/features/live/live-culture-screen";
 
-export default function LiveRedirect() {
-  return <Redirect href="/(tabs)/live" />;
-}
+export default LiveCultureScreen;

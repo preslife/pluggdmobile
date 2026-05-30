@@ -4,18 +4,19 @@ import {
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { PremiumEmptyState, PremiumHeroCard, PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { supabase } from '../../src/lib/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
+import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { useWallet } from '../../src/hooks/useWallet';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
 
@@ -75,6 +76,7 @@ export default function ReleaseDetailScreen() {
   const [isOwned, setIsOwned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (id) fetchRelease();
@@ -224,22 +226,39 @@ export default function ReleaseDetailScreen() {
     );
   }
 
+  async function handleSave() {
+    if (!release || saving) return;
+    setSaving(true);
+    const result = await toggleSavedContent('release', release.id);
+    setSaving(false);
+    Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable', result.success ? `"${release.title}" library state updated.` : result.error || 'Please try again.');
+  }
+
+  async function handleShare() {
+    if (!release) return;
+    await Share.share({ message: `PLUGGD release: ${release.title} by ${release.artist || 'Creator'}` });
+  }
+
   if (loading) {
     return (
-      <View className="flex-1 bg-[#080808] items-center justify-center">
-        <ActivityIndicator size="large" color="#FF5200" />
-      </View>
+      <PremiumScreenBackdrop tone="accent" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#FF5A00" />
+      </PremiumScreenBackdrop>
     );
   }
 
   if (!release) {
     return (
-      <View className="flex-1 bg-[#080808] items-center justify-center">
-        <Text className="text-white text-lg">Release not found</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-4">
-          <Text className="text-[#FF5200]">Go back</Text>
+      <PremiumScreenBackdrop tone="accent" style={{ justifyContent: 'center', paddingHorizontal: 16 }}>
+        <PremiumEmptyState
+          icon="album"
+          title="Release not found"
+          body="This release is unavailable or the link no longer points to a published item."
+        />
+        <TouchableOpacity onPress={() => router.back()} className="mt-4 items-center">
+          <Text className="text-[#FF5A00] font-bold">Go back</Text>
         </TouchableOpacity>
-      </View>
+      </PremiumScreenBackdrop>
     );
   }
 
@@ -248,44 +267,32 @@ export default function ReleaseDetailScreen() {
   const trackList = buildTrackList();
 
   return (
-    <View className="flex-1 bg-[#080808]">
+    <PremiumScreenBackdrop tone="accent">
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 118, paddingBottom: 196 }}>
-        {/* Hero */}
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 118, paddingBottom: 196 }}>
         <View className="relative">
-          <View className="w-full aspect-square">
-            {release.cover_art_url ? (
-              <Image
-                source={{ uri: release.cover_art_url }}
-                className="w-full h-full"
-              />
-            ) : (
-              <View className="w-full h-full bg-gray-800 items-center justify-center">
-                <Text className="text-white text-6xl">♪</Text>
-              </View>
-            )}
-          </View>
-          <LinearGradient
-            colors={['transparent', 'rgba(8,8,8,0.82)', '#080808']}
-            className="absolute bottom-0 left-0 right-0 h-40"
-          />
-
-          {/* Back button */}
           <TouchableOpacity
             onPress={() => router.back()}
-            className="absolute top-14 left-4 h-10 w-10 rounded-full bg-black/50 items-center justify-center"
+            className="h-11 w-11 rounded-full bg-black/50 items-center justify-center mb-3"
           >
             <MaterialIcons name="chevron-left" size={26} color="#FFFFFF" />
           </TouchableOpacity>
+          <PremiumHeroCard
+            eyebrow={release.release_type ? release.release_type : 'Release'}
+            title={release.title}
+            subtitle={release.artist || 'PLUGGD creator'}
+            meta={release.genre || (trackList.length ? `${trackList.length} tracks` : 'Ready to play')}
+            imageUrl={release.cover_art_url}
+            badge={isOwned ? 'Owned' : creditsNeeded > 0 ? `${creditsNeeded} credits` : 'Free stream'}
+            ctaLabel={isCurrentlyPlaying && isPlaying ? 'Pause' : 'Play'}
+            onPress={isCurrentlyPlaying ? togglePlayPause : handlePlayAll}
+          />
         </View>
 
         {/* Info */}
-        <View className="px-4 -mt-10">
-          <Text className="text-white text-3xl font-bold">{release.title}</Text>
-          <Text className="text-white/60 text-lg mt-1">{release.artist}</Text>
-
+        <View className="mt-5">
           <View className="flex-row items-center gap-3 mt-2">
             {release.release_type && (
               <View className="bg-white/10 rounded-full px-3 py-1">
@@ -309,10 +316,10 @@ export default function ReleaseDetailScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View className="flex-row gap-3 px-4 mt-5">
+        <View className="flex-row gap-3 mt-5">
           <TouchableOpacity
             onPress={isCurrentlyPlaying ? togglePlayPause : handlePlayAll}
-            className="flex-1 bg-[#FF5200] rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
+            className="flex-1 bg-[#FF5A00] rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
           >
             <MaterialIcons name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play-arrow'} size={22} color="#FFFFFF" />
             <Text className="text-white font-bold">
@@ -324,14 +331,14 @@ export default function ReleaseDetailScreen() {
             <TouchableOpacity
               onPress={handleUnlock}
               disabled={unlocking}
-              className="flex-1 bg-white/10 border border-[#FF5200]/50 rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
+              className="flex-1 bg-white/10 border border-[#FF5A00]/50 rounded-2xl py-3.5 items-center flex-row justify-center gap-2"
             >
               {unlocking ? (
-                <ActivityIndicator size="small" color="#FF5200" />
+                <ActivityIndicator size="small" color="#FF5A00" />
               ) : (
                 <>
-                  <MaterialIcons name="lock-open" size={20} color="#FF5200" />
-                  <Text className="text-[#FF5200] font-bold">
+                  <MaterialIcons name="lock-open" size={20} color="#FF5A00" />
+                  <Text className="text-[#FF5A00] font-bold">
                     {creditsNeeded} Credits
                   </Text>
                 </>
@@ -347,9 +354,43 @@ export default function ReleaseDetailScreen() {
           )}
         </View>
 
+        <View className="flex-row flex-wrap gap-2 mt-3">
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            className="flex-1 min-w-[46%] bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-full py-3 items-center flex-row justify-center gap-2"
+          >
+            <MaterialIcons name="bookmark-border" size={19} color="#FF5A00" />
+            <Text className="text-[#FF5A00] text-xs font-black">{saving ? 'Saving' : 'Save'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/create-post', params: { releaseId: release.id } } as any)}
+            className="flex-1 min-w-[46%] bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-full py-3 items-center flex-row justify-center gap-2"
+          >
+            <MaterialIcons name="post-add" size={19} color="#FF5A00" />
+            <Text className="text-[#FF5A00] text-xs font-black">Post</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleShare}
+            className="flex-1 min-w-[46%] bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-full py-3 items-center flex-row justify-center gap-2"
+          >
+            <MaterialIcons name="ios-share" size={19} color="#FF5A00" />
+            <Text className="text-[#FF5A00] text-xs font-black">Share</Text>
+          </TouchableOpacity>
+          {release.user_id ? (
+            <TouchableOpacity
+              onPress={() => router.push(`/user/${release.user_id}` as any)}
+              className="flex-1 min-w-[46%] bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-full py-3 items-center flex-row justify-center gap-2"
+            >
+              <MaterialIcons name="person" size={19} color="#FF5A00" />
+              <Text className="text-[#FF5A00] text-xs font-black">Creator</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         {/* Track Listing */}
         {tracks.length > 0 && (
-          <View className="px-4 mt-6">
+          <View className="mt-6">
             <Text className="text-white text-lg font-bold mb-3">Tracks</Text>
             {tracks.map((track, index) => {
               const isThisPlaying = currentTrack?.id === track.id;
@@ -360,13 +401,13 @@ export default function ReleaseDetailScreen() {
                   className={`flex-row items-center py-3 border-b border-white/5 ${isThisPlaying ? 'bg-white/5 -mx-2 px-2 rounded-lg' : ''}`}
                 >
                   <Text
-                    className={`w-8 text-sm ${isThisPlaying ? 'text-[#FF5200] font-bold' : 'text-white/40'}`}
+                    className={`w-8 text-sm ${isThisPlaying ? 'text-[#FF5A00] font-bold' : 'text-white/40'}`}
                   >
                     {isThisPlaying && isPlaying ? '♪' : track.track_number}
                   </Text>
                   <View className="flex-1">
                     <Text
-                      className={`text-sm font-medium ${isThisPlaying ? 'text-[#FF5200]' : 'text-white'}`}
+                      className={`text-sm font-medium ${isThisPlaying ? 'text-[#FF5A00]' : 'text-white'}`}
                       numberOfLines={1}
                     >
                       {track.title}
@@ -385,7 +426,7 @@ export default function ReleaseDetailScreen() {
         {!isOwned && creditsNeeded > 0 && (
           <TouchableOpacity
             onPress={() => router.push('/wallet')}
-            className="mx-4 mt-6 bg-white/5 rounded-xl p-4 flex-row justify-between items-center"
+            className="mt-6 bg-white/5 rounded-xl p-4 flex-row justify-between items-center"
           >
             <View>
               <Text className="text-white/60 text-xs">Your Balance</Text>
@@ -393,13 +434,13 @@ export default function ReleaseDetailScreen() {
                 {balance.available_credits.toLocaleString()} credits
               </Text>
             </View>
-            <Text className="text-[#FF5200] text-sm font-semibold">
+            <Text className="text-[#FF5A00] text-sm font-semibold">
               Buy More →
             </Text>
           </TouchableOpacity>
         )}
       </ScrollView>
 
-    </View>
+    </PremiumScreenBackdrop>
   );
 }

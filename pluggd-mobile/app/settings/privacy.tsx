@@ -43,7 +43,7 @@ export default function PrivacySettingsScreen() {
                 <Switch
                   value={privateProfile}
                   onValueChange={setPrivateProfile}
-                  trackColor={{ false: '#374151', true: '#FF5200' }}
+                  trackColor={{ false: '#374151', true: '#FF5A00' }}
                   thumbColor="#fff"
                 />
               </View>
@@ -59,7 +59,7 @@ export default function PrivacySettingsScreen() {
                 <Switch
                   value={showOnlineStatus}
                   onValueChange={setShowOnlineStatus}
-                  trackColor={{ false: '#374151', true: '#FF5200' }}
+                  trackColor={{ false: '#374151', true: '#FF5A00' }}
                   thumbColor="#fff"
                 />
               </View>
@@ -71,7 +71,7 @@ export default function PrivacySettingsScreen() {
               Safety
             </Text>
             <View className="overflow-hidden rounded-xl border border-white/5 bg-surface-dark/50 dark:bg-[#221910]">
-              <SettingsRow icon="block" label="Blocked Users" onPress={() => Alert.alert('Blocked users', 'Blocked-user management will appear here once the moderation backend is enabled for mobile.')} />
+              <SettingsRow icon="block" label="Blocked Users" onPress={() => Alert.alert('Blocked users', 'Blocked-user controls will appear here.')} />
               <View className="h-px bg-white/5" />
               <SettingsRow icon="filter_list" label="Content Filters" onPress={() => Alert.alert('Content filters', 'Content filter controls will appear here once mobile moderation preferences are enabled.')} />
             </View>

@@ -6,7 +6,7 @@ export default function PurchasesScreen() {
       title="Purchases"
       subtitle="Your unlocked PLUGGD releases, assets and event purchases."
       icon="shopping-bag"
-      body="Purchased releases, tickets, unlocks and platform-native purchases will appear here when backed by your account data."
+      body="Purchased releases, tickets, unlocks and account purchases will appear here."
     />
   );
 }

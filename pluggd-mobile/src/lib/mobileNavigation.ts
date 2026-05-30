@@ -17,6 +17,17 @@ export type NavProfile = {
   display_name?: string | null;
   username?: string | null;
   avatar_url?: string | null;
+  cover_image_url?: string | null;
+  bio?: string | null;
+  custom_url?: string | null;
+  website_url?: string | null;
+  instagram_url?: string | null;
+  twitter_url?: string | null;
+  youtube_url?: string | null;
+  tiktok_url?: string | null;
+  soundcloud_url?: string | null;
+  spotify_url?: string | null;
+  embed_settings?: unknown;
   user_type?: string | null;
   profile_type?: string | null;
   is_creator?: boolean | null;
@@ -119,15 +130,15 @@ export function getCreateActions(roles: EcosystemRole[] = []): CreateAction[] {
   const canMix = roleSet.has('dj') || roleSet.has('curator') || roleSet.has('artist');
   const canEvent = roleSet.has('promoter') || roleSet.has('venue') || roleSet.has('dj') || roleSet.has('manager');
 
-  if (canRelease) add(actions, { key: 'release', label: 'Release Tools', route: '/creator-mode' });
-  if (canBeat) add(actions, { key: 'beat', label: 'Beat Tools', route: '/creator-mode' });
-  if (canMix) add(actions, { key: 'mix', label: 'Mix Tools', route: '/creator-mode' });
+  if (canRelease) add(actions, { key: 'release', label: 'Upload Release', route: '/studio/action?type=release' });
+  if (canBeat) add(actions, { key: 'beat', label: 'Upload Beat', route: '/studio/action?type=beat' });
+  if (canMix) add(actions, { key: 'mix', label: 'Upload Mix', route: '/studio/action?type=mix' });
   if (canRelease || canMix || roleSet.has('curator')) {
     add(actions, { key: 'soundboard', label: 'Create Soundboard', route: '/soundboards' });
   }
   if (canEvent) add(actions, { key: 'event', label: 'Create Event', route: '/creator/events' });
   add(actions, { key: 'live', label: 'Start Live', route: '/live/create' });
-  add(actions, { key: 'studio', label: 'Creator Mode', route: '/creator-mode' });
+  add(actions, { key: 'studio', label: 'Go to Studio', route: '/studio' });
 
   return actions;
 }

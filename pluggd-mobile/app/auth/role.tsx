@@ -38,7 +38,7 @@ type RoleOption = {
   modules: string[];
 };
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 const REQUIRED_TASK_IDS = ['profile_basics', 'first_role_action'];
 const ROLE_FALLBACK_CODES = new Set(['42P01', '42703', '42704', 'PGRST204']);
 

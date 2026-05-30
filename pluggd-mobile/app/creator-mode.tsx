@@ -1,3 +1,5 @@
-import { CreatorModeScreen } from '../src/features/culture/CultureScreens';
+import { Redirect } from 'expo-router';
 
-export default CreatorModeScreen;
+export default function CreatorModeRoute() {
+  return <Redirect href="/studio" />;
+}

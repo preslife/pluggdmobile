@@ -23,7 +23,7 @@ export default function FavoritesScreen() {
       {!library.isLoading && items.length === 0 ? (
         <EmptyState
           title="No saved items yet"
-          body="The current backend supports saved beats and releases through favorites. More saved content types will appear when a generic saved-content model is available."
+          body="Save beats, releases, playlists, events, and community posts to build your PLUGGD library."
         />
       ) : null}
       {items.length > 0 ? <SectionTitle title="Saved for later" /> : null}

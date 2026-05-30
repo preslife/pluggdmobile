@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { ReleasesParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function ReleasesRedirect() {
-  return <Redirect href="/music" />;
+export default function ReleasesIndexRoute() {
+  return <ReleasesParityScreen />;
 }

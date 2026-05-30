@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { EventsParityScreen } from '../../src/features/parity/AppWideParityScreens';
 
-export default function EventsRedirect() {
-  return <Redirect href="/search" />;
+export default function EventsIndexRoute() {
+  return <EventsParityScreen />;
 }

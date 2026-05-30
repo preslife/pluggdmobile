@@ -1,5 +1,3 @@
-import { Redirect } from 'expo-router';
+import { MyProfileScreen } from '../../src/features/profile/my-profile-screen';
 
-export default function LegacyProfileTabRedirect() {
-  return <Redirect href="/profile" />;
-}
+export default MyProfileScreen;

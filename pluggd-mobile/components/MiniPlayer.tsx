@@ -2,14 +2,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { usePlayback } from '../src/context/PlaybackProvider';
 import { PluggdGlassSurface } from './PluggdPrimitives';
 
-const ORANGE = '#FF5A00';
-const NOIR = '#08080C';
-
 export default function MiniPlayer() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const { currentTrack, isPlaying, isBuffering, progress, togglePlayPause } = usePlayback();
 
   if (!currentTrack) return null;
@@ -30,6 +29,12 @@ export default function MiniPlayer() {
     progress.duration > 0
       ? Math.min((progress.position / progress.duration) * 100, 100)
       : 0;
+  const hasBackstageLink = Boolean(currentTrack.backstageRoute || currentTrack.backstageId);
+  const backstageRoute = currentTrack.backstageRoute || (currentTrack.backstageId ? `/backstage/${currentTrack.backstageId}` : undefined);
+  const backstageLabel =
+    typeof currentTrack.backstageActiveCount === 'number' && currentTrack.backstageActiveCount > 0
+      ? `${currentTrack.backstageActiveCount} community`
+      : 'Community';
 
   return (
     <View style={styles.wrap}>
@@ -38,9 +43,10 @@ export default function MiniPlayer() {
           interactive
           glassEffectStyle="regular"
           blurIntensity={58}
-          borderColor="#1F1F2E"
-          fallbackColor="rgba(20,20,28,0.85)"
-          tintColor="rgba(20,20,28,0.85)"
+          borderColor={theme.colors.divider}
+          fallbackColor={theme.colors.miniPlayerGlass}
+          tintColor={theme.colors.miniPlayerGlass}
+          colorScheme={theme.scheme}
           style={styles.card}
         >
           <View style={styles.content}>
@@ -49,55 +55,68 @@ export default function MiniPlayer() {
                 <Image source={{ uri: currentTrack.artwork }} style={styles.artworkImage} />
               ) : (
                 <View style={styles.artworkFallback}>
-                  <MaterialIcons name="music-note" size={18} color="#FFFFFF" />
+                  <MaterialIcons name="music-note" size={18} color={theme.colors.text} />
                 </View>
               )}
               {currentTrack.isLocked ? (
-                <View style={styles.lockBadge}>
-                  <MaterialIcons name="lock" size={10} color={NOIR} />
+                <View style={[styles.lockBadge, { backgroundColor: theme.colors.accent }]}>
+                  <MaterialIcons name="lock" size={10} color={theme.colors.background} />
                 </View>
               ) : null}
             </View>
 
             <View style={styles.trackInfo}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
                 {currentTrack.title} - {currentTrack.artist}
               </Text>
             </View>
 
             <View style={styles.controls}>
-              <TouchableOpacity
-                onPress={(event) => {
-                  event.stopPropagation?.();
-                  selectionHaptic();
-                  router.push('/backstage' as any);
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.backstageShortcut}
-              >
-                <Text style={styles.backstageText}>142 backstage</Text>
-              </TouchableOpacity>
+              {hasBackstageLink ? (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Open track community"
+                  onPress={(event) => {
+                    event.stopPropagation?.();
+                    selectionHaptic();
+                    if (backstageRoute) router.push(backstageRoute as any);
+                  }}
+                  style={[
+                    styles.backstageShortcut,
+                    { borderColor: theme.colors.divider, backgroundColor: theme.colors.surfaceAlt },
+                  ]}
+                >
+                  <Text style={[styles.backstageText, { color: theme.colors.textSecondary }]}>{backstageLabel}</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
                 onPress={(event) => {
                   event.stopPropagation?.();
                   impactHaptic();
                   togglePlayPause();
                 }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.iconButton}
+                style={[
+                  styles.iconButton,
+                  {
+                    borderColor: theme.scheme === 'dark' ? 'rgba(255,255,255,0.22)' : 'rgba(8,8,12,0.16)',
+                    backgroundColor: theme.scheme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(8,8,12,0.04)',
+                  },
+                ]}
               >
                 <MaterialIcons
                   name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
                   size={22}
-                  color="#FFFFFF"
+                  color={theme.colors.text}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+          <View style={[styles.progressTrack, { backgroundColor: theme.colors.divider }]}>
+            <View style={[styles.progressFill, { width: `${progressPercent}%`, backgroundColor: theme.colors.accent }]} />
           </View>
         </PluggdGlassSurface>
       </Pressable>
@@ -151,17 +170,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ORANGE,
   },
   trackInfo: {
     flex: 1,
     minWidth: 0,
   },
   title: {
-    color: '#FFFFFF',
+    fontFamily: 'Satoshi-Medium',
     fontSize: 12,
     lineHeight: 15,
-    fontWeight: '800',
   },
   controls: {
     flexDirection: 'row',
@@ -169,30 +186,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   backstageShortcut: {
-    height: 28,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#1F1F2E',
-    backgroundColor: '#1F1F2E',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   backstageText: {
-    color: '#E4E4E9',
+    fontFamily: 'Satoshi-Medium',
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '700',
   },
   iconButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   progressTrack: {
     position: 'absolute',
@@ -200,10 +212,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 1,
-    backgroundColor: '#1F1F2E',
   },
   progressFill: {
     height: 1,
-    backgroundColor: ORANGE,
   },
 });

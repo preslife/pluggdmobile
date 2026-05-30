@@ -1,10 +1,3 @@
-/**
- * Apple-compliant beat licensing CTA.
- *
- * iOS does not open external checkout links for digital goods. Until a native
- * PLUGGD credits/entitlement contract is available for beat licenses, this
- * component only saves the beat and explains that licensing is unavailable.
- */
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
 interface BeatLicenseButtonProps {
@@ -25,8 +18,8 @@ export default function BeatLicenseButton({
 }: BeatLicenseButtonProps) {
   const explainUnavailable = () => {
     Alert.alert(
-      'Licensing unavailable in iOS',
-      'Beat licensing will be enabled here only when it is backed by PLUGGD credits and a native entitlement flow. No external checkout link is opened in iOS.',
+      'Licensing coming soon',
+      'Save this beat for now. Licensing options will appear here when this producer enables mobile licensing.',
     );
   };
 
@@ -48,7 +41,7 @@ export default function BeatLicenseButton({
             className="bg-white/5 border border-white/10 rounded-xl py-3 items-center justify-center"
           >
             <Text className="text-white/75 font-medium text-sm">
-              Licensing needs native credits support
+              Licensing coming soon
             </Text>
           </TouchableOpacity>
 
@@ -67,7 +60,7 @@ export default function BeatLicenseButton({
                 </View>
               ))}
               <Text className="text-white/30 text-xs mt-2">
-                Prices are informational until native entitlement purchase is enabled.
+                Save the beat and check back for mobile licensing.
               </Text>
             </View>
           ) : null}

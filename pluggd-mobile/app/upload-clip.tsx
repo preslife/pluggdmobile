@@ -85,7 +85,7 @@ export default function UploadClipScreen() {
       if (!record.success) throw new Error(record.error || 'Clip metadata could not be created.');
 
       Alert.alert('Clip uploaded', 'Your clip is saved for review and publishing.', [
-        { text: 'Back to Creator Mode', onPress: () => router.replace('/creator-mode' as any) },
+        { text: 'Back to Studio', onPress: () => router.replace('/studio' as any) },
       ]);
     } catch (error) {
       Alert.alert('Upload failed', error instanceof Error ? error.message : String(error));
@@ -118,7 +118,7 @@ export default function UploadClipScreen() {
   }
 
   return (
-    <ScreenShell title="Upload Clip" subtitle="Upload a short creator moment for Stage, Live, or Backstage review.">
+    <ScreenShell title="Upload Clip" subtitle="Upload a short creator moment for Discover, Live, or Community review.">
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -148,8 +148,8 @@ export default function UploadClipScreen() {
       </Pressable>
 
       <EmptyState
-        title="Publishing contract"
-        body="Clips upload to the mobile-clips bucket and create a pending mobile_clips record. Review, moderation and publishing status are handled by the backend contract."
+        title="Clip review"
+        body="Uploaded clips are reviewed before they appear publicly."
       />
     </ScreenShell>
   );

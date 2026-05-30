@@ -13,9 +13,11 @@ import {
   View,
 } from 'react-native';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { MobileStoriesRail } from '../culture/MobileStoriesRail';
+import { loadCreatorProfileBundle } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 
 type ProfileRow = {
   id: string;
@@ -39,6 +41,33 @@ type ContentRow = {
   route: string;
   icon: keyof typeof MaterialIcons.glyphMap;
 };
+
+type CreatorProfileTab =
+  | 'overview'
+  | 'discography'
+  | 'beats'
+  | 'soundboards'
+  | 'gallery'
+  | 'video'
+  | 'community'
+  | 'store'
+  | 'shows'
+  | 'live'
+  | 'about';
+
+const WEB_CREATOR_TABS: Array<{ key: CreatorProfileTab; label: string }> = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'discography', label: 'Music' },
+  { key: 'beats', label: 'Beats' },
+  { key: 'soundboards', label: 'Soundboards' },
+  { key: 'gallery', label: 'Gallery' },
+  { key: 'video', label: 'Videos' },
+  { key: 'community', label: 'Community' },
+  { key: 'store', label: 'Shop' },
+  { key: 'shows', label: 'Shows' },
+  { key: 'live', label: 'Live' },
+  { key: 'about', label: 'About' },
+];
 
 type Props = {
   username?: string | string[];
@@ -74,8 +103,18 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [releases, setReleases] = useState<ContentRow[]>([]);
   const [beats, setBeats] = useState<ContentRow[]>([]);
+  const [mixes, setMixes] = useState<ContentRow[]>([]);
   const [samplePacks, setSamplePacks] = useState<ContentRow[]>([]);
   const [soundboards, setSoundboards] = useState<ContentRow[]>([]);
+  const [events, setEvents] = useState<ContentRow[]>([]);
+  const [liveRooms, setLiveRooms] = useState<ContentRow[]>([]);
+  const [communities, setCommunities] = useState<ContentRow[]>([]);
+  const [gallery, setGallery] = useState<ContentRow[]>([]);
+  const [videos, setVideos] = useState<ContentRow[]>([]);
+  const [playlists, setPlaylists] = useState<ContentRow[]>([]);
+  const [storefront, setStorefront] = useState<ContentRow[]>([]);
+  const [memberships, setMemberships] = useState<ContentRow[]>([]);
+  const [activeTab, setActiveTab] = useState<CreatorProfileTab>('overview');
   const [followerCount, setFollowerCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -85,15 +124,36 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
 
   const displayName = profile?.full_name || profile?.username || profile?.slug || 'PLUGGD creator';
   const handle = profile?.username || profile?.slug || '';
-  const allContent = useMemo(
-    () => [
-      { title: 'Releases', items: releases, empty: 'No releases published yet.' },
-      { title: 'Beats', items: beats, empty: 'No beats listed yet.' },
-      { title: 'Sample Packs', items: samplePacks, empty: 'No sample packs listed yet.' },
-      { title: 'Soundboards', items: soundboards, empty: 'No soundboards published yet.' },
-    ],
-    [beats, releases, samplePacks, soundboards],
+  const sectionMap = useMemo<Record<CreatorProfileTab, Array<{ title: string; items: ContentRow[]; empty: string }>>>(
+    () => ({
+      overview: [
+        { title: 'Featured Music', items: [...releases.slice(0, 6), ...mixes.slice(0, 3)], empty: 'No featured music published yet.' },
+        { title: 'Live / Shows', items: [...liveRooms.slice(0, 4), ...events.slice(0, 4)], empty: 'No live sessions or shows yet.' },
+        { title: 'Community', items: communities.slice(0, 6), empty: 'No creator community is available yet.' },
+        { title: 'Shop / Support', items: [...storefront.slice(0, 4), ...memberships.slice(0, 2)], empty: 'No mobile storefront items are available yet.' },
+      ],
+      discography: [
+        { title: 'Releases', items: releases, empty: 'No releases published yet.' },
+        { title: 'Mixes', items: mixes, empty: 'No mixes published yet.' },
+        { title: 'Playlists', items: playlists, empty: 'No public playlists yet.' },
+        { title: 'Sample Packs', items: samplePacks, empty: 'No sample packs listed yet.' },
+      ],
+      beats: [{ title: 'Beats', items: beats, empty: 'No beats listed yet.' }],
+      soundboards: [{ title: 'Soundboards', items: soundboards, empty: 'No soundboards published yet.' }],
+      gallery: [{ title: 'Gallery', items: gallery, empty: 'No gallery moments yet.' }],
+      video: [{ title: 'Videos', items: videos, empty: 'No videos published yet.' }],
+      community: [{ title: 'Community', items: communities, empty: 'No creator community is available yet.' }],
+      store: [
+        { title: 'Store / Support', items: storefront, empty: 'No mobile storefront items are available yet.' },
+        { title: 'Membership', items: memberships, empty: 'No mobile membership tiers are available yet.' },
+      ],
+      shows: [{ title: 'Shows', items: events, empty: 'No public shows yet.' }],
+      live: [{ title: 'Live', items: liveRooms, empty: 'No upcoming live rooms yet.' }],
+      about: [],
+    }),
+    [beats, communities, events, gallery, liveRooms, memberships, mixes, playlists, releases, samplePacks, soundboards, storefront, videos],
   );
+  const activeSections = sectionMap[activeTab];
 
   const loadProfile = useCallback(async () => {
     if (!lookupUsername && !lookupUserId) {
@@ -124,66 +184,32 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     const ownerId = nextProfile.user_id;
     setProfile(nextProfile);
 
-    const [
-      releaseResult,
-      beatResult,
-      samplePackResult,
-      soundboardResult,
-      followerResult,
-      followingResult,
-    ] = await Promise.all([
-      supabase
-        .from('releases')
-        .select('id,title,cover_art_url,digital_release_date,created_at')
-        .eq('user_id', ownerId)
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('beats')
-        .select('id,title,image_url,genre,created_at')
-        .eq('user_id', ownerId)
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('sample_packs')
-        .select('id,title,cover_art_url,genre,created_at')
-        .eq('user_id', ownerId)
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('soundboards' as any)
-        .select('id,title,cover_image_url,item_count,created_at')
-        .eq('user_id', ownerId)
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('user_follows')
-        .select('id', { count: 'exact', head: true })
-        .eq('following_id', ownerId),
-      viewerId
-        ? supabase
-            .from('user_follows')
-            .select('id')
-            .eq('follower_id', viewerId)
-            .eq('following_id', ownerId)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-    ]);
+    const bundle = await loadCreatorProfileBundle({ userId: ownerId });
 
     setReleases(
-      ((releaseResult.data ?? []) as any[]).map((item) => ({
+      (bundle.releases ?? []).map((item) => ({
         id: item.id,
-        title: item.title,
+        title: item.title || 'Untitled release',
         imageUrl: item.cover_art_url,
-        meta: item.digital_release_date ? new Date(item.digital_release_date).getFullYear().toString() : 'Release',
+        meta: item.artist || item.genre || 'Release',
         route: `/release/${item.id}`,
         icon: 'album',
       })),
     );
-    setBeats(
-      ((beatResult.data ?? []) as any[]).map((item) => ({
+    setMixes(
+      (bundle.mixes ?? []).map((item) => ({
         id: item.id,
-        title: item.title,
+        title: item.title || 'Untitled mix',
+        imageUrl: item.cover_url,
+        meta: item.city || item.event_name || 'Mix',
+        route: `/mixes/${item.slug || item.id}`,
+        icon: 'graphic-eq',
+      })),
+    );
+    setBeats(
+      (bundle.beats ?? []).map((item) => ({
+        id: item.id,
+        title: item.title || 'Untitled beat',
         imageUrl: item.image_url,
         meta: item.genre || 'Beat',
         route: `/beat/${item.id}`,
@@ -191,9 +217,9 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
       })),
     );
     setSamplePacks(
-      ((samplePackResult.data ?? []) as any[]).map((item) => ({
+      (bundle.samplePacks ?? []).map((item) => ({
         id: item.id,
-        title: item.title,
+        title: item.title || 'Untitled sample pack',
         imageUrl: item.cover_art_url,
         meta: item.genre || 'Sample pack',
         route: `/sample-pack/${item.id}`,
@@ -201,7 +227,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
       })),
     );
     setSoundboards(
-      ((soundboardResult.data ?? []) as any[]).map((item) => ({
+      (bundle.soundboards ?? []).map((item) => ({
         id: item.id,
         title: item.title,
         imageUrl: item.cover_image_url,
@@ -210,8 +236,88 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
         icon: 'dashboard-customize',
       })),
     );
-    setFollowerCount(followerResult.count ?? 0);
-    setIsFollowing(Boolean(followingResult.data));
+    setEvents(
+      (bundle.events ?? []).map((item) => ({
+        id: item.id,
+        title: item.title || 'Untitled event',
+        imageUrl: item.cover_image_url,
+        meta: item.location || 'Event',
+        route: `/events/${item.id}`,
+        icon: 'confirmation-number',
+      })),
+    );
+    setLiveRooms(
+      (bundle.liveRooms ?? []).map((item) => ({
+        id: item.id,
+        title: item.title || 'Live room',
+        imageUrl: item.thumbnail_url || item.creator_avatar_url,
+        meta: item.status || 'Live',
+        route: `/live/session?roomId=${item.id}`,
+        icon: 'settings-input-antenna',
+      })),
+    );
+    setCommunities(
+      (bundle.communities ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        imageUrl: item.cover_image_url || item.avatar_url,
+        meta: item.member_count ? `${item.member_count} members` : 'Community',
+        route: `/backstage/${item.slug || item.id}`,
+        icon: 'groups',
+      })),
+    );
+    setGallery(
+      (bundle.stories ?? []).map((item) => ({
+        id: item.id,
+        title: item.caption || 'Creator moment',
+        imageUrl: item.thumbnail_url || item.media_url,
+        meta: item.media_type || 'Story',
+        route: `/story/${item.id}`,
+        icon: 'auto-awesome',
+      })),
+    );
+    setVideos(
+      (bundle.clips ?? []).map((item) => ({
+        id: item.id,
+        title: item.title || 'Video',
+        imageUrl: item.thumbnail_url,
+        meta: item.description || 'Video',
+        route: '/search',
+        icon: 'smart-display',
+      })),
+    );
+    setPlaylists(
+      (bundle.playlists ?? []).map((item) => ({
+        id: item.id,
+        title: item.name,
+        imageUrl: item.cover_url,
+        meta: `${item.track_count ?? 0} tracks`,
+        route: item.route,
+        icon: 'queue-music',
+      })),
+    );
+    setStorefront(
+      (bundle.storefront ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        imageUrl: item.image_url,
+        meta: item.kind || 'Support',
+        route: item.route || '/wallet',
+        icon: 'storefront',
+      })),
+    );
+    setMemberships(
+      (bundle.memberships ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        imageUrl: null,
+        meta: item.member_count ? `${item.member_count} members` : 'Membership',
+        route: item.route || `/membership/${ownerId}`,
+        icon: 'workspace-premium',
+      })),
+    );
+    setFollowerCount(bundle.followerCount);
+    setIsFollowing(bundle.isFollowing);
   }, [lookupUserId, lookupUsername]);
 
   useEffect(() => {
@@ -370,40 +476,107 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
               ) : null}
             </View>
 
-            {allContent.map((section) => (
-              <View key={section.title} style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{section.title}</Text>
-                {section.items.length > 0 ? (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contentRail}>
-                    {section.items.map((item) => (
-                      <Pressable
-                        key={item.id}
-                        onPress={() => router.push(item.route as any)}
-                        style={[styles.contentCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-                      >
-                        <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
-                          {item.imageUrl ? (
-                            <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
-                          ) : (
-                            <MaterialIcons name={item.icon} size={27} color={theme.colors.accent} />
-                          )}
-                        </View>
-                        <Text style={[styles.contentTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text style={[styles.contentMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
-                          {item.meta}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                ) : (
-                  <View style={[styles.emptyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                    <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{section.empty}</Text>
+            <View style={styles.storyRailWrap}>
+              <MobileStoriesRail creatorId={profile.user_id} title="Creator moments" />
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRail}>
+              {WEB_CREATOR_TABS.map((tab) => {
+                const active = activeTab === tab.key;
+                const count =
+                  tab.key === 'discography'
+                    ? releases.length + mixes.length
+                    : tab.key === 'beats'
+                      ? beats.length
+                      : tab.key === 'soundboards'
+                        ? soundboards.length
+                        : tab.key === 'gallery'
+                          ? gallery.length
+                          : tab.key === 'video'
+                            ? videos.length
+                            : tab.key === 'community'
+                              ? communities.length
+                              : tab.key === 'store'
+                                ? storefront.length + memberships.length
+                                : tab.key === 'shows'
+                                  ? events.length
+                                  : tab.key === 'live'
+                                    ? liveRooms.length
+                                    : undefined;
+                return (
+                  <Pressable
+                    key={tab.key}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${tab.label} profile tab`}
+                    onPress={() => setActiveTab(tab.key)}
+                    style={[
+                      styles.profileTab,
+                      {
+                        backgroundColor: active ? theme.colors.text : theme.colors.surface,
+                        borderColor: active ? theme.colors.text : theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.profileTabText, { color: active ? theme.colors.background : theme.colors.textSecondary }]}>
+                      {tab.label}{typeof count === 'number' ? ` ${count}` : ''}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {activeTab === 'about' ? (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>About</Text>
+                <View style={[styles.aboutCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                  <Text style={[styles.aboutTitle, { color: theme.colors.text }]}>{displayName}</Text>
+                  <Text style={[styles.aboutCopy, { color: theme.colors.textMuted }]}>
+                    {profile.bio || 'No bio has been added yet.'}
+                  </Text>
+                  <View style={styles.aboutRows}>
+                    <AboutRow label="Handle" value={handle ? `@${handle}` : 'Not set'} />
+                    <AboutRow label="Role" value={roleLabel(profile.profile_type)} />
+                    <AboutRow label="Followers" value={followerCount.toLocaleString()} />
                   </View>
-                )}
+                </View>
               </View>
-            ))}
+            ) : (
+              activeSections.map((section) => (
+                <View key={section.title} style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{section.title}</Text>
+                  {section.items.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contentRail}>
+                      {section.items.map((item) => (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => router.push(item.route as any)}
+                          style={[styles.contentCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                        >
+                          <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
+                            {item.imageUrl ? (
+                              <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
+                            ) : (
+                              <MaterialIcons name={item.icon} size={27} color={theme.colors.accent} />
+                            )}
+                          </View>
+                          <Text style={[styles.contentTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <Text style={[styles.contentMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
+                            {item.meta}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <View style={[styles.emptyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                      <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{section.empty}</Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
           </>
         )}
       </ScrollView>
@@ -420,6 +593,18 @@ function Stat({ label, value }: { label: string; value: string }) {
       </Text>
       <Text style={[styles.statLabel, { color: theme.colors.textSubtle }]} numberOfLines={1}>
         {label}
+      </Text>
+    </View>
+  );
+}
+
+function AboutRow({ label, value }: { label: string; value: string }) {
+  const theme = usePluggdTheme();
+  return (
+    <View style={[styles.aboutRow, { borderTopColor: theme.colors.divider }]}>
+      <Text style={[styles.aboutLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.aboutValue, { color: theme.colors.text }]} numberOfLines={1}>
+        {value}
       </Text>
     </View>
   );
@@ -558,6 +743,28 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 10,
   },
+  storyRailWrap: {
+    marginTop: 10,
+  },
+  tabRail: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingRight: 28,
+    marginTop: 14,
+    marginBottom: 2,
+  },
+  profileTab: {
+    minHeight: 44,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileTabText: {
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 13,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
@@ -606,5 +813,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  aboutCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  aboutTitle: {
+    fontFamily: 'Satoshi-Black',
+    fontSize: 21,
+    lineHeight: 25,
+  },
+  aboutCopy: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  aboutRows: {
+    marginTop: 14,
+  },
+  aboutRow: {
+    minHeight: 48,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  aboutLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  aboutValue: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

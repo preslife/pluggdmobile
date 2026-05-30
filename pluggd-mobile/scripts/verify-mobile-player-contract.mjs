@@ -7,7 +7,8 @@ const miniSource = read('components/MiniPlayer.tsx');
 const playerSource = read('app/player.tsx');
 
 assert.match(miniSource, /usePlayback/, 'mini-player must use the shared playback provider');
-assert.match(miniSource, /router\.push\('\/backstage'/, 'mini-player must include a Backstage shortcut');
+assert.match(miniSource, /backstageRoute/, 'mini-player must include a data-driven Backstage shortcut');
+assert.doesNotMatch(miniSource, /142 backstage|\\d+ backstage/, 'mini-player must not hardcode fake Backstage activity counts');
 assert.match(playerSource, /usePlayback/, 'full player must use the shared playback provider');
 assert.match(playerSource, /queue/, 'full player must expose queue state');
 assert.match(playerSource, /\/backstage/, 'full player must connect playback to Backstage/community');

@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { DiscoverParityScreen } from '../src/features/parity/AppWideParityScreens';
 
-export default function DiscoverRedirect() {
-  return <Redirect href="/search" />;
+export default function DiscoverRoute() {
+  return <DiscoverParityScreen />;
 }

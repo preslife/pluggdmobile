@@ -2,9 +2,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
+import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 import { MixItem, MixTrackItem, PLUGGD_ORANGE, formatCompact, formatDuration, toTrack } from '../../src/lib/mobileContent';
 
@@ -15,6 +16,7 @@ export default function MixDetailScreen() {
   const [mix, setMix] = useState<MixItem | null>(null);
   const [tracklist, setTracklist] = useState<MixTrackItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -53,6 +55,19 @@ export default function MixDetailScreen() {
     if (track) playTrack(track);
   };
 
+  const saveMix = async () => {
+    if (!mix || saving) return;
+    setSaving(true);
+    const result = await toggleSavedContent('mix', mix.id);
+    setSaving(false);
+    Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable', result.success ? `${mix.title || 'Mix'} library state updated.` : result.error || 'Please try again.');
+  };
+
+  const shareMix = async () => {
+    if (!mix) return;
+    await Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'}` });
+  };
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -86,9 +101,24 @@ export default function MixDetailScreen() {
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Play mix</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => router.push('/library' as any)}>
+              <Pressable style={styles.secondaryButton} onPress={saveMix} disabled={saving}>
                 <MaterialIcons name="library-music" size={20} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryButtonText}>Library</Text>
+                <Text style={styles.secondaryButtonText}>{saving ? 'Saving' : 'Save'}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.quickActions}>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { mixId: mix.id } } as any)}>
+                <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Post</Text>
+              </Pressable>
+              <Pressable style={styles.quickActionButton} onPress={shareMix}>
+                <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Share</Text>
+              </Pressable>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push('/library' as any)}>
+                <MaterialIcons name="library-music" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Library</Text>
               </Pressable>
             </View>
 
@@ -134,6 +164,9 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   secondaryButton: { flex: 1, height: 54, borderRadius: 8, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontWeight: '700' },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  quickActionButton: { minHeight: 40, flexGrow: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontWeight: '900' },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },
 });

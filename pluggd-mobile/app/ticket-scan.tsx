@@ -11,7 +11,7 @@ import { verifyTicketEntryToken } from '../src/features/culture/mobileServices';
 import { formatDate, formatGBP } from '../src/lib/mobileContent';
 import { supabase } from '../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 
 type TicketScanResult = {
   id: string;
@@ -139,7 +139,7 @@ export default function TicketScanScreen() {
         'Check-in unavailable',
         error instanceof Error
           ? error.message
-          : 'The backend did not allow this account to update the ticket order.',
+          : 'This account cannot check in that ticket.',
       );
     },
   });
@@ -278,7 +278,7 @@ export default function TicketScanScreen() {
         </View>
       ) : null}
 
-      <EmptyState title="Ticket security" body="Dynamic ticket payloads verify through the rotating token backend when available. Apple Wallet passes still require pass-signing credentials before they can be enabled." />
+      <EmptyState title="Ticket security" body="Rotating entry codes help protect eligible tickets during door checks. Apple Wallet passes are not available until pass signing is connected." />
     </ScreenShell>
   );
 }

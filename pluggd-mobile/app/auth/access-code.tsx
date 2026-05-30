@@ -16,7 +16,7 @@ import {
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 
 export default function AccessCodeScreen() {
   const router = useRouter();

@@ -4,72 +4,68 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const routeSource = read('app/(tabs)/backstage.tsx');
-const backstageSource = read('src/features/backstage/backstage-world-screen.tsx');
+const tabsSource = read('app/(tabs)/_layout.tsx');
+const dockSource = read('components/PluggdDock.tsx');
+const detailSource = read('app/backstage/[id].tsx');
+const boardSource = read('app/community/boards/[slug].tsx');
+const communityEventSource = read('app/community/events/[id].tsx');
 const dataSource = read('src/features/culture/useCultureData.ts');
 const serviceSource = read('src/features/culture/mobileServices.ts');
-const dataAndServiceSource = `${dataSource}\n${serviceSource}`;
+const socialSource = read('src/features/culture/mobileSocial.ts');
+const dataAndServiceSource = `${dataSource}\n${serviceSource}\n${socialSource}`;
 const chromeSource = read('components/AppChrome.tsx');
 
-assert.match(routeSource, /BackstageWorldScreen/, 'Backstage tab must use the dedicated premium Backstage screen');
+assert.match(routeSource, /<Redirect href="\/create" \/>/, 'Legacy Backstage tab route must redirect to Create while deep-link details stay available');
+assert.match(tabsSource, /name="backstage"[\s\S]*href:\s*null/, 'Backstage compatibility route must stay hidden from the tab bar');
+assert.doesNotMatch(tabsSource, /title:\s*"Backstage"/, 'Tabs layout must not expose Backstage as a primary title');
+assert.doesNotMatch(dockSource, /label:\s*'Backstage'|route:\s*'\/backstage'/, 'Backstage must not remain a primary bottom tab');
+assert.match(chromeSource, /normalized === '\/backstage'/, 'Legacy Backstage route must still avoid duplicate global chrome while redirecting');
 
-for (const label of [
-  'BACKSTAGE',
-  'My Circles',
-  'Event Hubs',
-  'Rooms',
-  'Threads',
-  'Producers',
-  'MY BACKSTAGE',
-  'EVENT HUBS',
-  'ACTIVE COMMUNITY ROOMS',
-  'HOT THREADS',
-  'PRODUCER LOUNGE',
-  'COMMUNITY MOMENTS',
-  'DISCOVER MORE BACKSTAGES',
+for (const table of [
+  "from('communities')",
+  "from('community_members')",
+  "from('community_boards')",
+  "from('view_hub_threads')",
+  "from('events')",
+  "from('community_events')",
+  "from('community_collab_rooms')",
+  "from('community_challenges')",
+  "from('soundboards')",
+  "from('session_rooms')",
 ]) {
-  assert.match(backstageSource, new RegExp(label), `${label} must be present in the Backstage experience`);
+  assert.match(dataAndServiceSource, new RegExp(table.replace(/[()']/g, '\\$&')), `${table} must keep feeding community detail surfaces`);
 }
-
-for (const hook of ['useBackstage', 'useEventLayer', 'useHomeFeed', 'useLiveRooms']) {
-  assert.match(backstageSource, new RegExp(hook), `${hook} must power Backstage with real app data`);
-}
-
-for (const table of ["from('hubs')", "from('view_hub_threads')", "from('events')", "from('session_rooms')"]) {
-  assert.match(dataAndServiceSource, new RegExp(table.replace(/[()']/g, '\\$&')), `${table} must feed Backstage/current community surfaces`);
-}
-
-assert.doesNotMatch(dataAndServiceSource, /from\('creator_communities'\)|from\('community_threads'\)/, 'Backstage must not depend on old guessed creator_communities/community_threads tables');
-
-for (const mapper of ['mapProducerLounge', 'mapMoments', 'mapCreatorIdentities', 'eventCountdown']) {
-  assert.match(backstageSource, new RegExp(mapper), `${mapper} must map Backstage UI to backend models`);
-}
-
-for (const color of ['#08080C', '#12121A', '#1F1F2E', '#FF5A00', '#FF4757']) {
-  assert.match(backstageSource, new RegExp(color), `${color} Backstage design token must be used`);
-}
-
-for (const action of [
-  "go('/notifications'",
-  "go('/wallet'",
-  "router.push(`/events/${event.id}`",
-  "router.push('/backstage'",
-  "router.push({ pathname: '/live/session'",
-  'scrollTo({ y:',
-]) {
-  assert.match(backstageSource, new RegExp(action.replace(/[/'(){}$`]/g, '\\$&')), `${action} action must be wired`);
-}
-
-assert.match(backstageSource, /ScrollView\s+horizontal/, 'Backstage must use compact horizontal sections');
-assert.match(backstageSource, /RefreshControl/, 'Backstage must support pull-to-refresh for live Supabase data');
-assert.match(chromeSource, /normalized === '\/backstage'/, 'Backstage should own its own header');
-assert.match(chromeSource, /<MiniPlayer\s*\/>/, 'Global MiniPlayer must remain available on Backstage when media is active');
 
 assert.doesNotMatch(
-  backstageSource,
-  /Elias Thorne Circle|London Warehouse Hub|South City Scene|LONDON WAREHOUSE NIGHT|Anyone got 2 spare tickets\?|Drop your open verse take|Pre-Event Meetup Room|Listening Party Room|SECTION 1|SECTION 2|Fictional/,
-  'Backstage source must not hardcode mockup labels or fake community/event/thread content',
+  dataAndServiceSource,
+  /from\('creator_communities'\)|from\('community_threads'\)/,
+  'Community detail surfaces must not depend on old guessed creator_communities/community_threads tables',
 );
 
-assert.doesNotMatch(backstageSource, /😀|😃|😄|😁|🎵|🎧|🎟|💬|❤️|🔥|✨/, 'production UI must not use emoji icons');
+assert.match(
+  detailSource,
+  /const TABS = \['Posts', 'Threads', 'Rooms', 'Events', 'Soundboards', 'Drops'\]/,
+  'Community detail tabs must be preserved for existing deep links',
+);
+assert.match(detailSource, /Official Community/, 'Backstage deep-link detail must present as Community in visible copy');
+assert.doesNotMatch(detailSource, /Official Backstage|Backstage unavailable|No Backstage events/, 'Visible Backstage detail copy must be retired');
+assert.match(detailSource, /MobileSocialPostCard/, 'Community detail Posts must use the shared social card system');
+assert.match(detailSource, /activeTab === 'Rooms'/, 'Community detail must use Rooms, not Live Rooms');
+assert.match(detailSource, /activeTab === 'Soundboards'/, 'Community detail must expose Soundboards');
+assert.match(detailSource, /\/community\/events\/\$\{event\.id\}/, 'Community detail events must route to a real community event route');
+assert.doesNotMatch(detailSource, /pathname: '\/create-post'.{0,120}room|pathname: '\/create-post'.{0,120}event/s, 'Room and event card taps must not route directly to composer');
 
-console.log('mobile backstage contract verified');
+assert.match(
+  boardSource,
+  /const BOARD_FILTERS = \['Latest', 'Hot', 'Tickets', 'Audio', 'Events', 'Questions'\]/,
+  'Board filters must be exactly Latest, Hot, Tickets, Audio, Events, Questions',
+);
+assert.match(boardSource, /filterBoardPosts/, 'Board detail must filter thread lists instead of using composer-type chips');
+assert.match(boardSource, /Start Thread/, 'Board composer must be an explicit Start Thread action');
+assert.match(boardSource, /social_post_destinations/, 'Board detail empty state must document destination-backed posting');
+assert.doesNotMatch(boardSource, /BOARD_POST_TYPES|createThread\(type\.type\)|onPress=\{\(\) => createThread\(type/, 'Board filter chips must not route directly to composer');
+
+assert.match(communityEventSource, /from\('community_events'\)/, 'Community event detail must load from community_events');
+assert.match(communityEventSource, /Open Community|Open Backstage/, 'Community event detail must route back to the linked community detail');
+
+console.log('mobile community/backstage compatibility contract verified');

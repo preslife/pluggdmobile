@@ -22,95 +22,53 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="stage"
-          options={{
-            title: "Stage",
-          }}
-        />
-        <Tabs.Screen
-          name="live"
-          options={{
-            title: "Live",
-          }}
-        />
-        <Tabs.Screen
-          name="backstage"
-          options={{
-            title: "Backstage",
-          }}
-        />
-        <Tabs.Screen
-          name="search"
-          options={{
-            title: "Search",
-          }}
-        />
-        <Tabs.Screen
           name="explore"
           options={{
-            title: "Discover",
-            href: null,
+            title: "Explore",
           }}
         />
         <Tabs.Screen
-          name="drops"
+          name="create"
           options={{
-            title: "Music",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="marketplace"
-          options={{
-            title: "Market",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="mixes"
-          options={{
-            title: "Mixes",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="events"
-          options={{
-            title: "Events",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="wallet"
-          options={{
-            title: "Wallet",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="social"
-          options={{
-            href: null,
+            title: "Create",
           }}
         />
         <Tabs.Screen
           name="community"
           options={{
             title: "Community",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="soundboards"
-          options={{
-            title: "Soundboards",
-            href: null,
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
             title: "Profile",
+          }}
+        />
+        <Tabs.Screen name="discover" options={{ href: null }} />
+        <Tabs.Screen name="events" options={{ href: null }} />
+        <Tabs.Screen name="market" options={{ href: null }} />
+        <Tabs.Screen
+          name="stage"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="live"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="backstage"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="my-pluggd"
+          options={{
             href: null,
           }}
         />

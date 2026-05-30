@@ -60,7 +60,7 @@ function expoProjectId() {
 
 export async function registerMobilePushToken(options: { requestPermission?: boolean } = {}) {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-    return { success: true, registered: false, reason: 'Push token registration is native-only.' };
+    return { success: true, registered: false, reason: 'Push notifications require a device build.' };
   }
 
   const existingPermission = await Notifications.getPermissionsAsync();

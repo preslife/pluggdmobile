@@ -5,37 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ScreenShell, SectionTitle } from '../components/ContentUI';
-import { supabase } from '../src/lib/supabase';
 import { formatDate, PLUGGD_ORANGE } from '../src/lib/mobileContent';
-
-type NotificationItem = {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  created_at: string;
-  read_at: string | null;
-  related_id: string | null;
-  related_type: string | null;
-};
-
-function routeForNotification(item: NotificationItem) {
-  if (!item.related_id || !item.related_type) return null;
-  const type = item.related_type.toLowerCase();
-  if (type.includes('event') || type.includes('ticket')) return `/events/${item.related_id}`;
-  if (type.includes('release') || type.includes('track')) return `/release/${item.related_id}`;
-  if (type.includes('hub') || type.includes('community') || type.includes('backstage')) return `/backstage/${item.related_id}`;
-  if (type.includes('beat')) return `/beat/${item.related_id}`;
-  if (type.includes('sample')) return `/sample-pack/${item.related_id}`;
-  if (type.includes('soundboard')) return `/soundboards/${item.related_id}`;
-  if (type.includes('live') || type.includes('room') || type.includes('session')) return `/live/session?roomId=${item.related_id}`;
-  return null;
-}
+import { loadMobileNotifications, markMobileNotificationRead } from '../src/features/culture/mobileServices';
+import type { MobileNotification } from '../src/features/culture/mobileTypes';
 
 export default function NotificationsRoute() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [items, setItems] = useState<MobileNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -43,12 +20,7 @@ export default function NotificationsRoute() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any).rpc('notifications_list_recent', { p_limit: 40 });
-    if (!error && Array.isArray(data)) {
-      setItems(data as NotificationItem[]);
-    } else {
-      setItems([]);
-    }
+    setItems(await loadMobileNotifications(40));
     setLoading(false);
   }, []);
 
@@ -56,20 +28,19 @@ export default function NotificationsRoute() {
     load();
   }, [load]);
 
-  const markRead = async (item: NotificationItem) => {
+  const markRead = async (item: MobileNotification) => {
     if (!item.read_at) {
       setItems((current) => current.map((row) => (row.id === item.id ? { ...row, read_at: new Date().toISOString() } : row)));
-      await (supabase as any).rpc('notifications_mark_read', { p_notification_id: item.id });
+      await markMobileNotificationRead(item.id);
       void queryClient.invalidateQueries({ queryKey: ['culture', 'notifications', 'unread'] });
     }
-    const route = routeForNotification(item);
-    if (route) router.push(route as any);
+    if (item.route) router.push(item.route as any);
   };
 
   const markAllRead = async () => {
     setMarkingAll(true);
     setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
-    await (supabase as any).rpc('notifications_mark_all_read');
+    await Promise.all(items.filter((item) => !item.read_at).slice(0, 40).map((item) => markMobileNotificationRead(item.id)));
     void queryClient.invalidateQueries({ queryKey: ['culture', 'notifications', 'unread'] });
     setMarkingAll(false);
   };
@@ -107,10 +78,10 @@ export default function NotificationsRoute() {
           </View>
           <View style={styles.copy}>
             <View style={styles.titleRow}>
-              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-              {!item.read_at ? <View style={styles.unreadDot} /> : null}
+            <Text style={styles.title} numberOfLines={1}>{item.title || 'Activity'}</Text>
+            {!item.read_at ? <View style={styles.unreadDot} /> : null}
             </View>
-            <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+            <Text style={styles.message} numberOfLines={2}>{item.body || 'Open this notification for details.'}</Text>
             <Text style={styles.meta}>{formatDate(item.created_at)}</Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#737373" />
@@ -120,8 +91,8 @@ export default function NotificationsRoute() {
   );
 }
 
-function iconForType(type: string): keyof typeof MaterialIcons.glyphMap {
-  const normalized = type.toLowerCase();
+function iconForType(type?: string | null): keyof typeof MaterialIcons.glyphMap {
+  const normalized = String(type || '').toLowerCase();
   if (normalized.includes('comment') || normalized.includes('reply')) return 'chat-bubble-outline';
   if (normalized.includes('follow')) return 'person-add-alt';
   if (normalized.includes('ticket') || normalized.includes('event')) return 'confirmation-number';

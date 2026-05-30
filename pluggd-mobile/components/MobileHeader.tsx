@@ -6,9 +6,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
 import { selectionHaptic } from '../src/design/haptics';
+import { pluggdTextStyles } from '../src/design/typography';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import {
-  PLUGGD_ORANGE,
   hasCreatorAccess,
   resolveProfileRoles,
   type EcosystemRole,
@@ -82,9 +82,14 @@ export function MobileHeader() {
   const creatorAccess = hasCreatorAccess(roles);
   const avatarInitial = initialFor(profile, user?.email);
   const roleSet = new Set<EcosystemRole>(roles);
-  const chromeFallback = 'rgba(8,8,12,0.8)';
-  const chromeBorder = '#1F1F2E';
-  const chromeTint = 'rgba(8,8,12,0.78)';
+  const chromeFallback = theme.colors.headerGlass;
+  const chromeBorder = theme.colors.divider;
+  const chromeTint = theme.colors.headerGlass;
+  const publicProfileRoute = profile?.username
+    ? creatorAccess
+      ? `/creator/${profile.username}`
+      : `/u/${profile.username}`
+    : '/edit-profile';
 
   const closeAccountAndGo = (route: string) => {
     selectionHaptic();
@@ -93,30 +98,37 @@ export function MobileHeader() {
   };
 
   const accountItems: AccountItem[] = [
-    { label: 'My Profile', route: '/profile', icon: 'person' },
+    creatorAccess
+      ? { label: 'Studio', route: '/studio', icon: 'space-dashboard' }
+      : { label: 'Account hub', route: '/profile', icon: 'space-dashboard' },
+    { label: profile?.username ? 'Public page' : 'Edit profile', route: publicProfileRoute, icon: 'person' },
+    { label: 'PLUGGD Progress', route: '/badges', icon: 'workspace-premium' },
+    creatorAccess
+      ? { label: 'Wallet / Earnings', route: '/creator/payouts', icon: 'account-balance-wallet' }
+      : { label: 'Wallet / Credits', route: '/wallet', icon: 'account-balance-wallet' },
+    { label: 'Tickets', route: '/tickets', icon: 'confirmation-number' },
+    { label: 'Analytics', route: creatorAccess ? '/studio/analytics' : '/notifications', icon: 'query-stats' },
+    { label: 'Settings', route: '/settings', icon: 'settings' },
+  ];
+
+  if (roleSet.has('promoter') || roleSet.has('venue')) {
+    accountItems.splice(5, 0, { label: 'Ticket Scan', route: '/ticket-scan', icon: 'qr-code-scanner' });
+  }
+
+  if (creatorAccess) {
+    accountItems.splice(6, 0, { label: 'Connect Card', route: '/studio/connect-card', icon: 'badge' });
+  } else {
+    accountItems.splice(6, 0, { label: 'Become a Creator', route: '/creator-mode', icon: 'auto-awesome' });
+  }
+
+  accountItems.push(
+    { label: 'Inbox', route: '/inbox', icon: 'mail-outline' },
     {
       label: unreadNotifications.data ? `Activity (${unreadNotifications.data})` : 'Activity',
       route: '/notifications',
       icon: 'notifications-none',
     },
-    { label: 'Wallet', route: '/wallet', icon: 'account-balance-wallet' },
-    { label: 'Library', route: '/library', icon: 'library-music' },
-    { label: 'Purchases', route: '/purchases', icon: 'shopping-bag' },
-    { label: 'Tickets', route: '/tickets', icon: 'confirmation-number' },
-    { label: 'Badges / Rewards', route: '/badges', icon: 'workspace-premium' },
-    { label: 'Saved', route: '/favorites', icon: 'bookmark-border' },
-    { label: 'Following', route: '/following', icon: 'group' },
-  ];
-
-  if (creatorAccess) {
-    accountItems.splice(1, 0, { label: 'Creator Mode', route: '/creator-mode', icon: 'bolt' });
-  }
-
-  if (roleSet.has('promoter') || roleSet.has('venue')) {
-    accountItems.splice(creatorAccess ? 2 : 1, 0, { label: 'Ticket Scan', route: '/ticket-scan', icon: 'qr-code-scanner' });
-  }
-
-  accountItems.push({ label: 'Settings', route: '/settings', icon: 'settings' });
+  );
 
   if (user) {
     accountItems.push({
@@ -140,7 +152,7 @@ export function MobileHeader() {
           borderColor={chromeBorder}
           fallbackColor={chromeFallback}
           tintColor={chromeTint}
-          colorScheme="dark"
+          colorScheme={theme.scheme}
           style={styles.header}
         >
           <Pressable
@@ -152,10 +164,37 @@ export function MobileHeader() {
               router.push('/' as any);
             }}
           >
-            <BrandLogo variant="dark" width={118} height={42} />
+            <BrandLogo variant={theme.scheme} width={94} height={24} />
           </Pressable>
 
           <View style={styles.headerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Search PLUGGD"
+              style={styles.walletButton}
+              onPress={() => {
+                selectionHaptic();
+                router.push('/search' as any);
+              }}
+            >
+              <MaterialIcons name="search" size={23} color={theme.colors.text} />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open notifications"
+              style={styles.walletButton}
+              onPress={() => {
+                selectionHaptic();
+                router.push('/notifications' as any);
+              }}
+            >
+              <View>
+                <MaterialIcons name="notifications-none" size={23} color={theme.colors.text} />
+                {unreadNotifications.data ? <View style={[styles.notificationDot, { backgroundColor: theme.colors.live }]} /> : null}
+              </View>
+            </Pressable>
+
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Open wallet and tickets"
@@ -165,7 +204,7 @@ export function MobileHeader() {
                 router.push('/wallet' as any);
               }}
             >
-              <MaterialIcons name="account-balance-wallet" size={24} color="#FFFFFF" />
+              <MaterialIcons name="account-balance-wallet" size={23} color={theme.colors.text} />
             </Pressable>
 
             <Pressable
@@ -182,7 +221,7 @@ export function MobileHeader() {
                 uri={profile?.avatar_url}
                 label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
                 size={36}
-                style={styles.headerAvatar}
+                style={[styles.headerAvatar, { borderColor: theme.colors.divider }]}
               />
             </Pressable>
           </View>
@@ -193,8 +232,8 @@ export function MobileHeader() {
         <Pressable style={styles.modalBackdrop} onPress={() => setAccountOpen(false)}>
           <Pressable onPress={(event) => event.stopPropagation()}>
             <PluggdSheet
-              title="Profile"
-              subtitle={creatorAccess ? 'Fan experience plus lightweight Creator Mode.' : 'Your fan identity, tickets, wallet and settings.'}
+              title="Account"
+              subtitle={creatorAccess ? 'Studio, public profile, earnings, analytics and settings.' : 'Dashboard, public profile, credits, progress and settings.'}
             >
               <View style={styles.accountHeader}>
                 <PluggdAvatar
@@ -221,7 +260,7 @@ export function MobileHeader() {
                       styles.sheetRow,
                       {
                         backgroundColor: theme.colors.surface,
-                        borderColor: item.label === 'Creator Mode' ? theme.colors.borderAccent : theme.colors.border,
+                        borderColor: item.label === 'Studio' ? theme.colors.borderAccent : theme.colors.border,
                       },
                     ]}
                     onPress={() => {
@@ -238,7 +277,7 @@ export function MobileHeader() {
                         },
                       ]}
                     >
-                      <MaterialIcons name={item.icon} size={21} color={item.danger ? '#FF5C5C' : PLUGGD_ORANGE} />
+                      <MaterialIcons name={item.icon} size={21} color={item.danger ? theme.colors.danger : theme.colors.accent} />
                     </View>
                     <Text style={[styles.rowLabel, { color: item.danger ? theme.colors.danger : theme.colors.text }]}>
                       {item.label}
@@ -280,7 +319,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 4,
   },
   walletButton: {
     width: 44,
@@ -289,14 +328,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarTap: {
-    width: 36,
+    width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerAvatar: {
     borderWidth: 1,
-    borderColor: '#1F1F2E',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   modalBackdrop: {
     flex: 1,
@@ -316,14 +362,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   accountName: {
+    ...pluggdTextStyles.secondaryHeading,
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
   },
   accountMeta: {
     color: '#A7A7A7',
     fontSize: 13,
-    fontWeight: '700',
     marginTop: 3,
   },
   sheetRow: {
@@ -345,8 +390,8 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
+    fontFamily: 'Satoshi-Bold',
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
   },
 });

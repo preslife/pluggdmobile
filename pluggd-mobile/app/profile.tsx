@@ -1,5 +1,5 @@
-import { ProfileHubScreen } from '../src/features/culture/CultureScreens';
+import { MyProfileScreen } from '../src/features/profile/my-profile-screen';
 
 export default function ProfileRedirect() {
-  return <ProfileHubScreen />;
+  return <MyProfileScreen />;
 }

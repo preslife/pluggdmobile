@@ -52,7 +52,7 @@ export type MobileCapabilityMap = {
 
 export const MOBILE_CAPABILITIES: MobileCapabilityMap = {
   schemaSource: 'live-rest-verified',
-  checkedAt: '2026-05-15',
+  checkedAt: '2026-05-16',
   backstage: {
     creatorCommunities: 'available',
     communityMemberships: 'available',
@@ -71,10 +71,10 @@ export const MOBILE_CAPABILITIES: MobileCapabilityMap = {
     nativeTicketCheckout: 'unavailable',
   },
   social: {
-    socialPosts: 'read-only',
+    socialPosts: 'available',
     comments: 'available',
     likes: 'available',
-    reposts: 'unavailable',
+    reposts: 'available',
   },
   library: {
     beatFavorites: 'available',

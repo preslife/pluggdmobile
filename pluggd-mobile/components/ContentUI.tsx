@@ -14,7 +14,7 @@ import {
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { PLUGGD_ORANGE, pluggdRadii, pluggdTypography } from '../src/design/tokens';
 import { contentInitials } from '../src/lib/mobileContent';
-import { PluggdChip } from './PluggdPrimitives';
+import { PluggdChip, PremiumScreenBackdrop, PremiumScreenHeader } from './PluggdPrimitives';
 
 export function ScreenShell({
   title,
@@ -27,33 +27,21 @@ export function ScreenShell({
   children: ReactNode;
   action?: ReactNode;
 }) {
-  const theme = usePluggdTheme();
-  const screenGradient =
-    theme.scheme === 'dark'
-      ? (['#080808', '#0C0C0C', '#080808'] as const)
-      : (['#FAFAF8', '#FFFFFF', '#F4F2EE'] as const);
-
   return (
-    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-      <LinearGradient colors={screenGradient} style={StyleSheet.absoluteFill} />
-      <View
-        style={[
-          styles.header,
-          {
-            borderBottomColor: theme.colors.borderSubtle,
-          },
-        ]}
-      >
-        <View style={styles.headerCopy}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-          {subtitle ? <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>{subtitle}</Text> : null}
-        </View>
-        {action}
+    <PremiumScreenBackdrop tone="accent" style={styles.screen}>
+      <View style={styles.header}>
+        <PremiumScreenHeader
+          eyebrow="PLUGGD"
+          title={title}
+          subtitle={subtitle}
+          actions={action}
+          style={styles.premiumHeader}
+        />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {children}
       </ScrollView>
-    </View>
+    </PremiumScreenBackdrop>
   );
 }
 
@@ -283,25 +271,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 4,
     paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
   },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    lineHeight: 29,
-    fontWeight: pluggdTypography.weights.heavy,
-  },
-  subtitle: {
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: pluggdTypography.weights.semibold,
-    marginTop: 5,
+  premiumHeader: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   scrollContent: {
     paddingHorizontal: 14,

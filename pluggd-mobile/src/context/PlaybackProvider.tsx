@@ -61,6 +61,9 @@ export type PluggdTrack = Omit<Track, 'type'> & {
   purchaseRoute?: string;
   previewStart?: number;
   previewEnd?: number;
+  backstageId?: string;
+  backstageRoute?: string;
+  backstageActiveCount?: number;
 };
 
 export type ShuffleMode = 'off' | 'on';

@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const routeSource = read('app/(tabs)/search.tsx');
+const routeSource = read('app/search.tsx');
 const searchSource = read('src/features/search/search-discovery-screen.tsx');
 const dataSource = read('src/features/culture/useCultureData.ts');
 const chromeSource = read('components/AppChrome.tsx');
 
-assert.match(routeSource, /SearchDiscoveryScreen/, 'Search tab must use the dedicated premium Search screen');
+assert.match(routeSource, /SearchDiscoveryScreen/, 'Search route must use the dedicated premium Search screen');
 
 for (const label of [
   'SEARCH',

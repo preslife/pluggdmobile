@@ -1,3 +1,5 @@
-import { BackstageWorldScreen } from '../../src/features/backstage/backstage-world-screen';
+import { Redirect } from 'expo-router';
 
-export default BackstageWorldScreen;
+export default function BackstageCompatibilityRedirect() {
+  return <Redirect href="/create" />;
+}

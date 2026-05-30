@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import * as ts from 'typescript';
 
@@ -72,22 +72,28 @@ const soundboard = read('app/soundboards/[id].tsx');
 assert.match(soundboard, /from\('user_follows'\)/, 'soundboard follow button must follow the linked creator');
 
 assert.match(read('app/social/notifications.tsx'), /href="\/notifications"/, 'legacy social notifications route must go directly to Activity');
-assert.match(read('app/social/inbox.tsx'), /href="\/notifications"/, 'legacy inbox route must go directly to Activity until inbox is backed');
+assert.match(read('app/social/inbox.tsx'), /href="\/inbox"/, 'legacy inbox route must go directly to the backed mobile Inbox surface');
 assert.match(read('app/settings/index.tsx'), /\/creator-mode/, 'Settings must route creator tools to mobile Creator Mode, not desktop dashboard');
 
-for (const legacyRoute of [
-  'app/(tabs)/explore.tsx',
+for (const legacyTabRoute of [
   'app/(tabs)/drops.tsx',
   'app/(tabs)/marketplace.tsx',
   'app/(tabs)/mixes.tsx',
-  'app/(tabs)/events.tsx',
   'app/(tabs)/wallet.tsx',
-  'app/(tabs)/community.tsx',
   'app/(tabs)/soundboards.tsx',
-  'app/(tabs)/profile.tsx',
+  'app/(tabs)/social/_layout.tsx',
   'app/(tabs)/social/hub.tsx',
   'app/(tabs)/social/inbox.tsx',
   'app/(tabs)/social/notifications.tsx',
+]) {
+  assert.equal(
+    existsSync(new URL(legacyTabRoute, repoRoot)),
+    false,
+    `${legacyTabRoute} must not exist inside the tab navigator because route groups share root URLs and can shadow real routes`,
+  );
+}
+
+for (const legacyRoute of [
   'app/commerce/crowdfunding.tsx',
   'app/commerce/license-preview.tsx',
   'app/commerce/orders.tsx',
@@ -99,7 +105,9 @@ for (const legacyRoute of [
   'app/pro/epk.tsx',
   'app/creator/analytics.tsx',
   'app/creator/audience.tsx',
+  'app/creator/dashboard.tsx',
   'app/creator/licensing.tsx',
+  'app/creator/memberships.tsx',
   'app/creator/payouts.tsx',
   'app/creator/upload.tsx',
 ]) {

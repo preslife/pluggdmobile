@@ -28,6 +28,7 @@ import { useWalletStore } from './useWallet';
 
 // ─── SKU Definitions ──────────────────────────────────────────────────
 export const CREDIT_PACK_SKUS = [
+  'pluggd_credits_starter',
   'pluggd_credits_popular',
   'pluggd_credits_value',
   'pluggd_credits_premium',
@@ -51,6 +52,15 @@ export interface CreditPackDefinition {
 // sandbox/simulator storefronts can report another localized currency, so UI
 // copy falls back to the approved GBP label unless StoreKit also returns GBP.
 export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition> = {
+  pluggd_credits_starter: {
+    sku: 'pluggd_credits_starter',
+    label: 'Starter Credits',
+    fallbackPriceGBP: 5,
+    baseCredits: 500,
+    bonusCredits: 0,
+    bonusPercent: 0,
+    totalCredits: 500,
+  },
   pluggd_credits_popular: {
     sku: 'pluggd_credits_popular',
     label: 'Plus Credits',
@@ -92,6 +102,7 @@ export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition
 
 // Maps SKU → total credits awarded (must match App Store Connect + backend)
 export const SKU_CREDITS_MAP: Record<CreditPackSKU, number> = {
+  pluggd_credits_starter: 500,
   pluggd_credits_popular: 1050,
   pluggd_credits_value: 2750,
   pluggd_credits_premium: 5750,

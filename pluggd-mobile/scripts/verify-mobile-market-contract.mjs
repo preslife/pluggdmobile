@@ -1,22 +1,50 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const marketSource = read('app/(tabs)/marketplace.tsx');
+const hiddenMarketplaceTab = new URL('../app/(tabs)/marketplace.tsx', import.meta.url);
+const marketplaceSource = read('app/marketplace.tsx');
 const marketIndexSource = read('app/market/index.tsx');
+const marketSectionSource = read('app/market/[section].tsx');
 const beatMarketplaceSource = read('app/beat-marketplace.tsx');
 const beatDetailSource = read('app/beat/[id].tsx');
+const parityServiceSource = read('src/features/parity/appWideParityServices.ts');
 
-assert.doesNotMatch(
-  marketSource,
-  /Services|Licenses|Offers|Coming into Market|checkout|card payment|Stripe/i,
-  'Marketplace must not expose unfinished service/license/offer or checkout surfaces',
+assert.equal(
+  existsSync(hiddenMarketplaceTab),
+  false,
+  'Marketplace must not exist inside the tab navigator because old tab routes can shadow the five-tab app shell',
 );
 
-assert.match(marketSource, /<Redirect href="\/stage" \/>/, 'Hidden marketplace tab must redirect into Stage, not remain a primary marketplace surface');
-assert.match(marketIndexSource, /<Redirect href="\/stage" \/>/, 'Top-level Market route must redirect into Stage');
-assert.match(beatMarketplaceSource, /<Redirect href="\/stage" \/>/, 'Beat marketplace shortcut must redirect into Stage');
+assert.doesNotMatch(
+  `${marketplaceSource}\n${marketIndexSource}\n${marketSectionSource}\n${beatMarketplaceSource}`,
+  /Coming into Market|card payment|Stripe|Start checkout|external checkout link/i,
+  'Marketplace routes must not expose unfinished card, Stripe, or external digital checkout surfaces',
+);
+
+assert.match(marketplaceSource, /MarketParityScreen/, 'Top-level Marketplace route must render the native Market parity screen');
+assert.match(marketIndexSource, /MarketParityScreen/, 'Top-level Market route must render the native Market parity screen');
+assert.match(marketSectionSource, /MarketParityScreen/, 'Market section route must render the native Market parity screen');
+assert.match(beatMarketplaceSource, /MarketParityScreen/, 'Beat marketplace shortcut must render the native Market parity screen');
+
+assert.match(
+  parityServiceSource,
+  /Preview beats and review license options from producers/,
+  'Native Market must use polished consumer-facing beat discovery copy',
+);
+
+assert.match(
+  parityServiceSource,
+  /Beat licensing previews will appear when published beats exist/,
+  'Native Market must keep licensing context public-facing and non-internal',
+);
+
+assert.doesNotMatch(
+  parityServiceSource,
+  /Apple IAP-backed|external digital checkout|native entitlement|No fake checkout|unsupported payment|payment contract/i,
+  'Native Market source must not contain App Review or implementation planning copy in public surfaces',
+);
 
 assert.doesNotMatch(
   beatDetailSource,

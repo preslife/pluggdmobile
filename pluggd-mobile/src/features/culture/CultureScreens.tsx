@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -36,6 +37,7 @@ import {
   type SocialPostItem,
 } from '../../lib/mobileContent';
 import { supabase } from '../../lib/supabase';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import { loadCreatorModePulse } from './mobileServices';
 import {
   useBackstage,
@@ -90,9 +92,10 @@ function ScreenFrame({
 }) {
   const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
+  const tone = title === 'Live' ? 'live' : title === 'Backstage' || title === 'Community' ? 'community' : 'accent';
 
   return (
-    <View style={[styles.screen, { backgroundColor: NOIR }]}>
+    <PremiumScreenBackdrop tone={tone} style={styles.screen}>
       <LinearGradient colors={[NOIR, NOIR_DEEP, NOIR]} style={StyleSheet.absoluteFill} />
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
@@ -103,16 +106,19 @@ function ScreenFrame({
         }
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: Math.max(insets.top + 64, 90), paddingBottom: SCREEN_BOTTOM + insets.bottom },
+          { paddingTop: Math.max(insets.top + 22, 58), paddingBottom: SCREEN_BOTTOM + insets.bottom },
         ]}
       >
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>{title}</Text>
-          <Text style={styles.pageSubtitle}>{subtitle}</Text>
-        </View>
+        <PremiumScreenHeader
+          eyebrow={title === 'Create' ? 'Studio Lite' : 'PLUGGD'}
+          title={title}
+          subtitle={subtitle}
+          tone={tone}
+          style={styles.premiumScreenHeader}
+        />
         {children}
       </ScrollView>
-    </View>
+    </PremiumScreenBackdrop>
   );
 }
 
@@ -158,7 +164,7 @@ function BackstagePassHero({
     <View style={styles.passHero}>
       <LinearGradient colors={['rgba(108,92,231,0.44)', 'rgba(0,255,136,0.1)', 'rgba(13,13,17,0.95)']} style={StyleSheet.absoluteFill} />
       <View style={styles.passTopRow}>
-        <Text style={styles.passKicker}>DIGITAL BACKSTAGE PASS</Text>
+        <Text style={styles.passKicker}>DIGITAL COMMUNITY PASS</Text>
         <View style={styles.passLivePill}>
           <View style={styles.livePulse} />
           <Text style={styles.passLiveText}>Culture live</Text>
@@ -166,7 +172,7 @@ function BackstagePassHero({
       </View>
       <Text style={styles.passTitle}>Music is happening here now.</Text>
       <Text style={styles.passBody}>
-        Discover the drop, join the room, catch the event, and carry the pass in one native flow.
+        Discover the drop, join the room, catch the event, and keep your pass close.
       </Text>
       <View style={styles.passStats}>
         <PassStat label="Drops" value={releases} />
@@ -482,8 +488,8 @@ function StageMediaCard({ item, event }: { item: StageMediaItem; event?: EventIt
         <Pressable style={styles.secondaryAction} onPress={() => router.push('/search' as any)}>
           <MaterialIcons name="ios-share" size={19} color="#FFFFFF" />
         </Pressable>
-        <Pressable style={styles.backstageButton} onPress={() => router.push('/backstage' as any)}>
-          <Text style={styles.backstageButtonText}>Backstage</Text>
+        <Pressable style={styles.backstageButton} onPress={() => router.push('/community' as any)}>
+          <Text style={styles.backstageButtonText}>Community</Text>
         </Pressable>
       </View>
       {event ? (
@@ -579,8 +585,8 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
             <MaterialIcons name="play-arrow" size={22} color={NOIR_DEEP} />
             <Text style={styles.stagePlayText}>Play hook</Text>
           </Pressable>
-          <Pressable style={styles.stageBackstageCta} onPress={() => router.push('/backstage' as any)}>
-            <Text style={styles.stageBackstageText}>Backstage</Text>
+          <Pressable style={styles.stageBackstageCta} onPress={() => router.push('/community' as any)}>
+            <Text style={styles.stageBackstageText}>Community</Text>
           </Pressable>
         </View>
       </View>
@@ -775,7 +781,7 @@ function HomeSubHeader({
   const tabs = [
     { key: 'for-you', label: 'FOR YOU' },
     { key: 'following', label: 'FOLLOWING' },
-    { key: 'backstage', label: 'BACKSTAGE' },
+    { key: 'backstage', label: 'COMMUNITY' },
   ];
 
   return (
@@ -953,7 +959,7 @@ export function HomeScreen() {
               key={board.id}
               community={{
                 id: board.id,
-                title: board.title || 'Creator Backstage',
+                title: board.title || 'Creator Community',
                 description: board.description,
                 cover_image_url: board.cover_image_url,
                 creator_id: board.creator_id,
@@ -1101,7 +1107,7 @@ export function BackstageScreen() {
 
   return (
     <ScreenFrame
-      title="Backstage"
+      title="Community"
       subtitle="Official creator communities, threads, live rooms, event chat and fan worlds."
       refreshing={query.isFetching}
       onRefresh={() => query.refetch()}
@@ -1117,9 +1123,9 @@ export function BackstageScreen() {
         active={filter}
         onChange={setFilter}
       />
-      {query.isLoading ? <LoadingState label="Opening Backstage..." /> : null}
+      {query.isLoading ? <LoadingState label="Opening Community..." /> : null}
       {!query.isLoading && !hasData ? (
-        <EmptyState icon="forum" title="Join creator communities to enter the conversation." body="Official Backstage communities will collect releases, event threads, fan talk and creator announcements." />
+        <EmptyState icon="forum" title="Join creator communities to enter the conversation." body="Official communities collect releases, event threads, fan talk and creator announcements." />
       ) : null}
       {data?.communities.length ? (
         <HorizontalRail title="Creator communities">
@@ -1332,7 +1338,7 @@ export function CreatorModeScreen() {
     <ScreenFrame title="Creator Mode" subtitle="Stay active, present and responsive from your phone. Deep business tools stay on desktop Studio.">
       {checking ? <LoadingState label="Checking account role..." /> : null}
       {creatorAccess === false ? (
-        <EmptyState icon="lock" title="Creator Mode is not active for this account." body="Fan accounts can still post, follow creators, join Backstage communities and buy tickets." />
+        <EmptyState icon="lock" title="Creator Mode is not active for this account." body="Fan accounts can still post, follow creators, join communities and buy tickets." />
       ) : null}
       <SectionHeader title="Quick actions" />
       <View style={styles.actionGrid}>
@@ -1368,7 +1374,7 @@ export function CreatorModeScreen() {
           </View>
         ))}
       </View>
-      <EmptyState icon="desktop-mac" title="Desktop Studio handles the heavy work." body="Distribution, payouts, tax, detailed analytics, CRM, inventory and advanced release operations stay on web Creator Studio." />
+      <EmptyState icon="desktop-mac" title="More Studio tools are available on desktop." body="Use Creator Studio on the web for distribution, payouts, tax, detailed analytics, CRM, inventory, and advanced release management." />
     </ScreenFrame>
   );
 }
@@ -1383,7 +1389,7 @@ export function TicketsScreen() {
         <EmptyState icon="confirmation-number" title="Tickets, rewards and purchases will appear here." body="When ticket storage or QR entry is available for your account, this screen will show secure entry details." />
       ) : null}
       {events.data?.map((event) => <EventCultureCard key={event.id} event={event} />)}
-      <EmptyState icon="qr-code-2" title="QR entry appears only when supported." body="PLUGGD will only display verified ticket codes. Dynamic QR or Apple Wallet support will be added when the backend contract is confirmed." />
+      <EmptyState icon="qr-code-2" title="Entry codes appear on eligible tickets." body="Verified tickets will show a secure entry code when the event supports in-app scanning." />
     </ScreenFrame>
   );
 }
@@ -1391,25 +1397,27 @@ export function TicketsScreen() {
 export function CreateHubScreen() {
   const router = useRouter();
   const actions = [
-    { label: 'Post', meta: 'Drop a feed update', icon: 'post-add' as const, route: '/create-post' },
-    { label: 'Go Live', meta: 'Open a creator session', icon: 'settings-input-antenna' as const, route: '/live/create' },
-    { label: 'Upload Clip', meta: 'Short-form Stage asset', icon: 'movie-creation' as const, route: '/upload-clip' },
-    { label: 'Thread', meta: 'Start a Backstage forum', icon: 'forum' as const, route: '/create-post?type=thread' },
-    { label: 'Event', meta: 'Manage event pulse', icon: 'confirmation-number' as const, route: '/creator/events' },
-    { label: 'Creator Mode', meta: 'Lightweight mobile controls', icon: 'bolt' as const, route: '/creator-mode' },
+    { label: 'Post', meta: 'Drop a feed update', icon: 'post-add' as const, route: '/create-post', accent: ORANGE },
+    { label: 'Go Live', meta: 'Open a creator session', icon: 'settings-input-antenna' as const, route: '/live/create', accent: '#FF4757' },
+    { label: 'Upload Clip', meta: 'Short-form release clip', icon: 'movie-creation' as const, route: '/upload-clip', accent: ORANGE },
+    { label: 'Thread', meta: 'Start a community thread', icon: 'forum' as const, route: '/create-post?type=thread', accent: ORANGE },
+    { label: 'Event', meta: 'Manage event pulse', icon: 'confirmation-number' as const, route: '/creator/events', accent: ORANGE },
+    { label: 'Studio', meta: 'Open Studio Lite', icon: 'dashboard-customize' as const, route: '/studio', accent: ORANGE },
   ];
 
   return (
-    <ScreenFrame title="Create" subtitle="Fast actions for staying present without bringing desktop Studio into the fan app.">
+    <ScreenFrame title="Create" subtitle="Fast actions for posting, going live, and keeping your scene moving from mobile.">
       <View style={styles.createHero}>
+        <Image source={WEB_PARITY_ASSETS.bedroomStudio} resizeMode="cover" style={styles.createHeroImage} />
+        <LinearGradient colors={['rgba(8,8,12,0.18)', 'rgba(8,8,12,0.72)', 'rgba(8,8,12,0.96)']} style={StyleSheet.absoluteFill} />
         <Text style={styles.passKicker}>CREATOR QUICK SWITCH</Text>
         <Text style={styles.passTitle}>Move the room without leaving mobile.</Text>
-        <Text style={styles.passBody}>Post, go live, start a thread, or push fans toward an event. Heavy operations stay on web Studio.</Text>
+        <Text style={styles.passBody}>Post, go live, start a thread, or send fans toward an event from one place.</Text>
       </View>
       <View style={styles.actionGrid}>
         {actions.map((action) => (
           <Pressable key={action.label} style={styles.createAction} onPress={() => router.push(action.route as any)}>
-            <MaterialIcons name={action.icon} size={24} color={action.label === 'Event' ? EMERALD : VIOLET} />
+            <MaterialIcons name={action.icon} size={24} color={action.accent} />
             <Text style={styles.creatorActionText}>{action.label}</Text>
             <Text style={styles.createActionMeta}>{action.meta}</Text>
           </Pressable>
@@ -1715,6 +1723,7 @@ const styles = StyleSheet.create({
   lowStockPill: { position: 'absolute', right: 10, top: 10, borderRadius: 999, backgroundColor: 'rgba(0,255,136,0.15)', borderWidth: 1, borderColor: 'rgba(0,255,136,0.4)', paddingHorizontal: 8, paddingVertical: 4 },
   lowStockText: { color: EMERALD, fontSize: 10, fontWeight: '900' },
   scrollContent: { paddingHorizontal: 14, gap: 12 },
+  premiumScreenHeader: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 },
   pageHeader: { gap: 5, paddingBottom: 0 },
   pageTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 31, fontWeight: '900' },
   pageSubtitle: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontWeight: '600' },
@@ -1828,7 +1837,8 @@ const styles = StyleSheet.create({
   pulseRow: { minHeight: 48, borderTopWidth: 1, borderTopColor: '#202020', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13 },
   pulseLabel: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   pulseValue: { color: ORANGE, fontSize: 12.5, fontWeight: '900' },
-  createHero: { borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: NOIR_CARD, borderRadius: 18, padding: 16, gap: 10 },
+  createHero: { minHeight: 270, borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)', backgroundColor: NOIR_CARD, borderRadius: 22, padding: 16, gap: 10, justifyContent: 'flex-end', overflow: 'hidden' },
+  createHeroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', opacity: 0.72 },
   createAction: { width: '48%', minHeight: 116, borderRadius: 16, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#12121A', padding: 13, justifyContent: 'space-between' },
   createActionMeta: { color: '#8E8E9F', fontSize: 12, lineHeight: 16, fontWeight: '600' },
   profilePass: { borderWidth: 1, borderColor: 'rgba(124,58,237,0.42)', backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 18, padding: 16, gap: 10 },

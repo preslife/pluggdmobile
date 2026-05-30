@@ -23,7 +23,7 @@ import {
   IRtcEngine,
   RtcSurfaceView,
   createAgoraRtcEngine,
-} from 'react-native-agora';
+} from '../lib/agora';
 import { useAuth } from '../context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../design/haptics';
 import { reportLiveRoom } from '../features/culture/mobileServices';
@@ -32,7 +32,7 @@ import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 
-const PLUGGD_ORANGE = '#FF5200';
+const PLUGGD_ORANGE = '#FF5A00';
 const REACTION_TTL_MS = 2400;
 
 type StreamRole = 'host' | 'collaborator' | 'audience';
@@ -63,6 +63,8 @@ type SessionRoom = {
   max_stage_participants?: number | null;
   recording_status?: string | null;
   restream_status?: string | null;
+  restream_enabled?: boolean | null;
+  restream_targets?: unknown | null;
   captions_enabled?: boolean | null;
   recording_enabled?: boolean | null;
   profiles?: Profile | null;
@@ -205,6 +207,10 @@ export default function LiveSessionScreen() {
   const [pendingStageCount, setPendingStageCount] = useState(0);
   const [pendingStageRequests, setPendingStageRequests] = useState<StageRequest[]>([]);
   const [stageParticipants, setStageParticipants] = useState<StageParticipant[]>([]);
+  const [runtimeActionLoading, setRuntimeActionLoading] = useState<string | null>(null);
+  const [runtimeSaving, setRuntimeSaving] = useState(false);
+  const [withdrawingStage, setWithdrawingStage] = useState(false);
+  const [removingStageUserId, setRemovingStageUserId] = useState<string | null>(null);
 
   const engineRef = useRef<IRtcEngine | null>(null);
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -269,6 +275,8 @@ export default function LiveSessionScreen() {
         max_stage_participants,
         recording_status,
         restream_status,
+        restream_enabled,
+        restream_targets,
         captions_enabled,
         recording_enabled,
         profiles!session_rooms_host_id_fkey(user_id, full_name, username, avatar_url, profile_type, user_type, is_creator)
@@ -755,6 +763,101 @@ export default function LiveSessionScreen() {
     }
   };
 
+  const withdrawStageRequest = async () => {
+    if (!stageRequest?.id || withdrawingStage) return;
+    setWithdrawingStage(true);
+    try {
+      const { error } = await (supabase as any).rpc('withdraw_live_stage_request', {
+        p_request_id: stageRequest.id,
+      });
+      if (error) throw error;
+      setStageRequest(null);
+      Alert.alert('Stage request withdrawn', 'You can submit a new request when you are ready.');
+    } catch (error: any) {
+      Alert.alert('Withdraw failed', error?.message ?? 'Please try again.');
+    } finally {
+      setWithdrawingStage(false);
+    }
+  };
+
+  const removeStageParticipant = async (participantUserId: string) => {
+    if (!currentRoomId || removingStageUserId) return;
+    setRemovingStageUserId(participantUserId);
+    try {
+      const { error } = await (supabase as any).rpc('remove_live_stage_participant', {
+        p_room_id: currentRoomId,
+        p_user_id: participantUserId,
+        p_note: 'removed_from_mobile',
+      });
+      if (error) throw error;
+      setStageParticipants((current) => current.filter((participant) => participant.user_id !== participantUserId));
+    } catch (error: any) {
+      Alert.alert('Remove failed', error?.message ?? 'Please try again.');
+    } finally {
+      setRemovingStageUserId(null);
+    }
+  };
+
+  const saveRuntimePreferences = async (patch: { recordingEnabled?: boolean; captionsEnabled?: boolean; restreamEnabled?: boolean }) => {
+    if (!currentRoomId || !session || runtimeSaving) return;
+    setRuntimeSaving(true);
+    try {
+      const recordingEnabled = patch.recordingEnabled ?? Boolean(session.recording_enabled);
+      const captionsEnabled = patch.captionsEnabled ?? Boolean(session.captions_enabled);
+      const restreamEnabled = patch.restreamEnabled ?? Boolean(session.restream_enabled);
+      const { error } = await (supabase as any).rpc('update_live_runtime_preferences', {
+        p_room_id: currentRoomId,
+        p_recording_enabled: recordingEnabled,
+        p_captions_enabled: captionsEnabled,
+        p_restream_enabled: restreamEnabled,
+        p_restream_targets: session.restream_targets ?? [],
+      });
+      if (error) throw error;
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              recording_enabled: recordingEnabled,
+              captions_enabled: captionsEnabled,
+              restream_enabled: restreamEnabled,
+            }
+          : current,
+      );
+      sessionRef.current = sessionRef.current
+        ? {
+            ...sessionRef.current,
+            recording_enabled: recordingEnabled,
+            captions_enabled: captionsEnabled,
+            restream_enabled: restreamEnabled,
+          }
+        : sessionRef.current;
+    } catch (error: any) {
+      Alert.alert('Runtime preferences failed', error?.message ?? 'Please try again.');
+    } finally {
+      setRuntimeSaving(false);
+    }
+  };
+
+  const runRuntimeAction = async (action: 'start_recording' | 'stop_recording' | 'start_restream' | 'stop_restream') => {
+    if (!currentRoomId || runtimeActionLoading) return;
+    setRuntimeActionLoading(action);
+    try {
+      const { data, error } = await supabase.functions.invoke('live-runtime-ops', {
+        body: {
+          action,
+          payload: { room_id: currentRoomId },
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      await loadRoom();
+    } catch (error: any) {
+      Alert.alert('Runtime action failed', error?.message ?? 'Please try again in a moment.');
+    } finally {
+      setRuntimeActionLoading(null);
+    }
+  };
+
   const toggleMute = () => {
     selectionHaptic();
     const next = !muted;
@@ -778,7 +881,7 @@ export default function LiveSessionScreen() {
   const reportRoom = () => {
     selectionHaptic();
     if (!currentRoomId || !session?.host_id) {
-      Alert.alert('Report unavailable', 'This room does not expose enough backend data to file a report.');
+      Alert.alert('Report unavailable', 'This room cannot be reported from mobile right now.');
       return;
     }
 
@@ -1019,11 +1122,22 @@ export default function LiveSessionScreen() {
                       : 'Request stage access'}
                 </Text>
                 {stageRequest?.status ? (
-                  <Text style={styles.stageRequestBody}>
-                    {stageRequest.status === 'approved'
-                      ? 'Leave and rejoin to publish audio/video as a collaborator.'
-                      : 'The host will review your request.'}
-                  </Text>
+                  <>
+                    <Text style={styles.stageRequestBody}>
+                      {stageRequest.status === 'approved'
+                        ? 'Leave and rejoin to publish audio/video as a collaborator.'
+                        : 'The host will review your request.'}
+                    </Text>
+                    {stageRequest.status === 'pending' ? (
+                      <Pressable style={styles.stageRequestButton} onPress={withdrawStageRequest} disabled={withdrawingStage}>
+                        {withdrawingStage ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.stageRequestButtonText}>Withdraw</Text>
+                        )}
+                      </Pressable>
+                    ) : null}
+                  </>
                 ) : (
                   <>
                     <TextInput
@@ -1053,6 +1167,45 @@ export default function LiveSessionScreen() {
               </View>
             ) : null}
 
+            {streamRole === 'host' ? (
+              <View style={styles.runtimePanel}>
+                <View style={styles.runtimeHeader}>
+                  <Text style={styles.stageRequestTitle}>Host controls</Text>
+                  {runtimeSaving || runtimeActionLoading ? <ActivityIndicator color={PLUGGD_ORANGE} size="small" /> : null}
+                </View>
+                <View style={styles.runtimeGrid}>
+                  <RuntimeButton
+                    icon={session?.recording_enabled ? 'fiber-manual-record' : 'radio-button-unchecked'}
+                    label={session?.recording_enabled ? 'Recording On' : 'Enable Rec'}
+                    active={Boolean(session?.recording_enabled)}
+                    disabled={runtimeSaving}
+                    onPress={() => saveRuntimePreferences({ recordingEnabled: !session?.recording_enabled })}
+                  />
+                  <RuntimeButton
+                    icon={session?.captions_enabled ? 'closed-caption' : 'closed-caption-disabled'}
+                    label={session?.captions_enabled ? 'Captions On' : 'Captions Off'}
+                    active={Boolean(session?.captions_enabled)}
+                    disabled={runtimeSaving}
+                    onPress={() => saveRuntimePreferences({ captionsEnabled: !session?.captions_enabled })}
+                  />
+                  <RuntimeButton
+                    icon="radio"
+                    label={session?.recording_status === 'recording' ? 'Stop Rec' : 'Start Rec'}
+                    active={session?.recording_status === 'recording'}
+                    disabled={Boolean(runtimeActionLoading)}
+                    onPress={() => runRuntimeAction(session?.recording_status === 'recording' ? 'stop_recording' : 'start_recording')}
+                  />
+                  <RuntimeButton
+                    icon="cell-tower"
+                    label={session?.restream_status === 'live' ? 'Stop Restream' : 'Restream'}
+                    active={session?.restream_status === 'live'}
+                    disabled={Boolean(runtimeActionLoading)}
+                    onPress={() => runRuntimeAction(session?.restream_status === 'live' ? 'stop_restream' : 'start_restream')}
+                  />
+                </View>
+              </View>
+            ) : null}
+
             {streamRole === 'host' && stageSupported && pendingStageRequests.length > 0 ? (
               <View style={styles.stageRequestBox}>
                 <Text style={styles.stageRequestTitle}>Stage requests</Text>
@@ -1077,6 +1230,31 @@ export default function LiveSessionScreen() {
                       onPress={() => reviewStageRequest(request.id, false)}
                     >
                       <MaterialIcons name="close" size={16} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {streamRole === 'host' && stageSupported && stageParticipants.length > 0 ? (
+              <View style={styles.stageRequestBox}>
+                <Text style={styles.stageRequestTitle}>On stage</Text>
+                {stageParticipants.slice(0, 4).map((participant) => (
+                  <View key={participant.user_id} style={styles.hostRequestRow}>
+                    <View style={styles.hostRequestText}>
+                      <Text style={styles.hostRequestName}>User {participant.user_id.slice(0, 6)}</Text>
+                      <Text style={styles.hostRequestNote} numberOfLines={1}>{participant.role || 'Collaborator'}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.declineButton}
+                      disabled={removingStageUserId === participant.user_id}
+                      onPress={() => removeStageParticipant(participant.user_id)}
+                    >
+                      {removingStageUserId === participant.user_id ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <MaterialIcons name="person-remove" size={16} color="#FFFFFF" />
+                      )}
                     </Pressable>
                   </View>
                 ))}
@@ -1197,6 +1375,36 @@ function SignalPill({ icon, label }: { icon: keyof typeof MaterialIcons.glyphMap
         {label}
       </Text>
     </PluggdGlassSurface>
+  );
+}
+
+function RuntimeButton({
+  icon,
+  label,
+  active,
+  disabled,
+  onPress,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(active), disabled: Boolean(disabled) }}
+      disabled={disabled}
+      style={[styles.runtimeButton, active && styles.runtimeButtonActive, disabled && styles.runtimeButtonDisabled]}
+      onPress={() => {
+        impactHaptic();
+        onPress();
+      }}
+    >
+      <MaterialIcons name={icon} size={17} color={active ? '#080808' : '#FFFFFF'} />
+      <Text style={[styles.runtimeButtonText, active && styles.runtimeButtonTextActive]} numberOfLines={1}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -1567,6 +1775,55 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 7,
     marginBottom: 10,
+  },
+  runtimePanel: {
+    borderRadius: 10,
+    backgroundColor: 'rgba(10,10,10,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+    padding: 10,
+    marginBottom: 10,
+    gap: 9,
+  },
+  runtimeHeader: {
+    minHeight: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  runtimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  runtimeButton: {
+    minHeight: 34,
+    minWidth: '47%',
+    flex: 1,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  runtimeButtonActive: {
+    backgroundColor: PLUGGD_ORANGE,
+    borderColor: PLUGGD_ORANGE,
+  },
+  runtimeButtonDisabled: {
+    opacity: 0.55,
+  },
+  runtimeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  runtimeButtonTextActive: {
+    color: '#080808',
   },
   hostRequestRow: {
     minHeight: 44,

@@ -2,9 +2,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
+import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 import { PLUGGD_ORANGE, SampleItem, SamplePackItem, formatGBP, toTrack } from '../../src/lib/mobileContent';
 
@@ -16,6 +17,7 @@ export default function SamplePackDetailScreen() {
   const [samples, setSamples] = useState<SampleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -63,7 +65,7 @@ export default function SamplePackDetailScreen() {
     if (price > 0) {
       Alert.alert(
         'Use PLUGGD credits',
-        'Paid sample pack unlocks in the iOS app must be completed with Apple-compliant PLUGGD credits. Add credits in Wallet, then unlock once this pack has a backend credit entitlement.',
+        'Add credits in Wallet, then return here to unlock eligible sample packs.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
@@ -115,6 +117,19 @@ export default function SamplePackDetailScreen() {
     }
   };
 
+  const savePack = async () => {
+    if (!pack || saving) return;
+    setSaving(true);
+    const result = await toggleSavedContent('sample_pack', pack.id);
+    setSaving(false);
+    Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable', result.success ? `${pack.title || 'Sample pack'} library state updated.` : result.error || 'Please try again.');
+  };
+
+  const sharePack = async () => {
+    if (!pack) return;
+    await Share.share({ message: `PLUGGD sample pack: ${pack.title || 'Untitled pack'}` });
+  };
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -151,6 +166,21 @@ export default function SamplePackDetailScreen() {
               <Pressable style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
                 {claiming ? <ActivityIndicator color={PLUGGD_ORANGE} /> : <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />}
                 <Text style={styles.secondaryButtonText}>{pack.price ? 'Use credits' : 'Claim pack'}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.quickActions}>
+              <Pressable style={styles.quickActionButton} onPress={savePack} disabled={saving}>
+                <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
+              </Pressable>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
+                <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Post</Text>
+              </Pressable>
+              <Pressable style={styles.quickActionButton} onPress={sharePack}>
+                <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
+                <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
             </View>
 
@@ -196,6 +226,9 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   secondaryButton: { flex: 1, height: 54, borderRadius: 16, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontWeight: '800' },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  quickActionButton: { minHeight: 40, flexGrow: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontWeight: '900' },
   disabledButton: { opacity: 0.62 },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 24, marginBottom: 11 },
   emptyText: { color: '#AFAFAF', fontSize: 14, fontWeight: '700' },

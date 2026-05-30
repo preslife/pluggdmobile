@@ -71,6 +71,28 @@ export interface ActiveMembership {
   current_period_end: string | null;
 }
 
+type FanSubscriptionRow = {
+  id: string;
+  creator_id: string;
+  apple_sku?: string | null;
+  status: 'active' | 'cancelled' | 'past_due' | 'expired';
+  current_period_end: string | null;
+  metadata?: Record<string, any> | null;
+  membership_tiers?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
+type CreatorProfileRow = {
+  user_id: string;
+  full_name?: string | null;
+  username?: string | null;
+};
+
+function membershipTierName(row: FanSubscriptionRow): string | null {
+  const tier = row.membership_tiers;
+  if (Array.isArray(tier)) return tier[0]?.name ?? null;
+  return tier?.name ?? null;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────
 export function useSubscription() {
   const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
@@ -122,21 +144,41 @@ export function useSubscription() {
 
       const { data, error: fetchErr } = await supabase
         .from('fan_subscriptions' as any)
-        .select('id, creator_id, apple_sku, status, current_period_end, metadata, membership_tiers(name), profiles!fan_subscriptions_creator_id_fkey(full_name, username)')
+        .select('id, creator_id, apple_sku, status, current_period_end, metadata, membership_tiers(name)')
         .eq('fan_id', user.id)
         .in('status', ['active', 'past_due'])
         .order('created_at', { ascending: false });
 
       if (fetchErr) throw fetchErr;
 
-      const memberships: ActiveMembership[] = (data ?? []).map((row: any) => {
+      const rows = ((data ?? []) as unknown) as FanSubscriptionRow[];
+      const creatorIds = Array.from(new Set(rows.map((row) => row.creator_id).filter(Boolean)));
+      const creatorById = new Map<string, CreatorProfileRow>();
+
+      if (creatorIds.length) {
+        const { data: creators, error: creatorErr } = await supabase
+          .from('profiles' as any)
+          .select('user_id, full_name, username')
+          .in('user_id', creatorIds);
+
+        if (creatorErr) {
+          console.warn('[useSubscription] creator profile lookup skipped:', creatorErr.message);
+        } else {
+          ((creators as unknown) as CreatorProfileRow[] | null)?.forEach((creator) => {
+            creatorById.set(creator.user_id, creator);
+          });
+        }
+      }
+
+      const memberships: ActiveMembership[] = rows.map((row) => {
         const meta = row.metadata ?? {};
         const appleSku = row.apple_sku ?? meta.apple_sku ?? '';
-        const tierLabel = row.membership_tiers?.name ?? meta.tier_name ?? (appleSku ? SKU_INFO[appleSku as SubscriptionSKU]?.label : null) ?? 'Membership';
+        const creator = creatorById.get(row.creator_id);
+        const tierLabel = membershipTierName(row) ?? meta.tier_name ?? (appleSku ? SKU_INFO[appleSku as SubscriptionSKU]?.label : null) ?? 'Membership';
         return {
           id: row.id,
           creator_id: row.creator_id,
-          creator_name: row.profiles?.full_name ?? row.profiles?.username ?? 'Creator',
+          creator_name: creator?.full_name ?? creator?.username ?? 'Creator',
           tier_name: tierLabel,
           apple_sku: appleSku,
           status: row.status,
@@ -146,7 +188,7 @@ export function useSubscription() {
 
       setActiveMemberships(memberships);
     } catch (err) {
-      console.error('[useSubscription] refreshMemberships failed:', err);
+      console.warn('[useSubscription] refreshMemberships skipped:', err);
     }
   }, []);
 

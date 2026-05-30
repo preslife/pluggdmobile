@@ -1,8 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -16,9 +16,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
+import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
+import { pluggdTextStyles } from '../../design/typography';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   contentInitials,
   formatCompact,
@@ -38,7 +41,9 @@ import {
   useLiveRooms,
   useUniversalSearch,
   type BackstageCommunity,
+  type BackstageBoard,
   type LiveRoomItem,
+  type MobileSocialPost,
   type VideoItem,
 } from '../culture/useCultureData';
 
@@ -55,7 +60,7 @@ const COLORS = {
   dim: '#62627A',
 };
 
-const FILTERS = ['Top', 'Creators', 'Tracks', 'Mixes', 'Videos', 'Events', 'Communities', 'Users', 'Beats', 'Live'] as const;
+const FILTERS = ['Top', 'Posts', 'Boards', 'Creators', 'Tracks', 'Mixes', 'Playlists', 'Videos', 'Stories', 'Events', 'Communities', 'Users', 'Beats', 'Live', 'Store', 'Memberships'] as const;
 type SearchFilter = (typeof FILTERS)[number];
 
 const GRADIENTS: readonly (readonly [string, string, string])[] = [
@@ -114,6 +119,7 @@ function Header() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const theme = usePluggdTheme();
   const label = user?.email || 'PLUGGD';
 
   const go = (route: string) => {
@@ -122,16 +128,39 @@ function Header() {
   };
 
   return (
-    <View style={[styles.header, { height: Math.max(insets.top + 72, 112), paddingTop: insets.top + 18 }]}>
-      <Text style={styles.headerTitle}>SEARCH</Text>
-      <View style={styles.headerActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={styles.headerIcon}>
-          <MaterialIcons name="account-balance-wallet" size={21} color={COLORS.soft} />
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => go('/profile')} style={styles.avatarButton}>
-          <Text style={styles.avatarInitials}>{contentInitials(label)}</Text>
-        </Pressable>
-      </View>
+    <View
+      style={[
+        styles.header,
+        {
+          height: Math.max(insets.top + 62, 96),
+          paddingTop: insets.top + 12,
+          backgroundColor: theme.colors.headerGlass,
+          borderBottomColor: theme.colors.divider,
+        },
+      ]}
+    >
+      <PremiumScreenHeader
+        eyebrow="SEARCH"
+        title="Explore"
+        subtitle="UNIVERSAL DISCOVERY for releases, beats, mixes, events, creators, live rooms and communities."
+        tone="accent"
+        style={styles.premiumHeaderFill}
+        actions={(
+          <>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={styles.headerIcon}>
+              <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+              onPress={() => go(user ? '/profile' : '/auth/login')}
+              style={[styles.avatarButton, { borderColor: theme.colors.divider, backgroundColor: theme.colors.surface }]}
+            >
+              <Text style={[styles.avatarInitials, { color: theme.colors.text }]}>{contentInitials(label)}</Text>
+            </Pressable>
+          </>
+        )}
+      />
     </View>
   );
 }
@@ -426,10 +455,37 @@ function CommunityRow({ community }: { community: BackstageCommunity }) {
   return (
     <ResultRow
       title={community.title}
-      subtitle={community.description || community.hub_type || 'Backstage community'}
+      subtitle={community.description || community.hub_type || 'Community'}
       imageUrl={imageSourceForCommunity(community)}
       icon="groups"
       onPress={() => router.push(communityRoute(community) as any)}
+    />
+  );
+}
+
+function SocialPostRow({ post }: { post: MobileSocialPost }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={post.content || 'Social post'}
+      subtitle={`${post.display_name || post.username || 'PLUGGD user'} · ${formatCompact(post.comments_count)} replies`}
+      imageUrl={post.images[0] || post.avatar_url}
+      icon="forum"
+      rightLabel={post.destinations[0]?.label}
+      onPress={() => router.push(`/post/${post.id}` as any)}
+    />
+  );
+}
+
+function BoardRow({ board }: { board: BackstageBoard }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={board.name}
+      subtitle={board.description || board.category || 'Community board'}
+      icon="dashboard"
+      rightLabel={board.joined ? 'Joined' : 'Board'}
+      onPress={() => router.push(board.route as any)}
     />
   );
 }
@@ -462,6 +518,66 @@ function VideoRow({ video }: { video: VideoItem }) {
   );
 }
 
+function PlaylistRow({ playlist }: { playlist: NonNullable<ReturnType<typeof useUniversalSearch>['data']>['playlists'][number] }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={playlist.name}
+      subtitle={`${playlist.owner_name || 'Playlist'} · ${formatCompact(playlist.track_count ?? 0)} tracks`}
+      imageUrl={playlist.cover_url}
+      icon="queue-music"
+      rightLabel={playlist.followed ? 'Following' : 'Playlist'}
+      onPress={() => router.push(playlist.route as any)}
+    />
+  );
+}
+
+function StoryRow({ story }: { story: NonNullable<ReturnType<typeof useUniversalSearch>['data']>['stories'][number] }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={story.caption || story.author?.full_name || story.author?.username || 'Story'}
+      subtitle={story.destination?.label || 'Moment'}
+      imageUrl={story.thumbnail_url || story.media_url || story.author?.avatar_url}
+      icon="auto-stories"
+      onPress={() => router.push(`/story/${story.id}` as any)}
+    />
+  );
+}
+
+function StoreRow({ item }: { item: NonNullable<ReturnType<typeof useUniversalSearch>['data']>['storefront'][number] }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={item.title}
+      subtitle={item.description || item.kind || 'Creator support'}
+      imageUrl={item.image_url}
+      icon="storefront"
+      rightLabel={item.purchaseSupported ? 'View' : 'Context'}
+      onPress={() => {
+        if (item.route) router.push(item.route as any);
+        else router.push('/wallet' as any);
+      }}
+    />
+  );
+}
+
+function MembershipRow({ membership }: { membership: NonNullable<ReturnType<typeof useUniversalSearch>['data']>['memberships'][number] }) {
+  const router = useRouter();
+  return (
+    <ResultRow
+      title={membership.title}
+      subtitle={membership.description || `${formatCompact(membership.member_count ?? 0)} members`}
+      icon="workspace-premium"
+      rightLabel={membership.is_member ? 'Member' : 'Join'}
+      onPress={() => {
+        if (membership.route) router.push(membership.route as any);
+        else router.push('/membership' as any);
+      }}
+    />
+  );
+}
+
 function ResultSection({
   title,
   count,
@@ -482,7 +598,8 @@ function ResultSection({
 export function SearchDiscoveryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [term, setTerm] = useState('');
+  const params = useLocalSearchParams<{ q?: string; term?: string }>();
+  const [term, setTerm] = useState(() => String(params.q || params.term || '').trim());
   const [activeFilter, setActiveFilter] = useState<SearchFilter>('Top');
   const normalized = term.trim();
   const hasSearch = normalized.length >= 2;
@@ -491,6 +608,13 @@ export function SearchDiscoveryScreen() {
   const events = useEventLayer(12);
   const backstage = useBackstage();
   const live = useLiveRooms();
+
+  useEffect(() => {
+    const nextTerm = String(params.q || params.term || '').trim();
+    if (nextTerm && nextTerm !== term) setTerm(nextTerm);
+    // Only respond to route param changes; user typing should remain local.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.q, params.term]);
 
   const discoveryEvents = events.data?.length ? events.data : home.data?.events ?? [];
   const discoveryCreators = home.data?.profiles ?? [];
@@ -511,7 +635,14 @@ export function SearchDiscoveryScreen() {
       results.communities.length +
       results.users.length +
       results.beats.length +
-      results.liveStreams.length
+      results.liveStreams.length +
+      results.posts.length +
+      results.boards.length +
+      results.hashtags.length +
+      results.playlists.length +
+      results.stories.length +
+      results.storefront.length +
+      results.memberships.length
     );
   }, [results]);
 
@@ -529,7 +660,7 @@ export function SearchDiscoveryScreen() {
   const show = (filter: SearchFilter, count?: number) => activeFilter === 'Top' || activeFilter === filter || Boolean(count && activeFilter === filter);
 
   return (
-    <View style={styles.screen}>
+    <PremiumScreenBackdrop tone="community" style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
       <LinearGradient colors={[COLORS.canvas, '#0A0A10', COLORS.canvas]} style={StyleSheet.absoluteFill} />
@@ -553,7 +684,8 @@ export function SearchDiscoveryScreen() {
               <View style={styles.intentChips}>
                 <Text style={styles.intentChip}>Events</Text>
                 <Text style={styles.intentChip}>Creators</Text>
-                <Text style={styles.intentChip}>Backstage</Text>
+                <Text style={styles.intentChip}>Posts</Text>
+                <Text style={styles.intentChip}>Community</Text>
                 <Text style={styles.intentChip}>Live</Text>
               </View>
             </View>
@@ -602,7 +734,7 @@ export function SearchDiscoveryScreen() {
                 {discoveryCreators.slice(0, 4).map((profile) => <ProfileRow key={`profile-${profile.user_id || profile.id || profile.username}`} profile={profile} />)}
               </View>
               {discoveryCommunities.length === 0 && discoveryCreators.length === 0 ? (
-                <EmptyBlock title="No communities surfaced yet." body="Creator backstages and profiles will appear here when the backend returns them." />
+                <EmptyBlock title="No communities surfaced yet." body="Creator communities and profiles will appear here as they become active." />
               ) : null}
             </ResultSection>
           </>
@@ -620,8 +752,32 @@ export function SearchDiscoveryScreen() {
           <>
             <View style={styles.summaryBar}>
               <Text style={styles.summaryTitle}>{resultCountLabel(totals)}</Text>
-              <Text style={styles.summaryBody} numberOfLines={1}>Grouped across music, events, live, communities and people.</Text>
+              <Text style={styles.summaryBody} numberOfLines={1}>Grouped across posts, boards, music, events, live, communities and people.</Text>
             </View>
+
+            {show('Posts', results.posts.length) && results.posts.length > 0 ? (
+              <ResultSection title="Posts + Threads" count={results.posts.length}>
+                {results.posts.slice(0, activeFilter === 'Posts' ? 12 : 4).map((post) => <SocialPostRow key={post.id} post={post} />)}
+              </ResultSection>
+            ) : null}
+
+            {show('Boards', results.boards.length) && results.boards.length > 0 ? (
+              <ResultSection title="Community Boards" count={results.boards.length}>
+                {results.boards.slice(0, activeFilter === 'Boards' ? 12 : 4).map((board) => <BoardRow key={board.id} board={board} />)}
+              </ResultSection>
+            ) : null}
+
+            {activeFilter === 'Top' && results.hashtags.length > 0 ? (
+              <ResultSection title="Trending Hashtags" count={results.hashtags.length}>
+                <View style={styles.hashtagWrap}>
+                  {results.hashtags.slice(0, 12).map((tag) => (
+                    <Pressable key={tag} style={styles.hashtagPill} onPress={() => setTerm(`#${tag}`)}>
+                      <Text style={styles.hashtagText}>#{tag}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ResultSection>
+            ) : null}
 
             {show('Events', results.events.length) && results.events.length > 0 ? (
               <ResultSection title="Events" count={results.events.length}>
@@ -649,9 +805,21 @@ export function SearchDiscoveryScreen() {
               </ResultSection>
             ) : null}
 
+            {show('Playlists', results.playlists.length) && results.playlists.length > 0 ? (
+              <ResultSection title="Playlists" count={results.playlists.length}>
+                {results.playlists.slice(0, activeFilter === 'Playlists' ? 12 : 4).map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />)}
+              </ResultSection>
+            ) : null}
+
             {show('Videos', results.videos.length) && results.videos.length > 0 ? (
               <ResultSection title="Videos" count={results.videos.length}>
                 {results.videos.slice(0, activeFilter === 'Videos' ? 12 : 4).map((video) => <VideoRow key={video.id} video={video} />)}
+              </ResultSection>
+            ) : null}
+
+            {show('Stories', results.stories.length) && results.stories.length > 0 ? (
+              <ResultSection title="Stories + Moments" count={results.stories.length}>
+                {results.stories.slice(0, activeFilter === 'Stories' ? 12 : 4).map((story) => <StoryRow key={story.id} story={story} />)}
               </ResultSection>
             ) : null}
 
@@ -675,6 +843,18 @@ export function SearchDiscoveryScreen() {
               </ResultSection>
             ) : null}
 
+            {show('Store', results.storefront.length) && results.storefront.length > 0 ? (
+              <ResultSection title="Store + Support" count={results.storefront.length}>
+                {results.storefront.slice(0, activeFilter === 'Store' ? 12 : 4).map((item) => <StoreRow key={item.id} item={item} />)}
+              </ResultSection>
+            ) : null}
+
+            {show('Memberships', results.memberships.length) && results.memberships.length > 0 ? (
+              <ResultSection title="Memberships" count={results.memberships.length}>
+                {results.memberships.slice(0, activeFilter === 'Memberships' ? 12 : 4).map((membership) => <MembershipRow key={membership.id} membership={membership} />)}
+              </ResultSection>
+            ) : null}
+
             {show('Users', results.users.length) && results.users.length > 0 ? (
               <ResultSection title="Users" count={results.users.length}>
                 {results.users.slice(0, activeFilter === 'Users' ? 12 : 4).map((profile) => (
@@ -685,7 +865,7 @@ export function SearchDiscoveryScreen() {
           </>
         ) : null}
       </ScrollView>
-    </View>
+    </PremiumScreenBackdrop>
   );
 }
 
@@ -695,8 +875,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.canvas,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingHorizontal: 0,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -705,12 +885,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(8,8,12,0.94)',
     zIndex: 3,
   },
+  premiumHeaderFill: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
   headerTitle: {
-    color: COLORS.white,
-    fontSize: 29,
-    lineHeight: 33,
-    fontWeight: '900',
-    letterSpacing: 0,
+    ...pluggdTextStyles.appTitle,
+    fontSize: 32,
+    lineHeight: 36,
   },
   headerActions: {
     flexDirection: 'row',
@@ -718,9 +902,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -728,9 +912,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18,18,26,0.72)',
   },
   avatarButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -738,10 +922,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   avatarInitials: {
-    color: COLORS.white,
+    fontFamily: 'Satoshi-Bold',
     fontSize: 12,
     lineHeight: 15,
-    fontWeight: '900',
   },
   scrollContent: {
     paddingTop: 14,
@@ -775,7 +958,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterPill: {
-    height: 36,
+    minHeight: 44,
     paddingHorizontal: 14,
     borderRadius: 18,
     borderWidth: 1,
@@ -789,10 +972,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,90,0,0.15)',
   },
   filterText: {
+    fontFamily: 'Satoshi-Medium',
     color: COLORS.muted,
     fontSize: 13,
     lineHeight: 16,
-    fontWeight: '800',
   },
   filterTextActive: {
     color: COLORS.white,
@@ -809,17 +992,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   intentEyebrow: {
+    fontFamily: 'Satoshi-Bold',
     color: COLORS.orange,
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '900',
     letterSpacing: 1.2,
   },
   intentTitle: {
+    ...pluggdTextStyles.heroTitle,
     color: COLORS.white,
     fontSize: 22,
     lineHeight: 27,
-    fontWeight: '900',
   },
   intentChips: {
     flexDirection: 'row',
@@ -850,10 +1033,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
+    ...pluggdTextStyles.sectionTitle,
     color: COLORS.white,
     fontSize: 18,
     lineHeight: 22,
-    fontWeight: '900',
     textTransform: 'uppercase',
   },
   sectionCount: {
@@ -896,14 +1079,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   discoveryTitle: {
+    fontFamily: 'Satoshi-Bold',
     color: COLORS.white,
     fontSize: 15,
     lineHeight: 19,
-    fontWeight: '900',
   },
   resultList: {
     paddingHorizontal: 16,
     gap: 10,
+  },
+  hashtagWrap: {
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  hashtagPill: {
+    minHeight: 44,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,90,0,0.28)',
+    backgroundColor: 'rgba(255,90,0,0.1)',
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  hashtagText: {
+    fontFamily: 'Satoshi-Bold',
+    color: COLORS.orange,
+    fontSize: 12,
+    lineHeight: 15,
   },
   resultRow: {
     minHeight: 72,
@@ -933,17 +1137,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   resultTitle: {
+    fontFamily: 'Satoshi-Bold',
     color: COLORS.white,
     fontSize: 15,
     lineHeight: 19,
-    fontWeight: '900',
   },
   rightLabel: {
+    fontFamily: 'Satoshi-Bold',
     overflow: 'hidden',
     color: '#FFB08A',
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '900',
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 9,
@@ -952,9 +1156,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,90,0,0.24)',
   },
   playButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.white,
@@ -973,10 +1177,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   artworkInitials: {
+    fontFamily: 'Satoshi-Bold',
     color: COLORS.soft,
     fontSize: 15,
     lineHeight: 18,
-    fontWeight: '900',
   },
   emptyBlock: {
     marginHorizontal: 16,
@@ -996,10 +1200,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,90,0,0.12)',
   },
   emptyTitle: {
+    fontFamily: 'Satoshi-Bold',
     color: COLORS.white,
     fontSize: 17,
     lineHeight: 21,
-    fontWeight: '900',
   },
   emptyBody: {
     color: COLORS.muted,
