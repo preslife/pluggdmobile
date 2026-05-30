@@ -21,7 +21,7 @@ Completed in the first implementation pass:
 
 - Verified the native iOS simulator build successfully after granting CoreSimulator access.
 - Added `scripts/verify-mobile-commerce-contract.mjs` to guard the current iOS commerce rules.
-- Restricted the mobile StoreKit credit catalog to the four approved packs.
+- Restricted the mobile StoreKit credit catalog to the five approved StoreKit credit product IDs: `pluggd_credits_starter`, `pluggd_credits_popular`, `pluggd_credits_value`, `pluggd_credits_premium`, and `pluggd_credits_ultimate`.
 - Updated wallet credit spending to call the current entitlement-aware `spend-credits` function.
 - Removed the global Stripe provider wrapper from the app layout.
 - Disabled the stale mobile digital checkout and order-success routes so they no longer present card/Apple Pay checkout for digital goods.
@@ -32,8 +32,8 @@ Completed in the first implementation pass:
 - Updated login and signup to collect access codes, validate them against the current backend, and store pending codes before Supabase auth.
 - Re-ran the auth contract check, commerce contract check, TypeScript, and an incremental native iOS simulator build successfully after the auth changes.
 - Added `scripts/verify-mobile-navigation-contract.mjs` to guard the agreed core mobile shell.
-- Replaced the horizontally scrolling fan/creator dock with a fixed five-tab mobile shell: Home, Discover, Create, Community, and Profile.
-- Kept existing routes intact and mapped deeper release, market, live, creator, wallet, and social routes into the nearest top-level tab state.
+- Reconciled the mobile shell to the current web-parity dock: Home, Discover, Community, Events, and Market.
+- Moved Create out of the dock into a role-aware floating action sheet, kept account/Profile access through the avatar sheet, retained `/live` as a route/deep link, and kept compatibility routing for `/stage` and `/my-pluggd`.
 - Re-ran navigation/auth/commerce contract checks, TypeScript, and an incremental native iOS simulator build successfully after the navigation change.
 - Added `scripts/verify-mobile-home-contract.mjs` to block demo/fallback Home content from returning.
 - Removed fake Home artists, live rooms, event, release drops, and fabricated viewer counts.
@@ -146,12 +146,11 @@ The web backend has real Apple IAP support:
 
 The current user-approved mobile credit packs are:
 
+- `pluggd_credits_starter` - Starter Credits - GBP 5.00 - 500 credits
 - `pluggd_credits_popular` - Plus Credits - GBP 9.99 - 1,050 credits including 50 bonus
 - `pluggd_credits_value` - Value Credits - GBP 24.99 - 2,750 credits including 250 bonus
 - `pluggd_credits_premium` - Premium Credits - GBP 49.99 - 5,750 credits including 750 bonus
 - `pluggd_credits_ultimate` - Ultimate Credits - GBP 99.99 - 12,000 credits including 2,000 bonus
-
-The existing backend and mobile code also know about `pluggd_credits_starter`, which is not in the current requested list. That SKU must either be deliberately retained because it exists in App Store Connect, or removed from the mobile purchase UI and product fetch list.
 
 Wallet model to enforce in iOS:
 
@@ -481,7 +480,7 @@ Worth keeping:
 
 Problems:
 
-- UI includes `pluggd_credits_starter`, which is not in the current requested pack list.
+- UI must keep all five approved StoreKit credit product IDs, including `pluggd_credits_starter`.
 - Wallet copy must be updated to the current model.
 - Spending hook uses the older generic transaction function.
 - StoreKit status cannot be fully verified without sandbox/App Store Connect product availability.
@@ -497,7 +496,7 @@ Current mobile subscription hook:
 
 Risk:
 
-- Current web mobile commerce guidance recommends per-creator Apple subscription product mapping rather than shared generic price-point products. This requires business and App Store Connect confirmation before public release.
+- Current checkpoint preserves the fixed StoreKit subscription product IDs: `pluggd_tier_299`, `pluggd_tier_499`, `pluggd_tier_999`, `pluggd_tier_1999`, and `pluggd_tier_4999`. Any per-creator subscription remapping is a future product decision that requires explicit approval and coordinated App Store Connect/backend changes.
 
 ### Events And Live
 
@@ -577,7 +576,7 @@ Current status after the first implementation pass:
 - Beat/detail license checkout path.
 - `useWallet.spendCredits` using `process-credits-transaction` for unlock-style spending.
 - Release unlock fallback to cash `price` as credits.
-- Shared membership SKUs if the business needs per-creator subscription products.
+- Per-creator subscription remapping unless explicitly approved and reflected in App Store Connect plus backend SKU mappings.
 - Fallback fake home data and placeholder marketplace sections.
 - Custom web-like dock as the primary shell.
 
@@ -665,29 +664,30 @@ Add/refactor:
 
 ### Navigation Structure
 
-Recommended primary tabs:
+Current public contract:
 
-- Home
-- Discover
-- Create
-- Community
-- Profile
+- Visible dock: Home, Discover, Community, Events, and Market.
+- Create: role-aware floating action sheet, not a dock tab.
+- Profile/account: avatar account sheet, not a dock tab.
+- `/live`: route/deep link, not a dock tab.
+- `/stage`: Discover compatibility route.
+- `/my-pluggd`: compatibility/account route.
 
 Supporting surfaces:
 
 - Mini-player above the tab bar.
 - Full player as a modal/full route.
-- Wallet from Profile and purchase/unlock flows.
-- Creator Studio entry from Profile/Create, role-aware.
+- Wallet from the account sheet and purchase/unlock flows.
+- Creator Studio entry from the account sheet/Create action sheet, role-aware.
 - Search as a Discover-first surface.
-- Notifications from top-right header/profile.
-- Settings from Profile.
+- Notifications from top-right header/account surfaces.
+- Settings from the account sheet.
 
 Why this shape:
 
 - It keeps consumer browsing simple.
 - It still supports creators without turning the main app into a studio dashboard.
-- It maps better to native iOS expectations than a horizontally scrolling web dock.
+- It aligns the native shell with the web-source product model while keeping creator and account actions close at hand.
 
 ## Screen Map
 
@@ -920,17 +920,17 @@ Current backend IAP foundation:
 
 Open items:
 
-- Confirm App Store Connect has the four requested products active:
+- Confirm App Store Connect has the five requested credit products active:
+  - `pluggd_credits_starter`
   - `pluggd_credits_popular`
   - `pluggd_credits_value`
   - `pluggd_credits_premium`
   - `pluggd_credits_ultimate`
-- Decide whether `pluggd_credits_starter` remains hidden, removed, or formally supported.
 - Verify `validate-iap-receipt` inserts or reconciles `iap_transactions`; the table exists but the audited function primarily records ledger/system log activity.
 - Verify App Store server notifications in a sandbox/prod environment.
 - Verify sandbox StoreKit purchases on simulator and real device.
 - Fix mobile spending to use `spend-credits` for supported unlocks.
-- Confirm subscription SKU strategy before exposing memberships broadly.
+- Sandbox-test the fixed StoreKit subscription product IDs before exposing memberships broadly.
 
 ## Keep, Refactor, Delete
 
@@ -973,11 +973,11 @@ Open items:
 
 ## Missing Backend Requirements Or Decisions
 
-- Confirm final credit product catalog and whether the starter pack exists publicly.
+- Keep the final credit product catalog locked to the five approved StoreKit product IDs, including `pluggd_credits_starter`.
 - Confirm APNS device token storage and mobile push notification functions.
 - Confirm mobile playback URL resolver behavior for locked tracks and previews.
 - Add or confirm credit entitlement functions for beats, sample packs, and soundboards if those unlocks are intended on iOS.
-- Confirm per-creator membership Apple subscription product mapping.
+- Do not introduce per-creator membership subscription remapping without explicit approval and coordinated App Store Connect/backend updates.
 - Confirm which event/ticket flows are Apple-compliant in iOS and which should be web-only or informational.
 - Confirm whether creator upload/studio tools should be full mobile authoring or mobile management only.
 
@@ -1095,7 +1095,7 @@ Open items:
 2. Remove or hide noncompliant/outdated checkout paths - first pass completed for digital checkout routes.
 3. Wallet and approved StoreKit credit pack alignment - first pass completed.
 4. Auth/access gate alignment - first pass completed for email/password login and signup.
-5. Premium native shell and tabs - first pass completed with fixed five-tab app chrome.
+5. Premium native shell and tabs - first pass completed with web-parity dock plus floating Create and avatar account access.
 6. Backend type/service alignment.
 7. Home, Discover, Music, Creator Profile, Player - Home no-fake-data cleanup and public creator profile routes completed; Discover/Music/Player refinement still pending.
 8. Release credit unlock end-to-end verification.
