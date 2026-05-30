@@ -115,7 +115,7 @@ export default function CreatorMembershipScreen() {
         .from('profiles')
         .select('id, full_name, username, avatar_url, cover_image_url, bio')
         .eq('id', creatorId)
-        .single();
+        .maybeSingle();
 
       if (profileData) setCreator(profileData);
 

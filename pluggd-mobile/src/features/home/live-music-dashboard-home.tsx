@@ -959,28 +959,20 @@ export function LiveMusicDashboardHome() {
   const campaigns = useQuery({
     queryKey: ['culture', 'home', 'campaign-moments'],
     queryFn: async (): Promise<CampaignMoment[]> => {
-      const [campaignRows, crowdfundRows, membershipRows] = await Promise.all([
+      const [campaignRows, membershipRows] = await Promise.all([
         safeList<any>(
           (supabase as any)
             .from('campaigns')
-            .select('id,title,name,description,cover_image_url,image_url,slug,status,created_at')
-            .in('status', ['active', 'published', 'live'])
-            .order('created_at', { ascending: false })
-            .limit(4),
-        ),
-        safeList<any>(
-          (supabase as any)
-            .from('crowdfunding_campaigns')
-            .select('id,title,name,description,cover_image_url,image_url,slug,status,created_at')
-            .in('status', ['active', 'published', 'live'])
+            .select('id,title,cover_url,slug,status,created_at,ends_at')
+            .eq('status', 'live')
             .order('created_at', { ascending: false })
             .limit(4),
         ),
         safeList<any>(
           (supabase as any)
             .from('membership_tiers')
-            .select('id,title,name,description,creator_id,cover_image_url,image_url,is_active,created_at')
-            .eq('is_active', true)
+            .select('id,name,description,owner_id,image_url,status,created_at')
+            .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(4),
         ),
@@ -988,24 +980,17 @@ export function LiveMusicDashboardHome() {
       return [
         ...campaignRows.map((row) => ({
           id: row.id,
-          title: row.title || row.name || 'Campaign on PLUGGD',
-          subtitle: row.description || 'Campaign moment',
-          imageUrl: row.cover_image_url || row.image_url || null,
-          route: '/commerce/crowdfunding',
-        })),
-        ...crowdfundRows.map((row) => ({
-          id: row.id,
-          title: row.title || row.name || 'Crowdfunding on PLUGGD',
-          subtitle: row.description || 'Crowdfunding moment',
-          imageUrl: row.cover_image_url || row.image_url || null,
+          title: row.title || 'Campaign on PLUGGD',
+          subtitle: row.ends_at ? `Ends ${formatDate(row.ends_at)}` : 'Campaign moment',
+          imageUrl: row.cover_url || null,
           route: '/commerce/crowdfunding',
         })),
         ...membershipRows.map((row) => ({
           id: row.id,
-          title: row.title || row.name || 'Membership on PLUGGD',
+          title: row.name || 'Membership on PLUGGD',
           subtitle: row.description || 'Membership moment',
-          imageUrl: row.cover_image_url || row.image_url || null,
-          route: row.creator_id ? `/membership/${row.creator_id}` : '/membership',
+          imageUrl: row.image_url || null,
+          route: row.owner_id ? `/membership/${row.owner_id}` : '/membership',
         })),
       ].slice(0, 6);
     },

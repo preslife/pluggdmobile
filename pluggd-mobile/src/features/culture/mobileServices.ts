@@ -219,7 +219,7 @@ function mapLiveRoom(row: any, profile?: ProfileItem | null): LiveRoomItem {
     viewer_count: row.participant_count ?? row.viewer_count ?? null,
     scheduled_for: row.scheduled_for ?? null,
     started_at: row.agora_live_started_at ?? row.started_at ?? row.created_at,
-    replay_url: row.replay_url ?? null,
+    replay_url: row.replay_url ?? row.recording_url ?? null,
     thumbnail_url: row.thumbnail_url ?? null,
     creator_id: row.host_id ?? row.creator_id ?? null,
     creator_name: profile?.display_name || profile?.full_name || profile?.username || row.creator_name || null,
@@ -370,9 +370,9 @@ export async function loadLiveRooms() {
     safeList<any>(
       (supabase as any)
         .from('live_sessions')
-        .select('id,title,description,status,viewer_count,scheduled_for,started_at,replay_url,thumbnail_url,creator_id')
+        .select('id,title,description,status,scheduled_for,recording_url,thumbnail_url,creator_id,created_at')
         .in('status', ['live', 'scheduled', 'replay'])
-        .order('started_at', { ascending: false })
+        .order('scheduled_for', { ascending: false })
         .limit(24),
     ),
     safeList<any>(
@@ -2043,7 +2043,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
       ? safeList<any>((supabase as any).from('communities').select('id,creator_id,name,slug,description,tagline,avatar_url,banner_url,cover_image_url,visibility,join_policy,status,is_primary,member_count,created_at,updated_at').in('id', communityIds))
       : Promise.resolve([]),
     followedIds.length
-      ? safeList<ProfileItem>((supabase as any).from('profiles').select('id,user_id,username,full_name,display_name,avatar_url,bio,profile_type,user_type,is_creator,is_verified,city').in('user_id', followedIds))
+      ? safeList<ProfileItem>((supabase as any).from('profiles').select('id,user_id,username,full_name,avatar_url,bio,profile_type,user_type,is_creator,is_verified,city').in('user_id', followedIds))
       : Promise.resolve([]),
   ]);
 
@@ -2495,11 +2495,11 @@ export async function loadFanIdentitySummary(userId?: string | null): Promise<Fa
   const targetUserId = userId || (await getCurrentUserId());
   if (!targetUserId) return null;
   const [badgeRows, rewardRows, memberships, ticketRows, challengeVotes] = await Promise.all([
-    safeList<any>((supabase as any).from('user_badges').select('*').eq('user_id', targetUserId).limit(30)),
-    safeList<any>((supabase as any).from('user_rewards').select('*').eq('user_id', targetUserId).limit(30)),
+    Promise.resolve([] as any[]),
+    Promise.resolve([] as any[]),
     loadMemberships(targetUserId),
     safeList<any>((supabase as any).from('ticket_orders').select('event_id,status,created_at').eq('user_id', targetUserId).limit(40)),
-    safeList<ChallengeVoteState>((supabase as any).from('challenge_votes').select('*').eq('user_id', targetUserId).limit(40)),
+    safeList<ChallengeVoteState>((supabase as any).from('challenge_votes').select('*').eq('voter_id', targetUserId).limit(40)),
   ]);
   const [communityRows, eventRows] = await Promise.all([
     memberships.length

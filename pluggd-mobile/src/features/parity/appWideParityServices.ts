@@ -55,12 +55,15 @@ type HubRow = {
   slug?: string | null;
   title?: string | null;
   name?: string | null;
+  subtitle?: string | null;
   description?: string | null;
   cover_image_url?: string | null;
+  hero_image_url?: string | null;
   avatar_url?: string | null;
   member_count?: number | null;
   visibility?: string | null;
   status?: string | null;
+  hub_type?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
 };
@@ -134,12 +137,17 @@ type CommunityFeatureRow = {
   name?: string | null;
   text?: string | null;
   description?: string | null;
+  excerpt?: string | null;
   content?: string | null;
   cover_image_url?: string | null;
+  cover_url?: string | null;
+  featured_image_url?: string | null;
   image_url?: string | null;
   slug?: string | null;
   status?: string | null;
   ends_at?: string | null;
+  end_date?: string | null;
+  is_published?: boolean | null;
   created_at?: string | null;
 };
 
@@ -274,10 +282,10 @@ function hubCard(item: HubRow): ParityCard {
   return {
     id: item.id,
     title,
-    subtitle: item.description || item.visibility || 'Culture hub',
+    subtitle: item.description || item.subtitle || item.hub_type || item.visibility || 'Culture hub',
     eyebrow: item.status === 'draft' ? 'Draft hub' : 'Hub',
     route: `/hubs/${item.slug || item.id}`,
-    imageUrl: item.cover_image_url || item.avatar_url,
+    imageUrl: item.cover_image_url || item.hero_image_url || item.avatar_url,
     metric: item.member_count ? `${formatCompact(item.member_count)} members` : null,
     kind: 'hub',
   };
@@ -314,11 +322,11 @@ function communityFeatureCard(item: CommunityFeatureRow, kind: string, route: st
   return {
     id: item.id,
     title,
-    subtitle: item.description || item.content || item.status || kind,
+    subtitle: item.description || item.excerpt || item.content || item.status || kind,
     eyebrow: kind,
     route,
-    imageUrl: item.cover_image_url || item.image_url,
-    metric: item.ends_at ? `Ends ${formatDate(item.ends_at)}` : null,
+    imageUrl: item.cover_image_url || item.cover_url || item.featured_image_url || item.image_url,
+    metric: item.ends_at || item.end_date ? `Ends ${formatDate(item.ends_at || item.end_date || '')}` : null,
     kind: kind.toLowerCase().replace(/\s+/g, '_'),
   };
 }
@@ -328,13 +336,13 @@ async function loadStoreProducts(limit = 12) {
     safeList<StoreProductRow>(
       (supabase as any)
         .from('store_products')
-        .select('id,title,name,description,image_url,cover_image_url,price_cents,price,kind,product_type,slug')
+        .select('id,title,description,image_url,price,product_type')
         .limit(limit),
     ),
     safeList<StoreProductRow>(
       (supabase as any)
         .from('creator_merchandise')
-        .select('id,title,name,description,image_url,cover_image_url,price_cents,price,kind,product_type,slug')
+        .select('id,title,description,image_url,price,product_type,status')
         .limit(limit),
     ),
   ]);
@@ -348,13 +356,13 @@ export async function loadDiscoverParity(): Promise<ParityPayload> {
     safeList<{ tag?: string | null; hashtag?: string | null; post_count?: number | null }>(
       (supabase as any)
         .from('social_trending_hashtags')
-        .select('tag,hashtag,post_count')
+        .select('tag,post_count')
         .limit(8),
     ),
     safeList<LiveRoomRow>(
       (supabase as any)
         .from('session_rooms')
-        .select('id,title,status,description,category,viewer_count,agora_live_started_at,scheduled_for,thumbnail_url,creator_avatar_url')
+        .select('id,title,status,description,agora_live_started_at,created_at,host_id,is_public')
         .in('status', ['live', 'idle', 'scheduled'])
         .limit(8),
     ),
@@ -408,34 +416,25 @@ export async function loadCommunityParity(): Promise<ParityPayload> {
     safeList<HubRow>(
       (supabase as any)
         .from('hubs')
-        .select('id,slug,title,name,description,cover_image_url,avatar_url,member_count,visibility,status,updated_at,created_at')
-        .in('visibility', ['public', 'unlisted'])
+        .select('id,slug,title,subtitle,description,hero_image_url,status,hub_type,created_by,created_at,updated_at')
+        .eq('status', 'published')
         .limit(12),
     ),
     safeList<CommunityFeatureRow>(
       (supabase as any)
         .from('contests')
-        .select('id,title,name,description,cover_image_url,image_url,status,ends_at,created_at')
+        .select('id,title,description,cover_image_url,status,end_date,created_at')
         .limit(8),
     ),
-    safeList<CommunityFeatureRow>(
-      (supabase as any)
-        .from('crowdfunding_campaigns')
-        .select('id,title,name,description,cover_image_url,image_url,status,created_at')
-        .limit(8),
-    ),
+    Promise.resolve([] as CommunityFeatureRow[]),
     safeList<CommunityFeatureRow>(
       (supabase as any)
         .from('blog_posts')
-        .select('id,title,slug,description,content,cover_image_url,image_url,status,created_at')
+        .select('id,title,excerpt,content,featured_image_url,is_published,created_at')
+        .eq('is_published', true)
         .limit(8),
     ),
-    safeList<CommunityFeatureRow>(
-      (supabase as any)
-        .from('community_prompts')
-        .select('id,text,title,description,status,created_at')
-        .limit(3),
-    ),
+    Promise.resolve([] as CommunityFeatureRow[]),
   ]);
   const posts = bundle.posts.filter((post) => !post.is_deleted).map(socialPostCard);
   const storyPosts = bundle.posts
@@ -587,8 +586,8 @@ export async function loadHubsParity(slug?: string | string[] | null): Promise<P
   const hubs = await safeList<HubRow>(
     (supabase as any)
       .from('hubs')
-      .select('id,slug,title,name,description,cover_image_url,avatar_url,member_count,visibility,status,updated_at,created_at')
-      .in('visibility', ['public', 'unlisted'])
+      .select('id,slug,title,subtitle,description,hero_image_url,status,hub_type,created_by,created_at,updated_at')
+      .eq('status', 'published')
       .limit(24),
   );
   const selected = targetSlug ? hubs.find((hub) => hub.slug === targetSlug || hub.id === targetSlug) : null;
