@@ -108,7 +108,7 @@ export default function MixDetailScreen() {
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { mixId: mix.id } } as any)}>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>

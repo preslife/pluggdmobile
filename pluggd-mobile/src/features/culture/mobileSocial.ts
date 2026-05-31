@@ -638,6 +638,29 @@ export async function voteMobilePoll(postId: string, optionId: string) {
   return { success: true, poll: row.poll as MobilePollState | undefined, selectedOptionId: row.selected_option_id || optionId };
 }
 
+export async function reportSocialPost(postId: string, reason = 'reported_from_mobile') {
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: 'Sign in to report posts.' };
+
+  const rpcResult = await (supabase as any).rpc('report_social_post', {
+    p_post_id: postId,
+    p_reason: reason,
+  });
+  if (!rpcResult.error) return { success: true };
+
+  const insertResult = await (supabase as any)
+    .from('social_reports')
+    .insert({
+      post_id: postId,
+      reporter_id: userId,
+      reason,
+      status: 'open',
+    });
+
+  if (!insertResult.error || isDuplicateError(insertResult.error)) return { success: true };
+  return { success: false, error: 'Report could not be sent right now.' };
+}
+
 export async function loadCommunityBoards(): Promise<BackstageBoard[]> {
   const userId = await currentUserId();
   const [boards, memberships] = await Promise.all([

@@ -60,7 +60,8 @@ for (const label of ['Home', 'Discover', 'Community', 'Events', 'Market']) {
 assert.doesNotMatch(tabsSource, /title:\s*"(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)"/, 'tab titles must use the web-parity dock labels');
 assert.match(chromeSource, /CreateActionSheet/, 'Create must be mounted through the role-aware floating action sheet');
 assert.match(tabDiscoverSource, /DiscoverParityScreen/, 'Discover tab must render the web-source Discover parity screen');
-assert.match(tabCommunitySource, /CommunityParityScreen/, 'Community tab must render the web-source Community parity screen');
+assert.match(tabCommunitySource, /CommunityFeedScreen/, 'Community tab must render the feed-first Community screen');
+assert.doesNotMatch(tabCommunitySource, /CommunityParityScreen/, 'Community tab must not render the generic parity screen');
 assert.match(tabEventsSource, /EventsParityScreen/, 'Events tab must render the web-source Events parity screen');
 assert.match(tabMarketSource, /MarketParityScreen/, 'Market tab must render the web-source Market parity screen');
 

@@ -10,6 +10,7 @@ const parityScreens = read('src/features/parity/AppWideParityScreens.tsx');
 const createSheet = read('components/CreateActionSheet.tsx');
 const accountHeader = read('components/MobileHeader.tsx');
 const dock = read('components/PluggdDock.tsx');
+const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
 
 for (const exportName of [
   'PremiumScreenBackdrop',
@@ -37,9 +38,10 @@ assert.match(home, /PremiumScreenBackdrop/, 'Home must use the shared premium ba
 assert.match(parityScreens, /LinearGradient[\s\S]*PluggdImage[\s\S]*Hero[\s\S]*SectionBlock/, 'Discover, Community, Events and Market must use the artwork-led parity shell');
 
 assert.match(home, /PremiumHeroCard/, 'Home must use the shared premium hero for the front-door spotlight');
-for (const exportName of ['DiscoverParityScreen', 'CommunityParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
+for (const exportName of ['DiscoverParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
   assert.match(parityScreens, new RegExp(`export function ${exportName}`), `${exportName} must remain a premium web-parity surface`);
 }
+assert.match(communityFeed, /MobileSocialPostCard[\s\S]*MobileStoriesRail[\s\S]*CommunityComposer|MobileStoriesRail[\s\S]*CommunityComposer[\s\S]*MobileSocialPostCard/, 'Community must use the feed-first premium social surface');
 assert.match(createSheet, /hasCreatorAccess[\s\S]*router\.push\('\/create'|Become a Creator|Studio/, 'Create must be exposed through role-aware floating action, not a dock tab');
 for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Memberships', 'Tickets', 'Settings', 'Inbox', 'Activity']) {
   assert.match(accountHeader, new RegExp(escapeRegExp(accountRoute)), `Account menu must retain ${accountRoute}`);

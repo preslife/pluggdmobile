@@ -10,6 +10,7 @@ const tabs = read('app/(tabs)/_layout.tsx');
 const chrome = read('components/AppChrome.tsx');
 const services = read('src/features/parity/appWideParityServices.ts');
 const screens = read('src/features/parity/AppWideParityScreens.tsx');
+const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
 const appCommunity = read('app/community.tsx');
 const tabCommunity = read('app/(tabs)/community.tsx');
 const explore = read('app/explore.tsx');
@@ -49,8 +50,10 @@ for (const marketToken of ['BeatPlug flagship', 'Releases', 'Sample packs', 'Mer
   assert.match(services, new RegExp(marketToken), `Market parity loader must preserve web Market lane ${marketToken}`);
 }
 assert.match(screens, /export function CommunityParityScreen/, 'Community parity screen must be exported');
-assert.match(appCommunity, /CommunityParityScreen/, 'Top-level Community route must use parity screen');
-assert.match(tabCommunity, /CommunityParityScreen/, 'Tab Community route must use parity screen');
+assert.match(appCommunity, /CommunityFeedScreen/, 'Top-level Community route must use the feed-first Community screen');
+assert.match(tabCommunity, /CommunityFeedScreen/, 'Tab Community route must use the feed-first Community screen');
+assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityComposer[\s\S]*MobileSocialPostCard/, 'Community feed must render stories, composer, and real social posts');
+assert.doesNotMatch(appCommunity + tabCommunity, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
 assert.match(explore, /ExploreParityScreen/, 'Explore route must render the primary discovery parity screen');
 assert.match(tabExplore, /ExploreParityScreen/, 'Tab Explore route must render the primary discovery parity screen');
 assert.match(tabStage, /Redirect[\s\S]*href="\/discover"/, 'Old Stage route must redirect to Discover');

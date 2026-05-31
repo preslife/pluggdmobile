@@ -124,7 +124,7 @@ export default function EventDetailScreen() {
                 <MaterialIcons name="confirmation-number" size={20} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Tickets / RSVP</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { eventId: event.id, type: 'thread' } } as any)}>
+              <Pressable style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
                 <MaterialIcons name="forum" size={20} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryButtonText}>Event thread</Text>
               </Pressable>

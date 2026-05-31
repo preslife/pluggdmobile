@@ -1,5 +1,5 @@
-import { CommunityParityScreen } from '../../src/features/parity/AppWideParityScreens';
+import { CommunityFeedScreen } from '../../src/features/community-feed/CommunityFeedScreen';
 
 export default function CommunityTabRoute() {
-  return <CommunityParityScreen />;
+  return <CommunityFeedScreen />;
 }

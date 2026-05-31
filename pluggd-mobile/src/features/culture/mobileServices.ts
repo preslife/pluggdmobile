@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import type { MobileFeedAttachment } from '../community-feed/communityFeedTypes';
 import {
   loadFeedBundle,
   type BeatItem,
@@ -127,6 +128,107 @@ export async function uploadSocialMediaAsset(input: {
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+export async function resolveMobileFeedAttachment(input: {
+  attachmentType?: string | null;
+  releaseId?: string | null;
+  beatId?: string | null;
+  galleryId?: string | null;
+  mixId?: string | null;
+  eventId?: string | null;
+}): Promise<MobileFeedAttachment | null> {
+  if (input.attachmentType === 'release' && input.releaseId) {
+    const release = await safeMaybe<any>(
+      (supabase as any)
+        .from('releases')
+        .select('id,title,artist,cover_art_url')
+        .eq('id', input.releaseId)
+        .maybeSingle(),
+    );
+    if (!release) return null;
+    return {
+      type: 'release',
+      id: release.id,
+      title: release.title || 'Release',
+      subtitle: release.artist || 'PLUGGD release',
+      imageUrl: release.cover_art_url || null,
+      route: `/release/${release.id}`,
+    };
+  }
+
+  if (input.attachmentType === 'beat' && input.beatId) {
+    const beat = await safeMaybe<any>(
+      (supabase as any)
+        .from('beats')
+        .select('id,title,producer_name,image_url')
+        .eq('id', input.beatId)
+        .maybeSingle(),
+    );
+    if (!beat) return null;
+    return {
+      type: 'beat',
+      id: beat.id,
+      title: beat.title || 'Beat',
+      subtitle: beat.producer_name || 'Producer beat',
+      imageUrl: beat.image_url || null,
+      route: `/beat/${beat.id}`,
+    };
+  }
+
+  if (input.attachmentType === 'mix' && input.mixId) {
+    const mix = await safeMaybe<any>(
+      (supabase as any)
+        .from('mixes')
+        .select('id,slug,title,cover_url,city')
+        .or(`id.eq.${input.mixId},slug.eq.${input.mixId}`)
+        .maybeSingle(),
+    );
+    if (!mix) return null;
+    return {
+      type: 'mix',
+      id: mix.id,
+      title: mix.title || 'Mix',
+      subtitle: mix.city || 'PLUGGD mix',
+      imageUrl: mix.cover_url || null,
+      route: `/mixes/${mix.slug || mix.id}`,
+    };
+  }
+
+  if (input.attachmentType === 'event' && input.eventId) {
+    const event = await safeMaybe<any>(
+      (supabase as any)
+        .from('events')
+        .select('id,title,cover_image_url,location,starts_at')
+        .eq('id', input.eventId)
+        .maybeSingle(),
+    );
+    if (!event) return null;
+    return {
+      type: 'event',
+      id: event.id,
+      title: event.title || 'Event',
+      subtitle: [event.location, event.starts_at ? new Date(event.starts_at).toLocaleDateString() : null].filter(Boolean).join(' · ') || 'PLUGGD event',
+      imageUrl: event.cover_image_url || null,
+      route: `/events/${event.id}`,
+    };
+  }
+
+  if (input.attachmentType === 'gallery' && input.galleryId) return null;
+
+  return null;
+}
+
+export function buildMobileFeedAttachmentLinkPreview(attachment: MobileFeedAttachment) {
+  return {
+    type: attachment.type,
+    id: attachment.id,
+    title: attachment.title,
+    description: attachment.subtitle,
+    image: attachment.imageUrl || null,
+    image_url: attachment.imageUrl || null,
+    url: attachment.route,
+  };
 }
 
 function looksUuid(value?: string | null) {

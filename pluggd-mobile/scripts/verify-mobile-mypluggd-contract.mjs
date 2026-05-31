@@ -8,6 +8,7 @@ const headerSource = read('components/MobileHeader.tsx');
 const dockSource = read('components/PluggdDock.tsx');
 const communityRoute = read('app/community.tsx');
 const communityTabRoute = read('app/(tabs)/community.tsx');
+const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
 const tabCompatibilityRoute = read('app/(tabs)/my-pluggd.tsx');
 const topLevelCompatibilityRoute = exists('app/my-pluggd.tsx') ? read('app/my-pluggd.tsx') : '';
 const studioData = read('src/features/studio/studio-data.ts');
@@ -24,8 +25,10 @@ for (const label of ['Overview', 'Profile', 'Page', 'Card', 'Embeds', 'Settings'
 }
 assert.match(studioScreens, /Identity, page, share tools, and settings in one compact setup surface\./, 'Native My PLUGGD hero copy must match the current mobile web model');
 assert.match(studioScreens, /<Text style=\{styles\.studioBrandTitle\} numberOfLines=\{1\}>STUDIO<\/Text>/, 'Studio topbar must stay branded as STUDIO, not shrink page titles into the nav');
-assert.match(communityRoute, /CommunityParityScreen/, 'Top-level Community must own the social/culture surface');
-assert.match(communityTabRoute, /CommunityParityScreen/, 'Tab Community must own the social/culture surface');
+assert.match(communityRoute, /CommunityFeedScreen/, 'Top-level Community must own the social/culture feed surface');
+assert.match(communityTabRoute, /CommunityFeedScreen/, 'Tab Community must own the social/culture feed surface');
+assert.match(communityFeed, /CommunityComposer[\s\S]*MobileSocialPostCard|MobileSocialPostCard[\s\S]*CommunityComposer/, 'Community must expose the real feed and composer');
+assert.doesNotMatch(communityRoute + communityTabRoute, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
 assert.match(tabCompatibilityRoute, /Redirect[\s\S]*href="\/profile"/, 'Old tab MyPLUGGD route must redirect to Profile');
 assert.match(topLevelCompatibilityRoute, /Redirect[\s\S]*href="\/profile"/, 'Old top-level MyPLUGGD route must redirect to Profile');
 

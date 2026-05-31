@@ -336,7 +336,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               maxLength={150}
             />
             <Text style={styles.storyRules}>
-              Uses the web `social_stories` model, uploads to `social-media`, and writes a real 24-hour story row.
+              Stories stay visible for 24 hours and can include photos, video, or audio.
             </Text>
           </ScrollView>
         </View>

@@ -5,12 +5,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
-import { createSocialPost, uploadSocialMediaAsset } from '../src/features/culture/mobileServices';
+import { MobileFeedAttachmentCard } from '../src/features/community-feed/MobileFeedAttachmentCard';
+import type { MobileFeedAttachment } from '../src/features/community-feed/communityFeedTypes';
+import {
+  buildMobileFeedAttachmentLinkPreview,
+  createSocialPost,
+  resolveMobileFeedAttachment,
+  uploadSocialMediaAsset,
+} from '../src/features/culture/mobileServices';
 import { contentInitials } from '../src/lib/mobileContent';
 
 const CANVAS = '#08080C';
@@ -67,9 +74,11 @@ export default function CreatePostRoute() {
     eventId?: string;
     releaseId?: string;
     beatId?: string;
+    galleryId?: string;
     mixId?: string;
     challengeId?: string;
     quotePostId?: string;
+    attachmentType?: string;
   }>();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
@@ -77,6 +86,8 @@ export default function CreatePostRoute() {
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [media, setMedia] = useState<ComposerMedia[]>([]);
+  const [attachment, setAttachment] = useState<MobileFeedAttachment | null>(null);
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
   const requestedType = typeof params.type === 'string' && SUPPORTED_POST_TYPES.has(params.type) ? params.type : 'post';
   const postType = requestedType;
   const isPoll = postType === 'poll';
@@ -106,14 +117,49 @@ export default function CreatePostRoute() {
       multiple_choice: false,
     };
   }, [isPoll, pollQuestion, validPollOptions]);
+  const hasAttachmentRequest = Boolean(params.attachmentType);
+  const attachmentUnavailable = hasAttachmentRequest && !attachmentLoading && !attachment;
   const submitContent = isPoll ? pollQuestion.trim() : content.trim();
   const canPublish = isPoll
     ? pollQuestion.trim().length > 0 && validPollOptions.length >= 2
-    : content.trim().length > 0 || media.length > 0;
+    : content.trim().length > 0 || media.length > 0 || Boolean(attachment);
   const publish = () => {
     if (mutation.isPending || !canPublish) return;
     mutation.mutate();
   };
+
+  useEffect(() => {
+    let active = true;
+    if (!params.attachmentType) {
+      setAttachment(null);
+      setAttachmentLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setAttachmentLoading(true);
+    void resolveMobileFeedAttachment({
+      attachmentType: params.attachmentType,
+      releaseId: params.releaseId,
+      beatId: params.beatId,
+      galleryId: params.galleryId,
+      mixId: params.mixId,
+      eventId: params.eventId,
+    }).then((next) => {
+      if (!active) return;
+      setAttachment(next);
+      setAttachmentLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setAttachment(null);
+      setAttachmentLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [params.attachmentType, params.beatId, params.eventId, params.galleryId, params.mixId, params.releaseId]);
 
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -204,11 +250,13 @@ export default function CreatePostRoute() {
         video: video?.url || null,
         audio: audio?.url || null,
         audioDuration: audio?.durationSeconds || 0,
+        linkPreview: attachment ? buildMobileFeedAttachmentLinkPreview(attachment) : null,
       });
     },
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'backstage'] });
@@ -325,6 +373,13 @@ export default function CreatePostRoute() {
             </View>
           ) : (
             <>
+              {attachment ? <MobileFeedAttachmentCard attachment={attachment} /> : null}
+              {attachmentUnavailable ? (
+                <View style={styles.attachmentUnavailable}>
+                  <MaterialIcons name="link-off" size={18} color={ORANGE} />
+                  <Text style={styles.attachmentUnavailableText}>Shared content could not be loaded. You can still post with a caption.</Text>
+                </View>
+              ) : null}
               <TextInput
                 value={content}
                 onChangeText={setContent}
@@ -378,7 +433,7 @@ export default function CreatePostRoute() {
             <Pressable accessibilityRole="button" accessibilityLabel="Create poll" style={styles.toolButton} onPress={() => router.setParams({ type: 'poll' } as any)}>
               <MaterialIcons name="poll" size={22} color={ORANGE} />
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Mention help" style={styles.toolButton} onPress={() => Alert.alert('Mentions and hashtags', 'Type @handles and #hashtags in your post. They are extracted and saved into the social post row like the web feed.')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Mention help" style={styles.toolButton} onPress={() => Alert.alert('Mentions and hashtags', 'Type @handles and #hashtags in your post to connect it to people and topics.')}>
               <MaterialIcons name="alternate-email" size={22} color={ORANGE} />
             </Pressable>
           </View>
@@ -397,7 +452,7 @@ export default function CreatePostRoute() {
         <View style={styles.note}>
           <MaterialIcons name="info-outline" size={18} color={ORANGE} />
           <Text style={styles.noteText}>
-            Posting to {destinationLabel}. The app writes real social destination rows, hashtags, mentions and quote metadata where selected.
+            Posting to {destinationLabel}. Hashtags, mentions, replies and shared cards stay connected to your post.
           </Text>
         </View>
       </ScrollView>
@@ -435,6 +490,8 @@ const styles = StyleSheet.create({
   addOptionButton: { height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(255,90,0,0.36)', backgroundColor: 'rgba(255,90,0,0.08)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
   addOptionText: { color: ORANGE, fontSize: 13, fontWeight: '900' },
   mediaPreviewRail: { gap: 8 },
+  attachmentUnavailable: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,90,0,0.3)', backgroundColor: 'rgba(255,90,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachmentUnavailableText: { flex: 1, color: '#E4E4E9', fontSize: 12, lineHeight: 17, fontWeight: '700' },
   mediaChip: { minHeight: 42, borderRadius: 14, borderWidth: 1, borderColor: '#262637', backgroundColor: '#1F1F2E', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   mediaChipText: { flex: 1, color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 12 },
   toolRow: { minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#262637', paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

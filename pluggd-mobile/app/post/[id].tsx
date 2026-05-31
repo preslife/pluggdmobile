@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../src/context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { addComment, loadPostDetail, toggleLike } from '../../src/features/culture/mobileServices';
@@ -23,6 +24,7 @@ export default function SocialPostDetailRoute() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [comment, setComment] = useState('');
 
   const query = useQuery({
@@ -36,6 +38,7 @@ export default function SocialPostDetailRoute() {
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'backstage'] });
@@ -49,6 +52,7 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       setComment('');
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
     },
@@ -60,6 +64,7 @@ export default function SocialPostDetailRoute() {
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
@@ -71,6 +76,7 @@ export default function SocialPostDetailRoute() {
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
@@ -82,6 +88,7 @@ export default function SocialPostDetailRoute() {
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
+      void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
@@ -159,7 +166,17 @@ export default function SocialPostDetailRoute() {
                 style={styles.input}
                 multiline
               />
-              <Pressable style={styles.sendButton} onPress={() => commentMutation.mutate()} disabled={commentMutation.isPending}>
+              <Pressable
+                style={styles.sendButton}
+                onPress={() => {
+                  if (!user?.id) {
+                    Alert.alert('Sign in to reply', 'Log in to join the conversation.');
+                    return;
+                  }
+                  commentMutation.mutate();
+                }}
+                disabled={commentMutation.isPending}
+              >
                 <Text style={styles.sendText}>{commentMutation.isPending ? 'Posting...' : 'Post'}</Text>
               </Pressable>
             </View>
@@ -176,7 +193,7 @@ export default function SocialPostDetailRoute() {
             )) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>No comments yet</Text>
-              <Text style={styles.emptyBody}>Start the discussion with a real social reply.</Text>
+              <Text style={styles.emptyBody}>Be first to reply.</Text>
               </View>
             )}
           </>

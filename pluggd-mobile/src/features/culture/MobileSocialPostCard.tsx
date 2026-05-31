@@ -9,6 +9,7 @@ import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
 import {
+  reportSocialPost,
   toggleSocialBookmark,
   toggleSocialLike,
   toggleSocialRepost,
@@ -45,7 +46,7 @@ function userRouteFor(post: MobileSocialPostPreview) {
 }
 
 function routeForTag(tag: string) {
-  return { pathname: '/search', params: { q: `#${tag}` } };
+  return `/hashtag/${encodeURIComponent(tag.replace(/^#/, ''))}`;
 }
 
 function routeForMention(mention: string) {
@@ -307,6 +308,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   const compact = variant === 'compact';
 
   const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
     void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
     void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', post.id] });
@@ -408,6 +410,18 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           }}
         >
           <MaterialIcons name="ios-share" size={19} color={COLORS.muted} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Report post"
+          style={styles.action}
+          onPress={async () => {
+            selectionHaptic();
+            const result = await reportSocialPost(actionPostId(post));
+            Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
+          }}
+        >
+          <MaterialIcons name="flag" size={19} color={COLORS.muted} />
         </Pressable>
       </View>
     </Pressable>

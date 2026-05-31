@@ -109,8 +109,9 @@ for (const token of [
 assert.doesNotMatch(storiesRail, /if \(!stories\.length\) return null/, 'Stories rail must always expose the current user create-story slot');
 assert.doesNotMatch(composer + storiesRail, /Media upload needs the mobile storage contract|Story creation needs the mobile media upload contract confirmed/, 'Social composer/stories must not ship as lightweight storage placeholders');
 
-assert.match(communityRoute, /CommunityParityScreen/, 'top-level Community route must render the web-source Community surface');
-assert.match(communityTabRoute, /CommunityParityScreen/, 'tab Community route must render the web-source Community surface');
+assert.match(communityRoute, /CommunityFeedScreen/, 'top-level Community route must render the feed-first Community surface');
+assert.match(communityTabRoute, /CommunityFeedScreen/, 'tab Community route must render the feed-first Community surface');
+assert.doesNotMatch(communityRoute + communityTabRoute, /CommunityParityScreen/, 'Community primary routes must not render generic parity screens');
 
 for (const token of [
   'loadCommunityParity',

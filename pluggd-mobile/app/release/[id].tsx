@@ -364,7 +364,7 @@ export default function ReleaseDetailScreen() {
             <Text className="text-[#FF5A00] text-xs font-black">{saving ? 'Saving' : 'Save'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push({ pathname: '/create-post', params: { releaseId: release.id } } as any)}
+            onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'release', releaseId: release.id, type: 'post' } } as any)}
             className="flex-1 min-w-[46%] bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-full py-3 items-center flex-row justify-center gap-2"
           >
             <MaterialIcons name="post-add" size={19} color="#FF5A00" />

@@ -122,7 +122,7 @@ export default function BeatDetailScreen() {
                 <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { beatId: beat.id } } as any)}>
+              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'beat', beatId: beat.id, type: 'beat_feedback' } } as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
