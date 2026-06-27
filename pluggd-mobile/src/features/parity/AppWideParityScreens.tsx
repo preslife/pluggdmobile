@@ -38,8 +38,28 @@ import {
   type ParitySection,
 } from './appWideParityServices';
 import { WEB_PARITY_ASSETS } from './webAssets';
+import { GlassHeroCard, GlassPanel, GlassRailCard, LiftSurface, LiquidBackground, SectionHeader } from '../../../components/liquid-glass';
 
 type QueryKey = readonly unknown[];
+
+const DISCOVER_CATEGORY_PILLS: Array<{ label: string; route?: string }> = [
+  { label: 'All', route: '/discover' },
+  { label: 'Music', route: '/releases' },
+  { label: 'BeatPlug', route: '/market/beatplug' },
+  { label: 'Mixes', route: '/mixes' },
+  { label: 'Creators', route: '/search' },
+  { label: 'Soundboards', route: '/soundboards' },
+  { label: 'Trending', route: '/hashtag/pluggd' },
+  { label: 'New', route: '/discover' },
+];
+
+const LIST_WEIGHTED_SECTION_IDS = new Set([
+  'browse-market',
+  'trust',
+  'upcoming',
+  'event-board',
+  'opportunities',
+]);
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'This surface could not load right now.';
@@ -128,124 +148,67 @@ function CardRow({ item, compact = false }: { item: ParityCard; compact?: boolea
         selectionHaptic();
         router.push(item.route as any);
       }}
-      style={({ pressed }) => [
-        styles.cardRow,
-        compact && styles.cardRowCompact,
-        {
-          backgroundColor: pressed ? theme.colors.surfacePressed : theme.colors.surface,
-          borderColor: theme.colors.border,
-          opacity: canOpen || !item.route ? 1 : 0.7,
-        },
-      ]}
+      style={({ pressed }) => [styles.cardRowTap, pressed && styles.cardPressed, { opacity: canOpen || !item.route ? 1 : 0.7 }]}
     >
-      <Artwork item={item} />
-      <View style={styles.cardBody}>
-        <Text style={[styles.eyebrow, { color: theme.colors.accent }]} numberOfLines={1}>
-          {item.eyebrow}
-        </Text>
-        <Text style={[styles.cardTitle, { color: theme.colors.text }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={[styles.cardSubtitle, { color: theme.colors.textMuted }]} numberOfLines={2}>
-          {item.subtitle}
-        </Text>
-      </View>
-      <View style={styles.cardTail}>
-        {item.metric ? (
-          <Text style={[styles.metric, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-            {item.metric}
-          </Text>
-        ) : null}
-        {canOpen ? <MaterialIcons name="chevron-right" size={22} color={theme.colors.inactive} /> : null}
-      </View>
+      <LiftSurface depth="low">
+        <GlassPanel intensity="default" radius={22} contentStyle={[styles.cardRow, compact && styles.cardRowCompact]}>
+          <LiftSurface depth="low" style={styles.artworkLift}>
+            <Artwork item={item} />
+          </LiftSurface>
+          <View style={styles.cardBody}>
+            <Text style={[styles.eyebrow, { color: theme.colors.accent }]} numberOfLines={1}>
+              {item.eyebrow}
+            </Text>
+            <Text style={[styles.cardTitle, { color: theme.colors.text }]} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: theme.colors.textMuted }]} numberOfLines={2}>
+              {item.subtitle}
+            </Text>
+          </View>
+          <View style={styles.cardTail}>
+            {item.metric ? (
+              <Text style={[styles.metric, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                {item.metric}
+              </Text>
+            ) : null}
+            {canOpen ? <MaterialIcons name="chevron-right" size={22} color={theme.colors.inactive} /> : null}
+          </View>
+        </GlassPanel>
+      </LiftSurface>
     </Pressable>
   );
 }
 
 function Hero({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: ImageSourcePropType }) {
-  const theme = usePluggdTheme();
   const router = useRouter();
+  const metadata = item.metric && !item.metric.startsWith('£') ? item.metric : item.eyebrow || 'Open';
   return (
-    <Pressable
-      accessibilityRole={item.route ? 'button' : 'text'}
-      accessibilityLabel={item.route ? `Open ${item.title}` : item.title}
-      onPress={() => {
-        if (!item.route) return;
-        selectionHaptic();
-        router.push(item.route as any);
-      }}
-      style={({ pressed }) => [
-        styles.heroTap,
-        pressed && { opacity: 0.78 },
-      ]}
-    >
-      <LinearGradient
-        colors={['rgba(255,90,0,0.10)', 'rgba(24,24,28,0.96)', 'rgba(10,10,14,0.98)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.heroCard}
-      >
-        <View style={styles.heroTop}>
-          <Artwork item={item} large fallbackAsset={fallbackAsset} />
-          <View style={styles.heroText}>
-            <Text style={[styles.eyebrow, { color: theme.colors.accent }]}>{item.eyebrow}</Text>
-            <Text style={[styles.heroTitle, { color: theme.colors.text }]} numberOfLines={3}>
-              {item.title}
-            </Text>
-            <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={3}>
-              {item.subtitle}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.heroFooter}>
-          <Text style={[styles.metric, { color: theme.colors.textSecondary }]}>{item.metric || 'Open'}</Text>
-          {item.route ? <MaterialIcons name="arrow-forward" size={22} color={theme.colors.accent} /> : null}
-        </View>
-      </LinearGradient>
-    </Pressable>
+    <GlassHeroCard
+      eyebrow={item.eyebrow}
+      title={item.title}
+      subtitle={item.subtitle}
+      image={usableImageUrl(item.imageUrl)}
+      metadata={metadata}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      onPress={item.route ? () => router.push(item.route as any) : undefined}
+    />
   );
 }
 
 function RailCard({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: ImageSourcePropType }) {
-  const theme = usePluggdTheme();
   const router = useRouter();
   const canOpen = Boolean(item.route);
-  const imageUrl = usableImageUrl(item.imageUrl);
+  const metric = item.metric && !item.metric.startsWith('£') ? item.metric : item.eyebrow;
   return (
-    <Pressable
-      accessibilityRole={canOpen ? 'button' : 'text'}
-      accessibilityLabel={canOpen ? `Open ${item.title}` : item.title}
-      disabled={!canOpen}
-      onPress={() => {
-        if (!item.route) return;
-        selectionHaptic();
-        router.push(item.route as any);
-      }}
-      style={({ pressed }) => [
-        styles.railCard,
-        {
-          backgroundColor: pressed ? theme.colors.surfacePressed : theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
-    >
-      <View style={[styles.railArtwork, { backgroundColor: theme.colors.artworkBase }]}>
-        {imageUrl ? (
-          <PluggdImage uri={imageUrl} style={styles.railImage} accessibilityLabel={item.title} />
-        ) : fallbackAsset ? (
-          <RNImage source={fallbackAsset} style={styles.railImage} accessibilityLabel={item.title} />
-        ) : (
-          <Text style={[styles.artworkInitials, { color: theme.colors.text }]}>{initials(item.title)}</Text>
-        )}
-        <View style={styles.railScrim} />
-        <Text style={styles.railEyebrow} numberOfLines={1}>{item.eyebrow}</Text>
-      </View>
-      <View style={styles.railCopy}>
-        <Text style={[styles.railTitle, { color: theme.colors.text }]} numberOfLines={2}>{item.title}</Text>
-        <Text style={[styles.railSubtitle, { color: theme.colors.textMuted }]} numberOfLines={2}>{item.subtitle}</Text>
-        {item.metric ? <Text style={[styles.metric, { color: theme.colors.accent }]} numberOfLines={1}>{item.metric}</Text> : null}
-      </View>
-    </Pressable>
+    <GlassRailCard
+      title={item.title}
+      subtitle={item.subtitle}
+      imageUrl={usableImageUrl(item.imageUrl)}
+      metric={metric}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      onPress={canOpen ? () => router.push(item.route as any) : undefined}
+    />
   );
 }
 
@@ -261,17 +224,19 @@ function SectionBlock({
   fallbackAsset?: ImageSourcePropType;
 }) {
   const theme = usePluggdTheme();
-  const useRail = primarySurface && section.items.length > 1;
+  const useCompactPills = section.id === 'flavour';
+  const useRail = primarySurface && section.items.length > 1 && !LIST_WEIGHTED_SECTION_IDS.has(section.id);
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleGroup}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{section.title}</Text>
-          {section.subtitle ? <Text style={[styles.sectionSubtitle, { color: theme.colors.textMuted }]}>{section.subtitle}</Text> : null}
-        </View>
-      </View>
+      <SectionHeader title={section.title} subtitle={section.subtitle} />
       {section.items.length ? (
-        useRail ? (
+        useCompactPills ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+            {section.items.map((item) => (
+              <FilterChip key={`${section.id}-${item.kind}-${item.id}`} item={item} />
+            ))}
+          </ScrollView>
+        ) : useRail ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
             {section.items.map((item) => (
               <RailCard key={`${section.id}-${item.kind}-${item.id}`} item={item} fallbackAsset={fallbackAsset} />
@@ -295,10 +260,112 @@ function SectionBlock({
   );
 }
 
-function ActionPill({ action }: { action: ParityAction }) {
+function FilterChip({ item }: { item: ParityCard }) {
+  const router = useRouter();
+  const theme = usePluggdTheme();
+  const canOpen = Boolean(item.route);
+  return (
+    <Pressable
+      accessibilityRole={canOpen ? 'button' : 'text'}
+      accessibilityLabel={canOpen ? `Open ${item.title}` : item.title}
+      disabled={!canOpen}
+      onPress={() => {
+        if (!item.route) return;
+        selectionHaptic();
+        router.push(item.route as any);
+      }}
+      style={({ pressed }) => [
+        styles.filterChip,
+        {
+          borderColor: theme.colors.border,
+          opacity: pressed ? 0.84 : canOpen ? 1 : 0.72,
+        },
+      ]}
+    >
+      <Text style={[styles.filterChipEyebrow, { color: theme.colors.textMuted }]}>{item.eyebrow}</Text>
+      <Text style={[styles.filterChipTitle, { color: theme.colors.text }]} numberOfLines={1}>{item.title}</Text>
+    </Pressable>
+  );
+}
+
+function SearchSurface() {
+  const router = useRouter();
+  const theme = usePluggdTheme();
+  return (
+    <Pressable
+      accessibilityRole="search"
+      accessibilityLabel="Search PLUGGD"
+      onPress={() => {
+        selectionHaptic();
+        router.push('/search' as any);
+      }}
+      style={({ pressed }) => [styles.searchTap, pressed && styles.cardPressed]}
+    >
+      <LiftSurface depth="low">
+        <GlassPanel intensity="subtle" radius={22} contentStyle={styles.searchPanel}>
+          <MaterialIcons name="search" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.searchText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+            Search releases, beats, mixes, creators...
+          </Text>
+          <MaterialIcons name="tune" size={18} color={theme.colors.inactive} />
+        </GlassPanel>
+      </LiftSurface>
+    </Pressable>
+  );
+}
+
+function CategoryPillRow() {
+  const router = useRouter();
+  const theme = usePluggdTheme();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRail}>
+      {DISCOVER_CATEGORY_PILLS.map((item, index) => {
+        const active = index === 0;
+        return (
+          <Pressable
+            key={item.label}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${item.label} discovery category`}
+            onPress={() => {
+              selectionHaptic();
+              if (item.route) router.push(item.route as any);
+            }}
+            style={({ pressed }) => [
+              styles.categoryPill,
+              active && styles.categoryPillActive,
+              pressed && styles.categoryPillPressed,
+            ]}
+          >
+            <Text style={[styles.categoryPillText, { color: active ? theme.colors.text : theme.colors.textSecondary }]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function SurfaceTopTools({ title }: { title: string }) {
+  if (!/discover|explore/i.test(title)) return null;
+  return (
+    <View style={styles.surfaceTools}>
+      <SearchSurface />
+      <CategoryPillRow />
+    </View>
+  );
+}
+
+function ActionPill({ action, primary = false }: { action: ParityAction; primary?: boolean }) {
   const router = useRouter();
   const theme = usePluggdTheme();
   const canOpen = Boolean(action.route);
+  const fillColors = canOpen
+    ? primary
+      ? ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.045)'] as const
+      : ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.018)'] as const
+    : ['rgba(255,255,255,0.035)', 'rgba(255,255,255,0.012)'] as const;
   return (
     <Pressable
       accessibilityRole={canOpen ? 'button' : 'text'}
@@ -312,14 +379,16 @@ function ActionPill({ action }: { action: ParityAction }) {
       style={({ pressed }) => [
         styles.actionPill,
         {
-          backgroundColor: canOpen ? (pressed ? theme.colors.surfacePressed : theme.colors.accent) : theme.colors.surface,
-          borderColor: canOpen ? theme.colors.accent : theme.colors.border,
+          borderColor: canOpen && primary ? 'rgba(255,255,255,0.22)' : theme.colors.border,
+          opacity: pressed ? 0.86 : 1,
         },
       ]}
     >
-      <Text style={[styles.actionText, { color: canOpen ? '#08080C' : theme.colors.textSecondary }]} numberOfLines={1}>
-        {action.label}
-      </Text>
+      <LinearGradient colors={fillColors} start={{ x: 0.1, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionPillFill}>
+        <Text style={[styles.actionText, { color: canOpen ? (primary ? theme.colors.text : theme.colors.textSecondary) : theme.colors.textSecondary }]} numberOfLines={1}>
+          {action.label}
+        </Text>
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -384,55 +453,67 @@ function ParityScaffold({
   const fallbackAsset = fallbackAssetForTitle(title);
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={theme.colors.accent} />}
-      style={[styles.screen, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-    >
-      <Stack.Screen options={{ title, headerShown: false }} />
-      <View style={styles.topRow}>
-        {primarySurface ? <View style={styles.backButtonPlaceholder} /> : <HeaderBackButton />}
-        <Text style={[styles.routeLabel, { color: theme.colors.textMuted }]}>PLUGGD</Text>
-      </View>
-
-      {query.isLoading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.colors.accent} />
-          <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>Loading {title.toLowerCase()}...</Text>
-        </View>
-      ) : query.error ? (
-        <View style={[styles.emptyBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text selectable style={[styles.emptyText, { color: theme.colors.danger }]}>
-            {getErrorMessage(query.error)}
-          </Text>
-        </View>
-      ) : payload ? (
-        <>
-          <View style={styles.pageHeader}>
-            <Text style={[styles.kicker, { color: theme.colors.accent }]}>{payload.kicker}</Text>
-            <Text style={[styles.title, { color: theme.colors.text }]}>{payload.title}</Text>
-            <Text style={[styles.summary, { color: theme.colors.textSecondary }]}>{payload.summary}</Text>
+    <View style={styles.scaffold}>
+      <LiquidBackground
+        tone={title === 'Events' ? 'rose' : title === 'Market' ? 'amber' : 'violet'}
+        style={StyleSheet.absoluteFill}
+      />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={theme.colors.accent} />}
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+      >
+        <Stack.Screen options={{ title, headerShown: false }} />
+        {primarySurface ? (
+          <View style={styles.primaryTopSpacer} />
+        ) : (
+          <View style={styles.topRow}>
+            <HeaderBackButton />
+            <Text style={[styles.routeLabel, { color: theme.colors.textMuted }]}>PLUGGD</Text>
           </View>
+        )}
 
-          {payload.hero ? <Hero item={payload.hero} fallbackAsset={fallbackAsset} /> : null}
-
-          {payload.actions?.length ? (
-            <View style={styles.actionsWrap}>
-              {payload.actions.map((action) => (
-                <ActionPill key={action.id} action={action} />
-              ))}
+        {query.isLoading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={theme.colors.accent} />
+            <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>Loading {title.toLowerCase()}...</Text>
+          </View>
+        ) : query.error ? (
+          <View style={[styles.emptyBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text selectable style={[styles.emptyText, { color: theme.colors.danger }]}>
+              {getErrorMessage(query.error)}
+            </Text>
+          </View>
+        ) : payload ? (
+          <>
+            <View style={styles.pageHeader}>
+              <Text style={[styles.kicker, { color: theme.colors.accent }]}>{payload.kicker}</Text>
+              <Text style={[styles.title, { color: theme.colors.text }]}>{payload.title}</Text>
+              <Text style={[styles.summary, { color: theme.colors.textSecondary }]}>{payload.summary}</Text>
             </View>
-          ) : null}
 
-          {payload.sections.map((section) => (
-            <SectionBlock key={section.id} section={section} compact={compact} primarySurface={primarySurface} fallbackAsset={fallbackAsset} />
-          ))}
+            <SurfaceTopTools title={title} />
 
-          {studioDock ? <StudioDock /> : null}
-        </>
-      ) : null}
-    </ScrollView>
+            {payload.hero ? <Hero item={payload.hero} fallbackAsset={fallbackAsset} /> : null}
+
+            {payload.actions?.length ? (
+              <View style={styles.actionsWrap}>
+                {payload.actions.map((action, index) => (
+                  <ActionPill key={action.id} action={action} primary={index === 0} />
+                ))}
+              </View>
+            ) : null}
+
+            {payload.sections.map((section) => (
+              <SectionBlock key={section.id} section={section} compact={compact} primarySurface={primarySurface} fallbackAsset={fallbackAsset} />
+            ))}
+
+            {studioDock ? <StudioDock /> : null}
+          </>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -511,13 +592,17 @@ export function StudioParityScreen() {
 }
 
 const styles = StyleSheet.create({
+  scaffold: {
+    flex: 1,
+    backgroundColor: '#05070F',
+  },
   screen: {
     flex: 1,
   },
   content: {
     paddingHorizontal: 16,
     paddingTop: 18,
-    paddingBottom: 160,
+    paddingBottom: 226,
     gap: 18,
   },
   topRow: {
@@ -538,6 +623,9 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
   },
+  primaryTopSpacer: {
+    height: 44,
+  },
   routeLabel: {
     fontSize: 11,
     fontWeight: '900',
@@ -557,8 +645,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   kicker: {
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
@@ -571,6 +659,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '600',
+  },
+  surfaceTools: {
+    gap: 10,
+  },
+  searchTap: {
+    borderRadius: 22,
+  },
+  searchPanel: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  searchText: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '800',
+  },
+  categoryRail: {
+    paddingRight: 10,
+    gap: 8,
+  },
+  categoryPill: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    paddingHorizontal: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryPillActive: {
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.095)',
+  },
+  categoryPillPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
+  categoryPillText: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '900',
   },
   heroTap: {
     borderRadius: 26,
@@ -605,6 +741,9 @@ const styles = StyleSheet.create({
   artwork: {
     overflow: 'hidden',
   },
+  artworkLift: {
+    borderRadius: 18,
+  },
   artworkFallback: {
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
@@ -623,13 +762,17 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  actionPillFill: {
+    minHeight: 40,
     paddingHorizontal: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: {
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   safetyNote: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -668,6 +811,33 @@ const styles = StyleSheet.create({
   rail: {
     gap: 12,
     paddingRight: 8,
+  },
+  filterRail: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  filterChip: {
+    minHeight: 52,
+    minWidth: 114,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.036)',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    justifyContent: 'center',
+    gap: 3,
+  },
+  filterChipEyebrow: {
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+  },
+  filterChipTitle: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '900',
   },
   railCard: {
     width: 176,
@@ -720,10 +890,15 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '700',
   },
+  cardRowTap: {
+    borderRadius: 22,
+  },
+  cardPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
+  },
   cardRow: {
     minHeight: 90,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -739,14 +914,14 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
   cardTitle: {
     fontSize: 16,
     lineHeight: 20,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   cardSubtitle: {
     fontSize: 13,
@@ -760,7 +935,7 @@ const styles = StyleSheet.create({
   },
   metric: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   emptyBox: {
     borderWidth: StyleSheet.hairlineWidth,

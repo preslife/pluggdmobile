@@ -37,7 +37,7 @@ for (const token of [
 assert.match(home, /PremiumScreenBackdrop/, 'Home must use the shared premium backdrop');
 assert.match(parityScreens, /LinearGradient[\s\S]*PluggdImage[\s\S]*Hero[\s\S]*SectionBlock/, 'Discover, Community, Events and Market must use the artwork-led parity shell');
 
-assert.match(home, /PremiumHeroCard/, 'Home must use the shared premium hero for the front-door spotlight');
+assert.match(home, /GlassHeroCard|PremiumHeroCard/, 'Home must use the shared premium/glass hero for the front-door spotlight');
 for (const exportName of ['DiscoverParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
   assert.match(parityScreens, new RegExp(`export function ${exportName}`), `${exportName} must remain a premium web-parity surface`);
 }

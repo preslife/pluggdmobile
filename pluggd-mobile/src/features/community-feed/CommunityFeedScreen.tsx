@@ -1,12 +1,11 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
+import { GlassPanel, GlassPillTabs, LiquidBackground } from '../../../components/liquid-glass';
 import { CommunityComposer } from './CommunityComposer';
 import { CommunityFeedInterstitial } from './CommunityFeedInterstitials';
 import { CommunityBottomDockControls, CommunityInternalSwitcher } from './CommunityInternalSwitcher';
@@ -40,10 +39,12 @@ function SecondaryRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.rowCard} onPress={onPress}>
-      <Text style={styles.rowEyebrow}>{item.eyebrow || 'Community'}</Text>
-      <Text style={styles.rowTitle}>{item.title}</Text>
-      {item.subtitle ? <Text style={styles.rowSubtitle}>{item.subtitle}</Text> : null}
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.rowTap} onPress={onPress}>
+      <GlassPanel intensity="default" radius={18} contentStyle={styles.rowCard}>
+        <Text style={styles.rowEyebrow}>{item.eyebrow || 'Community'}</Text>
+        <Text style={styles.rowTitle}>{item.title}</Text>
+        {item.subtitle ? <Text style={styles.rowSubtitle}>{item.subtitle}</Text> : null}
+      </GlassPanel>
     </Pressable>
   );
 }
@@ -66,42 +67,34 @@ export function CommunityFeedScreen() {
   const posts = useMemo(() => filterCommunityPosts(bundle?.posts ?? [], filter, hashtag), [bundle?.posts, filter, hashtag]);
 
   const feedHeader = (
-    <View style={{ paddingTop: Math.max(insets.top + 88, 136), paddingBottom: 12 }}>
+    <View style={{ paddingTop: Math.max(insets.top + 70, 108), paddingBottom: 10 }}>
       <View style={styles.header}>
         <View>
           <Text style={styles.kicker}>Community</Text>
           <Text style={styles.heading}>Feed</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Search community" style={styles.headerButton} onPress={() => router.push('/search' as any)}>
-          <MaterialIcons name="search" size={22} color={COLORS.white} />
-        </Pressable>
       </View>
 
-      <CommunityInternalSwitcher value={tab} onChange={setTab} />
-      <CommunityBottomDockControls onChange={setTab} />
+      {tab !== 'feed' ? (
+        <View style={styles.switchWrap}>
+          <CommunityInternalSwitcher value={tab} onChange={setTab} />
+        </View>
+      ) : null}
 
       {tab === 'feed' ? (
         <View style={styles.feedLead}>
           <MobileStoriesRail title="Stories" compact />
           <CommunityComposer />
-          {bundle ? <CommunityFeedInterstitial kind="prompt" bundle={bundle} /> : null}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-            {FEED_FILTERS.map((item) => {
-              const active = item.key === filter;
-              return (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={`${item.label} feed filter`}
-                  style={[styles.filterPill, active && styles.filterPillActive]}
-                  onPress={() => setFilter(item.key)}
-                >
-                  <Text style={[styles.filterText, active && styles.filterTextActive]}>{item.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.switchWrap}>
+            <CommunityInternalSwitcher value={tab} onChange={setTab} />
+          </View>
+          <View style={styles.filters}>
+            <GlassPillTabs
+              value={filter}
+              items={FEED_FILTERS.map((item) => ({ value: item.key, label: item.label }))}
+              onChange={setFilter}
+            />
+          </View>
         </View>
       ) : null}
     </View>
@@ -110,7 +103,7 @@ export function CommunityFeedScreen() {
   if (query.isLoading) {
     return (
       <View style={styles.screen}>
-        <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
         {feedHeader}
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.orange} />
@@ -122,7 +115,7 @@ export function CommunityFeedScreen() {
   if (query.isError) {
     return (
       <View style={styles.screen}>
-        <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
         {feedHeader}
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Community could not load</Text>
@@ -145,12 +138,12 @@ export function CommunityFeedScreen() {
 
     return (
       <View style={styles.screen}>
-        <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={feedHeader}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 132 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 220 }}
           refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
           renderItem={({ item }) => <SecondaryRow item={item} onPress={() => item.route && router.push(item.route as any)} />}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>Nothing here yet</Text><Text style={styles.emptyBody}>Check Feed for the latest community activity.</Text></View>}
@@ -161,21 +154,25 @@ export function CommunityFeedScreen() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={feedHeader}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 140, gap: 14 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 226, gap: 14 }}
         refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
         renderItem={({ item, index }) => (
           <>
-            {index === 1 && bundle ? <CommunityFeedInterstitial kind="live_now" bundle={bundle} /> : null}
-            {index === 2 && bundle ? <CommunityFeedInterstitial kind="who_to_follow" bundle={bundle} /> : null}
-            {index === 4 && bundle ? <CommunityFeedInterstitial kind="trending_boards" bundle={bundle} /> : null}
-            {index === 6 && bundle ? <CommunityFeedInterstitial kind="nearby_events" bundle={bundle} /> : null}
-            {index === 8 && bundle ? <CommunityFeedInterstitial kind="community_radio" bundle={bundle} /> : null}
             <MobileSocialPostCard post={item} onMutated={() => void query.refetch()} />
+            {index === 5 ? (
+              <View style={styles.lowerShortcuts}>
+                <Text style={styles.lowerShortcutsTitle}>More ways in</Text>
+                <CommunityBottomDockControls onChange={setTab} />
+              </View>
+            ) : null}
+            {index === 5 && bundle ? <CommunityFeedInterstitial kind="live_now" bundle={bundle} /> : null}
+            {index === 7 && bundle ? <CommunityFeedInterstitial kind="who_to_follow" bundle={bundle} /> : null}
+            {index === 10 && bundle ? <CommunityFeedInterstitial kind="trending_boards" bundle={bundle} /> : null}
           </>
         )}
         ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>No posts yet</Text><Text style={styles.emptyBody}>Start the first conversation or try another feed filter.</Text></View>}
@@ -187,23 +184,22 @@ export function CommunityFeedScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   header: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  kicker: { color: COLORS.orange, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5 },
+  kicker: { color: COLORS.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.1 },
   heading: { color: COLORS.white, fontSize: 34, lineHeight: 39, fontWeight: '900', marginTop: 2 },
-  headerButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
-  feedLead: { gap: 12 },
-  filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4, gap: 8 },
-  filterPill: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  filterPillActive: { backgroundColor: COLORS.orange, borderColor: COLORS.orange },
-  filterText: { color: COLORS.muted, fontSize: 12, fontWeight: '900' },
-  filterTextActive: { color: COLORS.canvas },
+  feedLead: { gap: 11 },
+  switchWrap: { marginTop: 2 },
+  filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4 },
+  lowerShortcuts: { gap: 8, paddingTop: 4, paddingBottom: 4 },
+  lowerShortcutsTitle: { color: COLORS.muted, fontSize: 11, fontWeight: '700', marginHorizontal: 16, textTransform: 'uppercase', letterSpacing: 0.8 },
   center: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { marginHorizontal: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 20, padding: 18, gap: 8 },
   emptyTitle: { color: COLORS.white, fontSize: 17, fontWeight: '900' },
   emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '700' },
   retry: { marginTop: 8, height: 42, borderRadius: 21, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
   retryText: { color: COLORS.canvas, fontSize: 13, fontWeight: '900' },
-  rowCard: { marginHorizontal: 16, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 18, padding: 14, gap: 5 },
-  rowEyebrow: { color: COLORS.orange, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  rowTap: { marginHorizontal: 16, marginBottom: 10 },
+  rowCard: { padding: 14, gap: 5 },
+  rowEyebrow: { color: COLORS.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
   rowTitle: { color: COLORS.white, fontSize: 16, fontWeight: '900' },
   rowSubtitle: { color: COLORS.muted, fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });

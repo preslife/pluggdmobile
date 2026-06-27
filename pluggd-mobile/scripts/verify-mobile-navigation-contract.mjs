@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const dockSource = read('components/PluggdDock.tsx');
+const glassDockSource = read('components/liquid-glass/GlassDock.tsx');
 const tabsSource = read('app/(tabs)/_layout.tsx');
 const chromeSource = read('components/AppChrome.tsx');
 const tabDiscoverSource = read('app/(tabs)/discover.tsx');
@@ -37,7 +38,7 @@ assert.doesNotMatch(dockSource, /ScrollView|CREATOR_DOCK|FAN_DOCK/, 'primary mob
 assert.doesNotMatch(dockSource, /primary:\s*true|primaryPressable/, 'Create must not remain as a central dock action');
 
 assert.match(
-  dockSource,
+  dockSource + glassDockSource,
   /accessibilityLabel=\{`\$\{item\.label\} tab`\}/,
   'each tab must expose a clear accessibility label',
 );

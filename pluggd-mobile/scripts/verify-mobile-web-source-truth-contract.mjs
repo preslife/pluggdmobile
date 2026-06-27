@@ -40,7 +40,7 @@ for (const hidden of ['explore', 'create', 'profile', 'stage', 'live', 'backstag
 }
 
 assert.match(services, /export async function loadCommunityParity/, 'Community must have a web-source parity loader');
-for (const discoverToken of ['BeatPlug', 'Live rooms', 'Soundboards', 'Trending hashtags', 'liveRoomCard', 'beatCard']) {
+for (const discoverToken of ['BeatPlug', 'Live rooms', 'Soundboards', 'Trending scenes', 'liveRoomCard', 'beatCard']) {
   assert.match(services, new RegExp(discoverToken), `Discover parity loader must preserve web Discover content class ${discoverToken}`);
 }
 for (const communityToken of ['Stories and moments', 'Community prompt', 'Contests', 'Crowdfund', 'From THE PLUG', 'Community radio', 'Who to follow']) {

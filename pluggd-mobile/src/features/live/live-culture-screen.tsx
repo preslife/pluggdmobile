@@ -21,7 +21,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
-import { pluggdTextStyles } from '../../design/typography';
+import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   contentInitials,
@@ -1228,11 +1228,10 @@ const styles = StyleSheet.create({
   focusTitle: {
     marginTop: 12,
     color: COLORS.white,
-    fontFamily: 'Satoshi-Black',
+    fontFamily: pluggdFonts.displayBold,
     fontSize: 29,
     lineHeight: 32,
-    letterSpacing: -0.35,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   focusHost: { marginTop: 5, color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 18, textTransform: 'uppercase' },
   focusMetric: { marginTop: 7, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '800' },
@@ -1270,7 +1269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 22,
   },
-  focusEmptyTitle: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 22, lineHeight: 26, textAlign: 'center' },
+  focusEmptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 22, lineHeight: 26, textAlign: 'center' },
   focusEmptyBody: { marginTop: 8, color: COLORS.muted, fontSize: 14, lineHeight: 20, fontWeight: '600', textAlign: 'center' },
   focusEmptyActions: { marginTop: 18, flexDirection: 'row', gap: 10 },
   focusEmptyPrimary: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.orange },

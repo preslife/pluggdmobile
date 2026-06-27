@@ -25,8 +25,9 @@ import {
 import { PluggdImage } from '../src/components/PluggdImage';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { PLUGGD_ORANGE, pluggdRadii } from '../src/design/tokens';
-import { pluggdTextStyles } from '../src/design/typography';
+import { pluggdFonts, pluggdTextStyles } from '../src/design/typography';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { LiquidBackground } from './liquid-glass/LiquidBackground';
 
 type GlassSurfaceProps = {
   children?: ReactNode;
@@ -469,21 +470,11 @@ export function PremiumScreenBackdrop({
   style?: StyleProp<ViewStyle>;
 }) {
   const theme = usePluggdTheme();
-  const accent = premiumToneColor(theme, tone);
+  const backgroundTone = tone === 'live' ? 'rose' : tone === 'community' ? 'violet' : tone === 'muted' ? 'blue' : 'accent';
 
   return (
     <View style={[premiumStyles.backdrop, { backgroundColor: theme.colors.canvas }, style]}>
-      <LinearGradient
-        colors={[
-          `${accent}2B`,
-          theme.colors.background,
-          theme.colors.artworkBase,
-          theme.colors.background,
-        ]}
-        locations={[0, 0.36, 0.64, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={premiumStyles.backdropVignette} />
+      <LiquidBackground tone={backgroundTone} style={StyleSheet.absoluteFill} />
       {children}
     </View>
   );
@@ -774,9 +765,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sheetTitle: {
-    fontFamily: 'Satoshi-Black',
+    fontFamily: pluggdFonts.displayBold,
     fontSize: 23,
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
   sheetSubtitle: {
     fontSize: 13.5,
@@ -847,11 +838,10 @@ const premiumStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   headerTitle: {
-    fontFamily: 'Satoshi-Black',
+    fontFamily: pluggdFonts.displayExtraBold,
     fontSize: 31,
     lineHeight: 35,
     letterSpacing: 0,
-    textTransform: 'uppercase',
   },
   headerSubtitle: {
     fontSize: 14,
@@ -888,7 +878,7 @@ const premiumStyles = StyleSheet.create({
     gap: 10,
   },
   heroTitle: {
-    fontFamily: 'Satoshi-Black',
+    fontFamily: pluggdFonts.displayBold,
     fontSize: 27,
     lineHeight: 31,
     letterSpacing: 0,
@@ -937,7 +927,7 @@ const premiumStyles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   railTitle: {
-    fontFamily: 'Satoshi-Black',
+    fontFamily: pluggdFonts.displayBold,
     fontSize: 18,
     lineHeight: 22,
   },

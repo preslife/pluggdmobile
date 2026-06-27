@@ -9,6 +9,7 @@ import { PluggdImage } from '../../components/PluggdImage';
 import { useAuth } from '../../context/AuthProvider';
 import { createMobileStory, loadMobileStories } from './mobileServices';
 import type { MobileStory } from './mobileTypes';
+import { GlassStoryRing } from '../../../components/liquid-glass';
 
 type Props = {
   creatorId?: string | null;
@@ -216,7 +217,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
           style={[styles.story, compact && styles.storyCompact]}
           onPress={openCreate}
         >
-          <View style={[styles.createRing, compact && styles.createRingCompact]}>
+          <View style={[styles.createRing, compact && styles.createRingCompact, !user?.id && styles.createRingQuiet]}>
             {userAvatarUrl ? (
               <PluggdImage uri={userAvatarUrl} style={[styles.image, compact && styles.imageCompact]} />
             ) : (
@@ -224,11 +225,11 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
                 <Text style={styles.fallbackText}>{user ? (user.email || 'P').slice(0, 1).toUpperCase() : 'P'}</Text>
               </View>
             )}
-            <View style={styles.createBadge}>
-              <MaterialIcons name="add" size={16} color="#08080C" />
+            <View style={[styles.createBadge, !user?.id && styles.createBadgeQuiet]}>
+              <MaterialIcons name="add" size={16} color={user?.id ? '#08080C' : '#E4E4E9'} />
             </View>
           </View>
-          <Text style={styles.label} numberOfLines={1}>{user ? 'Your story' : 'Sign in'}</Text>
+          <Text style={styles.label} numberOfLines={1}>{user ? 'Your story' : 'Stories'}</Text>
         </Pressable>
 
         {isLoading ? (
@@ -242,26 +243,14 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
           groups.map((group) => {
             const firstUnviewed = group.stories.find((story) => !story.viewed) || group.stories[0];
             return (
-              <Pressable
+              <GlassStoryRing
                 key={group.user_id}
-                accessibilityRole="button"
-                accessibilityLabel={`Open stories from ${group.displayName}`}
-                style={[styles.story, compact && styles.storyCompact]}
+                name={group.user_id === user?.id ? 'You' : group.displayName}
+                imageUrl={firstUnviewed.thumbnail_url || firstUnviewed.media_url || group.avatarUrl || null}
+                viewed={group.viewed}
+                tone="violet"
                 onPress={() => router.push(`/story/${firstUnviewed.id}` as any)}
-              >
-                <View style={[styles.ring, compact && styles.ringCompact, group.viewed && styles.ringViewed]}>
-                  {firstUnviewed.thumbnail_url || firstUnviewed.media_url || group.avatarUrl ? (
-                    <PluggdImage uri={firstUnviewed.thumbnail_url || firstUnviewed.media_url || group.avatarUrl || ''} style={[styles.image, compact && styles.imageCompact]} />
-                  ) : (
-                    <View style={[styles.fallback, compact && styles.fallbackCompact]}>
-                      <Text style={styles.fallbackText}>{group.displayName.slice(0, 1).toUpperCase()}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.label} numberOfLines={1}>
-                  {group.user_id === user?.id ? 'You' : group.displayName}
-                </Text>
-              </Pressable>
+              />
             );
           })
         ) : (
@@ -362,13 +351,18 @@ const styles = StyleSheet.create({
     padding: 3,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#FF5A00',
-    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   createRingCompact: { width: 62, height: 62, borderRadius: 31, padding: 2 },
+  createRingQuiet: {
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+  },
   createInner: { flex: 1, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12121A' },
   createInnerCompact: { borderRadius: 29 },
-  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF5A00', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#08080C' },
+  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#E4E4E9', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#08080C' },
+  createBadgeQuiet: { backgroundColor: '#2B2C38' },
   ring: { width: 74, height: 74, borderRadius: 37, padding: 3, backgroundColor: '#FF5A00' },
   ringCompact: { width: 62, height: 62, borderRadius: 31, padding: 2 },
   ringViewed: { backgroundColor: '#2A2A33' },

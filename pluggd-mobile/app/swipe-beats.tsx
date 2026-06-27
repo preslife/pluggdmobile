@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#08080C', paddingHorizontal: 16 },
   header: { height: 92, paddingTop: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontFamily: 'PluggdSans5-Regular', fontSize: 30, lineHeight: 34 },
+  headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 30, lineHeight: 34 },
   card: { flex: 1, maxHeight: 590, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   initials: { alignSelf: 'center', marginTop: 190, color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 52 },

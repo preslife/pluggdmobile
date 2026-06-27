@@ -20,6 +20,7 @@ import type {
   BackstageRoom,
   BackstageThread,
   ChallengeVoteState,
+  CreatorGalleryItem,
   CreatorProfileBundle,
   CreatorModePulse,
   EventComment,
@@ -84,6 +85,49 @@ export async function getCurrentUserId() {
     data: { user },
   } = await supabase.auth.getUser();
   return user?.id ?? null;
+}
+
+function normalizeText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeCreatorGalleryItem(row: any): CreatorGalleryItem {
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    image_url: String(row.image_url || ''),
+    title: normalizeText(row.title),
+    caption: normalizeText(row.caption),
+    category: normalizeText(row.category) || 'studio',
+    visibility: normalizeText(row.visibility) || 'public',
+    is_featured: Boolean(row.is_featured),
+    display_order: Number.isFinite(Number(row.display_order)) ? Number(row.display_order) : 0,
+    published_at: normalizeText(row.published_at),
+    created_at: normalizeText(row.created_at),
+  };
+}
+
+function profileGalleryRoute(profile: any | null, userId: string, galleryItemId?: string | null) {
+  const handle = normalizeText(profile?.custom_url) || normalizeText(profile?.username) || normalizeText(profile?.slug);
+  const baseRoute = handle ? `/creator/${encodeURIComponent(handle)}` : `/user/${encodeURIComponent(userId)}`;
+  const params = new URLSearchParams('tab=gallery');
+  if (galleryItemId) params.set('galleryItem', galleryItemId);
+  return `${baseRoute}?${params.toString()}`;
+}
+
+async function loadCreatorGalleryItems(userId: string, limit = 24) {
+  const rows = await safeList<any>(
+    (supabase as any)
+      .from('creator_gallery_items')
+      .select('id,user_id,image_url,title,caption,category,visibility,is_featured,display_order,published_at,created_at')
+      .eq('user_id', userId)
+      .eq('visibility', 'public')
+      .order('is_featured', { ascending: false })
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(limit),
+  );
+  return rows.map(normalizeCreatorGalleryItem).filter((item) => item.id && item.user_id && item.image_url);
 }
 
 function fileExtension(name?: string | null, mimeType?: string | null) {
@@ -214,7 +258,33 @@ export async function resolveMobileFeedAttachment(input: {
     };
   }
 
-  if (input.attachmentType === 'gallery' && input.galleryId) return null;
+  if ((input.attachmentType === 'gallery' || input.attachmentType === 'gallery_item') && input.galleryId) {
+    const gallery = await safeMaybe<any>(
+      (supabase as any)
+        .from('creator_gallery_items')
+        .select('id,user_id,image_url,title,caption,category,visibility')
+        .eq('id', input.galleryId)
+        .eq('visibility', 'public')
+        .maybeSingle(),
+    );
+    if (!gallery) return null;
+    const profile = await safeMaybe<any>(
+      (supabase as any)
+        .from('profiles')
+        .select('user_id,username,slug,full_name,display_name,custom_url')
+        .eq('user_id', gallery.user_id)
+        .maybeSingle(),
+    );
+    const creatorName = profile?.display_name || profile?.full_name || profile?.username || 'Creator';
+    return {
+      type: 'gallery_item',
+      id: gallery.id,
+      title: gallery.title || `${creatorName} gallery`,
+      subtitle: gallery.caption || gallery.category || 'Gallery update',
+      imageUrl: gallery.image_url || null,
+      route: profileGalleryRoute(profile, gallery.user_id, gallery.id),
+    };
+  }
 
   return null;
 }
@@ -1188,7 +1258,7 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
       (supabase as any)
         .from('profiles')
         .select('*')
-        .or(`username.eq.${lookupUsername},slug.eq.${lookupUsername}`)
+        .or(`username.eq.${lookupUsername},slug.eq.${lookupUsername},custom_url.eq.${lookupUsername}`)
         .maybeSingle(),
     );
     if (!profileRow) {
@@ -1210,6 +1280,7 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
       liveRooms: [],
       communities: [],
       stories: [],
+      galleryItems: [],
       clips: [],
       playlists: [],
       storefront: [],
@@ -1229,6 +1300,7 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     liveRooms,
     communities,
     stories,
+    galleryItems,
     clips,
     playlists,
     storefront,
@@ -1286,6 +1358,7 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
         .limit(8),
     ).then((rows) => rows.map((row) => mapCommunity(row, null))),
     loadMobileStories({ creatorId: ownerId, limit: 12 }),
+    loadCreatorGalleryItems(ownerId),
     safeList<any>(
       (supabase as any)
         .from('videos')
@@ -1316,6 +1389,7 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     liveRooms,
     communities,
     stories,
+    galleryItems,
     clips,
     playlists,
     storefront,

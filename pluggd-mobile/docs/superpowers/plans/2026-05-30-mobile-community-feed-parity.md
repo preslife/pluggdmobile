@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 2: Add attachment preview builder**
 
-In `src/features/culture/mobileServices.ts`, add a resolver that reads only current backed tables. Gallery support must be guarded: if the native app does not have a backed gallery table/route yet, do not make a noisy failed request; return `null` and show the customer-facing unavailable state in the composer.
+In `src/features/culture/mobileServices.ts`, add a resolver that reads only current backed tables. Gallery support must use the web-backed `creator_gallery_items` table and the creator profile route shape `?tab=gallery&galleryItem=...`; it is not a standalone `/gallery/[id]` route in the current web source.
 
 ```ts
 export async function resolveMobileFeedAttachment(input: {
@@ -772,16 +772,18 @@ export async function resolveMobileFeedAttachment(input: {
     };
   }
 
-  if (input.attachmentType === 'gallery' && input.galleryId) {
-    const gallery = await safeMaybe<any>((supabase as any).from('galleries').select('id,slug,title,cover_url,creator_name').eq('id', input.galleryId).maybeSingle());
+  if ((input.attachmentType === 'gallery' || input.attachmentType === 'gallery_item') && input.galleryId) {
+    const gallery = await safeMaybe<any>((supabase as any).from('creator_gallery_items').select('id,user_id,image_url,title,caption,category,visibility').eq('id', input.galleryId).eq('visibility', 'public').maybeSingle());
     if (!gallery) return null;
+    const profile = await safeMaybe<any>((supabase as any).from('profiles').select('user_id,username,slug,full_name,display_name,custom_url').eq('user_id', gallery.user_id).maybeSingle());
+    const handle = profile?.custom_url || profile?.username || profile?.slug || gallery.user_id;
     return {
-      type: 'gallery' as const,
+      type: 'gallery_item' as const,
       id: gallery.id,
-      title: gallery.title || 'Gallery',
-      subtitle: gallery.creator_name || 'PLUGGD gallery',
-      imageUrl: gallery.cover_url || null,
-      route: `/gallery/${gallery.slug || gallery.id}`,
+      title: gallery.title || `${profile?.display_name || profile?.full_name || profile?.username || 'Creator'} gallery`,
+      subtitle: gallery.caption || gallery.category || 'Gallery update',
+      imageUrl: gallery.image_url || null,
+      route: `/creator/${encodeURIComponent(handle)}?tab=gallery&galleryItem=${encodeURIComponent(gallery.id)}`,
     };
   }
 
@@ -1676,8 +1678,7 @@ git commit -m "feat: add community post report and hashtag feed routes"
 
 - Modify: `app/release/[id].tsx`
 - Modify: `app/beat/[id].tsx`
-- Modify if present: `app/gallery/[id].tsx`
-- Modify if present: `app/galleries/[id].tsx`
+- Modify: `src/features/profiles/PublicCreatorProfileScreen.tsx`
 - Modify: `app/mixes/[id].tsx`
 - Modify if present: `app/videos/[id].tsx`
 - Modify if present: `app/soundboards/[id].tsx`
@@ -1714,9 +1715,9 @@ router.push({
 
 Do not route beat licensing to `/wallet`.
 
-- [ ] **Step 3: Gallery detail post button**
+- [ ] **Step 3: Creator gallery post/share path**
 
-Find the gallery "Post" or share-to-feed action when a native gallery detail route exists. It must route to:
+The web app's gallery is profile-backed, not a standalone gallery detail route. Native gallery share/attachment support must use `creator_gallery_items` and route to the creator profile gallery tab:
 
 ```ts
 router.push({
@@ -1729,7 +1730,7 @@ router.push({
 } as any);
 ```
 
-If gallery attachment resolution is not backed yet, still route to the composer with params and show an honest customer-facing unavailable state. Do not hide the fact that the post was not attached behind a silent failure.
+The attachment preview should resolve to a `gallery_item` link preview and route back to `/creator/[handle]?tab=gallery&galleryItem=[id]` or `/user/[userId]?tab=gallery&galleryItem=[id]` when no handle is available.
 
 - [ ] **Step 4: Mix detail post button**
 
@@ -1768,7 +1769,7 @@ npx tsc --noEmit
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/release/[id].tsx app/beat/[id].tsx app/gallery/[id].tsx app/galleries/[id].tsx app/mixes/[id].tsx app/videos/[id].tsx app/soundboards/[id].tsx
+git add app/release/[id].tsx app/beat/[id].tsx src/features/profiles/PublicCreatorProfileScreen.tsx app/mixes/[id].tsx app/videos/[id].tsx app/soundboards/[id].tsx
 git commit -m "feat: wire content sharing into community composer"
 ```
 
@@ -2096,7 +2097,7 @@ Before committing, review `git status --short` and do not stage:
 - [ ] Release detail can open composer with attached release card.
 - [ ] Beat detail can open composer with attached beat card.
 - [ ] Beat licensing still does not route to wallet.
-- [ ] Gallery detail can open composer with attached gallery card when backed, or shows an honest unavailable state.
+- [ ] Creator gallery shares open composer with an attached `gallery_item` card from `creator_gallery_items` and return to the profile gallery route.
 - [ ] Mix detail can open composer with attached mix card.
 - [ ] Composer posts attachment as `linkPreview`.
 - [ ] No public internal implementation copy appears.

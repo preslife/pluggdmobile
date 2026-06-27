@@ -14,6 +14,9 @@ const interstitials = read('src/features/community-feed/CommunityFeedInterstitia
 const switcher = read('src/features/community-feed/CommunityInternalSwitcher.tsx');
 const socialCard = read('src/features/culture/MobileSocialPostCard.tsx');
 const socialService = read('src/features/culture/mobileSocial.ts');
+const mobileServices = read('src/features/culture/mobileServices.ts');
+const attachmentCard = read('src/features/community-feed/MobileFeedAttachmentCard.tsx');
+const profileScreen = read('src/features/profiles/PublicCreatorProfileScreen.tsx');
 const createPost = read('app/create-post.tsx');
 const hashtagRoute = read('app/hashtag/[tag].tsx');
 
@@ -93,6 +96,20 @@ for (const token of [
   'MobileFeedAttachmentCard',
 ]) {
   assert.match(createPost, new RegExp(escapeRegExp(token)), `Create post route must support attached content via ${token}`);
+}
+
+for (const token of [
+  'creator_gallery_items',
+  'gallery_item',
+  'profileGalleryRoute',
+  'tab=gallery',
+  'galleryItem',
+]) {
+  assert.match(mobileServices + types + attachmentCard, new RegExp(escapeRegExp(token)), `Gallery share attachments must use web-backed creator gallery support via ${token}`);
+}
+
+for (const token of ['galleryItems', 'useLocalSearchParams', 'galleryItem', 'custom_url']) {
+  assert.match(profileScreen, new RegExp(escapeRegExp(token)), `Creator profile must support gallery route parity via ${token}`);
 }
 
 assert.match(hashtagRoute, /loadMobileSocialFeed|CommunityFeedScreen/, 'Hashtag route must use the social feed implementation');

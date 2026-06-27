@@ -31,7 +31,7 @@ export function CommunityInternalSwitcher({
             style={[styles.pill, active && styles.pillActive]}
             onPress={() => onChange(tab.key)}
           >
-            <MaterialIcons name={tab.icon as any} size={18} color={active ? '#08080C' : COLORS.muted} />
+            <MaterialIcons name={tab.icon as any} size={15} color={active ? COLORS.white : COLORS.muted} />
             <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
           </Pressable>
         );
@@ -43,11 +43,12 @@ export function CommunityInternalSwitcher({
 export function CommunityBottomDockControls({ onChange }: { onChange: (next: CommunityTabKey) => void }) {
   const router = useRouter();
   const controls = [
-    { id: 'feed', label: 'Feed', icon: 'dynamic-feed', action: () => onChange('feed') },
     { id: 'stories', label: 'Stories', icon: 'auto-stories', action: () => onChange('feed') },
     { id: 'create', label: 'Create Post', icon: 'post-add', action: () => router.push('/create-post' as any) },
     { id: 'boards', label: 'Boards', icon: 'forum', action: () => onChange('boards') },
     { id: 'nearby', label: 'Nearby', icon: 'place', action: () => router.push('/events' as any) },
+    { id: 'communities', label: 'Communities', icon: 'groups', action: () => onChange('communities') },
+    { id: 'explore', label: 'Explore', icon: 'explore', action: () => onChange('explore') },
   ];
 
   return (
@@ -55,7 +56,7 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
       {controls.map((item) => (
         <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} style={styles.quickButton} onPress={item.action}>
           <View style={styles.quickIcon}>
-            <MaterialIcons name={item.icon as any} size={18} color={COLORS.orange} />
+            <MaterialIcons name={item.icon as any} size={17} color={COLORS.muted} />
           </View>
           <Text style={styles.quickLabel}>{item.label}</Text>
         </Pressable>
@@ -67,59 +68,61 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
 const styles = StyleSheet.create({
   row: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  pill: {
-    minHeight: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingVertical: 3,
     gap: 7,
   },
+  pill: {
+    minHeight: 31,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: 'rgba(18,20,32,0.34)',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   pillActive: {
-    backgroundColor: COLORS.orange,
-    borderColor: COLORS.orange,
+    backgroundColor: 'rgba(255,255,255,0.075)',
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   label: {
     color: COLORS.muted,
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '700',
   },
   labelActive: {
-    color: '#08080C',
+    color: COLORS.white,
+    fontWeight: '800',
   },
   quickRow: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 10,
+    paddingTop: 2,
+    paddingBottom: 2,
+    gap: 9,
   },
   quickButton: {
-    minWidth: 82,
-    borderRadius: 18,
+    minWidth: 94,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: 'rgba(18,18,26,0.86)',
+    backgroundColor: 'rgba(18,20,32,0.44)',
     paddingHorizontal: 11,
-    paddingVertical: 10,
+    paddingVertical: 9,
     alignItems: 'center',
     gap: 7,
   },
   quickIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,90,0,0.12)',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickLabel: {
     color: COLORS.white,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

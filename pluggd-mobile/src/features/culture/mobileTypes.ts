@@ -427,6 +427,20 @@ export type MobileStory = {
   author?: Pick<ProfileItem, 'user_id' | 'username' | 'full_name' | 'avatar_url'> | null;
 };
 
+export type CreatorGalleryItem = {
+  id: string;
+  user_id: string;
+  image_url: string;
+  title?: string | null;
+  caption?: string | null;
+  category?: string | null;
+  visibility?: 'public' | 'followers' | 'members' | 'private' | string | null;
+  is_featured?: boolean | null;
+  display_order?: number | null;
+  published_at?: string | null;
+  created_at?: string | null;
+};
+
 export type MyPluggdHubStats = {
   members: number;
   active_week?: number | null;
@@ -755,6 +769,7 @@ export type CreatorProfileBundle = {
   liveRooms: LiveRoomItem[];
   communities: BackstageCommunity[];
   stories: MobileStory[];
+  galleryItems: CreatorGalleryItem[];
   clips: VideoItem[];
   playlists: MobilePlaylist[];
   storefront: StorefrontItem[];

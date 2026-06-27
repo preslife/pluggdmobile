@@ -1,219 +1,189 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { impactHaptic, selectionHaptic } from '../src/design/haptics';
-import { usePluggdTheme } from '../src/design/usePluggdTheme';
-import { usePlayback } from '../src/context/PlaybackProvider';
-import { PluggdGlassSurface } from './PluggdPrimitives';
+import { usePathname, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { selectionHaptic } from '../src/design/haptics';
+import { usePlayback, type PluggdTrack } from '../src/context/PlaybackProvider';
+import { toggleSavedContent } from '../src/features/culture/mobileServices';
+import { GlassMiniPlayer } from './liquid-glass';
+
+const QA_TRACK: PluggdTrack = {
+  id: 'qa-liquid-glass-player',
+  url: 'about:blank',
+  title: 'Midnight Architecture',
+  artist: 'Sampha',
+  type: 'preview',
+  sourceType: 'preview',
+  duration: 272,
+};
 
 export default function MiniPlayer() {
   const router = useRouter();
-  const theme = usePluggdTheme();
-  const { currentTrack, isPlaying, isBuffering, progress, togglePlayPause } = usePlayback();
+  const pathname = usePathname() || '/';
+  const normalizedPathname = pathname.replace('/(tabs)', '') || '/';
+  const feedHeavyRoute = normalizedPathname === '/community' || normalizedPathname.startsWith('/community/');
+  const {
+    currentTrack,
+    isPlaying,
+    isBuffering,
+    progress,
+    queue,
+    togglePlayPause,
+    skipToNext,
+    skipToPrevious,
+  } = usePlayback();
+  const [collapsed, setCollapsed] = useState(false);
+  const [savedLocally, setSavedLocally] = useState(false);
+  const [qaPlayerEnabled, setQaPlayerEnabled] = useState(false);
+  const [qaPlaying, setQaPlaying] = useState(true);
 
-  if (!currentTrack) return null;
+  const favoriteTarget = useMemo(() => {
+    if (currentTrack?.beatId) return { kind: 'beat' as const, id: currentTrack.beatId };
+    if (currentTrack?.releaseId) return { kind: 'release' as const, id: currentTrack.releaseId };
+    return null;
+  }, [currentTrack?.beatId, currentTrack?.releaseId]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+    const readFixtureFlag = () => {
+      const params = new URLSearchParams(window.location.search);
+      setQaPlayerEnabled(params.get('qaPlayer') === '1' || window.localStorage.getItem('pluggd:qa-player') === '1');
+    };
+    readFixtureFlag();
+    window.addEventListener('storage', readFixtureFlag);
+    window.addEventListener('pluggd:qa-player', readFixtureFlag);
+    return () => {
+      window.removeEventListener('storage', readFixtureFlag);
+      window.removeEventListener('pluggd:qa-player', readFixtureFlag);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSavedLocally(false);
+    setCollapsed(feedHeavyRoute);
+  }, [currentTrack?.id, feedHeavyRoute]);
+
+  const activeTrack = currentTrack ?? (qaPlayerEnabled ? QA_TRACK : null);
+  const isQaTrack = !currentTrack && Boolean(activeTrack);
+  const playerIsPlaying = isQaTrack ? qaPlaying : isPlaying;
+
+  if (!activeTrack) return null;
 
   const openPlayer = () => {
     selectionHaptic();
     router.push({
       pathname: '/player',
       params: {
-        title: currentTrack.title,
-        artist: currentTrack.artist,
-        cover: currentTrack.artwork ?? '',
+        title: activeTrack.title,
+        artist: activeTrack.artist,
+        cover: activeTrack.artwork ?? '',
       },
     });
   };
 
   const progressPercent =
-    progress.duration > 0
+    currentTrack && progress.duration > 0
       ? Math.min((progress.position / progress.duration) * 100, 100)
-      : 0;
-  const hasBackstageLink = Boolean(currentTrack.backstageRoute || currentTrack.backstageId);
-  const backstageRoute = currentTrack.backstageRoute || (currentTrack.backstageId ? `/backstage/${currentTrack.backstageId}` : undefined);
+      : 38;
+  const backstageRoute = activeTrack?.backstageRoute || (activeTrack?.backstageId ? `/backstage/${activeTrack.backstageId}` : undefined);
   const backstageLabel =
-    typeof currentTrack.backstageActiveCount === 'number' && currentTrack.backstageActiveCount > 0
-      ? `${currentTrack.backstageActiveCount} community`
+    typeof activeTrack?.backstageActiveCount === 'number' && activeTrack.backstageActiveCount > 0
+      ? `${activeTrack.backstageActiveCount} community`
       : 'Community';
+  const hasLockedPurchaseRoute = Boolean(activeTrack.isLocked && activeTrack.purchaseRoute);
+
+  const openQueue = () => {
+    selectionHaptic();
+    router.push({
+      pathname: '/player',
+      params: {
+        title: activeTrack.title,
+        artist: activeTrack.artist,
+        cover: activeTrack.artwork ?? '',
+        focus: 'queue',
+      },
+    });
+  };
+
+  const openLyrics = () => {
+    selectionHaptic();
+    router.push({
+      pathname: '/studio/action',
+      params: {
+        tool: 'barflow',
+        track: activeTrack.id,
+      },
+    } as any);
+  };
+
+  const saveCurrentTrack = async () => {
+    selectionHaptic();
+    if (!favoriteTarget) {
+      Alert.alert('Save unavailable', 'This track does not expose a release or beat favorite target yet.');
+      return;
+    }
+
+    const result = await toggleSavedContent(favoriteTarget.kind, favoriteTarget.id);
+    if (!result.success) {
+      if (result.error?.toLowerCase().includes('sign in')) {
+        router.push('/auth/login' as any);
+        return;
+      }
+      Alert.alert('Save failed', result.error || 'This item could not be saved.');
+      return;
+    }
+
+    setSavedLocally(Boolean(result.saved));
+  };
+
+  const openMore = () => {
+    selectionHaptic();
+    Alert.alert(activeTrack.title, activeTrack.isLocked ? 'Locked preview controls' : 'Player options', [
+      { text: 'Open full player', onPress: openPlayer },
+      { text: `Queue (${queue.length})`, onPress: openQueue },
+      { text: 'Lyrics / BarFlow', onPress: openLyrics },
+      favoriteTarget ? { text: savedLocally ? 'Remove saved' : 'Save track', onPress: saveCurrentTrack } : undefined,
+      backstageRoute ? { text: backstageLabel, onPress: () => router.push(backstageRoute as any) } : undefined,
+      hasLockedPurchaseRoute ? { text: 'Unlock details', onPress: () => router.push(activeTrack.purchaseRoute as any) } : undefined,
+      { text: 'Cancel', style: 'cancel' },
+    ].filter(Boolean) as any);
+  };
 
   return (
     <View style={styles.wrap}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Open full player" onPress={openPlayer}>
-        <PluggdGlassSurface
-          interactive
-          glassEffectStyle="regular"
-          blurIntensity={58}
-          borderColor={theme.colors.divider}
-          fallbackColor={theme.colors.miniPlayerGlass}
-          tintColor={theme.colors.miniPlayerGlass}
-          colorScheme={theme.scheme}
-          style={styles.card}
-        >
-          <View style={styles.content}>
-            <View style={styles.artwork}>
-              {currentTrack.artwork ? (
-                <Image source={{ uri: currentTrack.artwork }} style={styles.artworkImage} />
-              ) : (
-                <View style={styles.artworkFallback}>
-                  <MaterialIcons name="music-note" size={18} color={theme.colors.text} />
-                </View>
-              )}
-              {currentTrack.isLocked ? (
-                <View style={[styles.lockBadge, { backgroundColor: theme.colors.accent }]}>
-                  <MaterialIcons name="lock" size={10} color={theme.colors.background} />
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.trackInfo}>
-              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
-                {currentTrack.title} - {currentTrack.artist}
-              </Text>
-            </View>
-
-            <View style={styles.controls}>
-              {hasBackstageLink ? (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel="Open track community"
-                  onPress={(event) => {
-                    event.stopPropagation?.();
-                    selectionHaptic();
-                    if (backstageRoute) router.push(backstageRoute as any);
-                  }}
-                  style={[
-                    styles.backstageShortcut,
-                    { borderColor: theme.colors.divider, backgroundColor: theme.colors.surfaceAlt },
-                  ]}
-                >
-                  <Text style={[styles.backstageText, { color: theme.colors.textSecondary }]}>{backstageLabel}</Text>
-                </TouchableOpacity>
-              ) : null}
-
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
-                onPress={(event) => {
-                  event.stopPropagation?.();
-                  impactHaptic();
-                  togglePlayPause();
-                }}
-                style={[
-                  styles.iconButton,
-                  {
-                    borderColor: theme.scheme === 'dark' ? 'rgba(255,255,255,0.22)' : 'rgba(8,8,12,0.16)',
-                    backgroundColor: theme.scheme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(8,8,12,0.04)',
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
-                  size={22}
-                  color={theme.colors.text}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={[styles.progressTrack, { backgroundColor: theme.colors.divider }]}>
-            <View style={[styles.progressFill, { width: `${progressPercent}%`, backgroundColor: theme.colors.accent }]} />
-          </View>
-        </PluggdGlassSurface>
-      </Pressable>
+      <GlassMiniPlayer
+        title={activeTrack.title}
+        artist={activeTrack.artist}
+        artwork={activeTrack.artwork}
+        locked={activeTrack.isLocked}
+        collapsed={collapsed}
+        canLike={Boolean(favoriteTarget)}
+        liked={savedLocally}
+        isPlaying={playerIsPlaying}
+        isBuffering={isQaTrack ? false : isBuffering}
+        progressPercent={progressPercent}
+        onOpen={openPlayer}
+        onToggleCollapse={() => setCollapsed((value) => !value)}
+        onLikePress={saveCurrentTrack}
+        onLyricsPress={openLyrics}
+        onQueuePress={openQueue}
+        onMorePress={openMore}
+        onPrevious={isQaTrack ? undefined : skipToPrevious}
+        onNext={isQaTrack ? undefined : skipToNext}
+        onTogglePlay={() => {
+          if (isQaTrack) {
+            setQaPlaying((value) => !value);
+            return;
+          }
+          togglePlayPause();
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 16,
     paddingTop: 0,
     paddingBottom: 0,
-  },
-  card: {
-    height: 48,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  content: {
-    height: 48,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  artwork: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#1F1F2E',
-    position: 'relative',
-  },
-  artworkImage: {
-    width: '100%',
-    height: '100%',
-  },
-  artworkFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2A1711',
-  },
-  lockBadge: {
-    position: 'absolute',
-    right: 3,
-    bottom: 3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trackInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontFamily: 'Satoshi-Medium',
-    fontSize: 12,
-    lineHeight: 15,
-  },
-  controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  backstageShortcut: {
-    minHeight: 44,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  backstageText: {
-    fontFamily: 'Satoshi-Medium',
-    fontSize: 11,
-    lineHeight: 14,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  progressTrack: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 1,
-  },
-  progressFill: {
-    height: 1,
   },
 });

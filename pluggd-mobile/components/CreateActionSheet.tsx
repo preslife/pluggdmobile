@@ -15,7 +15,7 @@ import {
   type ProfileRoleRow,
 } from '../src/lib/mobileNavigation';
 import { supabase } from '../src/lib/supabase';
-import { PluggdSheet } from './PluggdPrimitives';
+import { GlassSheet, LiftSurface } from './liquid-glass';
 
 const ACTION_ICONS: Record<CreateActionKey, keyof typeof MaterialIcons.glyphMap> = {
   release: 'upload',
@@ -108,29 +108,35 @@ export function CreateActionSheet() {
 
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Create"
-        onPress={() => {
-          selectionHaptic();
-          setOpen(true);
-        }}
-        style={[styles.floatingButton, { backgroundColor: theme.colors.accent }]}
-      >
-        <MaterialIcons name="add" size={20} color="#08080C" />
-        <Text style={styles.floatingText}>Create</Text>
-      </Pressable>
+      <LiftSurface depth="high" style={styles.floatingWrap}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Create"
+          onPress={() => {
+            selectionHaptic();
+            setOpen(true);
+          }}
+          style={({ pressed }) => [
+            styles.floatingButton,
+            { backgroundColor: theme.colors.accent },
+            pressed && styles.floatingButtonPressed,
+          ]}
+        >
+          <MaterialIcons name="add" size={20} color="#08080C" />
+          <Text style={styles.floatingText}>Create</Text>
+        </Pressable>
+      </LiftSurface>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable onPress={(event) => event.stopPropagation()}>
-            <PluggdSheet title="Create" subtitle="Start posts, uploads, live sessions and Studio tools.">
+            <GlassSheet title="Create" subtitle="Start posts, uploads, live sessions and Studio tools.">
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
                 {actions.map((action) => (
                   <CreateRow key={action.key} action={action} onPress={() => openRoute(action.route)} />
                 ))}
               </ScrollView>
-            </PluggdSheet>
+            </GlassSheet>
           </Pressable>
         </Pressable>
       </Modal>
@@ -139,11 +145,13 @@ export function CreateActionSheet() {
 }
 
 const styles = StyleSheet.create({
-  floatingButton: {
+  floatingWrap: {
     position: 'absolute',
     right: 16,
-    bottom: 92,
+    bottom: 176,
     zIndex: 96,
+  },
+  floatingButton: {
     height: 44,
     borderRadius: 999,
     paddingHorizontal: 15,
@@ -151,6 +159,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.36)',
+  },
+  floatingButtonPressed: {
+    transform: [{ scale: 0.985 }],
+    opacity: 0.9,
   },
   floatingText: {
     color: '#08080C',

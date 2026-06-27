@@ -14,9 +14,9 @@ for (const token of [
   "'Top bar'",
   "'Lead platform spotlight'",
   "'Today on PLUGGD'",
-  "'New in Explore'",
-  "'Creators to follow'",
   "'Live now'",
+  "'Creators to follow'",
+  "'New in Explore'",
   "'Events and ticket culture'",
   "'Community activity preview'",
   "'Market preview'",
@@ -28,9 +28,9 @@ for (const token of [
 const expectedOrder = [
   '<SpotlightCard',
   '<TodayOnPluggd',
-  '<NewInDiscover',
-  '<CreatorsToFollow',
   '<LiveNowPreview',
+  '<CreatorsToFollow',
+  '<NewInDiscover',
   '<EventsTicketCulture',
   '<CommunityActivityPreview',
   '<MarketplacePreview',
@@ -119,9 +119,10 @@ for (const copy of [
   assert.match(homeSource, new RegExp(copy), `${copy} must be present on Home`);
 }
 
-for (const token of ['search', 'notifications-none', 'account-balance-wallet', 'PluggdAvatar']) {
+for (const token of ['search', 'notifications-none', 'account-balance-wallet']) {
   assert.match(mobileHeader, new RegExp(token), `Top bar must include ${token}`);
 }
+assert.match(mobileHeader, /PluggdAvatar|GlassAvatar/, 'Top bar must include a profile avatar primitive');
 assert.match(mobileHeader, /height:\s*60/, 'Top bar height must stay in the 56-64pt range');
 assert.match(mobileHeader, /width=\{94\}\s+height=\{24\}/, 'Home/logo chrome must use 20-24pt visual logo height');
 assert.match(mobileHeader, /width:\s*44[\s\S]*height:\s*44/, 'Top bar controls must retain 44pt touch targets');

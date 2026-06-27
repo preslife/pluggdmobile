@@ -8,6 +8,7 @@ import { PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
+import { GlassAvatar, GlassPanel, LiftSurface } from '../../../components/liquid-glass';
 import {
   reportSocialPost,
   toggleSocialBookmark,
@@ -206,6 +207,7 @@ function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
 }
 
 function LinkPreview({ post }: { post: MobileSocialPostPreview }) {
+  const router = useRouter();
   const title = getLinkPreviewValue(post.link_preview, 'title');
   const description = getLinkPreviewValue(post.link_preview, 'description');
   const url = getLinkPreviewValue(post.link_preview, 'url');
@@ -216,8 +218,11 @@ function LinkPreview({ post }: { post: MobileSocialPostPreview }) {
     <Pressable
       accessibilityRole="link"
       style={styles.linkCard}
-      onPress={() => {
-        if (url) void Linking.openURL(url);
+      onPress={(event) => {
+        event.stopPropagation();
+        if (!url) return;
+        if (url.startsWith('/')) router.push(url as any);
+        else void Linking.openURL(url);
       }}
     >
       {image ? <PluggdImage uri={image} style={styles.linkImage} resizeMode="cover" /> : null}
@@ -334,114 +339,122 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
 
   return (
     <Pressable
-      accessibilityRole="button"
       accessibilityLabel={`Open post by ${displayName}`}
-      style={[styles.card, compact && styles.cardCompact, variant === 'thread' && styles.cardThread]}
+      style={[styles.cardTouch, compact && styles.cardCompact, variant === 'thread' && styles.cardThread]}
       onPress={() => router.push(`/post/${post.id}` as any)}
     >
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${displayName}`}
-          style={styles.avatar}
-          onPress={(event) => {
-            event.stopPropagation();
-            router.push(userRouteFor(post) as any);
-          }}
+      <LiftSurface depth="normal">
+        <GlassPanel
+          intensity="default"
+          radius={compact ? 18 : variant === 'thread' ? 20 : 24}
+          style={styles.card}
+          contentStyle={styles.cardContent}
         >
-          {post.avatar_url ? <PluggdImage uri={post.avatar_url} style={styles.fill} /> : <Text style={styles.avatarText}>{contentInitials(displayName)}</Text>}
-        </Pressable>
-        <View style={styles.authorBlock}>
-          <Text style={styles.author} numberOfLines={1}>{displayName}</Text>
-          <Text style={styles.meta} numberOfLines={1}>{handle} · {formatDate(post.created_at)}</Text>
-        </View>
-        <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={22} color={COLORS.dim} />
-      </View>
+          <View style={styles.header}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${displayName}`}
+              style={styles.avatar}
+              onPress={(event) => {
+                event.stopPropagation();
+                router.push(userRouteFor(post) as any);
+              }}
+            >
+              <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={42} tone="violet" />
+            </Pressable>
+            <View style={styles.authorBlock}>
+              <Text style={styles.author} numberOfLines={1}>{displayName}</Text>
+              <Text style={styles.meta} numberOfLines={1}>{handle} · {formatDate(post.created_at)}</Text>
+            </View>
+            <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={22} color={COLORS.dim} />
+          </View>
 
-      {post.is_repost && post.original_post ? (
-        <Text style={styles.repostLabel}>Reposted {displayNameFor(post.original_post)}</Text>
-      ) : null}
-      <RichText post={post} />
-      <DestinationPills post={post} />
+          {post.is_repost && post.original_post ? (
+            <Text style={styles.repostLabel}>Reposted {displayNameFor(post.original_post)}</Text>
+          ) : null}
+          <RichText post={post} />
+          <DestinationPills post={post} />
 
-      {!compact ? (
-        <>
-          <MediaGrid post={post} />
-          <VideoAttachment post={post} />
-          <AudioAttachment post={post} />
-          <LinkPreview post={post} />
-          {post.original_post ? <QuoteCard post={post.original_post} /> : null}
-          <PollCard post={post} onMutated={refresh} />
-        </>
-      ) : null}
+          {!compact ? (
+            <>
+              <MediaGrid post={post} />
+              <VideoAttachment post={post} />
+              <AudioAttachment post={post} />
+              <LinkPreview post={post} />
+              {post.original_post ? <QuoteCard post={post.original_post} /> : null}
+              <PollCard post={post} onMutated={refresh} />
+            </>
+          ) : null}
 
-      <View style={styles.actions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => router.push(`/post/${post.id}` as any)}>
-          <MaterialIcons name="chat-bubble-outline" size={19} color={COLORS.muted} />
-          <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={post.reposted ? 'Undo repost' : 'Repost'} style={styles.action} onPress={() => act('repost')}>
-          <MaterialIcons name="repeat" size={20} color={post.reposted ? COLORS.orange : COLORS.muted} />
-          <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} style={styles.action} onPress={() => act('like')}>
-          <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? COLORS.live : COLORS.muted} />
-          <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} style={styles.action} onPress={() => act('bookmark')}>
-          <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? COLORS.orange : COLORS.muted} />
-          <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Quote post"
-          style={styles.action}
-          onPress={() => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any)}
-        >
-          <MaterialIcons name="format-quote" size={18} color={COLORS.muted} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Share post"
-          style={styles.action}
-          onPress={() => {
-            selectionHaptic();
-            void Share.share({ message: post.content ? `PLUGGD: ${post.content}` : 'Open this PLUGGD post' });
-          }}
-        >
-          <MaterialIcons name="ios-share" size={19} color={COLORS.muted} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Report post"
-          style={styles.action}
-          onPress={async () => {
-            selectionHaptic();
-            const result = await reportSocialPost(actionPostId(post));
-            Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
-          }}
-        >
-          <MaterialIcons name="flag" size={19} color={COLORS.muted} />
-        </Pressable>
-      </View>
+          <View style={styles.actions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => router.push(`/post/${post.id}` as any)}>
+              <MaterialIcons name="chat-bubble-outline" size={19} color={COLORS.muted} />
+              <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={post.reposted ? 'Undo repost' : 'Repost'} style={styles.action} onPress={() => act('repost')}>
+              <MaterialIcons name="repeat" size={20} color={post.reposted ? COLORS.orange : COLORS.muted} />
+              <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} style={styles.action} onPress={() => act('like')}>
+              <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? COLORS.live : COLORS.muted} />
+              <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} style={styles.action} onPress={() => act('bookmark')}>
+              <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? COLORS.orange : COLORS.muted} />
+              <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Quote post"
+              style={styles.action}
+              onPress={() => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any)}
+            >
+              <MaterialIcons name="format-quote" size={18} color={COLORS.muted} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share post"
+              style={styles.action}
+              onPress={() => {
+                selectionHaptic();
+                void Share.share({ message: post.content ? `PLUGGD: ${post.content}` : 'Open this PLUGGD post' });
+              }}
+            >
+              <MaterialIcons name="ios-share" size={19} color={COLORS.muted} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Report post"
+              style={styles.action}
+              onPress={async () => {
+                selectionHaptic();
+                const result = await reportSocialPost(actionPostId(post));
+                Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
+              }}
+            >
+              <MaterialIcons name="flag" size={19} color={COLORS.muted} />
+            </Pressable>
+          </View>
+        </GlassPanel>
+      </LiftSurface>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    borderRadius: 0,
+  cardTouch: {
+    marginHorizontal: 16,
+  },
+  card: {},
+  cardContent: {
     padding: 16,
     gap: 12,
   },
   cardCompact: {
-    borderRadius: 16,
+    marginHorizontal: 16,
   },
   cardThread: {
-    borderRadius: 20,
+    marginHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
@@ -452,17 +465,8 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  avatarText: {
-    color: COLORS.white,
-    fontSize: 13,
-    fontWeight: '900',
   },
   authorBlock: {
     flex: 1,
@@ -471,7 +475,7 @@ const styles = StyleSheet.create({
   author: {
     color: COLORS.white,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   meta: {
     color: COLORS.muted,
@@ -488,7 +492,7 @@ const styles = StyleSheet.create({
     color: COLORS.soft,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   inlineLink: {
     color: COLORS.orange,
@@ -503,15 +507,15 @@ const styles = StyleSheet.create({
     minHeight: 26,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.34)',
-    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
   destinationText: {
-    color: COLORS.orange,
+    color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   singleMedia: {
     height: 244,
@@ -726,7 +730,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: COLORS.muted,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   actionOrange: {
     color: COLORS.orange,

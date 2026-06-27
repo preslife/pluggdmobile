@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,6 +24,7 @@ type ProfileRow = {
   user_id: string;
   username?: string | null;
   slug?: string | null;
+  custom_url?: string | null;
   full_name?: string | null;
   bio?: string | null;
   avatar_url?: string | null;
@@ -95,11 +96,19 @@ function roleLabel(value?: string | null) {
     .join(' ');
 }
 
+function normalizeProfileTab(value?: string | null): CreatorProfileTab | null {
+  if (!value) return null;
+  return WEB_CREATOR_TABS.some((tab) => tab.key === value) ? (value as CreatorProfileTab) : null;
+}
+
 export function PublicCreatorProfileScreen({ username, userId }: Props) {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ tab?: string | string[]; galleryItem?: string | string[] }>();
   const theme = usePluggdTheme();
   const lookupUsername = firstParam(username);
   const lookupUserId = firstParam(userId);
+  const requestedTab = normalizeProfileTab(firstParam(routeParams.tab));
+  const galleryItemId = firstParam(routeParams.galleryItem);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [releases, setReleases] = useState<ContentRow[]>([]);
   const [beats, setBeats] = useState<ContentRow[]>([]);
@@ -114,7 +123,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
   const [playlists, setPlaylists] = useState<ContentRow[]>([]);
   const [storefront, setStorefront] = useState<ContentRow[]>([]);
   const [memberships, setMemberships] = useState<ContentRow[]>([]);
-  const [activeTab, setActiveTab] = useState<CreatorProfileTab>('overview');
+  const [activeTab, setActiveTab] = useState<CreatorProfileTab>(requestedTab ?? 'overview');
   const [followerCount, setFollowerCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -123,7 +132,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const displayName = profile?.full_name || profile?.username || profile?.slug || 'PLUGGD creator';
-  const handle = profile?.username || profile?.slug || '';
+  const handle = profile?.custom_url || profile?.username || profile?.slug || '';
   const sectionMap = useMemo<Record<CreatorProfileTab, Array<{ title: string; items: ContentRow[]; empty: string }>>>(
     () => ({
       overview: [
@@ -154,6 +163,14 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     [beats, communities, events, gallery, liveRooms, memberships, mixes, playlists, releases, samplePacks, soundboards, storefront, videos],
   );
   const activeSections = sectionMap[activeTab];
+  const selectedGalleryItem = useMemo(
+    () => (activeTab === 'gallery' && galleryItemId ? gallery.find((item) => item.id === galleryItemId) ?? null : null),
+    [activeTab, gallery, galleryItemId],
+  );
+
+  useEffect(() => {
+    if (requestedTab) setActiveTab(requestedTab);
+  }, [requestedTab]);
 
   const loadProfile = useCallback(async () => {
     if (!lookupUsername && !lookupUserId) {
@@ -170,7 +187,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     const profileQuery = supabase.from('profiles').select('*').limit(1);
     const { data: profileRows, error: profileError } = lookupUserId
       ? await profileQuery.eq('user_id', lookupUserId)
-      : await profileQuery.or(`username.eq.${lookupUsername},slug.eq.${lookupUsername}`);
+      : await profileQuery.or(`username.eq.${lookupUsername},slug.eq.${lookupUsername},custom_url.eq.${lookupUsername}`);
 
     if (profileError) throw profileError;
 
@@ -182,6 +199,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     }
 
     const ownerId = nextProfile.user_id;
+    const profileHandle = nextProfile.custom_url || nextProfile.username || nextProfile.slug || nextProfile.user_id;
     setProfile(nextProfile);
 
     const bundle = await loadCreatorProfileBundle({ userId: ownerId });
@@ -267,13 +285,13 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
       })),
     );
     setGallery(
-      (bundle.stories ?? []).map((item) => ({
+      (bundle.galleryItems ?? []).map((item) => ({
         id: item.id,
-        title: item.caption || 'Creator moment',
-        imageUrl: item.thumbnail_url || item.media_url,
-        meta: item.media_type || 'Story',
-        route: `/story/${item.id}`,
-        icon: 'auto-awesome',
+        title: item.title || item.caption || 'Gallery image',
+        imageUrl: item.image_url,
+        meta: item.caption || item.category || 'Gallery',
+        route: `/creator/${encodeURIComponent(profileHandle)}?tab=gallery&galleryItem=${encodeURIComponent(item.id)}`,
+        icon: 'photo-library',
       })),
     );
     setVideos(
@@ -542,40 +560,52 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
                 </View>
               </View>
             ) : (
-              activeSections.map((section) => (
-                <View key={section.title} style={styles.section}>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{section.title}</Text>
-                  {section.items.length > 0 ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contentRail}>
-                      {section.items.map((item) => (
-                        <Pressable
-                          key={item.id}
-                          onPress={() => router.push(item.route as any)}
-                          style={[styles.contentCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-                        >
-                          <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
-                            {item.imageUrl ? (
-                              <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
-                            ) : (
-                              <MaterialIcons name={item.icon} size={27} color={theme.colors.accent} />
-                            )}
-                          </View>
-                          <Text style={[styles.contentTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                            {item.title}
-                          </Text>
-                          <Text style={[styles.contentMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
-                            {item.meta}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  ) : (
-                    <View style={[styles.emptyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                      <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{section.empty}</Text>
+              <>
+                {selectedGalleryItem ? (
+                  <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Selected Gallery Image</Text>
+                    <View style={[styles.selectedGalleryCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                      {selectedGalleryItem.imageUrl ? <Image source={{ uri: selectedGalleryItem.imageUrl }} style={styles.selectedGalleryImage} /> : null}
+                      <Text style={[styles.selectedGalleryTitle, { color: theme.colors.text }]}>{selectedGalleryItem.title}</Text>
+                      {selectedGalleryItem.meta ? <Text style={[styles.selectedGalleryMeta, { color: theme.colors.textMuted }]}>{selectedGalleryItem.meta}</Text> : null}
                     </View>
-                  )}
-                </View>
-              ))
+                  </View>
+                ) : null}
+                {activeSections.map((section) => (
+                  <View key={section.title} style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{section.title}</Text>
+                    {section.items.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contentRail}>
+                        {section.items.map((item) => (
+                          <Pressable
+                            key={item.id}
+                            onPress={() => router.push(item.route as any)}
+                            style={[styles.contentCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                          >
+                            <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
+                              {item.imageUrl ? (
+                                <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
+                              ) : (
+                                <MaterialIcons name={item.icon} size={27} color={theme.colors.accent} />
+                              )}
+                            </View>
+                            <Text style={[styles.contentTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                              {item.title}
+                            </Text>
+                            <Text style={[styles.contentMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>
+                              {item.meta}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <View style={[styles.emptyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{section.empty}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </>
             )}
           </>
         )}
@@ -799,6 +829,29 @@ const styles = StyleSheet.create({
   contentMeta: {
     marginTop: 3,
     fontSize: 12,
+    fontWeight: '700',
+  },
+  selectedGalleryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 10,
+    overflow: 'hidden',
+  },
+  selectedGalleryImage: {
+    width: '100%',
+    aspectRatio: 1.18,
+    borderRadius: 14,
+    backgroundColor: '#171717',
+  },
+  selectedGalleryTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  selectedGalleryMeta: {
+    marginTop: 5,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
   },
   emptyCard: {

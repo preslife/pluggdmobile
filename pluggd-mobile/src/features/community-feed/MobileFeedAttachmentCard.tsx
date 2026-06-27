@@ -15,7 +15,7 @@ const COLORS = {
 function labelForType(type: MobileFeedAttachment['type']) {
   if (type === 'release') return 'Release';
   if (type === 'beat') return 'Beat';
-  if (type === 'gallery') return 'Gallery';
+  if (type === 'gallery' || type === 'gallery_item') return 'Gallery';
   if (type === 'mix') return 'Mix';
   return 'Event';
 }
@@ -34,7 +34,7 @@ export function MobileFeedAttachmentCard({ attachment }: { attachment: MobileFee
         <PluggdImage uri={attachment.imageUrl} style={styles.image} resizeMode="cover" />
       ) : (
         <View style={styles.imageFallback}>
-          <MaterialIcons name={attachment.type === 'beat' ? 'headphones' : attachment.type === 'event' ? 'event' : 'music-note'} size={24} color={COLORS.orange} />
+          <MaterialIcons name={attachment.type === 'beat' ? 'headphones' : attachment.type === 'event' ? 'event' : attachment.type === 'gallery' || attachment.type === 'gallery_item' ? 'photo-library' : 'music-note'} size={24} color={COLORS.orange} />
         </View>
       )}
       <View style={styles.copy}>

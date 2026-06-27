@@ -213,14 +213,19 @@ function mixCard(item: MixItem): ParityCard {
 }
 
 function eventCard(item: EventItem): ParityCard {
+  const liveLinked = Boolean(item.stream_url || item.playback_url);
   return {
     id: item.id,
     title: item.title || 'Untitled event',
-    subtitle: [formatDate(item.starts_at), item.location].filter(Boolean).join(' · ') || 'Event',
-    eyebrow: 'Event',
+    subtitle: [formatDate(item.starts_at), item.location, liveLinked ? 'Live-linked' : null].filter(Boolean).join(' · ') || 'Event',
+    eyebrow: liveLinked ? 'Live-linked event' : 'Event',
     route: `/events/${item.id}`,
     imageUrl: item.cover_image_url,
-    metric: item.price_cents ? formatGBP(item.price_cents, { cents: true }) : 'RSVP',
+    metric: item.price_cents
+      ? formatGBP(item.price_cents, { cents: true })
+      : item.rsvp_count
+        ? `${formatCompact(item.rsvp_count)} RSVPs`
+        : 'RSVP',
     kind: 'event',
   };
 }
@@ -305,6 +310,29 @@ function storeCard(item: StoreProductRow): ParityCard {
   };
 }
 
+function staticCard(
+  id: string,
+  title: string,
+  subtitle: string,
+  eyebrow: string,
+  route?: string | null,
+  metric?: string | null,
+): ParityCard {
+  return {
+    id,
+    title,
+    subtitle,
+    eyebrow,
+    route,
+    metric,
+    kind: 'static',
+  };
+}
+
+function cityFromLocation(location?: string | null) {
+  return location?.split(',').map((part) => part.trim()).filter(Boolean)[0] || null;
+}
+
 function mapSignalCard(item: MapSignalRow): ParityCard {
   return {
     id: item.id,
@@ -377,24 +405,21 @@ export async function loadDiscoverParity(): Promise<ParityPayload> {
   ].slice(0, 14);
 
   return {
-    title: 'Discover',
-    kicker: 'Current PLUGGD culture',
-    summary: 'Find new drops, creators, events, soundboards, and live moments moving through PLUGGD right now.',
+    title: "Find what's moving now",
+    kicker: 'Discover',
+    summary: 'Search new drops, BeatPlug picks, creators, events, soundboards, mixes, and live moments moving through PLUGGD.',
     hero: mixed[0] || null,
     actions: [
       { id: 'search', label: 'Search', route: '/search' },
       { id: 'live', label: 'Live rooms', route: '/live' },
     ],
     sections: [
-      { id: 'featured', title: 'Featured now', subtitle: 'Music, BeatPlug, mixes, events, live, and soundboards worth catching.', items: mixed, emptyText: 'Fresh picks will appear here soon.' },
-      { id: 'music', title: 'Music', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available yet.' },
-      { id: 'beatplug', title: 'BeatPlug', items: bundle.beats.map(beatCard), emptyText: 'No published beats are available yet.' },
-      { id: 'mixes', title: 'Mixes', items: bundle.mixes.map(mixCard), emptyText: 'No mixes are available yet.' },
-      { id: 'events', title: 'Events', items: bundle.events.map(eventCard), emptyText: 'No events are available yet.' },
-      { id: 'live', title: 'Live rooms', items: liveRooms.map(liveRoomCard), emptyText: 'No live rooms are active or scheduled.' },
-      { id: 'soundboards', title: 'Soundboards', items: bundle.soundboards.map(soundboardCard), emptyText: 'No soundboards are available yet.' },
-      { id: 'creators', title: 'Creators to know', items: bundle.profiles.slice(0, 10).map(profileCard), emptyText: 'Creators will appear here when profiles are public.' },
-      { id: 'hashtags', title: 'Trending hashtags', items: trendingTags.map((tag) => {
+      { id: 'moving-now', title: 'Featured now', subtitle: 'Fresh drops, BeatPlug picks, mixes, events, live rooms, and soundboards.', items: mixed, emptyText: 'Fresh picks will appear here soon.' },
+      { id: 'music', title: 'Music', subtitle: 'New and notable releases from the live mobile feed.', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available yet.' },
+      { id: 'beatplug', title: 'BeatPlug', subtitle: 'Producer-ready beats and license previews.', items: bundle.beats.map(beatCard), emptyText: 'No published beats are available yet.' },
+      { id: 'mixes', title: 'Mixes', subtitle: 'DJ culture, radio cuts, and event-linked audio.', items: bundle.mixes.map(mixCard), emptyText: 'No mixes are available yet.' },
+      { id: 'live', title: 'Events / Live', items: [...bundle.events.map(eventCard), ...liveRooms.map(liveRoomCard)], emptyText: 'No event or live room signals are active.' },
+      { id: 'trending-scenes', title: 'Trending scenes', items: trendingTags.map((tag) => {
         const value = (tag.tag || tag.hashtag || '').replace(/^#/, '');
         return {
           id: value || 'hashtag',
@@ -405,7 +430,10 @@ export async function loadDiscoverParity(): Promise<ParityPayload> {
           metric: tag.post_count ? `${formatCompact(tag.post_count)} posts` : null,
           kind: 'hashtag',
         };
-      }), emptyText: 'Trending hashtags are not available yet.' },
+      }), emptyText: 'Trending scenes are not available yet.' },
+      { id: 'creators', title: 'Creators', items: bundle.profiles.slice(0, 10).map(profileCard), emptyText: 'Creators will appear here when profiles are public.' },
+      { id: 'soundboards', title: 'Soundboards worth opening', items: bundle.soundboards.map(soundboardCard), emptyText: 'No soundboards are available yet.' },
+      { id: 'community-pulse', title: 'Community pulse', items: bundle.posts.filter((post) => !post.is_deleted).slice(0, 8).map(socialPostCard), emptyText: 'Community signals will appear here soon.' },
     ],
   };
 }
@@ -469,28 +497,36 @@ export async function loadCommunityParity(): Promise<ParityPayload> {
 export async function loadMarketParity(section?: string | string[] | null): Promise<ParityPayload> {
   const bundle = await loadFeedBundle(18);
   const storeProducts = await loadStoreProducts(12);
-  const active = Array.isArray(section) ? section[0] : section;
-  const title = active ? `Market: ${active.replace(/-/g, ' ')}` : 'Market';
 
   return {
-    title,
-    kicker: 'Marketplace',
-    summary: 'Browse beats, sample packs, releases, merch, services, and creator offers in one place.',
+    title: 'Creator economy market',
+    kicker: 'BeatPlug marketplace',
+    summary: 'Buy, license, collect, and book across the creator economy, starting with BeatPlug.',
     hero: bundle.beats[0] ? beatCard(bundle.beats[0]) : bundle.samplePacks[0] ? samplePackCard(bundle.samplePacks[0]) : null,
     actions: [
-      { id: 'credits', label: 'Credits wallet', route: '/wallet' },
-      { id: 'orders', label: 'Purchases', route: '/purchases' },
+      { id: 'beatplug', label: 'Open BeatPlug', route: '/market/beatplug' },
+      { id: 'releases', label: 'Browse releases', route: '/releases' },
     ],
     sections: [
       { id: 'beatplug', title: 'BeatPlug flagship', subtitle: 'Preview beats and review license options from producers.', items: bundle.beats.map(beatCard), emptyText: 'No published beats are available.' },
+      { id: 'browse-market', title: 'Browse market', subtitle: 'The main market areas in the same order as the web hub.', items: [
+        staticCard('browse-releases', 'Releases', 'Albums, singles, mixtapes, and creator drops.', 'Market', '/releases'),
+        staticCard('browse-samples', 'Sample Packs', 'Loops, drums, stems, and producer packs.', 'Market', '/sample-packs'),
+        staticCard('browse-merch', 'Merch', 'Approved creator merchandise and physical drops.', 'Market', '/market/merch'),
+        staticCard('browse-services', 'Services', 'Creator services will appear when enabled.', 'Coming soon', null),
+        staticCard('browse-licenses', 'Licenses', 'Review beat license previews before opening a beat.', 'Market', '/market/licenses'),
+        staticCard('browse-offers', 'Creator Offers', 'Creator offers will appear when published.', 'Coming soon', null),
+      ] },
       { id: 'releases', title: 'Releases', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available.' },
-      { id: 'beats', title: 'Beats', items: bundle.beats.map(beatCard), emptyText: 'No published beats are available.' },
       { id: 'samples', title: 'Sample packs', items: bundle.samplePacks.map(samplePackCard), emptyText: 'No sample packs are available.' },
       { id: 'merch', title: 'Merch', items: storeProducts.map(storeCard), emptyText: 'Creator merch will appear when approved products exist.' },
-      { id: 'services', title: 'Services', items: [], emptyText: 'Creator services will appear here soon.' },
       { id: 'licenses', title: 'Licenses', items: bundle.beats.slice(0, 8).map((item) => ({ ...beatCard(item), eyebrow: 'License preview' })), emptyText: 'Beat licensing previews will appear when published beats exist.' },
       { id: 'offers', title: 'Creator Offers', items: [], emptyText: 'Creator offers will appear here soon.' },
-      { id: 'beat-previews', title: 'Beat previews', items: bundle.beats.slice(0, 8).map((item) => ({ ...beatCard(item), eyebrow: 'Preview only' })), emptyText: 'Beat previews will appear when published beats exist.' },
+      { id: 'trust', title: 'Market trust', items: [
+        staticCard('off-app-safe', 'Off-app safe licensing', 'Keep beat licensing clear without introducing Apple credit wallet routes.', 'Policy'),
+        staticCard('creator-safe', 'Creator-owned storefronts', 'Product details stay tied to creator catalog and approved store data.', 'Trust'),
+        staticCard('studio-ready', 'Studio tools', 'Upload and manage catalog from Studio when creator access is available.', 'Studio', '/studio'),
+      ] },
     ],
   };
 }
@@ -564,19 +600,44 @@ export async function loadEventsParity(): Promise<ParityPayload> {
       .order('starts_at', { ascending: true })
       .limit(30),
   );
+  const cityCounts = new Map<string, number>();
+  for (const event of events) {
+    const city = cityFromLocation(event.location);
+    if (!city) continue;
+    cityCounts.set(city, (cityCounts.get(city) ?? 0) + 1);
+  }
+  const hotCities = Array.from(cityCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([city, count]) => staticCard(`city-${city}`, city, `${formatCompact(count)} upcoming event${count === 1 ? '' : 's'}`, 'Hot city', '/events'));
 
   return {
     title: 'Events',
     kicker: 'Ticket culture',
-    summary: 'Upcoming PLUGGD events, live-linked nights, RSVP context, and Community discussion entry points.',
+    summary: 'Upcoming PLUGGD events, live-linked nights, RSVP context, tickets, and Community discussion entry points.',
     hero: events[0] ? eventCard(events[0]) : null,
     actions: [
-      { id: 'tickets', label: 'My tickets', route: '/tickets' },
-      { id: 'live', label: 'Live sessions', route: '/live' },
+      { id: 'browse', label: 'Browse', route: '/events' },
+      { id: 'map', label: 'Map', route: '/maps' },
+      { id: 'discussion', label: 'Discussion', route: '/community' },
     ],
     sections: [
-      { id: 'upcoming', title: 'Upcoming', items: events.map(eventCard), emptyText: 'No upcoming events are published.' },
-      { id: 'from-feed', title: 'Event signals', items: bundle.events.map(eventCard), emptyText: 'No event signals are available.' },
+      { id: 'upcoming', title: 'Upcoming', subtitle: 'Date, location, RSVP, ticket, and live-linked event rows.', items: events.map(eventCard), emptyText: 'No upcoming events are published.' },
+      { id: 'flavour', title: 'Flavour chips', subtitle: 'Quick ways into the live event board.', items: [
+        staticCard('all-events', 'All events', 'Browse the mobile event list.', 'Filter', '/events'),
+        staticCard('tonight', 'Tonight', 'Find near-term live-linked nights.', 'Filter', '/events'),
+        staticCard('afrobeats', 'Afrobeats', 'Scene-led events and parties.', 'Filter', '/events'),
+        staticCard('producer-nights', 'Producer nights', 'Sessions, beat battles, and studio events.', 'Filter', '/events'),
+        staticCard('community', 'Community', 'Events with active discussion signals.', 'Filter', '/community'),
+      ] },
+      { id: 'hot-cities', title: 'Hot cities', items: hotCities, emptyText: 'City filters will appear when events have locations.' },
+      { id: 'event-board', title: 'Event board', items: bundle.events.map(eventCard), emptyText: 'No event signals are available.' },
+      { id: 'spotlight', title: 'Spotlight', items: events.slice(0, 4).map(eventCard), emptyText: 'Event spotlights will appear when events are published.' },
+      { id: 'opportunities', title: 'Opportunities', items: [
+        staticCard('promoters', 'Promoter tools', 'Promoter and venue opportunities will appear when enabled.', 'Coming soon'),
+        staticCard('live-linked', 'Live-linked events', 'Use live sessions and Community posts around published events.', 'Live', '/live'),
+        staticCard('my-tickets', 'My tickets', 'Open saved tickets and RSVPs.', 'Tickets', '/tickets'),
+      ] },
     ],
   };
 }

@@ -18,7 +18,7 @@ import {
 import { supabase } from '../src/lib/supabase';
 import { loadUnreadNotifications } from '../src/features/culture/mobileServices';
 import { BrandLogo } from './BrandLogo';
-import { PluggdAvatar, PluggdGlassSurface, PluggdSheet } from './PluggdPrimitives';
+import { GlassAvatar, GlassIconButton, GlassPanel, GlassSheet } from './liquid-glass';
 
 type AccountItem = {
   label: string;
@@ -82,9 +82,6 @@ export function MobileHeader() {
   const creatorAccess = hasCreatorAccess(roles);
   const avatarInitial = initialFor(profile, user?.email);
   const roleSet = new Set<EcosystemRole>(roles);
-  const chromeFallback = theme.colors.headerGlass;
-  const chromeBorder = theme.colors.divider;
-  const chromeTint = theme.colors.headerGlass;
   const publicProfileRoute = profile?.username
     ? creatorAccess
       ? `/creator/${profile.username}`
@@ -149,15 +146,7 @@ export function MobileHeader() {
   return (
     <>
       <View pointerEvents="box-none" style={[styles.safeArea, { paddingTop: insets.top }]}>
-        <PluggdGlassSurface
-          glassEffectStyle="regular"
-          blurIntensity={58}
-          borderColor={chromeBorder}
-          fallbackColor={chromeFallback}
-          tintColor={chromeTint}
-          colorScheme={theme.scheme}
-          style={styles.header}
-        >
+        <GlassPanel intensity="subtle" radius={22} style={styles.header} contentStyle={styles.headerContent}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Go to Home"
@@ -171,44 +160,17 @@ export function MobileHeader() {
           </Pressable>
 
           <View style={styles.headerActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Search PLUGGD"
-              style={styles.walletButton}
-              onPress={() => {
-                selectionHaptic();
-                router.push('/search' as any);
-              }}
-            >
-              <MaterialIcons name="search" size={23} color={theme.colors.text} />
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open notifications"
-              style={styles.walletButton}
-              onPress={() => {
-                selectionHaptic();
-                router.push('/notifications' as any);
-              }}
-            >
-              <View>
-                <MaterialIcons name="notifications-none" size={23} color={theme.colors.text} />
-                {unreadNotifications.data ? <View style={[styles.notificationDot, { backgroundColor: theme.colors.live }]} /> : null}
-              </View>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open wallet and tickets"
-              style={styles.walletButton}
-              onPress={() => {
-                selectionHaptic();
-                router.push('/wallet' as any);
-              }}
-            >
-              <MaterialIcons name="account-balance-wallet" size={23} color={theme.colors.text} />
-            </Pressable>
+            <GlassIconButton quiet icon="search" accessibilityLabel="Search PLUGGD" size={34} onPress={() => router.push('/search' as any)} />
+            <View>
+              <GlassIconButton
+                quiet
+                icon="notifications-none"
+                accessibilityLabel="Open notifications"
+                size={34}
+                onPress={() => router.push('/notifications' as any)}
+              />
+              {unreadNotifications.data ? <View style={[styles.notificationDot, { backgroundColor: theme.colors.live }]} /> : null}
+            </View>
 
             <Pressable
               accessibilityRole="button"
@@ -220,30 +182,30 @@ export function MobileHeader() {
                 else setAccountOpen(true);
               }}
             >
-              <PluggdAvatar
-                uri={profile?.avatar_url}
-                label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
-                size={36}
-                style={[styles.headerAvatar, { borderColor: theme.colors.divider }]}
+              <GlassAvatar
+                imageUrl={profile?.avatar_url}
+                name={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
+                size={32}
+                tone="accent"
               />
             </Pressable>
           </View>
-        </PluggdGlassSurface>
+        </GlassPanel>
       </View>
 
       <Modal visible={accountOpen} transparent animationType="slide" onRequestClose={() => setAccountOpen(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setAccountOpen(false)}>
           <Pressable onPress={(event) => event.stopPropagation()}>
-            <PluggdSheet
+            <GlassSheet
               title="Account"
               subtitle={creatorAccess ? 'Studio, public profile, earnings, analytics and settings.' : 'Dashboard, public profile, credits, progress and settings.'}
             >
               <View style={styles.accountHeader}>
-                <PluggdAvatar
-                  uri={profile?.avatar_url}
-                  label={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
+                <GlassAvatar
+                  imageUrl={profile?.avatar_url}
+                  name={profile?.display_name || profile?.full_name || user?.email || avatarInitial}
                   size={50}
-                  style={styles.sheetAvatar}
+                  tone="accent"
                 />
                 <View style={styles.accountCopy}>
                   <Text style={[styles.accountName, { color: theme.colors.text }]} numberOfLines={1}>
@@ -289,7 +251,7 @@ export function MobileHeader() {
                   </Pressable>
                 ))}
               </ScrollView>
-            </PluggdSheet>
+            </GlassSheet>
           </Pressable>
         </Pressable>
       </Modal>
@@ -304,31 +266,28 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
+    paddingHorizontal: 16,
   },
   header: {
     height: 60,
-    paddingHorizontal: 16,
+  },
+  headerContent: {
+    height: 60,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   wordmarkButton: {
     height: 60,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingRight: 18,
+    paddingRight: 14,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  walletButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
   },
   avatarTap: {
     width: 44,
@@ -336,16 +295,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerAvatar: {
-    borderWidth: 1,
-  },
   notificationDot: {
     position: 'absolute',
-    top: 1,
-    right: 1,
+    top: 5,
+    right: 5,
     width: 7,
     height: 7,
     borderRadius: 3.5,
+    borderWidth: 1,
+    borderColor: '#08080C',
   },
   modalBackdrop: {
     flex: 1,
@@ -355,10 +313,8 @@ const styles = StyleSheet.create({
   accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     marginBottom: 12,
-  },
-  sheetAvatar: {
-    marginRight: 12,
   },
   accountCopy: {
     flex: 1,

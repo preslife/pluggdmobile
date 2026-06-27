@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
-import { pluggdTextStyles } from '../../design/typography';
+import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { formatCompact } from '../../lib/mobileContent';
 import {
@@ -2118,9 +2118,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
+    fontFamily: pluggdFonts.displayBold,
     fontSize: 22,
     lineHeight: 26,
-    fontWeight: '900',
     letterSpacing: 0,
   },
   sectionAction: {

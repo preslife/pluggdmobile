@@ -36,7 +36,7 @@ export type CommunityFeedBundle = {
   };
 };
 
-export type MobileFeedAttachmentType = 'release' | 'beat' | 'gallery' | 'mix' | 'event';
+export type MobileFeedAttachmentType = 'release' | 'beat' | 'gallery' | 'gallery_item' | 'mix' | 'event';
 
 export type MobileFeedAttachment = {
   type: MobileFeedAttachmentType;

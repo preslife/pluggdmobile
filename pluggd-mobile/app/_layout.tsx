@@ -4,11 +4,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TrackPlayer from "react-native-track-player";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Inter_600SemiBold } from "@expo-google-fonts/inter";
+import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
-import { NativeModules, View } from "react-native";
+import { NativeModules, StyleSheet, View } from "react-native";
 import "../global.css";
 import { AppChrome } from "../components/AppChrome";
+import { LiquidBackground } from "../components/liquid-glass";
 import { AuthProvider } from "../src/context/AuthProvider";
 import { PlaybackProvider } from "../src/context/PlaybackProvider";
 import { PluggdThemeProvider, usePluggdTheme } from "../src/design/usePluggdTheme";
@@ -38,6 +40,9 @@ export default function Layout() {
     "Satoshi-Bold": require("../assets/fonts/Satoshi-Bold.otf"),
     "Satoshi-Black": require("../assets/fonts/Satoshi-Black.otf"),
     "Inter-SemiBold": Inter_600SemiBold,
+    "Sora-SemiBold": Sora_600SemiBold,
+    "Sora-Bold": Sora_700Bold,
+    "Sora-ExtraBold": Sora_800ExtraBold,
   });
 
   if (!fontsLoaded) {
@@ -68,6 +73,7 @@ function LayoutContent() {
         <AuthProvider>
           <PlaybackProvider>
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+              <LiquidBackground style={{ ...StyleSheet.absoluteFillObject }} />
               <Slot />
               <AppChrome />
             </View>

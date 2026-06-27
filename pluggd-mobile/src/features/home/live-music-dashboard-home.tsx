@@ -18,7 +18,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
-import { PremiumHeroCard, PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
+import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
+import { GlassHeroCard, GlassRailCard } from '../../../components/liquid-glass';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -37,6 +38,7 @@ import {
 } from '../culture/useCultureData';
 import type { FanIdentitySummary, MobilePlaylist, VideoItem } from '../culture/mobileTypes';
 import { supabase } from '../../lib/supabase';
+import { pluggdFonts } from '../../design/typography';
 import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import {
   contentInitials,
@@ -59,9 +61,9 @@ const HOME_SECTION_ORDER = [
   'Top bar',
   'Lead platform spotlight',
   'Today on PLUGGD',
-  'New in Explore',
-  'Creators to follow',
   'Live now',
+  'Creators to follow',
+  'New in Explore',
   'Events and ticket culture',
   'Community activity preview',
   'Market preview',
@@ -482,6 +484,18 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
+function HomeEditorialHeader() {
+  return (
+    <View style={styles.editorialHeader}>
+      <Text style={styles.editorialKicker}>Home</Text>
+      <Text style={styles.editorialTitle}>Plug into what is moving now</Text>
+      <Text style={styles.editorialSummary}>
+        A live front door for drops, rooms, events, creators, and market signals.
+      </Text>
+    </View>
+  );
+}
+
 function SpotlightCard({ spotlight }: { spotlight: Spotlight }) {
   const router = useRouter();
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayback();
@@ -498,16 +512,14 @@ function SpotlightCard({ spotlight }: { spotlight: Spotlight }) {
   };
 
   return (
-    <PremiumHeroCard
+    <GlassHeroCard
       eyebrow="Lead platform spotlight"
       title={spotlight.title}
       subtitle={spotlight.meta}
-      meta={spotlight.live ? 'Live now' : active && isPlaying ? 'Playing now' : 'Fresh on PLUGGD'}
-      imageUrl={spotlight.imageUrl || HOME_HERO_FALLBACK}
-      badge={spotlight.kind.replace('_', ' ')}
-      ctaLabel={spotlight.cta}
+      metadata={spotlight.live ? 'Live now' : active && isPlaying ? 'Playing now' : 'Fresh on PLUGGD'}
+      image={spotlight.imageUrl || HOME_HERO_FALLBACK}
       onPress={spotlight.route || spotlight.track ? open : undefined}
-      tone={spotlight.live ? 'live' : spotlight.kind === 'community' ? 'community' : 'accent'}
+      fallbackTone={spotlight.live ? 'rose' : spotlight.kind === 'event' ? 'amber' : 'violet'}
       style={styles.spotlight}
     />
   );
@@ -597,24 +609,17 @@ function NewInDiscover({ items, loading }: { items: DiscoverPreviewItem[]; loadi
       {items.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stageRail}>
           {items.map((item) => (
-            <Pressable
+            <GlassRailCard
               key={`${item.kind}-${item.id}`}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${item.title}`}
-              style={styles.stageCard}
+              title={item.title}
+              subtitle={item.subtitle}
+              imageUrl={item.imageUrl}
+              metric={item.kind.replace('_', ' ')}
+              fallbackTone={item.kind === 'beat' ? 'amber' : item.kind === 'video' ? 'rose' : 'violet'}
               onPress={() => {
-                selectionHaptic();
                 router.push(item.route as any);
               }}
-            >
-              <View style={styles.stageArtwork}>
-                <LinearGradient colors={gradientFor(item.id) as any} style={StyleSheet.absoluteFillObject} />
-                {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={styles.coverImage} /> : <Text style={styles.artInitial}>{contentInitials(item.title)}</Text>}
-              </View>
-              <Text style={styles.stageKind}>{item.kind.replace('_', ' ')}</Text>
-              <Text style={styles.stageTitle} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.stageSubtitle} numberOfLines={1}>{item.subtitle}</Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
       ) : null}
@@ -1050,15 +1055,16 @@ export function LiveMusicDashboardHome() {
           styles.content,
           {
             paddingTop: Math.max(insets.top + 76, 88),
-            paddingBottom: insets.bottom + 148,
+            paddingBottom: insets.bottom + 226,
           },
         ]}
       >
+        <HomeEditorialHeader />
         <SpotlightCard spotlight={spotlight} />
         <TodayOnPluggd bundle={home.data} liveRooms={liveRooms} creators={creators} />
-        <NewInDiscover items={discoverItems} loading={home.isLoading || videos.isLoading || playlists.isLoading} />
-        <CreatorsToFollow creators={creators} loading={home.isLoading} />
         <LiveNowPreview rooms={liveRooms} loading={live.isLoading} />
+        <CreatorsToFollow creators={creators} loading={home.isLoading} />
+        <NewInDiscover items={discoverItems} loading={home.isLoading || videos.isLoading || playlists.isLoading} />
         <EventsTicketCulture events={home.data?.events ?? []} loading={home.isLoading} />
         <CommunityActivityPreview threads={backstage.data?.threads ?? []} loading={backstage.isLoading} />
         <MarketplacePreview items={marketItems} loading={home.isLoading || store.isLoading} />
@@ -1071,18 +1077,22 @@ export function LiveMusicDashboardHome() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   scroll: { flex: 1, backgroundColor: COLORS.canvas },
-  content: { paddingHorizontal: 16, gap: 24 },
+  content: { paddingHorizontal: 16, gap: 22 },
   coverImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   avatarImage: { width: '100%', height: '100%' },
   loadingInline: { marginVertical: 4 },
   sectionBlock: { gap: 12 },
   sectionHeader: { minHeight: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  sectionTitle: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 18, lineHeight: 22 },
+  sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22 },
   sectionAction: { minHeight: 44, justifyContent: 'center' },
-  sectionActionText: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
-  emptyState: { minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 14, justifyContent: 'center' },
+  sectionActionText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
+  emptyState: { minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 14, justifyContent: 'center' },
   emptyTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   emptyBody: { color: COLORS.muted, fontSize: 12, lineHeight: 17, marginTop: 5 },
+  editorialHeader: { gap: 7, paddingTop: 2, paddingBottom: 2 },
+  editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 },
+  editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38 },
+  editorialSummary: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 20 },
 
   spotlight: {
     height: 206,
@@ -1093,13 +1103,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surface2,
   },
   spotlightCopy: { position: 'absolute', left: 16, right: 16, bottom: 16, gap: 8 },
-  spotlightTitle: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 26, lineHeight: 30 },
+  spotlightTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 26, lineHeight: 30 },
   spotlightMeta: { color: COLORS.textSoft, fontSize: 13, fontWeight: '700' },
   spotlightCTA: { alignSelf: 'flex-start', minHeight: 44, borderRadius: 22, backgroundColor: COLORS.text, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 7 },
   spotlightCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Black', fontSize: 13 },
 
   todayRail: { gap: 10, paddingRight: 16 },
-  todayCard: { width: 148, height: 116, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 12, justifyContent: 'space-between' },
+  todayCard: { width: 148, height: 116, borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.46)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 12, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.42, shadowRadius: 22, shadowOffset: { width: 0, height: 14 } },
   todayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   todayValue: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 18, fontVariant: ['tabular-nums'] },
   todayTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13 },
@@ -1114,7 +1124,7 @@ const styles = StyleSheet.create({
   artInitial: { color: COLORS.text, fontFamily: 'PluggdSans5-Regular', fontSize: 30 },
 
   creatorRail: { gap: 10, paddingRight: 16 },
-  creatorCard: { width: 140, height: 180, borderRadius: 18, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 12, alignItems: 'center' },
+  creatorCard: { width: 140, height: 180, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 12, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, shadowOffset: { width: 0, height: 14 } },
   creatorAvatarWrap: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
   creatorAvatar: { width: 82, height: 82, borderRadius: 41, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   creatorInitial: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 18 },
@@ -1122,13 +1132,13 @@ const styles = StyleSheet.create({
   creatorName: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, marginTop: 8, maxWidth: '100%' },
   creatorRole: { color: COLORS.muted, fontSize: 11, marginTop: 2, maxWidth: '100%' },
   followTouch: { minHeight: 44, minWidth: 92, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  followButton: { height: 32, minWidth: 82, borderRadius: 16, backgroundColor: COLORS.text, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  followButton: { height: 32, minWidth: 82, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   followButtonActive: { backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border },
-  followText: { color: COLORS.canvas, fontFamily: 'Satoshi-Black', fontSize: 11 },
+  followText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 11 },
   followTextActive: { color: COLORS.text },
 
   liveRail: { gap: 12, paddingRight: 16 },
-  liveCard: { width: 160, height: 198, borderRadius: 18, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, overflow: 'hidden' },
+  liveCard: { width: 160, height: 198, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.40, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
   livePreview: { height: 112, overflow: 'hidden' },
   liveStatePill: { position: 'absolute', top: 8, left: 8, minHeight: 24, borderRadius: 12, backgroundColor: 'rgba(8,8,12,0.72)', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
   liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: COLORS.live },
@@ -1136,33 +1146,33 @@ const styles = StyleSheet.create({
   liveCopy: { padding: 10, gap: 5 },
   liveTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 17 },
   liveMeta: { color: COLORS.muted, fontSize: 11 },
-  joinLiveButton: { height: 32, borderRadius: 16, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  joinLiveText: { color: COLORS.canvas, fontFamily: 'Satoshi-Black', fontSize: 11 },
+  joinLiveButton: { height: 32, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  joinLiveText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 11 },
 
   eventRail: { gap: 12, paddingRight: 16 },
-  eventCard: { width: 240, height: 166, borderRadius: 18, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, overflow: 'hidden' },
+  eventCard: { width: 240, height: 166, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
   eventImageStrip: { height: 72, overflow: 'hidden' },
   eventBody: { height: 94, padding: 11, gap: 4 },
   eventTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   eventMeta: { color: COLORS.textSoft, fontSize: 11 },
   eventState: { color: COLORS.muted, fontSize: 11, fontVariant: ['tabular-nums'] },
-  eventCTA: { position: 'absolute', right: 10, bottom: 10, height: 30, borderRadius: 15, backgroundColor: COLORS.orange, paddingHorizontal: 12, justifyContent: 'center' },
-  eventCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Black', fontSize: 10 },
+  eventCTA: { position: 'absolute', right: 10, bottom: 10, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.10)', paddingHorizontal: 12, justifyContent: 'center' },
+  eventCTAText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 10 },
 
   backstageList: { gap: 8 },
-  backstageRow: { minHeight: 86, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backstageRow: { minHeight: 86, borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', borderLeftColor: 'rgba(255,255,255,0.09)', borderRightColor: 'rgba(0,0,0,0.26)', borderBottomColor: 'rgba(0,0,0,0.42)', backgroundColor: 'rgba(10,12,24,0.32)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   backstageIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
   backstageCopy: { flex: 1, minWidth: 0 },
-  backstageHub: { color: COLORS.violet, fontFamily: 'Satoshi-Bold', fontSize: 11 },
+  backstageHub: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11 },
   backstageTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14, marginTop: 2 },
   backstagePreview: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   replyPill: { minWidth: 36, height: 28, borderRadius: 14, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   replyText: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 11, fontVariant: ['tabular-nums'] },
 
   marketRail: { gap: 12, paddingRight: 16 },
-  marketCard: { width: 164, height: 202, borderRadius: 18, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 10 },
+  marketCard: { width: 164, height: 202, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 10, shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
   marketImage: { height: 116, borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
-  marketKind: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase', marginTop: 8 },
+  marketKind: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase', marginTop: 8 },
   marketTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 17, marginTop: 2 },
   marketMeta: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
 

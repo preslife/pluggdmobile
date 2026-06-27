@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#08080C' },
   header: { height: 92, paddingHorizontal: 16, paddingTop: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1F1F2E' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontFamily: 'PluggdSans5-Regular', fontSize: 28, lineHeight: 32 },
+  headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 28, lineHeight: 32 },
   content: { flex: 1, padding: 16, paddingTop: 26 },
   kicker: { color: PLUGGD_ORANGE, fontFamily: 'Satoshi-Black', fontSize: 12, letterSpacing: 1.1 },
   title: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 32, lineHeight: 36, marginTop: 8 },
