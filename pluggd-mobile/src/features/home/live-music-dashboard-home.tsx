@@ -19,7 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
-import { GlassHeroCard, GlassRailCard } from '../../../components/liquid-glass';
+import { GlassRailCard } from '../../../components/liquid-glass';
+import { PremiumHeroCard } from '../../../components/liquid-glass/PremiumHeroCard';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -511,16 +512,23 @@ function SpotlightCard({ spotlight }: { spotlight: Spotlight }) {
     if (spotlight.route) router.push(spotlight.route as any);
   };
 
+  const canPlay = spotlight.cta === 'Listen' && Boolean(spotlight.track);
+  const playingNow = active && isPlaying;
+  const statusLabel = spotlight.live ? 'Live now' : playingNow ? 'Playing now' : 'Fresh on PLUGGD';
+
   return (
-    <GlassHeroCard
+    <PremiumHeroCard
+      style={styles.spotlight}
+      image={spotlight.imageUrl || HOME_HERO_FALLBACK || ''}
       eyebrow="Lead platform spotlight"
       title={spotlight.title}
-      subtitle={spotlight.meta}
-      metadata={spotlight.live ? 'Live now' : active && isPlaying ? 'Playing now' : 'Fresh on PLUGGD'}
-      image={spotlight.imageUrl || HOME_HERO_FALLBACK}
+      meta={spotlight.meta}
+      statusLabel={statusLabel}
+      statusColor={spotlight.live ? COLORS.live : COLORS.orange}
+      canPlay={canPlay}
+      playing={playingNow}
       onPress={spotlight.route || spotlight.track ? open : undefined}
-      fallbackTone={spotlight.live ? 'rose' : spotlight.kind === 'event' ? 'amber' : 'violet'}
-      style={styles.spotlight}
+      onPlay={spotlight.route || spotlight.track ? open : undefined}
     />
   );
 }
@@ -1100,13 +1108,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  spotlightCopy: { position: 'absolute', left: 16, right: 16, bottom: 16, gap: 8 },
-  spotlightTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 26, lineHeight: 30 },
-  spotlightMeta: { color: COLORS.textSoft, fontSize: 13, fontWeight: '700' },
-  spotlightCTA: { alignSelf: 'flex-start', minHeight: 44, borderRadius: 22, backgroundColor: COLORS.text, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  spotlightCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Black', fontSize: 13 },
 
   todayRail: { gap: 10, paddingRight: 16 },
   todayCard: { width: 148, height: 116, borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.46)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 12, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.42, shadowRadius: 22, shadowOffset: { width: 0, height: 14 } },
