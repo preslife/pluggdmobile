@@ -1,9 +1,9 @@
 import type { ViewStyle } from 'react-native';
 
 export const liquidGlassColors = {
-  backgroundTop: '#34334F',
-  backgroundMid: '#272840',
-  backgroundDeep: '#05070F',
+  backgroundTop: '#1B191D',
+  backgroundMid: '#121014',
+  backgroundDeep: '#070609',
 
   surfaceSubtle: 'rgba(8,10,20,0.26)',
   surfaceDefault: 'rgba(10,12,24,0.36)',
@@ -25,8 +25,8 @@ export const liquidGlassColors = {
   accent: '#FF5200',
   accentGlow: 'rgba(255,82,0,0.75)',
 
-  violetGlow: 'rgba(126,106,255,0.24)',
-  blueGlow: 'rgba(83,112,230,0.14)',
+  violetGlow: 'rgba(255,255,255,0.045)',
+  blueGlow: 'rgba(255,255,255,0.025)',
 };
 
 export const liquidGlassRadii = {

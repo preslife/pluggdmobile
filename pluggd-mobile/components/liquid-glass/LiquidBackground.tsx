@@ -24,7 +24,7 @@ export function LiquidBackground({ children, style, tone = 'accent' }: LiquidBac
         colors={[
           liquidGlassColors.backgroundTop,
           liquidGlassColors.backgroundMid,
-          '#111524',
+          '#0C0B0F',
           liquidGlassColors.backgroundDeep,
         ]}
         locations={[0, 0.32, 0.72, 1]}
