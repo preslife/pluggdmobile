@@ -1097,10 +1097,10 @@ const styles = StyleSheet.create({
   emptyState: { minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 14, justifyContent: 'center' },
   emptyTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   emptyBody: { color: COLORS.muted, fontSize: 12, lineHeight: 17, marginTop: 5 },
-  editorialHeader: { gap: 7, paddingTop: 2, paddingBottom: 2 },
+  editorialHeader: { gap: 6, paddingTop: 2, paddingBottom: 2 },
   editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 },
-  editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38 },
-  editorialSummary: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 20 },
+  editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 30, letterSpacing: -0.5 },
+  editorialSummary: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 18 },
 
   spotlight: {
     height: 206,
