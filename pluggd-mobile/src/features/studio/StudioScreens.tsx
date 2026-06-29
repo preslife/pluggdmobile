@@ -1531,10 +1531,10 @@ const styles = StyleSheet.create({
   studioBrand: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 1,
   },
   studioBrandPlug: {
     color: STUDIO.orangeSoft,

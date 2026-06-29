@@ -108,8 +108,15 @@ function roomTitle(room: LiveRoomItem) {
   return room.title?.trim() || room.description?.trim() || 'Creator live session';
 }
 
+function humanizeLabel(value?: string | null) {
+  const text = value?.trim();
+  if (!text) return null;
+  // Turn raw machine values like "scheduled_session" into "Scheduled Session" for display.
+  return text.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function roomHost(room: LiveRoomItem) {
-  return room.creator_name?.trim() || room.category?.trim() || 'PLUGGD Live';
+  return room.creator_name?.trim() || humanizeLabel(room.category) || 'PLUGGD Live';
 }
 
 function roomSearchText(room: LiveRoomItem) {
@@ -233,7 +240,7 @@ function mapCreators(bundle?: FeedBundle, rooms: LiveRoomItem[] = []): CreatorCa
     creators.push({
       id: `live-${room.id}`,
       name,
-      handle: room.category || 'Live creator',
+      handle: humanizeLabel(room.category) || 'Live creator',
       route: creatorRoute(room),
       imageUrl: room.creator_avatar_url || room.thumbnail_url,
       isLive: room.status === 'live',
@@ -476,7 +483,7 @@ function FocusCard({
   const host = isRoom ? roomHost(source.room) : eventHost(source.event);
   const imageUrl = isRoom ? mediaImageForRoom(source.room) : source.event.cover_image_url;
   const description = isRoom
-    ? source.room.description || source.room.category || 'Real-time PLUGGD session'
+    ? source.room.description || humanizeLabel(source.room.category) || 'Real-time PLUGGD session'
     : source.event.description || 'Event-linked live moment';
   const metric = isRoom
     ? source.state === 'live'
@@ -649,7 +656,7 @@ function CompactRoomRow({ room, onOpen }: { room: LiveRoomItem; onOpen: (room: L
       <View style={styles.roomCopy}>
         <Text style={styles.roomTitle} numberOfLines={1}>{roomTitle(room)}</Text>
         <Text style={styles.roomMeta} numberOfLines={1}>
-          {room.category || 'Community room'}{activeUsers > 0 ? ` · ${formatCompact(activeUsers)} active` : ''}
+          {humanizeLabel(room.category) || 'Community room'}{activeUsers > 0 ? ` · ${formatCompact(activeUsers)} active` : ''}
         </Text>
       </View>
       {room.status === 'live' ? <View style={styles.roomLiveDot} /> : null}
@@ -685,7 +692,7 @@ function WideSessionCard({
             <Text style={styles.miniTagText}>{isLive ? 'LIVE' : label}</Text>
           </View>
           <Text style={styles.wideTitle} numberOfLines={2}>{roomTitle(room)}</Text>
-          <Text style={styles.wideMeta} numberOfLines={1}>{roomHost(room)} · {room.category || 'Session'}</Text>
+          <Text style={styles.wideMeta} numberOfLines={1}>{roomHost(room)} · {humanizeLabel(room.category) || 'Session'}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"

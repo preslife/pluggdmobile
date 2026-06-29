@@ -297,7 +297,7 @@ export default function RoleSelection() {
           <Text style={styles.stepText}>Step 1 of 3</Text>
         </View>
 
-        <Text style={styles.title}>What do you do on Pluggd?</Text>
+        <Text style={styles.title}>What do you do on PLUGGD?</Text>
         <Text style={styles.subtitle}>
           Pick one primary role, then add any secondary roles you also operate as.
         </Text>

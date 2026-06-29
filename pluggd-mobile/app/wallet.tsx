@@ -163,7 +163,7 @@ export default function WalletScreen() {
             ]}
             onPress={() =>
               Alert.alert(
-                'Pluggd credits',
+                'PLUGGD credits',
                 '100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and account purchases.',
               )
             }

@@ -129,7 +129,7 @@ function initials(name: string) {
 }
 
 function profileName(profile?: Profile | null) {
-  return profile?.full_name?.trim() || profile?.username?.trim() || 'Pluggd host';
+  return profile?.full_name?.trim() || profile?.username?.trim() || 'PLUGGD host';
 }
 
 function modeLabel(mode?: string | null) {
@@ -874,7 +874,7 @@ export default function LiveSessionScreen() {
   const shareRoom = async () => {
     selectionHaptic();
     await Share.share({
-      message: `Join ${session?.title ?? 'this live room'} on Pluggd.`,
+      message: `Join ${session?.title ?? 'this live room'} on PLUGGD.`,
     });
   };
 

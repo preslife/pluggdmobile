@@ -395,7 +395,7 @@ export default function CreatorOnboarding() {
           <Text style={styles.stepText}>Step 3 of 3</Text>
         </View>
 
-        <Text style={styles.title}>Set up your Pluggd space</Text>
+        <Text style={styles.title}>Set up your PLUGGD space</Text>
         <Text style={styles.subtitle}>Complete the basics for your primary role.</Text>
 
         <Pressable

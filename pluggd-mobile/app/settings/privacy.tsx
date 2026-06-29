@@ -53,7 +53,7 @@ export default function PrivacySettingsScreen() {
                     Show Online Status
                   </Text>
                   <Text className="text-sm text-[#b9ab9d]">
-                    Allow others to see when you are active on Pluggd.
+                    Allow others to see when you are active on PLUGGD.
                   </Text>
                 </View>
                 <Switch

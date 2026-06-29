@@ -148,7 +148,7 @@ export default function SignUp() {
           <View style={styles.brandBlock}>
             <BrandLogo variant="auto" width={116} height={47} />
             <Text style={[styles.kicker, { color: theme.colors.accent }]}>CREATE ACCOUNT</Text>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Start building your Pluggd identity.</Text>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Start building your PLUGGD identity.</Text>
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
               Set up your account first, then choose every role that applies to you.
             </Text>

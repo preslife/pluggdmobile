@@ -336,7 +336,6 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'videos',
     title: 'Videos',
-    route: '/videos',
     icon: 'videocam',
     section: 'catalog',
     status: 'limited',
