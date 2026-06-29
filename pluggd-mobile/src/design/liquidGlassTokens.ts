@@ -5,11 +5,11 @@ export const liquidGlassColors = {
   backgroundMid: '#121014',
   backgroundDeep: '#070609',
 
-  surfaceSubtle: 'rgba(8,10,20,0.26)',
-  surfaceDefault: 'rgba(10,12,24,0.36)',
-  surfaceStrong: 'rgba(12,14,27,0.48)',
+  surfaceSubtle: 'rgba(15,14,16,0.26)',
+  surfaceDefault: 'rgba(18,17,20,0.36)',
+  surfaceStrong: 'rgba(22,21,24,0.48)',
 
-  surfaceDark: 'rgba(5,7,15,0.62)',
+  surfaceDark: 'rgba(9,8,10,0.62)',
   surfacePressed: 'rgba(255,255,255,0.075)',
 
   borderTop: 'rgba(255,255,255,0.36)',

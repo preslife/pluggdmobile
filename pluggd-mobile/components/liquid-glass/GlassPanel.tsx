@@ -74,7 +74,7 @@ export function GlassPanel({
 const webPanel = {
   subtle: Platform.select({
     web: {
-      backgroundImage: 'linear-gradient(156deg, rgba(38,39,60,0.34) 0%, rgba(10,12,24,0.24) 52%, rgba(4,6,14,0.56) 100%)',
+      backgroundImage: 'linear-gradient(156deg, rgba(36,35,38,0.34) 0%, rgba(15,14,16,0.24) 52%, rgba(7,6,8,0.56) 100%)',
       backdropFilter: 'blur(34px) saturate(1.22)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.58)',
     },
@@ -82,7 +82,7 @@ const webPanel = {
   }) as ViewStyle,
   default: Platform.select({
     web: {
-      backgroundImage: 'linear-gradient(156deg, rgba(42,43,66,0.42) 0%, rgba(10,12,24,0.30) 52%, rgba(4,6,14,0.62) 100%)',
+      backgroundImage: 'linear-gradient(156deg, rgba(40,39,42,0.42) 0%, rgba(15,14,16,0.30) 52%, rgba(7,6,8,0.62) 100%)',
       backdropFilter: 'blur(36px) saturate(1.25)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.34), inset 0 -1px 0 rgba(0,0,0,0.62)',
     },
@@ -90,9 +90,9 @@ const webPanel = {
   }) as ViewStyle,
   strong: Platform.select({
     web: {
-      backgroundImage: 'linear-gradient(156deg, rgba(46,47,72,0.50) 0%, rgba(10,12,24,0.36) 52%, rgba(3,5,13,0.70) 100%)',
+      backgroundImage: 'linear-gradient(156deg, rgba(44,43,47,0.50) 0%, rgba(15,14,16,0.36) 52%, rgba(6,5,7,0.70) 100%)',
       backdropFilter: 'blur(40px) saturate(1.28)',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.42), inset 0 -1px 0 rgba(0,0,0,0.66), 0 0 50px rgba(177,169,255,0.11)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.42), inset 0 -1px 0 rgba(0,0,0,0.66), 0 0 50px rgba(255,255,255,0.05)',
     },
     default: {},
   }) as ViewStyle,
