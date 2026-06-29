@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
-import { pluggdTextStyles } from '../../design/typography';
+import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   loadConnectCardParity,
@@ -645,20 +645,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   kicker: {
+    fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 11,
-    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0,
+    letterSpacing: 0.8,
   },
   title: {
     ...pluggdTextStyles.appTitleLarge,
-    fontSize: 34,
-    lineHeight: 38,
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   summary: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 14,
+    lineHeight: 20,
   },
   surfaceTools: {
     gap: 10,
