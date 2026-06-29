@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -475,28 +476,28 @@ const styles = StyleSheet.create({
   author: {
     color: COLORS.white,
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   meta: {
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '700',
     marginTop: 2,
   },
   repostLabel: {
     color: COLORS.orange,
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   bodyText: {
     color: COLORS.soft,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '500',
+    fontFamily: pluggdFonts.satoshiRegular, fontWeight: '500',
   },
   inlineLink: {
     color: COLORS.orange,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   destinationRow: {
     flexDirection: 'row',
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
   destinationText: {
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '700',
   },
   singleMedia: {
     height: 244,
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
   moreImagesText: {
     color: COLORS.white,
     fontSize: 22,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   videoCard: {
     minHeight: 76,
@@ -619,18 +620,18 @@ const styles = StyleSheet.create({
   embedTitle: {
     color: COLORS.white,
     fontSize: 14,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   embedMeta: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '700',
   },
   linkUrl: {
     color: COLORS.orange,
     fontSize: 11,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   quoteCard: {
     borderRadius: 16,
@@ -648,12 +649,12 @@ const styles = StyleSheet.create({
   quoteAuthor: {
     color: COLORS.white,
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   quoteMeta: {
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '700',
   },
   quoteImage: {
     height: 92,
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
   pollQuestion: {
     color: COLORS.white,
     fontSize: 14,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   pollOption: {
     minHeight: 42,
@@ -698,18 +699,18 @@ const styles = StyleSheet.create({
   pollOptionText: {
     color: COLORS.white,
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     flex: 1,
   },
   pollPct: {
     color: COLORS.muted,
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   pollMeta: {
     color: COLORS.dim,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   actions: {
     flexDirection: 'row',
@@ -730,7 +731,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: COLORS.muted,
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   actionOrange: {
     color: COLORS.orange,
