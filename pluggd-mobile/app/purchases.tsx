@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  restoreText: { color: PLUGGD_ORANGE, fontSize: 12, fontWeight: '900' },
+  restoreText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   entitlementCard: {
     minHeight: 76,
@@ -135,6 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   copy: { flex: 1, minWidth: 0 },
-  title: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  meta: { color: '#B3B3B3', fontSize: 12, fontWeight: '800', marginTop: 4, textTransform: 'capitalize' },
+  title: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  meta: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 4, textTransform: 'capitalize' },
 });

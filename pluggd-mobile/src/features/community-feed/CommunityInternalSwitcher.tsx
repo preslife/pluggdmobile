@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { COMMUNITY_TABS, type CommunityTabKey } from './communityFeedTypes';
@@ -89,11 +90,11 @@ const styles = StyleSheet.create({
   label: {
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   labelActive: {
     color: COLORS.white,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   quickRow: {
     paddingHorizontal: 16,
@@ -123,6 +124,6 @@ const styles = StyleSheet.create({
   quickLabel: {
     color: COLORS.white,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
 });

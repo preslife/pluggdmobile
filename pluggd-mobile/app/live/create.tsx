@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     lineHeight: 24,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -534,13 +535,13 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 2,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 10,
   },
   modeGrid: {
@@ -592,13 +593,13 @@ const styles = StyleSheet.create({
   modeTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   modeDescription: {
     color: '#AFAFAF',
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 7,
   },
   card: {
@@ -612,13 +613,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 19,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 10,
   },
   fieldLabel: {
     color: '#BEBEBE',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
     marginTop: 10,
     marginBottom: 6,
@@ -631,7 +632,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#101010',
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     paddingHorizontal: 12,
   },
   textArea: {
@@ -663,7 +664,7 @@ const styles = StyleSheet.create({
   segmentButtonText: {
     color: '#AFAFAF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   segmentButtonTextActive: {
     color: PLUGGD_ORANGE,
@@ -700,13 +701,13 @@ const styles = StyleSheet.create({
   rowTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   rowSubtitle: {
     color: '#A5A5A5',
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 4,
   },
   stepperRow: {
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
   stepperValue: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     minWidth: 28,
     textAlign: 'center',
   },
@@ -757,7 +758,7 @@ const styles = StyleSheet.create({
     color: '#B8B8B8',
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   footer: {
     position: 'absolute',
@@ -783,6 +784,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
 });

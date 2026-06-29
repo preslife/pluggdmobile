@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { pluggdFonts } from '../design/typography';
 import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 const COLORS = {
@@ -116,6 +117,6 @@ const styles = StyleSheet.create({
     bottom: 10,
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

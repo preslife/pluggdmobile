@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -89,13 +90,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     lineHeight: 38,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   subtitle: {
     marginTop: 7,
     fontSize: 14,
     lineHeight: 21,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   list: {
     gap: 10,
@@ -119,6 +120,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

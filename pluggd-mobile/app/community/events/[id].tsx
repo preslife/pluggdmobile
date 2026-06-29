@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -172,20 +173,20 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   headerRow: { marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: COLORS.white, fontSize: 13, fontWeight: '900', letterSpacing: 1.4 },
+  headerTitle: { color: COLORS.white, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1.4 },
   loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { color: COLORS.muted, fontSize: 13, fontWeight: '800' },
+  loadingText: { color: COLORS.muted, fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   hero: { marginHorizontal: 16, minHeight: 220, borderRadius: 22, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', backgroundColor: COLORS.surface, padding: 18, justifyContent: 'flex-end' },
-  kicker: { color: COLORS.orange, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
-  title: { marginTop: 8, color: COLORS.white, fontSize: 30, lineHeight: 34, fontWeight: '900' },
-  meta: { marginTop: 7, color: COLORS.muted, fontSize: 14, lineHeight: 18, fontWeight: '800' },
-  description: { marginTop: 12, color: COLORS.soft, fontSize: 14, lineHeight: 21, fontWeight: '600' },
+  kicker: { color: COLORS.orange, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  title: { marginTop: 8, color: COLORS.white, fontSize: 30, lineHeight: 34, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  meta: { marginTop: 7, color: COLORS.muted, fontSize: 14, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  description: { marginTop: 12, color: COLORS.soft, fontSize: 14, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   actions: { marginHorizontal: 16, marginTop: 14, gap: 10 },
   primaryButton: { minHeight: 48, borderRadius: 18, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: COLORS.canvas, fontSize: 13, fontWeight: '900' },
+  primaryText: { color: COLORS.canvas, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   secondaryButton: { minHeight: 44, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: COLORS.white, fontSize: 13, fontWeight: '900' },
+  secondaryText: { color: COLORS.white, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   emptyCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16, gap: 8 },
-  emptyTitle: { color: COLORS.white, fontSize: 17, fontWeight: '900' },
-  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  emptyTitle: { color: COLORS.white, fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
 });

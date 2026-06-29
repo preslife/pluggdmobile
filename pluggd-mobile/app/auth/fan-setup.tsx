@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -487,37 +488,37 @@ const styles = StyleSheet.create({
   progressActiveText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   progressFutureText: {
     color: '#A4A4A4',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stepText: {
     color: '#A9A9A9',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 28,
   },
   title: {
     color: '#FFFFFF',
     fontSize: 40,
     lineHeight: 46,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   subtitle: {
     color: '#B3B3B3',
     fontSize: 20,
     lineHeight: 28,
-    fontWeight: '500',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
     marginTop: 14,
     marginBottom: 30,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 14,
   },
   genreGrid: {
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
   genreChipText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   genreChipTextSelected: {
     color: '#FFFFFF',
@@ -577,7 +578,7 @@ const styles = StyleSheet.create({
   toggleTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     lineHeight: 23,
   },
   toggleSubtitle: {
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -633,7 +634,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     color: PLUGGD_ORANGE,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   creatorList: {
     gap: 0,
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   creatorLoading: {
     minHeight: 76,
@@ -679,7 +680,7 @@ const styles = StyleSheet.create({
     color: '#AFAFAF',
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   creatorInfo: {
     flex: 1,
@@ -687,7 +688,7 @@ const styles = StyleSheet.create({
   creatorName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   creatorRole: {
     color: '#B8B8B8',
@@ -710,7 +711,7 @@ const styles = StyleSheet.create({
   followButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   followButtonTextActive: {
     color: PLUGGD_ORANGE,
@@ -737,6 +738,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
 });

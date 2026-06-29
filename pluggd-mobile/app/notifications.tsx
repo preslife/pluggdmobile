@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 13,
   },
-  markAllText: { color: PLUGGD_ORANGE, fontSize: 12, fontWeight: '900' },
+  markAllText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   card: {
     minHeight: 88,
@@ -138,8 +139,8 @@ const styles = StyleSheet.create({
   iconWrapUnread: { backgroundColor: PLUGGD_ORANGE },
   copy: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: PLUGGD_ORANGE },
-  message: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontWeight: '600', marginTop: 4 },
-  meta: { color: '#737373', fontSize: 11, fontWeight: '800', marginTop: 6 },
+  message: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 4 },
+  meta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 6 },
 });

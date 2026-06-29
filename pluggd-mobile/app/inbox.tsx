@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -47,8 +48,8 @@ const styles = StyleSheet.create({
   iconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,90,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,90,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  unread: { minWidth: 22, height: 22, borderRadius: 11, overflow: 'hidden', backgroundColor: PLUGGD_ORANGE, color: '#08080C', textAlign: 'center', textAlignVertical: 'center', fontSize: 11, fontWeight: '900' },
-  preview: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },
-  meta: { color: '#737373', fontSize: 11, fontWeight: '800', marginTop: 6 },
+  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  unread: { minWidth: 22, height: 22, borderRadius: 11, overflow: 'hidden', backgroundColor: PLUGGD_ORANGE, color: '#08080C', textAlign: 'center', textAlignVertical: 'center', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  preview: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 4 },
+  meta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 6 },
 });

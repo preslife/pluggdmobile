@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
 import {
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   sectionAction: {
     flexDirection: 'row',
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   sectionActionText: {
     fontSize: pluggdTypography.meta,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   contextRail: {
     gap: 8,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   },
   posterInitials: {
     fontSize: 24,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   playBadge: {
     position: 'absolute',
@@ -351,11 +352,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   cardSubtitle: {
     fontSize: pluggdTypography.meta,
-    fontWeight: pluggdTypography.weights.semibold,
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: pluggdTypography.weights.semibold,
     marginTop: 3,
   },
   metaPill: {
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: pluggdTypography.caption,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   listCard: {
     minHeight: 72,
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
   },
   thumbInitials: {
     fontSize: 18,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   listText: {
     flex: 1,
@@ -402,16 +403,16 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     fontSize: pluggdTypography.control,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   listSubtitle: {
     fontSize: pluggdTypography.meta,
-    fontWeight: pluggdTypography.weights.semibold,
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: pluggdTypography.weights.semibold,
     marginTop: 4,
   },
   listMeta: {
     fontSize: pluggdTypography.meta,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
     marginTop: 5,
   },
   listPlay: {
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 17,
-    fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
     marginTop: 9,
   },
   emptyBody: {

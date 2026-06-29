@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { pluggdFonts } from '../../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
@@ -45,9 +46,9 @@ export default function HashtagRoute() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   header: { paddingHorizontal: 16, paddingBottom: 12 },
-  kicker: { color: COLORS.orange, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5 },
-  heading: { color: COLORS.white, fontSize: 34, lineHeight: 39, fontWeight: '900', marginTop: 2 },
+  kicker: { color: COLORS.orange, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5 },
+  heading: { color: COLORS.white, fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 2 },
   empty: { marginHorizontal: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 20, padding: 18, gap: 8 },
-  emptyTitle: { color: COLORS.white, fontSize: 17, fontWeight: '900' },
-  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  emptyTitle: { color: COLORS.white, fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
 });

@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
   },
   topButtonText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   modeButton: {
     height: 40,
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   },
   modeText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   progressTrack: {
     flexDirection: 'row',
@@ -345,20 +346,20 @@ const styles = StyleSheet.create({
   kicker: {
     marginTop: 14,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     letterSpacing: 1.1,
   },
   title: {
     marginTop: 8,
     fontSize: 26,
     lineHeight: 32,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   subtitle: {
     marginTop: 8,
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   formCard: {
     borderRadius: 16,
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textTransform: 'uppercase',
     marginBottom: 7,
   },
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     paddingVertical: 0,
   },
   strengthWrap: {
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
   },
   strengthText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 7,
   },
   errorBox: {
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   cta: {
     minHeight: 50,
@@ -436,7 +437,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   dividerRow: {
     marginTop: 18,
@@ -450,7 +451,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
   },
   socialRow: {
@@ -470,15 +471,15 @@ const styles = StyleSheet.create({
   },
   socialText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   footerText: {
     marginTop: 22,
     textAlign: 'center',
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   footerLink: {
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

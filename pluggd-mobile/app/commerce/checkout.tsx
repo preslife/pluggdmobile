@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textAlign: 'center',
   },
   body: {
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#080808',
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   secondaryButton: {
     width: '100%',
@@ -122,6 +123,6 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

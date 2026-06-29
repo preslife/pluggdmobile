@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 26,
     lineHeight: 34,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 30,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   balanceCard: {
     minHeight: 124,
@@ -483,11 +484,11 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontSize: 27,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   balanceLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 2,
   },
   activityLink: {
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
   activityLinkText: {
     color: PLUGGD_ORANGE,
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   balanceGraphic: {
     width: 50,
@@ -539,7 +540,7 @@ const styles = StyleSheet.create({
   pendingText: {
     color: '#FFB089',
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   errorCard: {
     backgroundColor: '#2A1111',
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     color: '#FFB4B4',
     flex: 1,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     lineHeight: 18,
   },
   sectionHeader: {
@@ -568,12 +569,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 21,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   balanceValue: {
     color: '#8F8F8F',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   packList: {
     gap: 9,
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
   },
   packName: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   badge: {
     backgroundColor: '#3A1D0E',
@@ -629,17 +630,17 @@ const styles = StyleSheet.create({
   badgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   packCredits: {
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     marginTop: 4,
   },
   packSubtext: {
     color: '#9F9F9F',
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 2,
   },
   packRight: {
@@ -649,7 +650,7 @@ const styles = StyleSheet.create({
   },
   packPrice: {
     fontSize: 22,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   selectCircle: {
     width: 22,
@@ -678,7 +679,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   restoreButton: {
     paddingVertical: 12,
@@ -687,7 +688,7 @@ const styles = StyleSheet.create({
     color: '#8F8F8F',
     textAlign: 'center',
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textDecorationLine: 'underline',
   },
   noteCard: {
@@ -705,7 +706,7 @@ const styles = StyleSheet.create({
     color: '#AFAFAF',
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   activityCard: {
     backgroundColor: '#151515',
@@ -732,7 +733,7 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     marginBottom: 8,
   },
   activityLoader: {
@@ -743,7 +744,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 18,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   ledgerRow: {
     flexDirection: 'row',
@@ -767,17 +768,17 @@ const styles = StyleSheet.create({
   },
   ledgerTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   ledgerDate: {
     color: '#8F8F8F',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 2,
   },
   ledgerAmount: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   ledgerCredit: {
     color: '#41D17D',

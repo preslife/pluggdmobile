@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -475,14 +476,14 @@ const styles = StyleSheet.create({
   stepText: {
     color: '#9B9B9B',
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 10,
   },
   title: {
     color: '#FFFFFF',
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textAlign: 'center',
   },
   subtitle: {
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     marginBottom: 10,
   },
   primaryList: {
@@ -534,7 +535,7 @@ const styles = StyleSheet.create({
   roleName: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     marginBottom: 2,
   },
   roleDescription: {
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   radio: {
     width: 22,
@@ -613,7 +614,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#E5E5E5',
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   secondaryChipTextSelected: {
     color: '#FFFFFF',
@@ -657,6 +658,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

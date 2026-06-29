@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -77,12 +78,12 @@ function IdentityRow({ icon, title, subtitle }: { icon: keyof typeof MaterialIco
 const styles = StyleSheet.create({
   content: { paddingBottom: 180 },
   heroCard: { borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 16, marginBottom: 20 },
-  heroEyebrow: { color: PLUGGD_ORANGE, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-  heroTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 33, fontWeight: '900', marginTop: 5 },
-  heroBody: { color: '#B3B3B3', fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 8 },
+  heroEyebrow: { color: PLUGGD_ORANGE, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1 },
+  heroTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 33, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 5 },
+  heroBody: { color: '#B3B3B3', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 8 },
   row: { minHeight: 74, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 13, marginBottom: 9, flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,90,0,0.1)', alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 },
-  title: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  subtitle: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontWeight: '700', marginTop: 3 },
+  title: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  subtitle: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
 });

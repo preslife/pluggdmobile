@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../../components/PluggdImage';
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: COLORS.orange,
     fontSize: 10,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -87,14 +88,14 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: '900',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
     marginTop: 3,
   },
   subtitle: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 3,
   },
 });

@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -155,20 +156,20 @@ const styles = StyleSheet.create({
   kicker: {
     color: PLUGGD_ORANGE,
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     letterSpacing: 1,
   },
   title: {
     marginTop: 8,
     fontSize: 33,
     lineHeight: 39,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   subtitle: {
     marginTop: 9,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   card: {
     borderWidth: 1,
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textTransform: 'uppercase',
   },
   input: {
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     paddingHorizontal: 13,
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   message: {
     borderWidth: 1,
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   primaryButton: {
     minHeight: 52,
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   actionRow: {
     flexDirection: 'row',
@@ -232,6 +233,6 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: '#080808',
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
 });

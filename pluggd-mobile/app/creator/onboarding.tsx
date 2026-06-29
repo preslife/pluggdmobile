@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -608,25 +609,25 @@ const styles = StyleSheet.create({
   progressActiveText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stepText: {
     color: '#A9A9A9',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 28,
   },
   title: {
     color: '#FFFFFF',
     fontSize: 38,
     lineHeight: 44,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   subtitle: {
     color: '#B3B3B3',
     fontSize: 19,
     lineHeight: 27,
-    fontWeight: '500',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
     marginTop: 14,
     marginBottom: 24,
   },
@@ -659,7 +660,7 @@ const styles = StyleSheet.create({
   overline: {
     color: '#8E8E8E',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -675,24 +676,24 @@ const styles = StyleSheet.create({
   roleSummaryLabel: {
     color: '#9F9F9F',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 4,
   },
   primaryRole: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   secondaryRoles: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     lineHeight: 22,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 12,
   },
   checklist: {
@@ -730,13 +731,13 @@ const styles = StyleSheet.create({
   checklistTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     lineHeight: 21,
   },
   checklistDescription: {
     color: '#A8A8A8',
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 4,
   },
   checklistRight: {
@@ -764,7 +765,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   statusProgressText: {
     color: PLUGGD_ORANGE,
@@ -799,11 +800,11 @@ const styles = StyleSheet.create({
     color: '#B9B9B9',
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '600',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   helperLink: {
     color: PLUGGD_ORANGE,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   footer: {
     position: 'absolute',
@@ -827,6 +828,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
 });

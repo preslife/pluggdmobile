@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1513,7 +1514,7 @@ const styles = StyleSheet.create({
   hostAvatarText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   hostTextWrap: {
     flex: 1,
@@ -1527,7 +1528,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: '#FFFFFF',
     fontSize: 21,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     maxWidth: 170,
   },
   liveMetaRow: {
@@ -1553,7 +1554,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   viewerBadge: {
     minHeight: 25,
@@ -1569,7 +1570,7 @@ const styles = StyleSheet.create({
   viewerText: {
     color: '#D8D8D8',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   modeBadge: {
     minHeight: 25,
@@ -1583,7 +1584,7 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   closeButton: {
     width: 44,
@@ -1602,7 +1603,7 @@ const styles = StyleSheet.create({
   placeholderTitle: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 14,
     textAlign: 'center',
   },
@@ -1631,7 +1632,7 @@ const styles = StyleSheet.create({
   railLabel: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 3,
   },
   reactionLayer: {
@@ -1661,14 +1662,14 @@ const styles = StyleSheet.create({
   sessionTitle: {
     color: '#FFFFFF',
     fontSize: 25,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   sessionSubtitle: {
     color: '#D1D1D1',
     fontSize: 14,
     lineHeight: 20,
     marginTop: 3,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   signalRow: {
     flexDirection: 'row',
@@ -1688,7 +1689,7 @@ const styles = StyleSheet.create({
   signalText: {
     color: '#EDEDED',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   primaryActions: {
     height: 52,
@@ -1708,7 +1709,7 @@ const styles = StyleSheet.create({
   primaryActionText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   secondaryActionButton: {
     flex: 1,
@@ -1724,7 +1725,7 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     color: PLUGGD_ORANGE,
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestBox: {
     borderRadius: 8,
@@ -1737,13 +1738,13 @@ const styles = StyleSheet.create({
   stageRequestTitle: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestBody: {
     color: '#B8B8B8',
     fontSize: 12,
     marginTop: 5,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestInput: {
     minHeight: 38,
@@ -1755,7 +1756,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginTop: 8,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestButton: {
     height: 38,
@@ -1768,7 +1769,7 @@ const styles = StyleSheet.create({
   stageRequestButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   hostOpsRow: {
     flexDirection: 'row',
@@ -1820,7 +1821,7 @@ const styles = StyleSheet.create({
   runtimeButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   runtimeButtonTextActive: {
     color: '#080808',
@@ -1839,12 +1840,12 @@ const styles = StyleSheet.create({
   hostRequestName: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   hostRequestNote: {
     color: '#AFAFAF',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 2,
   },
   approveButton: {
@@ -1880,12 +1881,12 @@ const styles = StyleSheet.create({
   chatTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   chatFilter: {
     color: '#BDBDBD',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   messageList: {
     maxHeight: 156,
@@ -1897,7 +1898,7 @@ const styles = StyleSheet.create({
   emptyChat: {
     color: '#888888',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     paddingVertical: 12,
   },
   messageRow: {
@@ -1918,7 +1919,7 @@ const styles = StyleSheet.create({
   messageAvatarText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   messageContent: {
     flex: 1,
@@ -1927,13 +1928,13 @@ const styles = StyleSheet.create({
   messageMeta: {
     color: '#A8A8A8',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   messageText: {
     color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 19,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 1,
   },
   composerRow: {
@@ -1955,7 +1956,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     paddingVertical: 0,
   },
   emojiButton: {
@@ -1993,12 +1994,12 @@ const styles = StyleSheet.create({
   audioTitle: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   audioSubtitle: {
     color: '#C9C9C9',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 5,
   },
   waveform: {

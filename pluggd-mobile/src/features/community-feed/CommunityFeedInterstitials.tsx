@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../../components/PluggdImage';
@@ -139,20 +140,20 @@ const styles = StyleSheet.create({
   kicker: {
     color: COLORS.orange,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
   title: {
     color: COLORS.white,
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   subtitle: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '500',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
     marginTop: 3,
   },
   rail: {
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   cardEyebrow: {
     color: 'rgba(255,255,255,0.44)',
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -193,12 +194,12 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: '800',
+    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   cardSubtitle: {
     color: COLORS.muted,
     fontSize: 11,
     lineHeight: 15,
-    fontWeight: '500',
+    fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
   },
 });
