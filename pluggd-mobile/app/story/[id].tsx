@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -213,11 +214,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.16)',
   },
   author: { flex: 1, minWidth: 0 },
-  authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  authorMeta: { color: '#B3B3B3', fontSize: 12, fontWeight: '800', marginTop: 2 },
+  authorName: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  authorMeta: { fontFamily: pluggdFonts.satoshiBold, color: '#B3B3B3', fontSize: 12, fontWeight: '800', marginTop: 2 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
   emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
   bottom: {
     position: 'absolute',
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   audioCopy: { flex: 1, minWidth: 0 },
   audioTitle: { color: '#08080C', fontFamily: 'Satoshi-Black', fontSize: 14 },
   audioMeta: { color: '#62627A', fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 2 },
-  caption: { color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '800' },
+  caption: { fontFamily: pluggdFonts.satoshiBold, color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '800' },
   tapZones: {
     ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',

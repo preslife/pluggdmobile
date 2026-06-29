@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -944,7 +945,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
   },
-  searchInput: {
+  searchInput: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     height: 54,
     color: COLORS.white,
@@ -1010,7 +1011,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 2,
   },
-  intentChip: {
+  intentChip: { fontFamily: pluggdFonts.satoshiBold,
     overflow: 'hidden',
     color: COLORS.soft,
     fontSize: 12,
@@ -1039,7 +1040,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textTransform: 'uppercase',
   },
-  sectionCount: {
+  sectionCount: { fontFamily: pluggdFonts.satoshiBold,
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 15,
@@ -1071,7 +1072,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  discoveryMeta: {
+  discoveryMeta: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     color: COLORS.muted,
     fontSize: 11,
@@ -1129,7 +1130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  resultMeta: {
+  resultMeta: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     color: COLORS.muted,
     fontSize: 12,
@@ -1205,7 +1206,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 21,
   },
-  emptyBody: {
+  emptyBody: { fontFamily: pluggdFonts.satoshiBold,
     color: COLORS.muted,
     fontSize: 13,
     lineHeight: 18,
@@ -1225,7 +1226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  loadingText: {
+  loadingText: { fontFamily: pluggdFonts.satoshiBold,
     color: COLORS.muted,
     fontSize: 13,
     lineHeight: 16,
@@ -1242,14 +1243,14 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 5,
   },
-  summaryTitle: {
+  summaryTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: COLORS.white,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
-  summaryBody: {
+  summaryBody: { fontFamily: pluggdFonts.satoshiBold,
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 15,

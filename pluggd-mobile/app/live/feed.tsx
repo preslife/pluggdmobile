@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -158,7 +159,7 @@ export default function LiveFeedScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   card: { flex: 1, backgroundColor: COLORS.canvas },
-  initials: { marginTop: 220, textAlign: 'center', color: COLORS.white, fontSize: 54, fontWeight: '900' },
+  initials: { fontFamily: pluggdFonts.satoshiBlack, marginTop: 220, textAlign: 'center', color: COLORS.white, fontSize: 54, fontWeight: '900' },
   topBar: { position: 'absolute', left: 16, right: 16, top: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,26,0.62)' },
   position: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13 },
@@ -173,9 +174,9 @@ const styles = StyleSheet.create({
   liveBadgeText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 11 },
   title: { marginTop: 12, color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 31, lineHeight: 34, textTransform: 'uppercase' },
   host: { marginTop: 6, color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 16 },
-  meta: { marginTop: 5, color: COLORS.muted, fontSize: 12, fontWeight: '800' },
+  meta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: COLORS.muted, fontSize: 12, fontWeight: '800' },
   chatPreview: { marginTop: 14, minHeight: 56, borderRadius: 16, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: 'rgba(18,18,26,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' },
-  chatText: { flex: 1, color: COLORS.soft, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  chatText: { fontFamily: pluggdFonts.satoshiMedium, flex: 1, color: COLORS.soft, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   joinButton: { marginTop: 14, minHeight: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.coral },
   joinText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

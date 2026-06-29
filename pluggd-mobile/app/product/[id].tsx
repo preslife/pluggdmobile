@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../src/design/typography';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -146,8 +147,8 @@ const styles = StyleSheet.create({
   heroCopy: { padding: 18 },
   eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
   title: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 34, lineHeight: 38, marginTop: 6 },
-  subtitle: { color: '#B3B3B3', fontSize: 14, fontWeight: '800', marginTop: 7 },
-  description: { color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 16 },
+  subtitle: { fontFamily: pluggdFonts.satoshiBold, color: '#B3B3B3', fontSize: 14, fontWeight: '800', marginTop: 7 },
+  description: { fontFamily: pluggdFonts.satoshiBold, color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 16 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 18 },
   primaryButton: { flex: 1, minHeight: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#08080C', fontFamily: 'Satoshi-Black', fontSize: 15 },

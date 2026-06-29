@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
     gap: 7,
     overflow: 'hidden',
   },
-  studioMenuText: {
+  studioMenuText: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 15,
     lineHeight: 18,
@@ -1536,14 +1536,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 1,
   },
-  studioBrandPlug: {
+  studioBrandPlug: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.orangeSoft,
     fontSize: 9,
     lineHeight: 11,
     fontWeight: '900',
     letterSpacing: 0,
   },
-  studioBrandTitle: {
+  studioBrandTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 20,
     lineHeight: 22,
@@ -1563,7 +1563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  studioAccountText: {
+  studioAccountText: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     minWidth: 0,
     color: STUDIO.text,
@@ -1575,14 +1575,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  topBarKicker: {
+  topBarKicker: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  topBarTitle: {
+  topBarTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 22,
     lineHeight: 25,
     fontWeight: '900',
@@ -1607,7 +1607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
+  avatarText: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 10,
     fontWeight: '900',
   },
@@ -1678,17 +1678,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dockLabel: {
+  dockLabel: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
     lineHeight: 14,
     fontWeight: '900',
     letterSpacing: 0,
   },
-  stateTitle: {
+  stateTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 21,
     fontWeight: '900',
   },
-  stateText: {
+  stateText: { fontFamily: pluggdFonts.satoshiBold,
     maxWidth: 280,
     textAlign: 'center',
     fontSize: 14,
@@ -1702,7 +1702,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: {
+  primaryButtonText: { fontFamily: pluggdFonts.satoshiBlack,
     color: '#08080C',
     fontSize: 14,
     fontWeight: '900',
@@ -1714,12 +1714,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  accessTitle: {
+  accessTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 24,
     lineHeight: 28,
     fontWeight: '900',
   },
-  accessText: {
+  accessText: { fontFamily: pluggdFonts.satoshiBold,
     textAlign: 'center',
     fontSize: 14,
     lineHeight: 20,
@@ -1769,7 +1769,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  kicker: {
+  kicker: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.orange,
     fontSize: 12,
     lineHeight: 14,
@@ -1784,7 +1784,7 @@ const styles = StyleSheet.create({
     lineHeight: 37,
     letterSpacing: 0,
   },
-  commandBody: {
+  commandBody: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 14,
     lineHeight: 19,
@@ -1802,7 +1802,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  liveChipText: {
+  liveChipText: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.orangeSoft,
     fontSize: 10,
     lineHeight: 12,
@@ -1827,13 +1827,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  healthPercent: {
+  healthPercent: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 17,
     lineHeight: 19,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
-  healthLabel: {
+  healthLabel: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 9,
     lineHeight: 11,
     fontWeight: '900',
@@ -1876,7 +1876,7 @@ const styles = StyleSheet.create({
   commandPillInnerSecondary: {
     borderColor: 'rgba(255,255,255,0.25)',
   },
-  commandPillText: {
+  commandPillText: { fontFamily: pluggdFonts.satoshiBlack,
     maxWidth: 150,
     fontSize: 13,
     fontWeight: '900',
@@ -1895,13 +1895,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 3,
   },
-  nextMoveTitle: {
+  nextMoveTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 14,
     lineHeight: 17,
     fontWeight: '900',
   },
-  nextMoveKicker: {
+  nextMoveKicker: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textSubtle,
     fontSize: 10,
     lineHeight: 12,
@@ -1909,7 +1909,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.7,
   },
-  nextMoveDetail: {
+  nextMoveDetail: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textSubtle,
     fontSize: 11,
     lineHeight: 14,
@@ -1949,7 +1949,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 5,
   },
-  kpiLabel: {
+  kpiLabel: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textSubtle,
     fontSize: 10,
     lineHeight: 12,
@@ -1957,14 +1957,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  kpiValue: {
+  kpiValue: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 23,
     lineHeight: 25,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
-  kpiDetail: {
+  kpiDetail: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textSubtle,
     fontSize: 11,
     lineHeight: 14,
@@ -2018,13 +2018,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 3,
   },
-  zoneTitle: {
+  zoneTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 15,
     lineHeight: 17,
     fontWeight: '900',
   },
-  zoneDetail: {
+  zoneDetail: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textSubtle,
     fontSize: 12,
     lineHeight: 14,
@@ -2037,7 +2037,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  statusChipText: {
+  statusChipText: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 9,
     lineHeight: 11,
     fontWeight: '900',
@@ -2058,7 +2058,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  sectionKicker: {
+  sectionKicker: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textMid,
     fontSize: 11,
     lineHeight: 13,
@@ -2089,12 +2089,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  progressLabel: {
+  progressLabel: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 14,
     lineHeight: 17,
     fontWeight: '900',
   },
-  progressDetail: {
+  progressDetail: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
@@ -2123,7 +2123,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: 0,
   },
-  sectionAction: {
+  sectionAction: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '900',
@@ -2148,11 +2148,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catalogInitial: {
+  catalogInitial: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 22,
     fontWeight: '900',
   },
-  catalogKind: {
+  catalogKind: { fontFamily: pluggdFonts.satoshiBlack,
     marginTop: 9,
     fontSize: 10,
     lineHeight: 12,
@@ -2160,13 +2160,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  catalogTitle: {
+  catalogTitle: { fontFamily: pluggdFonts.satoshiBlack,
     marginTop: 2,
     fontSize: 15,
     lineHeight: 19,
     fontWeight: '900',
   },
-  catalogSubtitle: {
+  catalogSubtitle: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 2,
     fontSize: 12,
     lineHeight: 16,
@@ -2178,11 +2178,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 6,
   },
-  emptyTitle: {
+  emptyTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 16,
     fontWeight: '900',
   },
-  emptyText: {
+  emptyText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
@@ -2215,12 +2215,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 4,
   },
-  actionTitle: {
+  actionTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '900',
   },
-  actionDetail: {
+  actionDetail: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -2228,7 +2228,7 @@ const styles = StyleSheet.create({
   appsHero: {
     gap: 14,
   },
-  appsEyebrow: {
+  appsEyebrow: { fontFamily: pluggdFonts.satoshiBlack,
     color: '#FF5A00',
     fontSize: 11,
     lineHeight: 14,
@@ -2236,7 +2236,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  appsTitle: {
+  appsTitle: { fontFamily: pluggdFonts.satoshiBlack,
     marginTop: 6,
     color: '#FFFFFF',
     fontSize: 28,
@@ -2244,7 +2244,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0,
   },
-  appsBody: {
+  appsBody: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 6,
     color: '#A9A9B6',
     fontSize: 14,
@@ -2273,7 +2273,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5A00',
     borderColor: '#FF5A00',
   },
-  segmentText: {
+  segmentText: { fontFamily: pluggdFonts.satoshiBlack,
     color: '#A9A9B6',
     fontSize: 12,
     fontWeight: '900',
@@ -2310,13 +2310,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  moduleTitle: {
+  moduleTitle: { fontFamily: pluggdFonts.satoshiBlack,
     flex: 1,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '900',
   },
-  moduleDetail: {
+  moduleDetail: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
@@ -2326,7 +2326,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  moduleAdds: {
+  moduleAdds: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -2344,7 +2344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  secondaryButtonText: {
+  secondaryButtonText: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -2356,7 +2356,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
   },
-  noteText: {
+  noteText: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     fontSize: 12,
     lineHeight: 17,
@@ -2376,14 +2376,14 @@ const styles = StyleSheet.create({
   myPluggdHeroCopy: {
     gap: 7,
   },
-  myPluggdTitle: {
+  myPluggdTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 29,
     lineHeight: 32,
     fontWeight: '900',
     letterSpacing: 0,
   },
-  myPluggdBody: {
+  myPluggdBody: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 13,
     lineHeight: 18,
@@ -2401,7 +2401,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
-  myPluggdAvatarName: {
+  myPluggdAvatarName: { fontFamily: pluggdFonts.satoshiBlack,
     alignSelf: 'stretch',
     color: STUDIO.text,
     textAlign: 'center',
@@ -2409,7 +2409,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '900',
   },
-  myPluggdAvatarHandle: {
+  myPluggdAvatarHandle: { fontFamily: pluggdFonts.satoshiBold,
     alignSelf: 'stretch',
     color: STUDIO.textSubtle,
     textAlign: 'center',
@@ -2435,7 +2435,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
   },
-  myPluggdPrimaryText: {
+  myPluggdPrimaryText: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 12,
     lineHeight: 15,
@@ -2454,7 +2454,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
   },
-  myPluggdReadyText: {
+  myPluggdReadyText: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.orangeSoft,
     fontSize: 12,
     lineHeight: 15,
@@ -2478,7 +2478,7 @@ const styles = StyleSheet.create({
     borderColor: STUDIO.orange,
     backgroundColor: STUDIO.orange,
   },
-  myPluggdTabText: {
+  myPluggdTabText: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textMid,
     fontSize: 12,
     lineHeight: 15,
@@ -2501,7 +2501,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  myPluggdStatusLabel: {
+  myPluggdStatusLabel: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textSubtle,
     fontSize: 10,
     lineHeight: 12,
@@ -2509,7 +2509,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  myPluggdStatusTitle: {
+  myPluggdStatusTitle: { fontFamily: pluggdFonts.satoshiBlack,
     marginTop: 4,
     color: STUDIO.text,
     fontSize: 19,
@@ -2546,7 +2546,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 2,
   },
-  myPluggdNextKicker: {
+  myPluggdNextKicker: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.textSubtle,
     fontSize: 10,
     lineHeight: 12,
@@ -2554,13 +2554,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  myPluggdNextTitle: {
+  myPluggdNextTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '900',
   },
-  myPluggdNextDetail: {
+  myPluggdNextDetail: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 12,
     lineHeight: 16,
@@ -2575,7 +2575,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  myPluggdNextButtonText: {
+  myPluggdNextButtonText: { fontFamily: pluggdFonts.satoshiBlack,
     color: '#08080C',
     fontSize: 11,
     lineHeight: 13,
@@ -2612,20 +2612,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  myPluggdSectionTitle: {
+  myPluggdSectionTitle: { fontFamily: pluggdFonts.satoshiBlack,
     flex: 1,
     color: STUDIO.text,
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '900',
   },
-  myPluggdSectionSummary: {
+  myPluggdSectionSummary: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
   },
-  myPluggdSectionMeta: {
+  myPluggdSectionMeta: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textSubtle,
     fontSize: 11,
     lineHeight: 14,
@@ -2644,12 +2644,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 5,
   },
-  identityName: {
+  identityName: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 21,
     lineHeight: 25,
     fontWeight: '900',
   },
-  identityHandle: {
+  identityHandle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
@@ -2672,11 +2672,11 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  taskTitle: {
+  taskTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 15,
     fontWeight: '900',
   },
-  taskDetail: {
+  taskDetail: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 2,
     fontSize: 12,
     lineHeight: 16,
@@ -2697,13 +2697,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  connectTitle: {
+  connectTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 24,
     lineHeight: 28,
     fontWeight: '900',
     textAlign: 'center',
   },
-  connectText: {
+  connectText: { fontFamily: pluggdFonts.satoshiBold,
     maxWidth: 280,
     fontSize: 14,
     lineHeight: 20,
@@ -2718,14 +2718,14 @@ const styles = StyleSheet.create({
     gap: 10,
     overflow: 'hidden',
   },
-  moreHeroTitle: {
+  moreHeroTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 27,
     lineHeight: 30,
     fontWeight: '900',
     letterSpacing: 0,
   },
-  moreHeroBody: {
+  moreHeroBody: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 13,
     lineHeight: 18,
@@ -2773,13 +2773,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moduleTileTitle: {
+  moduleTileTitle: { fontFamily: pluggdFonts.satoshiBlack,
     color: STUDIO.text,
     fontSize: 15,
     lineHeight: 18,
     fontWeight: '900',
   },
-  moduleTileDetail: {
+  moduleTileDetail: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
     fontSize: 11,
     lineHeight: 15,

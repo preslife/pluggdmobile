@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
   primaryTopSpacer: {
     height: 44,
   },
-  routeLabel: {
+  routeLabel: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0,
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  loadingText: {
+  loadingText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  searchText: {
+  searchText: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     minWidth: 0,
     fontSize: 13,
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
   },
-  categoryPillText: {
+  categoryPillText: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '900',
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  artworkInitials: {
+  artworkInitials: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionText: {
+  actionText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     fontWeight: '800',
   },
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
-  safetyText: {
+  safetyText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -797,11 +797,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
-  sectionTitle: {
+  sectionTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 20,
     fontWeight: '900',
   },
-  sectionSubtitle: {
+  sectionSubtitle: { fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
@@ -828,14 +828,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
   },
-  filterChipEyebrow: {
+  filterChipEyebrow: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 9,
     lineHeight: 11,
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  filterChipTitle: {
+  filterChipTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '900',
@@ -861,7 +861,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.16)',
   },
-  railEyebrow: {
+  railEyebrow: { fontFamily: pluggdFonts.satoshiBlack,
     position: 'absolute',
     left: 10,
     bottom: 10,
@@ -881,12 +881,12 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
-  railTitle: {
+  railTitle: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '900',
   },
-  railSubtitle: {
+  railSubtitle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -913,18 +913,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 3,
   },
-  eyebrow: {
+  eyebrow: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  cardTitle: {
+  cardTitle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '800',
   },
-  cardSubtitle: {
+  cardSubtitle: { fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 4,
   },
-  metric: {
+  metric: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
   },
-  emptyText: {
+  emptyText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  studioDockLabel: {
+  studioDockLabel: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 10,
     fontWeight: '900',
   },

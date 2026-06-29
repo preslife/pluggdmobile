@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { pluggdFonts } from '../../design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -654,11 +655,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     gap: 10,
   },
-  stateTitle: {
+  stateTitle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 21,
     fontWeight: '800',
   },
-  stateText: {
+  stateText: { fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
@@ -701,7 +702,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  avatarInitials: {
+  avatarInitials: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 30,
     fontWeight: '800',
   },
@@ -721,13 +722,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  name: {
+  name: { fontFamily: pluggdFonts.satoshiBold,
     flexShrink: 1,
     fontSize: 27,
     lineHeight: 33,
     fontWeight: '800',
   },
-  handle: {
+  handle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 2,
@@ -740,7 +741,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followText: {
+  followText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -753,16 +754,16 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  statValue: {
+  statValue: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 17,
     fontWeight: '800',
   },
-  statLabel: {
+  statLabel: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
-  bio: {
+  bio: { fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 14,
     lineHeight: 21,
     fontWeight: '600',
@@ -795,7 +796,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Satoshi-Bold',
     fontSize: 13,
   },
-  sectionTitle: {
+  sectionTitle: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 20,
     fontWeight: '800',
   },
@@ -821,12 +822,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  contentTitle: {
+  contentTitle: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 9,
     fontSize: 14,
     fontWeight: '800',
   },
-  contentMeta: {
+  contentMeta: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 3,
     fontSize: 12,
     fontWeight: '700',
@@ -843,12 +844,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#171717',
   },
-  selectedGalleryTitle: {
+  selectedGalleryTitle: { fontFamily: pluggdFonts.satoshiBlack,
     marginTop: 12,
     fontSize: 18,
     fontWeight: '900',
   },
-  selectedGalleryMeta: {
+  selectedGalleryMeta: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 5,
     fontSize: 13,
     lineHeight: 18,
@@ -862,7 +863,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 14,
   },
-  emptyText: {
+  emptyText: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
@@ -893,11 +894,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  aboutLabel: {
+  aboutLabel: { fontFamily: pluggdFonts.satoshiBold,
     fontSize: 13,
     fontWeight: '700',
   },
-  aboutValue: {
+  aboutValue: { fontFamily: pluggdFonts.satoshiBold,
     flex: 1,
     textAlign: 'right',
     fontSize: 14,
