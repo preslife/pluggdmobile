@@ -11,6 +11,7 @@ import { CommunityFeedInterstitial } from './CommunityFeedInterstitials';
 import { CommunityBottomDockControls, CommunityInternalSwitcher } from './CommunityInternalSwitcher';
 import { FEED_FILTERS, type CommunityFeedFilterKey, type CommunityTabKey } from './communityFeedTypes';
 import { filterCommunityPosts, loadCommunityFeedBundle } from './communityFeedService';
+import { pluggdFonts } from '../../design/typography';
 
 const COLORS = {
   canvas: '#08080C',
@@ -184,22 +185,22 @@ export function CommunityFeedScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
   header: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  kicker: { color: COLORS.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.1 },
-  heading: { color: COLORS.white, fontSize: 34, lineHeight: 39, fontWeight: '900', marginTop: 2 },
+  kicker: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
+  heading: { color: COLORS.white, fontFamily: pluggdFonts.displayExtraBold, fontSize: 32, lineHeight: 36, letterSpacing: -0.6, marginTop: 2 },
   feedLead: { gap: 11 },
   switchWrap: { marginTop: 2 },
   filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4 },
   lowerShortcuts: { gap: 8, paddingTop: 4, paddingBottom: 4 },
-  lowerShortcutsTitle: { color: COLORS.muted, fontSize: 11, fontWeight: '700', marginHorizontal: 16, textTransform: 'uppercase', letterSpacing: 0.8 },
+  lowerShortcutsTitle: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginHorizontal: 16, textTransform: 'uppercase', letterSpacing: 0.8 },
   center: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { marginHorizontal: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 20, padding: 18, gap: 8 },
-  emptyTitle: { color: COLORS.white, fontSize: 17, fontWeight: '900' },
-  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  emptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBlack, fontSize: 17 },
+  emptyBody: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19 },
   retry: { marginTop: 8, height: 42, borderRadius: 21, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
-  retryText: { color: COLORS.canvas, fontSize: 13, fontWeight: '900' },
+  retryText: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
   rowTap: { marginHorizontal: 16, marginBottom: 10 },
   rowCard: { padding: 14, gap: 5 },
-  rowEyebrow: { color: COLORS.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
-  rowTitle: { color: COLORS.white, fontSize: 16, fontWeight: '900' },
-  rowSubtitle: { color: COLORS.muted, fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  rowEyebrow: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
+  rowTitle: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBold, fontSize: 16 },
+  rowSubtitle: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
 });
