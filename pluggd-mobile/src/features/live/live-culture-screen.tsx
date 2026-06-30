@@ -402,7 +402,10 @@ function FilterPills({ active, onChange }: { active: LiveFilter; onChange: (filt
 function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.sectionTick} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {action ? (
         <Pressable accessibilityRole="button" onPress={onAction} style={styles.sectionActionButton}>
           <Text style={styles.sectionAction}>{action}</Text>
@@ -1285,7 +1288,9 @@ const styles = StyleSheet.create({
   focusEmptySecondaryText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   sectionBlock: { marginBottom: 24 },
   sectionHeader: { paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { ...pluggdTextStyles.sectionTitle, color: COLORS.white, fontSize: 18, lineHeight: 22 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
+  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: '#FF5A00' },
+  sectionTitle: { ...pluggdTextStyles.sectionTitle, color: COLORS.white, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
   sectionActionButton: { minHeight: 44, justifyContent: 'center' },
   sectionAction: { fontFamily: 'Satoshi-Bold', color: COLORS.orange, fontSize: 12, lineHeight: 15 },
   liveShelf: { paddingHorizontal: 16, gap: 12 },
