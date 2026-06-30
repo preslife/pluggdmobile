@@ -39,6 +39,7 @@ import {
 } from './appWideParityServices';
 import { WEB_PARITY_ASSETS } from './webAssets';
 import { GlassHeroCard, GlassPanel, GlassRailCard, LiftSurface, LiquidBackground, SectionHeader } from '../../../components/liquid-glass';
+import { EditorialTitle, type EditorialSegment } from '../../../components/EditorialTitle';
 
 type QueryKey = readonly unknown[];
 
@@ -63,6 +64,14 @@ const LIST_WEIGHTED_SECTION_IDS = new Set([
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'This surface could not load right now.';
+}
+
+function accentLastWord(title?: string | null): EditorialSegment[] {
+  const trimmed = (title || '').trim();
+  if (!trimmed) return [{ text: title || '' }];
+  const idx = trimmed.lastIndexOf(' ');
+  if (idx < 0) return [{ text: trimmed, accent: true }];
+  return [{ text: trimmed.slice(0, idx + 1) }, { text: trimmed.slice(idx + 1), accent: true }];
 }
 
 function initials(value?: string | null) {
@@ -489,7 +498,13 @@ function ParityScaffold({
           <>
             <View style={styles.pageHeader}>
               <Text style={[styles.kicker, { color: theme.colors.accent }]}>{payload.kicker}</Text>
-              <Text style={[styles.title, { color: theme.colors.text }]}>{payload.title}</Text>
+              <EditorialTitle
+                segments={accentLastWord(payload.title)}
+                size={32}
+                color={theme.colors.text}
+                accentColor={theme.colors.accent}
+                style={styles.editorialTitle}
+              />
               <Text style={[styles.summary, { color: theme.colors.textSecondary }]}>{payload.summary}</Text>
             </View>
 
@@ -656,6 +671,7 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     letterSpacing: -0.6,
   },
+  editorialTitle: { marginTop: 1, marginBottom: 1 },
   summary: {
     fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 14,
