@@ -13,7 +13,10 @@ export function SectionHeader({ title, subtitle, actionLabel, onActionPress }: S
   return (
     <View style={styles.wrap}>
       <View style={styles.copy}>
-        <Text style={styles.title}>{title}</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.tick} />
+          <Text style={styles.title}>{title}</Text>
+        </View>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
       {actionLabel ? (
@@ -38,17 +41,30 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 3,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  tick: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+    backgroundColor: '#FF5A00',
+  },
   title: {
     color: liquidGlassColors.textPrimary,
     fontFamily: pluggdFonts.displayBold,
     fontSize: 18,
     lineHeight: 22,
+    letterSpacing: -0.2,
   },
   subtitle: {
     color: liquidGlassColors.textMuted,
     fontFamily: 'Satoshi-Medium',
     fontSize: 12,
     lineHeight: 17,
+    marginLeft: 12,
   },
   action: {
     minHeight: 44,
