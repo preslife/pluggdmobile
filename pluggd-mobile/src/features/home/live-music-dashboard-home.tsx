@@ -465,7 +465,10 @@ function buildMarketplaceItems(bundle: FeedBundle | undefined, storeProducts: St
 function SectionHeader({ title, action, onPress }: { title: string; action?: string; onPress?: () => void }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.sectionTick} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {action ? (
         <Pressable accessibilityRole="button" accessibilityLabel={action} style={styles.sectionAction} onPress={onPress}>
           <Text style={styles.sectionActionText}>{action}</Text>
@@ -1130,7 +1133,9 @@ const styles = StyleSheet.create({
   loadingInline: { marginVertical: 4 },
   sectionBlock: { gap: 12 },
   sectionHeader: { minHeight: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
+  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: COLORS.orange },
+  sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
   sectionAction: { minHeight: 44, justifyContent: 'center' },
   sectionActionText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
   emptyState: { minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 14, justifyContent: 'center' },
