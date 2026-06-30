@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
+import { EditorialTitle, type EditorialSegment } from '../components/EditorialTitle';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,13 @@ import { formatDuration } from '../src/lib/mobileContent';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 
 const ORANGE = '#FF5A00';
+
+function accentLastWord(value: string): EditorialSegment[] {
+  const trimmed = value.trim();
+  const idx = trimmed.lastIndexOf(' ');
+  if (idx < 0) return [{ text: trimmed, accent: true }];
+  return [{ text: trimmed.slice(0, idx + 1) }, { text: trimmed.slice(idx + 1), accent: true }];
+}
 
 export default function PlayerScreen() {
   const router = useRouter();
@@ -122,7 +130,15 @@ export default function PlayerScreen() {
 
         <View style={styles.trackHeader}>
           <View style={styles.trackCopy}>
-            <Text style={styles.trackTitle} numberOfLines={2}>{title}</Text>
+            <EditorialTitle
+              segments={currentTrack || params.title ? accentLastWord(title) : [{ text: title }]}
+              size={31}
+              lineHeight={36}
+              color="#FFFFFF"
+              accentColor={ORANGE}
+              numberOfLines={2}
+              style={styles.trackTitle}
+            />
             <Pressable onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
               <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
             </Pressable>
