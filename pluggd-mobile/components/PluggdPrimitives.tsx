@@ -23,6 +23,15 @@ import {
   ViewStyle,
 } from 'react-native';
 import { PluggdImage } from '../src/components/PluggdImage';
+import { EditorialTitle, type EditorialSegment } from './EditorialTitle';
+
+function accentLastWord(value?: string | null): EditorialSegment[] {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return [{ text: value || '' }];
+  const idx = trimmed.lastIndexOf(' ');
+  if (idx < 0) return [{ text: trimmed, accent: true }];
+  return [{ text: trimmed.slice(0, idx + 1) }, { text: trimmed.slice(idx + 1), accent: true }];
+}
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { PLUGGD_ORANGE, pluggdRadii } from '../src/design/tokens';
 import { pluggdFonts, pluggdTextStyles } from '../src/design/typography';
@@ -572,9 +581,15 @@ export function PremiumHeroCard({
           {eyebrow ? <Text style={[premiumStyles.eyebrow, { color: accent }]}>{eyebrow}</Text> : null}
           {badge ? <PluggdBadge label={badge} tone={tone === 'live' ? 'danger' : tone === 'muted' ? 'muted' : 'accent'} /> : null}
         </View>
-        <Text style={[premiumStyles.heroTitle, { color: theme.colors.text }]} numberOfLines={2}>
-          {title}
-        </Text>
+        <EditorialTitle
+          segments={accentLastWord(title)}
+          size={27}
+          lineHeight={31}
+          color={theme.colors.text}
+          accentColor={accent}
+          numberOfLines={2}
+          style={premiumStyles.heroTitle}
+        />
         {subtitle ? (
           <Text style={[premiumStyles.heroSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={3}>
             {subtitle}
