@@ -485,6 +485,7 @@ function InlineLoading() {
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <View style={styles.emptyState}>
+      <View style={styles.emptyRule} />
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyBody}>{body}</Text>
     </View>
@@ -1141,9 +1142,10 @@ const styles = StyleSheet.create({
   sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
   sectionAction: { minHeight: 44, justifyContent: 'center' },
   sectionActionText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
-  emptyState: { minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 14, justifyContent: 'center' },
-  emptyTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
-  emptyBody: { color: COLORS.muted, fontSize: 12, lineHeight: 17, marginTop: 5 },
+  emptyState: { minHeight: 92, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(20,18,22,0.5)', paddingHorizontal: 16, paddingVertical: 16, justifyContent: 'center' },
+  emptyRule: { width: 22, height: 2, borderRadius: 2, backgroundColor: COLORS.orange, marginBottom: 10 },
+  emptyTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 15, lineHeight: 19, letterSpacing: -0.2 },
+  emptyBody: { color: COLORS.muted, fontFamily: 'Satoshi-Medium', fontSize: 12.5, lineHeight: 18, marginTop: 5 },
   editorialHeader: { gap: 6, paddingTop: 2, paddingBottom: 2 },
   editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 30, letterSpacing: -0.5 },
