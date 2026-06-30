@@ -11,6 +11,9 @@ export const pluggdFonts = {
   satoshiMedium: 'Satoshi-Medium',
   satoshiBold: 'Satoshi-Bold',
   satoshiBlack: 'Satoshi-Black',
+  // Editorial italic-serif accent (matches the web app's "comes alive" / "what's moving." treatment)
+  serifItalic: 'PlayfairDisplay-Italic',
+  serifItalicBold: 'PlayfairDisplay-SemiBoldItalic',
   interSemiBold: 'Inter-SemiBold',
   system: undefined,
 } as const;

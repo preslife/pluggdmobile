@@ -5,6 +5,7 @@ import TrackPlayer from "react-native-track-player";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
+import { PlayfairDisplay_500Medium_Italic, PlayfairDisplay_600SemiBold_Italic } from "@expo-google-fonts/playfair-display";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { NativeModules, StyleSheet, View } from "react-native";
@@ -43,6 +44,8 @@ export default function Layout() {
     "Sora-SemiBold": Sora_600SemiBold,
     "Sora-Bold": Sora_700Bold,
     "Sora-ExtraBold": Sora_800ExtraBold,
+    "PlayfairDisplay-Italic": PlayfairDisplay_500Medium_Italic,
+    "PlayfairDisplay-SemiBoldItalic": PlayfairDisplay_600SemiBold_Italic,
   });
 
   if (!fontsLoaded) {

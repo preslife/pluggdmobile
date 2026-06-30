@@ -21,6 +21,8 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
 import { GlassRailCard } from '../../../components/liquid-glass';
 import { PremiumHeroCard } from '../../../components/liquid-glass/PremiumHeroCard';
+import { EditorialTitle } from '../../../components/EditorialTitle';
+import { LiveTicker } from '../../../components/LiveTicker';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -485,14 +487,21 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
-function HomeEditorialHeader() {
+function HomeEditorialHeader({ tickerItems }: { tickerItems: string[] }) {
   return (
     <View style={styles.editorialHeader}>
-      <Text style={styles.editorialKicker}>Home</Text>
-      <Text style={styles.editorialTitle}>Plug into what is moving now</Text>
-      <Text style={styles.editorialSummary}>
-        A live front door for drops, rooms, events, creators, and market signals.
-      </Text>
+      <Text style={styles.editorialKicker}>The heartbeat of the scene</Text>
+      <EditorialTitle
+        segments={[{ text: 'Where music culture comes ' }, { text: 'alive', accent: true }]}
+        size={34}
+        style={styles.editorialTitleSpacing}
+      />
+      <Text style={styles.editorialVoice}>Authentic. Unfiltered. Real scenes, real signals — all in one place.</Text>
+      {tickerItems.length ? (
+        <View style={styles.editorialTicker}>
+          <LiveTicker items={tickerItems} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1051,6 +1060,17 @@ export function LiveMusicDashboardHome() {
     if (user?.id) void identity.refetch();
   };
 
+  const tickerItems = useMemo(() => {
+    const bundle = home.data;
+    const items: string[] = [];
+    liveRooms.filter((room) => room.status === 'live').slice(0, 3).forEach((room) => items.push(`${room.title} is live now`));
+    (bundle?.releases ?? []).slice(0, 4).forEach((release) => items.push(`${release.artist || 'A creator'} dropped ${release.title}`));
+    (bundle?.mixes ?? []).slice(0, 2).forEach((mix) => items.push(`New mix — ${mix.title}`));
+    (bundle?.events ?? []).slice(0, 2).forEach((event) => items.push(`${event.title} just announced`));
+    if (items.length < 3) items.push('Authentic, unfiltered — real signals moving across the scene');
+    return items;
+  }, [home.data, liveRooms]);
+
   return (
     <PremiumScreenBackdrop tone="accent" style={styles.screen}>
       <StatusBar style="light" translucent />
@@ -1067,7 +1087,7 @@ export function LiveMusicDashboardHome() {
           },
         ]}
       >
-        <HomeEditorialHeader />
+        <HomeEditorialHeader tickerItems={tickerItems} />
         <SpotlightCard spotlight={spotlight} />
         <TodayOnPluggd bundle={home.data} liveRooms={liveRooms} creators={creators} />
         <LiveNowPreview rooms={liveRooms} loading={live.isLoading} />
@@ -1098,9 +1118,12 @@ const styles = StyleSheet.create({
   emptyTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   emptyBody: { color: COLORS.muted, fontSize: 12, lineHeight: 17, marginTop: 5 },
   editorialHeader: { gap: 6, paddingTop: 2, paddingBottom: 2 },
-  editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 },
+  editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 30, letterSpacing: -0.5 },
+  editorialTitleSpacing: { marginTop: 3 },
+  editorialVoice: { color: COLORS.textSoft, fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 20, marginTop: 8, maxWidth: '92%' },
   editorialSummary: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 18 },
+  editorialTicker: { marginTop: 16 },
 
   spotlight: {
     height: 206,
