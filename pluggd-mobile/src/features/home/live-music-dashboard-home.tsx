@@ -608,11 +608,14 @@ function TodayOnPluggd({ bundle, liveRooms, creators }: { bundle?: FeedBundle; l
             }}
           >
             <View style={styles.todayTop}>
-              <MaterialIcons name={row.icon} size={20} color={COLORS.orange} />
-              <Text style={styles.todayValue}>{row.value}</Text>
+              <Text style={styles.todayLabel} numberOfLines={1}>{row.title}</Text>
+              <Text style={styles.todayCount}>{row.value}</Text>
             </View>
-            <Text style={styles.todayTitle} numberOfLines={1}>{row.title}</Text>
-            <Text style={styles.todayMeta} numberOfLines={2}>{row.meta}</Text>
+            <Text style={styles.todayHeadline} numberOfLines={2}>{row.meta}</Text>
+            <View style={styles.todayFoot}>
+              <MaterialIcons name={row.icon} size={13} color={COLORS.orange} />
+              <Text style={styles.todayCta}>Open</Text>
+            </View>
           </Pressable>
         ))}
       </ScrollView>
@@ -1159,11 +1162,13 @@ const styles = StyleSheet.create({
   },
 
   todayRail: { gap: 10, paddingRight: 16 },
-  todayCard: { width: 148, height: 116, borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.46)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 12, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.42, shadowRadius: 22, shadowOffset: { width: 0, height: 14 } },
-  todayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  todayValue: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 18, fontVariant: ['tabular-nums'] },
-  todayTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  todayMeta: { color: COLORS.muted, fontSize: 11, lineHeight: 15 },
+  todayCard: { width: 148, height: 116, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(20,18,22,0.55)', paddingHorizontal: 14, paddingVertical: 13, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 12 } },
+  todayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  todayLabel: { flexShrink: 1, color: COLORS.muted, fontFamily: 'Satoshi-Black', fontSize: 9.5, letterSpacing: 0.8, textTransform: 'uppercase' },
+  todayCount: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 13, fontVariant: ['tabular-nums'] },
+  todayHeadline: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 16, lineHeight: 19, letterSpacing: -0.2 },
+  todayFoot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  todayCta: { color: COLORS.textSoft, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.2 },
 
   stageRail: { gap: 12, paddingRight: 16 },
   stageCard: { width: 150, height: 210 },
