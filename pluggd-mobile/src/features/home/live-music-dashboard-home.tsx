@@ -23,6 +23,7 @@ import { GlassRailCard } from '../../../components/liquid-glass';
 import { PremiumHeroCard } from '../../../components/liquid-glass/PremiumHeroCard';
 import { EditorialTitle } from '../../../components/EditorialTitle';
 import { LiveTicker } from '../../../components/LiveTicker';
+import { SceneReportCard } from '../../../components/SceneReportCard';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -929,6 +930,7 @@ function ProgressRewardsTeaser({ identity, loading }: { identity: FanIdentitySum
 
 export function LiveMusicDashboardHome() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
   const home = useHomeFeed();
   const live = useLiveRooms();
@@ -1071,6 +1073,15 @@ export function LiveMusicDashboardHome() {
     return items;
   }, [home.data, liveRooms]);
 
+  const sceneReport = useMemo(() => {
+    const bundle = home.data;
+    const releases = bundle?.releases ?? [];
+    const genre = releases.map((release) => (release as any).genre).find(Boolean) as string | undefined;
+    const scene = (genre || 'The underground').trim();
+    const signals = releases.length + (bundle?.mixes?.length ?? 0) + liveRooms.filter((room) => room.status === 'live').length;
+    return { scene, signals };
+  }, [home.data, liveRooms]);
+
   return (
     <PremiumScreenBackdrop tone="accent" style={styles.screen}>
       <StatusBar style="light" translucent />
@@ -1089,6 +1100,14 @@ export function LiveMusicDashboardHome() {
       >
         <HomeEditorialHeader tickerItems={tickerItems} />
         <SpotlightCard spotlight={spotlight} />
+        <SceneReportCard
+          eyebrow="Scene report"
+          titleSegments={[{ text: `${sceneReport.scene} is ` }, { text: 'moving', accent: true }, { text: ' different this week' }]}
+          body="The drops, rooms and creators shaping the sound right now — pulled from real activity across the platform."
+          signalLine={sceneReport.signals ? `${sceneReport.signals} real signals moving across the scene` : 'Fresh signals landing across the scene'}
+          ctaLabel="Enter the scene"
+          onPress={() => router.push('/discover')}
+        />
         <TodayOnPluggd bundle={home.data} liveRooms={liveRooms} creators={creators} />
         <LiveNowPreview rooms={liveRooms} loading={live.isLoading} />
         <CreatorsToFollow creators={creators} loading={home.isLoading} />
