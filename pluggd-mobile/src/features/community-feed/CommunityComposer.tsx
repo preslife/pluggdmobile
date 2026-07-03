@@ -10,8 +10,9 @@ export function CommunityComposer() {
     return (
       <GlassComposer
         signedIn={false}
-        placeholder="Sign in to post"
+        placeholder="What's happening in your world?"
         ctaLabel="Sign in"
+        accessibilityLabel="Sign in to post"
         style={{ marginHorizontal: 16 }}
         onPress={() => router.push('/auth/login' as any)}
       />
@@ -22,7 +23,9 @@ export function CommunityComposer() {
     <GlassComposer
       signedIn
       userName={user.email || 'PLUGGD'}
-      placeholder="Start a post"
+      placeholder="What's happening in your world?"
+      ctaLabel="Post"
+      accessibilityLabel="Start a post"
       style={{ marginHorizontal: 16 }}
       onPress={() => router.push('/create-post' as any)}
     />

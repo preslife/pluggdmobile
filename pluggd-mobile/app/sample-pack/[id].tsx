@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
+import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
@@ -153,7 +154,7 @@ export default function SamplePackDetailScreen() {
               {!pack.cover_art_url ? <MaterialIcons name="graphic-eq" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
             <Text style={styles.eyebrow}>Sample Pack</Text>
-            <Text style={styles.title}>{pack.title || 'Untitled pack'}</Text>
+            <DetailTitle title={pack.title || 'Untitled pack'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>
               {pack.genre || 'Samples'} · {pack.bpm_range || 'Any BPM'} · {formatGBP(pack.price)}
             </Text>

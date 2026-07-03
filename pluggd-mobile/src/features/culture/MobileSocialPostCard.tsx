@@ -9,7 +9,7 @@ import { PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
-import { GlassAvatar, GlassPanel, LiftSurface } from '../../../components/liquid-glass';
+import { GlassAvatar, GlassPanel } from '../../../components/liquid-glass';
 import {
   reportSocialPost,
   toggleSocialBookmark,
@@ -245,16 +245,18 @@ function QuoteCard({ post }: { post: MobileSocialPostPreview }) {
       style={styles.quoteCard}
       onPress={() => router.push(`/post/${post.id}` as any)}
     >
-      <View style={styles.quoteHeader}>
-        <Text style={styles.quoteAuthor}>{displayNameFor(post)}</Text>
-        <Text style={styles.quoteMeta}>{post.username ? `@${post.username}` : 'PLUGGD'}</Text>
-      </View>
-      <RichText post={post} />
-      {post.images[0] ? (
-        <View style={styles.quoteImage}>
-          <PluggdImage uri={post.images[0]} style={styles.fill} resizeMode="cover" />
+      <GlassPanel intensity="subtle" radius={16} contentStyle={styles.quoteContent}>
+        <View style={styles.quoteHeader}>
+          <Text style={styles.quoteAuthor}>{displayNameFor(post)}</Text>
+          <Text style={styles.quoteMeta}>{post.username ? `@${post.username}` : 'PLUGGD'}</Text>
         </View>
-      ) : null}
+        <RichText post={post} />
+        {post.images[0] ? (
+          <View style={styles.quoteImage}>
+            <PluggdImage uri={post.images[0]} style={styles.fill} resizeMode="cover" />
+          </View>
+        ) : null}
+      </GlassPanel>
     </Pressable>
   );
 }
@@ -310,7 +312,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   const router = useRouter();
   const queryClient = useQueryClient();
   const displayName = displayNameFor(post);
-  const handle = post.username ? `@${post.username}` : 'pluggd';
+  const handle = post.username ? `@${post.username}` : '@pluggd';
   const compact = variant === 'compact';
 
   const refresh = () => {
@@ -338,36 +340,59 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
     refresh();
   };
 
+  const openOverflow = () => {
+    selectionHaptic();
+    Alert.alert(displayName, undefined, [
+      { text: 'Quote post', onPress: () => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any) },
+      {
+        text: 'Report post',
+        style: 'destructive',
+        onPress: async () => {
+          const result = await reportSocialPost(actionPostId(post));
+          Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  // Web-parity feed row: full-bleed, hairline divider, X-style header line and an
+  // evenly spread five-icon action row — matching the live web Community feed.
   return (
     <Pressable
       accessibilityLabel={`Open post by ${displayName}`}
-      style={[styles.cardTouch, compact && styles.cardCompact, variant === 'thread' && styles.cardThread]}
+      style={[styles.row, variant === 'thread' && styles.rowThread]}
       onPress={() => router.push(`/post/${post.id}` as any)}
     >
-      <LiftSurface depth="normal">
-        <GlassPanel
-          intensity="default"
-          radius={compact ? 18 : variant === 'thread' ? 20 : 24}
-          style={styles.card}
-          contentStyle={styles.cardContent}
+      <View style={styles.rowInner}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${displayName}`}
+          style={styles.avatar}
+          onPress={(event) => {
+            event.stopPropagation();
+            router.push(userRouteFor(post) as any);
+          }}
         >
+          <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={40} tone="violet" />
+        </Pressable>
+
+        <View style={styles.body}>
           <View style={styles.header}>
+            <Text style={styles.author} numberOfLines={1}>{displayName}</Text>
+            <Text style={styles.meta} numberOfLines={1}>{handle} · {formatDate(post.created_at)}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Open ${displayName}`}
-              style={styles.avatar}
+              accessibilityLabel="Post options"
+              hitSlop={8}
+              style={styles.kebab}
               onPress={(event) => {
                 event.stopPropagation();
-                router.push(userRouteFor(post) as any);
+                openOverflow();
               }}
             >
-              <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={42} tone="violet" />
+              <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={19} color={COLORS.dim} />
             </Pressable>
-            <View style={styles.authorBlock}>
-              <Text style={styles.author} numberOfLines={1}>{displayName}</Text>
-              <Text style={styles.meta} numberOfLines={1}>{handle} · {formatDate(post.created_at)}</Text>
-            </View>
-            <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={22} color={COLORS.dim} />
           </View>
 
           {post.is_repost && post.original_post ? (
@@ -390,27 +415,19 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => router.push(`/post/${post.id}` as any)}>
               <MaterialIcons name="chat-bubble-outline" size={19} color={COLORS.muted} />
-              <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text>
+              {post.comments_count ? <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.reposted ? 'Undo repost' : 'Repost'} style={styles.action} onPress={() => act('repost')}>
               <MaterialIcons name="repeat" size={20} color={post.reposted ? COLORS.orange : COLORS.muted} />
-              <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text>
+              {post.reposts_count ? <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} style={styles.action} onPress={() => act('like')}>
               <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? COLORS.live : COLORS.muted} />
-              <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text>
+              {post.likes_count ? <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} style={styles.action} onPress={() => act('bookmark')}>
               <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? COLORS.orange : COLORS.muted} />
-              <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Quote post"
-              style={styles.action}
-              onPress={() => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any)}
-            >
-              <MaterialIcons name="format-quote" size={18} color={COLORS.muted} />
+              {post.bookmarks_count ? <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text> : null}
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -423,66 +440,62 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
             >
               <MaterialIcons name="ios-share" size={19} color={COLORS.muted} />
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Report post"
-              style={styles.action}
-              onPress={async () => {
-                selectionHaptic();
-                const result = await reportSocialPost(actionPostId(post));
-                Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
-              }}
-            >
-              <MaterialIcons name="flag" size={19} color={COLORS.muted} />
-            </Pressable>
           </View>
-        </GlassPanel>
-      </LiftSurface>
+        </View>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cardTouch: {
-    marginHorizontal: 16,
+  // Full-bleed X-style feed row (web Community parity): hairline divider, no card chrome.
+  row: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.09)',
   },
-  card: {},
-  cardContent: {
-    padding: 16,
-    gap: 12,
+  rowThread: {
+    borderBottomWidth: 0,
   },
-  cardCompact: {
-    marginHorizontal: 16,
+  rowInner: {
+    flexDirection: 'row',
+    gap: 11,
   },
-  cardThread: {
-    marginHorizontal: 16,
+  body: {
+    flex: 1,
+    minWidth: 0,
+    gap: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    minWidth: 0,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authorBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
   author: {
     color: COLORS.white,
-    fontSize: 14,
+    fontSize: 14.5,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    flexShrink: 1,
   },
   meta: {
     color: COLORS.muted,
-    fontSize: 11,
+    fontSize: 12.5,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '700',
-    marginTop: 2,
+    flexShrink: 1,
+    marginLeft: 6,
+  },
+  kebab: {
+    marginLeft: 'auto',
+    paddingLeft: 8,
   },
   repostLabel: {
     color: COLORS.orange,
@@ -635,9 +648,8 @@ const styles = StyleSheet.create({
   },
   quoteCard: {
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface2,
+  },
+  quoteContent: {
     padding: 12,
     gap: 8,
   },
@@ -712,21 +724,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
+  // Evenly spread bare icons + counts across the row, matching the web feed.
   actions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+    paddingRight: 18,
   },
   action: {
-    minHeight: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    paddingHorizontal: 10,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   actionText: {
     color: COLORS.muted,

@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { liquidGlassColors } from '../../src/design/liquidGlassTokens';
 import { pluggdFonts } from '../../src/design/typography';
@@ -7,17 +8,29 @@ type SectionHeaderProps = {
   subtitle?: string | null;
   actionLabel?: string;
   onActionPress?: () => void;
+  /** Web-parity editorial header: small orange icon + serif title + letterspaced subline. */
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  serif?: boolean;
 };
 
-export function SectionHeader({ title, subtitle, actionLabel, onActionPress }: SectionHeaderProps) {
+export function SectionHeader({ title, subtitle, actionLabel, onActionPress, icon, serif }: SectionHeaderProps) {
+  const editorial = Boolean(icon || serif);
   return (
     <View style={styles.wrap}>
       <View style={styles.copy}>
         <View style={styles.titleRow}>
-          <View style={styles.tick} />
-          <Text style={styles.title}>{title}</Text>
+          {icon ? (
+            <MaterialIcons name={icon} size={18} color="#FF5A00" />
+          ) : (
+            <View style={styles.tick} />
+          )}
+          <Text style={[styles.title, serif && styles.titleSerif]}>{title}</Text>
         </View>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={[styles.subtitle, editorial && styles.subtitleEditorial]}>
+            {editorial ? subtitle.toUpperCase() : subtitle}
+          </Text>
+        ) : null}
       </View>
       {actionLabel ? (
         <Pressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onActionPress} style={styles.action}>
@@ -59,12 +72,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: -0.2,
   },
+  titleSerif: {
+    fontFamily: pluggdFonts.serif,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: 0,
+  },
   subtitle: {
     color: liquidGlassColors.textMuted,
     fontFamily: 'Satoshi-Medium',
     fontSize: 12,
     lineHeight: 17,
     marginLeft: 12,
+  },
+  subtitleEditorial: {
+    marginLeft: 0,
+    marginTop: 3,
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 9.5,
+    lineHeight: 14,
+    letterSpacing: 1.6,
   },
   action: {
     minHeight: 44,

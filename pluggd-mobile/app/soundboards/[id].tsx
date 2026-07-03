@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
+import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import {
   addSoundboardComment,
@@ -218,7 +219,7 @@ export default function SoundboardDetailScreen() {
               {!board.cover_image_url ? <MaterialIcons name="dashboard-customize" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
             <Text style={styles.eyebrow}>Soundboard</Text>
-            <Text style={styles.title}>{board.title || 'Untitled board'}</Text>
+            <DetailTitle title={board.title || 'Untitled board'} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>
               {board.item_count ?? items.length} items · {formatCompact(board.follower_count)} followers · {formatCompact(board.like_count)} likes
             </Text>

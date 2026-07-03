@@ -94,14 +94,12 @@ for (const legacyTabRoute of [
 }
 
 for (const legacyRoute of [
-  'app/commerce/crowdfunding.tsx',
   'app/commerce/license-preview.tsx',
   'app/commerce/orders.tsx',
   'app/gamification/battles.tsx',
   'app/gamification/courses.tsx',
   'app/gamification/quests.tsx',
   'app/live/qa.tsx',
-  'app/pro/collab.tsx',
   'app/pro/epk.tsx',
   'app/creator/analytics.tsx',
   'app/creator/audience.tsx',
@@ -113,5 +111,12 @@ for (const legacyRoute of [
 ]) {
   assert.match(read(legacyRoute), /<Redirect href=/, `${legacyRoute} must intentionally redirect instead of exposing a stale placeholder screen`);
 }
+
+// Crowdfunding and the Collab Hub graduated from redirects to real, data-backed
+// screens: campaigns with live progress, and open collaboration briefs.
+assert.match(read('app/commerce/crowdfunding.tsx'), /from\('campaigns'\)[\s\S]*raised[\s\S]*goal/, 'Crowdfunding must render real campaign progress from the campaigns table');
+assert.doesNotMatch(read('app/commerce/crowdfunding.tsx'), /<Redirect href=/, 'Crowdfunding must no longer redirect to Wallet');
+assert.match(read('app/pro/collab.tsx'), /from\('collaboration_projects'\)[\s\S]*skills_needed/, 'Collab Hub must render real collaboration briefs');
+assert.doesNotMatch(read('app/pro/collab.tsx'), /<Redirect href=/, 'Collab Hub must no longer redirect to Studio');
 
 console.log('mobile action wiring contract verified');

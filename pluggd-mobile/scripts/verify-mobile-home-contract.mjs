@@ -10,16 +10,17 @@ const taskSheet = read('docs/PLUGGD_IOS_HOME_PAGE_TASKS_2026-05-17.md');
 
 assert.match(homeRoute, /LiveMusicDashboardHome/, 'Home tab must use the dedicated public-front-door Home screen');
 
+// Section names pinned to the live web home (NewHome2) mobile view copy.
 for (const token of [
   "'Top bar'",
   "'Lead platform spotlight'",
   "'Today on PLUGGD'",
-  "'Live now'",
-  "'Creators to follow'",
-  "'New in Explore'",
-  "'Events and ticket culture'",
-  "'Community activity preview'",
-  "'Market preview'",
+  "'Live now on PLUGGD'",
+  "'The next wave is already here'",
+  "'Explore the whole culture'",
+  "'Tonight on PLUGGD'",
+  "'Follow the people behind the sound'",
+  "'New sounds, merch, and moments'",
   "'Progress / rewards teaser'",
 ]) {
   assert.match(homeSource, new RegExp(token.replace(/[()']/g, '\\$&')), `Home section order must include ${token}`);
@@ -109,12 +110,12 @@ for (const routeToken of [
 
 for (const copy of [
   'Today on PLUGGD',
-  'New in Explore',
-  'Creators to follow',
-  'Live now',
-  'Events and ticket culture',
-  'Community activity preview',
-  'Market preview',
+  'Explore the whole culture',
+  'The next wave is already here',
+  'Live now on PLUGGD',
+  'Tonight on PLUGGD',
+  'Follow the people behind the sound',
+  'New sounds, merch, and moments',
 ]) {
   assert.match(homeSource, new RegExp(copy), `${copy} must be present on Home`);
 }

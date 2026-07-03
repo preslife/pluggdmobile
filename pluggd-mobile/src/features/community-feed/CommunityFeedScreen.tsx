@@ -12,6 +12,7 @@ import { CommunityBottomDockControls, CommunityInternalSwitcher } from './Commun
 import { FEED_FILTERS, type CommunityFeedFilterKey, type CommunityTabKey } from './communityFeedTypes';
 import { filterCommunityPosts, loadCommunityFeedBundle } from './communityFeedService';
 import { pluggdFonts } from '../../design/typography';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const COLORS = {
   canvas: '#08080C',
@@ -69,10 +70,12 @@ export function CommunityFeedScreen() {
 
   const feedHeader = (
     <View style={{ paddingTop: Math.max(insets.top + 70, 108), paddingBottom: 10 }}>
+      {/* Web-parity compact title bar: centered "Community", globe on the right. */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.kicker}>Community</Text>
-          <Text style={styles.heading}>Feed</Text>
+        <View style={styles.headerSide} />
+        <Text style={styles.heading}>Community</Text>
+        <View style={[styles.headerSide, styles.headerRight]}>
+          <MaterialIcons name="public" size={20} color={COLORS.muted} />
         </View>
       </View>
 
@@ -184,9 +187,10 @@ export function CommunityFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  kicker: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
-  heading: { color: COLORS.white, fontFamily: pluggdFonts.displayExtraBold, fontSize: 32, lineHeight: 36, letterSpacing: -0.6, marginTop: 2 },
+  header: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
+  headerSide: { width: 32 },
+  headerRight: { alignItems: 'flex-end' },
+  heading: { flex: 1, textAlign: 'center', color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
   feedLead: { gap: 11 },
   switchWrap: { marginTop: 2 },
   filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4 },

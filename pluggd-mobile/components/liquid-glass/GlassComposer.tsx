@@ -1,10 +1,7 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
-import { liquidGlassColors, liquidGlassRadii } from '../../src/design/liquidGlassTokens';
+import { liquidGlassColors } from '../../src/design/liquidGlassTokens';
 import { GlassAvatar } from './GlassAvatar';
-import { GlassPanel } from './GlassPanel';
-import { LiftSurface } from './LiftSurface';
 
 type GlassComposerProps = {
   userAvatar?: string | null;
@@ -12,141 +9,81 @@ type GlassComposerProps = {
   placeholder?: string;
   signedIn?: boolean;
   ctaLabel?: string;
+  accessibilityLabel?: string;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 };
 
+/**
+ * Web-parity compose row: one slim line — avatar, "What's happening in your
+ * world?", and an orange action pill (Sign in / Post) — matching the live web
+ * Community composer instead of a heavy glass card.
+ */
 export function GlassComposer({
   userAvatar,
   userName = 'PLUGGD',
   placeholder = 'Start a post',
   signedIn = true,
   ctaLabel,
+  accessibilityLabel,
   onPress,
   style,
 }: GlassComposerProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={signedIn ? 'Start a post' : 'Sign in to post'}
+      accessibilityLabel={accessibilityLabel || (signedIn ? 'Start a post' : 'Sign in to post')}
       onPress={() => {
         selectionHaptic();
         onPress?.();
       }}
-      style={({ pressed }) => [pressed && styles.pressed, style]}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed, style]}
     >
-      <LiftSurface depth="normal">
-        <GlassPanel intensity="default" radius={liquidGlassRadii.xl} style={styles.card} contentStyle={styles.content}>
-          <GlassAvatar imageUrl={userAvatar} name={userName} size="md" tone={signedIn ? 'accent' : 'violet'} />
-          {signedIn ? (
-            <View style={styles.inputPill}>
-              <Text style={styles.placeholder} numberOfLines={1}>
-                {placeholder}
-              </Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.copy}>
-                <Text style={styles.title}>Sign in to post</Text>
-                <Text style={styles.subtitle} numberOfLines={2}>
-                  Join the feed when you want to reply, repost, save, or share.
-                </Text>
-              </View>
-              <View style={styles.actionWide}>
-                <Text style={styles.actionText}>{ctaLabel || 'Sign in'}</Text>
-              </View>
-            </>
-          )}
-          {signedIn ? (
-            <View style={styles.action}>
-              <MaterialIcons name="add" size={22} color={liquidGlassColors.backgroundDeep} />
-            </View>
-          ) : null}
-        </GlassPanel>
-      </LiftSurface>
+      <GlassAvatar imageUrl={userAvatar} name={userName} size="sm" tone={signedIn ? 'accent' : 'violet'} />
+      <Text style={styles.placeholder} numberOfLines={1}>
+        {placeholder}
+      </Text>
+      <View style={styles.cta}>
+        <Text style={styles.ctaText}>{signedIn ? ctaLabel || 'Post' : ctaLabel || 'Sign in'}</Text>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  pressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.99 }],
-  },
-  card: {
-    minHeight: 82,
-  },
-  content: {
-    minHeight: 82,
-    padding: 14,
+  row: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 11,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.09)',
   },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  title: {
-    color: liquidGlassColors.textPrimary,
-    fontFamily: 'Satoshi-Bold',
-    fontSize: 15,
-    lineHeight: 19,
-  },
-  subtitle: {
-    color: liquidGlassColors.textMuted,
-    fontFamily: 'Satoshi-Medium',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  inputPill: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: liquidGlassRadii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    paddingHorizontal: 15,
-    justifyContent: 'center',
+  pressed: {
+    opacity: 0.88,
   },
   placeholder: {
+    flex: 1,
+    minWidth: 0,
     color: liquidGlassColors.textMuted,
     fontFamily: 'Satoshi-Medium',
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  cta: {
+    borderRadius: 999,
+    backgroundColor: '#FF5A00',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  ctaText: {
+    color: '#14100C',
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 13,
     lineHeight: 16,
   },
-  action: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.42)',
-    borderLeftColor: 'rgba(255,255,255,0.18)',
-    borderRightColor: 'rgba(0,0,0,0.32)',
-    borderBottomColor: 'rgba(0,0,0,0.48)',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  actionWide: {
-    minWidth: 72,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.42)',
-    borderLeftColor: 'rgba(255,255,255,0.18)',
-    borderRightColor: 'rgba(0,0,0,0.32)',
-    borderBottomColor: 'rgba(0,0,0,0.48)',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  actionText: {
-    color: liquidGlassColors.backgroundDeep,
-    fontFamily: 'Satoshi-Bold',
-    fontSize: 12,
-  },
 });
+
+export default GlassComposer;

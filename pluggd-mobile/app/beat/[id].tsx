@@ -5,10 +5,19 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
+import { EditorialTitle, type EditorialSegment } from '../../components/EditorialTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 import { BeatItem, PLUGGD_ORANGE, formatGBP, toTrack } from '../../src/lib/mobileContent';
+
+function accentLastWord(value?: string | null): EditorialSegment[] {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return [{ text: value || '' }];
+  const idx = trimmed.lastIndexOf(' ');
+  if (idx < 0) return [{ text: trimmed, accent: true }];
+  return [{ text: trimmed.slice(0, idx + 1) }, { text: trimmed.slice(idx + 1), accent: true }];
+}
 
 export default function BeatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -86,7 +95,7 @@ export default function BeatDetailScreen() {
               {!beat.image_url ? <MaterialIcons name="headphones" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
             <Text style={styles.eyebrow}>Market / Beats</Text>
-            <Text style={styles.title}>{beat.title || 'Untitled beat'}</Text>
+            <EditorialTitle segments={accentLastWord(beat.title || 'Untitled beat')} size={34} lineHeight={39} color="#FFFFFF" accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>{beat.producer_name || 'Producer'}</Text>
 
             <View style={styles.metaRow}>

@@ -14,6 +14,8 @@ export const pluggdFonts = {
   // Editorial italic-serif accent (matches the web app's "comes alive" / "what's moving." treatment)
   serifItalic: 'PlayfairDisplay-Italic',
   serifItalicBold: 'PlayfairDisplay-SemiBoldItalic',
+  // Roman serif for web-parity section headings ("New From Creators", "Community Pulse")
+  serif: 'PlayfairDisplay-SemiBold',
   interSemiBold: 'Inter-SemiBold',
   system: undefined,
 } as const;

@@ -255,8 +255,8 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
           })
         ) : (
           <View style={[styles.emptyStoryHint, compact && styles.emptyStoryHintCompact]}>
-            <Text style={styles.emptyStoryText}>Find moments</Text>
-            <Text style={styles.emptyStoryMeta}>Follow creators and circles to fill this rail.</Text>
+            <Text style={styles.emptyStoryText}>No live stories yet</Text>
+            <Text style={styles.emptyStoryMeta}>{user?.id ? 'Add the first 24-hour moment.' : 'Sign in to add the first 24-hour moment.'}</Text>
           </View>
         )}
       </ScrollView>
@@ -375,8 +375,9 @@ const styles = StyleSheet.create({
   skeletonRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#151520', borderWidth: 1, borderColor: '#262637' },
   skeletonRingCompact: { width: 62, height: 62, borderRadius: 31 },
   skeletonLabel: { width: 48, height: 9, borderRadius: 5, backgroundColor: '#151520' },
-  emptyStoryHint: { width: 176, minHeight: 74, borderRadius: 18, padding: 12, backgroundColor: '#12121A', borderWidth: 1, borderColor: '#1F1F2E', justifyContent: 'center' },
-  emptyStoryHintCompact: { minHeight: 64, width: 178 },
+  // Web-parity quiet empty state: plain text beside the create ring, no card chrome.
+  emptyStoryHint: { maxWidth: 230, justifyContent: 'center', paddingVertical: 6 },
+  emptyStoryHintCompact: { maxWidth: 230 },
   emptyStoryText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 13 },
   emptyStoryMeta: { color: '#8E8E9F', marginTop: 3, fontSize: 11, lineHeight: 15 },
   sheet: { flex: 1, backgroundColor: '#08080C' },

@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { DetailTitle } from '../../../components/DetailTitle';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -541,7 +542,7 @@ function FocusCard({
           {isLive ? <View style={styles.statusDotLive} /> : null}
           <Text style={styles.statusBadgeText}>{isLive ? 'LIVE' : isReplay ? 'REPLAY' : 'UPCOMING'}</Text>
         </View>
-        <Text style={styles.focusTitle} numberOfLines={2}>{title}</Text>
+        <DetailTitle title={title} size={29} lineHeight={32} color={COLORS.white} numberOfLines={2} style={{ marginTop: 12 }} />
         <Text style={styles.focusHost} numberOfLines={1}>{host}</Text>
         {metric ? <Text style={styles.focusMetric} numberOfLines={1}>{metric}</Text> : null}
         <Text style={styles.focusDescription} numberOfLines={2}>{description}</Text>

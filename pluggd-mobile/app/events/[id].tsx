@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
+import { DetailTitle } from '../../components/DetailTitle';
 import { PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 import { addEventComment, loadEventCultureContext, loadEventDetail, setEventRsvp } from '../../src/features/culture/mobileServices';
 import { MobileStoriesRail } from '../../src/features/culture/MobileStoriesRail';
@@ -89,7 +90,7 @@ export default function EventDetailScreen() {
               {!event.cover_image_url ? <MaterialIcons name="event" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
             <Text style={styles.eyebrow}>Event</Text>
-            <Text style={styles.title}>{event.title || 'Untitled event'}</Text>
+            <DetailTitle title={event.title || 'Untitled event'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>{event.location || 'Location TBA'}</Text>
 
             <View style={styles.metaRow}>

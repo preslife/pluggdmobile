@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
+import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
@@ -91,7 +92,7 @@ export default function MixDetailScreen() {
               {!mix.cover_url ? <MaterialIcons name="headphones" size={58} color={PLUGGD_ORANGE} /> : null}
             </View>
             <Text style={styles.eyebrow}>Mix</Text>
-            <Text style={styles.title}>{mix.title || 'Untitled mix'}</Text>
+            <DetailTitle title={mix.title || 'Untitled mix'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>
               {[mix.city, formatDuration(mix.duration_seconds), `${formatCompact(mix.play_count)} plays`].filter(Boolean).join(' · ')}
             </Text>

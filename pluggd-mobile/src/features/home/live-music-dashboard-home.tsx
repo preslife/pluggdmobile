@@ -24,6 +24,9 @@ import { PremiumHeroCard } from '../../../components/liquid-glass/PremiumHeroCar
 import { EditorialTitle } from '../../../components/EditorialTitle';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { SceneReportCard } from '../../../components/SceneReportCard';
+import { WhatsMovingNow } from '../../../components/WhatsMovingNow';
+import { BuildYourWorld } from '../../../components/BuildYourWorld';
+import { CultureBand } from '../../../components/CultureBand';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -61,16 +64,17 @@ import {
   type SoundboardItem,
 } from '../../lib/mobileContent';
 
+// Section names mirror the live web home (NewHome2) mobile view.
 const HOME_SECTION_ORDER = [
   'Top bar',
   'Lead platform spotlight',
   'Today on PLUGGD',
-  'Live now',
-  'Creators to follow',
-  'New in Explore',
-  'Events and ticket culture',
-  'Community activity preview',
-  'Market preview',
+  'Live now on PLUGGD',
+  'The next wave is already here',
+  'Explore the whole culture',
+  'Tonight on PLUGGD',
+  'Follow the people behind the sound',
+  'New sounds, merch, and moments',
   'Progress / rewards teaser',
 ] as const;
 
@@ -462,12 +466,12 @@ function buildMarketplaceItems(bundle: FeedBundle | undefined, storeProducts: St
   return [...beats, ...samplePacks, ...products].slice(0, 12);
 }
 
-function SectionHeader({ title, action, onPress }: { title: string; action?: string; onPress?: () => void }) {
+function SectionHeader({ title, action, onPress, icon }: { title: string; action?: string; onPress?: () => void; icon?: keyof typeof MaterialIcons.glyphMap }) {
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionTitleRow}>
-        <View style={styles.sectionTick} />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        {icon ? <MaterialIcons name={icon} size={17} color={COLORS.orange} /> : <View style={styles.sectionTick} />}
+        <Text style={[styles.sectionTitle, icon && styles.sectionTitleSerif]} numberOfLines={2}>{title}</Text>
       </View>
       {action ? (
         <Pressable accessibilityRole="button" accessibilityLabel={action} style={styles.sectionAction} onPress={onPress}>
@@ -628,7 +632,7 @@ function NewInDiscover({ items, loading }: { items: DiscoverPreviewItem[]; loadi
   const router = useRouter();
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="New in Explore" action="OPEN EXPLORE" onPress={() => router.push('/explore' as any)} />
+      <SectionHeader title="Explore the whole culture" icon="explore" action="OPEN EXPLORE" onPress={() => router.push('/explore' as any)} />
       {loading ? <InlineLoading /> : null}
       {!loading && !items.length ? <EmptyState title="Explore is waiting for drops." body="Releases, mixes, videos, beats, soundboards and playlists will appear here as they go live." /> : null}
       {items.length ? (
@@ -676,7 +680,7 @@ function CreatorsToFollow({ creators, loading }: { creators: CreatorRecommendati
 
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="Creators to follow" />
+      <SectionHeader title="The next wave is already here" icon="waves" />
       {loading ? <InlineLoading /> : null}
       {!loading && !creators.length ? <EmptyState title="No creator recommendations yet." body="Creator profiles will appear here as the scene grows." /> : null}
       {creators.length ? (
@@ -736,7 +740,7 @@ function LiveNowPreview({ rooms, loading }: { rooms: LiveRoomItem[]; loading: bo
   const liveRooms = rooms.filter((room) => room.status === 'live').slice(0, 8);
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="Live now" action="OPEN LIVE" onPress={() => router.push('/live' as any)} />
+      <SectionHeader title="Live now on PLUGGD" icon="sensors" action="OPEN LIVE" onPress={() => router.push('/live' as any)} />
       {loading ? <InlineLoading /> : null}
       {!loading && !liveRooms.length ? <EmptyState title="No one is live right now." body="Active creator sessions and rooms will appear here as soon as they start." /> : null}
       {liveRooms.length ? (
@@ -782,7 +786,7 @@ function EventsTicketCulture({ events, loading }: { events: EventItem[]; loading
   const router = useRouter();
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="Events and ticket culture" />
+      <SectionHeader title="Tonight on PLUGGD" icon="nightlife" />
       {loading ? <InlineLoading /> : null}
       {!loading && !events.length ? <EmptyState title="No upcoming events." body="Ticket drops, RSVPs and event culture cards will appear when events go live." /> : null}
       {events.length ? (
@@ -829,7 +833,7 @@ function CommunityActivityPreview({ threads, loading }: { threads: BackstageThre
   const visible = threads.slice(0, 3);
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="Community activity preview" action="OPEN COMMUNITY" onPress={() => router.push('/community' as any)} />
+      <SectionHeader title="Follow the people behind the sound" icon="groups" action="OPEN COMMUNITY" onPress={() => router.push('/community' as any)} />
       {loading ? <InlineLoading /> : null}
       {!loading && !visible.length ? <EmptyState title="No community activity yet." body="Community threads, ticket discussions and event hub updates will appear here." /> : null}
       {visible.length ? (
@@ -871,7 +875,7 @@ function MarketplacePreview({ items, loading }: { items: StorePreviewItem[]; loa
   const router = useRouter();
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeader title="Market preview" action="OPEN MARKET" onPress={() => router.push('/market' as any)} />
+      <SectionHeader title="New sounds, merch, and moments" icon="storefront" action="OPEN MARKET" onPress={() => router.push('/market' as any)} />
       {loading ? <InlineLoading /> : null}
       {!loading && !items.length ? <EmptyState title="No marketplace drops yet." body="Beats, sample packs and creator store products will appear here when available." /> : null}
       {items.length ? (
@@ -1118,11 +1122,22 @@ export function LiveMusicDashboardHome() {
         <TodayOnPluggd bundle={home.data} liveRooms={liveRooms} creators={creators} />
         <LiveNowPreview rooms={liveRooms} loading={live.isLoading} />
         <CreatorsToFollow creators={creators} loading={home.isLoading} />
+        <BuildYourWorld />
         <NewInDiscover items={discoverItems} loading={home.isLoading || videos.isLoading || playlists.isLoading} />
         <EventsTicketCulture events={home.data?.events ?? []} loading={home.isLoading} />
         <CommunityActivityPreview threads={backstage.data?.threads ?? []} loading={backstage.isLoading} />
         <MarketplacePreview items={marketItems} loading={home.isLoading || store.isLoading} />
+        <WhatsMovingNow
+          stats={[
+            { value: liveRooms.length, label: 'Live rooms' },
+            { value: (home.data?.events ?? []).length, label: 'Events' },
+            { value: (home.data?.releases ?? []).length + (home.data?.beats ?? []).length, label: 'New drops' },
+            { value: (home.data?.soundboards ?? []).length, label: 'Soundboards' },
+          ]}
+          onPress={() => router.push('/discover')}
+        />
         {user?.id ? <ProgressRewardsTeaser identity={identity.data} loading={identity.isLoading} /> : null}
+        <CultureBand onEnterLive={() => router.push('/live')} onExploreDrops={() => router.push('/market')} />
       </ScrollView>
     </PremiumScreenBackdrop>
   );
@@ -1140,6 +1155,7 @@ const styles = StyleSheet.create({
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
   sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: COLORS.orange },
   sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
+  sectionTitleSerif: { fontFamily: pluggdFonts.serif, fontSize: 20, lineHeight: 25, letterSpacing: 0, flexShrink: 1 },
   sectionAction: { minHeight: 44, justifyContent: 'center' },
   sectionActionText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
   emptyState: { minHeight: 92, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(20,18,22,0.5)', paddingHorizontal: 16, paddingVertical: 16, justifyContent: 'center' },
