@@ -34,10 +34,10 @@ for (const token of [
   assert.match(primitives, new RegExp(escapeRegExp(token)), `premium primitives must include ${token}`);
 }
 
-assert.match(home, /PremiumScreenBackdrop/, 'Home must use the shared premium backdrop');
+assert.match(home, /HomeHero[\s\S]*LinearGradient[\s\S]*PluggdImage/, 'Home must open with the photographic edition masthead (web NewHome2 hero)');
 assert.match(parityScreens, /LinearGradient[\s\S]*PluggdImage[\s\S]*Hero[\s\S]*SectionBlock/, 'Discover, Community, Events and Market must use the artwork-led parity shell');
 
-assert.match(home, /GlassHeroCard|PremiumHeroCard/, 'Home must use the shared premium/glass hero for the front-door spotlight');
+assert.match(home, /edFonts\.serif[\s\S]*heroTitleAccent/, 'Home hero must carry the Instrument Serif headline with the italic-orange accent moment');
 for (const exportName of ['DiscoverParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
   assert.match(parityScreens, new RegExp(`export function ${exportName}`), `${exportName} must remain a premium web-parity surface`);
 }

@@ -1,11 +1,9 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  Alert,
   Image,
   Pressable,
   RefreshControl,
@@ -18,64 +16,66 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
-import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
-import { GlassRailCard } from '../../../components/liquid-glass';
-import { PremiumHeroCard } from '../../../components/liquid-glass/PremiumHeroCard';
-import { EditorialTitle } from '../../../components/EditorialTitle';
 import { LiveTicker } from '../../../components/LiveTicker';
-import { SceneReportCard } from '../../../components/SceneReportCard';
-import { WhatsMovingNow } from '../../../components/WhatsMovingNow';
-import { BuildYourWorld } from '../../../components/BuildYourWorld';
-import { CultureBand } from '../../../components/CultureBand';
-import { useAuth } from '../../context/AuthProvider';
-import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
-import { impactHaptic, selectionHaptic } from '../../design/haptics';
+import { ed, edFonts } from '../../design/editorial';
 import {
-  loadFanIdentitySummary,
-  loadMobilePlaylists,
+  AudioPill,
+  CreamButton,
+  Eyebrow,
+  GhostButton,
+  InkChip,
+  OrangeButton,
+  Pushpin,
+  SectionBody,
+  SerifTitle,
+  StickyNote,
+  TornEdge,
+  WaveTicks,
+} from '../editorial/EditorialBits';
+import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
+import {
+  loadSoundboardItemDetails,
   safeList,
-  toggleProfileFollow,
 } from '../culture/mobileServices';
 import {
   useBackstage,
   useHomeFeed,
   useLiveRooms,
-  type BackstageThread,
   type LiveRoomItem,
 } from '../culture/useCultureData';
-import type { FanIdentitySummary, MobilePlaylist, VideoItem } from '../culture/mobileTypes';
 import { supabase } from '../../lib/supabase';
-import { pluggdFonts } from '../../design/typography';
 import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import {
-  contentInitials,
   formatCompact,
   formatDate,
   formatGBP,
+  priceForRelease,
   releasePlayableUrl,
   toTrack,
   type BeatItem,
   type EventItem,
   type FeedBundle,
-  type MixItem,
   type ProfileItem,
   type ReleaseItem,
   type SamplePackItem,
-  type SoundboardItem,
 } from '../../lib/mobileContent';
 
-// Section names mirror the live web home (NewHome2) mobile view.
+// Section order mirrors the live web home (NewHome2) mobile view top-to-bottom.
 const HOME_SECTION_ORDER = [
   'Top bar',
-  'Lead platform spotlight',
-  'Today on PLUGGD',
+  'Hero / edition masthead',
+  'Realtime ticker',
   'Live now on PLUGGD',
   'The next wave is already here',
-  'Explore the whole culture',
+  'Featured story',
+  'Explore your scene',
+  'Soundboards',
   'Tonight on PLUGGD',
-  'Follow the people behind the sound',
-  'New sounds, merch, and moments',
-  'Progress / rewards teaser',
+  'Drops / Marketplace',
+  'Backstage / Communities',
+  'Build your world',
+  'Platform pulse',
+  'Embody the culture',
 ] as const;
 
 function resolveAssetUri(source: ImageSourcePropType) {
@@ -87,21 +87,6 @@ function resolveAssetUri(source: ImageSourcePropType) {
 }
 
 const HOME_HERO_FALLBACK = resolveAssetUri(WEB_PARITY_ASSETS.intimateCrowdHero);
-
-const COLORS = {
-  canvas: '#08080C',
-  shell: '#0D0D11',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262626',
-  orange: '#FF5A00',
-  live: '#FF4757',
-  violet: '#7C3AED',
-  text: '#FFFFFF',
-  textSoft: '#E4E4E9',
-  muted: '#8E8E9F',
-  dim: '#62627A',
-};
 
 type SpotlightKind = 'release' | 'mix' | 'soundboard' | 'live' | 'event' | 'creator' | 'community' | 'campaign' | 'empty';
 
@@ -117,34 +102,16 @@ type Spotlight = {
   live?: boolean;
 };
 
-type CreatorRecommendation = {
-  id: string;
-  userId?: string | null;
-  name: string;
-  handle: string;
-  role: string;
-  route: string;
-  imageUrl?: string | null;
-  live: boolean;
-};
-
-type DiscoverPreviewItem = {
-  id: string;
-  kind: 'release' | 'mix' | 'video' | 'beat' | 'soundboard' | 'playlist';
-  title: string;
-  subtitle: string;
-  imageUrl?: string | null;
-  route: string;
-};
-
 type StorePreviewItem = {
   id: string;
-  kind: 'beat' | 'sample_pack' | 'store';
+  kind: 'beat' | 'sample_pack' | 'store' | 'release';
   title: string;
   subtitle: string;
   imageUrl?: string | null;
   route: string;
   priceLabel?: string | null;
+  actionLabel: string;
+  track?: PluggdTrack | null;
 };
 
 type StoreProductRow = {
@@ -163,48 +130,27 @@ type StoreProductRow = {
   source?: 'store_products' | 'creator_merchandise';
 };
 
-type VideoPreview = VideoItem;
-
-type CampaignMoment = {
+type BlogPostRow = {
   id: string;
+  title: string | null;
+  excerpt: string | null;
+  featured_image_url: string | null;
+  tags: string[] | null;
+  created_at: string | null;
+};
+
+type SceneCircuit = {
+  id: string;
+  label: string;
   title: string;
-  subtitle?: string | null;
+  copy: string;
   imageUrl?: string | null;
   route: string;
 };
 
-const SPOTLIGHT_GRADIENTS: readonly (readonly [string, string, string])[] = [
-  ['#1E2029', '#0D0D11', '#3B190C'],
-  ['#12121A', '#241330', '#0D0D11'],
-  ['#1C251F', '#0D0D11', '#311508'],
-  ['#101722', '#12121A', '#3A1B11'],
-];
-
-function hashIndex(value: string | null | undefined, modulo: number) {
-  const source = value || 'pluggd';
-  let hash = 0;
-  for (let index = 0; index < source.length; index += 1) {
-    hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
-  }
-  return hash % modulo;
-}
-
-function gradientFor(id?: string | null) {
-  return SPOTLIGHT_GRADIENTS[hashIndex(id, SPOTLIGHT_GRADIENTS.length)];
-}
-
-function routeForProfile(profile: ProfileItem) {
-  if (profile.username) return `/creator/${profile.username}`;
-  if (profile.user_id) return `/user/${profile.user_id}`;
-  return '/search';
-}
-
-function profileName(profile: ProfileItem) {
-  return profile.display_name || profile.full_name || profile.username || 'Creator';
-}
-
-function profileRole(profile: ProfileItem) {
-  return profile.primary_genre || profile.profile_type || profile.user_type || profile.city || 'Creator';
+function profileName(profile?: ProfileItem | null) {
+  if (!profile) return null;
+  return profile.display_name || profile.full_name || profile.username || null;
 }
 
 function locationCity(location?: string | null) {
@@ -212,54 +158,19 @@ function locationCity(location?: string | null) {
   return location.split(',').map((part) => part.trim()).filter(Boolean)[0] || 'Location TBA';
 }
 
-function eventCountdown(startsAt?: string | null) {
-  if (!startsAt) return null;
-  const start = new Date(startsAt).getTime();
-  if (Number.isNaN(start)) return null;
-  const diffMs = start - Date.now();
-  if (diffMs <= 0) return 'Happening now';
-  const minutes = Math.floor(diffMs / 60000);
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  return `${minutes}m`;
-}
-
-function liveViewerLabel(room: LiveRoomItem) {
-  const count = Number(room.viewer_count ?? 0);
-  return Number.isFinite(count) && count > 0 ? formatCompact(count) : null;
-}
-
-function mapCreators(bundle: FeedBundle | undefined, liveRooms: LiveRoomItem[]): CreatorRecommendation[] {
-  if (!bundle) return [];
-  const liveCreatorIds = new Set(
-    liveRooms
-      .filter((room) => room.status === 'live' && room.creator_id)
-      .map((room) => room.creator_id as string),
-  );
-
-  return bundle.profiles.slice(0, 12).map((profile) => {
-    const name = profileName(profile);
-    const userId = profile.user_id || profile.id || null;
-    return {
-      id: userId || profile.username || name,
-      userId,
-      name,
-      handle: profile.username ? `@${profile.username}` : profile.city || 'PLUGGD',
-      role: profileRole(profile),
-      route: routeForProfile(profile),
-      imageUrl: profile.avatar_url,
-      live: Boolean(userId && liveCreatorIds.has(userId)),
-    };
-  });
+function daysAgo(value?: string | null) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return null;
+  const days = Math.max(0, Math.floor((Date.now() - time) / 86400000));
+  if (days === 0) return 'today';
+  return `${days}d ago`;
 }
 
 function resolveSpotlight(
   bundle?: FeedBundle,
   liveRooms: LiveRoomItem[] = [],
   communities: Array<{ id: string; title?: string | null; cover_image_url?: string | null; avatar_url?: string | null }> = [],
-  campaigns: CampaignMoment[] = [],
 ): Spotlight {
   const release = bundle?.releases.find((item) => releasePlayableUrl(item)) || bundle?.releases[0];
   if (release) {
@@ -267,8 +178,8 @@ function resolveSpotlight(
     return {
       id: release.id,
       kind: 'release',
-      title: release.artist ? `New from ${release.artist}` : release.title || 'New on PLUGGD',
-      meta: release.title || release.genre || 'Latest release',
+      title: release.title || 'New on PLUGGD',
+      meta: [release.artist, release.genre].filter(Boolean).join(' - ') || 'Latest release',
       imageUrl: release.cover_art_url,
       route: `/release/${release.id}`,
       cta: track ? 'Listen' : 'Open',
@@ -282,7 +193,7 @@ function resolveSpotlight(
     return {
       id: mix.id,
       kind: 'mix',
-      title: mix.title ? `New mix: ${mix.title}` : 'New mix on PLUGGD',
+      title: mix.title || 'New mix on PLUGGD',
       meta: [mix.city, mix.event_name].filter(Boolean).join(' · ') || 'Fresh mix',
       imageUrl: mix.cover_url,
       route: `/mixes/${mix.id}`,
@@ -296,23 +207,23 @@ function resolveSpotlight(
     return {
       id: soundboard.id,
       kind: 'soundboard',
-      title: `Soundboard: ${soundboard.title || 'Active board'}`,
-      meta: `${formatCompact(soundboard.item_count)} items${soundboard.comment_count ? ` · ${formatCompact(soundboard.comment_count)} comments` : ''}`,
+      title: soundboard.title || 'Active board',
+      meta: `${formatCompact(soundboard.item_count)} items`,
       imageUrl: soundboard.cover_image_url,
       route: `/soundboards/${soundboard.slug || soundboard.id}`,
       cta: 'Open Soundboard',
     };
   }
 
-  const live = liveRooms.find((room) => room.status === 'live');
-  if (live) {
+  const liveRoom = liveRooms.find((room) => room.status === 'live');
+  if (liveRoom) {
     return {
-      id: live.id,
+      id: liveRoom.id,
       kind: 'live',
-      title: live.title || 'Producer room is live',
-      meta: liveViewerLabel(live) ? `${liveViewerLabel(live)} tuned in` : live.category || 'Live now',
-      imageUrl: live.thumbnail_url || live.creator_avatar_url,
-      route: `/live/session?roomId=${live.id}`,
+      title: liveRoom.title || 'Producer room is live',
+      meta: liveRoom.category || 'Live now',
+      imageUrl: liveRoom.thumbnail_url || liveRoom.creator_avatar_url,
+      route: `/live/session?roomId=${liveRoom.id}`,
       cta: 'Join Live',
       live: true,
     };
@@ -323,9 +234,7 @@ function resolveSpotlight(
     return {
       id: event.id,
       kind: 'event',
-      title: event.starts_at && new Date(event.starts_at).toDateString() === new Date().toDateString()
-        ? `Tonight in ${locationCity(event.location)}`
-        : event.title || 'Event on PLUGGD',
+      title: event.title || 'Event on PLUGGD',
       meta: `${formatDate(event.starts_at)} · ${locationCity(event.location)}`,
       imageUrl: event.cover_image_url,
       route: `/events/${event.id}`,
@@ -338,10 +247,10 @@ function resolveSpotlight(
     return {
       id: creator.user_id || creator.id || creator.username || 'creator',
       kind: 'creator',
-      title: `Creator to watch: ${profileName(creator)}`,
-      meta: profileRole(creator),
+      title: profileName(creator) || 'Creator to watch',
+      meta: creator.city || 'Creator',
       imageUrl: creator.avatar_url,
-      route: routeForProfile(creator),
+      route: creator.username ? `/creator/${creator.username}` : '/search',
       cta: 'Open',
     };
   }
@@ -350,7 +259,7 @@ function resolveSpotlight(
   if (community) {
     return {
       id: community.id,
-      kind: 'campaign',
+      kind: 'community',
       title: community.title || 'Community spotlight',
       meta: 'Community',
       imageUrl: community.cover_image_url || community.avatar_url,
@@ -359,610 +268,779 @@ function resolveSpotlight(
     };
   }
 
-  const campaign = campaigns[0];
-  if (campaign) {
-    return {
-      id: campaign.id,
-      kind: 'community',
-      title: campaign.title,
-      meta: campaign.subtitle || 'Campaign / membership moment',
-      imageUrl: campaign.imageUrl,
-      route: campaign.route,
-      cta: 'Open',
-    };
-  }
-
   return {
     id: 'empty',
     kind: 'empty',
-    title: 'PLUGGD moments will appear here',
-    meta: 'Publish releases, lives, events and communities to fill the front door.',
+    title: 'Where music culture comes alive',
+    meta: 'Authentic. Unfiltered. The heartbeat of the scene.',
   };
 }
 
-function buildDiscoverItems(bundle: FeedBundle | undefined, videos: VideoPreview[], playlists: MobilePlaylist[]): DiscoverPreviewItem[] {
+/** Port of the web home's buildScenes — city rooms from events, genre circuits from drops. */
+function buildSceneCircuits(bundle?: FeedBundle): SceneCircuit[] {
   if (!bundle) return [];
-  const releases = bundle.releases.slice(0, 4).map<DiscoverPreviewItem>((release) => ({
-    id: release.id,
-    kind: 'release',
-    title: release.title || 'Untitled release',
-    subtitle: release.artist || release.genre || 'Release',
-    imageUrl: release.cover_art_url,
-    route: `/release/${release.id}`,
-  }));
-  const mixes = bundle.mixes.slice(0, 3).map<DiscoverPreviewItem>((mix) => ({
-    id: mix.id,
-    kind: 'mix',
-    title: mix.title || 'Untitled mix',
-    subtitle: mix.city || mix.event_name || 'Mix',
-    imageUrl: mix.cover_url,
-    route: `/mixes/${mix.id}`,
-  }));
-  const videoItems = videos.slice(0, 3).map<DiscoverPreviewItem>((video) => ({
-    id: video.id,
-    kind: 'video',
-    title: video.title || 'Untitled video',
-    subtitle: 'Video',
-    imageUrl: video.thumbnail_url,
-    route: `/videos/${video.id}`,
-  }));
-  const beats = bundle.beats.slice(0, 3).map<DiscoverPreviewItem>((beat) => ({
-    id: beat.id,
-    kind: 'beat',
-    title: beat.title || 'Untitled beat',
-    subtitle: beat.producer_name || beat.genre || 'Beat',
-    imageUrl: beat.image_url,
-    route: `/beat/${beat.id}`,
-  }));
-  const soundboards = bundle.soundboards.slice(0, 3).map<DiscoverPreviewItem>((soundboard) => ({
-    id: soundboard.id,
-    kind: 'soundboard',
-    title: soundboard.title || 'Soundboard',
-    subtitle: `${formatCompact(soundboard.item_count)} items`,
-    imageUrl: soundboard.cover_image_url,
-    route: `/soundboards/${soundboard.slug || soundboard.id}`,
-  }));
-  const playlistItems = playlists.slice(0, 3).map<DiscoverPreviewItem>((playlist) => ({
-    id: playlist.id,
-    kind: 'playlist',
-    title: playlist.name,
-    subtitle: playlist.owner_name || `${formatCompact(playlist.track_count)} tracks`,
-    imageUrl: playlist.cover_url,
-    route: playlist.route,
-  }));
+  const map = new Map<string, SceneCircuit & { score: number }>();
 
-  return [...releases, ...mixes, ...videoItems, ...beats, ...soundboards, ...playlistItems].slice(0, 16);
+  bundle.events.forEach((event) => {
+    const city = locationCity(event.location);
+    if (!city || city === 'Location TBA') return;
+    const key = `city-${city.toLowerCase()}`;
+    const existing = map.get(key);
+    map.set(key, {
+      id: key,
+      label: 'City',
+      title: `${city} rooms`,
+      copy: event.description || `${event.title || 'Underground events'} and nearby underground events.`,
+      imageUrl: event.cover_image_url,
+      route: '/events',
+      score: (existing?.score || 0) + 3,
+    });
+  });
+
+  [...bundle.releases, ...bundle.beats].forEach((item) => {
+    const genre = (item as ReleaseItem).genre;
+    if (!genre) return;
+    const key = `genre-${genre.toLowerCase()}`;
+    if (map.has(key)) return;
+    map.set(key, {
+      id: key,
+      label: 'Sound',
+      title: `${genre} circuit`,
+      copy: 'Artists, producers, rooms, and drops moving through this sound.',
+      imageUrl: 'cover_art_url' in item ? (item as ReleaseItem).cover_art_url : (item as BeatItem).image_url,
+      route: `/genre/${encodeURIComponent(genre)}`,
+      score: 2,
+    });
+  });
+
+  return Array.from(map.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
 }
 
 function buildMarketplaceItems(bundle: FeedBundle | undefined, storeProducts: StoreProductRow[]): StorePreviewItem[] {
   if (!bundle) return [];
-  const beats = bundle.beats.slice(0, 4).map<StorePreviewItem>((beat) => ({
-    id: beat.id,
+  const releases = bundle.releases.slice(0, 2).map<StorePreviewItem>((release) => ({
+    id: `release-${release.id}`,
+    kind: 'release',
+    title: release.title || 'Untitled release',
+    subtitle: [release.artist, release.genre].filter(Boolean).join(' - ') || 'Release',
+    imageUrl: release.cover_art_url,
+    route: `/release/${release.id}`,
+    priceLabel: formatGBP(priceForRelease(release)),
+    actionLabel: 'Listen',
+    track: toTrack(release, 'release'),
+  }));
+  const beats = bundle.beats.slice(0, 2).map<StorePreviewItem>((beat) => ({
+    id: `beat-${beat.id}`,
     kind: 'beat',
     title: beat.title || 'Untitled beat',
-    subtitle: beat.producer_name || beat.genre || 'Beat license',
+    subtitle: [beat.producer_name, beat.genre].filter(Boolean).join(' - ') || 'Beat license',
     imageUrl: beat.image_url,
     route: `/beat/${beat.id}`,
     priceLabel: formatGBP(beat.price),
+    actionLabel: 'License',
+    track: toTrack(beat, 'beat'),
   }));
-  const samplePacks = bundle.samplePacks.slice(0, 4).map<StorePreviewItem>((pack) => ({
-    id: pack.id,
+  const samplePacks = bundle.samplePacks.slice(0, 1).map<StorePreviewItem>((pack: SamplePackItem) => ({
+    id: `pack-${pack.id}`,
     kind: 'sample_pack',
     title: pack.title || 'Sample pack',
     subtitle: pack.genre || `${formatCompact(pack.sample_count)} samples`,
     imageUrl: pack.cover_art_url,
     route: `/sample-pack/${pack.id}`,
     priceLabel: formatGBP(pack.price),
+    actionLabel: 'License',
   }));
-  const products = storeProducts.slice(0, 4).map<StorePreviewItem>((product) => ({
-    id: product.id,
+  const products = storeProducts.slice(0, 1).map<StorePreviewItem>((product) => ({
+    id: `store-${product.id}`,
     kind: 'store',
     title: product.title || product.name || 'Store item',
     subtitle: product.kind || product.product_type || 'Creator store',
     imageUrl: product.image_url || product.cover_image_url,
     route: product.route || `/product/${product.id}?source=${product.source || 'store_products'}`,
     priceLabel: product.price_cents != null ? formatGBP(product.price_cents, { cents: true }) : product.price != null ? formatGBP(product.price) : null,
+    actionLabel: 'Open',
   }));
-  return [...beats, ...samplePacks, ...products].slice(0, 12);
-}
-
-function SectionHeader({ title, action, onPress, icon }: { title: string; action?: string; onPress?: () => void; icon?: keyof typeof MaterialIcons.glyphMap }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionTitleRow}>
-        {icon ? <MaterialIcons name={icon} size={17} color={COLORS.orange} /> : <View style={styles.sectionTick} />}
-        <Text style={[styles.sectionTitle, icon && styles.sectionTitleSerif]} numberOfLines={2}>{title}</Text>
-      </View>
-      {action ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={action} style={styles.sectionAction} onPress={onPress}>
-          <Text style={styles.sectionActionText}>{action}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
+  return [...beats, ...releases, ...samplePacks, ...products].slice(0, 5);
 }
 
 function InlineLoading() {
-  return <PremiumSkeleton compact label="Loading PLUGGD data..." style={styles.loadingInline} />;
+  return <PremiumSkeleton compact label="Loading PLUGGD data..." style={{ marginVertical: 4 }} />;
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyRule} />
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
-    </View>
-  );
-}
+/* ------------------------------------------------------------------ */
+/* Hero — edition masthead                                             */
+/* ------------------------------------------------------------------ */
 
-function HomeEditorialHeader({ tickerItems }: { tickerItems: string[] }) {
+function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute }: {
+  spotlight: Spotlight;
+  boardTitle?: string | null;
+  boardCount?: number | null;
+  boardImage?: string | null;
+  boardRoute?: string | null;
+}) {
+  const router = useRouter();
+  const heroImage = spotlight.imageUrl || HOME_HERO_FALLBACK;
+  const polaroidImage = boardImage || spotlight.imageUrl || HOME_HERO_FALLBACK;
   return (
-    <View style={styles.editorialHeader}>
-      <Text style={styles.editorialKicker}>The heartbeat of the scene</Text>
-      <EditorialTitle
-        segments={[{ text: 'Where music culture comes ' }, { text: 'alive', accent: true }]}
-        size={34}
-        style={styles.editorialTitleSpacing}
+    <View style={styles.hero}>
+      {heroImage ? <PluggdImage uri={heroImage} style={styles.heroImage} /> : null}
+      <LinearGradient
+        colors={['rgba(7,6,5,0.62)', 'rgba(7,6,5,0.86)', ed.night]}
+        style={StyleSheet.absoluteFillObject}
       />
-      <Text style={styles.editorialVoice}>Authentic. Unfiltered. Real scenes, real signals — all in one place.</Text>
-      {tickerItems.length ? (
-        <View style={styles.editorialTicker}>
-          <LiveTicker items={tickerItems} />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function SpotlightCard({ spotlight }: { spotlight: Spotlight }) {
-  const router = useRouter();
-  const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayback();
-  const active = Boolean(spotlight.track && (currentTrack?.id === spotlight.track.id || currentTrack?.releaseId === spotlight.track.releaseId || currentTrack?.mixId === spotlight.track.mixId));
-
-  const open = async () => {
-    selectionHaptic();
-    if (spotlight.cta === 'Listen' && spotlight.track) {
-      if (active) await togglePlayPause();
-      else await playTrack(spotlight.track);
-      return;
-    }
-    if (spotlight.route) router.push(spotlight.route as any);
-  };
-
-  const canPlay = spotlight.cta === 'Listen' && Boolean(spotlight.track);
-  const playingNow = active && isPlaying;
-  const statusLabel = spotlight.live ? 'Live now' : playingNow ? 'Playing now' : 'Fresh on PLUGGD';
-
-  return (
-    <PremiumHeroCard
-      style={styles.spotlight}
-      image={spotlight.imageUrl || HOME_HERO_FALLBACK || ''}
-      eyebrow="Lead platform spotlight"
-      title={spotlight.title}
-      meta={spotlight.meta}
-      statusLabel={statusLabel}
-      statusColor={spotlight.live ? COLORS.live : COLORS.orange}
-      canPlay={canPlay}
-      playing={playingNow}
-      onPress={spotlight.route || spotlight.track ? open : undefined}
-      onPlay={spotlight.route || spotlight.track ? open : undefined}
-    />
-  );
-}
-
-function TodayOnPluggd({ bundle, liveRooms, creators }: { bundle?: FeedBundle; liveRooms: LiveRoomItem[]; creators: CreatorRecommendation[] }) {
-  const router = useRouter();
-  const upcomingLive = liveRooms.filter((room) => room.status === 'scheduled' || room.scheduled_for);
-  const rows = [
-    {
-      key: 'new-drops',
-      title: 'New drops',
-      value: bundle ? formatCompact(bundle.releases.length + bundle.mixes.length) : '0',
-      meta: bundle?.releases[0]?.title || bundle?.mixes[0]?.title || 'No drops yet',
-      route: bundle?.releases[0] ? `/release/${bundle.releases[0].id}` : bundle?.mixes[0] ? `/mixes/${bundle.mixes[0].id}` : '/explore',
-      icon: 'album' as const,
-    },
-    {
-      key: 'live-soon',
-      title: 'Live soon',
-      value: formatCompact(upcomingLive.length),
-      meta: upcomingLive[0]?.title || 'No sessions scheduled',
-      route: upcomingLive[0] ? `/live/session?roomId=${upcomingLive[0].id}` : '/live',
-      icon: 'settings-input-antenna' as const,
-    },
-    {
-      key: 'events-near-you',
-      title: 'Events near you',
-      value: formatCompact(bundle?.events.length),
-      meta: bundle?.events[0] ? `${formatDate(bundle.events[0].starts_at)} · ${locationCity(bundle.events[0].location)}` : 'No events yet',
-      route: bundle?.events[0] ? `/events/${bundle.events[0].id}` : '/search',
-      icon: 'confirmation-number' as const,
-    },
-    {
-      key: 'soundboards-active',
-      title: 'Soundboards active',
-      value: formatCompact(bundle?.soundboards.length),
-      meta: bundle?.soundboards[0]?.title || 'No soundboards yet',
-      route: bundle?.soundboards[0] ? `/soundboards/${bundle.soundboards[0].slug || bundle.soundboards[0].id}` : '/community',
-      icon: 'graphic-eq' as const,
-    },
-    {
-      key: 'creator-to-watch',
-      title: 'Creator to watch',
-      value: creators[0] ? 'Open' : '0',
-      meta: creators[0]?.name || 'No creator yet',
-      route: creators[0]?.route || '/search',
-      icon: 'person-add-alt' as const,
-    },
-  ];
-
-  return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="Today on PLUGGD" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.todayRail}>
-        {rows.map((row) => (
+      <View style={styles.heroContent}>
+        <Text style={styles.heroTitle}>
+          Where music culture{'\n'}comes <Text style={styles.heroTitleAccent}>alive</Text>
+        </Text>
+        <Text style={styles.heroSub}>Authentic. Unfiltered. The heartbeat of the scene.</Text>
+        <Text style={styles.heroQuote}>
+          "Live music communities, creator drops, soundboards, and underground scenes - all in one place."
+        </Text>
+        {boardTitle || spotlight.kind !== 'empty' ? (
           <Pressable
-            key={row.key}
             accessibilityRole="button"
-            accessibilityLabel={`Open ${row.title}`}
-            style={styles.todayCard}
+            accessibilityLabel={`Open ${boardTitle || spotlight.title}`}
             onPress={() => {
-              selectionHaptic();
-              router.push(row.route as any);
+              const target = boardRoute || spotlight.route;
+              if (target) router.push(target as any);
             }}
+            style={{ alignSelf: 'flex-start' }}
           >
-            <View style={styles.todayTop}>
-              <Text style={styles.todayLabel} numberOfLines={1}>{row.title}</Text>
-              <Text style={styles.todayCount}>{row.value}</Text>
-            </View>
-            <Text style={styles.todayHeadline} numberOfLines={2}>{row.meta}</Text>
-            <View style={styles.todayFoot}>
-              <MaterialIcons name={row.icon} size={13} color={COLORS.orange} />
-              <Text style={styles.todayCta}>Open</Text>
+            <View style={styles.heroPolaroid}>
+              <View style={styles.heroPolaroidImageWrap}>
+                {polaroidImage ? (
+                  <PluggdImage uri={polaroidImage} style={styles.heroPolaroidImage} />
+                ) : (
+                  <View style={[styles.heroPolaroidImage, { backgroundColor: '#1a1611' }]} />
+                )}
+              </View>
+              <Text style={styles.heroPolaroidTitle} numberOfLines={2}>
+                {boardTitle || spotlight.title}
+              </Text>
+              <Text style={styles.heroPolaroidMeta}>
+                {boardCount != null ? `${boardCount} items` : spotlight.meta}
+              </Text>
             </View>
           </Pressable>
-        ))}
-      </ScrollView>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-function NewInDiscover({ items, loading }: { items: DiscoverPreviewItem[]; loading: boolean }) {
+/* ------------------------------------------------------------------ */
+/* Live now on PLUGGD                                                  */
+/* ------------------------------------------------------------------ */
+
+function LiveNowOnPluggd({ rooms, loading }: { rooms: LiveRoomItem[]; loading: boolean }) {
   const router = useRouter();
+  const liveRooms = rooms.filter((room) => room.status === 'live');
   return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="Explore the whole culture" icon="explore" action="OPEN EXPLORE" onPress={() => router.push('/explore' as any)} />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !items.length ? <EmptyState title="Explore is waiting for drops." body="Releases, mixes, videos, beats, soundboards and playlists will appear here as they go live." /> : null}
-      {items.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stageRail}>
-          {items.map((item) => (
-            <GlassRailCard
-              key={`${item.kind}-${item.id}`}
-              title={item.title}
-              subtitle={item.subtitle}
-              imageUrl={item.imageUrl}
-              metric={item.kind.replace('_', ' ')}
-              fallbackTone={item.kind === 'beat' ? 'amber' : item.kind === 'video' ? 'rose' : 'violet'}
-              onPress={() => {
-                router.push(item.route as any);
-              }}
-            />
+    <View style={styles.nightSection}>
+      <SerifTitle text="Live now on PLUGGD" caps size={28} />
+      {loading ? (
+        <InlineLoading />
+      ) : liveRooms.length ? (
+        <View style={{ gap: 12 }}>
+          {liveRooms.slice(0, 3).map((room) => (
+            <Pressable
+              key={room.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Join ${room.title || 'live room'}`}
+              onPress={() => router.push({ pathname: '/live/session', params: { roomId: room.id } } as any)}
+              style={styles.liveRoomCard}
+            >
+              {room.thumbnail_url ? (
+                <PluggdImage uri={room.thumbnail_url} style={StyleSheet.absoluteFillObject as any} />
+              ) : null}
+              <LinearGradient colors={['rgba(7,6,5,0.15)', 'rgba(7,6,5,0.9)']} style={StyleSheet.absoluteFillObject} />
+              <View style={styles.liveRoomBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveRoomBadgeText}>LIVE</Text>
+              </View>
+              <View style={{ gap: 4 }}>
+                <Text style={styles.liveRoomTitle} numberOfLines={2}>{room.title || 'Live room'}</Text>
+                <Text style={styles.liveRoomMeta}>{room.category || 'Live on PLUGGD'}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.nightPanel}>
+          <Text style={styles.nightPanelBody}>No live rooms open right now. See what is coming up.</Text>
+          <View style={styles.buttonRow}>
+            <OrangeButton label="View Live" onPress={() => router.push('/live' as any)} />
+            <GhostButton label="View Events" onPress={() => router.push('/events' as any)} />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* The next wave is already here (paper)                               */
+/* ------------------------------------------------------------------ */
+
+function NextWave({ bundle, loading }: { bundle?: FeedBundle; loading: boolean }) {
+  const router = useRouter();
+  const cards = (bundle?.releases ?? []).slice(0, 6).map((release) => ({
+    id: release.id,
+    name: release.artist || 'PLUGGD creator',
+    meta: [release.title, release.genre].filter(Boolean).join(' - ') || 'New release',
+    imageUrl: release.cover_art_url,
+    route: `/release/${release.id}`,
+  }));
+  return (
+    <View style={styles.paperSection}>
+      <SerifTitle text="The next wave is already here" caps size={28} onPaper />
+      <SectionBody text="Meet the artists, producers, collectives, and scenes shaping what comes next." onPaper />
+      {loading ? (
+        <InlineLoading />
+      ) : cards.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.waveRail}>
+          {cards.map((card) => (
+            <Pressable
+              key={card.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${card.name}`}
+              onPress={() => router.push(card.route as any)}
+            >
+              <View style={styles.waveCard}>
+                <View style={styles.waveCardImageWrap}>
+                  {card.imageUrl ? (
+                    <PluggdImage uri={card.imageUrl} style={styles.waveCardImage} />
+                  ) : (
+                    <View style={[styles.waveCardImage, { backgroundColor: '#e7d9c1' }]} />
+                  )}
+                </View>
+                <InkChip text="Support this scene" style={{ marginTop: 12 }} />
+                <Text style={styles.waveCardName} numberOfLines={1}>{card.name}</Text>
+                <Text style={styles.waveCardMeta} numberOfLines={1}>{card.meta}</Text>
+              </View>
+            </Pressable>
           ))}
         </ScrollView>
-      ) : null}
+      ) : (
+        <Text style={styles.paperEmpty}>Featured creators will appear when public releases, beats, or rooms are available.</Text>
+      )}
     </View>
   );
 }
 
-function CreatorsToFollow({ creators, loading }: { creators: CreatorRecommendation[]; loading: boolean }) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [localFollowing, setLocalFollowing] = useState<Set<string>>(new Set());
-  const followMutation = useMutation({
-    mutationFn: (profileId: string) => toggleProfileFollow(profileId),
-    onSuccess: (result, profileId) => {
-      if (!result.success) {
-        Alert.alert('Follow unavailable', result.error || 'Could not update follow state.');
-        return;
-      }
-      setLocalFollowing((current) => {
-        const next = new Set(current);
-        if (result.saved) next.add(profileId);
-        else next.delete(profileId);
-        return next;
-      });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
-    },
-  });
+/* ------------------------------------------------------------------ */
+/* Featured story (paper)                                              */
+/* ------------------------------------------------------------------ */
 
+function FeaturedStory({ posts, fallbackImage }: { posts: BlogPostRow[]; fallbackImage?: string | null }) {
+  const router = useRouter();
+  const [first, second] = posts;
   return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="The next wave is already here" icon="waves" />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !creators.length ? <EmptyState title="No creator recommendations yet." body="Creator profiles will appear here as the scene grows." /> : null}
-      {creators.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.creatorRail}>
-          {creators.map((creator) => {
-            const following = creator.userId ? localFollowing.has(creator.userId) : false;
-            return (
-              <View key={creator.id} style={styles.creatorCard}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${creator.name}`}
-                  style={styles.creatorAvatarWrap}
-                  onPress={() => {
-                    selectionHaptic();
-                    router.push(creator.route as any);
-                  }}
-                >
-                  <LinearGradient colors={gradientFor(creator.id) as any} style={styles.creatorAvatar}>
-                    {creator.imageUrl ? <PluggdImage uri={creator.imageUrl} style={styles.avatarImage} /> : <Text style={styles.creatorInitial}>{contentInitials(creator.name)}</Text>}
-                  </LinearGradient>
-                  {creator.live ? <View style={styles.creatorLiveDot} /> : null}
-                </Pressable>
-                <Text style={styles.creatorName} numberOfLines={1}>{creator.name}</Text>
-                <Text style={styles.creatorRole} numberOfLines={1}>{creator.role}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${following ? 'Open' : 'Follow'} ${creator.name}`}
-                  style={styles.followTouch}
-                  onPress={() => {
-                    impactHaptic();
-                    if (!creator.userId || creator.userId === user?.id) {
-                      router.push(creator.route as any);
-                      return;
-                    }
-                    if (!user?.id) {
-                      router.push('/auth/login' as any);
-                      return;
-                    }
-                    followMutation.mutate(creator.userId);
-                  }}
-                >
-                  <View style={[styles.followButton, following && styles.followButtonActive]}>
-                    <Text style={[styles.followText, following && styles.followTextActive]}>{following ? 'OPEN' : 'FOLLOW'}</Text>
-                  </View>
-                </Pressable>
+    <View style={[styles.paperSection, { gap: 14 }]}>
+      <Eyebrow text="Featured story" />
+      {first ? (
+        <>
+          <SerifTitle text={first.title || 'PLUGGD story'} size={30} onPaper />
+          <Text style={styles.storyPublished}>Published PLUGGD story.</Text>
+          <CreamButton label="Read story" onPress={() => router.push(`/plug/${first.id}` as any)} />
+          {first.featured_image_url || fallbackImage ? (
+            <View style={styles.storyLeadImageWrap}>
+              <PluggdImage uri={first.featured_image_url || fallbackImage || ''} style={styles.storyLeadImage} />
+            </View>
+          ) : null}
+          {second ? (
+            <View style={styles.storyDarkCard}>
+              {second.featured_image_url ? (
+                <View style={styles.storyDarkImageWrap}>
+                  <PluggdImage uri={second.featured_image_url} style={styles.storyDarkImage} />
+                </View>
+              ) : null}
+              <Text style={styles.storyDarkTitle}>{second.title}</Text>
+              {second.excerpt ? <Text style={styles.storyDarkExcerpt} numberOfLines={4}>{second.excerpt}</Text> : null}
+              {second.tags?.[0] ? <Text style={styles.storyDarkTag}>{second.tags[0]}</Text> : null}
+              <CreamButton label="Read story" onPress={() => router.push(`/plug/${second.id}` as any)} />
+            </View>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <SerifTitle text="Editorial stories will appear here." size={26} onPaper />
+          <Text style={styles.paperEmpty}>No published THE PLUG articles are available yet.</Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Explore your scene (night circuits)                                 */
+/* ------------------------------------------------------------------ */
+
+function ExploreYourScene({ circuits, loading }: { circuits: SceneCircuit[]; loading: boolean }) {
+  const router = useRouter();
+  return (
+    <View style={styles.nightSection}>
+      <Eyebrow text="Explore your scene" />
+      <SerifTitle text="Find the rooms, crews, and sounds moving around you." caps size={27} />
+      <SectionBody text="Jump from a late-night listening room to a collective page, a producer drop, or a backstage archive without losing the thread." />
+      {loading ? (
+        <InlineLoading />
+      ) : circuits.length ? (
+        <View style={{ gap: 14 }}>
+          {circuits.map((circuit) => (
+            <Pressable
+              key={circuit.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Enter ${circuit.title}`}
+              onPress={() => router.push(circuit.route as any)}
+              style={styles.circuitCard}
+            >
+              {circuit.imageUrl ? (
+                <PluggdImage uri={circuit.imageUrl} style={StyleSheet.absoluteFillObject as any} />
+              ) : null}
+              <LinearGradient colors={['rgba(7,6,5,0.05)', 'rgba(7,6,5,0.55)', 'rgba(7,6,5,0.92)']} style={StyleSheet.absoluteFillObject} />
+              <View style={styles.circuitBody}>
+                <InkChip text={circuit.label} tone="cream" />
+                <Text style={styles.circuitTitle}>{circuit.title}</Text>
+                <Text style={styles.circuitCopy} numberOfLines={2}>{circuit.copy}</Text>
+                <View style={styles.circuitEnterPill}>
+                  <Text style={styles.circuitEnterText}>Enter scene</Text>
+                </View>
               </View>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.nightPanel}>
+          <Text style={styles.nightPanelBody}>Scene cards will appear when events, cities, genres, or public drops are available.</Text>
+          <View style={styles.buttonRow}>
+            <OrangeButton label="Explore" onPress={() => router.push('/explore' as any)} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
-function LiveNowPreview({ rooms, loading }: { rooms: LiveRoomItem[]; loading: boolean }) {
+/* ------------------------------------------------------------------ */
+/* Soundboards (paper corkboard)                                       */
+/* ------------------------------------------------------------------ */
+
+type SoundboardDetailBundle = Awaited<ReturnType<typeof loadSoundboardItemDetails>>;
+
+function SoundboardsBoard({
+  board,
+  detail,
+  creatorName,
+  loading,
+}: {
+  board?: FeedBundle['soundboards'][number];
+  detail?: SoundboardDetailBundle;
+  creatorName?: string | null;
+  loading: boolean;
+}) {
   const router = useRouter();
-  const liveRooms = rooms.filter((room) => room.status === 'live').slice(0, 8);
+  const playback = usePlayback();
+  const items = detail?.items ?? [];
+  const audioItem = items.find((item) => item.item_type === 'audio' && item.media_url);
+  const imageItem = items.find((item) => item.item_type === 'image' && item.media_url);
+  const noteItem = items.find((item) => item.item_type === 'note');
+  const latestComment = detail?.boardComments?.[0];
+  const boardRoute = board ? `/soundboards/${board.slug || board.id}` : '/soundboards';
+  const updatedLabel = daysAgo(board?.last_activity_at || board?.created_at);
+  const audioTrack = audioItem ? toTrack(audioItem as any, 'soundboard') : null;
+  const audioPlaying = Boolean(audioTrack && playback.currentTrack?.id === audioTrack.id && playback.isPlaying);
+
   return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="Live now on PLUGGD" icon="sensors" action="OPEN LIVE" onPress={() => router.push('/live' as any)} />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !liveRooms.length ? <EmptyState title="No one is live right now." body="Active creator sessions and rooms will appear here as soon as they start." /> : null}
-      {liveRooms.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveRail}>
-          {liveRooms.map((room) => {
-            const viewers = liveViewerLabel(room);
-            return (
-              <Pressable
-                key={room.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Join ${room.title || 'live room'}`}
-                style={styles.liveCard}
-                onPress={() => {
-                  selectionHaptic();
-                  router.push({ pathname: '/live/session', params: { roomId: room.id } } as any);
-                }}
-              >
-                <View style={styles.livePreview}>
-                  <LinearGradient colors={gradientFor(room.id) as any} style={StyleSheet.absoluteFillObject} />
-                  {room.thumbnail_url || room.creator_avatar_url ? <PluggdImage uri={room.thumbnail_url || room.creator_avatar_url || ''} style={styles.coverImage} /> : null}
-                  <View style={styles.liveStatePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveStateText}>LIVE</Text>
-                  </View>
-                </View>
-                <View style={styles.liveCopy}>
-                  <Text style={styles.liveTitle} numberOfLines={2}>{room.title || 'Live session'}</Text>
-                  <Text style={styles.liveMeta} numberOfLines={1}>{viewers ? `${viewers} tuned in` : room.category || 'Live room'}</Text>
-                  <View style={styles.joinLiveButton}>
-                    <Text style={styles.joinLiveText}>JOIN LIVE</Text>
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+    <View style={styles.paperSection}>
+      <SerifTitle text="Soundboards" caps size={30} onPaper />
+      <SectionBody text="Raw ideas, references, comments, and audio sketches from creators building in public." onPaper />
+      {loading ? (
+        <InlineLoading />
+      ) : board ? (
+        <View style={styles.corkboard}>
+          <View style={styles.corkCenterLine} />
+          <View style={styles.corkStickyWrap}>
+            <Pushpin style={styles.corkPinCentered} />
+            <StickyNote title={board.title || 'Untitled board'} body={board.description} rotate="-2.5deg" showLabel={false} style={styles.corkTitleNote} />
+          </View>
+          {audioItem ? (
+            <AudioPill
+              light
+              label="audio"
+              playing={audioPlaying}
+              onPress={() => {
+                if (audioTrack) void playback.playTrack(audioTrack);
+              }}
+              style={{ marginTop: 18 }}
+            />
+          ) : null}
+          {imageItem?.media_url ? (
+            <View style={styles.corkPolaroidWrap}>
+              <Pushpin style={styles.corkPinCentered} />
+              <View style={styles.corkPolaroid}>
+                <PluggdImage uri={imageItem.media_url} style={styles.corkPolaroidImage} />
+                <Text style={styles.corkPolaroidCaption} numberOfLines={1}>{imageItem.title || board.title}</Text>
+              </View>
+            </View>
+          ) : null}
+          {noteItem?.content_text || noteItem?.title ? (
+            <StickyNote
+              title={noteItem.title || 'Note'}
+              body={noteItem.content_text}
+              rotate="2deg"
+              style={{ alignSelf: 'flex-end', marginTop: 16 }}
+            />
+          ) : null}
+          <Text style={styles.corkOpenLine}>
+            Open <Text style={{ fontFamily: edFonts.bodyBlack }}>{board.title || 'this board'}</Text> and follow the latest public additions.
+          </Text>
+          <View style={styles.chipWrapRow}>
+            {updatedLabel ? <InkChip text={`Updated ${updatedLabel}`} /> : null}
+            <InkChip text={`${formatCompact(board.item_count)} items`} />
+            <InkChip text="Comments open" />
+            {creatorName ? <InkChip text={creatorName} /> : null}
+          </View>
+          {latestComment?.content ? (
+            <StickyNote title={latestComment.content} rotate="-1.5deg" showLabel={false} style={{ marginTop: 14, maxWidth: 240 }} />
+          ) : (
+            <StickyNote title="No public comments yet." rotate="-1.5deg" showLabel={false} style={{ marginTop: 14, maxWidth: 220 }} />
+          )}
+          <OrangeButton label="Open Soundboard" onPress={() => router.push(boardRoute as any)} style={{ marginTop: 16 }} />
+          <View style={styles.corkWavePaper}>
+            <Pushpin style={styles.corkPinCentered} />
+            <WaveTicks bars={34} color="rgba(34,23,15,0.55)" height={44} />
+            <StickyNote
+              title={`${formatCompact(board.like_count)} likes`}
+              rotate="-3deg"
+              showLabel={false}
+              style={styles.corkLikesSticky}
+            />
+          </View>
+        </View>
+      ) : (
+        <Text style={styles.paperEmpty}>Public soundboards will appear here once creators publish them.</Text>
+      )}
     </View>
   );
 }
 
-function EventsTicketCulture({ events, loading }: { events: EventItem[]; loading: boolean }) {
+/* ------------------------------------------------------------------ */
+/* Tonight on PLUGGD (events)                                          */
+/* ------------------------------------------------------------------ */
+
+function TonightOnPluggd({ events, loading }: { events: EventItem[]; loading: boolean }) {
   const router = useRouter();
   return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="Tonight on PLUGGD" icon="nightlife" />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !events.length ? <EmptyState title="No upcoming events." body="Ticket drops, RSVPs and event culture cards will appear when events go live." /> : null}
-      {events.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventRail}>
-          {events.slice(0, 8).map((event) => {
-            const countdown = eventCountdown(event.starts_at);
-            const ticketLabel = event.price_cents && event.price_cents > 0 ? 'Get Tickets' : 'RSVP';
+    <View style={styles.nightSection}>
+      <Eyebrow text="Events from the underground" />
+      <SerifTitle text="Tonight on PLUGGD" caps size={30} />
+      <SectionBody text="Listening parties, release nights, showcases, pop-ups, and live rooms from the underground." />
+      {loading ? (
+        <InlineLoading />
+      ) : events.length ? (
+        <View style={{ gap: 12 }}>
+          {events.slice(0, 3).map((event) => {
+            const starts = event.starts_at ? new Date(event.starts_at) : null;
             return (
               <Pressable
                 key={event.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Open ${event.title || 'event'}`}
-                style={styles.eventCard}
-                onPress={() => {
-                  selectionHaptic();
-                  router.push(`/events/${event.id}` as any);
-                }}
+                accessibilityLabel={`View ${event.title || 'event'}`}
+                onPress={() => router.push(`/events/${event.id}` as any)}
               >
-                <View style={styles.eventImageStrip}>
-                  <LinearGradient colors={gradientFor(event.id) as any} style={StyleSheet.absoluteFillObject} />
-                  {event.cover_image_url ? <PluggdImage uri={event.cover_image_url} style={styles.coverImage} /> : null}
-                </View>
-                <View style={styles.eventBody}>
-                  <Text style={styles.eventTitle} numberOfLines={1}>{event.title || 'Upcoming event'}</Text>
-                  <Text style={styles.eventMeta} numberOfLines={1}>{formatDate(event.starts_at)} · {locationCity(event.location)}</Text>
-                  <Text style={styles.eventState} numberOfLines={1}>
-                    {event.rsvp_count ? `${formatCompact(event.rsvp_count)} interested` : countdown || 'Ticket status pending'}
+                <View style={styles.eventRow}>
+                <View style={styles.eventDateBlock}>
+                  <Text style={styles.eventDateDay}>{starts ? starts.getDate().toString().padStart(2, '0') : '--'}</Text>
+                  <Text style={styles.eventDateMonth}>
+                    {starts ? starts.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase() : 'TBA'}
                   </Text>
-                  <View style={styles.eventCTA}>
-                    <Text style={styles.eventCTAText}>{ticketLabel}</Text>
-                  </View>
                 </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-    </View>
-  );
-}
-
-function CommunityActivityPreview({ threads, loading }: { threads: BackstageThread[]; loading: boolean }) {
-  const router = useRouter();
-  const visible = threads.slice(0, 3);
-  return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="Follow the people behind the sound" icon="groups" action="OPEN COMMUNITY" onPress={() => router.push('/community' as any)} />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !visible.length ? <EmptyState title="No community activity yet." body="Community threads, ticket discussions and event hub updates will appear here." /> : null}
-      {visible.length ? (
-        <View style={styles.backstageList}>
-          {visible.map((thread) => {
-            const replies = Number(thread.comment_count ?? 0);
-            return (
-              <Pressable
-                key={thread.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${thread.title}`}
-                style={styles.backstageRow}
-                onPress={() => {
-                  selectionHaptic();
-                  router.push((thread.route || `/post/${thread.id}`) as any);
-                }}
-              >
-                <View style={styles.backstageIcon}>
-                  <MaterialIcons name={thread.attached_event_id ? 'confirmation-number' : thread.attached_release_id ? 'album' : 'forum'} size={20} color={COLORS.orange} />
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <Text style={styles.eventRowTitle} numberOfLines={2}>{event.title || 'Underground event'}</Text>
+                  <Text style={styles.eventRowMeta} numberOfLines={1}>{locationCity(event.location)}</Text>
                 </View>
-                <View style={styles.backstageCopy}>
-                  <Text style={styles.backstageHub} numberOfLines={1}>{thread.category || thread.author_name || 'Community'}</Text>
-                  <Text style={styles.backstageTitle} numberOfLines={1}>{thread.title}</Text>
-                  <Text style={styles.backstagePreview} numberOfLines={1}>{thread.body || 'Latest discussion activity'}</Text>
+                <View style={styles.eventViewPill}>
+                  <Text style={styles.eventViewText}>{event.price_cents ? formatGBP(event.price_cents, { cents: true }) : 'RSVP'}</Text>
                 </View>
-                <View style={styles.replyPill}>
-                  <Text style={styles.replyText}>{replies ? formatCompact(replies) : '0'}</Text>
                 </View>
               </Pressable>
             );
           })}
         </View>
-      ) : null}
+      ) : (
+        <View style={[styles.nightPanel, styles.nightPanelDashed]}>
+          <Text style={styles.nightPanelBody}>No discoverable events are scheduled right now.</Text>
+          <View style={styles.buttonRow}>
+            <OrangeButton label="Open Events" onPress={() => router.push('/events' as any)} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
-function MarketplacePreview({ items, loading }: { items: StorePreviewItem[]; loading: boolean }) {
+/* ------------------------------------------------------------------ */
+/* Drops / Marketplace (paper)                                         */
+/* ------------------------------------------------------------------ */
+
+function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loading: boolean }) {
+  const router = useRouter();
+  const playback = usePlayback();
+  return (
+    <View style={styles.paperSection}>
+      <Eyebrow text="Drops / Marketplace" />
+      <SerifTitle text="New sounds, merch, tickets, and moments before they disappear." caps size={26} onPaper />
+      <SectionBody text="Real releases, beats, store drops, tickets, and access moments from the PLUGGD ecosystem." onPaper />
+      {loading ? (
+        <InlineLoading />
+      ) : items.length ? (
+        <View style={{ gap: 16 }}>
+          {items.map((item) => (
+            <View key={item.id} style={styles.dropCard}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.title}`}
+                onPress={() => router.push(item.route as any)}
+              >
+                <View style={styles.dropImageWrap}>
+                  {item.imageUrl ? (
+                    <PluggdImage uri={item.imageUrl} style={styles.dropImage} />
+                  ) : (
+                    <View style={[styles.dropImage, { backgroundColor: '#171310' }]} />
+                  )}
+                </View>
+                <InkChip text={item.kind === 'sample_pack' ? 'Pack' : item.kind} tone="orange" style={{ marginTop: 12 }} />
+                <Text style={styles.dropTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.dropMeta} numberOfLines={1}>{item.subtitle}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.actionLabel} ${item.title}`}
+                onPress={() => {
+                  if (item.track && item.actionLabel === 'Listen') {
+                    void playback.playTrack(item.track);
+                    return;
+                  }
+                  router.push(item.route as any);
+                }}
+              >
+                <View style={styles.dropAction}>
+                  <Text style={styles.dropActionText}>{item.actionLabel}</Text>
+                </View>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.paperEmpty}>Drops will appear when releases, beats, products, or event passes are available.</Text>
+      )}
+      <GhostButton label="Open Store" onPaper onPress={() => router.push('/market' as any)} />
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Backstage / Communities (night)                                     */
+/* ------------------------------------------------------------------ */
+
+type CommunityCardData = {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  cover_image_url?: string | null;
+  avatar_url?: string | null;
+  member_count?: number | null;
+};
+
+function BackstageCommunities({ communities, loading }: { communities: CommunityCardData[]; loading: boolean }) {
   const router = useRouter();
   return (
-    <View style={styles.sectionBlock}>
-      <SectionHeader title="New sounds, merch, and moments" icon="storefront" action="OPEN MARKET" onPress={() => router.push('/market' as any)} />
-      {loading ? <InlineLoading /> : null}
-      {!loading && !items.length ? <EmptyState title="No marketplace drops yet." body="Beats, sample packs and creator store products will appear here when available." /> : null}
-      {items.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.marketRail}>
-          {items.map((item) => (
+    <View style={styles.nightSection}>
+      <Eyebrow text="Backstage / Communities" />
+      <SerifTitle text="Follow the people behind the sound." caps size={27} />
+      <SectionBody text="Backstage rooms turn loose clips, voice notes, photos, and fan conversations into living scene archives." />
+      {loading ? (
+        <InlineLoading />
+      ) : communities.length ? (
+        <View style={{ gap: 14 }}>
+          {communities.slice(0, 3).map((community) => (
             <Pressable
-              key={`${item.kind}-${item.id}`}
+              key={community.id}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${item.title}`}
-              style={styles.marketCard}
-              onPress={() => {
-                selectionHaptic();
-                router.push(item.route as any);
-              }}
+              accessibilityLabel={`Open ${community.title || 'community'}`}
+              onPress={() => router.push(`/backstage/${community.id}` as any)}
+              style={styles.communityCard}
             >
-              <View style={styles.marketImage}>
-                <LinearGradient colors={gradientFor(item.id) as any} style={StyleSheet.absoluteFillObject} />
-                {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={styles.coverImage} /> : <Text style={styles.artInitial}>{contentInitials(item.title)}</Text>}
+              {community.cover_image_url || community.avatar_url ? (
+                <PluggdImage
+                  uri={community.cover_image_url || community.avatar_url || ''}
+                  style={[StyleSheet.absoluteFillObject as any, { opacity: 0.45 }]}
+                 
+                />
+              ) : null}
+              <LinearGradient colors={['rgba(7,6,5,0.2)', 'rgba(7,6,5,0.88)']} style={StyleSheet.absoluteFillObject} />
+              <View style={{ gap: 6 }}>
+                <InkChip text={`${formatCompact(community.member_count)} members`} tone="orange" />
+                <Text style={styles.communityTitle} numberOfLines={1}>{community.title || 'PLUGGD community'}</Text>
+                <Text style={styles.communityCopy} numberOfLines={3}>
+                  {community.description || 'Fan circles, room updates, and backstage context.'}
+                </Text>
               </View>
-              <Text style={styles.marketKind}>{item.kind.replace('_', ' ')}</Text>
-              <Text style={styles.marketTitle} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.marketMeta} numberOfLines={1}>{item.priceLabel || item.subtitle}</Text>
             </Pressable>
           ))}
-        </ScrollView>
-      ) : null}
+        </View>
+      ) : (
+        <View style={styles.nightPanel}>
+          <Text style={styles.nightPanelBody}>Public communities will appear here when rooms and fan circles are available.</Text>
+          <View style={styles.buttonRow}>
+            <OrangeButton label="Open Community" onPress={() => router.push('/community' as any)} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
-function ProgressRewardsTeaser({ identity, loading }: { identity: FanIdentitySummary | null | undefined; loading: boolean }) {
-  if (!loading && !identity) return null;
-  const latestBadge = identity?.badges[0];
-  const latestReward = identity?.rewards[0];
-  const communityCount = identity?.joinedCommunities.length ?? 0;
-  const eventCount = identity?.attendedEvents.length ?? 0;
+/* ------------------------------------------------------------------ */
+/* Build your world (paper, creator tools)                             */
+/* ------------------------------------------------------------------ */
+
+const CREATOR_TOOLS = [
+  {
+    id: 'listening-parties',
+    title: 'Listening Parties',
+    copy: 'Ticketed rooms and community funding for the moments fans already want.',
+    route: '/live/create',
+  },
+  {
+    id: 'co-production',
+    title: 'Co-production',
+    copy: 'Secure rights and collaborate without losing the story behind the sound.',
+    route: '/pro/collab',
+  },
+  {
+    id: 'transparent-splits',
+    title: 'Transparent Splits',
+    copy: 'Retain master rights and make who owns what visible from day one.',
+    route: '/creator/onboarding',
+  },
+] as const;
+
+function BuildYourWorldSection() {
+  const router = useRouter();
   return (
-    <View style={styles.sectionBlock}>
-      <View style={styles.rewardCard}>
-        {loading ? (
-          <InlineLoading />
-        ) : (
-          <>
-            <View style={styles.rewardIcon}>
-              <MaterialIcons name="workspace-premium" size={22} color={COLORS.orange} />
-            </View>
-            <View style={styles.rewardCopy}>
-              <Text style={styles.rewardTitle} numberOfLines={1}>
-                {latestBadge ? `Badge earned: ${latestBadge.title}` : latestReward ? latestReward.title : 'Your PLUGGD progress'}
-              </Text>
-              <Text style={styles.rewardMeta} numberOfLines={2}>
-                {communityCount || eventCount
-                  ? `${formatCompact(communityCount)} communities · ${formatCompact(eventCount)} attended events`
-                  : 'Badges, quests, credits and rewards will appear as your activity grows.'}
-              </Text>
-            </View>
-          </>
-        )}
+    <View style={styles.paperSection}>
+      <SerifTitle text="Build your world" caps size={30} onPaper />
+      <SectionBody text="Run listening parties, collaborations, rights, and revenue without losing the culture around them." onPaper />
+      <View style={{ gap: 14 }}>
+        {CREATOR_TOOLS.map((tool) => (
+          <Pressable
+            key={tool.id}
+            accessibilityRole="button"
+            accessibilityLabel={tool.title}
+            onPress={() => router.push(tool.route as any)}
+            style={styles.toolCard}
+          >
+            <LinearGradient
+              colors={['rgba(30, 22, 14, 0.98)', 'rgba(10, 9, 7, 0.99)']}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.toolGlow} />
+            <InkChip text="Creator tool" tone="cream" />
+            <Text style={styles.toolTitle}>{tool.title}</Text>
+            <Text style={styles.toolCopy}>{tool.copy}</Text>
+          </Pressable>
+        ))}
       </View>
     </View>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Platform pulse (night stats)                                        */
+/* ------------------------------------------------------------------ */
+
+function PlatformPulse({
+  liveCount,
+  boardCount,
+  eventCount,
+  dropCount,
+}: {
+  liveCount: number;
+  boardCount: number;
+  eventCount: number;
+  dropCount: number;
+}) {
+  const router = useRouter();
+  const stats = [
+    { id: 'live', value: liveCount, label: 'Live rooms open', copy: 'Upcoming rooms appear in Live and Events' },
+    { id: 'boards', value: boardCount, label: 'Soundboards active', copy: 'Collaborations moving in public' },
+    { id: 'events', value: eventCount, label: 'Events tonight', copy: 'Listening parties, release nights, and live rooms' },
+    { id: 'drops', value: dropCount, label: 'Drops available', copy: 'Releases, beats, tickets, and products' },
+  ];
+  return (
+    <View style={styles.nightSection}>
+      <Eyebrow text="Platform pulse" />
+      <SerifTitle text="What is moving right now" caps size={28} />
+      <SectionBody text="A live signal layer for scenes, rooms, fan activity, drops, and community energy across PLUGGD." />
+      <CreamButton label="Join the movement" onPress={() => router.push('/auth/signup' as any)} />
+      <View style={{ gap: 12, marginTop: 6 }}>
+        {stats.map((stat, index) => (
+          <View key={stat.id} style={styles.pulseCard}>
+            <Text style={styles.pulseValue}>{stat.value > 0 ? formatCompact(stat.value) : 'None'}</Text>
+            <WaveTicks bars={30} color="rgba(255,248,237,0.22)" height={28} seed={index * 5 + 3} />
+            <Text style={styles.pulseLabel}>{stat.label.toUpperCase()}</Text>
+            <Text style={styles.pulseCopy}>{stat.copy}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Embody the culture (closing CTA)                                    */
+/* ------------------------------------------------------------------ */
+
+function EmbodyCulture() {
+  const router = useRouter();
+  return (
+    <View style={styles.embody}>
+      <Text style={styles.embodyTitle}>EMBODY THE{'\n'}CULTURE.{'\n'}FUEL YOUR PATH.</Text>
+      <Text style={styles.embodyBody}>
+        Join the rooms where music starts, follow the scenes before they break, and build your world on PLUGGD.
+      </Text>
+      <View style={[styles.buttonRow, { justifyContent: 'center' }]}>
+        <CreamButton label="Enter live rooms" onPress={() => router.push('/live' as any)} />
+        <GhostButton label="Explore drops" onPress={() => router.push('/market' as any)} />
+      </View>
+      <View style={styles.footerBrandRow}>
+        <Image
+          source={require('../../../assets/brand/pluggd-logo-dark.png')}
+          style={styles.footerWordmark}
+          resizeMode="contain"
+        />
+        <Text style={styles.footerTagline}>The independent music ecosystem for creators, scenes, and fans.</Text>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Screen                                                              */
+/* ------------------------------------------------------------------ */
+
 export function LiveMusicDashboardHome() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useAuth();
   const home = useHomeFeed();
   const live = useLiveRooms();
   const backstage = useBackstage();
-  const videos = useQuery({
-    queryKey: ['culture', 'home', 'videos'],
-    queryFn: () =>
-      safeList<VideoPreview>(
-        (supabase as any)
-          .from('videos')
-          .select('id,title,description,thumbnail_url,youtube_url,artist_id,created_at')
-          .order('created_at', { ascending: false })
-          .limit(6),
-      ),
-    staleTime: 1000 * 60 * 3,
-  });
-  const playlists = useQuery({
-    queryKey: ['culture', 'home', 'playlists'],
-    queryFn: () => loadMobilePlaylists(null, 6),
-    staleTime: 1000 * 60 * 3,
-  });
+
   const store = useQuery({
     queryKey: ['culture', 'home', 'store-products'],
     queryFn: async () => {
@@ -991,267 +1069,474 @@ export function LiveMusicDashboardHome() {
     },
     staleTime: 1000 * 60 * 3,
   });
-  const campaigns = useQuery({
-    queryKey: ['culture', 'home', 'campaign-moments'],
-    queryFn: async (): Promise<CampaignMoment[]> => {
-      const [campaignRows, membershipRows] = await Promise.all([
-        safeList<any>(
-          (supabase as any)
-            .from('campaigns')
-            .select('id,title,cover_url,slug,status,created_at,ends_at')
-            .eq('status', 'live')
-            .order('created_at', { ascending: false })
-            .limit(4),
-        ),
-        safeList<any>(
-          (supabase as any)
-            .from('membership_tiers')
-            .select('id,name,description,owner_id,image_url,status,created_at')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(4),
-        ),
-      ]);
-      return [
-        ...campaignRows.map((row) => ({
-          id: row.id,
-          title: row.title || 'Campaign on PLUGGD',
-          subtitle: row.ends_at ? `Ends ${formatDate(row.ends_at)}` : 'Campaign moment',
-          imageUrl: row.cover_url || null,
-          route: '/commerce/crowdfunding',
-        })),
-        ...membershipRows.map((row) => ({
-          id: row.id,
-          title: row.name || 'Membership on PLUGGD',
-          subtitle: row.description || 'Membership moment',
-          imageUrl: row.image_url || null,
-          route: row.owner_id ? `/membership/${row.owner_id}` : '/membership',
-        })),
-      ].slice(0, 6);
-    },
-    staleTime: 1000 * 60 * 3,
+
+  const stories = useQuery({
+    queryKey: ['culture', 'home', 'plug-stories'],
+    queryFn: () =>
+      safeList<BlogPostRow>(
+        (supabase as any)
+          .from('blog_posts')
+          .select('id,title,excerpt,featured_image_url,tags,created_at')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(3),
+      ),
+    staleTime: 1000 * 60 * 5,
   });
-  const identity = useQuery({
-    queryKey: ['culture', 'home', 'fan-identity', user?.id],
-    queryFn: () => loadFanIdentitySummary(user?.id),
-    enabled: Boolean(user?.id),
+
+  const firstBoard = home.data?.soundboards?.[0];
+  const boardDetail = useQuery({
+    queryKey: ['culture', 'home', 'board-detail', firstBoard?.id],
+    queryFn: () => loadSoundboardItemDetails(firstBoard!.id),
+    enabled: Boolean(firstBoard?.id),
     staleTime: 1000 * 60 * 3,
   });
 
   const liveRooms = live.data ?? [];
-  const creators = useMemo(() => mapCreators(home.data, liveRooms), [home.data, liveRooms]);
   const spotlight = useMemo(
-    () => resolveSpotlight(home.data, liveRooms, backstage.data?.communities ?? [], campaigns.data ?? []),
-    [backstage.data?.communities, campaigns.data, home.data, liveRooms],
+    () => resolveSpotlight(home.data, liveRooms, backstage.data?.communities ?? []),
+    [backstage.data?.communities, home.data, liveRooms],
   );
-  const discoverItems = useMemo(
-    () => buildDiscoverItems(home.data, videos.data ?? [], playlists.data ?? []),
-    [home.data, playlists.data, videos.data],
-  );
-  const marketItems = useMemo(
-    () => buildMarketplaceItems(home.data, store.data ?? []),
-    [home.data, store.data],
-  );
-  const refreshing =
-    home.isRefetching ||
-    live.isRefetching ||
-    backstage.isRefetching ||
-    videos.isRefetching ||
-    playlists.isRefetching ||
-    store.isRefetching ||
-    campaigns.isRefetching ||
-    identity.isRefetching;
-
-  const refresh = () => {
-    void home.refetch();
-    void live.refetch();
-    void backstage.refetch();
-    void videos.refetch();
-    void playlists.refetch();
-    void store.refetch();
-    void campaigns.refetch();
-    if (user?.id) void identity.refetch();
-  };
+  const circuits = useMemo(() => buildSceneCircuits(home.data), [home.data]);
+  const marketItems = useMemo(() => buildMarketplaceItems(home.data, store.data ?? []), [home.data, store.data]);
 
   const tickerItems = useMemo(() => {
     const bundle = home.data;
     const items: string[] = [];
     liveRooms.filter((room) => room.status === 'live').slice(0, 3).forEach((room) => items.push(`${room.title} is live now`));
     (bundle?.releases ?? []).slice(0, 4).forEach((release) => items.push(`${release.artist || 'A creator'} dropped ${release.title}`));
+    (bundle?.soundboards ?? []).slice(0, 2).forEach((board) => items.push(`${board.title} soundboard updated`));
     (bundle?.mixes ?? []).slice(0, 2).forEach((mix) => items.push(`New mix — ${mix.title}`));
     (bundle?.events ?? []).slice(0, 2).forEach((event) => items.push(`${event.title} just announced`));
     if (items.length < 3) items.push('Authentic, unfiltered — real signals moving across the scene');
     return items;
   }, [home.data, liveRooms]);
 
-  const sceneReport = useMemo(() => {
-    const bundle = home.data;
-    const releases = bundle?.releases ?? [];
-    const genre = releases.map((release) => (release as any).genre).find(Boolean) as string | undefined;
-    const scene = (genre || 'The underground').trim();
-    const signals = releases.length + (bundle?.mixes?.length ?? 0) + liveRooms.filter((room) => room.status === 'live').length;
-    return { scene, signals };
-  }, [home.data, liveRooms]);
+  const boardCreatorName = useMemo(() => {
+    if (!firstBoard?.creator_id) return null;
+    const profile = (home.data?.profiles ?? []).find(
+      (candidate) => candidate.user_id === firstBoard.creator_id || candidate.id === firstBoard.creator_id,
+    );
+    return profileName(profile);
+  }, [firstBoard?.creator_id, home.data?.profiles]);
+
+  const eventsTonight = useMemo(() => {
+    const events = home.data?.events ?? [];
+    const now = new Date();
+    return events.filter((event) => {
+      if (!event.starts_at) return false;
+      const starts = new Date(event.starts_at);
+      return starts.toDateString() === now.toDateString();
+    });
+  }, [home.data?.events]);
+
+  const refreshing = home.isRefetching || live.isRefetching || backstage.isRefetching || store.isRefetching || stories.isRefetching;
+  const refresh = () => {
+    void home.refetch();
+    void live.refetch();
+    void backstage.refetch();
+    void store.refetch();
+    void stories.refetch();
+    if (firstBoard?.id) void boardDetail.refetch();
+  };
+
+  const dropCount =
+    (home.data?.releases?.length ?? 0) +
+    (home.data?.beats?.length ?? 0) +
+    (home.data?.samplePacks?.length ?? 0) +
+    (store.data?.length ?? 0);
 
   return (
-    <PremiumScreenBackdrop tone="accent" style={styles.screen}>
+    <View style={styles.screen}>
       <StatusBar style="light" translucent />
       <ScrollView
         style={styles.scroll}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.orange} />}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingTop: Math.max(insets.top + 76, 88),
-            paddingBottom: insets.bottom + 226,
-          },
-        ]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 210 }}
       >
-        <HomeEditorialHeader tickerItems={tickerItems} />
-        <SpotlightCard spotlight={spotlight} />
-        <SceneReportCard
-          eyebrow="Scene report"
-          titleSegments={[{ text: `${sceneReport.scene} is ` }, { text: 'moving', accent: true }, { text: ' different this week' }]}
-          body="The drops, rooms and creators shaping the sound right now — pulled from real activity across the platform."
-          signalLine={sceneReport.signals ? `${sceneReport.signals} real signals moving across the scene` : 'Fresh signals landing across the scene'}
-          ctaLabel="Enter the scene"
-          onPress={() => router.push('/discover')}
+        <HomeHero
+          spotlight={spotlight}
+          boardTitle={firstBoard?.title}
+          boardCount={firstBoard?.item_count}
+          boardImage={
+            boardDetail.data?.items?.find((item) => item.item_type === 'image' && item.media_url)?.media_url ||
+            firstBoard?.cover_image_url ||
+            spotlight.imageUrl
+          }
+          boardRoute={firstBoard ? `/soundboards/${firstBoard.slug || firstBoard.id}` : spotlight.route}
         />
-        <TodayOnPluggd bundle={home.data} liveRooms={liveRooms} creators={creators} />
-        <LiveNowPreview rooms={liveRooms} loading={live.isLoading} />
-        <CreatorsToFollow creators={creators} loading={home.isLoading} />
-        <BuildYourWorld />
-        <NewInDiscover items={discoverItems} loading={home.isLoading || videos.isLoading || playlists.isLoading} />
-        <EventsTicketCulture events={home.data?.events ?? []} loading={home.isLoading} />
-        <CommunityActivityPreview threads={backstage.data?.threads ?? []} loading={backstage.isLoading} />
-        <MarketplacePreview items={marketItems} loading={home.isLoading || store.isLoading} />
-        <WhatsMovingNow
-          stats={[
-            { value: liveRooms.length, label: 'Live rooms' },
-            { value: (home.data?.events ?? []).length, label: 'Events' },
-            { value: (home.data?.releases ?? []).length + (home.data?.beats ?? []).length, label: 'New drops' },
-            { value: (home.data?.soundboards ?? []).length, label: 'Soundboards' },
-          ]}
-          onPress={() => router.push('/discover')}
+        <LiveTicker items={tickerItems} variant="paper" />
+        <LiveNowOnPluggd rooms={liveRooms} loading={live.isLoading} />
+        <TornEdge color={ed.paper2} />
+        <NextWave bundle={home.data} loading={home.isLoading} />
+        <FeaturedStory posts={stories.data ?? []} fallbackImage={home.data?.events?.[0]?.cover_image_url} />
+        <TornEdge flip color={ed.paper2} />
+        <ExploreYourScene circuits={circuits} loading={home.isLoading} />
+        <TornEdge color={ed.paper2} />
+        <SoundboardsBoard
+          board={firstBoard}
+          detail={boardDetail.data}
+          creatorName={boardCreatorName}
+          loading={home.isLoading || boardDetail.isLoading}
         />
-        {user?.id ? <ProgressRewardsTeaser identity={identity.data} loading={identity.isLoading} /> : null}
-        <CultureBand onEnterLive={() => router.push('/live')} onExploreDrops={() => router.push('/market')} />
+        <TornEdge flip color={ed.paper2} />
+        <TonightOnPluggd events={eventsTonight.length ? eventsTonight : home.data?.events ?? []} loading={home.isLoading} />
+        <TornEdge color={ed.paper2} />
+        <DropsMarketplace items={marketItems} loading={home.isLoading || store.isLoading} />
+        <TornEdge flip color={ed.paper2} />
+        <BackstageCommunities communities={backstage.data?.communities ?? []} loading={backstage.isLoading} />
+        <TornEdge color={ed.paper2} />
+        <BuildYourWorldSection />
+        <TornEdge flip color={ed.paper2} />
+        <PlatformPulse
+          liveCount={liveRooms.filter((room) => room.status === 'live').length}
+          boardCount={home.data?.soundboards?.length ?? 0}
+          eventCount={eventsTonight.length}
+          dropCount={dropCount}
+        />
+        <EmbodyCulture />
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
+const HEADER_CLEARANCE = 96;
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.canvas },
-  scroll: { flex: 1, backgroundColor: COLORS.canvas },
-  content: { paddingHorizontal: 16, gap: 22 },
-  coverImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  avatarImage: { width: '100%', height: '100%' },
-  loadingInline: { marginVertical: 4 },
-  sectionBlock: { gap: 12 },
-  sectionHeader: { minHeight: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
-  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: COLORS.orange },
-  sectionTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
-  sectionTitleSerif: { fontFamily: pluggdFonts.serif, fontSize: 20, lineHeight: 25, letterSpacing: 0, flexShrink: 1 },
-  sectionAction: { minHeight: 44, justifyContent: 'center' },
-  sectionActionText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.8 },
-  emptyState: { minHeight: 92, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(20,18,22,0.5)', paddingHorizontal: 16, paddingVertical: 16, justifyContent: 'center' },
-  emptyRule: { width: 22, height: 2, borderRadius: 2, backgroundColor: COLORS.orange, marginBottom: 10 },
-  emptyTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 15, lineHeight: 19, letterSpacing: -0.2 },
-  emptyBody: { color: COLORS.muted, fontFamily: 'Satoshi-Medium', fontSize: 12.5, lineHeight: 18, marginTop: 5 },
-  editorialHeader: { gap: 6, paddingTop: 2, paddingBottom: 2 },
-  editorialKicker: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
-  editorialTitle: { color: COLORS.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 30, letterSpacing: -0.5 },
-  editorialTitleSpacing: { marginTop: 3 },
-  editorialVoice: { color: COLORS.textSoft, fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 20, marginTop: 8, maxWidth: '92%' },
-  editorialSummary: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 18 },
-  editorialTicker: { marginTop: 16 },
+  screen: { flex: 1, backgroundColor: ed.night },
+  scroll: { flex: 1, backgroundColor: ed.night },
 
-  spotlight: {
-    height: 206,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  /* Hero */
+  hero: { minHeight: 560, justifyContent: 'flex-end' },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  heroContent: { paddingHorizontal: 20, paddingTop: HEADER_CLEARANCE + 24, paddingBottom: 30, gap: 14 },
+  heroTitle: {
+    fontFamily: edFonts.serif,
+    fontSize: 40,
+    lineHeight: 42,
+    color: ed.cream,
+    letterSpacing: -0.8,
   },
+  heroTitleAccent: { fontFamily: edFonts.serifItalic, color: ed.orange },
+  heroSub: { fontFamily: edFonts.bodyMedium, fontSize: 15.5, lineHeight: 22, color: 'rgba(255,248,237,0.86)' },
+  heroQuote: { fontFamily: edFonts.bodyMedium, fontSize: 14.5, lineHeight: 21, color: 'rgba(255,248,237,0.72)' },
+  heroPolaroid: {
+    marginTop: 8,
+    width: 172,
+    backgroundColor: ed.paper,
+    borderRadius: 10,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    transform: [{ rotate: '-1.5deg' }],
+  },
+  heroPolaroidImageWrap: { borderRadius: 6, overflow: 'hidden', backgroundColor: '#181410' },
+  heroPolaroidImage: { width: '100%', height: 132 },
+  heroPolaroidTitle: { fontFamily: edFonts.bodyBold, fontSize: 13, lineHeight: 17, color: ed.ink, marginTop: 8 },
+  heroPolaroidMeta: { fontFamily: edFonts.bodyBlack, fontSize: 11, color: 'rgba(34,23,15,0.68)', marginTop: 2 },
 
-  todayRail: { gap: 10, paddingRight: 16 },
-  todayCard: { width: 148, height: 116, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(20,18,22,0.55)', paddingHorizontal: 14, paddingVertical: 13, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 12 } },
-  todayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  todayLabel: { flexShrink: 1, color: COLORS.muted, fontFamily: 'Satoshi-Black', fontSize: 9.5, letterSpacing: 0.8, textTransform: 'uppercase' },
-  todayCount: { color: COLORS.orange, fontFamily: 'Satoshi-Black', fontSize: 13, fontVariant: ['tabular-nums'] },
-  todayHeadline: { color: COLORS.text, fontFamily: pluggdFonts.displayBold, fontSize: 16, lineHeight: 19, letterSpacing: -0.2 },
-  todayFoot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  todayCta: { color: COLORS.textSoft, fontFamily: 'Satoshi-Bold', fontSize: 11, letterSpacing: 0.2 },
+  /* Section shells */
+  nightSection: { backgroundColor: ed.night, paddingHorizontal: 20, paddingVertical: 40, gap: 14 },
+  paperSection: { backgroundColor: ed.paper2, paddingHorizontal: 20, paddingVertical: 40, gap: 14 },
+  paperEmpty: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.inkSoft },
+  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
 
-  stageRail: { gap: 12, paddingRight: 16 },
-  stageCard: { width: 150, height: 210 },
-  stageArtwork: { width: 150, height: 150, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.surface2 },
-  stageKind: { marginTop: 8, color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase' },
-  stageTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 17, marginTop: 2 },
-  stageSubtitle: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
-  artInitial: { color: COLORS.text, fontFamily: 'PluggdSans5-Regular', fontSize: 30 },
+  nightPanel: {
+    borderRadius: ed.radius,
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    backgroundColor: ed.nightCard,
+    padding: 18,
+    gap: 14,
+  },
+  nightPanelDashed: { borderStyle: 'dashed' },
+  nightPanelBody: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: ed.creamMuted },
 
-  creatorRail: { gap: 10, paddingRight: 16 },
-  creatorCard: { width: 140, height: 180, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 12, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 22, shadowOffset: { width: 0, height: 14 } },
-  creatorAvatarWrap: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
-  creatorAvatar: { width: 82, height: 82, borderRadius: 41, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  creatorInitial: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 18 },
-  creatorLiveDot: { position: 'absolute', right: 4, bottom: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.live, borderWidth: 2, borderColor: COLORS.surface },
-  creatorName: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, marginTop: 8, maxWidth: '100%' },
-  creatorRole: { color: COLORS.muted, fontSize: 11, marginTop: 2, maxWidth: '100%' },
-  followTouch: { minHeight: 44, minWidth: 92, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  followButton: { height: 32, minWidth: 82, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  followButtonActive: { backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border },
-  followText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 11 },
-  followTextActive: { color: COLORS.text },
+  /* Live rooms */
+  liveRoomCard: {
+    minHeight: 150,
+    borderRadius: ed.radius,
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    overflow: 'hidden',
+    padding: 16,
+    justifyContent: 'flex-end',
+    backgroundColor: ed.nightCard,
+  },
+  liveRoomBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(7,6,5,0.72)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#ff3b30' },
+  liveRoomBadgeText: { fontFamily: edFonts.bodyBlack, fontSize: 10, letterSpacing: 1.2, color: ed.cream },
+  liveRoomTitle: { fontFamily: edFonts.bodyBold, fontSize: 17, lineHeight: 22, color: ed.cream },
+  liveRoomMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: ed.creamMuted },
 
-  liveRail: { gap: 12, paddingRight: 16 },
-  liveCard: { width: 160, height: 198, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.40, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
-  livePreview: { height: 112, overflow: 'hidden' },
-  liveStatePill: { position: 'absolute', top: 8, left: 8, minHeight: 24, borderRadius: 12, backgroundColor: 'rgba(8,8,12,0.72)', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: COLORS.live },
-  liveStateText: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 10 },
-  liveCopy: { padding: 10, gap: 5 },
-  liveTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 17 },
-  liveMeta: { color: COLORS.muted, fontSize: 11 },
-  joinLiveButton: { height: 32, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  joinLiveText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 11 },
+  /* Next wave */
+  waveRail: { gap: 14, paddingRight: 20, paddingVertical: 6 },
+  waveCard: {
+    width: 280,
+    backgroundColor: '#fffdf7',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.22)',
+    padding: 12,
+    paddingBottom: 16,
+    shadowColor: '#5b381f',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    transform: [{ rotate: '-0.4deg' }],
+  },
+  waveCardImageWrap: { borderRadius: 4, overflow: 'hidden', backgroundColor: '#e7d9c1' },
+  waveCardImage: { width: '100%', height: 172 },
+  waveCardName: { fontFamily: edFonts.bodyBold, fontSize: 19, lineHeight: 24, color: ed.ink, marginTop: 10 },
+  waveCardMeta: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.inkSoft, marginTop: 2 },
 
-  eventRail: { gap: 12, paddingRight: 16 },
-  eventCard: { width: 240, height: 166, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
-  eventImageStrip: { height: 72, overflow: 'hidden' },
-  eventBody: { height: 94, padding: 11, gap: 4 },
-  eventTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14 },
-  eventMeta: { color: COLORS.textSoft, fontSize: 11 },
-  eventState: { color: COLORS.muted, fontSize: 11, fontVariant: ['tabular-nums'] },
-  eventCTA: { position: 'absolute', right: 10, bottom: 10, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.10)', paddingHorizontal: 12, justifyContent: 'center' },
-  eventCTAText: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 10 },
+  /* Featured story */
+  storyPublished: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.inkSoft },
+  storyLeadImageWrap: { borderRadius: ed.radius, overflow: 'hidden', marginTop: 6 },
+  storyLeadImage: { width: '100%', height: 220 },
+  storyDarkCard: {
+    borderRadius: 18,
+    backgroundColor: '#241d15',
+    padding: 18,
+    gap: 12,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  storyDarkImageWrap: { borderRadius: 12, overflow: 'hidden' },
+  storyDarkImage: { width: '100%', height: 180 },
+  storyDarkTitle: { fontFamily: edFonts.serif, fontSize: 26, lineHeight: 29, color: ed.cream },
+  storyDarkExcerpt: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: ed.creamMuted },
+  storyDarkTag: { fontFamily: edFonts.bodyBlack, fontSize: 12.5, color: '#f4c890' },
 
-  backstageList: { gap: 8 },
-  backstageRow: { minHeight: 86, borderRadius: 16, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', borderLeftColor: 'rgba(255,255,255,0.09)', borderRightColor: 'rgba(0,0,0,0.26)', borderBottomColor: 'rgba(0,0,0,0.42)', backgroundColor: 'rgba(10,12,24,0.32)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backstageIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
-  backstageCopy: { flex: 1, minWidth: 0 },
-  backstageHub: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 11 },
-  backstageTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 14, marginTop: 2 },
-  backstagePreview: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
-  replyPill: { minWidth: 36, height: 28, borderRadius: 14, backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  replyText: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 11, fontVariant: ['tabular-nums'] },
+  /* Circuits */
+  circuitCard: {
+    minHeight: 320,
+    borderRadius: ed.radius,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    justifyContent: 'flex-end',
+    backgroundColor: ed.nightCard,
+  },
+  circuitBody: { padding: 18, gap: 8 },
+  circuitTitle: { fontFamily: edFonts.bodyMedium, fontSize: 24, lineHeight: 29, color: ed.cream, textTransform: 'capitalize' },
+  circuitCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
+  circuitEnterPill: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    borderRadius: 999,
+    backgroundColor: ed.paper2,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 224, 200, 0.5)',
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  circuitEnterText: { fontFamily: edFonts.bodyBlack, fontSize: 13.5, color: ed.ink },
 
-  marketRail: { gap: 12, paddingRight: 16 },
-  marketCard: { width: 164, height: 202, borderRadius: 18, borderWidth: 1, borderTopColor: 'rgba(255,255,255,0.20)', borderLeftColor: 'rgba(255,255,255,0.10)', borderRightColor: 'rgba(0,0,0,0.28)', borderBottomColor: 'rgba(0,0,0,0.44)', backgroundColor: 'rgba(10,12,24,0.34)', padding: 10, shadowColor: '#000', shadowOpacity: 0.38, shadowRadius: 24, shadowOffset: { width: 0, height: 16 } },
-  marketImage: { height: 116, borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
-  marketKind: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase', marginTop: 8 },
-  marketTitle: { color: COLORS.text, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 17, marginTop: 2 },
-  marketMeta: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
+  /* Corkboard */
+  corkboard: {
+    borderRadius: 6,
+    backgroundColor: '#efe6d2',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.24)',
+    paddingHorizontal: 16,
+    paddingVertical: 22,
+    marginTop: 6,
+  },
+  corkCenterLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(91,56,31,0.18)',
+  },
+  corkStickyWrap: { alignItems: 'center' },
+  corkPinCentered: { alignSelf: 'center', zIndex: 2, marginBottom: -8 },
+  corkTitleNote: { maxWidth: 300, minWidth: 240, paddingVertical: 18 },
+  corkPolaroidWrap: { marginTop: 18, alignSelf: 'flex-start' },
+  corkPolaroid: {
+    backgroundColor: '#fffdf7',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.25)',
+    padding: 8,
+    paddingBottom: 10,
+    width: 168,
+    shadowColor: '#4d3b12',
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    transform: [{ rotate: '1.6deg' }],
+  },
+  corkPolaroidImage: { width: '100%', height: 128 },
+  corkPolaroidCaption: { fontFamily: edFonts.bodyBold, fontSize: 12, color: ed.ink, marginTop: 6, backgroundColor: '#efe9dc', paddingHorizontal: 6, paddingVertical: 3 },
+  corkOpenLine: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: ed.inkMuted, marginTop: 18 },
+  chipWrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  corkWavePaper: {
+    marginTop: 22,
+    backgroundColor: '#fffdf7',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.25)',
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    shadowColor: '#4d3b12',
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  corkLikesSticky: { position: 'absolute', bottom: -12, alignSelf: 'center' },
 
-  rewardCard: { height: 100, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.08)', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rewardIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  rewardCopy: { flex: 1, minWidth: 0 },
-  rewardTitle: { color: COLORS.text, fontFamily: 'Satoshi-Black', fontSize: 15 },
-  rewardMeta: { color: COLORS.textSoft, fontSize: 12, lineHeight: 17, marginTop: 4 },
+  /* Events */
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: ed.radius,
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    backgroundColor: ed.nightCard,
+    padding: 12,
+  },
+  eventDateBlock: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#1d1712',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eventDateDay: { fontFamily: edFonts.bodyBlack, fontSize: 17, color: ed.cream },
+  eventDateMonth: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.2, color: ed.orange, marginTop: 1 },
+  eventRowTitle: { fontFamily: edFonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: ed.cream },
+  eventRowMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: ed.creamMuted },
+  eventViewPill: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,102,0,0.55)',
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eventViewText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: ed.orange },
+
+  /* Drops */
+  dropCard: {
+    backgroundColor: '#fffdf7',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.2)',
+    padding: 14,
+    shadowColor: '#5b381f',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  dropImageWrap: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#171310' },
+  dropImage: { width: '100%', height: 190 },
+  dropTitle: { fontFamily: edFonts.bodyBold, fontSize: 20, lineHeight: 25, color: ed.ink, marginTop: 8 },
+  dropMeta: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.inkSoft, marginTop: 2 },
+  dropAction: {
+    marginTop: 12,
+    minHeight: 46,
+    borderRadius: 999,
+    backgroundColor: ed.paper2,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 224, 200, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropActionText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.ink },
+
+  /* Communities */
+  communityCard: {
+    minHeight: 168,
+    borderRadius: ed.radius,
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    overflow: 'hidden',
+    padding: 16,
+    justifyContent: 'flex-end',
+    backgroundColor: ed.nightCard,
+  },
+  communityTitle: { fontFamily: edFonts.bodyBold, fontSize: 19, color: ed.cream, marginTop: 6 },
+  communityCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
+
+  /* Creator tools */
+  toolCard: {
+    minHeight: 210,
+    borderRadius: 16,
+    overflow: 'hidden',
+    padding: 18,
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  toolGlow: {
+    position: 'absolute',
+    top: -30,
+    left: -20,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,102,0,0.16)',
+  },
+  toolTitle: { fontFamily: edFonts.bodyBold, fontSize: 21, color: '#ffffff', marginTop: 4 },
+  toolCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.78)' },
+
+  /* Pulse */
+  pulseCard: {
+    borderRadius: ed.radius,
+    borderWidth: 1,
+    borderColor: ed.nightLine,
+    backgroundColor: ed.nightCard,
+    padding: 18,
+    gap: 8,
+  },
+  pulseValue: { fontFamily: edFonts.bodyBlack, fontSize: 30, color: ed.paper },
+  pulseLabel: { fontFamily: edFonts.serif, fontSize: 19, letterSpacing: 0.6, color: ed.paper },
+  pulseCopy: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 17, color: ed.creamMuted },
+
+  /* Embody CTA + footer */
+  embody: { backgroundColor: '#0a0806', paddingHorizontal: 24, paddingTop: 56, paddingBottom: 44, gap: 18, alignItems: 'center' },
+  embodyTitle: {
+    fontFamily: edFonts.body,
+    fontSize: 30,
+    lineHeight: 38,
+    letterSpacing: 1.2,
+    color: '#f8ecd4',
+    textAlign: 'center',
+  },
+  embodyBody: {
+    fontFamily: edFonts.bodyMedium,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: ed.creamMuted,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  footerBrandRow: { alignItems: 'center', gap: 10, marginTop: 26 },
+  footerWordmark: { width: 128, height: 34 },
+  footerTagline: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.5)', textAlign: 'center' },
 });
+
+export { HOME_SECTION_ORDER, resolveSpotlight, buildMarketplaceItems, buildSceneCircuits };
+export type { Spotlight, StorePreviewItem };

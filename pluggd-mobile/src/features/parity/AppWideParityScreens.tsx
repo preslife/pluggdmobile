@@ -42,6 +42,11 @@ import { GlassHeroCard, GlassPanel, GlassRailCard, LiftSurface, LiquidBackground
 import { EditorialTitle, type EditorialSegment } from '../../../components/EditorialTitle';
 import { SceneReportCard } from '../../../components/SceneReportCard';
 import { EventsMap } from '../../../components/EventsMap';
+import { DiscoverEditorialScreen } from '../editorial/DiscoverEditorialScreen';
+import { ListeningFloorScreen } from '../editorial/ListeningFloorScreen';
+import { MixesWorldScreen } from '../editorial/MixesWorldScreen';
+import { EventsBoardScreen } from '../editorial/EventsBoardScreen';
+import { SoundboardsIndexScreen } from '../editorial/SoundboardsIndexScreen';
 
 type QueryKey = readonly unknown[];
 
@@ -1242,7 +1247,10 @@ function ParityScaffold({
 }
 
 export function DiscoverParityScreen() {
-  return <ParityScaffold title="Discover" queryKey={['parity', 'discover']} queryFn={loadDiscoverParity} primarySurface />;
+  // Faithful port of the web /discover page (serif hero, What's moving now,
+  // For You, Live Now, Trending Scenes, New From Creators, Soundboards Worth
+  // Opening, Near You, Creators to Watch, Community Pulse).
+  return <DiscoverEditorialScreen />;
 }
 
 export function ExploreParityScreen() {
@@ -1273,15 +1281,23 @@ export function MarketParityScreen() {
 }
 
 export function ReleasesParityScreen() {
-  return <ParityScaffold title="Releases" queryKey={['parity', 'releases']} queryFn={loadReleasesParity} />;
+  // Faithful port of the web /releases "Listening Floor" (featured deck,
+  // Wall/Ledger browse, Fresh pressings, The chart, Pressing orders,
+  // Listening passes, The racks).
+  return <ListeningFloorScreen />;
 }
 
 export function MixesParityScreen() {
-  return <ParityScaffold title="Mixes" queryKey={['parity', 'mixes']} queryFn={loadMixesParity} />;
+  // Faithful port of the web /mixes editorial world (numbered hero tabs,
+  // Find your next mix, What's happening, Listening rooms, Rising DJs,
+  // New & notable, Scene explorer, PLUGGD radio, Editorial highlights).
+  return <MixesWorldScreen />;
 }
 
 export function SoundboardsParityScreen() {
-  return <ParityScaffold title="Soundboards" queryKey={['parity', 'soundboards']} queryFn={loadSoundboardsParity} />;
+  // Faithful port of the web /soundboards index ("Ideas grow in public.",
+  // search + Updated/Trending/Featured, dense board stat cards).
+  return <SoundboardsIndexScreen />;
 }
 
 export function SamplePacksParityScreen() {
@@ -1289,7 +1305,10 @@ export function SamplePacksParityScreen() {
 }
 
 export function EventsParityScreen() {
-  return <ParityScaffold title="Events" queryKey={['parity', 'events']} queryFn={loadEventsParity} primarySurface />;
+  // Faithful port of the web /events page (Discover local shows, Browse/Map,
+  // category chips, Browse fast list, Event Spotlight, Upcoming Events
+  // posters, full event cards, Open Opportunities, For Promoters).
+  return <EventsBoardScreen />;
 }
 
 export function HubsParityScreen() {

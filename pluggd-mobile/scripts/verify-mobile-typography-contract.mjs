@@ -71,8 +71,8 @@ for (const primitive of ['PluggdTitle', 'PluggdHeading', 'PluggdSectionTitle', '
 assert.match(primitives, /headerTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayExtraBold/s, 'premium primitive page titles must use Sora ExtraBold');
 assert.match(primitives, /heroTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'premium primitive hero titles must use Sora Bold');
 assert.match(primitives, /railTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'premium primitive section titles must use Sora Bold');
-assert.match(home, /editorialTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayExtraBold/s, 'home hero heading must use Sora ExtraBold');
-assert.match(home, /sectionTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'home section headings must use Sora Bold');
+assert.match(home, /heroTitle:\s*{[^}]*fontFamily:\s*edFonts\.serif/s, 'home hero heading must use the Instrument Serif editorial display face (web parity)');
+assert.match(home, /SerifTitle/, 'home section headings must use the shared Instrument Serif section title');
 assert.match(live, /focusTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'live focus heading must use Sora Bold');
 assert.match(studio, /sectionTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'studio section headings must use Sora Bold');
 assert.match(liquidSectionHeader, /title:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'liquid section heading must use Sora Bold');

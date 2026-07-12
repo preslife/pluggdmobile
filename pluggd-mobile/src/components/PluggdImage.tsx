@@ -1,13 +1,18 @@
 import { useRef, useState } from 'react';
-import { Animated, Image, type ImageProps, type ImageSourcePropType } from 'react-native';
+import { Animated, Image, Platform, type ImageProps, type ImageSourcePropType } from 'react-native';
 
 type PluggdImageProps = Omit<ImageProps, 'source'> & {
   uri: string;
 };
 
+// On web, browser-cached images can complete before React attaches the
+// load handlers, which would leave the fade-in stuck at opacity 0 — so the
+// fade only runs on native, where onLoadEnd is reliable for cache hits.
+const FADE_ENABLED = Platform.OS !== 'web';
+
 export function PluggdImage({ uri, style, onLoadEnd, ...props }: PluggdImageProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const [loaded, setLoaded] = useState(false);
+  const opacity = useRef(new Animated.Value(FADE_ENABLED ? 0 : 1)).current;
+  const [loaded, setLoaded] = useState(!FADE_ENABLED);
   const source = { uri, cache: 'force-cache' } as ImageSourcePropType;
 
   return (

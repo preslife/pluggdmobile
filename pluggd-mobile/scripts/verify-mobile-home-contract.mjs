@@ -10,32 +10,41 @@ const taskSheet = read('docs/PLUGGD_IOS_HOME_PAGE_TASKS_2026-05-17.md');
 
 assert.match(homeRoute, /LiveMusicDashboardHome/, 'Home tab must use the dedicated public-front-door Home screen');
 
-// Section names pinned to the live web home (NewHome2) mobile view copy.
+// Section names pinned to the live web home (NewHome2) mobile view, top to bottom.
 for (const token of [
   "'Top bar'",
-  "'Lead platform spotlight'",
-  "'Today on PLUGGD'",
+  "'Hero / edition masthead'",
+  "'Realtime ticker'",
   "'Live now on PLUGGD'",
   "'The next wave is already here'",
-  "'Explore the whole culture'",
+  "'Featured story'",
+  "'Explore your scene'",
+  "'Soundboards'",
   "'Tonight on PLUGGD'",
-  "'Follow the people behind the sound'",
-  "'New sounds, merch, and moments'",
-  "'Progress / rewards teaser'",
+  "'Drops / Marketplace'",
+  "'Backstage / Communities'",
+  "'Build your world'",
+  "'Platform pulse'",
+  "'Embody the culture'",
 ]) {
-  assert.match(homeSource, new RegExp(token.replace(/[()']/g, '\\$&')), `Home section order must include ${token}`);
+  assert.match(homeSource, new RegExp(token.replace(/[()'/]/g, '\\$&')), `Home section order must include ${token}`);
 }
 
+// Rendered component order must follow the web home top-to-bottom.
 const expectedOrder = [
-  '<SpotlightCard',
-  '<TodayOnPluggd',
-  '<LiveNowPreview',
-  '<CreatorsToFollow',
-  '<NewInDiscover',
-  '<EventsTicketCulture',
-  '<CommunityActivityPreview',
-  '<MarketplacePreview',
-  '<ProgressRewardsTeaser',
+  '<HomeHero',
+  '<LiveTicker',
+  '<LiveNowOnPluggd',
+  '<NextWave',
+  '<FeaturedStory',
+  '<ExploreYourScene',
+  '<SoundboardsBoard',
+  '<TonightOnPluggd',
+  '<DropsMarketplace',
+  '<BackstageCommunities',
+  '<BuildYourWorldSection',
+  '<PlatformPulse',
+  '<EmbodyCulture',
 ];
 let lastIndex = -1;
 for (const token of expectedOrder) {
@@ -47,18 +56,17 @@ for (const token of expectedOrder) {
 for (const required of [
   'resolveSpotlight',
   "cta?: 'Listen' | 'Open' | 'Join Live' | 'View Event' | 'Open Soundboard'",
-  'buildDiscoverItems',
+  'buildSceneCircuits',
+  'buildMarketplaceItems',
   'WEB_PARITY_ASSETS',
   'HOME_HERO_FALLBACK',
-  'buildMarketplaceItems',
-  'loadMobilePlaylists',
-  'loadFanIdentitySummary',
-  'toggleProfileFollow',
+  'loadSoundboardItemDetails',
+  "from('blog_posts')",
   'useHomeFeed',
   'useLiveRooms',
   'useBackstage',
 ]) {
-  assert.match(homeSource, new RegExp(required.replace(/[()]/g, '\\$&')), `${required} must be wired into Home`);
+  assert.match(homeSource, new RegExp(required.replace(/[()|?']/g, '\\$&')), `${required} must be wired into Home`);
 }
 
 for (const priorityToken of [
@@ -73,25 +81,29 @@ for (const priorityToken of [
   assert.match(homeSource, new RegExp(priorityToken.replace(/[()]/g, '\\$&')), `Lead spotlight priority must include ${priorityToken}`);
 }
 
+// Editorial system pins — Instrument Serif display voice, cream/night rhythm,
+// torn paper joins, paper ticker band (the pluggd.fm public visual system).
+for (const token of [
+  'edFonts.serif',
+  'TornEdge',
+  'variant="paper"',
+  'ed.paper2',
+  'ed.night',
+  'SerifTitle',
+  'Eyebrow',
+]) {
+  assert.match(homeSource, new RegExp(token.replace(/["=.]/g, '\\$&')), `Home must keep the editorial visual system token ${token}`);
+}
+
 for (const sizeToken of [
-  'height: 206',
-  'borderRadius: 24',
-  'width: 148',
-  'height: 116',
-  'width: 150',
-  'height: 210',
-  'width: 140',
-  'height: 180',
-  'width: 160',
-  'height: 198',
-  'height: 112',
-  'width: 240',
-  'height: 166',
-  'height: 72',
-  'minHeight: 86',
-  'width: 164',
-  'height: 202',
-  'height: 100',
+  'minHeight: 560',
+  'width: 172',
+  'width: 280',
+  'height: 190',
+  'minHeight: 320',
+  'minHeight: 210',
+  'minHeight: 168',
+  'width: 52',
 ]) {
   assert.match(homeSource, new RegExp(sizeToken), `Home must preserve specified component sizing token ${sizeToken}`);
 }
@@ -103,21 +115,33 @@ for (const routeToken of [
   "router.push(`/events/${event.id}`",
   "router.push('/community'",
   "router.push(item.route",
-  "router.push(creator.route",
+  "router.push(circuit.route",
+  "router.push('/market'",
+  "router.push('/events'",
 ]) {
   assert.match(homeSource, new RegExp(routeToken.replace(/[/'(){}$`]/g, '\\$&')), `${routeToken} action must be wired`);
 }
 
+// Copy pinned to the web home voice (en-GB locale of the live site).
 for (const copy of [
-  'Today on PLUGGD',
-  'Explore the whole culture',
-  'The next wave is already here',
+  'Where music culture',
+  'Authentic. Unfiltered. The heartbeat of the scene.',
   'Live now on PLUGGD',
+  'No live rooms open right now. See what is coming up.',
+  'The next wave is already here',
+  'Meet the artists, producers, collectives, and scenes shaping what comes next.',
+  'Find the rooms, crews, and sounds moving around you.',
+  'Raw ideas, references, comments, and audio sketches from creators building in public.',
   'Tonight on PLUGGD',
-  'Follow the people behind the sound',
-  'New sounds, merch, and moments',
+  'Listening parties, release nights, showcases, pop-ups, and live rooms from the underground.',
+  'New sounds, merch, tickets, and moments before they disappear.',
+  'Follow the people behind the sound.',
+  'Build your world',
+  'Run listening parties, collaborations, rights, and revenue without losing the culture around them.',
+  'What is moving right now',
+  'Join the rooms where music starts, follow the scenes before they break, and build your world on PLUGGD.',
 ]) {
-  assert.match(homeSource, new RegExp(copy), `${copy} must be present on Home`);
+  assert.match(homeSource, new RegExp(copy.replace(/[.,]/g, '\\$&')), `${copy} must be present on Home`);
 }
 
 for (const token of ['search', 'notifications-none', 'account-balance-wallet']) {

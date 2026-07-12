@@ -6,6 +6,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
 import { PlayfairDisplay_500Medium_Italic, PlayfairDisplay_600SemiBold, PlayfairDisplay_600SemiBold_Italic } from "@expo-google-fonts/playfair-display";
+import { InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic } from "@expo-google-fonts/instrument-serif";
+import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { NativeModules, StyleSheet, View } from "react-native";
@@ -47,6 +49,9 @@ export default function Layout() {
     "PlayfairDisplay-Italic": PlayfairDisplay_500Medium_Italic,
     "PlayfairDisplay-SemiBold": PlayfairDisplay_600SemiBold,
     "PlayfairDisplay-SemiBoldItalic": PlayfairDisplay_600SemiBold_Italic,
+    "InstrumentSerif-Regular": InstrumentSerif_400Regular,
+    "InstrumentSerif-Italic": InstrumentSerif_400Regular_Italic,
+    "JetBrainsMono-Medium": JetBrainsMono_500Medium,
   });
 
   if (!fontsLoaded) {
