@@ -23,10 +23,14 @@ assert.doesNotMatch(
   'Marketplace routes must not expose unfinished card, Stripe, or external digital checkout surfaces',
 );
 
-assert.match(marketplaceSource, /MarketParityScreen/, 'Top-level Marketplace route must render the native Market parity screen');
+// Web routing parity: /market resolves to the /store culture shop (via
+// MarketParityScreen -> MarketStoreScreen) and /marketplace + the beat
+// shortcut resolve to the BeatPlug audition floor, mirroring the live
+// web redirects (/market -> /store, /marketplace -> /market/beats).
+assert.match(marketplaceSource, /BeatPlugScreen/, 'Top-level Marketplace route must render the BeatPlug audition floor (web redirect parity)');
 assert.match(marketIndexSource, /MarketParityScreen/, 'Top-level Market route must render the native Market parity screen');
 assert.match(marketSectionSource, /MarketParityScreen/, 'Market section route must render the native Market parity screen');
-assert.match(beatMarketplaceSource, /MarketParityScreen/, 'Beat marketplace shortcut must render the native Market parity screen');
+assert.match(beatMarketplaceSource, /BeatPlugScreen/, 'Beat marketplace shortcut must render the BeatPlug audition floor (web redirect parity)');
 
 assert.match(
   parityServiceSource,

@@ -47,6 +47,8 @@ import { ListeningFloorScreen } from '../editorial/ListeningFloorScreen';
 import { MixesWorldScreen } from '../editorial/MixesWorldScreen';
 import { EventsBoardScreen } from '../editorial/EventsBoardScreen';
 import { SoundboardsIndexScreen } from '../editorial/SoundboardsIndexScreen';
+import { BeatPlugScreen } from '../editorial/BeatPlugScreen';
+import { MarketStoreScreen } from '../editorial/MarketStoreScreen';
 
 type QueryKey = readonly unknown[];
 
@@ -1277,7 +1279,17 @@ export function CommunityParityScreen() {
 
 export function MarketParityScreen() {
   const params = useLocalSearchParams<{ section?: string }>();
-  return <ParityScaffold title="Market" queryKey={['parity', 'market', params.section || 'all']} queryFn={() => loadMarketParity(params.section)} primarySurface />;
+  const section = Array.isArray(params.section) ? params.section[0] : params.section;
+  // Web routing: /market resolves to the /store culture shop, and
+  // /market/beats is the BeatPlug audition floor. Other sections keep the
+  // artwork-led scaffold.
+  if (!section || section === 'store') {
+    return <MarketStoreScreen />;
+  }
+  if (section === 'beats') {
+    return <BeatPlugScreen />;
+  }
+  return <ParityScaffold title="Market" queryKey={['parity', 'market', section]} queryFn={() => loadMarketParity(section)} primarySurface />;
 }
 
 export function ReleasesParityScreen() {

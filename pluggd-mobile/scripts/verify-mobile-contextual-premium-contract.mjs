@@ -15,7 +15,6 @@ assert.match(contentUi, /PremiumScreenBackdrop/, 'shared ScreenShell must use th
 assert.match(contentUi, /PremiumScreenHeader/, 'shared ScreenShell must use the premium app header');
 
 for (const [name, source] of [
-  ['release detail', release],
   ['beat detail', beat],
   ['event detail', event],
   ['wallet', wallet],
@@ -24,7 +23,11 @@ for (const [name, source] of [
   assert.match(source, /PremiumScreenBackdrop/, `${name} must opt into the shared premium backdrop`);
 }
 
-assert.match(release, /PremiumHeroCard/, 'release detail must use the shared artwork-led hero');
+// Release detail is the web-parity editorial page (full-bleed art, support
+// pill, credits ledger, orange last-word title, playback card, discussion).
+assert.match(release, /SUPPORT THIS RELEASE/, 'release detail must open with the full-bleed art + support pill (web parity)');
+assert.match(release, /AccentTitle/, 'release detail title must carry the web orange last-word treatment');
+assert.match(release, /CREDITS[\s\S]*PLAYBACK[\s\S]*DISCUSSION[\s\S]*WHERE TO STREAM[\s\S]*THE WORDS/, 'release detail must keep the web section order');
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release detail must keep credit unlock wired through the wallet ledger');
 assert.match(release, /Save[\s\S]*Post[\s\S]*Share/, 'release detail must keep save, post-to-feed and share actions');
 

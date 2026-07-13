@@ -25,6 +25,7 @@ import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { EventsMap } from '../../../components/EventsMap';
 import { ed, edFonts } from '../../design/editorial';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { geocodeMany, type MapPoint } from '../../lib/mapbox';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
@@ -129,16 +130,18 @@ function StatusChips({ event }: { event: EventItem }) {
 /* Sections                                                            */
 /* ------------------------------------------------------------------ */
 
-function BrowseFastList({ events }: { events: EventItem[] }) {
+type LightPal = { light: boolean; card?: object | null; title: string; body: string; meta: string };
+
+function BrowseFastList({ events, lp }: { events: EventItem[]; lp: LightPal }) {
   const router = useRouter();
   return (
     <View style={{ gap: 10 }}>
       <View style={styles.browseHeadRow}>
         <View>
           <Text style={styles.eventListEyebrow}>EVENT LIST</Text>
-          <Text style={styles.browseFastTitle}>Browse fast</Text>
+          <Text style={[styles.browseFastTitle, { color: lp.title }]}>Browse fast</Text>
         </View>
-        <Text style={styles.showingText}>{events.length} SHOWING</Text>
+        <Text style={[styles.showingText, lp.light && { color: lp.meta }]}>{events.length} SHOWING</Text>
       </View>
       {events.slice(0, 12).map((event) => (
         <Pressable
@@ -147,7 +150,7 @@ function BrowseFastList({ events }: { events: EventItem[] }) {
           accessibilityLabel={`View ${event.title || 'event'}`}
           onPress={() => router.push(`/events/${event.id}` as any)}
         >
-          <View style={styles.fastRow}>
+          <View style={[styles.fastRow, lp.card]}>
             <View style={styles.fastThumbWrap}>
               {event.cover_image_url ? (
                 <PluggdImage uri={event.cover_image_url} style={styles.fastThumb} />
@@ -159,9 +162,9 @@ function BrowseFastList({ events }: { events: EventItem[] }) {
               </View>
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <Text style={styles.fastTitle} numberOfLines={1}>{event.title || 'Underground event'}</Text>
-              <Text style={styles.fastMeta} numberOfLines={1}>{fullDateLine(event)}</Text>
-              <Text style={styles.fastVenue} numberOfLines={1}>{venueLine(event)}</Text>
+              <Text style={[styles.fastTitle, { color: lp.title }]} numberOfLines={1}>{event.title || 'Underground event'}</Text>
+              <Text style={[styles.fastMeta, lp.light && { color: lp.body }]} numberOfLines={1}>{fullDateLine(event)}</Text>
+              <Text style={[styles.fastVenue, lp.light && { color: lp.meta }]} numberOfLines={1}>{venueLine(event)}</Text>
             </View>
             <View style={styles.viewPill}>
               <Text style={styles.viewPillText}>View</Text>
@@ -229,17 +232,17 @@ function EventSpotlight({ event }: { event?: EventItem }) {
   );
 }
 
-function UpcomingPosterRail({ events }: { events: EventItem[] }) {
+function UpcomingPosterRail({ events, lp }: { events: EventItem[]; lp: LightPal }) {
   const router = useRouter();
   if (!events.length) return null;
   return (
     <View style={{ gap: 12 }}>
       <View style={styles.browseHeadRow}>
         <View>
-          <Text style={styles.upcomingTitle}>Upcoming Events</Text>
-          <Text style={styles.upcomingSub}>Global curators and live experiences.</Text>
+          <Text style={[styles.upcomingTitle, { color: lp.title }]}>Upcoming Events</Text>
+          <Text style={[styles.upcomingSub, lp.light && { color: lp.body }]}>Global curators and live experiences.</Text>
         </View>
-        <Text style={styles.showingText}>{Math.min(events.length, 12)} SHOWN</Text>
+        <Text style={[styles.showingText, lp.light && { color: lp.meta }]}>{Math.min(events.length, 12)} SHOWN</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
         {events.slice(0, 8).map((event) => (
@@ -271,14 +274,14 @@ function UpcomingPosterRail({ events }: { events: EventItem[] }) {
   );
 }
 
-function FullEventCards({ events }: { events: EventItem[] }) {
+function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
   const router = useRouter();
   return (
     <View style={{ gap: 16 }}>
       {events.slice(0, 8).map((event) => {
         const tags = tagsFor(event);
         return (
-          <View key={event.id} style={styles.fullCard}>
+          <View key={event.id} style={[styles.fullCard, lp.card]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`View ${event.title || 'event'}`}
@@ -295,24 +298,24 @@ function FullEventCards({ events }: { events: EventItem[] }) {
                 <View style={styles.tagRow}>
                   {tags.map((tag, index) => (
                     <View key={tag} style={index === 0 ? styles.tagChipOrange : styles.tagChipGrey}>
-                      <Text style={index === 0 ? styles.tagChipOrangeText : styles.tagChipGreyText}>{tag}</Text>
+                      <Text style={index === 0 ? styles.tagChipOrangeText : [styles.tagChipGreyText, lp.light && { color: lp.body }]}>{tag}</Text>
                     </View>
                   ))}
                 </View>
               ) : null}
-              <Text style={styles.fullTitle}>{event.title || 'Underground event'}</Text>
+              <Text style={[styles.fullTitle, { color: lp.title }]}>{event.title || 'Underground event'}</Text>
               {event.description ? (
-                <Text style={styles.fullDescription} numberOfLines={2}>{event.description}</Text>
+                <Text style={[styles.fullDescription, lp.light && { color: lp.body }]} numberOfLines={2}>{event.description}</Text>
               ) : null}
               <View style={styles.fullMetaRow}>
-                <MaterialIcons name="schedule" size={13.5} color="rgba(255,248,237,0.66)" />
-                <Text style={styles.fullMeta}>{fullDateLine(event)}</Text>
+                <MaterialIcons name="schedule" size={13.5} color={lp.light ? lp.body : "rgba(255,248,237,0.66)"} />
+                <Text style={[styles.fullMeta, lp.light && { color: lp.body }]}>{fullDateLine(event)}</Text>
               </View>
               <View style={styles.fullMetaRow}>
-                <MaterialIcons name="place" size={13.5} color="rgba(255,248,237,0.66)" />
-                <Text style={styles.fullMeta} numberOfLines={1}>{cityLine(event)}</Text>
-                <MaterialIcons name="groups" size={13.5} color="rgba(255,248,237,0.66)" />
-                <Text style={[styles.fullMeta, { flexShrink: 1 }]} numberOfLines={1}>{venueLine(event)}</Text>
+                <MaterialIcons name="place" size={13.5} color={lp.light ? lp.body : "rgba(255,248,237,0.66)"} />
+                <Text style={[styles.fullMeta, lp.light && { color: lp.body }]} numberOfLines={1}>{cityLine(event)}</Text>
+                <MaterialIcons name="groups" size={13.5} color={lp.light ? lp.body : "rgba(255,248,237,0.66)"} />
+                <Text style={[styles.fullMeta, { flexShrink: 1 }, lp.light && { color: lp.body }]} numberOfLines={1}>{venueLine(event)}</Text>
               </View>
               <StatusChips event={event} />
             </Pressable>
@@ -335,9 +338,9 @@ function FullEventCards({ events }: { events: EventItem[] }) {
                 onPress={() => router.push(`/events/${event.id}` as any)}
                 style={{ flex: 1 }}
               >
-                <View style={styles.ticketLinkCta}>
-                  <MaterialIcons name="confirmation-number" size={15} color={ed.cream} />
-                  <Text style={styles.ticketLinkText}>Ticket Link</Text>
+                <View style={[styles.ticketLinkCta, lp.light && { backgroundColor: '#ffffff', borderColor: 'rgba(91,56,31,0.2)' }]}>
+                  <MaterialIcons name="confirmation-number" size={15} color={lp.light ? ed.ink : ed.cream} />
+                  <Text style={[styles.ticketLinkText, lp.light && { color: ed.ink }]}>Ticket Link</Text>
                 </View>
               </Pressable>
             </View>
@@ -354,6 +357,28 @@ function FullEventCards({ events }: { events: EventItem[] }) {
 
 export function EventsBoardScreen() {
   const insets = useSafeAreaInsets();
+  const theme = usePluggdTheme();
+  // The web /events page is hybrid in light mode: the header block stays a
+  // dark card while the list, filters and panels go light.
+  const light = theme.scheme === 'light';
+  const pal = light
+    ? {
+        screen: '#faf2e6',
+        card: '#ffffff',
+        cardBorder: 'rgba(91, 56, 31, 0.16)',
+        title: ed.ink,
+        body: 'rgba(34, 23, 15, 0.62)',
+        meta: 'rgba(34, 23, 15, 0.55)',
+      }
+    : {
+        screen: '#0d0705',
+        card: undefined,
+        cardBorder: undefined,
+        title: '#ffffff',
+        body: 'rgba(255,248,237,0.66)',
+        meta: 'rgba(255,248,237,0.5)',
+      };
+  const cardOverride = light ? { backgroundColor: pal.card, borderColor: pal.cardBorder } : null;
   const [mode, setMode] = useState<'browse' | 'map'>('browse');
   const [category, setCategory] = useState<(typeof CATEGORY_CHIPS)[number]>('All events');
 
@@ -400,11 +425,13 @@ export function EventsBoardScreen() {
     void eventsQuery.refetch();
   };
 
+  const lp: LightPal = { light, card: cardOverride, title: pal.title, body: pal.body, meta: pal.meta };
+
   return (
-    <View style={styles.screen}>
-      <StatusBar style="light" translucent />
+    <View style={[styles.screen, { backgroundColor: pal.screen }]}>
+      <StatusBar style={light ? 'dark' : 'light'} translucent />
       <ScrollView
-        style={styles.screen}
+        style={[styles.screen, { backgroundColor: pal.screen }]}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
@@ -415,7 +442,8 @@ export function EventsBoardScreen() {
           gap: 24,
         }}
       >
-        {/* Header */}
+        {/* Header — stays a dark board card in light mode, like the web */}
+        <View style={light ? styles.headerBoardLight : null}>
         <View style={{ gap: 8 }}>
           <Text style={styles.eyebrow}>EVENTS</Text>
           <Text style={styles.pageTitle}>Discover local shows</Text>
@@ -423,7 +451,7 @@ export function EventsBoardScreen() {
         </View>
 
         {/* Browse / Map toggle */}
-        <View style={styles.toggleRow}>
+        <View style={[styles.toggleRow, { marginTop: 18 }]}>
           {(['browse', 'map'] as const).map((value) => (
             <Pressable
               key={value}
@@ -441,7 +469,7 @@ export function EventsBoardScreen() {
         </View>
 
         {/* Category chips */}
-        <View style={styles.chipWrap}>
+        <View style={[styles.chipWrap, { marginTop: 12 }]}>
           {CATEGORY_CHIPS.map((chip) => (
             <Pressable
               key={chip}
@@ -455,6 +483,7 @@ export function EventsBoardScreen() {
             </Pressable>
           ))}
         </View>
+        </View>
 
         {mode === 'map' ? (
           <EventsMap points={mapQuery.data ?? []} count={filtered.length} />
@@ -464,48 +493,48 @@ export function EventsBoardScreen() {
           <>
             {/* Filters / Reset row */}
             <View style={styles.filtersRow}>
-              <View style={styles.filterGhost}>
-                <Text style={styles.filterGhostText}>Filters</Text>
+              <View style={[styles.filterGhost, lp.card]}>
+                <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Filters</Text>
               </View>
               <Pressable accessibilityRole="button" accessibilityLabel="Open map" onPress={() => setMode('map')}>
-                <View style={styles.filterGhost}>
-                  <Text style={styles.filterGhostText}>Map</Text>
+                <View style={[styles.filterGhost, lp.card]}>
+                  <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Map</Text>
                 </View>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={() => setCategory('All events')}>
-                <View style={styles.filterGhost}>
-                  <Text style={styles.filterGhostText}>Reset</Text>
+                <View style={[styles.filterGhost, lp.card]}>
+                  <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Reset</Text>
                 </View>
               </Pressable>
             </View>
 
-            <BrowseFastList events={filtered} />
+            <BrowseFastList events={filtered} lp={lp} />
             <EventSpotlight event={spotlight} />
-            <UpcomingPosterRail events={filtered} />
-            <FullEventCards events={filtered} />
+            <UpcomingPosterRail events={filtered} lp={lp} />
+            <FullEventCards events={filtered} lp={lp} />
           </>
         ) : (
-          <View style={styles.emptyPanel}>
-            <Text style={styles.emptyText}>No events match this filter set yet. New shows land here as promoters publish them.</Text>
+          <View style={[styles.emptyPanel, lp.card]}>
+            <Text style={[styles.emptyText, light && { color: pal.body }]}>No events match this filter set yet. New shows land here as promoters publish them.</Text>
           </View>
         )}
 
         {/* Open Opportunities */}
-        <View style={styles.opsPanel}>
+        <View style={[styles.opsPanel, lp.card]}>
           <View style={styles.opsHeadRow}>
             <MaterialIcons name="auto-awesome" size={17} color={ed.orange} />
-            <Text style={styles.opsTitle}>Open Opportunities</Text>
+            <Text style={[styles.opsTitle, { color: pal.title }]}>Open Opportunities</Text>
           </View>
-          <Text style={styles.opsBody}>No open opportunities match this filter set.</Text>
+          <Text style={[styles.opsBody, light && { color: pal.body }]}>No open opportunities match this filter set.</Text>
         </View>
 
         {/* For Promoters */}
-        <View style={styles.opsPanel}>
+        <View style={[styles.opsPanel, lp.card]}>
           <View style={styles.opsHeadRow}>
             <MaterialIcons name="campaign" size={18} color={ed.orange} />
-            <Text style={styles.opsTitle}>For Promoters</Text>
+            <Text style={[styles.opsTitle, { color: pal.title }]}>For Promoters</Text>
           </View>
-          <Text style={styles.opsBody}>
+          <Text style={[styles.opsBody, light && { color: pal.body }]}>
             Publish your event once, manage lineup changes, and open support-slot applications from the same workflow.
           </Text>
         </View>
@@ -516,6 +545,11 @@ export function EventsBoardScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0d0705' },
+  headerBoardLight: {
+    backgroundColor: '#0d0705',
+    borderRadius: 20,
+    padding: 16,
+  },
 
   eyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 12, letterSpacing: 1.6, color: ed.orange },
   pageTitle: { fontFamily: edFonts.bodyBlack, fontSize: 27, lineHeight: 32, color: '#ffffff' },

@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
@@ -45,6 +46,36 @@ export function SoundboardsIndexScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const theme = usePluggdTheme();
+  // The web /soundboards index adapts to light mode (unlike the dark-forced
+  // editorial pages), so this screen follows the app theme.
+  const light = theme.scheme === 'light';
+  const pal = light
+    ? {
+        screen: '#faf1e4',
+        panel: '#ffffff',
+        panelBorder: 'rgba(91, 56, 31, 0.16)',
+        title: ed.ink,
+        body: 'rgba(34, 23, 15, 0.62)',
+        stat: 'rgba(34, 23, 15, 0.7)',
+        input: ed.ink,
+        placeholder: 'rgba(34, 23, 15, 0.45)',
+        chipText: ed.ink,
+        avatarFallback: '#f0e4d2',
+      }
+    : {
+        screen: '#0d0705',
+        panel: undefined,
+        panelBorder: undefined,
+        title: '#ffffff',
+        body: 'rgba(255,248,237,0.55)',
+        stat: 'rgba(255,248,237,0.68)',
+        input: ed.cream,
+        placeholder: 'rgba(255,248,237,0.45)',
+        chipText: ed.cream,
+        avatarFallback: '#2b1c10',
+      };
+  const panelOverride = light ? { backgroundColor: pal.panel, borderColor: pal.panelBorder } : null;
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<(typeof SORT_CHIPS)[number]>('Updated');
 
@@ -121,10 +152,10 @@ export function SoundboardsIndexScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="light" translucent />
+    <View style={[styles.screen, { backgroundColor: pal.screen }]}>
+      <StatusBar style={light ? 'dark' : 'light'} translucent />
       <ScrollView
-        style={styles.screen}
+        style={[styles.screen, { backgroundColor: pal.screen }]}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
@@ -140,16 +171,16 @@ export function SoundboardsIndexScreen() {
           <View style={styles.newCorePill}>
             <Text style={styles.newCoreText}>NEW CORE</Text>
           </View>
-          <View style={styles.sketchPill}>
-            <Text style={styles.sketchText}>Creator Sketchbooks</Text>
+          <View style={[styles.sketchPill, panelOverride]}>
+            <Text style={[styles.sketchText, light && { color: pal.body }]}>Creator Sketchbooks</Text>
           </View>
         </View>
 
         {/* Header panel */}
-        <View style={styles.headPanel}>
+        <View style={[styles.headPanel, panelOverride]}>
           <Text style={styles.headEyebrow}>SOUNDBOARDS</Text>
-          <Text style={styles.headTitle}>Ideas grow in public.</Text>
-          <Text style={styles.headSub}>
+          <Text style={[styles.headTitle, { color: pal.title }]}>Ideas grow in public.</Text>
+          <Text style={[styles.headSub, { color: pal.body }]}>
             Demos, references, voice notes, and creator process updates in a denser phone layout.
           </Text>
         </View>
@@ -158,29 +189,29 @@ export function SoundboardsIndexScreen() {
         <View style={styles.actionRow}>
           {!user ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Sign in" onPress={() => router.push('/auth/login' as any)}>
-              <View style={styles.actionGhost}>
-                <Text style={styles.actionGhostText}>Sign in</Text>
+              <View style={[styles.actionGhost, panelOverride]}>
+                <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Sign in</Text>
               </View>
             </Pressable>
           ) : null}
           <Pressable accessibilityRole="button" accessibilityLabel="Browse Releases" onPress={() => router.push('/releases' as any)}>
             <View style={styles.actionGhost}>
-              <MaterialIcons name="music-note" size={15} color={ed.cream} />
-              <Text style={styles.actionGhostText}>Browse Releases</Text>
+              <MaterialIcons name="music-note" size={15} color={pal.chipText} />
+              <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Browse Releases</Text>
             </View>
           </Pressable>
         </View>
 
         {/* Search + sort */}
-        <View style={styles.searchPanel}>
-          <View style={styles.searchBar}>
-            <MaterialIcons name="search" size={18} color="rgba(255,248,237,0.45)" />
+        <View style={[styles.searchPanel, panelOverride]}>
+          <View style={[styles.searchBar, light && { backgroundColor: "#fdf8ef", borderColor: pal.panelBorder }]}>
+            <MaterialIcons name="search" size={18} color={pal.placeholder} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Search titles, creators, vibes"
-              placeholderTextColor="rgba(255,248,237,0.45)"
-              style={styles.searchInput}
+              placeholderTextColor={pal.placeholder}
+              style={[styles.searchInput, { color: pal.input }]}
             />
           </View>
           <View style={styles.sortRow}>
@@ -191,8 +222,8 @@ export function SoundboardsIndexScreen() {
                 accessibilityLabel={`Sort by ${chip}`}
                 onPress={() => setSort(chip)}
               >
-                <View style={[styles.sortChip, sort === chip && styles.sortChipActive]}>
-                  <Text style={[styles.sortChipText, sort === chip && styles.sortChipTextActive]}>{chip}</Text>
+                <View style={[styles.sortChip, light && { backgroundColor: "#fdf8ef", borderColor: pal.panelBorder }, sort === chip && styles.sortChipActive]}>
+                  <Text style={[styles.sortChipText, light && { color: pal.chipText }, sort === chip && styles.sortChipTextActive]}>{chip}</Text>
                 </View>
               </Pressable>
             ))}
@@ -214,7 +245,7 @@ export function SoundboardsIndexScreen() {
                   accessibilityLabel={`Open ${board.title || 'soundboard'}`}
                   onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)}
                 >
-                  <View style={styles.boardCard}>
+                  <View style={[styles.boardCard, panelOverride]}>
                     <View style={styles.boardCoverWrap}>
                       {board.cover_image_url ? (
                         <PluggdImage uri={board.cover_image_url} style={styles.boardCover} />
@@ -226,32 +257,32 @@ export function SoundboardsIndexScreen() {
                       </View>
                     </View>
                     <View style={styles.boardBody}>
-                      <Text style={styles.boardTitle} numberOfLines={1}>{board.title || 'Untitled board'}</Text>
+                      <Text style={[styles.boardTitle, { color: pal.title }]} numberOfLines={1}>{board.title || 'Untitled board'}</Text>
                       {board.description ? (
-                        <Text style={styles.boardDescription} numberOfLines={1}>{board.description}</Text>
+                        <Text style={[styles.boardDescription, { color: pal.body }]} numberOfLines={1}>{board.description}</Text>
                       ) : null}
                       <View style={styles.boardMetaRow}>
-                        <MaterialIcons name="event" size={13} color="rgba(255,248,237,0.55)" />
-                        <Text style={styles.boardMeta}>{boardDate(board)}</Text>
+                        <MaterialIcons name="event" size={13} color={pal.body} />
+                        <Text style={[styles.boardMeta, { color: pal.body }]}>{boardDate(board)}</Text>
                         <View style={{ flex: 1 }} />
-                        <MaterialIcons name="layers" size={13.5} color="rgba(255,248,237,0.6)" />
-                        <Text style={styles.boardStat}>{formatCompact(board.item_count)}</Text>
-                        <MaterialIcons name="favorite-border" size={13.5} color="rgba(255,248,237,0.6)" />
-                        <Text style={styles.boardStat}>{formatCompact(board.like_count)}</Text>
-                        <MaterialIcons name="chat-bubble-outline" size={12.5} color="rgba(255,248,237,0.6)" />
-                        <Text style={styles.boardStat}>{formatCompact(board.comment_count)}</Text>
+                        <MaterialIcons name="layers" size={13.5} color={pal.stat} />
+                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.item_count)}</Text>
+                        <MaterialIcons name="favorite-border" size={13.5} color={pal.stat} />
+                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text>
+                        <MaterialIcons name="chat-bubble-outline" size={12.5} color={pal.stat} />
+                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text>
                       </View>
                       <View style={styles.creatorRow}>
-                        <View style={styles.creatorAvatar}>
+                        <View style={[styles.creatorAvatar, { backgroundColor: pal.avatarFallback }]}>
                           {creator?.avatar_url ? (
                             <PluggdImage uri={creator.avatar_url} style={{ width: '100%', height: '100%' }} />
                           ) : (
-                            <Text style={styles.creatorInitials}>
+                            <Text style={[styles.creatorInitials, light && { color: ed.ink }]}>
                               {creatorName.slice(0, 2).toUpperCase()}
                             </Text>
                           )}
                         </View>
-                        <Text style={styles.creatorName} numberOfLines={1}>{creatorName}</Text>
+                        <Text style={[styles.creatorName, light && { color: pal.stat }]} numberOfLines={1}>{creatorName}</Text>
                       </View>
                     </View>
                   </View>
@@ -260,8 +291,8 @@ export function SoundboardsIndexScreen() {
             })}
           </View>
         ) : (
-          <View style={styles.emptyPanel}>
-            <Text style={styles.emptyText}>
+          <View style={[styles.emptyPanel, panelOverride]}>
+            <Text style={[styles.emptyText, { color: pal.body }]}>
               No public Soundboards match this search yet. Boards land here as creators publish their process in public.
             </Text>
           </View>
