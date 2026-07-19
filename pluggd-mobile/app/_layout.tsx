@@ -18,6 +18,7 @@ import { AuthProvider } from "../src/context/AuthProvider";
 import { PlaybackProvider } from "../src/context/PlaybackProvider";
 import { PluggdThemeProvider, usePluggdTheme } from "../src/design/usePluggdTheme";
 import { addLocalNotificationResponseListener, configureLocalNotificationHandler } from "../src/lib/localNotifications";
+import { lockAppPortrait } from "../src/lib/orientation";
 import { PlaybackService } from "../src/lib/playback-service";
 
 // Register the playback service once at module scope
@@ -75,6 +76,11 @@ function LayoutContent() {
   }, []);
 
   useEffect(() => addLocalNotificationResponseListener(), []);
+
+  // Portrait-first app; listening-room screens unlock rotation themselves.
+  useEffect(() => {
+    lockAppPortrait();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

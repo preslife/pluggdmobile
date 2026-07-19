@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
   RefreshControl,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,9 +26,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
-import { EdPressable, TornEdge } from './EditorialBits';
+import { Enter, EdPressable, TornEdge } from './EditorialBits';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList } from '../culture/mobileServices';
+import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, toTrack, type MixItem } from '../../lib/mobileContent';
 
@@ -498,6 +500,7 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
 
 function FreshUploads({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
+  const playback = usePlayback();
   if (!mixes.length) {
     return <Text style={styles.nightEmpty}>Fresh mixes land here as selectors publish them.</Text>;
   }
@@ -509,6 +512,14 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
           accessibilityRole="button"
           accessibilityLabel={`Open ${mix.title || 'mix'}`}
           onPress={() => router.push(`/mixes/${mix.id}` as any)}
+          onLongPress={() => {
+            const track = toTrack(mix, 'mix');
+            showQuickActions(mix.title || 'Mix', [
+              ...(track ? [{ label: 'Play mix', onPress: () => void playback.playTrack(track) }] : []),
+              { label: 'Open listening room', onPress: () => router.push(`/mixes/${mix.id}` as any) },
+              { label: 'Share', onPress: () => void Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'}` }) },
+            ]);
+          }}
           style={styles.freshCard}
         >
           <View style={styles.freshArtWrap}>
@@ -893,7 +904,9 @@ export function MixesWorldScreen() {
         ) : mixes.length ? (
           <>
             <View style={{ paddingHorizontal: 20 }}>
-              <MixesHero mixes={filtered.length ? filtered : mixes} />
+              <Enter delay={0}>
+                <MixesHero mixes={filtered.length ? filtered : mixes} />
+              </Enter>
             </View>
 
             <View style={{ marginTop: 28 }}>

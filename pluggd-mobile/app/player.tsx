@@ -9,6 +9,7 @@ import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, use
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RepeatMode } from 'react-native-track-player';
 import { usePlayback } from '../src/context/PlaybackProvider';
+import { useListeningRoomOrientation } from '../src/lib/orientation';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { formatDuration } from '../src/lib/mobileContent';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
@@ -26,7 +27,8 @@ export default function PlayerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
   const {
     currentTrack,
     queue,
@@ -43,6 +45,8 @@ export default function PlayerScreen() {
     repeatMode,
   } = usePlayback();
 
+  // The player is a listening room: rotating the phone enters the wide layout.
+  useListeningRoomOrientation();
   const title = String(currentTrack?.title || params.title || 'No track selected');
   const artist = String(currentTrack?.artist || params.artist || 'PLUGGD');
   const cover = String(currentTrack?.artwork || params.cover || '');
@@ -102,6 +106,74 @@ export default function PlayerScreen() {
 
     router.push('/library' as any);
   };
+
+  if (isLandscape) {
+    return (
+      <View style={styles.roomScreen}>
+        <StatusBar style="light" hidden />
+        <Stack.Screen options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <View style={styles.roomArtPane}>
+          {cover ? (
+            <Image source={{ uri: cover }} style={styles.roomArt} resizeMode="cover" />
+          ) : (
+            <MaterialIcons name="music-note" size={72} color="#3F2417" />
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close player"
+            onPress={() => router.back()}
+            style={styles.roomBack}
+          >
+            <MaterialIcons name="expand-more" size={28} color="#FFFFFF" />
+          </Pressable>
+        </View>
+        <View style={styles.roomPane}>
+          <Text style={styles.topTitle}>NOW PLAYING</Text>
+          <EditorialTitle
+            segments={currentTrack || params.title ? accentLastWord(title) : [{ text: title }]}
+            size={30}
+            lineHeight={34}
+            color="#FFFFFF"
+            accentColor={ORANGE}
+            numberOfLines={2}
+          />
+          <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
+          <Pressable style={styles.progressWrap} onPress={handleScrub}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+            </View>
+          </Pressable>
+          <View style={styles.timeRow}>
+            <Text style={styles.timeText}>{formatDuration(progress.position)}</Text>
+            <Text style={styles.timeText}>{formatDuration(progress.duration)}</Text>
+          </View>
+          <View style={styles.controls}>
+            <Pressable onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+              <MaterialIcons name="shuffle" size={22} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
+            </Pressable>
+            <Pressable onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+              <MaterialIcons name="skip-previous" size={34} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                impactHaptic();
+                togglePlayPause();
+              }}
+              style={({ pressed }) => [styles.roomPlayButton, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}
+            >
+              <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={40} color="#FFFFFF" />
+            </Pressable>
+            <Pressable onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+              <MaterialIcons name="skip-next" size={34} color="#FFFFFF" />
+            </Pressable>
+            <Pressable onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+              <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={22} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -231,6 +303,29 @@ function PlayerAction({ icon, label, onPress }: { icon: keyof typeof MaterialIco
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
+  roomScreen: { flex: 1, flexDirection: 'row', backgroundColor: '#070605' },
+  roomArtPane: { width: '44%', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
+  roomArt: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  roomBack: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(7,6,5,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomPane: { flex: 1, paddingHorizontal: 26, paddingVertical: 18, justifyContent: 'center', gap: 6 },
+  roomPlayButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   backdrop: { ...StyleSheet.absoluteFillObject, opacity: 0.28 },
   content: { paddingHorizontal: 16 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },

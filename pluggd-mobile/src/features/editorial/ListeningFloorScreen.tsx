@@ -12,7 +12,9 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   RefreshControl,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,10 +26,11 @@ import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
 import { usePlayback } from '../../context/PlaybackProvider';
-import { safeList } from '../culture/mobileServices';
+import { safeList, toggleSavedContent } from '../culture/mobileServices';
+import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, formatGBP, releasePlayableUrl, toTrack } from '../../lib/mobileContent';
-import { EdPressable } from './EditorialBits';
+import { Enter, EdPressable } from './EditorialBits';
 
 type FloorRelease = {
   id: string;
@@ -281,11 +284,29 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
 
 function WallTile({ release, tall }: { release: FloorRelease; tall?: boolean }) {
   const router = useRouter();
+  const playback = usePlayback();
+  const quickActions = () => {
+    const track = releasePlayableUrl(release as any) ? toTrack(release as any, 'release') : null;
+    showQuickActions(release.title || 'Release', [
+      ...(track ? [{ label: 'Play', onPress: () => void playback.playTrack(track) }] : []),
+      {
+        label: 'Save to library',
+        onPress: () => {
+          void toggleSavedContent('release', release.id).then((result) => {
+            if (!result.success) Alert.alert('Save unavailable', result.error || 'Please try again.');
+          });
+        },
+      },
+      { label: 'Share', onPress: () => void Share.share({ message: `PLUGGD release: ${release.title || 'Untitled'} by ${release.artist || 'Creator'}` }) },
+      { label: 'Open release', onPress: () => router.push(`/release/${release.id}` as any) },
+    ]);
+  };
   return (
     <EdPressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${release.title || 'release'}`}
       onPress={() => router.push(`/release/${release.id}` as any)}
+      onLongPress={quickActions}
       style={{ flex: 1 }}
     >
       <View style={styles.wallTile}>
@@ -681,7 +702,9 @@ export function ListeningFloorScreen() {
         {releasesQuery.isLoading ? (
           <PremiumSkeleton compact label="Loading the listening floor..." />
         ) : (
-          <ListeningDeck releases={featuredOrder} />
+          <Enter delay={0}>
+            <ListeningDeck releases={featuredOrder} />
+          </Enter>
         )}
 
         {/* Search + filters */}

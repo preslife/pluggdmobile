@@ -15,8 +15,36 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ed, edFonts } from '../../design/editorial';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
+
+/**
+ * One-shot entrance for masthead elements — a quiet drift up + fade,
+ * staggered by `delay`. Keeps the arrival of every public page feeling
+ * composed instead of popping in.
+ */
+export function Enter({
+  delay = 0,
+  from = 'down',
+  style,
+  children,
+}: {
+  delay?: number;
+  from?: 'down' | 'still';
+  style?: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}) {
+  const entering =
+    from === 'down'
+      ? FadeInDown.duration(430).delay(delay).springify().damping(19).stiffness(160)
+      : FadeIn.duration(380).delay(delay);
+  return (
+    <Animated.View entering={entering} style={style}>
+      {children}
+    </Animated.View>
+  );
+}
 
 /** The app-wide pressed treatment (matches the GlassDock tab feel). */
 export const ED_PRESSED = { opacity: 0.86, transform: [{ scale: 0.985 }] } as const;

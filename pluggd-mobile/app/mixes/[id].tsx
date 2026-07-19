@@ -3,10 +3,12 @@ import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { ListCard } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
+import { useListeningRoomOrientation } from '../../src/lib/orientation';
+import { ed, edFonts } from '../../src/design/editorial';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 import { MixItem, MixTrackItem, PLUGGD_ORANGE, formatCompact, formatDuration, toTrack } from '../../src/lib/mobileContent';
@@ -14,7 +16,11 @@ import { MixItem, MixTrackItem, PLUGGD_ORANGE, formatCompact, formatDuration, to
 export default function MixDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { playTrack, seekTo } = usePlayback();
+  const { playTrack, seekTo, currentTrack, isPlaying, togglePlayPause, progress } = usePlayback();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  // Turning the phone sideways enters the wide listening-room layout.
+  useListeningRoomOrientation();
   const [mix, setMix] = useState<MixItem | null>(null);
   const [tracklist, setTracklist] = useState<MixTrackItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +75,119 @@ export default function MixDetailScreen() {
     if (!mix) return;
     await Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'}` });
   };
+
+  const isThisMixPlaying = Boolean(mix && currentTrack?.mixId === mix.id);
+  const playedRatio =
+    isThisMixPlaying && progress.duration > 0 ? Math.min(1, progress.position / progress.duration) : 0;
+
+  if (isLandscape && mix) {
+    return (
+      <View style={styles.roomScreen}>
+        <StatusBar style="light" hidden />
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.roomArtPane}>
+          {mix.cover_url ? (
+            <Image source={{ uri: mix.cover_url }} style={styles.roomArt} resizeMode="cover" />
+          ) : (
+            <MaterialIcons name="headphones" size={64} color={PLUGGD_ORANGE} />
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={() => router.back()}
+            style={styles.roomBack}
+          >
+            <MaterialIcons name="chevron-left" size={26} color="#FFFFFF" />
+          </Pressable>
+        </View>
+        <View style={styles.roomPane}>
+          <Text style={styles.roomEyebrow}>LISTENING ROOM</Text>
+          <Text style={styles.roomTitle} numberOfLines={2}>{mix.title || 'Untitled mix'}</Text>
+          <Text style={styles.roomMeta}>
+            {[mix.city, formatDuration(mix.duration_seconds), `${formatCompact(mix.play_count)} plays`]
+              .filter(Boolean)
+              .join('  ·  ')
+              .toUpperCase()}
+          </Text>
+          <View style={styles.roomWaveRow}>
+            {Array.from({ length: 52 }).map((_, index) => {
+              const wave = Math.abs(Math.sin((index + 4) * 1.35)) * 0.82 + 0.18;
+              const played = index / 52 <= playedRatio;
+              return (
+                <View
+                  key={index}
+                  style={{
+                    width: 3,
+                    borderRadius: 1.5,
+                    height: Math.max(5, wave * 44),
+                    backgroundColor: played ? PLUGGD_ORANGE : 'rgba(255,248,237,0.24)',
+                  }}
+                />
+              );
+            })}
+          </View>
+          <View style={styles.roomTimeRow}>
+            <Text style={styles.roomTime}>{isThisMixPlaying ? formatDuration(progress.position) : '0:00'}</Text>
+            <Text style={styles.roomTime}>{formatDuration(mix.duration_seconds)}</Text>
+          </View>
+          <View style={styles.roomControls}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isThisMixPlaying && isPlaying ? 'Pause mix' : 'Play mix'}
+              onPress={() => {
+                if (isThisMixPlaying) togglePlayPause();
+                else playMix();
+              }}
+              style={({ pressed }) => [styles.roomPlay, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
+            >
+              <MaterialIcons name={isThisMixPlaying && isPlaying ? 'pause' : 'play-arrow'} size={38} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save mix"
+              onPress={saveMix}
+              style={({ pressed }) => [styles.roomGhost, pressed && { opacity: 0.86 }]}
+            >
+              <MaterialIcons name="library-music" size={22} color={ed.cream} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share mix"
+              onPress={shareMix}
+              style={({ pressed }) => [styles.roomGhost, pressed && { opacity: 0.86 }]}
+            >
+              <MaterialIcons name="ios-share" size={21} color={ed.cream} />
+            </Pressable>
+          </View>
+          {tracklist.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.roomTracklist}
+            >
+              {tracklist.map((item) => (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Jump to ${item.raw_title || `track ${item.position}`}`}
+                  onPress={() => {
+                    playMix();
+                    if (item.start_seconds) setTimeout(() => seekTo(item.start_seconds || 0), 500);
+                  }}
+                  style={({ pressed }) => [styles.roomTrackChip, pressed && { opacity: 0.86 }]}
+                >
+                  <Text style={styles.roomTrackNumber}>{String(item.position).padStart(2, '0')}</Text>
+                  <Text style={styles.roomTrackTitle} numberOfLines={1}>
+                    {item.raw_title || `Track ${item.position}`}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -151,6 +270,60 @@ export default function MixDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
+  roomScreen: { flex: 1, flexDirection: 'row', backgroundColor: '#070605' },
+  roomArtPane: { width: '42%', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
+  roomArt: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  roomBack: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(7,6,5,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomPane: { flex: 1, paddingHorizontal: 28, paddingVertical: 20, justifyContent: 'center', gap: 8 },
+  roomEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2.2, color: PLUGGD_ORANGE },
+  roomTitle: { fontFamily: edFonts.serif, fontSize: 32, lineHeight: 35, color: ed.cream, letterSpacing: -0.5 },
+  roomMeta: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.6, color: 'rgba(255,248,237,0.55)' },
+  roomWaveRow: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 48, marginTop: 12, overflow: 'hidden' },
+  roomTimeRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  roomTime: { fontFamily: edFonts.mono, fontSize: 10, color: 'rgba(255,248,237,0.5)', fontVariant: ['tabular-nums'] },
+  roomControls: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10 },
+  roomPlay: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: PLUGGD_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomGhost: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomTracklist: { gap: 8, paddingTop: 14, paddingRight: 20 },
+  roomTrackChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 40,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 13,
+    maxWidth: 230,
+  },
+  roomTrackNumber: { fontFamily: edFonts.mono, fontSize: 9.5, color: PLUGGD_ORANGE },
+  roomTrackTitle: { fontFamily: 'Satoshi-Bold', fontSize: 12.5, color: ed.cream, flexShrink: 1 },
   content: { padding: 14, paddingTop: 54, paddingBottom: 220 },
   backButton: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },

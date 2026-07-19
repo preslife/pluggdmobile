@@ -4,7 +4,7 @@
     "slug": "pluggd",
     "scheme": "pluggd",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -61,7 +61,13 @@
         }
       ],
       "expo-router",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ]
     ]
   }
 }

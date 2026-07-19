@@ -26,7 +26,7 @@ import { ed, edFonts } from '../../design/editorial';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type SamplePackItem } from '../../lib/mobileContent';
-import { EdPressable } from './EditorialBits';
+import { Enter, EdPressable } from './EditorialBits';
 
 type StoreProductRow = {
   id: string;
@@ -197,6 +197,7 @@ export function MarketStoreScreen() {
         }}
       >
         {/* Hero */}
+        <Enter delay={0}>
         <View style={{ gap: 12 }}>
           <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
           <Text style={styles.heroTitle}>PLUGGD{'\n'}Store</Text>
@@ -228,6 +229,7 @@ export function MarketStoreScreen() {
             ))}
           </View>
         </View>
+        </Enter>
 
         {/* Featured collection */}
         <View style={{ gap: 12 }}>
@@ -305,7 +307,7 @@ export function MarketStoreScreen() {
             copy="Creator-led shops with approved merch, bundles and direct-to-fan goods."
           />
           {creatorShops.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={232} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
               {creatorShops.slice(0, 6).map((product) => (
                 <ProductCard key={`${product.source}-${product.id}`} product={product} wide />
               ))}
@@ -322,7 +324,7 @@ export function MarketStoreScreen() {
         <View style={{ gap: 12 }}>
           <StoreSectionHead eyebrow="Sample packs & digital goods" title="Digital shelf" />
           {(packsQuery.data ?? []).length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={202} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
               {(packsQuery.data ?? []).map((pack) => (
                 <EdPressable
                   key={pack.id}

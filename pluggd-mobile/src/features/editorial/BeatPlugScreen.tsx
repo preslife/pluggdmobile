@@ -12,7 +12,9 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   RefreshControl,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,9 +25,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
-import { EdPressable, WaveTicks } from './EditorialBits';
+import { Enter, EdPressable, WaveTicks } from './EditorialBits';
 import { usePlayback } from '../../context/PlaybackProvider';
-import { safeList } from '../culture/mobileServices';
+import { safeList, toggleSavedContent } from '../culture/mobileServices';
+import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatGBP, toTrack, type BeatItem, type SoundboardItem } from '../../lib/mobileContent';
 
@@ -178,6 +181,7 @@ export function BeatPlugScreen() {
         }}
       >
         {/* Discovery tabs + hero */}
+        <Enter delay={0}>
         <View style={{ gap: 14 }}>
           <View style={styles.tabsRow}>
             {DISCOVERY_TABS.map((label, index) => (
@@ -265,6 +269,7 @@ export function BeatPlugScreen() {
             </View>
           ) : null}
         </View>
+        </Enter>
 
         {/* Search + sort */}
         <View style={{ gap: 10 }}>
@@ -366,6 +371,21 @@ export function BeatPlugScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${beat.title || 'beat'}`}
                   onPress={() => router.push(`/beat/${beat.id}` as any)}
+                  onLongPress={() =>
+                    showQuickActions(beat.title || 'Beat', [
+                      { label: 'Play audition', onPress: () => playBeat(beat) },
+                      {
+                        label: 'Save beat',
+                        onPress: () => {
+                          void toggleSavedContent('beat', beat.id).then((result) => {
+                            if (!result.success) Alert.alert('Save unavailable', result.error || 'Please try again.');
+                          });
+                        },
+                      },
+                      { label: 'Share', onPress: () => void Share.share({ message: `PLUGGD beat: ${beat.title || 'Untitled'} by ${beat.producer_name || 'Producer'}` }) },
+                      { label: 'View licenses', onPress: () => router.push(`/beat/${beat.id}` as any) },
+                    ])
+                  }
                   style={styles.beatCard}
                 >
                   <View style={styles.beatArtWrap}>
@@ -446,7 +466,7 @@ export function BeatPlugScreen() {
         {(boardsQuery.data ?? []).length ? (
           <View style={{ gap: 12 }}>
             <Text style={styles.sectionTitle}>From Soundboards</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={202} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
               {(boardsQuery.data ?? []).map((board) => (
                 <EdPressable
                   key={board.id}

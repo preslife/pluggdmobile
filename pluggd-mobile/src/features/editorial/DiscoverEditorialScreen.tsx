@@ -25,6 +25,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { ed, edFonts } from '../../design/editorial';
 import {
+  Enter,
   EdPressable,
   AudioPill,
   GhostButton,
@@ -910,9 +911,11 @@ export function DiscoverEditorialScreen() {
       >
         {/* Hero */}
         <View style={[styles.heroBlock, { paddingTop: Math.max(insets.top + 76, 96) }]}>
-          <Text style={styles.heroTitle}>
-            Find what's <Text style={styles.heroTitleAccent}>moving.</Text>
-          </Text>
+          <Enter delay={0}>
+            <Text style={styles.heroTitle}>
+              Find what's <Text style={styles.heroTitleAccent}>moving.</Text>
+            </Text>
+          </Enter>
           <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Search PLUGGD"

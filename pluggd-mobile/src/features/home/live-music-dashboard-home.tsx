@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Animated as RNAnimated,
   Image,
   InteractionManager,
   RefreshControl,
@@ -19,6 +20,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { ed, edFonts } from '../../design/editorial';
 import {
+  Enter,
   EdPressable,
   AudioPill,
   CreamButton,
@@ -374,31 +376,62 @@ function InlineLoading() {
 /* Hero — edition masthead                                             */
 /* ------------------------------------------------------------------ */
 
-function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute }: {
+function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute, scrollY }: {
   spotlight: Spotlight;
   boardTitle?: string | null;
   boardCount?: number | null;
   boardImage?: string | null;
   boardRoute?: string | null;
+  scrollY: RNAnimated.Value;
 }) {
   const router = useRouter();
   const heroImage = spotlight.imageUrl || HOME_HERO_FALLBACK;
   const polaroidImage = boardImage || spotlight.imageUrl || HOME_HERO_FALLBACK;
+  // The photo drifts slower than the page and stretches on over-scroll —
+  // the classic native masthead parallax.
+  const parallax = {
+    transform: [
+      {
+        translateY: scrollY.interpolate({
+          inputRange: [-220, 0, 600],
+          outputRange: [-80, 0, 205],
+          extrapolate: 'clamp',
+        }),
+      },
+      {
+        scale: scrollY.interpolate({
+          inputRange: [-220, 0],
+          outputRange: [1.18, 1],
+          extrapolateRight: 'clamp',
+        }),
+      },
+    ],
+  };
   return (
     <View style={styles.hero}>
-      {heroImage ? <PluggdImage uri={heroImage} style={styles.heroImage} /> : null}
+      {heroImage ? (
+        <RNAnimated.View style={[StyleSheet.absoluteFillObject, parallax]}>
+          <PluggdImage uri={heroImage} style={styles.heroImage} />
+        </RNAnimated.View>
+      ) : null}
       <LinearGradient
         colors={['rgba(7,6,5,0.62)', 'rgba(7,6,5,0.86)', ed.night]}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={styles.heroContent}>
-        <Text style={styles.heroTitle}>
-          Where music culture{'\n'}comes <Text style={styles.heroTitleAccent}>alive</Text>
-        </Text>
-        <Text style={styles.heroSub}>Authentic. Unfiltered. The heartbeat of the scene.</Text>
-        <Text style={styles.heroQuote}>
-          "Live music communities, creator drops, soundboards, and underground scenes - all in one place."
-        </Text>
+        <Enter delay={0}>
+          <Text style={styles.heroTitle}>
+            Where music culture{'\n'}comes <Text style={styles.heroTitleAccent}>alive</Text>
+          </Text>
+        </Enter>
+        <Enter delay={70}>
+          <Text style={styles.heroSub}>Authentic. Unfiltered. The heartbeat of the scene.</Text>
+        </Enter>
+        <Enter delay={140}>
+          <Text style={styles.heroQuote}>
+            "Live music communities, creator drops, soundboards, and underground scenes - all in one place."
+          </Text>
+        </Enter>
         {boardTitle || spotlight.kind !== 'empty' ? (
           <EdPressable
             accessibilityRole="button"
@@ -501,7 +534,13 @@ function NextWave({ bundle, loading }: { bundle?: FeedBundle; loading: boolean }
       {loading ? (
         <InlineLoading />
       ) : cards.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.waveRail}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={294}
+          decelerationRate="fast"
+          contentContainerStyle={styles.waveRail}
+        >
           {cards.map((card) => (
             <EdPressable
               key={card.id}
@@ -1041,6 +1080,7 @@ export function LiveMusicDashboardHome() {
   // First paint renders the masthead instantly; the below-fold sections
   // mount right after interactions settle so opening the app feels
   // immediate even with thirteen sections of imagery.
+  const scrollY = useMemo(() => new RNAnimated.Value(0), []);
   const [belowFoldReady, setBelowFoldReady] = useState(false);
   useEffect(() => {
     let mounted = true;
@@ -1169,12 +1209,14 @@ export function LiveMusicDashboardHome() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
-      <ScrollView
+      <RNAnimated.ScrollView
         style={styles.scroll}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{ paddingBottom: insets.bottom + 210 }}
+        onScroll={RNAnimated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        scrollEventThrottle={16}
       >
         <HomeHero
           spotlight={spotlight}
@@ -1186,11 +1228,12 @@ export function LiveMusicDashboardHome() {
             spotlight.imageUrl
           }
           boardRoute={firstBoard ? `/soundboards/${firstBoard.slug || firstBoard.id}` : spotlight.route}
+          scrollY={scrollY}
         />
         <LiveTicker items={tickerItems} variant="paper" />
         <LiveNowOnPluggd rooms={liveRooms} loading={live.isLoading} />
         {belowFoldReady ? (
-        <>
+        <Enter from="still">
         <TornEdge color={ed.paper2} />
         <NextWave bundle={home.data} loading={home.isLoading} />
         <FeaturedStory posts={stories.data ?? []} fallbackImage={home.data?.events?.[0]?.cover_image_url} />
@@ -1219,9 +1262,9 @@ export function LiveMusicDashboardHome() {
           dropCount={dropCount}
         />
         <EmbodyCulture />
-        </>
+        </Enter>
         ) : null}
-      </ScrollView>
+      </RNAnimated.ScrollView>
     </View>
   );
 }

@@ -29,7 +29,7 @@ import { geocodeMany, type MapPoint } from '../../lib/mapbox';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type EventItem } from '../../lib/mobileContent';
-import { EdPressable } from './EditorialBits';
+import { Enter, EdPressable } from './EditorialBits';
 
 const CATEGORY_CHIPS = ['All events', 'Live Music', 'Culture', 'Meet-ups', 'Festivals', 'Clubbing', 'Comedy'] as const;
 
@@ -244,7 +244,7 @@ function UpcomingPosterRail({ events, lp }: { events: EventItem[]; lp: LightPal 
         </View>
         <Text style={[styles.showingText, lp.light && { color: lp.meta }]}>{Math.min(events.length, 12)} SHOWN</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={312} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
         {events.slice(0, 8).map((event) => (
           <EdPressable
             key={event.id}
@@ -443,6 +443,7 @@ export function EventsBoardScreen() {
         }}
       >
         {/* Header — stays a dark board card in light mode, like the web */}
+        <Enter delay={0}>
         <View style={light ? styles.headerBoardLight : null}>
         <View style={{ gap: 8 }}>
           <Text style={styles.eyebrow}>EVENTS</Text>
@@ -484,6 +485,7 @@ export function EventsBoardScreen() {
           ))}
         </View>
         </View>
+        </Enter>
 
         {mode === 'map' ? (
           <EventsMap points={mapQuery.data ?? []} count={filtered.length} />

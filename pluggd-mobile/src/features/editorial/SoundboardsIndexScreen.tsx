@@ -28,7 +28,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
-import { EdPressable } from './EditorialBits';
+import { Enter, EdPressable } from './EditorialBits';
 
 const SORT_CHIPS = ['Updated', 'Trending', 'Featured'] as const;
 
@@ -167,6 +167,7 @@ export function SoundboardsIndexScreen() {
         }}
       >
         {/* NEW CORE chips */}
+        <Enter delay={0}>
         <View style={styles.coreRow}>
           <View style={styles.newCorePill}>
             <Text style={styles.newCoreText}>NEW CORE</Text>
@@ -176,7 +177,10 @@ export function SoundboardsIndexScreen() {
           </View>
         </View>
 
+        </Enter>
+
         {/* Header panel */}
+        <Enter delay={80}>
         <View style={[styles.headPanel, panelOverride]}>
           <Text style={styles.headEyebrow}>SOUNDBOARDS</Text>
           <Text style={[styles.headTitle, { color: pal.title }]}>Ideas grow in public.</Text>
@@ -184,6 +188,7 @@ export function SoundboardsIndexScreen() {
             Demos, references, voice notes, and creator process updates in a denser phone layout.
           </Text>
         </View>
+        </Enter>
 
         {/* Actions */}
         <View style={styles.actionRow}>
