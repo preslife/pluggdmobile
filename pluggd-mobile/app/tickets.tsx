@@ -55,7 +55,7 @@ export default function TicketsScreen() {
         </View>
 
         <LinearGradient
-          colors={['rgba(255,90,0,0.24)', 'rgba(255,255,255,0.08)', 'rgba(8,8,12,0.96)']}
+          colors={['rgba(255,102,0,0.24)', 'rgba(255,255,255,0.08)', 'rgba(10,8,6,0.96)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { borderColor: theme.colors.borderAccent }]}
@@ -107,7 +107,7 @@ export default function TicketsScreen() {
                     router.push(`/events/${ticket.event_id}` as any);
                   }}
                 >
-                  <LinearGradient colors={['rgba(255,90,0,0.18)', 'rgba(255,255,255,0.06)', 'rgba(8,8,12,0.96)']} style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={['rgba(255,102,0,0.18)', 'rgba(255,255,255,0.06)', 'rgba(10,8,6,0.96)']} style={StyleSheet.absoluteFill} />
                   <View style={[styles.ticketImage, { backgroundColor: theme.colors.surfaceAlt }]}>
                     {ticket.event_image_url ? <PluggdImage uri={ticket.event_image_url} style={styles.fill} /> : <MaterialIcons name="confirmation-number" size={32} color={PLUGGD_ORANGE} />}
                   </View>
@@ -123,7 +123,7 @@ export default function TicketsScreen() {
                       {dynamic ? (
                         <>
                           <View style={styles.qrCodeBox}>
-                            <QRCode value={dynamic.payload} size={164} color="#08080C" backgroundColor="#FFFFFF" />
+                            <QRCode value={dynamic.payload} size={164} color="#0a0806" backgroundColor="#FFFFFF" />
                           </View>
                           <Text style={[styles.qrValue, { color: theme.colors.text }]} numberOfLines={1}>{dynamic.payload}</Text>
                           <Text style={[styles.qrExpiry, { color: theme.colors.textSecondary }]}>Expires {formatDate(dynamic.expiresAt)}</Text>
@@ -131,7 +131,7 @@ export default function TicketsScreen() {
                       ) : ticket.qr_code_data ? (
                         <>
                           <View style={styles.qrCodeBox}>
-                            <QRCode value={ticket.qr_code_data} size={164} color="#08080C" backgroundColor="#FFFFFF" />
+                            <QRCode value={ticket.qr_code_data} size={164} color="#0a0806" backgroundColor="#FFFFFF" />
                           </View>
                           <Text style={[styles.qrValue, { color: theme.colors.text }]} numberOfLines={1}>{ticket.qr_code_data}</Text>
                         </>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, lineHeight: 24, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   emptyBody: { fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   primaryButton: { minHeight: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, alignSelf: 'flex-start' },
-  primaryButtonText: { color: '#08080C', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  primaryButtonText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   ticketCard: {
     borderRadius: 22,
     borderWidth: 1,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   qrValue: { fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 4 },
   qrExpiry: { fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 4 },
   rotateButton: { marginTop: 10, borderRadius: 999, backgroundColor: PLUGGD_ORANGE, paddingVertical: 9, alignItems: 'center' },
-  rotateButtonText: { color: '#08080C', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 0.4 },
+  rotateButtonText: { color: '#0a0806', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 0.4 },
   infoCard: { borderWidth: 1, borderRadius: 20, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
   infoCopy: { flex: 1, gap: 4 },
   infoTitle: { fontSize: 15, lineHeight: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },

@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -28,6 +27,7 @@ import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, formatGBP, releasePlayableUrl, toTrack } from '../../lib/mobileContent';
+import { EdPressable } from './EditorialBits';
 
 type FloorRelease = {
   id: string;
@@ -110,9 +110,9 @@ function FloorKicker({ kicker, title, titleEm, action, onAction }: {
         <Text style={styles.kickerTitleEm}>{titleEm}</Text>
       </Text>
       {action ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} style={{ minHeight: 30, justifyContent: 'center' }}>
+        <EdPressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} style={{ minHeight: 30, justifyContent: 'center' }}>
           <Text style={styles.kickerAction}>{action.toUpperCase()} →</Text>
-        </Pressable>
+        </EdPressable>
       ) : null}
     </View>
   );
@@ -146,7 +146,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
         </View>
         <Text style={styles.deckHeadRight}>FEATURED DROP</Text>
       </View>
-      <Pressable
+      <EdPressable
         accessibilityRole="button"
         accessibilityLabel={`Open ${release.title || 'featured release'}`}
         onPress={() => router.push(`/release/${release.id}` as any)}
@@ -161,10 +161,10 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
             <Text style={styles.deckFeaturedText}>FEATURED DROP</Text>
           </View>
         </View>
-      </Pressable>
+      </EdPressable>
       <View style={styles.deckDotsRow}>
         {deck.map((item, index) => (
-          <Pressable
+          <EdPressable
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={`Featured drop ${index + 1}`}
@@ -172,7 +172,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
             hitSlop={8}
           >
             <View style={[styles.deckPage, index === deckIndex && styles.deckPageActive]} />
-          </Pressable>
+          </EdPressable>
         ))}
       </View>
       <Text style={styles.deckTitle}>{release.title || 'Untitled release'}</Text>
@@ -202,7 +202,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
       </View>
       <View style={styles.deckTransportRow}>
         <View style={styles.deckTransportLeft}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Previous featured drop"
             onPress={() => setDeckIndex((index) => (index - 1 + deck.length) % deck.length)}
@@ -210,8 +210,8 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
             <View style={styles.deckSkip}>
               <MaterialIcons name="skip-previous" size={22} color={ed.cream} />
             </View>
-          </Pressable>
-          <Pressable
+          </EdPressable>
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel={playing ? 'Pause featured drop' : 'Play featured drop'}
             onPress={() => {
@@ -225,8 +225,8 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
             <View style={styles.deckPlay}>
               <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={26} color={ed.ink} />
             </View>
-          </Pressable>
-          <Pressable
+          </EdPressable>
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Next featured drop"
             onPress={() => setDeckIndex((index) => (index + 1) % deck.length)}
@@ -234,12 +234,12 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
             <View style={styles.deckSkip}>
               <MaterialIcons name="skip-next" size={22} color={ed.cream} />
             </View>
-          </Pressable>
+          </EdPressable>
         </View>
         <Text style={styles.deckPlays}>{formatCompact(release.total_plays)} PLAYS</Text>
       </View>
       <View style={styles.deckSupportRow}>
-        <Pressable
+        <EdPressable
           accessibilityRole="button"
           accessibilityLabel={`Support ${release.title || 'this release'}`}
           onPress={() => router.push(`/release/${release.id}` as any)}
@@ -250,8 +250,8 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
               {priceFor(release) > 0 ? `Support — ${priceLabel(release)}` : 'Listen free'}
             </Text>
           </View>
-        </Pressable>
-        <Pressable
+        </EdPressable>
+        <EdPressable
           accessibilityRole="button"
           accessibilityLabel="Save this release"
           onPress={() => router.push(`/release/${release.id}` as any)}
@@ -259,7 +259,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
           <View style={styles.deckHeart}>
             <MaterialIcons name="favorite-border" size={20} color={ed.cream} />
           </View>
-        </Pressable>
+        </EdPressable>
       </View>
       <View style={styles.deckLedger}>
         <View style={styles.deckLedgerRow}>
@@ -282,7 +282,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
 function WallTile({ release, tall }: { release: FloorRelease; tall?: boolean }) {
   const router = useRouter();
   return (
-    <Pressable
+    <EdPressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${release.title || 'release'}`}
       onPress={() => router.push(`/release/${release.id}` as any)}
@@ -309,7 +309,7 @@ function WallTile({ release, tall }: { release: FloorRelease; tall?: boolean }) 
         </View>
         <Text style={styles.wallArtist} numberOfLines={2}>{(release.artist || 'PLUGGD CREATOR').toUpperCase()}</Text>
       </View>
-    </Pressable>
+    </EdPressable>
   );
 }
 
@@ -356,7 +356,7 @@ function LedgerRows({ releases }: { releases: FloorRelease[] }) {
   return (
     <View style={styles.ledgerList}>
       {releases.map((release) => (
-        <Pressable
+        <EdPressable
           key={release.id}
           accessibilityRole="button"
           accessibilityLabel={`Open ${release.title || 'release'}`}
@@ -378,7 +378,7 @@ function LedgerRows({ releases }: { releases: FloorRelease[] }) {
             </View>
             <Text style={styles.ledgerPrice}>{priceLabel(release)}</Text>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -403,7 +403,7 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
         <Text style={[styles.chartHeadText, { width: 44, textAlign: 'right' }]}>Δ WK</Text>
       </View>
       {rows.map((release, index) => (
-        <Pressable
+        <EdPressable
           key={release.id}
           accessibilityRole="button"
           accessibilityLabel={`Open ${release.title || 'release'}`}
@@ -425,7 +425,7 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
             <Text style={styles.chartPlays}>{formatCompact(release.total_plays)}</Text>
             <Text style={styles.chartDelta}>–</Text>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -467,7 +467,7 @@ function PressingOrders({ releases, signals }: { releases: FloorRelease[]; signa
             </Text>
             <View style={styles.pressingFootRow}>
               <Text style={styles.pressingPrice}>{priceLabel(release)}</Text>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Back ${release.title || 'this pressing'}`}
                 onPress={() => router.push(`/release/${release.id}` as any)}
@@ -475,7 +475,7 @@ function PressingOrders({ releases, signals }: { releases: FloorRelease[]; signa
                 <View style={styles.pressingBackPill}>
                   <Text style={styles.pressingBackText}>Back this pressing</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </View>
         );
@@ -497,11 +497,11 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
         <Text style={styles.passesEmptyBody}>
           Passes land here when creators announce listening parties, shows and backstage moments.
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Browse events" onPress={() => router.push('/events' as any)}>
+        <EdPressable accessibilityRole="button" accessibilityLabel="Browse events" onPress={() => router.push('/events' as any)}>
           <View style={styles.passesEmptyCta}>
             <Text style={styles.passesEmptyCtaText}>Browse events</Text>
           </View>
-        </Pressable>
+        </EdPressable>
       </View>
     );
   }
@@ -514,7 +514,7 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
           : 'TBA';
         const [venueLine] = (event.location || 'Venue TBA').split(',');
         return (
-          <Pressable
+          <EdPressable
             key={event.id}
             accessibilityRole="button"
             accessibilityLabel={`Get a pass for ${event.title || 'this event'}`}
@@ -545,7 +545,7 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
                 ))}
               </View>
             </View>
-          </Pressable>
+          </EdPressable>
         );
       })}
     </View>
@@ -698,7 +698,7 @@ export function ListeningFloorScreen() {
           </View>
           <View style={styles.chipRow}>
             {TYPE_CHIPS.map((chip) => (
-              <Pressable
+              <EdPressable
                 key={chip}
                 accessibilityRole="button"
                 accessibilityLabel={`Filter ${chip}`}
@@ -707,12 +707,12 @@ export function ListeningFloorScreen() {
                 <View style={[styles.typeChip, typeFilter === chip && styles.typeChipActive]}>
                   <Text style={[styles.typeChipText, typeFilter === chip && styles.typeChipTextActive]}>{chip}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
           <View style={styles.viewToggleRow}>
             {(['wall', 'ledger'] as const).map((mode) => (
-              <Pressable
+              <EdPressable
                 key={mode}
                 accessibilityRole="button"
                 accessibilityLabel={`${mode} view`}
@@ -723,7 +723,7 @@ export function ListeningFloorScreen() {
                     {mode.toUpperCase()}
                   </Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
         </View>
@@ -774,7 +774,7 @@ export function ListeningFloorScreen() {
             <LedgerRows releases={filtered.slice(0, rackLimit)} />
           )}
           {filtered.length > rackLimit ? (
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel="Load the next crate"
               onPress={() => setRackLimit((limit) => limit + 12)}
@@ -782,7 +782,7 @@ export function ListeningFloorScreen() {
               <View style={styles.loadMore}>
                 <Text style={styles.loadMoreText}>Load the next crate</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : null}
         </View>
 
@@ -792,7 +792,7 @@ export function ListeningFloorScreen() {
           <Text style={styles.creatorBody}>
             Releases, beats, mixes, packs — sell direct to the culture. Keep your masters, split your royalties.
           </Text>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Become a creator"
             onPress={() => router.push('/creator/onboarding' as any)}
@@ -800,7 +800,7 @@ export function ListeningFloorScreen() {
             <View style={styles.creatorCta}>
               <Text style={styles.creatorCtaText}>Become a Creator</Text>
             </View>
-          </Pressable>
+          </EdPressable>
         </View>
       </ScrollView>
     </View>

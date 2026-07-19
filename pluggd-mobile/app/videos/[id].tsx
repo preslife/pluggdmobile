@@ -9,7 +9,7 @@ import { PluggdImage } from '../../src/components/PluggdImage';
 import { impactHaptic } from '../../src/design/haptics';
 import { supabase } from '../../src/lib/supabase';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 type VideoDetail = {
   id: string;
@@ -87,11 +87,11 @@ export default function VideoDetailRoute() {
         {video ? (
           <>
             <View style={styles.hero}>
-              <LinearGradient colors={['#24130B', '#12121A', '#08080C']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={['#24130B', '#171310', '#0a0806']} style={StyleSheet.absoluteFillObject} />
               {video.thumbnail_url ? <PluggdImage uri={video.thumbnail_url} style={styles.heroImage} /> : null}
-              <LinearGradient colors={['transparent', 'rgba(8,8,12,0.82)']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={['transparent', 'rgba(10,8,6,0.82)']} style={StyleSheet.absoluteFillObject} />
               <View style={styles.playOverlay}>
-                <MaterialIcons name="play-arrow" size={44} color="#08080C" />
+                <MaterialIcons name="play-arrow" size={44} color="#0a0806" />
               </View>
               <View style={styles.heroCopy}>
                 <Text style={styles.eyebrow}>VIDEO</Text>
@@ -104,7 +104,7 @@ export default function VideoDetailRoute() {
 
             <View style={styles.actions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Watch video" style={styles.primaryButton} onPress={openVideo}>
-                <MaterialIcons name="play-arrow" size={22} color="#08080C" />
+                <MaterialIcons name="play-arrow" size={22} color="#0a0806" />
                 <Text style={styles.primaryText}>Watch</Text>
               </Pressable>
               <Pressable
@@ -125,14 +125,14 @@ export default function VideoDetailRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 16, paddingTop: 54, paddingBottom: 170 },
-  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   loading: { minHeight: 420, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 420, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   emptyTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 24 },
   emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
-  hero: { height: 430, borderRadius: 24, overflow: 'hidden', backgroundColor: '#12121A', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
+  hero: { height: 430, borderRadius: 24, overflow: 'hidden', backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   playOverlay: { position: 'absolute', top: '43%', alignSelf: 'center', width: 74, height: 74, borderRadius: 37, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   heroCopy: { padding: 18 },
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   description: { fontFamily: pluggdFonts.satoshiBold, color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 16 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 18 },
   primaryButton: { flex: 1, minHeight: 50, borderRadius: 25, backgroundColor: ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  primaryText: { color: '#08080C', fontFamily: 'Satoshi-Black', fontSize: 15 },
-  secondaryButton: { minWidth: 128, minHeight: 50, borderRadius: 25, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  primaryText: { color: '#0a0806', fontFamily: 'Satoshi-Black', fontSize: 15 },
+  secondaryButton: { minWidth: 128, minHeight: 50, borderRadius: 25, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   secondaryText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 14 },
 });

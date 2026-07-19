@@ -6,10 +6,10 @@ import { PluggdImage } from '../../components/PluggdImage';
 import type { CommunityFeedBundle, CommunityInterstitialKind } from './communityFeedTypes';
 
 const COLORS = {
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262637',
-  orange: '#FF5A00',
+  surface: '#171310',
+  surface2: '#241d15',
+  border: '#2a221a',
+  orange: '#ff6600',
   live: '#FF4757',
   white: '#FFFFFF',
   muted: '#8E8E9F',

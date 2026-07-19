@@ -122,7 +122,7 @@ export function CreateActionSheet() {
             pressed && styles.floatingButtonPressed,
           ]}
         >
-          <MaterialIcons name="add" size={20} color="#08080C" />
+          <MaterialIcons name="add" size={20} color="#0a0806" />
           <Text style={styles.floatingText}>Create</Text>
         </Pressable>
       </LiftSurface>
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   floatingText: {
-    color: '#08080C',
+    color: '#0a0806',
     fontFamily: 'Satoshi-Bold',
     fontSize: 14,
   },

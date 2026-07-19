@@ -124,7 +124,7 @@ export function configureLocalNotificationHandler() {
       name: 'PLUGGD reminders',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 180, 80, 180],
-      lightColor: '#FF5A00',
+      lightColor: '#ff6600',
     });
   }
 }

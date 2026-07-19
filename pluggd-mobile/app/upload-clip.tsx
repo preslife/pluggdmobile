@@ -145,7 +145,7 @@ export default function UploadClipScreen() {
       />
 
       <Pressable style={[styles.primaryButton, uploading && styles.disabledButton]} onPress={uploadClip} disabled={uploading}>
-        {uploading ? <ActivityIndicator color="#08080C" /> : <Text style={styles.primaryButtonText}>Upload Clip</Text>}
+        {uploading ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.primaryButtonText}>Upload Clip</Text>}
       </Pressable>
 
       <EmptyState
@@ -158,12 +158,12 @@ export default function UploadClipScreen() {
 
 const styles = StyleSheet.create({
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
-  pickCard: { minHeight: 96, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  pickCard: { minHeight: 96, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 },
   pickCopy: { flex: 1, minWidth: 0 },
   pickTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   pickBody: { color: '#B3B3B3', fontSize: 12.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5, lineHeight: 18 },
-  caption: { minHeight: 120, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', color: '#FFFFFF', padding: 14, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlignVertical: 'top' },
+  caption: { minHeight: 120, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', color: '#FFFFFF', padding: 14, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlignVertical: 'top' },
   primaryButton: { minHeight: 52, borderRadius: 26, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 14 },
-  primaryButtonText: { color: '#08080C', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  primaryButtonText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabledButton: { opacity: 0.65 },
 });

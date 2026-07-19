@@ -18,7 +18,7 @@ import {
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 type EventRow = {
   id: string;
@@ -592,7 +592,7 @@ function EventCard({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   scrollContent: {
     paddingHorizontal: 14,
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     alignItems: 'center',
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     padding: 10,
     justifyContent: 'space-between',
   },
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     padding: 14,
     marginBottom: 12,
   },
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     padding: 12,
     flexDirection: 'row',
   },
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 22,

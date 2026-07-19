@@ -30,7 +30,7 @@ export function PremiumHeroCard({
   title,
   meta,
   statusLabel,
-  statusColor = '#FF5A00',
+  statusColor = '#ff6600',
   canPlay,
   playing,
   onPress,
@@ -51,13 +51,13 @@ export function PremiumHeroCard({
       <PluggdImage uri={image} resizeMode="cover" style={StyleSheet.absoluteFill} />
       {/* bottom-up scrim for the copy + a soft left wash for the status row */}
       <LinearGradient
-        colors={['rgba(8,8,12,0)', 'rgba(8,8,12,0.34)', 'rgba(8,8,12,0.95)']}
+        colors={['rgba(10,8,6,0)', 'rgba(10,8,6,0.34)', 'rgba(10,8,6,0.95)']}
         locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['rgba(8,8,12,0.5)', 'rgba(8,8,12,0)']}
+        colors={['rgba(10,8,6,0.5)', 'rgba(10,8,6,0)']}
         start={{ x: 0, y: 0.35 }}
         end={{ x: 0.9, y: 0.35 }}
         style={StyleSheet.absoluteFill}
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(8,8,12,0.4)',
+    backgroundColor: 'rgba(10,8,6,0.4)',
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(8,8,12,0.4)',
+    backgroundColor: 'rgba(10,8,6,0.4)',
     paddingHorizontal: 10,
     paddingVertical: 6,
   },

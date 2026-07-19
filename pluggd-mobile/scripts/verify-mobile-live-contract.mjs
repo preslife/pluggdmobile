@@ -57,7 +57,7 @@ for (const mapper of [
   assert.match(liveSource, new RegExp(mapper), `${mapper} must wire Live UI to backend models`);
 }
 
-for (const color of ['#08080C', '#12121A', '#1F1F2E', '#FF5A00', '#FF4757']) {
+for (const color of ['#0a0806', '#171310', '#241d15', '#ff6600', '#FF4757']) {
   assert.match(liveSource, new RegExp(color), `${color} Live design token must be used`);
 }
 

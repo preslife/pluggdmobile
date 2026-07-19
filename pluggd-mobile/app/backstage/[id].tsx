@@ -12,10 +12,10 @@ import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobile
 import { joinBackstage, leaveBackstage, loadBackstageDetail } from '../../src/features/culture/mobileServices';
 import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPostCard';
 
-const ORANGE = '#FF5A00';
-const CANVAS = '#08080C';
-const SURFACE = '#12121A';
-const BORDER = '#1F1F2E';
+const ORANGE = '#ff6600';
+const CANVAS = '#0a0806';
+const SURFACE = '#171310';
+const BORDER = '#241d15';
 const MUTED = '#8E8E9F';
 
 const TABS = ['Posts', 'Threads', 'Rooms', 'Events', 'Soundboards', 'Drops'] as const;
@@ -270,16 +270,16 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CANVAS },
   headerRow: { marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   backButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  joinButton: { minHeight: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(255,90,0,0.55)', paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  joinButton: { minHeight: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(255,102,0,0.55)', paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   joinButtonActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   joinText: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 13, fontWeight: '900' },
-  joinTextActive: { color: '#08080C' },
+  joinTextActive: { color: '#0a0806' },
   loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { fontFamily: pluggdFonts.satoshiBold, color: MUTED, fontSize: 13, fontWeight: '800' },
   hero: { minHeight: 220, maxHeight: 240, marginHorizontal: 16, borderRadius: 22, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', backgroundColor: SURFACE, justifyContent: 'flex-end' },
   fill: { width: '100%', height: '100%' },
   heroCopy: { padding: 18, gap: 6 },
-  avatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#1F1F2E', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#241d15', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   eyebrow: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   title: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 34, lineHeight: 38, fontWeight: '900' },
@@ -287,12 +287,12 @@ const styles = StyleSheet.create({
   description: { fontFamily: pluggdFonts.satoshiMedium, color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontWeight: '600' },
   tabs: { paddingHorizontal: 16, paddingTop: 16, gap: 8 },
   tab: { minHeight: 34, borderRadius: 17, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 13 },
-  tabActive: { borderColor: ORANGE, backgroundColor: 'rgba(255,90,0,0.15)' },
+  tabActive: { borderColor: ORANGE, backgroundColor: 'rgba(255,102,0,0.15)' },
   tabText: { fontFamily: pluggdFonts.satoshiBlack, color: MUTED, fontSize: 12, fontWeight: '900' },
   tabTextActive: { color: '#FFFFFF' },
   section: { marginTop: 16, paddingHorizontal: 16, gap: 10 },
   threadCard: { borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 14, gap: 6 },
-  boardCard: { borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)', backgroundColor: 'rgba(255,90,0,0.08)', padding: 14, gap: 6 },
+  boardCard: { borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: 'rgba(255,102,0,0.08)', padding: 14, gap: 6 },
   threadTag: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   threadTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.interSemiBold, fontSize: 16, lineHeight: 21 },
   threadBody: { color: MUTED, fontFamily: pluggdFonts.interSemiBold, fontSize: 13, lineHeight: 19 },
@@ -302,9 +302,9 @@ const styles = StyleSheet.create({
   roomCopy: { flex: 1, minWidth: 0 },
   openText: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 12, fontWeight: '900' },
   dropRow: { minHeight: 74, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dropArt: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#1F1F2E', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  dropArt: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#241d15', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   soundboardCard: { minHeight: 136, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  soundboardArt: { width: 84, height: 104, borderRadius: 14, backgroundColor: '#1F1F2E', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  soundboardArt: { width: 84, height: 104, borderRadius: 14, backgroundColor: '#241d15', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   emptyCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 8 },
   emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
   emptyBody: { fontFamily: pluggdFonts.satoshiMedium, color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },

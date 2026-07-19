@@ -49,12 +49,12 @@ import { useHomeFeed } from '../culture/useCultureData';
 import type { MobilePlaylist, SavedContentKind, SavedContentItem, VideoItem } from '../culture/mobileTypes';
 
 const COLORS = {
-  canvas: '#08080C',
-  shell: '#0D0D11',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
+  canvas: '#0a0806',
+  shell: '#100c08',
+  surface: '#171310',
+  surface2: '#241d15',
   border: '#262626',
-  orange: '#FF5A00',
+  orange: '#ff6600',
   coral: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -468,7 +468,7 @@ function FeaturedHero({
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale }] }]}>
         <StageArtwork item={item} style={styles.heroArtwork} />
       </Animated.View>
-      <LinearGradient colors={['rgba(8,8,12,0.03)', 'rgba(8,8,12,0.54)', 'rgba(8,8,12,0.96)']} locations={[0, 0.44, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(10,8,6,0.03)', 'rgba(10,8,6,0.54)', 'rgba(10,8,6,0.96)']} locations={[0, 0.44, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.heroContent}>
         <View style={styles.heroTag}>
           <Text style={styles.heroTagText}>{kindLabel(item.kind)}</Text>
@@ -499,7 +499,7 @@ function SwipeBeatsPromo() {
   const router = useRouter();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Start Swipe Beats" style={styles.swipeCard} onPress={() => router.push('/swipe-beats' as any)}>
-      <LinearGradient colors={['rgba(255,90,0,0.22)', 'rgba(18,18,26,0.96)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(255,102,0,0.22)', 'rgba(23,19,16,0.96)']} style={StyleSheet.absoluteFill} />
       <View style={styles.swipeCopy}>
         <Text style={styles.swipeTitle}>Swipe Beats</Text>
         <Text style={styles.swipeBody}>Find beats fast. Save, skip, license.</Text>
@@ -871,8 +871,8 @@ const styles = StyleSheet.create({
   filters: { minHeight: 44, paddingHorizontal: 16, paddingBottom: 10, gap: 8, alignItems: 'center' },
   filterPill: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 2 },
   filterPillActive: {},
-  filterText: { height: 32, paddingHorizontal: 14, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(31,31,46,0.72)', borderWidth: 1, borderColor: COLORS.surface2, color: COLORS.muted, fontFamily: 'Satoshi-Medium', fontSize: 13, lineHeight: 31 },
-  filterTextActive: { color: COLORS.orange, borderColor: 'rgba(255,90,0,0.72)', backgroundColor: 'rgba(255,90,0,0.16)' },
+  filterText: { height: 32, paddingHorizontal: 14, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(36,29,21,0.72)', borderWidth: 1, borderColor: COLORS.surface2, color: COLORS.muted, fontFamily: 'Satoshi-Medium', fontSize: 13, lineHeight: 31 },
+  filterTextActive: { color: COLORS.orange, borderColor: 'rgba(255,102,0,0.72)', backgroundColor: 'rgba(255,102,0,0.16)' },
   continueCard: { height: 84, marginHorizontal: 16, marginTop: 4, marginBottom: 14, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   continueArt: { width: 58, height: 58, borderRadius: 13, overflow: 'hidden', backgroundColor: COLORS.surface2, alignItems: 'center', justifyContent: 'center' },
   continueCopy: { flex: 1, minWidth: 0 },
@@ -887,7 +887,7 @@ const styles = StyleSheet.create({
   heroCard: { flex: 1, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: COLORS.surface, shadowColor: COLORS.orange, shadowOpacity: 0.16, shadowRadius: 22, shadowOffset: { width: 0, height: 12 } },
   heroArtwork: { width: '100%', height: '100%' },
   heroContent: { position: 'absolute', left: 18, right: 14, bottom: 16 },
-  heroTag: { alignSelf: 'flex-start', minHeight: 24, borderRadius: 12, paddingHorizontal: 9, justifyContent: 'center', backgroundColor: 'rgba(8,8,12,0.66)', borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)' },
+  heroTag: { alignSelf: 'flex-start', minHeight: 24, borderRadius: 12, paddingHorizontal: 9, justifyContent: 'center', backgroundColor: 'rgba(10,8,6,0.66)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)' },
   heroTagText: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, textTransform: 'uppercase' },
   heroTitle: { ...pluggdTextStyles.heroTitle, marginTop: 12, color: COLORS.white, fontSize: 29, lineHeight: 32 },
   heroCreator: { marginTop: 5, color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 14 },
@@ -895,9 +895,9 @@ const styles = StyleSheet.create({
   heroActions: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   heroPlay: { height: 44, minWidth: 118, borderRadius: 22, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: COLORS.white },
   heroPlayText: { fontFamily: 'Satoshi-Bold', color: COLORS.canvas, fontSize: 15 },
-  backstageButton: { height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(18,18,26,0.62)' },
+  backstageButton: { height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(23,19,16,0.62)' },
   backstageButtonText: { fontFamily: 'Satoshi-Bold', color: COLORS.white, fontSize: 13 },
-  saveHero: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(8,8,12,0.52)' },
+  saveHero: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(10,8,6,0.52)' },
   heroEmpty: { flex: 1, borderRadius: 24, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   artworkBase: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   imageFill: { width: '100%', height: '100%' },
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
   soundboardCopy: { flex: 1, minWidth: 0 },
   soundboardTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   soundboardMeta: { color: COLORS.muted, fontSize: 12, lineHeight: 16, marginTop: 4 },
-  swipeCard: { height: 136, marginHorizontal: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,90,0,0.28)', backgroundColor: COLORS.surface },
+  swipeCard: { height: 136, marginHorizontal: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,102,0,0.28)', backgroundColor: COLORS.surface },
   swipeCopy: { position: 'absolute', left: 16, top: 14, bottom: 14, width: '62%', justifyContent: 'center' },
   swipeTitle: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 21 },
   swipeBody: { color: COLORS.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
   beatSave: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   chartTabs: { paddingHorizontal: 16, gap: 8, marginBottom: 8 },
   chartTab: { minHeight: 34, borderRadius: 17, paddingHorizontal: 14, justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  chartTabActive: { backgroundColor: 'rgba(255,90,0,0.16)', borderColor: 'rgba(255,90,0,0.62)' },
+  chartTabActive: { backgroundColor: 'rgba(255,102,0,0.16)', borderColor: 'rgba(255,102,0,0.62)' },
   chartTabText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   chartTabTextActive: { color: COLORS.orange },
   chartList: { paddingHorizontal: 16, gap: 7 },

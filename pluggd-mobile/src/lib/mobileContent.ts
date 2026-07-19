@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { PluggdTrack, PluggdTrackKind } from '../context/PlaybackProvider';
 
-export const PLUGGD_ORANGE = '#FF5A00';
+export const PLUGGD_ORANGE = '#ff6600';
 
 export type ContentKind =
   | 'release'

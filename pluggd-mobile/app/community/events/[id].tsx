@@ -11,10 +11,10 @@ import { supabase } from '../../../src/lib/supabase';
 import { formatDate } from '../../../src/lib/mobileContent';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  border: '#1F1F2E',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  border: '#241d15',
+  orange: '#ff6600',
   violet: '#7C3AED',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -126,7 +126,7 @@ export default function CommunityEventRoute() {
         {event ? (
           <>
             <View style={styles.hero}>
-              <LinearGradient colors={['rgba(124,58,237,0.3)', 'rgba(255,90,0,0.14)', 'rgba(18,18,26,0.98)']} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={['rgba(124,58,237,0.3)', 'rgba(255,102,0,0.14)', 'rgba(23,19,16,0.98)']} style={StyleSheet.absoluteFill} />
               <Text style={styles.kicker}>{event.event_type || 'Community event'}</Text>
               <Text style={styles.title}>{event.title}</Text>
               <Text style={styles.meta}>{[event.location || 'Online / TBA', formatDate(event.starts_at)].filter(Boolean).join(' · ')}</Text>

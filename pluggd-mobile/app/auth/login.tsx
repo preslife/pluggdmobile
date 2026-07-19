@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
+import { edFonts } from '../../src/design/editorial';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -323,9 +324,10 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 8,
-    fontSize: 26,
-    lineHeight: 32,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    fontSize: 32,
+    lineHeight: 35,
+    letterSpacing: -0.5,
+    fontFamily: edFonts.serif,
   },
   subtitle: {
     marginTop: 8,

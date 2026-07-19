@@ -26,7 +26,7 @@ export default function SettingsIndex() {
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient
-        colors={theme.scheme === 'dark' ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
+        colors={theme.scheme === 'dark' ? ['#0a0806', '#0C0C0C', '#0a0806'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

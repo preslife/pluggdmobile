@@ -4,8 +4,43 @@
  * Mono data labels, torn paper edges, corkboard pieces).
  */
 import { MaterialIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+  type PressableProps,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { ed, edFonts } from '../../design/editorial';
+import { impactHaptic, selectionHaptic } from '../../design/haptics';
+
+/** The app-wide pressed treatment (matches the GlassDock tab feel). */
+export const ED_PRESSED = { opacity: 0.86, transform: [{ scale: 0.985 }] } as const;
+
+/**
+ * Pressable with the shared editorial press feedback: the standard
+ * dim+shrink visual plus a selection haptic tick. Drop-in replacement
+ * for Pressable across the editorial surfaces.
+ */
+export function EdPressable({ style, onPress, haptic = true, ...props }: PressableProps & { haptic?: boolean }) {
+  return (
+    <Pressable
+      {...props}
+      onPress={(event: GestureResponderEvent) => {
+        if (haptic) selectionHaptic();
+        onPress?.(event);
+      }}
+      style={(state) => [
+        typeof style === 'function' ? style(state) : style,
+        state.pressed ? ED_PRESSED : null,
+      ]}
+    />
+  );
+}
 
 /** Tracked mono uppercase label — orange on night, brown-ink on paper. */
 export function Eyebrow({ text, onPaper = false, color, style }: { text: string; onPaper?: boolean; color?: string; style?: StyleProp<TextStyle> }) {
@@ -75,7 +110,15 @@ function PillButton({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[bits.ctaTouch, style]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        impactHaptic();
+        onPress?.();
+      }}
+      style={({ pressed }) => [bits.ctaTouch, style, pressed ? ED_PRESSED : null]}
+    >
       <View style={[bits.cta, fillStyle]}>
         <Text style={[bits.ctaText, { color: textColor }]}>{label}</Text>
       </View>
@@ -202,8 +245,11 @@ export function AudioPill({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={playing ? 'Pause audio preview' : 'Play audio preview'}
-      onPress={onPress}
-      style={style}
+      onPress={() => {
+        selectionHaptic();
+        onPress?.();
+      }}
+      style={({ pressed }) => [style, pressed ? ED_PRESSED : null]}
     >
       <View style={[bits.audioPill, light ? bits.audioPillLight : null]}>
         <View style={[bits.audioPlay, light ? { backgroundColor: ed.orange } : null]}>

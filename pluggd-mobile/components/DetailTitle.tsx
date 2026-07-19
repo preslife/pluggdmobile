@@ -20,7 +20,7 @@ export function DetailTitle({
   size = 34,
   lineHeight = 39,
   color = '#FFFFFF',
-  accentColor = '#FF5A00',
+  accentColor = '#ff6600',
   numberOfLines,
   style,
 }: {

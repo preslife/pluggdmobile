@@ -58,7 +58,7 @@ type ChecklistItem = {
   params?: Record<string, string>;
 };
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 const REQUIRED_TASKS: TaskId[] = ['profile_basics', 'first_role_action'];
 
 const ROLE_LABELS: Record<EcosystemRole, string> = {
@@ -535,11 +535,11 @@ function ChecklistRow({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   loadingScreen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     marginLeft: -17,
   },
   progressDone: {
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     borderWidth: 2,
     borderColor: PLUGGD_ORANGE,
   },
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   },
   roleSummaryCard: {
     minHeight: 116,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 8,
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   checklist: {
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     backgroundColor: 'rgba(8,8,8,0.96)',
     borderTopWidth: 1,
-    borderTopColor: '#151515',
+    borderTopColor: '#171310',
   },
   cta: {
     height: 58,

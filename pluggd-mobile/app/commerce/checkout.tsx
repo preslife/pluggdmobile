@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   primaryText: {
-    color: '#080808',
+    color: '#0a0806',
     fontSize: 16,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },

@@ -33,7 +33,7 @@ import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 const REACTION_TTL_MS = 2400;
 
 type StreamRole = 'host' | 'collaborator' | 'audience';
@@ -1224,7 +1224,7 @@ export default function LiveSessionScreen() {
                       style={styles.approveButton}
                       onPress={() => reviewStageRequest(request.id, true)}
                     >
-                      <MaterialIcons name="check" size={16} color="#080808" />
+                      <MaterialIcons name="check" size={16} color="#0a0806" />
                     </Pressable>
                     <Pressable
                       style={styles.declineButton}
@@ -1301,7 +1301,7 @@ export default function LiveSessionScreen() {
               <View style={styles.composerRow}>
                 <PluggdGlassSurface
                   glassEffectStyle="clear"
-                  fallbackColor="#151515"
+                  fallbackColor="#171310"
                   borderColor="#303030"
                   style={styles.inputWrap}
                 >
@@ -1403,7 +1403,7 @@ function RuntimeButton({
         onPress();
       }}
     >
-      <MaterialIcons name={icon} size={17} color={active ? '#080808' : '#FFFFFF'} />
+      <MaterialIcons name={icon} size={17} color={active ? '#0a0806' : '#FFFFFF'} />
       <Text style={[styles.runtimeButtonText, active && styles.runtimeButtonTextActive]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
@@ -1446,7 +1446,7 @@ const styles = StyleSheet.create({
   },
   stage: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     overflow: 'hidden',
   },
   mediaLayer: {
@@ -1575,9 +1575,9 @@ const styles = StyleSheet.create({
   modeBadge: {
     minHeight: 25,
     borderRadius: 7,
-    backgroundColor: 'rgba(255,82,0,0.18)',
+    backgroundColor: 'rgba(255,102,0,0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(255,82,0,0.32)',
+    borderColor: 'rgba(255,102,0,0.32)',
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
@@ -1645,7 +1645,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     backgroundColor: 'rgba(0,0,0,0.46)',
     borderWidth: 1,
-    borderColor: 'rgba(255,82,0,0.34)',
+    borderColor: 'rgba(255,102,0,0.34)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1751,7 +1751,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#303030',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     color: '#FFFFFF',
     paddingHorizontal: 10,
     marginTop: 8,
@@ -1824,7 +1824,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   runtimeButtonTextActive: {
-    color: '#080808',
+    color: '#0a0806',
   },
   hostRequestRow: {
     minHeight: 44,
@@ -1985,7 +1985,7 @@ const styles = StyleSheet.create({
     height: 146,
     borderRadius: 73,
     borderWidth: 1,
-    borderColor: 'rgba(255,82,0,0.52)',
+    borderColor: 'rgba(255,102,0,0.52)',
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',

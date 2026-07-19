@@ -30,13 +30,13 @@ function StoryMedia({ story }: { story: MobileStory }) {
   }
   if (kind.includes('audio')) {
     return (
-      <LinearGradient colors={['#211A24', '#08080C']} style={StyleSheet.absoluteFill}>
+      <LinearGradient colors={['#211A24', '#0a0806']} style={StyleSheet.absoluteFill}>
         {story.thumbnail_url ? <PluggdImage uri={story.thumbnail_url} style={StyleSheet.absoluteFill} /> : null}
-        <LinearGradient colors={['rgba(8,8,12,0.35)', 'rgba(8,8,12,0.92)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(10,8,6,0.35)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFill} />
       </LinearGradient>
     );
   }
-  return uri ? <PluggdImage uri={uri} style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#15151D', '#08080C']} style={StyleSheet.absoluteFill} />;
+  return uri ? <PluggdImage uri={uri} style={StyleSheet.absoluteFill} /> : <LinearGradient colors={['#15151D', '#0a0806']} style={StyleSheet.absoluteFill} />;
 }
 
 export default function StoryViewerRoute() {
@@ -98,7 +98,7 @@ export default function StoryViewerRoute() {
     <View style={styles.screen}>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
-      {story ? <StoryMedia story={story} /> : <LinearGradient colors={['#15151D', '#08080C']} style={StyleSheet.absoluteFill} />}
+      {story ? <StoryMedia story={story} /> : <LinearGradient colors={['#15151D', '#0a0806']} style={StyleSheet.absoluteFill} />}
       <LinearGradient colors={['rgba(0,0,0,0.78)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.progressRail, { top: insets.top + 8 }]}>
@@ -132,7 +132,7 @@ export default function StoryViewerRoute() {
 
       {isLoading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color="#FF5A00" />
+          <ActivityIndicator color="#ff6600" />
         </View>
       ) : null}
 
@@ -147,7 +147,7 @@ export default function StoryViewerRoute() {
         <View style={styles.bottom}>
           {isAudioStory ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Play audio story" style={styles.audioButton} onPress={playAudioStory}>
-              <MaterialIcons name={audioActive && isPlaying ? 'pause' : 'play-arrow'} size={26} color="#08080C" />
+              <MaterialIcons name={audioActive && isPlaying ? 'pause' : 'play-arrow'} size={26} color="#0a0806" />
               <View style={styles.audioCopy}>
                 <Text style={styles.audioTitle} numberOfLines={1}>Audio story</Text>
                 <Text style={styles.audioMeta} numberOfLines={1}>Plays through the PLUGGD player</Text>
@@ -171,7 +171,7 @@ export default function StoryViewerRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
   progressRail: {
     position: 'absolute',
     left: 16,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(18,18,26,0.72)',
+    backgroundColor: 'rgba(23,19,16,0.72)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
   },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     bottom: 42,
     padding: 16,
     borderRadius: 18,
-    backgroundColor: 'rgba(18,18,26,0.74)',
+    backgroundColor: 'rgba(23,19,16,0.74)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     zIndex: 5,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   audioCopy: { flex: 1, minWidth: 0 },
-  audioTitle: { color: '#08080C', fontFamily: 'Satoshi-Black', fontSize: 14 },
+  audioTitle: { color: '#0a0806', fontFamily: 'Satoshi-Black', fontSize: 14 },
   audioMeta: { color: '#62627A', fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 2 },
   caption: { fontFamily: pluggdFonts.satoshiBold, color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '800' },
   tapZones: {

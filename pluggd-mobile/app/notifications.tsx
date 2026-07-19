@@ -75,7 +75,7 @@ export default function NotificationsRoute() {
       {items.map((item) => (
         <Pressable key={item.id} style={styles.card} onPress={() => markRead(item)}>
           <View style={[styles.iconWrap, !item.read_at && styles.iconWrapUnread]}>
-            <MaterialIcons name={iconForType(item.type)} size={22} color={!item.read_at ? '#08080C' : '#FFFFFF'} />
+            <MaterialIcons name={iconForType(item.type)} size={22} color={!item.read_at ? '#0a0806' : '#FFFFFF'} />
           </View>
           <View style={styles.copy}>
             <View style={styles.titleRow}>
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#21130E',
     borderWidth: 1,
-    borderColor: 'rgba(255,82,0,0.55)',
+    borderColor: 'rgba(255,102,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 13,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     padding: 13,
     marginBottom: 10,
     flexDirection: 'row',

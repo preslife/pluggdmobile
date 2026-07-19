@@ -10,7 +10,7 @@ import { impactHaptic } from '../../src/design/haptics';
 import { supabase } from '../../src/lib/supabase';
 import { formatGBP } from '../../src/lib/mobileContent';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 type ProductSource = 'store_products' | 'creator_merchandise';
 
@@ -99,9 +99,9 @@ export default function ProductDetailRoute() {
         {product ? (
           <>
             <View style={styles.hero}>
-              <LinearGradient colors={['#21140D', '#12121A', '#08080C']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={['#21140D', '#171310', '#0a0806']} style={StyleSheet.absoluteFillObject} />
               {image ? <PluggdImage uri={image} style={styles.heroImage} /> : null}
-              <LinearGradient colors={['transparent', 'rgba(8,8,12,0.9)']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={['transparent', 'rgba(10,8,6,0.9)']} style={StyleSheet.absoluteFillObject} />
               <View style={styles.heroCopy}>
                 <Text style={styles.eyebrow}>{productKindLabel(product)}</Text>
                 <Text style={styles.title} numberOfLines={3}>{product.title}</Text>
@@ -135,14 +135,14 @@ export default function ProductDetailRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 16, paddingTop: 54, paddingBottom: 170 },
-  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   loading: { minHeight: 420, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 420, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   emptyTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 24 },
   emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
-  hero: { height: 430, borderRadius: 24, overflow: 'hidden', backgroundColor: '#12121A', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
+  hero: { height: 430, borderRadius: 24, overflow: 'hidden', backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroCopy: { padding: 18 },
   eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
@@ -151,6 +151,6 @@ const styles = StyleSheet.create({
   description: { fontFamily: pluggdFonts.satoshiBold, color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 16 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 18 },
   primaryButton: { flex: 1, minHeight: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#08080C', fontFamily: 'Satoshi-Black', fontSize: 15 },
-  secondaryButton: { width: 52, minHeight: 50, borderRadius: 25, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center' },
+  primaryText: { color: '#0a0806', fontFamily: 'Satoshi-Black', fontSize: 15 },
+  secondaryButton: { width: 52, minHeight: 50, borderRadius: 25, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center' },
 });

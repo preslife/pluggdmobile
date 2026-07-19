@@ -18,7 +18,7 @@ import { MobileStoriesRail } from '../culture/MobileStoriesRail';
 import { loadCreatorProfileBundle } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 type ProfileRow = {
   id: string;
@@ -405,7 +405,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient
-        colors={theme.scheme === 'dark' ? ['#080808', '#0C0C0C', '#080808'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
+        colors={theme.scheme === 'dark' ? ['#0a0806', '#0C0C0C', '#0a0806'] : ['#FAFAF8', '#FFFFFF', '#F4F2EE']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -431,7 +431,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
               {profile.cover_image_url ? (
                 <Image source={{ uri: profile.cover_image_url }} style={styles.coverImage} />
               ) : (
-                <LinearGradient colors={['rgba(255,82,0,0.24)', 'rgba(255,82,0,0)']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['rgba(255,102,0,0.24)', 'rgba(255,102,0,0)']} style={StyleSheet.absoluteFill} />
               )}
               <Pressable
                 accessibilityRole="button"
@@ -478,7 +478,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
                     },
                   ]}
                 >
-                  <Text style={[styles.followText, { color: isFollowing ? theme.colors.text : '#080808' }]}>
+                  <Text style={[styles.followText, { color: isFollowing ? theme.colors.text : '#0a0806' }]}>
                     {currentUserId === profile.user_id ? 'Edit' : isFollowing ? 'Following' : 'Follow'}
                   </Text>
                 </Pressable>

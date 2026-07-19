@@ -410,8 +410,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 9 },
   },
   iconButtonActive: {
-    borderColor: 'rgba(255,82,0,0.36)',
-    backgroundColor: 'rgba(255,82,0,0.10)',
+    borderColor: 'rgba(255,102,0,0.36)',
+    backgroundColor: 'rgba(255,102,0,0.10)',
   },
   iconButtonDisabled: {
     opacity: 0.36,

@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
     borderWidth: 1,
-    borderColor: '#08080C',
+    borderColor: '#0a0806',
   },
   modalBackdrop: {
     flex: 1,

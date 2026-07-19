@@ -22,7 +22,7 @@ const SEP = '     •     ';
  * "look for me (Acoustic) • Black Loyalty opened Room…" ticker. Two copies of
  * the line translate seamlessly so the scene always feels live.
  */
-export function LiveTicker({ items, speed = 40, accent = '#FF5A00', variant = 'night' }: LiveTickerProps) {
+export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'night' }: LiveTickerProps) {
   const translate = useRef(new Animated.Value(0)).current;
   const [width, setWidth] = useState(0);
   const line = items.filter(Boolean).join(SEP) + SEP;

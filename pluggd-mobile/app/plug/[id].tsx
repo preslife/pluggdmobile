@@ -2,11 +2,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { ed, edFonts } from '../../src/design/editorial';
-import { Eyebrow } from '../../src/features/editorial/EditorialBits';
+import { EdPressable, Eyebrow } from '../../src/features/editorial/EditorialBits';
 import { safeMaybe } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 
@@ -76,14 +76,14 @@ export default function PlugStoryRoute() {
         contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 120 }}
       >
         <View style={styles.topRow}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Go back"
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as any))}
             style={styles.backButton}
           >
             <MaterialIcons name="arrow-back" size={20} color={ed.ink} />
-          </Pressable>
+          </EdPressable>
           <Eyebrow text="The Plug" />
           <View style={{ width: 40 }} />
         </View>

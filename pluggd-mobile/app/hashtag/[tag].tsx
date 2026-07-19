@@ -8,10 +8,10 @@ import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPos
 import { loadMobileSocialFeed } from '../../src/features/culture/mobileSocial';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  border: '#262637',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  border: '#2a221a',
+  orange: '#ff6600',
   white: '#FFFFFF',
   muted: '#8E8E9F',
 };

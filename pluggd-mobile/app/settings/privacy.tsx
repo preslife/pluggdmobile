@@ -43,7 +43,7 @@ export default function PrivacySettingsScreen() {
                 <Switch
                   value={privateProfile}
                   onValueChange={setPrivateProfile}
-                  trackColor={{ false: '#374151', true: '#FF5A00' }}
+                  trackColor={{ false: '#374151', true: '#ff6600' }}
                   thumbColor="#fff"
                 />
               </View>
@@ -59,7 +59,7 @@ export default function PrivacySettingsScreen() {
                 <Switch
                   value={showOnlineStatus}
                   onValueChange={setShowOnlineStatus}
-                  trackColor={{ false: '#374151', true: '#FF5A00' }}
+                  trackColor={{ false: '#374151', true: '#ff6600' }}
                   thumbColor="#fff"
                 />
               </View>

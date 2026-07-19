@@ -83,8 +83,8 @@ export default function NewPlaylistRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
-  header: { height: 92, paddingHorizontal: 16, paddingTop: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1F1F2E' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
+  header: { height: 92, paddingHorizontal: 16, paddingTop: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 28, lineHeight: 32 },
   content: { flex: 1, padding: 16, paddingTop: 26 },
@@ -93,9 +93,9 @@ const styles = StyleSheet.create({
   body: { color: '#B3B3B3', fontSize: 15, lineHeight: 22, marginTop: 8 },
   form: { marginTop: 28, gap: 10 },
   label: { color: '#8E8E9F', fontFamily: 'Satoshi-Bold', fontSize: 13, textTransform: 'uppercase' },
-  input: { minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#12121A', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 16 },
+  input: { minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 16 },
   textArea: { minHeight: 116, paddingTop: 14, textAlignVertical: 'top' },
   primaryButton: { minHeight: 52, borderRadius: 26, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: 26 },
-  primaryText: { color: '#08080C', fontFamily: 'Satoshi-Bold', fontSize: 15, textTransform: 'uppercase' },
+  primaryText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 15, textTransform: 'uppercase' },
   disabled: { opacity: 0.48 },
 });

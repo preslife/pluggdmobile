@@ -14,7 +14,7 @@ function bottomGlowForTone(tone: LiquidGlassTone) {
   if (tone === 'violet' || tone === 'purple') return 'rgba(126,106,255,0.13)';
   if (tone === 'rose') return 'rgba(255,112,166,0.10)';
   if (tone === 'amber') return 'rgba(255,174,74,0.10)';
-  return 'rgba(255,82,0,0.09)';
+  return 'rgba(255,102,0,0.09)';
 }
 
 export function LiquidBackground({ children, style, tone = 'accent' }: LiquidBackgroundProps) {

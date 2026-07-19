@@ -12,7 +12,7 @@ import { formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { safeList } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 type CampaignRow = {
   id: string;
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     borderRadius: 999,
-    backgroundColor: 'rgba(8,8,12,0.62)',
+    backgroundColor: 'rgba(10,8,6,0.62)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
     paddingHorizontal: 10,

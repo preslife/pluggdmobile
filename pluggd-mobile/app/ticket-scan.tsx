@@ -12,7 +12,7 @@ import { verifyTicketEntryToken } from '../src/features/culture/mobileServices';
 import { formatDate, formatGBP } from '../src/lib/mobileContent';
 import { supabase } from '../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 type TicketScanResult = {
   id: string;
@@ -242,7 +242,7 @@ export default function TicketScanScreen() {
           style={styles.input}
         />
         <Pressable style={styles.lookupButton} onPress={() => lookup.mutate(undefined)} disabled={lookup.isPending}>
-          {lookup.isPending ? <ActivityIndicator color="#08080C" /> : <Text style={styles.lookupText}>Verify</Text>}
+          {lookup.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.lookupText}>Verify</Text>}
         </Pressable>
       </View>
 
@@ -254,7 +254,7 @@ export default function TicketScanScreen() {
         <View style={styles.resultCard}>
           <View style={styles.resultHeader}>
             <View style={[styles.statusIcon, result.status === 'checked_in' && styles.statusIconChecked]}>
-              <MaterialIcons name={result.status === 'checked_in' ? 'check' : 'confirmation-number'} size={24} color={result.status === 'checked_in' ? '#08080C' : '#FFFFFF'} />
+              <MaterialIcons name={result.status === 'checked_in' ? 'check' : 'confirmation-number'} size={24} color={result.status === 'checked_in' ? '#0a0806' : '#FFFFFF'} />
             </View>
             <View style={styles.resultCopy}>
               <Text style={styles.resultTitle}>{result.event_title || 'Verified ticket order'}</Text>
@@ -295,8 +295,8 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
-  cameraCard: { borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#12121A', padding: 10, gap: 10, overflow: 'hidden' },
-  cameraFrame: { height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: '#08080C' },
+  cameraCard: { borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 10, gap: 10, overflow: 'hidden' },
+  cameraFrame: { height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0a0806' },
   camera: { ...StyleSheet.absoluteFillObject },
   scanOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.18)' },
   scanHint: { position: 'absolute', bottom: 18, color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase' },
@@ -304,18 +304,18 @@ const styles = StyleSheet.create({
   cornerTopRight: { position: 'absolute', top: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderTopWidth: 3, borderColor: PLUGGD_ORANGE, borderTopRightRadius: 12 },
   cornerBottomLeft: { position: 'absolute', bottom: 58, left: 52, width: 42, height: 42, borderLeftWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomLeftRadius: 12 },
   cornerBottomRight: { position: 'absolute', bottom: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomRightRadius: 12 },
-  permissionCard: { minHeight: 240, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#08080C', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  permissionCard: { minHeight: 240, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', alignItems: 'center', justifyContent: 'center', padding: 22 },
   permissionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 12 },
   permissionText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlign: 'center', lineHeight: 19, marginTop: 8 },
   permissionButton: { height: 44, borderRadius: 22, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 16 },
-  permissionButtonText: { color: '#08080C', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  secondaryButton: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: '#3A3A44', backgroundColor: '#1F1F2E', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  permissionButtonText: { color: '#0a0806', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  secondaryButton: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: '#3A3A44', backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   secondaryButtonText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  scanCard: { borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 12, gap: 10 },
-  input: { minHeight: 54, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#08080C', color: '#FFFFFF', paddingHorizontal: 12, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  scanCard: { borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 12, gap: 10 },
+  input: { minHeight: 54, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', color: '#FFFFFF', paddingHorizontal: 12, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   lookupButton: { height: 48, borderRadius: 24, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
-  lookupText: { color: '#08080C', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  resultCard: { marginTop: 16, borderRadius: 18, borderWidth: 1, borderColor: '#3B281D', backgroundColor: '#151515', padding: 14, gap: 13 },
+  lookupText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  resultCard: { marginTop: 16, borderRadius: 18, borderWidth: 1, borderColor: '#3B281D', backgroundColor: '#171310', padding: 14, gap: 13 },
   resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   statusIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#262626', alignItems: 'center', justifyContent: 'center' },
   statusIconChecked: { backgroundColor: PLUGGD_ORANGE },
@@ -323,11 +323,11 @@ const styles = StyleSheet.create({
   resultTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   resultMeta: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 4 },
   detailGrid: { flexDirection: 'row', gap: 8 },
-  detail: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#08080C', padding: 10 },
+  detail: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', padding: 10 },
   detailLabel: { color: '#737373', fontSize: 10, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   detailValue: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 5, textTransform: 'capitalize' },
   payload: { color: '#8E8E9F', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', lineHeight: 16 },
   primaryButton: { minHeight: 50, borderRadius: 25, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 12 },
-  primaryButtonText: { color: '#08080C', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  primaryButtonText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabledButton: { opacity: 0.6 },
 });

@@ -1,4 +1,4 @@
-export const PLUGGD_ORANGE = '#FF5A00';
+export const PLUGGD_ORANGE = '#ff6600';
 
 export type EcosystemRole =
   | 'artist'

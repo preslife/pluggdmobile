@@ -54,17 +54,17 @@ import {
   type VideoItem,
 } from './useCultureData';
 
-const NOIR = '#0D0D11';
-const NOIR_DEEP = '#08080C';
+const NOIR = '#100c08';
+const NOIR_DEEP = '#0a0806';
 const NOIR_CARD = '#15151D';
 const NOIR_CARD_STRONG = '#1A1A25';
-const NOIR_BORDER = '#1F1F2E';
-const EMERALD = '#FF5A00';
+const NOIR_BORDER = '#241d15';
+const EMERALD = '#ff6600';
 const VIOLET = '#6C5CE7';
 const TEXT = '#FFFFFF';
 const MUTED = '#A5A7B4';
 const SUBTLE = '#6F7280';
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 const SCREEN_BOTTOM = 176;
 
 type Filter = { key: string; label: string };
@@ -553,7 +553,7 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
   return (
     <View style={[styles.stagePane, { height }]}>
       {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.stagePaneImage} /> : null}
-      <LinearGradient colors={['rgba(8,8,12,0.1)', 'rgba(8,8,12,0.15)', 'rgba(8,8,12,0.92)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(10,8,6,0.1)', 'rgba(10,8,6,0.15)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFill} />
       <View style={styles.stageTopBrand}>
         <Text style={styles.stageTopText}>STAGE</Text>
       </View>
@@ -671,7 +671,7 @@ function CommunityCard({ community }: { community: BackstageCommunity }) {
     <Pressable style={styles.communityCard} onPress={() => router.push(`/backstage/${community.id}` as any)}>
       <View style={styles.communityBanner}>
         {community.cover_image_url ? <Image source={{ uri: community.cover_image_url }} style={styles.fill} /> : null}
-        <LinearGradient colors={['rgba(255,82,0,0.18)', 'rgba(0,0,0,0.82)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(255,102,0,0.18)', 'rgba(0,0,0,0.82)']} style={StyleSheet.absoluteFill} />
       </View>
       <View style={styles.communityBody}>
         <Artwork uri={community.avatar_url} fallback={community.title} size={54} />
@@ -700,7 +700,7 @@ function CommunityTile({ community }: { community: BackstageCommunity }) {
     <Pressable style={styles.communityTile} onPress={() => router.push(`/backstage/${community.id}` as any)}>
       <View style={styles.communityTileImage}>
         {community.cover_image_url ? <Image source={{ uri: community.cover_image_url }} style={styles.fill} /> : null}
-        <LinearGradient colors={['rgba(255,82,0,0.12)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(255,102,0,0.12)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
       </View>
       <View style={styles.communityTileBody}>
         <Artwork uri={community.avatar_url} fallback={community.title} size={42} />
@@ -1410,7 +1410,7 @@ export function CreateHubScreen() {
     <ScreenFrame title="Create" subtitle="Fast actions for posting, going live, and keeping your scene moving from mobile.">
       <View style={styles.createHero}>
         <Image source={WEB_PARITY_ASSETS.bedroomStudio} resizeMode="cover" style={styles.createHeroImage} />
-        <LinearGradient colors={['rgba(8,8,12,0.18)', 'rgba(8,8,12,0.72)', 'rgba(8,8,12,0.96)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(10,8,6,0.18)', 'rgba(10,8,6,0.72)', 'rgba(10,8,6,0.96)']} style={StyleSheet.absoluteFill} />
         <Text style={styles.passKicker}>CREATOR QUICK SWITCH</Text>
         <Text style={styles.passTitle}>Move the room without leaving mobile.</Text>
         <Text style={styles.passBody}>Post, go live, start a thread, or send fans toward an event from one place.</Text>
@@ -1486,7 +1486,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 44,
     zIndex: 70,
-    backgroundColor: 'rgba(8,8,12,0.92)',
+    backgroundColor: 'rgba(10,8,6,0.92)',
     borderBottomWidth: 1,
     borderBottomColor: NOIR_BORDER,
     flexDirection: 'row',
@@ -1521,7 +1521,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   timelineCard: {
-    backgroundColor: '#12121A',
+    backgroundColor: '#171310',
     borderRadius: 0,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -1606,11 +1606,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  skeletonAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1F1F2E' },
+  skeletonAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#241d15' },
   skeletonTextStack: { flex: 1, gap: 8, paddingLeft: 12 },
-  skeletonLineWide: { width: '60%', height: 12, borderRadius: 6, backgroundColor: '#1F1F2E' },
-  skeletonLineShort: { width: '28%', height: 10, borderRadius: 5, backgroundColor: '#1F1F2E' },
-  skeletonBody: { marginLeft: 52, marginTop: 16, height: 48, borderRadius: 8, backgroundColor: '#1F1F2E' },
+  skeletonLineWide: { width: '60%', height: 12, borderRadius: 6, backgroundColor: '#241d15' },
+  skeletonLineShort: { width: '28%', height: 10, borderRadius: 5, backgroundColor: '#241d15' },
+  skeletonBody: { marginLeft: 52, marginTop: 16, height: 48, borderRadius: 8, backgroundColor: '#241d15' },
   stageShell: { flex: 1, backgroundColor: NOIR_DEEP },
   stageFilterOverlay: {
     position: 'absolute',
@@ -1635,7 +1635,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: 'rgba(8,8,12,0.42)',
+    backgroundColor: 'rgba(10,8,6,0.42)',
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -1657,7 +1657,7 @@ const styles = StyleSheet.create({
     borderColor: VIOLET,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(8,8,12,0.5)',
+    backgroundColor: 'rgba(10,8,6,0.5)',
   },
   followBubble: {
     position: 'absolute',
@@ -1730,12 +1730,12 @@ const styles = StyleSheet.create({
   pageSubtitle: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   loadingBlock: { minHeight: 120, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  emptyCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 14, padding: 16, gap: 8 },
+  emptyCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 14, padding: 16, gap: 8 },
   emptyIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#20130D', alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { color: '#FFFFFF', fontSize: 18, lineHeight: 23, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   emptyBody: { color: '#B3B3B3', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   filterRow: { gap: 8, paddingRight: 14 },
-  filterPill: { minHeight: 34, borderRadius: 999, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  filterPill: { minHeight: 34, borderRadius: 999, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   filterPillActive: { borderColor: ORANGE, backgroundColor: '#21130E' },
   filterText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   filterTextActive: { color: ORANGE },
@@ -1752,12 +1752,12 @@ const styles = StyleSheet.create({
   cardSubtle: { color: '#737373', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   tileTitle: { color: '#FFFFFF', fontSize: 14.5, lineHeight: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   tileMeta: { color: '#A8A8A8', fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  embedCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 14, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  embedCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 14, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
   embedCopy: { flex: 1, minWidth: 0, gap: 3 },
   roundAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: EMERALD, alignItems: 'center', justifyContent: 'center' },
   disabledAction: { opacity: 0.42 },
   ghostRoundAction: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: '#3F2417', alignItems: 'center', justifyContent: 'center' },
-  postCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 16, padding: 13, gap: 12 },
+  postCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 16, padding: 13, gap: 12 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   postAuthor: { flex: 1, minWidth: 0 },
   postName: { color: '#FFFFFF', fontSize: 14.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
@@ -1766,12 +1766,12 @@ const styles = StyleSheet.create({
   socialActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
   socialAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   socialLabel: { color: '#B3B3B3', fontSize: 11.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  eventCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  eventCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   eventCardCompact: { padding: 10 },
   eventCopy: { flex: 1, minWidth: 0, gap: 4 },
   eventBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#20130D', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   eventBadgeText: { color: EMERALD, fontSize: 10.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
-  eventTile: { width: 214, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 18, overflow: 'hidden' },
+  eventTile: { width: 214, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 18, overflow: 'hidden' },
   eventTileImage: { height: 122, backgroundColor: '#101010', justifyContent: 'flex-end' },
   eventTileBadge: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(8,8,8,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   eventTileBadgeText: { color: '#FFFFFF', fontSize: 10.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
@@ -1779,7 +1779,7 @@ const styles = StyleSheet.create({
   releaseTile: { width: 150, gap: 8 },
   releaseTileArt: { width: 150, height: 150, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#101010', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   tilePlay: { position: 'absolute', right: 10, bottom: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: EMERALD, alignItems: 'center', justifyContent: 'center' },
-  stageCard: { borderRadius: 20, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', overflow: 'hidden' },
+  stageCard: { borderRadius: 20, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', overflow: 'hidden' },
   stageVisual: { backgroundColor: '#101010', justifyContent: 'flex-end' },
   stageTag: { position: 'absolute', top: 12, left: 12, borderRadius: 999, backgroundColor: 'rgba(8,8,8,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9, paddingVertical: 5 },
   stageTagText: { color: '#FFFFFF', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
@@ -1794,12 +1794,12 @@ const styles = StyleSheet.create({
   backstageButtonText: { color: ORANGE, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   stageEventLine: { borderTopWidth: 1, borderTopColor: '#262626', paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
   stageEventText: { color: '#B3B3B3', fontSize: 12.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', flex: 1 },
-  stageTile: { width: 206, borderWidth: 1, borderColor: '#262626', borderRadius: 18, backgroundColor: '#151515', overflow: 'hidden' },
+  stageTile: { width: 206, borderWidth: 1, borderColor: '#262626', borderRadius: 18, backgroundColor: '#171310', overflow: 'hidden' },
   stageTileVisual: { height: 220, backgroundColor: '#101010' },
   stageTileKind: { position: 'absolute', top: 10, left: 10, borderRadius: 999, backgroundColor: 'rgba(8,8,8,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 8, paddingVertical: 4 },
   stageTileKindText: { color: '#FFFFFF', fontSize: 10.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   stageTileCopy: { padding: 11, gap: 4 },
-  liveCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  liveCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   liveCopy: { flex: 1, minWidth: 0, gap: 4 },
   liveBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#202020', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   liveBadgeOn: { backgroundColor: '#2A120B' },
@@ -1807,43 +1807,43 @@ const styles = StyleSheet.create({
   liveDotOn: { backgroundColor: EMERALD },
   liveBadgeText: { color: '#B3B3B3', fontSize: 10.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   liveBadgeTextOn: { color: ORANGE },
-  liveTile: { width: 218, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 18, overflow: 'hidden' },
+  liveTile: { width: 218, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 18, overflow: 'hidden' },
   liveTileImage: { height: 150, backgroundColor: '#101010', padding: 10, justifyContent: 'flex-start', alignItems: 'flex-start' },
   joinButton: { minWidth: 58, minHeight: 36, borderRadius: 999, backgroundColor: '#20130D', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   joinText: { color: EMERALD, fontSize: 12.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  communityCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 16, overflow: 'hidden' },
+  communityCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 16, overflow: 'hidden' },
   communityBanner: { height: 86, backgroundColor: '#101010' },
   communityBody: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
   communityCopy: { flex: 1, minWidth: 0, gap: 3 },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  communityTile: { width: 228, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', overflow: 'hidden' },
+  communityTile: { width: 228, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', overflow: 'hidden' },
   communityTileImage: { height: 104, backgroundColor: '#101010' },
   communityTileBody: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 11 },
-  threadCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 15, padding: 13, gap: 7 },
+  threadCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 15, padding: 13, gap: 7 },
   threadTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   threadTag: { color: ORANGE, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   threadFlags: { flexDirection: 'row', gap: 6 },
   threadTitle: { color: '#FFFFFF', fontSize: 17, lineHeight: 22, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   threadBody: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   threadStats: { flexDirection: 'row', gap: 14 },
-  searchBox: { height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 13 },
+  searchBox: { height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 13 },
   searchInput: { color: '#FFFFFF', flex: 1, fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  creatorTile: { width: 118, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 18, padding: 12, gap: 8, alignItems: 'center' },
-  resultRow: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 14, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  creatorTile: { width: 118, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 18, padding: 12, gap: 8, alignItems: 'center' },
+  resultRow: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 14, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
   resultCopy: { flex: 1, minWidth: 0 },
   actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  creatorAction: { width: '48%', minHeight: 94, borderRadius: 15, borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', padding: 13, justifyContent: 'space-between' },
+  creatorAction: { width: '48%', minHeight: 94, borderRadius: 15, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, justifyContent: 'space-between' },
   creatorActionText: { color: '#FFFFFF', fontSize: 14, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  pulseCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#151515', borderRadius: 15, overflow: 'hidden' },
+  pulseCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 15, overflow: 'hidden' },
   pulseRow: { minHeight: 48, borderTopWidth: 1, borderTopColor: '#202020', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13 },
   pulseLabel: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   pulseValue: { color: ORANGE, fontSize: 12.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  createHero: { minHeight: 270, borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)', backgroundColor: NOIR_CARD, borderRadius: 22, padding: 16, gap: 10, justifyContent: 'flex-end', overflow: 'hidden' },
+  createHero: { minHeight: 270, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: NOIR_CARD, borderRadius: 22, padding: 16, gap: 10, justifyContent: 'flex-end', overflow: 'hidden' },
   createHeroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', opacity: 0.72 },
-  createAction: { width: '48%', minHeight: 116, borderRadius: 16, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#12121A', padding: 13, justifyContent: 'space-between' },
+  createAction: { width: '48%', minHeight: 116, borderRadius: 16, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#171310', padding: 13, justifyContent: 'space-between' },
   createActionMeta: { color: '#8E8E9F', fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   profilePass: { borderWidth: 1, borderColor: 'rgba(124,58,237,0.42)', backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 18, padding: 16, gap: 10 },
   profileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  profileTile: { width: '48%', minHeight: 92, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#12121A', borderRadius: 16, padding: 13, justifyContent: 'space-between' },
+  profileTile: { width: '48%', minHeight: 92, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#171310', borderRadius: 16, padding: 13, justifyContent: 'space-between' },
   profileTileText: { color: TEXT, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
 });

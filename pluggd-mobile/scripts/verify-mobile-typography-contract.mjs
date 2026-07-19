@@ -58,10 +58,10 @@ for (const [importName, family] of [
   assert.match(layout, new RegExp(`"${family}":\\s*${importName}`), `${family} must be loaded through expo-font`);
 }
 
-assert.match(tokens, /PLUGGD_ORANGE\s*=\s*'#FF5A00'/, 'canonical app orange must be #FF5A00');
+assert.match(tokens, /PLUGGD_ORANGE\s*=\s*'#ff6600'/, 'canonical app orange must be the editorial #ff6600');
 assert.match(tokens, /PLUGGD_LIGHT_ORANGE\s*=\s*'#E84F00'/, 'light mode orange must be contrast-adjusted');
 assert.match(tokens, /PLUGGD_BACKSTAGE_VIOLET\s*=\s*PLUGGD_VIOLET/, 'Backstage must expose a dedicated violet sub-accent token');
-assert.match(tokens, /#08080C/, 'dark canvas token must be present');
+assert.match(tokens, /#0a0806/, 'dark canvas token must be present');
 assert.match(tokens, /#F7F7F9/, 'light canvas token must be present');
 
 for (const primitive of ['PluggdTitle', 'PluggdHeading', 'PluggdSectionTitle', 'PluggdBody', 'PluggdMeta', 'PluggdCTA']) {

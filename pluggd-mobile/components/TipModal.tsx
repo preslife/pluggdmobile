@@ -94,7 +94,7 @@ export default function TipModal({
                 onPress={() => setSelected(amount)}
                 className={`flex-1 min-w-[30%] py-3 rounded-xl items-center border ${
                   selected === amount
-                    ? 'bg-[#FF5A00] border-[#FF5A00]'
+                    ? 'bg-[#ff6600] border-[#ff6600]'
                     : 'bg-white/5 border-white/10'
                 }`}
               >
@@ -128,7 +128,7 @@ export default function TipModal({
           <TouchableOpacity
             onPress={handleSendTip}
             disabled={sending}
-            className="bg-[#FF5A00] rounded-xl py-4 items-center"
+            className="bg-[#ff6600] rounded-xl py-4 items-center"
           >
             {sending ? (
               <ActivityIndicator color="#fff" />

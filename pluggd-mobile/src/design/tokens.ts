@@ -1,7 +1,7 @@
 import { pluggdFonts } from './typography';
 import { liquidGlassColors } from './liquidGlassTokens';
 
-export const PLUGGD_ORANGE = '#FF5A00';
+export const PLUGGD_ORANGE = '#ff6600';
 export const PLUGGD_LIGHT_ORANGE = '#E84F00';
 export const PLUGGD_VIOLET = '#7C3AED';
 export const PLUGGD_BACKSTAGE_VIOLET = PLUGGD_VIOLET;
@@ -56,9 +56,9 @@ export const pluggdDark = {
     backstage: PLUGGD_VIOLET,
     background: liquidGlassColors.backgroundDeep,
     canvas: liquidGlassColors.backgroundDeep,
-    backgroundDeep: '#05070F',
-    backgroundElevated: 'rgba(10,12,24,0.72)',
-    shell: 'rgba(10,12,24,0.68)',
+    backgroundDeep: '#070605',
+    backgroundElevated: 'rgba(18,13,8,0.72)',
+    shell: 'rgba(18,13,8,0.68)',
     surface: liquidGlassColors.surfaceDefault,
     surfaceAlt: 'rgba(34,35,52,0.72)',
     surfaceStrong: liquidGlassColors.surfaceStrong,
@@ -79,7 +79,7 @@ export const pluggdDark = {
     success: '#41D17D',
     glassTint: liquidGlassColors.surfaceDefault,
     glassFallback: liquidGlassColors.surfaceDefault,
-    headerGlass: 'rgba(10,12,24,0.58)',
+    headerGlass: 'rgba(18,13,8,0.58)',
     miniPlayerGlass: liquidGlassColors.surfaceStrong,
     shadow: '#000000',
     artworkBase: '#111827',
@@ -108,7 +108,7 @@ export const pluggdLight = {
     borderStrong: '#CFCFD8',
     borderAccent: '#F4A06D',
     divider: '#D9D9E0',
-    text: '#08080C',
+    text: '#0a0806',
     textSecondary: '#3E3E46',
     textMuted: '#70707A',
     textSubtle: '#70707A',

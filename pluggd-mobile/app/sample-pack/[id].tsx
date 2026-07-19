@@ -212,12 +212,12 @@ export default function SamplePackDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#080808' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 16, paddingTop: 122, paddingBottom: 220 },
-  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#151515', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  hero: { height: 310, borderRadius: 18, backgroundColor: '#151515', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#262626' },
+  hero: { height: 310, borderRadius: 18, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#262626' },
   heroImage: { width: '100%', height: '100%' },
   eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase', marginTop: 18, letterSpacing: 0.8 },
   title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 5 },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   secondaryButton: { flex: 1, height: 54, borderRadius: 16, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  quickActionButton: { minHeight: 40, flexGrow: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  quickActionButton: { minHeight: 40, flexGrow: 1, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,102,0,0.32)', backgroundColor: 'rgba(255,102,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabledButton: { opacity: 0.62 },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 24, marginBottom: 11 },

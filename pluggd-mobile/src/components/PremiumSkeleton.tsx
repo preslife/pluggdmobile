@@ -3,9 +3,9 @@ import { pluggdFonts } from '../design/typography';
 import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 const COLORS = {
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262637',
+  surface: '#171310',
+  surface2: '#241d15',
+  border: '#2a221a',
   muted: '#8E8E9F',
 };
 

@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -24,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
-import { WaveTicks } from './EditorialBits';
+import { EdPressable, WaveTicks } from './EditorialBits';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
@@ -182,14 +181,14 @@ export function BeatPlugScreen() {
         <View style={{ gap: 14 }}>
           <View style={styles.tabsRow}>
             {DISCOVERY_TABS.map((label, index) => (
-              <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={() => setTab(index)}>
+              <EdPressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={() => setTab(index)}>
                 <View style={[styles.tab, index === tab && styles.tabActive]}>
                   <Text style={[styles.tabIndex, index === tab && { color: ed.onOrange }]}>
                     {String(index + 1).padStart(2, '0')}
                   </Text>
                   <Text style={[styles.tabText, index === tab && { color: ed.onOrange }]}>{label.toUpperCase()}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
           <View style={styles.heroKickerRow}>
@@ -236,7 +235,7 @@ export function BeatPlugScreen() {
 
           {hero ? (
             <View style={styles.heroActions}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={heroPlaying ? 'Pause featured beat' : 'Play featured beat'}
                 onPress={() => {
@@ -252,8 +251,8 @@ export function BeatPlugScreen() {
                   <MaterialIcons name={heroPlaying ? 'pause' : 'play-arrow'} size={20} color={ed.onOrange} />
                   <Text style={styles.heroPrimaryText}>{heroPlaying ? 'Pause audition' : 'Play audition'}</Text>
                 </View>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel="View licenses and buy"
                 onPress={() => router.push(`/beat/${hero.id}` as any)}
@@ -262,7 +261,7 @@ export function BeatPlugScreen() {
                 <View style={styles.heroSecondary}>
                   <Text style={styles.heroSecondaryText}>View Licenses & Buy</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           ) : null}
         </View>
@@ -282,11 +281,11 @@ export function BeatPlugScreen() {
           <Text style={styles.searchHint}>Search, sort, then jump straight into the beat grid.</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
             {SORT_OPTIONS.map((option) => (
-              <Pressable key={option} accessibilityRole="button" accessibilityLabel={`Sort ${option}`} onPress={() => setSort(option)}>
+              <EdPressable key={option} accessibilityRole="button" accessibilityLabel={`Sort ${option}`} onPress={() => setSort(option)}>
                 <View style={[styles.sortChip, sort === option && styles.sortChipActive]}>
                   <Text style={[styles.sortChipText, sort === option && { color: ed.onOrange }]}>{option}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </ScrollView>
         </View>
@@ -311,7 +310,7 @@ export function BeatPlugScreen() {
             const playing = Boolean(track && playback.currentTrack?.id === track.id && playback.isPlaying);
             return (
               <View key={beat.id} style={styles.pickRow}>
-                <Pressable
+                <EdPressable
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${beat.title || 'beat'}`}
                   onPress={() => router.push(`/beat/${beat.id}` as any)}
@@ -331,8 +330,8 @@ export function BeatPlugScreen() {
                     </Text>
                     <Text style={styles.pickPrice}>{beatPrice(beat)}</Text>
                   </View>
-                </Pressable>
-                <Pressable
+                </EdPressable>
+                <EdPressable
                   accessibilityRole="button"
                   accessibilityLabel={playing ? `Pause ${beat.title || 'beat'}` : `Play ${beat.title || 'beat'}`}
                   onPress={() => {
@@ -346,7 +345,7 @@ export function BeatPlugScreen() {
                   <View style={styles.pickPlay}>
                     <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={20} color={ed.ink} />
                   </View>
-                </Pressable>
+                </EdPressable>
               </View>
             );
           })}
@@ -362,7 +361,7 @@ export function BeatPlugScreen() {
           {filtered.length ? (
             <View style={styles.beatGrid}>
               {filtered.slice(0, gridLimit).map((beat) => (
-                <Pressable
+                <EdPressable
                   key={beat.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${beat.title || 'beat'}`}
@@ -383,18 +382,18 @@ export function BeatPlugScreen() {
                   <Text style={styles.beatMeta} numberOfLines={1}>
                     {[beat.producer_name || 'Producer', beat.bpm ? `${beat.bpm} BPM` : null].filter(Boolean).join(' · ')}
                   </Text>
-                </Pressable>
+                </EdPressable>
               ))}
             </View>
           ) : (
             <Text style={styles.emptyText}>No beats match your filters.</Text>
           )}
           {filtered.length > gridLimit ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Load more beats" onPress={() => setGridLimit((limit) => limit + 8)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Load more beats" onPress={() => setGridLimit((limit) => limit + 8)}>
               <View style={styles.loadMore}>
                 <Text style={styles.loadMoreText}>Load more beats</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : null}
         </View>
 
@@ -418,7 +417,7 @@ export function BeatPlugScreen() {
           <View style={{ gap: 12 }}>
             <Text style={styles.sectionTitle}>Top Producers on BeatPlug</Text>
             {producers.map((producer) => (
-              <Pressable
+              <EdPressable
                 key={producer.name}
                 accessibilityRole="button"
                 accessibilityLabel={`Search beats by ${producer.name}`}
@@ -438,7 +437,7 @@ export function BeatPlugScreen() {
                   </View>
                   <MaterialIcons name="chevron-right" size={20} color="rgba(255,248,237,0.5)" />
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
         ) : null}
@@ -449,7 +448,7 @@ export function BeatPlugScreen() {
             <Text style={styles.sectionTitle}>From Soundboards</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
               {(boardsQuery.data ?? []).map((board) => (
-                <Pressable
+                <EdPressable
                   key={board.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${board.title || 'soundboard'}`}
@@ -464,7 +463,7 @@ export function BeatPlugScreen() {
                     <Text style={styles.boardTitle} numberOfLines={1}>{board.title || 'Untitled board'}</Text>
                     <Text style={styles.boardMeta}>{formatCompact(board.item_count)} sounds · {formatCompact(board.like_count)} likes</Text>
                   </View>
-                </Pressable>
+                </EdPressable>
               ))}
             </ScrollView>
           </View>
@@ -485,7 +484,7 @@ export function BeatPlugScreen() {
             <View style={styles.creatorCard}>
               <Text style={styles.creatorCardTitle}>I'm a Producer</Text>
               <Text style={styles.creatorCardBody}>Upload your beats, grow your audience, and get paid.</Text>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel="Start selling"
                 onPress={() => router.push('/creator/onboarding' as any)}
@@ -493,7 +492,7 @@ export function BeatPlugScreen() {
                 <View style={styles.startSelling}>
                   <Text style={styles.startSellingText}>Start Selling</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </View>
         </View>

@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
+import { edFonts } from '../../design/editorial';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   contentInitials,
@@ -55,12 +56,12 @@ import {
 } from '../culture/useCultureData';
 
 const COLORS = {
-  canvas: '#08080C',
-  shell: '#0D0D11',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
+  canvas: '#0a0806',
+  shell: '#100c08',
+  surface: '#171310',
+  surface2: '#241d15',
   border: '#262626',
-  orange: '#FF5A00',
+  orange: '#ff6600',
   coral: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -87,8 +88,8 @@ type CreatorCard = {
 const IMAGE_GRADIENTS: readonly (readonly [string, string, string])[] = [
   ['#152B33', '#11131B', '#07070A'],
   ['#391413', '#16131A', '#07070A'],
-  ['#241E42', '#11131B', '#07070A'],
-  ['#11312B', '#12121A', '#07070A'],
+  ['#2b1c10', '#11131B', '#07070A'],
+  ['#11312B', '#171310', '#07070A'],
   ['#392015', '#13131B', '#07070A'],
 ];
 
@@ -535,8 +536,8 @@ function FocusCard({
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale }] }]}>
         <LiveArtwork uri={imageUrl} title={title} style={styles.focusImage} />
       </Animated.View>
-      <LinearGradient colors={['rgba(8,8,12,0.04)', 'rgba(8,8,12,0.52)', 'rgba(8,8,12,0.96)']} locations={[0, 0.52, 1]} style={StyleSheet.absoluteFill} />
-      {isLive ? <LinearGradient colors={['rgba(255,71,87,0.22)', 'rgba(8,8,12,0)']} style={StyleSheet.absoluteFill} /> : null}
+      <LinearGradient colors={['rgba(10,8,6,0.04)', 'rgba(10,8,6,0.52)', 'rgba(10,8,6,0.96)']} locations={[0, 0.52, 1]} style={StyleSheet.absoluteFill} />
+      {isLive ? <LinearGradient colors={['rgba(255,71,87,0.22)', 'rgba(10,8,6,0)']} style={StyleSheet.absoluteFill} /> : null}
       <View style={styles.focusContent}>
         <View style={[styles.statusBadge, isLive ? styles.statusBadgeLive : styles.statusBadgeNeutral]}>
           {isLive ? <View style={styles.statusDotLive} /> : null}
@@ -572,7 +573,7 @@ function LiveNowCard({ room, onJoin }: { room: LiveRoomItem; onJoin: (room: Live
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Join ${title}`} onPress={() => onJoin(room)} style={styles.liveNowCard}>
       <LiveArtwork uri={mediaImageForRoom(room)} title={title} style={styles.liveNowImage} />
-      <LinearGradient colors={['rgba(8,8,12,0.08)', 'rgba(8,8,12,0.92)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(10,8,6,0.08)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFill} />
       <View style={styles.liveBadgeSmall}>
         <View style={styles.liveDotSmall} />
         <Text style={styles.liveBadgeSmallText}>LIVE</Text>
@@ -687,7 +688,7 @@ function WideSessionCard({
     <View style={styles.wideCard}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomTitle(room)}`} onPress={() => onJoin(room)} style={StyleSheet.absoluteFill}>
         <LiveArtwork uri={mediaImageForRoom(room)} title={roomTitle(room)} style={styles.wideImage} />
-        <LinearGradient colors={['rgba(8,8,12,0.04)', 'rgba(8,8,12,0.86)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(10,8,6,0.04)', 'rgba(10,8,6,0.86)']} style={StyleSheet.absoluteFill} />
       </Pressable>
       <View style={styles.wideContent}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomTitle(room)}`} onPress={() => onJoin(room)} style={styles.wideTextHitArea}>
@@ -728,7 +729,7 @@ function EventLiveCard({
     <View style={styles.wideCard}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={StyleSheet.absoluteFill}>
         <LiveArtwork uri={event.cover_image_url} title={eventTitle(event)} style={styles.wideImage} />
-        <LinearGradient colors={['rgba(8,8,12,0.05)', 'rgba(8,8,12,0.88)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(10,8,6,0.05)', 'rgba(10,8,6,0.88)']} style={StyleSheet.absoluteFill} />
       </Pressable>
       <View style={styles.wideContent}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={styles.wideTextHitArea}>
@@ -1134,7 +1135,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(8,8,12,0.92)',
+    backgroundColor: 'rgba(10,8,6,0.92)',
     zIndex: 3,
   },
   headerTitle: {
@@ -1189,7 +1190,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(31,31,46,0.76)',
+    backgroundColor: 'rgba(36,29,21,0.76)',
     color: COLORS.muted,
     fontFamily: 'Satoshi-Medium',
     fontSize: 13,
@@ -1197,8 +1198,8 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: COLORS.orange,
-    borderColor: 'rgba(255,90,0,0.64)',
-    backgroundColor: 'rgba(255,90,0,0.14)',
+    borderColor: 'rgba(255,102,0,0.64)',
+    backgroundColor: 'rgba(255,102,0,0.14)',
   },
   loadingBlock: {
     marginHorizontal: 16,
@@ -1233,7 +1234,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   statusBadgeLive: { backgroundColor: COLORS.coral },
-  statusBadgeNeutral: { backgroundColor: 'rgba(18,18,26,0.76)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  statusBadgeNeutral: { backgroundColor: 'rgba(23,19,16,0.76)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   statusDotLive: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: COLORS.white },
   statusBadgeText: { fontFamily: 'Satoshi-Bold', color: COLORS.white, fontSize: 11, lineHeight: 14 },
   focusTitle: {
@@ -1266,7 +1267,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(18,18,26,0.62)',
+    backgroundColor: 'rgba(23,19,16,0.62)',
     paddingHorizontal: 16,
   },
   focusSecondaryText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 16 },
@@ -1290,8 +1291,8 @@ const styles = StyleSheet.create({
   sectionBlock: { marginBottom: 24 },
   sectionHeader: { paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
-  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: '#FF5A00' },
-  sectionTitle: { ...pluggdTextStyles.sectionTitle, color: COLORS.white, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
+  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: '#ff6600' },
+  sectionTitle: { fontFamily: edFonts.serif, color: COLORS.white, fontSize: 22, lineHeight: 26, letterSpacing: 0 },
   sectionActionButton: { minHeight: 44, justifyContent: 'center' },
   sectionAction: { fontFamily: 'Satoshi-Bold', color: COLORS.orange, fontSize: 12, lineHeight: 15 },
   liveShelf: { paddingHorizontal: 16, gap: 12 },
@@ -1361,8 +1362,8 @@ const styles = StyleSheet.create({
   cardMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '700' },
   countdownRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 5 },
   countdownText: { fontFamily: pluggdFonts.satoshiBold, color: COLORS.soft, fontSize: 12, lineHeight: 15, fontWeight: '800' },
-  compactCTA: { marginTop: 'auto', minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(31,31,46,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  compactCTAOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,90,0,0.14)' },
+  compactCTA: { marginTop: 'auto', minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(36,29,21,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  compactCTAOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.14)' },
   compactCTAText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   compactCTATextOn: { color: COLORS.orange },
   roomList: { marginHorizontal: 16, gap: 10 },
@@ -1377,7 +1378,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 11,
   },
-  roomIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,90,0,0.12)' },
+  roomIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,102,0,0.12)' },
   roomCopy: { flex: 1, minWidth: 0 },
   roomTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 18 },
   roomMeta: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 5, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '600' },
@@ -1396,7 +1397,7 @@ const styles = StyleSheet.create({
   wideImage: { width: '100%', height: '100%' },
   wideContent: { position: 'absolute', left: 12, right: 12, bottom: 12, top: 12, justifyContent: 'flex-end' },
   wideTextHitArea: { flex: 1, justifyContent: 'flex-end' },
-  miniTag: { alignSelf: 'flex-start', height: 23, borderRadius: 8, paddingHorizontal: 8, backgroundColor: 'rgba(18,18,26,0.78)', flexDirection: 'row', alignItems: 'center', gap: 5 },
+  miniTag: { alignSelf: 'flex-start', height: 23, borderRadius: 8, paddingHorizontal: 8, backgroundColor: 'rgba(23,19,16,0.78)', flexDirection: 'row', alignItems: 'center', gap: 5 },
   miniTagLive: { backgroundColor: COLORS.coral },
   miniTagText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 10, lineHeight: 12 },
   wideTitle: { marginTop: 'auto', color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 19 },
@@ -1405,7 +1406,7 @@ const styles = StyleSheet.create({
   wideCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   wideSplitActions: { marginTop: 9, flexDirection: 'row', gap: 8 },
   wideSmallCTA: { flex: 1, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white, paddingHorizontal: 8 },
-  wideSmallCTAOn: { backgroundColor: 'rgba(255,90,0,0.16)', borderWidth: 1, borderColor: COLORS.orange },
+  wideSmallCTAOn: { backgroundColor: 'rgba(255,102,0,0.16)', borderWidth: 1, borderColor: COLORS.orange },
   replayList: { marginHorizontal: 16, gap: 10 },
   replayRow: {
     minHeight: 88,
@@ -1432,8 +1433,8 @@ const styles = StyleSheet.create({
   creatorLiveText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 9, lineHeight: 11 },
   creatorName: { marginTop: 11, color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17, textAlign: 'center' },
   creatorHandle: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 4, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
-  followButton: { marginTop: 10, minHeight: 44, alignSelf: 'stretch', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(31,31,46,0.48)' },
-  followButtonOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,90,0,0.14)' },
+  followButton: { marginTop: 10, minHeight: 44, alignSelf: 'stretch', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(36,29,21,0.48)' },
+  followButtonOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.14)' },
   followText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
   followTextOn: { color: COLORS.orange },
   emptyInline: {

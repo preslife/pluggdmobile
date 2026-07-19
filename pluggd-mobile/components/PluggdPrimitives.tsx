@@ -569,12 +569,12 @@ export function PremiumHeroCard({
       ]}
     >
       <LinearGradient
-        colors={[`${accent}40`, 'rgba(8,8,12,0.2)', theme.colors.backgroundElevated]}
+        colors={[`${accent}40`, 'rgba(10,8,6,0.2)', theme.colors.backgroundElevated]}
         style={StyleSheet.absoluteFill}
       />
       <View style={[premiumStyles.heroArtwork, { backgroundColor: theme.colors.artworkBase }]}>
         {imageUrl ? <PluggdImage uri={imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-        <LinearGradient colors={['transparent', 'rgba(8,8,12,0.78)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['transparent', 'rgba(10,8,6,0.78)']} style={StyleSheet.absoluteFill} />
       </View>
       <View style={[premiumStyles.heroCopy, compact && premiumStyles.heroCopyCompact]}>
         <View style={premiumStyles.heroTopLine}>

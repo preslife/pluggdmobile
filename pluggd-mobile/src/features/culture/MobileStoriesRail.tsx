@@ -226,7 +226,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               </View>
             )}
             <View style={[styles.createBadge, !user?.id && styles.createBadgeQuiet]}>
-              <MaterialIcons name="add" size={16} color={user?.id ? '#08080C' : '#E4E4E9'} />
+              <MaterialIcons name="add" size={16} color={user?.id ? '#0a0806' : '#E4E4E9'} />
             </View>
           </View>
           <Text style={styles.label} numberOfLines={1}>{user ? 'Your story' : 'Stories'}</Text>
@@ -278,7 +278,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               disabled={!media || createMutation.isPending}
               onPress={() => createMutation.mutate()}
             >
-              {createMutation.isPending ? <ActivityIndicator color="#08080C" /> : <Text style={styles.shareText}>Share</Text>}
+              {createMutation.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.shareText}>Share</Text>}
             </Pressable>
           </View>
 
@@ -288,13 +288,13 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
                 <PluggdImage uri={media.uri} style={StyleSheet.absoluteFill} resizeMode="cover" />
               ) : media ? (
                 <View style={styles.mediaPreview}>
-                  <MaterialIcons name={media.mediaType === 'video' ? 'videocam' : 'graphic-eq'} size={44} color="#FF5A00" />
+                  <MaterialIcons name={media.mediaType === 'video' ? 'videocam' : 'graphic-eq'} size={44} color="#ff6600" />
                   <Text style={styles.mediaPreviewTitle}>{media.fileName || `${media.mediaType} story`}</Text>
                   <Text style={styles.mediaPreviewMeta}>{media.mimeType || media.mediaType}</Text>
                 </View>
               ) : (
                 <View style={styles.mediaPreview}>
-                  <MaterialIcons name="auto-awesome" size={44} color="#FF5A00" />
+                  <MaterialIcons name="auto-awesome" size={44} color="#ff6600" />
                   <Text style={styles.mediaPreviewTitle}>Choose a story moment</Text>
                   <Text style={styles.mediaPreviewMeta}>Image, video or audio from your library.</Text>
                 </View>
@@ -303,15 +303,15 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
 
             <View style={styles.pickGrid}>
               <Pressable style={styles.pickButton} onPress={() => pickVisual('image')} disabled={picking}>
-                <MaterialIcons name="image" size={24} color="#FF5A00" />
+                <MaterialIcons name="image" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Photo</Text>
               </Pressable>
               <Pressable style={styles.pickButton} onPress={() => pickVisual('video')} disabled={picking}>
-                <MaterialIcons name="videocam" size={24} color="#FF5A00" />
+                <MaterialIcons name="videocam" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Video</Text>
               </Pressable>
               <Pressable style={styles.pickButton} onPress={pickAudio} disabled={picking}>
-                <MaterialIcons name="graphic-eq" size={24} color="#FF5A00" />
+                <MaterialIcons name="graphic-eq" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Audio</Text>
               </Pressable>
             </View>
@@ -359,20 +359,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.16)',
     backgroundColor: 'rgba(255,255,255,0.035)',
   },
-  createInner: { flex: 1, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12121A' },
+  createInner: { flex: 1, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#171310' },
   createInnerCompact: { borderRadius: 29 },
-  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#E4E4E9', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#08080C' },
+  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#E4E4E9', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0a0806' },
   createBadgeQuiet: { backgroundColor: '#2B2C38' },
-  ring: { width: 74, height: 74, borderRadius: 37, padding: 3, backgroundColor: '#FF5A00' },
+  ring: { width: 74, height: 74, borderRadius: 37, padding: 3, backgroundColor: '#ff6600' },
   ringCompact: { width: 62, height: 62, borderRadius: 31, padding: 2 },
   ringViewed: { backgroundColor: '#2A2A33' },
   image: { width: '100%', height: '100%', borderRadius: 34 },
   imageCompact: { borderRadius: 29 },
-  fallback: { width: '100%', height: '100%', borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1F1F2E' },
+  fallback: { width: '100%', height: '100%', borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#241d15' },
   fallbackCompact: { borderRadius: 29 },
   fallbackText: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 22 },
   label: { color: '#E4E4E9', fontSize: 11, fontFamily: 'Satoshi-Bold', textAlign: 'center' },
-  skeletonRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#151520', borderWidth: 1, borderColor: '#262637' },
+  skeletonRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#151520', borderWidth: 1, borderColor: '#2a221a' },
   skeletonRingCompact: { width: 62, height: 62, borderRadius: 31 },
   skeletonLabel: { width: 48, height: 9, borderRadius: 5, backgroundColor: '#151520' },
   // Web-parity quiet empty state: plain text beside the create ring, no card chrome.
@@ -380,23 +380,23 @@ const styles = StyleSheet.create({
   emptyStoryHintCompact: { maxWidth: 230 },
   emptyStoryText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 13 },
   emptyStoryMeta: { color: '#8E8E9F', marginTop: 3, fontSize: 11, lineHeight: 15 },
-  sheet: { flex: 1, backgroundColor: '#08080C' },
-  sheetHeader: { minHeight: 92, paddingTop: 18, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1F1F2E', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sheet: { flex: 1, backgroundColor: '#0a0806' },
+  sheetHeader: { minHeight: 92, paddingTop: 18, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15', flexDirection: 'row', alignItems: 'center', gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sheetTitleWrap: { flex: 1, minWidth: 0 },
   sheetTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 22 },
   sheetSubtitle: { color: '#8E8E9F', marginTop: 2, fontSize: 12 },
-  shareButton: { minWidth: 74, height: 40, borderRadius: 20, backgroundColor: '#FF5A00', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  shareButton: { minWidth: 74, height: 40, borderRadius: 20, backgroundColor: '#ff6600', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
   disabled: { opacity: 0.45 },
-  shareText: { color: '#08080C', fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  shareText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 13 },
   sheetContent: { padding: 16, gap: 16, paddingBottom: 44 },
-  previewCard: { height: 430, borderRadius: 28, overflow: 'hidden', backgroundColor: '#12121A', borderWidth: 1, borderColor: '#1F1F2E' },
+  previewCard: { height: 430, borderRadius: 28, overflow: 'hidden', backgroundColor: '#171310', borderWidth: 1, borderColor: '#241d15' },
   mediaPreview: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   mediaPreviewTitle: { color: '#FFFFFF', marginTop: 13, fontFamily: 'Satoshi-Black', fontSize: 20, textAlign: 'center' },
   mediaPreviewMeta: { color: '#8E8E9F', marginTop: 5, fontSize: 13, textAlign: 'center' },
   pickGrid: { flexDirection: 'row', gap: 10 },
-  pickButton: { flex: 1, minHeight: 74, borderRadius: 18, backgroundColor: '#12121A', borderWidth: 1, borderColor: '#1F1F2E', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  pickButton: { flex: 1, minHeight: 74, borderRadius: 18, backgroundColor: '#171310', borderWidth: 1, borderColor: '#241d15', alignItems: 'center', justifyContent: 'center', gap: 7 },
   pickText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  captionInput: { minHeight: 50, borderRadius: 18, backgroundColor: '#12121A', borderWidth: 1, borderColor: '#1F1F2E', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 15 },
+  captionInput: { minHeight: 50, borderRadius: 18, backgroundColor: '#171310', borderWidth: 1, borderColor: '#241d15', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 15 },
   storyRules: { color: '#737373', fontSize: 12, lineHeight: 18 },
 });

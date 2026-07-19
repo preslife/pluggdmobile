@@ -20,7 +20,7 @@ import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 const PACK_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   'Starter Credits': 'bolt',
@@ -313,7 +313,7 @@ export default function WalletScreen() {
                       selected && styles.selectCircleActive,
                     ]}
                   >
-                    {selected ? <MaterialIcons name="check" size={16} color="#080808" /> : null}
+                    {selected ? <MaterialIcons name="check" size={16} color="#0a0806" /> : null}
                   </View>
                 </View>
               </Pressable>
@@ -404,7 +404,7 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 13,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     alignItems: 'center',
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     minHeight: 124,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 16,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   packCard: {
     minHeight: 74,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 14,
@@ -709,7 +709,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   activityCard: {
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 16,

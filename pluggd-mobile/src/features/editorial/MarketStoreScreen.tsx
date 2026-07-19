@@ -13,7 +13,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -27,6 +26,7 @@ import { ed, edFonts } from '../../design/editorial';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type SamplePackItem } from '../../lib/mobileContent';
+import { EdPressable } from './EditorialBits';
 
 type StoreProductRow = {
   id: string;
@@ -97,7 +97,7 @@ function EmptyPanel({ title, copy }: { title: string; copy: string }) {
 function ProductCard({ product, wide = false }: { product: StoreProductRow; wide?: boolean }) {
   const router = useRouter();
   return (
-    <Pressable
+    <EdPressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${productTitle(product)}`}
       onPress={() => router.push(productRoute(product) as any)}
@@ -120,7 +120,7 @@ function ProductCard({ product, wide = false }: { product: StoreProductRow; wide
           <Text style={styles.productPrice}>{productPrice(product)}</Text>
         </View>
       </View>
-    </Pressable>
+    </EdPressable>
   );
 }
 
@@ -204,16 +204,16 @@ export function MarketStoreScreen() {
             Official merch. Creator goods. Exclusive drops. Digital products. Services. Built for the culture.
           </Text>
           <View style={styles.heroCtaRow}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Shop all" onPress={() => router.push('/marketplace' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Shop all" onPress={() => router.push('/marketplace' as any)}>
               <View style={styles.heroPrimary}>
                 <Text style={styles.heroPrimaryText}>Shop all</Text>
               </View>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
+            </EdPressable>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
               <View style={styles.heroSecondary}>
                 <Text style={styles.heroSecondaryText}>BeatPlug</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           </View>
           <View style={styles.trustRow}>
             {TRUST_CHIPS.map((chip) => (
@@ -235,7 +235,7 @@ export function MarketStoreScreen() {
           {productsQuery.isLoading ? (
             <PremiumSkeleton compact label="Loading the culture shop..." />
           ) : featured ? (
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`Shop ${productTitle(featured)}`}
               onPress={() => router.push(productRoute(featured) as any)}
@@ -259,7 +259,7 @@ export function MarketStoreScreen() {
                   </View>
                 </View>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : (
             <EmptyPanel title="No featured merch yet" copy="Approved merch will appear here once it is published." />
           )}
@@ -269,7 +269,7 @@ export function MarketStoreScreen() {
         <View style={{ gap: 12 }}>
           <StoreSectionHead eyebrow="New drops" title="What's Next" copy="Fresh drops. Limited runs. Don't sleep." />
           {dropFocus ? (
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`View drop ${productTitle(dropFocus)}`}
               onPress={() => router.push(productRoute(dropFocus) as any)}
@@ -291,7 +291,7 @@ export function MarketStoreScreen() {
                   </View>
                 </View>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : (
             <EmptyPanel title="Drops coming soon" copy="Limited Store drops will be curated here." />
           )}
@@ -324,7 +324,7 @@ export function MarketStoreScreen() {
           {(packsQuery.data ?? []).length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
               {(packsQuery.data ?? []).map((pack) => (
-                <Pressable
+                <EdPressable
                   key={pack.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${pack.title || 'sample pack'}`}
@@ -345,7 +345,7 @@ export function MarketStoreScreen() {
                       <Text style={styles.productPrice}>{formatGBP(pack.price)}</Text>
                     </View>
                   </View>
-                </Pressable>
+                </EdPressable>
               ))}
             </ScrollView>
           ) : (
@@ -358,7 +358,7 @@ export function MarketStoreScreen() {
           <StoreSectionHead eyebrow="Services" title="Book talent" />
           <View style={styles.serviceGrid}>
             {SERVICES.map((service) => (
-              <Pressable
+              <EdPressable
                 key={service.key}
                 accessibilityRole="button"
                 accessibilityLabel={`Book ${service.title}`}
@@ -374,7 +374,7 @@ export function MarketStoreScreen() {
                     <Text style={styles.serviceBook}>Book</Text>
                   </View>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
         </View>

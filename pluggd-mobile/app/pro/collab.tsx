@@ -11,7 +11,7 @@ import { formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { safeList } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 type CollabRow = {
   id: string;
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   cardFeatured: {
-    borderColor: 'rgba(255,90,0,0.42)',
+    borderColor: 'rgba(255,102,0,0.42)',
   },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   kind: { color: ORANGE, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },

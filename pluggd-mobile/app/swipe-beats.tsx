@@ -12,7 +12,7 @@ import { safeList, toggleSavedContent } from '../src/features/culture/mobileServ
 import { contentInitials, toTrack, type BeatItem } from '../src/lib/mobileContent';
 import { supabase } from '../src/lib/supabase';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 async function loadSwipeBeats() {
   return safeList<BeatItem>(
@@ -129,14 +129,14 @@ export default function SwipeBeatsRoute() {
             },
           ]}
         >
-          <LinearGradient colors={['#20130D', '#12121A', '#08080C']} style={StyleSheet.absoluteFillObject} />
+          <LinearGradient colors={['#20130D', '#171310', '#0a0806']} style={StyleSheet.absoluteFillObject} />
           {beat.image_url ? <PluggdImage uri={beat.image_url} style={styles.image} /> : <Text style={styles.initials}>{contentInitials(beat.title || 'Beat')}</Text>}
-          <LinearGradient colors={['transparent', 'rgba(8,8,12,0.94)']} style={StyleSheet.absoluteFillObject} />
+          <LinearGradient colors={['transparent', 'rgba(10,8,6,0.94)']} style={StyleSheet.absoluteFillObject} />
           <View style={styles.cardCopy}>
             <Text style={styles.title}>{beat.title || 'Untitled beat'}</Text>
             <Text style={styles.meta}>{beat.producer_name || 'Producer'} · {[beat.bpm ? `${beat.bpm} BPM` : null, beat.key, beat.genre].filter(Boolean).join(' · ')}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Play beat" style={styles.playButton} onPress={play}>
-              <MaterialIcons name="play-arrow" size={24} color="#08080C" />
+              <MaterialIcons name="play-arrow" size={24} color="#0a0806" />
               <Text style={styles.playText}>Preview</Text>
             </Pressable>
           </View>
@@ -149,7 +149,7 @@ export default function SwipeBeatsRoute() {
           <Text style={styles.actionText}>Skip</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Save beat" style={[styles.actionButton, styles.saveButton]} onPress={save}>
-          <MaterialIcons name="bookmark" size={26} color="#08080C" />
+          <MaterialIcons name="bookmark" size={26} color="#0a0806" />
           <Text style={[styles.actionText, styles.saveText]}>Save</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Open license options" style={styles.actionButton} onPress={openLicense}>
@@ -163,7 +163,7 @@ export default function SwipeBeatsRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C', paddingHorizontal: 16 },
+  screen: { flex: 1, backgroundColor: '#0a0806', paddingHorizontal: 16 },
   header: { height: 92, paddingTop: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 30, lineHeight: 34 },
@@ -174,12 +174,12 @@ const styles = StyleSheet.create({
   title: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 32, lineHeight: 36 },
   meta: { color: '#B3B3B3', fontSize: 14, lineHeight: 20, marginTop: 8 },
   playButton: { alignSelf: 'flex-start', minHeight: 46, borderRadius: 23, paddingHorizontal: 18, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18 },
-  playText: { color: '#08080C', fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  playText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 14 },
   actions: { height: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', gap: 14 },
-  actionButton: { minWidth: 92, minHeight: 54, borderRadius: 27, borderWidth: 1, borderColor: '#262626', backgroundColor: '#12121A', alignItems: 'center', justifyContent: 'center' },
+  actionButton: { minWidth: 92, minHeight: 54, borderRadius: 27, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
   saveButton: { backgroundColor: ORANGE, borderColor: ORANGE },
   actionText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 2 },
-  saveText: { color: '#08080C' },
+  saveText: { color: '#0a0806' },
   instructions: { color: '#8E8E9F', fontSize: 12, textAlign: 'center', marginBottom: 18 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   emptyTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 24 },

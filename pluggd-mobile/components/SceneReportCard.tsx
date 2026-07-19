@@ -9,7 +9,7 @@ const PAPER_TOP = '#EFE7D7';
 const PAPER_BOTTOM = '#E2D7C2';
 const INK = '#17130C';
 const INK_SOFT = '#6A6052';
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 type SceneReportCardProps = {
   eyebrow: string;

@@ -81,7 +81,7 @@ export default function PlaylistDetailRoute() {
               {playlist.cover_url ? (
                 <PluggdImage uri={playlist.cover_url} style={styles.heroImage} />
               ) : (
-                <LinearGradient colors={['#2B1E18', '#12121A']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['#2B1E18', '#171310']} style={StyleSheet.absoluteFill} />
               )}
               <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={StyleSheet.absoluteFill} />
               <View style={styles.heroCopy}>
@@ -97,7 +97,7 @@ export default function PlaylistDetailRoute() {
 
             <View style={styles.actions}>
               <Pressable style={styles.primaryButton} onPress={playAll}>
-                <MaterialIcons name="play-arrow" size={22} color="#08080C" />
+                <MaterialIcons name="play-arrow" size={22} color="#0a0806" />
                 <Text style={styles.primaryText}>Play</Text>
               </Pressable>
               <Pressable style={styles.secondaryButton} onPress={follow}>
@@ -140,7 +140,7 @@ export default function PlaylistDetailRoute() {
                       } as any);
                     }}
                   >
-                    <MaterialIcons name="play-arrow" size={18} color="#08080C" />
+                    <MaterialIcons name="play-arrow" size={18} color="#0a0806" />
                   </Pressable>
                 </Pressable>
               ))
@@ -157,14 +157,14 @@ export default function PlaylistDetailRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 16, paddingTop: 54, paddingBottom: 180 },
-  backButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  backButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   loading: { minHeight: 360, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 360, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   emptyTitle: { color: '#FFFFFF', fontSize: 24, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
-  hero: { height: 360, borderRadius: 22, overflow: 'hidden', backgroundColor: '#12121A', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
+  hero: { height: 360, borderRadius: 22, overflow: 'hidden', backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', justifyContent: 'flex-end' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroCopy: { padding: 18 },
   eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1.1 },
@@ -173,20 +173,20 @@ const styles = StyleSheet.create({
   description: { color: '#DADAE0', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 16 },
   actions: { flexDirection: 'row', gap: 9, marginTop: 18 },
   primaryButton: { flex: 1, height: 48, borderRadius: 24, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  primaryText: { color: '#08080C', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  secondaryButton: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,90,0,0.5)', backgroundColor: 'rgba(255,90,0,0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  primaryText: { color: '#0a0806', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  secondaryButton: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,102,0,0.5)', backgroundColor: 'rgba(255,102,0,0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryText: { color: PLUGGD_ORANGE, fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  iconButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#151515', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', alignItems: 'center', justifyContent: 'center' },
   sectionTitle: { color: '#FFFFFF', fontSize: 22, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 26, marginBottom: 12 },
-  trackRow: { minHeight: 68, borderRadius: 18, backgroundColor: '#12121A', borderWidth: 1, borderColor: '#262626', flexDirection: 'row', alignItems: 'center', gap: 11, padding: 10, marginBottom: 9 },
+  trackRow: { minHeight: 68, borderRadius: 18, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', flexDirection: 'row', alignItems: 'center', gap: 11, padding: 10, marginBottom: 9 },
   trackIndex: { width: 22, color: '#737373', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textAlign: 'center' },
-  trackArtwork: { width: 46, height: 46, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1F1F2E', alignItems: 'center', justifyContent: 'center' },
+  trackArtwork: { width: 46, height: 46, borderRadius: 12, overflow: 'hidden', backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center' },
   trackImage: { width: '100%', height: '100%' },
   trackCopy: { flex: 1, minWidth: 0 },
   trackTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   trackMeta: { color: '#8E8E9F', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 3 },
   trackPlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.36 },
-  emptyCard: { borderRadius: 16, backgroundColor: '#12121A', borderWidth: 1, borderColor: '#262626', padding: 16 },
+  emptyCard: { borderRadius: 16, backgroundColor: '#171310', borderWidth: 1, borderColor: '#262626', padding: 16 },
   emptyCardText: { color: '#B3B3B3', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
 });

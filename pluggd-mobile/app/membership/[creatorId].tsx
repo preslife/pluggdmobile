@@ -207,7 +207,7 @@ export default function CreatorMembershipScreen() {
     return (
       <PremiumScreenBackdrop tone="accent" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color="#FF5A00" />
+        <ActivityIndicator size="large" color="#ff6600" />
       </PremiumScreenBackdrop>
     );
   }
@@ -297,7 +297,7 @@ export default function CreatorMembershipScreen() {
 
           <View className="gap-4">
             {tiers.map((tier) => {
-              const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#FF5A00';
+              const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#ff6600';
               const icon = TIER_ICONS[tier.name] ?? 'star';
               const sku = TIER_ORDER_TO_SKU[tier.tier_order];
               const appleProduct = sku

@@ -395,7 +395,7 @@ function PosterCard({ item }: { item: ParityCard }) {
           </View>
         )}
         <LinearGradient
-          colors={['rgba(8,8,12,0)', 'rgba(8,8,12,0.28)', 'rgba(8,8,12,0.9)']}
+          colors={['rgba(10,8,6,0)', 'rgba(10,8,6,0.28)', 'rgba(10,8,6,0.9)']}
           locations={[0.4, 0.66, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -454,7 +454,7 @@ function FeaturedLead({ item }: { item: ParityCard }) {
         </View>
       )}
       <LinearGradient
-        colors={['rgba(8,8,12,0)', 'rgba(8,8,12,0.4)', 'rgba(8,8,12,0.96)']}
+        colors={['rgba(10,8,6,0)', 'rgba(10,8,6,0.4)', 'rgba(10,8,6,0.96)']}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.34)',
+    borderColor: 'rgba(255,102,0,0.34)',
     padding: 16,
     gap: 16,
     overflow: 'hidden',
@@ -1595,7 +1595,7 @@ const styles = StyleSheet.create({
   posterChip: {
     alignSelf: 'flex-start',
     borderRadius: 999,
-    backgroundColor: 'rgba(8,8,12,0.5)',
+    backgroundColor: 'rgba(10,8,6,0.5)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 9,
@@ -1610,7 +1610,7 @@ const styles = StyleSheet.create({
   },
   posterMetric: {
     borderRadius: 999,
-    backgroundColor: 'rgba(255,90,0,0.92)',
+    backgroundColor: 'rgba(255,102,0,0.92)',
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
@@ -1743,9 +1743,9 @@ const styles = StyleSheet.create({
   },
   viewPill: {
     borderRadius: 999,
-    backgroundColor: 'rgba(255,90,0,0.16)',
+    backgroundColor: 'rgba(255,102,0,0.16)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,90,0,0.4)',
+    borderColor: 'rgba(255,102,0,0.4)',
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
@@ -1803,7 +1803,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   boardEyebrow: {
-    color: '#FF5A00',
+    color: '#ff6600',
     fontFamily: 'Satoshi-Bold',
     fontSize: 10,
     letterSpacing: 1.4,
@@ -1866,7 +1866,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FF5A00',
+    backgroundColor: '#ff6600',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2071,7 +2071,7 @@ const styles = StyleSheet.create({
   },
   eventDateBlock: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,8,12,0.52)',
+    backgroundColor: 'rgba(10,8,6,0.52)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2119,7 +2119,7 @@ const styles = StyleSheet.create({
   eventView: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.55)',
+    borderColor: 'rgba(255,102,0,0.55)',
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
@@ -2227,7 +2227,7 @@ const styles = StyleSheet.create({
     maxWidth: 132,
     borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: 'rgba(8,8,12,0.72)',
+    backgroundColor: 'rgba(10,8,6,0.72)',
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '900',

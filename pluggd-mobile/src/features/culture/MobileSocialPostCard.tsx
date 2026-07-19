@@ -20,11 +20,11 @@ import {
 import type { MobileSocialPost, MobileSocialPostPreview } from './mobileTypes';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262637',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  surface2: '#241d15',
+  border: '#2a221a',
+  orange: '#ff6600',
   live: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -699,14 +699,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pollOptionSelected: {
-    borderColor: 'rgba(255,90,0,0.72)',
+    borderColor: 'rgba(255,102,0,0.72)',
   },
   pollFill: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255,90,0,0.18)',
+    backgroundColor: 'rgba(255,102,0,0.18)',
   },
   pollOptionText: {
     color: COLORS.white,

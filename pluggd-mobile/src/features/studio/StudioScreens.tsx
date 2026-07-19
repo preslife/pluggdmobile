@@ -552,7 +552,7 @@ function StatusChip({ label, tone = 'neutral' }: { label: string; tone?: 'native
   const theme = usePluggdTheme();
   const colors = {
     native: { bg: 'rgba(65,209,125,0.14)', fg: theme.colors.success, border: 'rgba(65,209,125,0.32)' },
-    limited: { bg: 'rgba(255,90,0,0.13)', fg: theme.colors.accent, border: 'rgba(255,90,0,0.32)' },
+    limited: { bg: 'rgba(255,102,0,0.13)', fg: theme.colors.accent, border: 'rgba(255,102,0,0.32)' },
     web: { bg: theme.colors.surfaceAlt, fg: theme.colors.textMuted, border: theme.colors.border },
     neutral: { bg: theme.colors.surfaceAlt, fg: theme.colors.textSecondary, border: theme.colors.border },
   }[tone];
@@ -988,7 +988,7 @@ function ModuleCard({
             onPress={() => onToggle(module)}
             style={[styles.secondaryButton, module.plugged ? { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt } : { borderColor: theme.colors.accent, backgroundColor: theme.colors.accent }]}
           >
-            <Text style={[styles.secondaryButtonText, { color: module.plugged ? theme.colors.text : '#08080C' }]}>
+            <Text style={[styles.secondaryButtonText, { color: module.plugged ? theme.colors.text : '#0a0806' }]}>
               {busy ? 'Saving' : module.plugged ? 'Unplug' : 'Plug in'}
             </Text>
           </Pressable>
@@ -1703,7 +1703,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: { fontFamily: pluggdFonts.satoshiBlack,
-    color: '#08080C',
+    color: '#0a0806',
     fontSize: 14,
     fontWeight: '900',
   },
@@ -2229,7 +2229,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   appsEyebrow: { fontFamily: pluggdFonts.satoshiBlack,
-    color: '#FF5A00',
+    color: '#ff6600',
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '900',
@@ -2267,11 +2267,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#15151D',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#262637',
+    borderColor: '#2a221a',
   },
   segmentActive: {
-    backgroundColor: '#FF5A00',
-    borderColor: '#FF5A00',
+    backgroundColor: '#ff6600',
+    borderColor: '#ff6600',
   },
   segmentText: { fontFamily: pluggdFonts.satoshiBlack,
     color: '#A9A9B6',
@@ -2279,7 +2279,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   segmentTextActive: {
-    color: '#08080C',
+    color: '#0a0806',
   },
   moduleCard: {
     borderRadius: 24,
@@ -2485,7 +2485,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   myPluggdTabTextActive: {
-    color: '#08080C',
+    color: '#0a0806',
   },
   myPluggdStatusCard: {
     borderRadius: 22,
@@ -2576,7 +2576,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   myPluggdNextButtonText: { fontFamily: pluggdFonts.satoshiBlack,
-    color: '#08080C',
+    color: '#0a0806',
     fontSize: 11,
     lineHeight: 13,
     fontWeight: '900',

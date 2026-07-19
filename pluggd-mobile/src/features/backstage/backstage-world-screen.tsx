@@ -44,11 +44,11 @@ import {
 } from '../culture/useCultureData';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
+  canvas: '#0a0806',
+  surface: '#171310',
+  surface2: '#241d15',
   border: '#262626',
-  orange: '#FF5A00',
+  orange: '#ff6600',
   coral: '#FF4757',
   violet: '#7C3AED',
   white: '#FFFFFF',
@@ -114,7 +114,7 @@ type Recommendation = {
 const IMAGE_GRADIENTS: readonly (readonly [string, string, string])[] = [
   ['#251A1A', '#14151D', '#07070A'],
   ['#172C32', '#11131B', '#07070A'],
-  ['#2B2248', '#12121A', '#07070A'],
+  ['#2b1c10', '#171310', '#07070A'],
   ['#122E26', '#11131B', '#07070A'],
   ['#3A2116', '#13131B', '#07070A'],
 ];
@@ -575,7 +575,7 @@ function ChallengeCard({ challenge }: { challenge: BackstageThread }) {
   const status = challenge.category || 'Active';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open challenge ${challenge.title}`} onPress={() => router.push(routeForThread(challenge) as any)} style={styles.challengeCard}>
-      <LinearGradient colors={['rgba(124,58,237,0.28)', 'rgba(18,18,26,0.98)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(124,58,237,0.28)', 'rgba(23,19,16,0.98)']} style={StyleSheet.absoluteFill} />
       <Text style={styles.challengePhase}>{status}</Text>
       <Text style={styles.challengeTitle} numberOfLines={2}>{challenge.title}</Text>
       {challenge.body ? <Text style={styles.challengeBody} numberOfLines={2}>{challenge.body}</Text> : null}
@@ -606,7 +606,7 @@ function MomentTile({ moment }: { moment: CommunityMoment }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open moment ${moment.title}`} onPress={() => router.push(moment.route as any)} style={styles.momentTile}>
       <BackstageArtwork uri={moment.imageUrl} title={moment.title} style={styles.momentImage} />
-      <LinearGradient colors={['rgba(8,8,12,0.03)', 'rgba(8,8,12,0.86)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(10,8,6,0.03)', 'rgba(10,8,6,0.86)']} style={StyleSheet.absoluteFill} />
       <Text style={styles.momentTitle} numberOfLines={1}>{moment.title}</Text>
     </Pressable>
   );
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(8,8,12,0.92)',
+    backgroundColor: 'rgba(10,8,6,0.92)',
     zIndex: 3,
   },
   headerTitle: { ...pluggdTextStyles.appTitle, fontSize: 32, lineHeight: 36 },
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(31,31,46,0.76)',
+    backgroundColor: 'rgba(36,29,21,0.76)',
     color: COLORS.muted,
     fontFamily: 'Satoshi-Medium',
     fontSize: 13,
@@ -925,12 +925,12 @@ const styles = StyleSheet.create({
   circleTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17 },
   circleMeta: { marginTop: 5, color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 11, lineHeight: 14 },
   circleBadges: { marginTop: 7, flexDirection: 'row', flexWrap: 'wrap', gap: 5, minHeight: 20 },
-  badge: { minHeight: 20, borderRadius: 8, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,90,0,0.11)' },
+  badge: { minHeight: 20, borderRadius: 8, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,102,0,0.11)' },
   badgeLive: { backgroundColor: 'rgba(255,71,87,0.16)' },
   liveDotSmall: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.coral },
   badgeText: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 9, lineHeight: 11 },
   badgeTextLive: { color: COLORS.coral },
-  openCircleButton: { marginTop: 'auto', minHeight: 32, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(31,31,46,0.84)' },
+  openCircleButton: { marginTop: 'auto', minHeight: 32, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(36,29,21,0.84)' },
   openCircleText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   roomList: { marginHorizontal: 16, gap: 10 },
   roomRow: { minHeight: 78, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 11 },
@@ -971,7 +971,7 @@ const styles = StyleSheet.create({
   threadReplies: { color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 12, lineHeight: 16 },
   threadChips: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   chip: { minHeight: 22, borderRadius: 8, paddingHorizontal: 7, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)' },
-  chipActive: { backgroundColor: 'rgba(255,90,0,0.14)' },
+  chipActive: { backgroundColor: 'rgba(255,102,0,0.14)' },
   chipText: { color: COLORS.muted, fontFamily: 'Satoshi-Bold', fontSize: 10 },
   chipTextActive: { color: COLORS.orange },
   producerGrid: { marginHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
   discoverMeta: { marginTop: 4, color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 11, lineHeight: 14 },
   joinDiscoverButton: { marginTop: 'auto', minHeight: 34, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
   joinDiscoverText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 11 },
-  rewardsCard: { marginHorizontal: 16, minHeight: 96, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,90,0,0.28)', backgroundColor: 'rgba(255,90,0,0.1)', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rewardsCard: { marginHorizontal: 16, minHeight: 96, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,102,0,0.28)', backgroundColor: 'rgba(255,102,0,0.1)', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rewardsTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
   rewardsBody: { marginTop: 5, color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 13, lineHeight: 17 },
   emptyInline: { marginHorizontal: 16, minHeight: 104, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },

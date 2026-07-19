@@ -13,7 +13,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -30,6 +29,7 @@ import { geocodeMany, type MapPoint } from '../../lib/mapbox';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type EventItem } from '../../lib/mobileContent';
+import { EdPressable } from './EditorialBits';
 
 const CATEGORY_CHIPS = ['All events', 'Live Music', 'Culture', 'Meet-ups', 'Festivals', 'Clubbing', 'Comedy'] as const;
 
@@ -144,7 +144,7 @@ function BrowseFastList({ events, lp }: { events: EventItem[]; lp: LightPal }) {
         <Text style={[styles.showingText, lp.light && { color: lp.meta }]}>{events.length} SHOWING</Text>
       </View>
       {events.slice(0, 12).map((event) => (
-        <Pressable
+        <EdPressable
           key={event.id}
           accessibilityRole="button"
           accessibilityLabel={`View ${event.title || 'event'}`}
@@ -170,7 +170,7 @@ function BrowseFastList({ events, lp }: { events: EventItem[]; lp: LightPal }) {
               <Text style={styles.viewPillText}>View</Text>
             </View>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -204,7 +204,7 @@ function EventSpotlight({ event }: { event?: EventItem }) {
           <Text style={styles.spotlightMeta} numberOfLines={1}>{venueLine(event)}</Text>
         </View>
         <View style={styles.spotlightCtaRow}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${event.title || 'event'}`}
             onPress={() => router.push(`/events/${event.id}` as any)}
@@ -214,8 +214,8 @@ function EventSpotlight({ event }: { event?: EventItem }) {
               <Text style={styles.openEventText}>Open Event</Text>
               <MaterialIcons name="arrow-forward" size={16} color="#3a1c04" />
             </View>
-          </Pressable>
-          <Pressable
+          </EdPressable>
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Ticket link"
             onPress={() => router.push(`/events/${event.id}` as any)}
@@ -225,7 +225,7 @@ function EventSpotlight({ event }: { event?: EventItem }) {
               <MaterialIcons name="confirmation-number" size={15} color={ed.cream} />
               <Text style={styles.ticketLinkText}>Ticket Link</Text>
             </View>
-          </Pressable>
+          </EdPressable>
         </View>
       </View>
     </View>
@@ -246,7 +246,7 @@ function UpcomingPosterRail({ events, lp }: { events: EventItem[]; lp: LightPal 
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
         {events.slice(0, 8).map((event) => (
-          <Pressable
+          <EdPressable
             key={event.id}
             accessibilityRole="button"
             accessibilityLabel={`View ${event.title || 'event'}`}
@@ -267,7 +267,7 @@ function UpcomingPosterRail({ events, lp }: { events: EventItem[]; lp: LightPal 
                 <Text style={styles.posterVenue} numberOfLines={1}>{venueLine(event)}</Text>
               </View>
             </View>
-          </Pressable>
+          </EdPressable>
         ))}
       </ScrollView>
     </View>
@@ -282,7 +282,7 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
         const tags = tagsFor(event);
         return (
           <View key={event.id} style={[styles.fullCard, lp.card]}>
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`View ${event.title || 'event'}`}
               onPress={() => router.push(`/events/${event.id}` as any)}
@@ -318,9 +318,9 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
                 <Text style={[styles.fullMeta, { flexShrink: 1 }, lp.light && { color: lp.body }]} numberOfLines={1}>{venueLine(event)}</Text>
               </View>
               <StatusChips event={event} />
-            </Pressable>
+            </EdPressable>
             <View style={styles.fullCtaRow}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Get tickets for ${event.title || 'event'}`}
                 onPress={() => router.push(`/events/${event.id}` as any)}
@@ -331,8 +331,8 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
                     {Number(event.price_cents ?? 0) > 0 ? `Get Tickets · ${formatGBP(event.price_cents, { cents: true })}` : 'RSVP'}
                   </Text>
                 </View>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Ticket link for ${event.title || 'event'}`}
                 onPress={() => router.push(`/events/${event.id}` as any)}
@@ -342,7 +342,7 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
                   <MaterialIcons name="confirmation-number" size={15} color={lp.light ? ed.ink : ed.cream} />
                   <Text style={[styles.ticketLinkText, lp.light && { color: ed.ink }]}>Ticket Link</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </View>
         );
@@ -453,7 +453,7 @@ export function EventsBoardScreen() {
         {/* Browse / Map toggle */}
         <View style={[styles.toggleRow, { marginTop: 18 }]}>
           {(['browse', 'map'] as const).map((value) => (
-            <Pressable
+            <EdPressable
               key={value}
               accessibilityRole="button"
               accessibilityLabel={value === 'browse' ? 'Browse events' : 'Open events map'}
@@ -464,14 +464,14 @@ export function EventsBoardScreen() {
                   {value === 'browse' ? 'Browse' : 'Map'}
                 </Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </View>
 
         {/* Category chips */}
         <View style={[styles.chipWrap, { marginTop: 12 }]}>
           {CATEGORY_CHIPS.map((chip) => (
-            <Pressable
+            <EdPressable
               key={chip}
               accessibilityRole="button"
               accessibilityLabel={`Filter ${chip}`}
@@ -480,7 +480,7 @@ export function EventsBoardScreen() {
               <View style={[styles.categoryChip, category === chip && styles.categoryChipActive]}>
                 <Text style={[styles.categoryChipText, category === chip && styles.categoryChipTextActive]}>{chip}</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </View>
         </View>
@@ -496,16 +496,16 @@ export function EventsBoardScreen() {
               <View style={[styles.filterGhost, lp.card]}>
                 <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Filters</Text>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Open map" onPress={() => setMode('map')}>
+              <EdPressable accessibilityRole="button" accessibilityLabel="Open map" onPress={() => setMode('map')}>
                 <View style={[styles.filterGhost, lp.card]}>
                   <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Map</Text>
                 </View>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={() => setCategory('All events')}>
+              </EdPressable>
+              <EdPressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={() => setCategory('All events')}>
                 <View style={[styles.filterGhost, lp.card]}>
                   <Text style={[styles.filterGhostText, light && { color: pal.body }]}>Reset</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
 
             <BrowseFastList events={filtered} lp={lp} />

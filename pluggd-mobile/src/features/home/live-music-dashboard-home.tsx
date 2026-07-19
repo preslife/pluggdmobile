@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
-  Pressable,
+  InteractionManager,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -19,6 +19,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { ed, edFonts } from '../../design/editorial';
 import {
+  EdPressable,
   AudioPill,
   CreamButton,
   Eyebrow,
@@ -399,7 +400,7 @@ function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute }:
           "Live music communities, creator drops, soundboards, and underground scenes - all in one place."
         </Text>
         {boardTitle || spotlight.kind !== 'empty' ? (
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${boardTitle || spotlight.title}`}
             onPress={() => {
@@ -423,7 +424,7 @@ function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute }:
                 {boardCount != null ? `${boardCount} items` : spotlight.meta}
               </Text>
             </View>
-          </Pressable>
+          </EdPressable>
         ) : null}
       </View>
     </View>
@@ -445,7 +446,7 @@ function LiveNowOnPluggd({ rooms, loading }: { rooms: LiveRoomItem[]; loading: b
       ) : liveRooms.length ? (
         <View style={{ gap: 12 }}>
           {liveRooms.slice(0, 3).map((room) => (
-            <Pressable
+            <EdPressable
               key={room.id}
               accessibilityRole="button"
               accessibilityLabel={`Join ${room.title || 'live room'}`}
@@ -464,7 +465,7 @@ function LiveNowOnPluggd({ rooms, loading }: { rooms: LiveRoomItem[]; loading: b
                 <Text style={styles.liveRoomTitle} numberOfLines={2}>{room.title || 'Live room'}</Text>
                 <Text style={styles.liveRoomMeta}>{room.category || 'Live on PLUGGD'}</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </View>
       ) : (
@@ -502,7 +503,7 @@ function NextWave({ bundle, loading }: { bundle?: FeedBundle; loading: boolean }
       ) : cards.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.waveRail}>
           {cards.map((card) => (
-            <Pressable
+            <EdPressable
               key={card.id}
               accessibilityRole="button"
               accessibilityLabel={`Open ${card.name}`}
@@ -520,7 +521,7 @@ function NextWave({ bundle, loading }: { bundle?: FeedBundle; loading: boolean }
                 <Text style={styles.waveCardName} numberOfLines={1}>{card.name}</Text>
                 <Text style={styles.waveCardMeta} numberOfLines={1}>{card.meta}</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </ScrollView>
       ) : (
@@ -590,7 +591,7 @@ function ExploreYourScene({ circuits, loading }: { circuits: SceneCircuit[]; loa
       ) : circuits.length ? (
         <View style={{ gap: 14 }}>
           {circuits.map((circuit) => (
-            <Pressable
+            <EdPressable
               key={circuit.id}
               accessibilityRole="button"
               accessibilityLabel={`Enter ${circuit.title}`}
@@ -609,7 +610,7 @@ function ExploreYourScene({ circuits, loading }: { circuits: SceneCircuit[]; loa
                   <Text style={styles.circuitEnterText}>Enter scene</Text>
                 </View>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </View>
       ) : (
@@ -745,7 +746,7 @@ function TonightOnPluggd({ events, loading }: { events: EventItem[]; loading: bo
           {events.slice(0, 3).map((event) => {
             const starts = event.starts_at ? new Date(event.starts_at) : null;
             return (
-              <Pressable
+              <EdPressable
                 key={event.id}
                 accessibilityRole="button"
                 accessibilityLabel={`View ${event.title || 'event'}`}
@@ -766,7 +767,7 @@ function TonightOnPluggd({ events, loading }: { events: EventItem[]; loading: bo
                   <Text style={styles.eventViewText}>{event.price_cents ? formatGBP(event.price_cents, { cents: true }) : 'RSVP'}</Text>
                 </View>
                 </View>
-              </Pressable>
+              </EdPressable>
             );
           })}
         </View>
@@ -800,7 +801,7 @@ function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loadi
         <View style={{ gap: 16 }}>
           {items.map((item) => (
             <View key={item.id} style={styles.dropCard}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${item.title}`}
                 onPress={() => router.push(item.route as any)}
@@ -815,8 +816,8 @@ function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loadi
                 <InkChip text={item.kind === 'sample_pack' ? 'Pack' : item.kind} tone="orange" style={{ marginTop: 12 }} />
                 <Text style={styles.dropTitle} numberOfLines={1}>{item.title}</Text>
                 <Text style={styles.dropMeta} numberOfLines={1}>{item.subtitle}</Text>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`${item.actionLabel} ${item.title}`}
                 onPress={() => {
@@ -830,7 +831,7 @@ function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loadi
                 <View style={styles.dropAction}>
                   <Text style={styles.dropActionText}>{item.actionLabel}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           ))}
         </View>
@@ -867,7 +868,7 @@ function BackstageCommunities({ communities, loading }: { communities: Community
       ) : communities.length ? (
         <View style={{ gap: 14 }}>
           {communities.slice(0, 3).map((community) => (
-            <Pressable
+            <EdPressable
               key={community.id}
               accessibilityRole="button"
               accessibilityLabel={`Open ${community.title || 'community'}`}
@@ -889,7 +890,7 @@ function BackstageCommunities({ communities, loading }: { communities: Community
                   {community.description || 'Fan circles, room updates, and backstage context.'}
                 </Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ))}
         </View>
       ) : (
@@ -937,7 +938,7 @@ function BuildYourWorldSection() {
       <SectionBody text="Run listening parties, collaborations, rights, and revenue without losing the culture around them." onPaper />
       <View style={{ gap: 14 }}>
         {CREATOR_TOOLS.map((tool) => (
-          <Pressable
+          <EdPressable
             key={tool.id}
             accessibilityRole="button"
             accessibilityLabel={tool.title}
@@ -954,7 +955,7 @@ function BuildYourWorldSection() {
             <InkChip text="Creator tool" tone="cream" />
             <Text style={styles.toolTitle}>{tool.title}</Text>
             <Text style={styles.toolCopy}>{tool.copy}</Text>
-          </Pressable>
+          </EdPressable>
         ))}
       </View>
     </View>
@@ -1037,6 +1038,25 @@ function EmbodyCulture() {
 
 export function LiveMusicDashboardHome() {
   const insets = useSafeAreaInsets();
+  // First paint renders the masthead instantly; the below-fold sections
+  // mount right after interactions settle so opening the app feels
+  // immediate even with thirteen sections of imagery.
+  const [belowFoldReady, setBelowFoldReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    const reveal = () => {
+      if (mounted) setBelowFoldReady(true);
+    };
+    const task = InteractionManager.runAfterInteractions(reveal);
+    // Hard fallback: the below-fold content must never stay unmounted if
+    // the interaction queue stalls (observed on web).
+    const fallback = setTimeout(reveal, 250);
+    return () => {
+      mounted = false;
+      task.cancel();
+      clearTimeout(fallback);
+    };
+  }, []);
   const home = useHomeFeed();
   const live = useLiveRooms();
   const backstage = useBackstage();
@@ -1169,6 +1189,8 @@ export function LiveMusicDashboardHome() {
         />
         <LiveTicker items={tickerItems} variant="paper" />
         <LiveNowOnPluggd rooms={liveRooms} loading={live.isLoading} />
+        {belowFoldReady ? (
+        <>
         <TornEdge color={ed.paper2} />
         <NextWave bundle={home.data} loading={home.isLoading} />
         <FeaturedStory posts={stories.data ?? []} fallbackImage={home.data?.events?.[0]?.cover_image_url} />
@@ -1197,6 +1219,8 @@ export function LiveMusicDashboardHome() {
           dropCount={dropCount}
         />
         <EmbodyCulture />
+        </>
+        ) : null}
       </ScrollView>
     </View>
   );

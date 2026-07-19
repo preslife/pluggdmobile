@@ -21,10 +21,10 @@ import { loadLiveRoomMessagePreview } from '../../src/features/culture/mobileSer
 import { useLiveRooms, type LiveRoomItem } from '../../src/features/culture/useCultureData';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  surface2: '#241d15',
+  orange: '#ff6600',
   coral: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -104,11 +104,11 @@ export default function LiveFeedScreen() {
         <View style={[styles.card, { minHeight: height }]} {...panResponder.panHandlers}>
           {activeImage ? <PluggdImage uri={activeImage} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
           {!activeImage ? (
-            <LinearGradient colors={['#182B33', '#12121A', '#08080C']} style={StyleSheet.absoluteFill}>
+            <LinearGradient colors={['#182B33', '#171310', '#0a0806']} style={StyleSheet.absoluteFill}>
               <Text style={styles.initials}>{contentInitials(roomTitle(activeRoom))}</Text>
             </LinearGradient>
           ) : null}
-          <LinearGradient colors={['rgba(8,8,12,0.08)', 'rgba(8,8,12,0.38)', 'rgba(8,8,12,0.96)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['rgba(10,8,6,0.08)', 'rgba(10,8,6,0.38)', 'rgba(10,8,6,0.96)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
 
           <View style={styles.topBar}>
             <Pressable accessibilityRole="button" accessibilityLabel="Close live feed" onPress={() => router.back()} style={styles.iconButton}>
@@ -161,13 +161,13 @@ const styles = StyleSheet.create({
   card: { flex: 1, backgroundColor: COLORS.canvas },
   initials: { fontFamily: pluggdFonts.satoshiBlack, marginTop: 220, textAlign: 'center', color: COLORS.white, fontSize: 54, fontWeight: '900' },
   topBar: { position: 'absolute', left: 16, right: 16, top: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,26,0.62)' },
+  iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(23,19,16,0.62)' },
   position: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   sideRail: { position: 'absolute', right: 16, bottom: 170, alignItems: 'center', gap: 16 },
   creatorButton: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: COLORS.coral, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   creatorImage: { width: '100%', height: '100%' },
   creatorInitials: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  sideButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,26,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  sideButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(23,19,16,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   bottomContent: { position: 'absolute', left: 16, right: 84, bottom: 42 },
   liveBadge: { alignSelf: 'flex-start', height: 28, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: COLORS.coral },
   liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: COLORS.white },
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 12, color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 31, lineHeight: 34, textTransform: 'uppercase' },
   host: { marginTop: 6, color: COLORS.soft, fontFamily: 'Satoshi-Bold', fontSize: 16 },
   meta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: COLORS.muted, fontSize: 12, fontWeight: '800' },
-  chatPreview: { marginTop: 14, minHeight: 56, borderRadius: 16, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: 'rgba(18,18,26,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' },
+  chatPreview: { marginTop: 14, minHeight: 56, borderRadius: 16, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: 'rgba(23,19,16,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' },
   chatText: { fontFamily: pluggdFonts.satoshiMedium, flex: 1, color: COLORS.soft, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   joinButton: { marginTop: 14, minHeight: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.coral },
   joinText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 14 },

@@ -17,11 +17,11 @@ import { pluggdFonts } from '../../../src/design/typography';
 import { formatCompact } from '../../../src/lib/mobileContent';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262637',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  surface2: '#241d15',
+  border: '#2a221a',
+  orange: '#ff6600',
   white: '#FFFFFF',
   soft: '#E4E4E9',
   muted: '#8E8E9F',
@@ -146,7 +146,7 @@ export default function CommunityBoardRoute() {
           <>
             <View style={styles.hero}>
               <LinearGradient
-                colors={['rgba(255,90,0,0.22)', 'rgba(124,58,237,0.12)', 'rgba(18,18,26,0.98)']}
+                colors={['rgba(255,102,0,0.22)', 'rgba(124,58,237,0.12)', 'rgba(23,19,16,0.98)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -250,12 +250,12 @@ const styles = StyleSheet.create({
   loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { fontFamily: pluggdFonts.satoshiBold, color: COLORS.muted, fontSize: 13, fontWeight: '800' },
   hero: { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', backgroundColor: COLORS.surface, padding: 18, gap: 10 },
-  boardIcon: { width: 62, height: 62, borderRadius: 22, backgroundColor: 'rgba(255,90,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,90,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  boardIcon: { width: 62, height: 62, borderRadius: 22, backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   kicker: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.orange, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
   title: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.white, fontSize: 34, lineHeight: 39, fontWeight: '900' },
   description: { fontFamily: pluggdFonts.satoshiMedium, color: COLORS.soft, fontSize: 14, lineHeight: 21, fontWeight: '600' },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metaPill: { minHeight: 30, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: 'rgba(8,8,12,0.38)', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
+  metaPill: { minHeight: 30, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: 'rgba(10,8,6,0.38)', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
   metaText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.muted, fontSize: 12, fontWeight: '900', textTransform: 'capitalize' },
   heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   joinButton: { flex: 1, height: 46, borderRadius: 23, borderWidth: 1, borderColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   threadButtonText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.canvas, fontSize: 13, fontWeight: '900' },
   typeRow: { paddingHorizontal: 16, paddingTop: 14, gap: 8 },
   typePill: { minHeight: 34, borderRadius: 17, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 13, justifyContent: 'center' },
-  typePillActive: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,90,0,0.16)' },
+  typePillActive: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.16)' },
   typeText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.soft, fontSize: 12, fontWeight: '900' },
   typeTextActive: { color: COLORS.white },
   composerRow: { marginHorizontal: 16, marginTop: 14, minHeight: 68, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },

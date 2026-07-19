@@ -8,7 +8,7 @@ import type { MobileFeedAttachment } from './communityFeedTypes';
 const COLORS = {
   surface: '#151520',
   border: '#2A2A38',
-  orange: '#FF5A00',
+  orange: '#ff6600',
   white: '#FFFFFF',
   muted: '#8E8E9F',
 };
@@ -63,13 +63,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 14,
-    backgroundColor: '#1F1F2E',
+    backgroundColor: '#241d15',
   },
   imageFallback: {
     width: 64,
     height: 64,
     borderRadius: 14,
-    backgroundColor: '#1F1F2E',
+    backgroundColor: '#241d15',
     alignItems: 'center',
     justifyContent: 'center',
   },

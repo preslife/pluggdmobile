@@ -39,7 +39,7 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
                 <LinearGradient
                   colors={
                     item.active
-                      ? ['rgba(255,255,255,0.30)', 'rgba(154,140,255,0.20)', 'rgba(10,12,24,0.55)']
+                      ? ['rgba(255,255,255,0.30)', 'rgba(255,102,0,0.20)', 'rgba(20,12,6,0.55)']
                       : ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.26)']
                   }
                   start={{ x: 0.32, y: 0.18 }}
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   iconShellActive: {
     borderColor: 'rgba(255,255,255,0.20)',
-    shadowColor: '#A091FF',
+    shadowColor: '#ff6600',
     shadowOpacity: 0.48,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 11 },

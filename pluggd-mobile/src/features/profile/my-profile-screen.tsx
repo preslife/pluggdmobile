@@ -206,7 +206,7 @@ export function MyProfileScreen() {
               )}
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Edit profile photo" onPress={() => go('/edit-profile')} style={[styles.avatarPlus, { backgroundColor: theme.colors.accent }]}>
-              <MaterialIcons name="add" size={22} color="#08080C" />
+              <MaterialIcons name="add" size={22} color="#0a0806" />
             </Pressable>
           </View>
 
@@ -393,5 +393,5 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: 'Satoshi-Bold', fontSize: 16, textAlign: 'center' },
   emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   primaryButton: { minHeight: 48, borderRadius: 24, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
-  primaryButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 14, color: '#08080C' },
+  primaryButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 14, color: '#0a0806' },
 });

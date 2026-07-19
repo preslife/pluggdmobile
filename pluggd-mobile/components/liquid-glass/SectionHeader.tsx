@@ -20,7 +20,7 @@ export function SectionHeader({ title, subtitle, actionLabel, onActionPress, ico
       <View style={styles.copy}>
         <View style={styles.titleRow}>
           {icon ? (
-            <MaterialIcons name={icon} size={18} color="#FF5A00" />
+            <MaterialIcons name={icon} size={18} color="#ff6600" />
           ) : (
             <View style={styles.tick} />
           )}
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 16,
     borderRadius: 2,
-    backgroundColor: '#FF5A00',
+    backgroundColor: '#ff6600',
   },
   title: {
     color: liquidGlassColors.textPrimary,

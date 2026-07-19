@@ -14,10 +14,10 @@ const SYMBOL_NAME_MAP: Record<string, keyof typeof MaterialIcons.glyphMap> = {
 };
 
 const COLOR_MAP: Record<string, string> = {
-  primary: '#FF5A00',
+  primary: '#ff6600',
   white: '#FFFFFF',
   black: '#000000',
-  'background-dark': '#08080C',
+  'background-dark': '#0a0806',
   'text-secondary': '#B3B3B3',
   'slate-900': '#0F172A',
   'slate-800': '#1E293B',

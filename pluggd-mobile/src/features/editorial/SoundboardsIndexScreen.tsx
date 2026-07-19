@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,6 +28,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
+import { EdPressable } from './EditorialBits';
 
 const SORT_CHIPS = ['Updated', 'Trending', 'Featured'] as const;
 
@@ -188,18 +188,18 @@ export function SoundboardsIndexScreen() {
         {/* Actions */}
         <View style={styles.actionRow}>
           {!user ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Sign in" onPress={() => router.push('/auth/login' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Sign in" onPress={() => router.push('/auth/login' as any)}>
               <View style={[styles.actionGhost, panelOverride]}>
                 <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Sign in</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="Browse Releases" onPress={() => router.push('/releases' as any)}>
+          <EdPressable accessibilityRole="button" accessibilityLabel="Browse Releases" onPress={() => router.push('/releases' as any)}>
             <View style={styles.actionGhost}>
               <MaterialIcons name="music-note" size={15} color={pal.chipText} />
               <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Browse Releases</Text>
             </View>
-          </Pressable>
+          </EdPressable>
         </View>
 
         {/* Search + sort */}
@@ -216,7 +216,7 @@ export function SoundboardsIndexScreen() {
           </View>
           <View style={styles.sortRow}>
             {SORT_CHIPS.map((chip) => (
-              <Pressable
+              <EdPressable
                 key={chip}
                 accessibilityRole="button"
                 accessibilityLabel={`Sort by ${chip}`}
@@ -225,7 +225,7 @@ export function SoundboardsIndexScreen() {
                 <View style={[styles.sortChip, light && { backgroundColor: "#fdf8ef", borderColor: pal.panelBorder }, sort === chip && styles.sortChipActive]}>
                   <Text style={[styles.sortChipText, light && { color: pal.chipText }, sort === chip && styles.sortChipTextActive]}>{chip}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
         </View>
@@ -239,7 +239,7 @@ export function SoundboardsIndexScreen() {
               const creator = creatorFor(board.creator_id);
               const creatorName = creator ? creator.full_name || creator.username || 'Creator' : 'Creator';
               return (
-                <Pressable
+                <EdPressable
                   key={board.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${board.title || 'soundboard'}`}
@@ -286,7 +286,7 @@ export function SoundboardsIndexScreen() {
                       </View>
                     </View>
                   </View>
-                </Pressable>
+                </EdPressable>
               );
             })}
           </View>

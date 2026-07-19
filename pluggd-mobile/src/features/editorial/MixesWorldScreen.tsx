@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -26,7 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
-import { TornEdge } from './EditorialBits';
+import { EdPressable, TornEdge } from './EditorialBits';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
@@ -81,11 +80,11 @@ function MixSectionHead({ eyebrow, title, subtitle, action, onAction }: {
       <Text style={styles.mixSectionTitle}>{title}</Text>
       {subtitle ? <Text style={styles.mixSectionSub}>{subtitle}</Text> : null}
       {action ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction}>
+        <EdPressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction}>
           <View style={styles.mixActionPill}>
             <Text style={styles.mixActionText}>{action.toUpperCase()} →</Text>
           </View>
-        </Pressable>
+        </EdPressable>
       ) : null}
     </View>
   );
@@ -122,7 +121,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
     <View style={{ gap: 0 }}>
       <View style={styles.heroTabsRow}>
         {HERO_TABS.map((label, index) => (
-          <Pressable
+          <EdPressable
             key={label}
             accessibilityRole="button"
             accessibilityLabel={label}
@@ -134,7 +133,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
               </Text>
               <Text style={[styles.heroTabText, index === tab && { color: '#3a1c04' }]}>{label.toUpperCase()}</Text>
             </View>
-          </Pressable>
+          </EdPressable>
         ))}
       </View>
       <View style={styles.heroPosterWrap}>
@@ -155,7 +154,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
         </View>
       </View>
       <View style={styles.heroCtas}>
-        <Pressable
+        <EdPressable
           accessibilityRole="button"
           accessibilityLabel={playing ? 'Pause featured mix' : 'Play featured mix'}
           onPress={() => {
@@ -174,9 +173,9 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
             <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={20} color="#3a1c04" />
             <Text style={styles.heroPlayText}>{playing ? 'Pause featured mix' : 'Play featured mix'}</Text>
           </View>
-        </Pressable>
+        </EdPressable>
         <View style={styles.heroCtaRow}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Enter Listening Room"
             onPress={() => router.push(`/mixes/${hero.id}` as any)}
@@ -186,8 +185,8 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
               <MaterialIcons name="album" size={16} color={ed.cream} />
               <Text style={styles.heroGhostText}>Enter Listening Room</Text>
             </View>
-          </Pressable>
-          <Pressable
+          </EdPressable>
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Browse latest"
             onPress={() => router.push('/mixes' as any)}
@@ -196,7 +195,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
             <View style={styles.heroGhost}>
               <Text style={styles.heroGhostText}>Browse latest</Text>
             </View>
-          </Pressable>
+          </EdPressable>
         </View>
       </View>
     </View>
@@ -242,14 +241,14 @@ function FilterCycleRow({ label, value, options, onChange }: {
     onChange(index === options.length - 1 ? null : options[index + 1]);
   };
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'any'}`} onPress={cycle}>
+    <EdPressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'any'}`} onPress={cycle}>
       <View style={styles.filterRow}>
         <Text style={[styles.filterRowText, value ? { color: ed.ink, fontFamily: edFonts.bodyBold } : null]}>
           {value || label}
         </Text>
         <MaterialIcons name="unfold-more" size={17} color="rgba(34,23,15,0.55)" />
       </View>
-    </Pressable>
+    </EdPressable>
   );
 }
 
@@ -290,11 +289,11 @@ function FindYourNextMix({ mixes, filters, setFilters, matchCount }: {
       <FilterCycleRow label="All scenes" value={filters.scene} options={scenes} onChange={(scene) => setFilters({ ...filters, scene })} />
       <FilterCycleRow label="Any mood" value={filters.mood} options={moods} onChange={(mood) => setFilters({ ...filters, mood })} />
       <FilterCycleRow label="Any length" value={filters.length} options={[...LENGTH_BUCKETS]} onChange={(length) => setFilters({ ...filters, length })} />
-      <Pressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={() => setFilters(EMPTY_FILTERS)}>
+      <EdPressable accessibilityRole="button" accessibilityLabel="Reset filters" onPress={() => setFilters(EMPTY_FILTERS)}>
         <View style={styles.finderReset}>
           <Text style={styles.finderResetText}>Reset</Text>
         </View>
-      </Pressable>
+      </EdPressable>
       <Text style={styles.finderMatch}>
         {matchCount} of {mixes.length} mixes match your sound.
       </Text>
@@ -333,7 +332,7 @@ function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
               <Text style={styles.happeningMeta}>
                 {[selectorName(mix), mix.city, mixDuration(mix)].filter(Boolean).join('  ')}
               </Text>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={playing ? `Pause ${mix.title || 'mix'}` : `Play ${mix.title || 'mix'}`}
                 onPress={() => {
@@ -348,8 +347,8 @@ function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
                   <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={18} color="#3a1c04" />
                   <Text style={styles.happeningPlayText}>{playing ? 'Pause' : 'Play'}</Text>
                 </View>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open listening room for ${mix.title || 'mix'}`}
                 onPress={() => router.push(`/mixes/${mix.id}` as any)}
@@ -358,7 +357,7 @@ function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
                   <MaterialIcons name="album" size={15} color={ed.cream} />
                   <Text style={styles.happeningRoomText}>Listening Room</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </View>
         );
@@ -392,7 +391,7 @@ function ListeningRooms({ mixes }: { mixes: MixItem[] }) {
             <Text style={styles.roomMeta}>
               {[selectorName(mix), `${formatCompact(mix.play_count)} plays`, mix.recording_type === 'live' ? 'Live Set' : 'Studio Mix'].join('  ')}
             </Text>
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`Join room for ${mix.title || 'mix'}`}
               onPress={() => router.push(`/mixes/${mix.id}` as any)}
@@ -401,7 +400,7 @@ function ListeningRooms({ mixes }: { mixes: MixItem[] }) {
                 <Text style={styles.roomJoinText}>Join room</Text>
                 <MaterialIcons name="arrow-forward" size={16} color={ed.cream} />
               </View>
-            </Pressable>
+            </EdPressable>
           </View>
         </View>
       ))}
@@ -468,7 +467,7 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
             <Text style={styles.djGenres} numberOfLines={1}>{selector.genres.slice(0, 4).join(' / ')}</Text>
           ) : null}
           <View style={{ gap: 8, marginTop: 10 }}>
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`View mixes from ${selector.name}`}
               onPress={() => router.push('/mixes' as any)}
@@ -476,8 +475,8 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
               <View style={styles.djProfile}>
                 <Text style={styles.djProfileText}>Profile</Text>
               </View>
-            </Pressable>
-            <Pressable
+            </EdPressable>
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={`Open room from ${selector.name}`}
               onPress={() => selector.firstMixId && router.push(`/mixes/${selector.firstMixId}` as any)}
@@ -485,7 +484,7 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
               <View style={styles.djRoom}>
                 <Text style={styles.djRoomText}>Room</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           </View>
         </View>
       ))}
@@ -505,7 +504,7 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
   return (
     <View style={styles.freshGrid}>
       {mixes.slice(0, 6).map((mix) => (
-        <Pressable
+        <EdPressable
           key={mix.id}
           accessibilityRole="button"
           accessibilityLabel={`Open ${mix.title || 'mix'}`}
@@ -538,7 +537,7 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
           <Text style={styles.freshMeta} numberOfLines={1}>
             {[mix.city, mixDuration(mix)].filter(Boolean).join(' · ') || 'PLUGGD mix'}
           </Text>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -587,7 +586,7 @@ function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
               <Text style={styles.sceneGenres}>{entry.genres.join('   ')}</Text>
             ) : null}
             <View style={styles.sceneCtaRow}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Filter mixes from ${entry.city}`}
                 onPress={() => router.push('/mixes' as any)}
@@ -596,8 +595,8 @@ function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
                 <View style={styles.sceneFilter}>
                   <Text style={styles.sceneFilterText}>Filter scene</Text>
                 </View>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open the ${entry.city} room`}
                 onPress={() => router.push(`/mixes/${entry.lead.id}` as any)}
@@ -606,7 +605,7 @@ function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
                 <View style={styles.sceneRoom}>
                   <Text style={styles.sceneRoomText}>Room</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </View>
         </View>
@@ -679,7 +678,7 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
             </View>
             <Text style={styles.radioRowValue} numberOfLines={1}>{nextUp?.title || 'Untitled mix'}</Text>
             <View style={styles.radioCtaRow}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={playing ? `Pause PLUGGD ${genre}` : `Listen live to PLUGGD ${genre}`}
                 onPress={() => {
@@ -694,8 +693,8 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
                 <View style={styles.radioListen}>
                   <Text style={styles.radioListenText}>{playing ? 'Pause' : 'Listen live'}</Text>
                 </View>
-              </Pressable>
-              <Pressable
+              </EdPressable>
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open the PLUGGD ${genre} room`}
                 onPress={() => nowPlaying && router.push(`/mixes/${nowPlaying.id}` as any)}
@@ -704,7 +703,7 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
                 <View style={styles.radioRoom}>
                   <Text style={styles.radioRoomText}>Room</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
           </LinearGradient>
         );
@@ -725,7 +724,7 @@ function UpcomingEvents({ events }: { events: PassEvent[] }) {
       {events.slice(0, 3).map((event) => {
         const starts = event.starts_at ? new Date(event.starts_at) : null;
         return (
-          <Pressable
+          <EdPressable
             key={event.id}
             accessibilityRole="button"
             accessibilityLabel={`View ${event.title || 'event'}`}
@@ -757,7 +756,7 @@ function UpcomingEvents({ events }: { events: PassEvent[] }) {
                 </Text>
               </View>
             </View>
-          </Pressable>
+          </EdPressable>
         );
       })}
     </View>
@@ -773,7 +772,7 @@ function EditorialHighlights({ posts }: { posts: BlogRow[] }) {
     <View style={styles.highlightSheet}>
       <Text style={styles.highlightHead}>EDITORIAL HIGHLIGHTS</Text>
       {posts.slice(0, 3).map((post, index) => (
-        <Pressable
+        <EdPressable
           key={post.id}
           accessibilityRole="button"
           accessibilityLabel={`Read ${post.title || 'story'}`}
@@ -795,7 +794,7 @@ function EditorialHighlights({ posts }: { posts: BlogRow[] }) {
               </Text>
             </View>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     width: '56%',
     height: '48%',
     borderRadius: 190,
-    backgroundColor: 'rgba(154,140,255,0.12)',
+    backgroundColor: 'rgba(255,150,80,0.10)',
     opacity: 0.72,
   },
   leftRim: {

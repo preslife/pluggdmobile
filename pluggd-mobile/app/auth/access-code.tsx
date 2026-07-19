@@ -17,7 +17,7 @@ import {
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 export default function AccessCodeScreen() {
   const router = useRouter();
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   secondaryText: {
-    color: '#080808',
+    color: '#0a0806',
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },

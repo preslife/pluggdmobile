@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../design/typography';
+import { edFonts } from '../../design/editorial';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -17,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
-import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
+import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
@@ -49,11 +50,11 @@ import {
 } from '../culture/useCultureData';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  surface2: '#1F1F2E',
-  border: '#262637',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  surface2: '#241d15',
+  border: '#2a221a',
+  orange: '#ff6600',
   coral: '#FF4757',
   white: '#FFFFFF',
   soft: '#E4E4E9',
@@ -65,11 +66,11 @@ const FILTERS = ['Top', 'Posts', 'Boards', 'Creators', 'Tracks', 'Mixes', 'Playl
 type SearchFilter = (typeof FILTERS)[number];
 
 const GRADIENTS: readonly (readonly [string, string, string])[] = [
-  ['#251A1A', '#15151D', '#08080C'],
-  ['#182B33', '#12121A', '#08080C'],
-  ['#2B2248', '#13131B', '#08080C'],
-  ['#122E26', '#12121A', '#08080C'],
-  ['#3A2116', '#15151D', '#08080C'],
+  ['#251A1A', '#15151D', '#0a0806'],
+  ['#182B33', '#171310', '#0a0806'],
+  ['#2b1c10', '#13131B', '#0a0806'],
+  ['#122E26', '#171310', '#0a0806'],
+  ['#3A2116', '#15151D', '#0a0806'],
 ];
 
 function hashIndex(value: string | null | undefined, modulo: number) {
@@ -133,35 +134,33 @@ function Header() {
       style={[
         styles.header,
         {
-          height: Math.max(insets.top + 62, 96),
+          height: Math.max(insets.top + 78, 112),
           paddingTop: insets.top + 12,
           backgroundColor: theme.colors.headerGlass,
           borderBottomColor: theme.colors.divider,
         },
       ]}
     >
-      <PremiumScreenHeader
-        eyebrow="SEARCH"
-        title="Explore"
-        subtitle="UNIVERSAL DISCOVERY for releases, beats, mixes, events, creators, live rooms and communities."
-        tone="accent"
-        style={styles.premiumHeaderFill}
-        actions={(
-          <>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={styles.headerIcon}>
-              <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open profile"
-              onPress={() => go(user ? '/profile' : '/auth/login')}
-              style={[styles.avatarButton, { borderColor: theme.colors.divider, backgroundColor: theme.colors.surface }]}
-            >
-              <Text style={[styles.avatarInitials, { color: theme.colors.text }]}>{contentInitials(label)}</Text>
-            </Pressable>
-          </>
-        )}
-      />
+      <View style={styles.exploreHeaderRow}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Text style={styles.exploreEyebrow}>SEARCH</Text>
+          <Text style={styles.exploreTitle}>Explore</Text>
+          <Text style={styles.exploreSub} numberOfLines={2}>
+            {'Universal discovery for releases, beats, mixes, events, creators, live rooms and communities.'.toUpperCase()}
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={styles.headerIcon}>
+          <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+          onPress={() => go(user ? '/profile' : '/auth/login')}
+          style={[styles.avatarButton, { borderColor: theme.colors.divider, backgroundColor: theme.colors.surface }]}
+        >
+          <Text style={[styles.avatarInitials, { color: theme.colors.text }]}>{contentInitials(label)}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -310,19 +309,27 @@ function ResultRow({
   onPress: () => void;
   action?: React.ReactNode;
 }) {
+  // The row and its trailing action are sibling pressables (nesting them
+  // would render nested <button> elements on web).
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.resultRow}>
-      <Artwork uri={imageUrl} title={title} size={52} radius={13} />
-      <View style={styles.resultCopy}>
-        <View style={styles.resultMetaRow}>
-          <MaterialIcons name={icon} size={14} color={COLORS.muted} />
-          <Text style={styles.resultMeta} numberOfLines={1}>{subtitle}</Text>
+    <View style={styles.resultRow}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [styles.resultRowMain, pressed && { opacity: 0.86 }]}
+      >
+        <Artwork uri={imageUrl} title={title} size={52} radius={13} />
+        <View style={styles.resultCopy}>
+          <View style={styles.resultMetaRow}>
+            <MaterialIcons name={icon} size={14} color={COLORS.muted} />
+            <Text style={styles.resultMeta} numberOfLines={1}>{subtitle}</Text>
+          </View>
+          <Text style={styles.resultTitle} numberOfLines={1}>{title}</Text>
         </View>
-        <Text style={styles.resultTitle} numberOfLines={1}>{title}</Text>
-      </View>
-      {rightLabel ? <Text style={styles.rightLabel}>{rightLabel}</Text> : null}
+        {rightLabel ? <Text style={styles.rightLabel}>{rightLabel}</Text> : null}
+      </Pressable>
       {action ?? <MaterialIcons name="chevron-right" size={22} color={COLORS.dim} />}
-    </Pressable>
+    </View>
   );
 }
 
@@ -882,9 +889,36 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(31,31,46,0.84)',
-    backgroundColor: 'rgba(8,8,12,0.94)',
+    borderBottomColor: 'rgba(36,29,21,0.84)',
+    backgroundColor: 'rgba(10,8,6,0.94)',
     zIndex: 3,
+  },
+  exploreHeaderRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  exploreEyebrow: {
+    fontFamily: edFonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 2,
+    color: COLORS.orange,
+  },
+  exploreTitle: {
+    fontFamily: edFonts.serif,
+    fontSize: 30,
+    lineHeight: 33,
+    color: COLORS.white,
+  },
+  exploreSub: {
+    fontFamily: edFonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.2,
+    lineHeight: 13,
+    color: 'rgba(255,248,237,0.5)',
   },
   premiumHeaderFill: {
     flex: 1,
@@ -910,7 +944,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.72)',
+    backgroundColor: 'rgba(23,19,16,0.72)',
   },
   avatarButton: {
     width: 44,
@@ -939,7 +973,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.94)',
+    backgroundColor: 'rgba(23,19,16,0.94)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -964,13 +998,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(31,31,46,0.72)',
+    backgroundColor: 'rgba(36,29,21,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterPillActive: {
-    borderColor: 'rgba(255,90,0,0.74)',
-    backgroundColor: 'rgba(255,90,0,0.15)',
+    borderColor: 'rgba(255,102,0,0.74)',
+    backgroundColor: 'rgba(255,102,0,0.15)',
   },
   filterText: {
     fontFamily: 'Satoshi-Medium',
@@ -988,22 +1022,22 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.92)',
+    backgroundColor: 'rgba(23,19,16,0.92)',
     padding: 16,
     gap: 10,
   },
   intentEyebrow: {
-    fontFamily: 'Satoshi-Bold',
+    fontFamily: edFonts.mono,
     color: COLORS.orange,
-    fontSize: 11,
+    fontSize: 10,
     lineHeight: 14,
-    letterSpacing: 1.2,
+    letterSpacing: 1.8,
   },
   intentTitle: {
-    ...pluggdTextStyles.heroTitle,
+    fontFamily: edFonts.serif,
     color: COLORS.white,
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 24,
+    lineHeight: 28,
   },
   intentChips: {
     flexDirection: 'row',
@@ -1034,11 +1068,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
-    ...pluggdTextStyles.sectionTitle,
+    fontFamily: edFonts.serif,
     color: COLORS.white,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 21,
+    lineHeight: 25,
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   sectionCount: { fontFamily: pluggdFonts.satoshiBold,
     color: COLORS.muted,
@@ -1099,8 +1134,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.28)',
-    backgroundColor: 'rgba(255,90,0,0.1)',
+    borderColor: 'rgba(255,102,0,0.28)',
+    backgroundColor: 'rgba(255,102,0,0.1)',
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
@@ -1117,6 +1152,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surface2,
     backgroundColor: COLORS.surface,
     padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  resultRowMain: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
@@ -1152,9 +1194,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,90,0,0.13)',
+    backgroundColor: 'rgba(255,102,0,0.13)',
     borderWidth: 1,
-    borderColor: 'rgba(255,90,0,0.24)',
+    borderColor: 'rgba(255,102,0,0.24)',
   },
   playButton: {
     width: 44,
@@ -1188,7 +1230,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.82)',
+    backgroundColor: 'rgba(23,19,16,0.82)',
     padding: 16,
     gap: 8,
   },
@@ -1198,7 +1240,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,90,0,0.12)',
+    backgroundColor: 'rgba(255,102,0,0.12)',
   },
   emptyTitle: {
     fontFamily: 'Satoshi-Bold',
@@ -1239,7 +1281,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(18,18,26,0.86)',
+    backgroundColor: 'rgba(23,19,16,0.86)',
     padding: 12,
     gap: 5,
   },

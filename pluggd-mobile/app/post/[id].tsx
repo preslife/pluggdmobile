@@ -14,10 +14,10 @@ import { addComment, loadPostDetail, toggleLike } from '../../src/features/cultu
 import { toggleSocialBookmark, toggleSocialRepost, voteMobilePoll } from '../../src/features/culture/mobileSocial';
 import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPostCard';
 
-const ORANGE = '#FF5A00';
-const CANVAS = '#08080C';
-const SURFACE = '#12121A';
-const BORDER = '#1F1F2E';
+const ORANGE = '#ff6600';
+const CANVAS = '#0a0806';
+const SURFACE = '#171310';
+const BORDER = '#241d15';
 const MUTED = '#8E8E9F';
 
 export default function SocialPostDetailRoute() {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   postShell: { marginHorizontal: 16 },
   postCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 12 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#1F1F2E', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   postCopy: { flex: 1, minWidth: 0 },
   postAuthor: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
@@ -221,29 +221,29 @@ const styles = StyleSheet.create({
   postTitle: { color: '#FFFFFF', fontSize: 20, lineHeight: 26, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   postBody: { color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   destinationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  destinationPill: { minHeight: 26, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,90,0,0.34)', backgroundColor: 'rgba(255,90,0,0.1)', paddingHorizontal: 10, justifyContent: 'center' },
+  destinationPill: { minHeight: 26, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 10, justifyContent: 'center' },
   destinationText: { color: ORANGE, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  mediaWrap: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: '#1F1F2E' },
+  mediaWrap: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: '#241d15' },
   fill: { width: '100%', height: '100%' },
-  quoteCard: { borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: '#1F1F2E', padding: 12, gap: 5 },
+  quoteCard: { borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: '#241d15', padding: 12, gap: 5 },
   quoteAuthor: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   quoteText: { color: MUTED, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-  pollCard: { borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: '#1F1F2E', padding: 12, gap: 9 },
+  pollCard: { borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: '#241d15', padding: 12, gap: 9 },
   pollQuestion: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   pollOption: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pollOptionSelected: { borderColor: 'rgba(255,90,0,0.72)' },
-  pollFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,90,0,0.18)' },
+  pollOptionSelected: { borderColor: 'rgba(255,102,0,0.72)' },
+  pollFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,102,0,0.18)' },
   pollOptionText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', flex: 1 },
   pollPct: { color: MUTED, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   actionRow: { flexDirection: 'row', gap: 10 },
   actionButton: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
   actionButtonActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   actionText: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  actionTextActive: { color: '#08080C' },
+  actionTextActive: { color: '#0a0806' },
   composer: { margin: 16, borderRadius: 18, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 12, gap: 10 },
   input: { minHeight: 76, color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   sendButton: { height: 42, borderRadius: 21, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
-  sendText: { color: '#08080C', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  sendText: { color: '#0a0806', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   sectionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginHorizontal: 16, marginTop: 6, marginBottom: 10 },
   threadItem: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, gap: 6 },
   commentCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, flexDirection: 'row', gap: 10 },

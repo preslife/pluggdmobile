@@ -20,7 +20,7 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
     <>
       <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel="Map of upcoming events" />
       <LinearGradient
-        colors={['rgba(8,8,12,0)', 'rgba(8,8,12,0.55)']}
+        colors={['rgba(10,8,6,0)', 'rgba(10,8,6,0.55)']}
         start={{ x: 0.5, y: 0.3 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -45,7 +45,7 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
       <View style={styles.gridA} pointerEvents="none" />
       <View style={styles.gridB} pointerEvents="none" />
       <View style={styles.fallbackBody}>
-        <MaterialIcons name="map" size={26} color="#FF5A00" />
+        <MaterialIcons name="map" size={26} color="#ff6600" />
         <Text style={styles.fallbackTitle}>Events map</Text>
         <Text style={styles.fallbackCopy} numberOfLines={2}>
           {pinCount > 0 ? `${pinCount} upcoming events across the scene` : 'Upcoming events will pin here by location'}
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     borderRadius: 999,
-    backgroundColor: 'rgba(8,8,12,0.6)',
+    backgroundColor: 'rgba(10,8,6,0.6)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 10,
@@ -110,8 +110,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   openText: { color: '#0E0E12', fontFamily: 'Satoshi-Bold', fontSize: 11.5 },
-  gridA: { position: 'absolute', left: 0, right: 0, top: '50%', height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,90,0,0.14)' },
-  gridB: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,90,0,0.14)' },
+  gridA: { position: 'absolute', left: 0, right: 0, top: '50%', height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,102,0,0.14)' },
+  gridB: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,102,0,0.14)' },
   fallbackBody: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 16 },
   fallbackTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 17, letterSpacing: -0.2 },
   fallbackCopy: { color: 'rgba(255,255,255,0.6)', fontFamily: 'Satoshi-Medium', fontSize: 12.5, lineHeight: 17, textAlign: 'center', maxWidth: 260 },

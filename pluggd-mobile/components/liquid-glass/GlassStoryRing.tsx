@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     padding: 2,
     borderWidth: 1,
     borderColor: liquidGlassColors.accent,
-    backgroundColor: 'rgba(255,82,0,0.12)',
+    backgroundColor: 'rgba(255,102,0,0.12)',
   },
   viewed: {
     borderColor: liquidGlassColors.borderSoft,

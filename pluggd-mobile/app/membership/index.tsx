@@ -36,7 +36,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 function tierAccent(label: string) {
-  return TIER_COLORS[label] ?? '#FF5A00';
+  return TIER_COLORS[label] ?? '#ff6600';
 }
 
 function tierCaption(label: string) {
@@ -145,7 +145,7 @@ export default function MyMembershipsScreen() {
         </View>
 
         <LinearGradient
-          colors={['rgba(255,90,0,0.24)', 'rgba(255,255,255,0.08)', 'rgba(8,8,12,0.96)']}
+          colors={['rgba(255,102,0,0.24)', 'rgba(255,255,255,0.08)', 'rgba(10,8,6,0.96)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { borderColor: theme.colors.borderAccent }]}
@@ -251,7 +251,7 @@ function MembershipCard({ membership, onPress }: { membership: ActiveMembership;
   const isActive = membership.status === 'active';
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.membershipCard, { borderColor: theme.colors.border }, pressed && { opacity: 0.82 }]}>
-      <LinearGradient colors={[`${accent}33`, 'rgba(255,255,255,0.06)', 'rgba(8,8,12,0.96)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[`${accent}33`, 'rgba(255,255,255,0.06)', 'rgba(10,8,6,0.96)']} style={StyleSheet.absoluteFill} />
       <View style={[styles.membershipBadge, { backgroundColor: `${accent}24`, borderColor: `${accent}66` }]}>
         <MaterialIcons name="workspace-premium" size={24} color={accent} />
       </View>
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   actionRow: { flexDirection: 'row', gap: 10 },
   primaryButton: { flex: 1, minHeight: 50, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primaryButtonText: { color: '#08080C', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  primaryButtonText: { color: '#0a0806', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   secondaryButton: { minWidth: 118, minHeight: 50, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   secondaryButtonText: { fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   section: { gap: 11 },

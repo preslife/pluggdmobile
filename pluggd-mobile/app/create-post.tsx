@@ -21,10 +21,10 @@ import {
 } from '../src/features/culture/mobileServices';
 import { contentInitials } from '../src/lib/mobileContent';
 
-const CANVAS = '#08080C';
-const SURFACE = '#12121A';
-const BORDER = '#1F1F2E';
-const ORANGE = '#FF5A00';
+const CANVAS = '#0a0806';
+const SURFACE = '#171310';
+const BORDER = '#241d15';
+const ORANGE = '#ff6600';
 const MUTED = '#8E8E9F';
 
 type ComposerMedia = {
@@ -472,34 +472,34 @@ const styles = StyleSheet.create({
   publishMiniText: { color: CANVAS, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   card: { marginHorizontal: 16, borderRadius: 24, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 12 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 4 },
-  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1F1F2E', borderWidth: 1, borderColor: '#2C2C3E', alignItems: 'center', justifyContent: 'center' },
+  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#241d15', borderWidth: 1, borderColor: '#2C2C3E', alignItems: 'center', justifyContent: 'center' },
   authorInitial: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 14 },
   authorCopy: { flex: 1, minWidth: 0, gap: 5 },
   authorName: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  destinationPill: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 28, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.1)', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  destinationPill: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 28, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,102,0,0.32)', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
   destinationPillText: { color: '#E4E4E9', fontFamily: 'Satoshi-Bold', fontSize: 12 },
   label: { fontFamily: pluggdFonts.satoshiBlack, color: MUTED, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  titleInput: { minHeight: 48, borderRadius: 16, backgroundColor: '#151520', borderWidth: 1, borderColor: '#262637', color: '#FFFFFF', paddingHorizontal: 13, fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  bodyInput: { fontFamily: pluggdFonts.satoshiMedium, minHeight: 240, borderRadius: 18, backgroundColor: '#101018', borderWidth: 1, borderColor: '#262637', color: '#FFFFFF', padding: 14, fontSize: 19, lineHeight: 27, fontWeight: '500' },
+  titleInput: { minHeight: 48, borderRadius: 16, backgroundColor: '#151520', borderWidth: 1, borderColor: '#2a221a', color: '#FFFFFF', paddingHorizontal: 13, fontFamily: 'Satoshi-Bold', fontSize: 15 },
+  bodyInput: { fontFamily: pluggdFonts.satoshiMedium, minHeight: 240, borderRadius: 18, backgroundColor: '#101018', borderWidth: 1, borderColor: '#2a221a', color: '#FFFFFF', padding: 14, fontSize: 19, lineHeight: 27, fontWeight: '500' },
   counter: { fontFamily: pluggdFonts.satoshiBold, color: '#62627A', fontSize: 11, fontWeight: '800', textAlign: 'right' },
   pollBuilder: { gap: 12 },
   pollOptions: { gap: 10 },
-  pollOptionRow: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: '#262637', backgroundColor: '#1F1F2E', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pollOptionRow: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: '#2a221a', backgroundColor: '#241d15', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   pollOptionIndex: { fontFamily: pluggdFonts.satoshiBlack, width: 20, color: ORANGE, fontSize: 12, fontWeight: '900', textAlign: 'center' },
   pollOptionInput: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '700', paddingVertical: 12 },
   pollRemoveButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#151520', alignItems: 'center', justifyContent: 'center' },
-  addOptionButton: { height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(255,90,0,0.36)', backgroundColor: 'rgba(255,90,0,0.08)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
+  addOptionButton: { height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(255,102,0,0.36)', backgroundColor: 'rgba(255,102,0,0.08)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
   addOptionText: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 13, fontWeight: '900' },
   mediaPreviewRail: { gap: 8 },
-  attachmentUnavailable: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,90,0,0.3)', backgroundColor: 'rgba(255,90,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachmentUnavailable: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', backgroundColor: 'rgba(255,102,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   attachmentUnavailableText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#E4E4E9', fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  mediaChip: { minHeight: 42, borderRadius: 14, borderWidth: 1, borderColor: '#262637', backgroundColor: '#1F1F2E', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mediaChip: { minHeight: 42, borderRadius: 14, borderWidth: 1, borderColor: '#2a221a', backgroundColor: '#241d15', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   mediaChipText: { flex: 1, color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 12 },
-  toolRow: { minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#262637', paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toolRow: { minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2a221a', paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   toolButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   publishButton: { height: 54, borderRadius: 27, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, marginTop: 18 },
   publishButtonDisabled: { opacity: 0.45 },
   publishText: { fontFamily: pluggdFonts.satoshiBlack, color: CANVAS, fontSize: 14, fontWeight: '900' },
-  note: { margin: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,90,0,0.32)', backgroundColor: 'rgba(255,90,0,0.08)', padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  note: { margin: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,102,0,0.32)', backgroundColor: 'rgba(255,102,0,0.08)', padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   noteText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#E4E4E9', fontSize: 12, lineHeight: 18, fontWeight: '700' },
 });

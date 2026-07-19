@@ -37,7 +37,7 @@ for (const table of ["from('profiles')", "from('releases')", "from('mixes')", "f
   assert.match(dataSource, new RegExp(table.replace(/[()']/g, '\\$&')), `${table} must be in universal search data map`);
 }
 
-for (const color of ['#08080C', '#12121A', '#1F1F2E', '#FF5A00', '#FF4757']) {
+for (const color of ['#0a0806', '#171310', '#241d15', '#ff6600', '#FF4757']) {
   assert.match(searchSource, new RegExp(color), `${color} Search design token must be used`);
 }
 

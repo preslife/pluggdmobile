@@ -15,10 +15,10 @@ import { pluggdFonts } from '../../design/typography';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const COLORS = {
-  canvas: '#08080C',
-  surface: '#12121A',
-  border: '#262637',
-  orange: '#FF5A00',
+  canvas: '#0a0806',
+  surface: '#171310',
+  border: '#2a221a',
+  orange: '#ff6600',
   white: '#FFFFFF',
   muted: '#8E8E9F',
 };
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
   headerSide: { width: 32 },
   headerRight: { alignItems: 'flex-end' },
-  heading: { flex: 1, textAlign: 'center', color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
+  heading: { flex: 1, textAlign: 'center', color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
   feedLead: { gap: 11 },
   switchWrap: { marginTop: 2 },
   filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4 },

@@ -39,7 +39,7 @@ type RoleOption = {
   modules: string[];
 };
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 const REQUIRED_TASK_IDS = ['profile_basics', 'first_role_action'];
 const ROLE_FALLBACK_CODES = new Set(['42P01', '42703', '42704', 'PGRST204']);
 
@@ -337,7 +337,7 @@ export default function RoleSelection() {
 
                   <View style={[styles.radio, selected && styles.radioSelected]}>
                     {selected && (
-                      <MaterialIcons name="check" size={18} color="#080808" />
+                      <MaterialIcons name="check" size={18} color="#0a0806" />
                     )}
                   </View>
                 </View>
@@ -385,7 +385,7 @@ export default function RoleSelection() {
 
                     <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
                       {selected && (
-                        <MaterialIcons name="check" size={14} color="#080808" />
+                        <MaterialIcons name="check" size={14} color="#0a0806" />
                       )}
                     </View>
                   </Pressable>
@@ -416,7 +416,7 @@ export default function RoleSelection() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   },
   progressDotActive: {
     left: 0,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     borderWidth: 2,
     borderColor: PLUGGD_ORANGE,
   },
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   },
   roleCard: {
     minHeight: 58,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 14,
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2A2A2A',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 9,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     backgroundColor: 'rgba(8,8,8,0.96)',
     borderTopWidth: 1,
-    borderTopColor: '#151515',
+    borderTopColor: '#171310',
   },
   cta: {
     height: 56,

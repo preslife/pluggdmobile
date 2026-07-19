@@ -56,16 +56,16 @@ function GenreSection({ title, rows }: { title: string; rows: Array<{ id: string
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#08080C' },
-  header: { paddingHorizontal: 16, paddingTop: 42, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1F1F2E', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  screen: { flex: 1, backgroundColor: '#0a0806' },
+  header: { paddingHorizontal: 16, paddingTop: 42, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15', flexDirection: 'row', alignItems: 'center', gap: 10 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   title: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 31, lineHeight: 35 },
   content: { padding: 16, paddingBottom: 170 },
   subtitle: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, marginBottom: 18 },
   section: { marginBottom: 24, gap: 8 },
   sectionTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 19 },
-  row: { minHeight: 70, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#12121A', padding: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  art: { width: 50, height: 50, borderRadius: 13, backgroundColor: '#1F1F2E', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  row: { minHeight: 70, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  art: { width: 50, height: 50, borderRadius: 13, backgroundColor: '#241d15', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', height: '100%' },
   initial: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 13 },
   copy: { flex: 1, minWidth: 0 },

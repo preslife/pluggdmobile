@@ -16,7 +16,7 @@ import {
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 const GENRES = [
   'Hip-Hop',
@@ -415,7 +415,7 @@ function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   scrollContent: {
     paddingHorizontal: 18,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   progressDone: {
     left: -1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     borderWidth: 2,
     borderColor: PLUGGD_ORANGE,
   },
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   },
   progressFuture: {
     right: -1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
     borderWidth: 2,
     borderColor: '#555555',
   },
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     minHeight: 72,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 8,
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   card: {
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     borderRadius: 8,
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     backgroundColor: 'rgba(8,8,8,0.96)',
     borderTopWidth: 1,
-    borderTopColor: '#151515',
+    borderTopColor: '#171310',
   },
   cta: {
     height: 58,

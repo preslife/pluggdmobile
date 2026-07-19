@@ -18,7 +18,7 @@ import {
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
-const PLUGGD_ORANGE = '#FF5A00';
+const PLUGGD_ORANGE = '#ff6600';
 
 type LiveMode = 'creator_live' | 'collab_live' | 'class_live' | 'audio_room';
 type ScheduleMode = 'now' | 'later';
@@ -300,7 +300,7 @@ export default function CreateLiveRoomScreen() {
                     />
                   </View>
                   <View style={[styles.selectCircle, selected && styles.selectCircleActive]}>
-                    {selected ? <MaterialIcons name="check" size={15} color="#080808" /> : null}
+                    {selected ? <MaterialIcons name="check" size={15} color="#0a0806" /> : null}
                   </View>
                 </View>
                 <Text style={styles.modeTitle}>{item.title}</Text>
@@ -487,7 +487,7 @@ function ToggleRow({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#080808',
+    backgroundColor: '#0a0806',
   },
   scrollContent: {
     paddingHorizontal: 14,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
     alignItems: 'center',
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     padding: 12,
   },
   modeCardSelected: {
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   card: {
-    backgroundColor: '#151515',
+    backgroundColor: '#171310',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#262626',

@@ -2,7 +2,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import {
   View,
   Text,
-  Pressable,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -22,6 +21,7 @@ import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useWallet } from '../../src/hooks/useWallet';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
+import { EdPressable } from '../../src/features/editorial/EditorialBits';
 
 interface ReleaseDetail {
   id: string;
@@ -383,9 +383,9 @@ export default function ReleaseDetailScreen() {
         <MaterialIcons name="album" size={34} color="rgba(255,248,237,0.4)" />
         <Text style={styles.notFoundTitle}>Release not found</Text>
         <Text style={styles.notFoundBody}>This release is unavailable or the link no longer points to a published item.</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()}>
+        <EdPressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()}>
           <Text style={{ color: ed.orange, fontFamily: edFonts.bodyBlack, fontSize: 14, padding: 12 }}>Go back</Text>
-        </Pressable>
+        </EdPressable>
       </View>
     );
   }
@@ -418,14 +418,14 @@ export default function ReleaseDetailScreen() {
           ) : (
             <View style={[styles.art, { backgroundColor: '#191410' }]} />
           )}
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Go back"
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/releases' as any))}
             style={[styles.backButton, { top: insets.top + 10 }]}
           >
             <MaterialIcons name="arrow-back" size={22} color="#ffffff" />
-          </Pressable>
+          </EdPressable>
           <View style={styles.supportPill}>
             <Text style={styles.supportPillText}>SUPPORT THIS RELEASE</Text>
           </View>
@@ -468,7 +468,7 @@ export default function ReleaseDetailScreen() {
               </View>
               <View style={{ gap: 4 }}>
                 <Text style={styles.artistLabel}>ARTIST</Text>
-                <Pressable
+                <EdPressable
                   accessibilityRole="button"
                   accessibilityLabel={`View ${release.artist || 'creator'}`}
                   onPress={() => release.user_id && router.push(`/user/${release.user_id}` as any)}
@@ -476,7 +476,7 @@ export default function ReleaseDetailScreen() {
                   <View style={styles.artistChip}>
                     <Text style={styles.artistChipText}>{(release.artist || 'PLUGGD creator').toUpperCase()}</Text>
                   </View>
-                </Pressable>
+                </EdPressable>
               </View>
             </View>
             {creditRows[0] ? (
@@ -499,7 +499,7 @@ export default function ReleaseDetailScreen() {
           {/* Action grid */}
           <View style={styles.actionGrid}>
             {!isOwned && creditsNeeded > 0 ? (
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Unlock for ${creditsNeeded} credits`}
                 onPress={handleUnlock}
@@ -516,7 +516,7 @@ export default function ReleaseDetailScreen() {
                     </>
                   )}
                 </View>
-              </Pressable>
+              </EdPressable>
             ) : (
               <View style={styles.actionCellWrap}>
                 <View style={[styles.primaryAction, isOwned && { backgroundColor: 'rgba(74,222,128,0.16)', borderColor: 'rgba(74,222,128,0.5)' }]}>
@@ -525,7 +525,7 @@ export default function ReleaseDetailScreen() {
                 </View>
               </View>
             )}
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel="Tip artist"
               onPress={() => (release.user_id ? router.push(`/user/${release.user_id}` as any) : undefined)}
@@ -535,20 +535,20 @@ export default function ReleaseDetailScreen() {
                 <MaterialIcons name="volunteer-activism" size={17} color={ed.cream} />
                 <Text style={styles.ghostActionText}>Tip Artist</Text>
               </View>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Save this release" onPress={handleSave} disabled={saving} style={styles.actionCellWrap}>
+            </EdPressable>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Save this release" onPress={handleSave} disabled={saving} style={styles.actionCellWrap}>
               <View style={styles.ghostAction}>
                 <MaterialIcons name="favorite-border" size={17} color={ed.cream} />
                 <Text style={styles.ghostActionText}>{saving ? 'Saving' : 'Like'}</Text>
               </View>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Share this release" onPress={handleShare} style={styles.actionCellWrap}>
+            </EdPressable>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Share this release" onPress={handleShare} style={styles.actionCellWrap}>
               <View style={styles.ghostAction}>
                 <MaterialIcons name="ios-share" size={17} color={ed.cream} />
                 <Text style={styles.ghostActionText}>Share</Text>
               </View>
-            </Pressable>
-            <Pressable
+            </EdPressable>
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel="Post to feed"
               onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'release', releaseId: release.id, type: 'post' } } as any)}
@@ -558,9 +558,9 @@ export default function ReleaseDetailScreen() {
                 <MaterialIcons name="post-add" size={17} color={ed.cream} />
                 <Text style={styles.ghostActionText}>Post to Feed</Text>
               </View>
-            </Pressable>
+            </EdPressable>
             {release.user_id ? (
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel="View creator profile"
                 onPress={() => router.push(`/user/${release.user_id}` as any)}
@@ -570,7 +570,7 @@ export default function ReleaseDetailScreen() {
                   <MaterialIcons name="person-outline" size={17} color={ed.cream} />
                   <Text style={styles.ghostActionText}>Creator</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ) : null}
           </View>
 
@@ -594,13 +594,13 @@ export default function ReleaseDetailScreen() {
                 <Text style={styles.playerLabel}>PLUGGD PLAYER</Text>
                 <Text style={styles.playerArtist} numberOfLines={1}>{(release.artist || 'PLUGGD creator').toUpperCase()}</Text>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Share this release" onPress={handleShare}>
+              <EdPressable accessibilityRole="button" accessibilityLabel="Share this release" onPress={handleShare}>
                 <View style={styles.playerShare}>
                   <MaterialIcons name="share" size={16} color={ed.cream} />
                 </View>
-              </Pressable>
+              </EdPressable>
             </View>
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
               accessibilityLabel={isCurrentlyPlaying && isPlaying ? 'Pause' : 'Play all'}
               onPress={isCurrentlyPlaying ? togglePlayPause : handlePlayAll}
@@ -608,11 +608,11 @@ export default function ReleaseDetailScreen() {
               <View style={styles.playBar}>
                 <MaterialIcons name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play-arrow'} size={26} color={ed.onOrange} />
               </View>
-            </Pressable>
+            </EdPressable>
             {(tracks.length ? tracks : [{ id: release.id, title: release.title, track_number: 1, duration: null, audio_url: releasePlayableUrl(release) }]).map((track, index) => {
               const active = currentTrack?.id === track.id || (tracks.length === 0 && isCurrentlyPlaying);
               return (
-                <Pressable
+                <EdPressable
                   key={track.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Play ${track.title}`}
@@ -630,7 +630,7 @@ export default function ReleaseDetailScreen() {
                     </View>
                     <Text style={styles.trackDuration}>{formatDuration(track.duration)}</Text>
                   </View>
-                </Pressable>
+                </EdPressable>
               );
             })}
             <View style={styles.scrubRow}>
@@ -674,7 +674,7 @@ export default function ReleaseDetailScreen() {
                   multiline
                   style={styles.commentInput}
                 />
-                <Pressable
+                <EdPressable
                   accessibilityRole="button"
                   accessibilityLabel="Post comment"
                   onPress={handlePostComment}
@@ -683,7 +683,7 @@ export default function ReleaseDetailScreen() {
                   <View style={[styles.commentPost, (!commentDraft.trim() || postingComment) && { opacity: 0.5 }]}>
                     <Text style={styles.commentPostText}>{postingComment ? 'Posting...' : 'Post comment'}</Text>
                   </View>
-                </Pressable>
+                </EdPressable>
               </View>
             ) : (
               <View style={styles.signInCard}>
@@ -694,11 +694,11 @@ export default function ReleaseDetailScreen() {
                 <Text style={styles.signInBody}>
                   You can read comments without an account, but posting and replying requires sign-in.
                 </Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Sign in to comment" onPress={() => router.push('/auth/login' as any)}>
+                <EdPressable accessibilityRole="button" accessibilityLabel="Sign in to comment" onPress={() => router.push('/auth/login' as any)}>
                   <View style={styles.signInCta}>
                     <Text style={styles.signInCtaText}>Sign in to comment</Text>
                   </View>
-                </Pressable>
+                </EdPressable>
               </View>
             )}
             {comments.length ? (
@@ -726,7 +726,7 @@ export default function ReleaseDetailScreen() {
             {streamLinks.length ? (
               <View style={styles.chipRow}>
                 {streamLinks.map((link) => (
-                  <Pressable
+                  <EdPressable
                     key={link.label}
                     accessibilityRole="button"
                     accessibilityLabel={`Share ${link.label} link`}
@@ -736,7 +736,7 @@ export default function ReleaseDetailScreen() {
                       <MaterialIcons name="open-in-new" size={13} color={ed.cream} />
                       <Text style={styles.streamChipText}>{link.label}</Text>
                     </View>
-                  </Pressable>
+                  </EdPressable>
                 ))}
               </View>
             ) : (
@@ -759,7 +759,7 @@ export default function ReleaseDetailScreen() {
 
           {/* Balance strip */}
           {!isOwned && creditsNeeded > 0 ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => router.push('/wallet')}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => router.push('/wallet')}>
               <View style={styles.balanceRow}>
                 <View>
                   <Text style={styles.balanceLabel}>YOUR BALANCE</Text>
@@ -767,7 +767,7 @@ export default function ReleaseDetailScreen() {
                 </View>
                 <Text style={styles.balanceCta}>Buy More →</Text>
               </View>
-            </Pressable>
+            </EdPressable>
           ) : null}
         </View>
       </ScrollView>

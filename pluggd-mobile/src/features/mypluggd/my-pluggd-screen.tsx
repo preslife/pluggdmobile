@@ -538,7 +538,7 @@ function LibraryTab({
       <SectionHeader title="Badges / XP / Rewards" />
       <HorizontalRail>
         <Pressable accessibilityRole="button" accessibilityLabel="Open badges" style={styles.badgeCard} onPress={() => onRoute('/badges')}>
-          <MaterialIcons name="workspace-premium" size={30} color="#FF5A00" />
+          <MaterialIcons name="workspace-premium" size={30} color="#ff6600" />
           <Text style={styles.badgeTitle}>Progress</Text>
           <Text style={styles.badgeMeta}>XP, badges and rewards</Text>
         </Pressable>
@@ -591,7 +591,7 @@ function ActivityFilterPill({ label, selected, onPress }: { label: string; selec
   const theme = usePluggdTheme();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${label} activity`} accessibilityState={{ selected }} style={[styles.filterPill, { backgroundColor: selected ? theme.colors.accent : theme.colors.surface, borderColor: selected ? theme.colors.accent : theme.colors.border }]} onPress={onPress}>
-      <Text style={[styles.filterPillText, { color: selected ? '#08080C' : theme.colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.filterPillText, { color: selected ? '#0a0806' : theme.colors.textMuted }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -738,7 +738,7 @@ function FanMapSheet({
               </Pressable>
             ))}
             <View style={[styles.selectedMarker, markerStyle(selected.lat, selected.lng)]}>
-              <MaterialIcons name="add-location-alt" size={24} color="#08080C" />
+              <MaterialIcons name="add-location-alt" size={24} color="#0a0806" />
             </View>
           </Pressable>
 
@@ -752,7 +752,7 @@ function FanMapSheet({
             </View>
             <TextInput value={message} onChangeText={setMessage} placeholder="Say hello to the PLUGGD map..." placeholderTextColor={theme.colors.textSubtle} style={[styles.formInput, styles.messageInput, { color: theme.colors.text, borderColor: theme.colors.border }]} multiline maxLength={180} />
             <Pressable accessibilityRole="button" accessibilityLabel="Add my Fan Map plug" disabled={!user?.id || createPlug.isPending} style={[styles.plugButton, { backgroundColor: theme.colors.accent }, (!user?.id || createPlug.isPending) && styles.disabled]} onPress={() => createPlug.mutate()}>
-              {createPlug.isPending ? <ActivityIndicator color="#08080C" /> : <Text style={styles.plugButtonText}>{user?.id ? 'Plug In' : 'Sign in to Plug In'}</Text>}
+              {createPlug.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.plugButtonText}>{user?.id ? 'Plug In' : 'Sign in to Plug In'}</Text>}
             </Pressable>
           </View>
 
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   rowCTA: { maxWidth: 92, fontFamily: 'Satoshi-Bold', fontSize: 11, textTransform: 'uppercase' },
   libraryArtCard: { width: 132, height: 180, borderRadius: 16, borderWidth: 1, padding: 9 },
   libraryArtwork: { width: '100%', height: 112, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  badgeCard: { width: 148, height: 104, borderRadius: 16, borderWidth: 1, borderColor: '#1F1F2E', backgroundColor: '#12121A', padding: 12, justifyContent: 'center' },
+  badgeCard: { width: 148, height: 104, borderRadius: 16, borderWidth: 1, borderColor: '#241d15', backgroundColor: '#171310', padding: 12, justifyContent: 'center' },
   badgeTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 14, marginTop: 8 },
   badgeMeta: { color: '#8E8E9F', fontSize: 11, marginTop: 3 },
   filterRail: { minHeight: 44, gap: 8, paddingRight: 16 },
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
   buildPanel: { marginHorizontal: 16, marginTop: 12, borderRadius: 18, borderWidth: 1, padding: 16, gap: 9 },
   emptyActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   primarySmall: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  primarySmallText: { color: '#08080C', fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  primarySmallText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 13 },
   secondarySmall: { minHeight: 44, borderRadius: 22, borderWidth: 1, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   secondarySmallText: { fontFamily: 'Satoshi-Bold', fontSize: 13 },
   emptyPanel: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 7 },
@@ -1011,10 +1011,10 @@ const styles = StyleSheet.create({
   mapGridHorizontal: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
   mapGridVertical: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
   mapWatermark: { position: 'absolute', left: 16, top: 16, color: 'rgba(255,255,255,0.16)', fontFamily: 'Sora-Bold', fontSize: 30 },
-  mapMarker: { position: 'absolute', marginLeft: -14, marginTop: -14, width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#FF5A00', backgroundColor: '#08080C', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  mapMarker: { position: 'absolute', marginLeft: -14, marginTop: -14, width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#ff6600', backgroundColor: '#0a0806', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   mapMarkerImage: { width: '100%', height: '100%' },
-  mapMarkerDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF5A00' },
-  selectedMarker: { position: 'absolute', marginLeft: -18, marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: '#FF5A00', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#08080C' },
+  mapMarkerDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ff6600' },
+  selectedMarker: { position: 'absolute', marginLeft: -18, marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: '#ff6600', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0a0806' },
   plugForm: { borderRadius: 20, borderWidth: 1, padding: 14, gap: 10 },
   formTitle: { fontFamily: 'Satoshi-Black', fontSize: 18 },
   formBody: { fontSize: 12, lineHeight: 17 },
@@ -1023,5 +1023,5 @@ const styles = StyleSheet.create({
   formInputHalf: { flex: 1, minHeight: 46, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, fontSize: 14 },
   messageInput: { minHeight: 76, paddingTop: 12, textAlignVertical: 'top' },
   plugButton: { minHeight: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  plugButtonText: { color: '#08080C', fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  plugButtonText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 14 },
 });

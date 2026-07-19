@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -26,6 +25,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { ed, edFonts } from '../../design/editorial';
 import {
+  EdPressable,
   AudioPill,
   GhostButton,
   InkChip,
@@ -209,7 +209,7 @@ function ForYouGrid({ cards }: { cards: ForYouCard[] }) {
   return (
     <View style={styles.forYouGrid}>
       {cards.map((card) => (
-        <Pressable
+        <EdPressable
           key={card.id}
           accessibilityRole="button"
           accessibilityLabel={`Open ${card.title}`}
@@ -235,7 +235,7 @@ function ForYouGrid({ cards }: { cards: ForYouCard[] }) {
               </View>
             ))}
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -252,7 +252,7 @@ function LiveNowSection({ rooms, hasEvents }: { rooms: LiveRoomItem[]; hasEvents
     return (
       <View style={{ gap: 12 }}>
         {liveRooms.slice(0, 3).map((room) => (
-          <Pressable
+          <EdPressable
             key={room.id}
             accessibilityRole="button"
             accessibilityLabel={`Join ${room.title || 'live room'}`}
@@ -268,7 +268,7 @@ function LiveNowSection({ rooms, hasEvents }: { rooms: LiveRoomItem[]; hasEvents
               <Text style={styles.liveBadgeText}>LIVE</Text>
             </View>
             <Text style={styles.liveRoomTitle} numberOfLines={2}>{room.title || 'Live room'}</Text>
-          </Pressable>
+          </EdPressable>
         ))}
       </View>
     );
@@ -353,7 +353,7 @@ function TrendingScenes({ scenes }: { scenes: TrendingScene[] }) {
   return (
     <View style={{ gap: 14 }}>
       {scenes.map((scene) => (
-        <Pressable
+        <EdPressable
           key={scene.id}
           accessibilityRole="button"
           accessibilityLabel={`Open ${scene.title}`}
@@ -375,7 +375,7 @@ function TrendingScenes({ scenes }: { scenes: TrendingScene[] }) {
               {scene.freshness ? <Text style={styles.sceneFreshness}>{scene.freshness}</Text> : null}
             </View>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -466,7 +466,7 @@ function NewFromCreators({ updates }: { updates: CreatorUpdate[] }) {
     <View style={{ gap: 12 }}>
       {updates.map((update) => (
         <View key={update.id} style={styles.updateRow}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${update.title}`}
             onPress={() => router.push(update.route as any)}
@@ -491,8 +491,8 @@ function NewFromCreators({ updates }: { updates: CreatorUpdate[] }) {
                 ))}
               </View>
             </View>
-          </Pressable>
-          <Pressable
+          </EdPressable>
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel={update.playable ? `Play ${update.title}` : `Open ${update.title}`}
             onPress={() => {
@@ -505,7 +505,7 @@ function NewFromCreators({ updates }: { updates: CreatorUpdate[] }) {
             style={styles.updatePlay}
           >
             <MaterialIcons name={update.playable ? 'play-arrow' : 'arrow-forward'} size={22} color={ed.ink} />
-          </Pressable>
+          </EdPressable>
         </View>
       ))}
     </View>
@@ -546,7 +546,7 @@ function SoundboardPanel({
           <Text style={styles.boardTitle} numberOfLines={2}>{board.title || 'Untitled board'}</Text>
           {creatorName ? <Text style={styles.boardCreator}>{creatorName}</Text> : null}
         </View>
-        <Pressable
+        <EdPressable
           accessibilityRole="button"
           accessibilityLabel={`Open ${board.title || 'soundboard'}`}
           onPress={() => router.push(route as any)}
@@ -554,7 +554,7 @@ function SoundboardPanel({
           <View style={styles.boardOpenPill}>
             <Text style={styles.boardOpenText}>Open Soundboard</Text>
           </View>
-        </Pressable>
+        </EdPressable>
       </View>
       <View style={styles.chipRow}>
         <InkChip text={`${formatCompact(board.item_count)} cards`} />
@@ -566,7 +566,7 @@ function SoundboardPanel({
           <View>
             <Pushpin style={styles.pinCentered} />
             <View style={styles.boardAudioCard}>
-              <Pressable
+              <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={audioPlaying ? 'Pause audio preview' : 'Play audio preview'}
                 onPress={() => {
@@ -576,7 +576,7 @@ function SoundboardPanel({
                 <View style={styles.boardAudioPlay}>
                   <MaterialIcons name={audioPlaying ? 'pause' : 'play-arrow'} size={22} color="#ffffff" />
                 </View>
-              </Pressable>
+              </EdPressable>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.boardAudioTitle} numberOfLines={1}>{audioItem.title || 'Audio sketch'}</Text>
                 <Text style={styles.boardAudioMeta}>Audio</Text>
@@ -652,7 +652,7 @@ function NearYouSection({ events }: { events: FeedBundle['events'] }) {
       {events.slice(0, 4).map((event) => {
         const starts = event.starts_at ? new Date(event.starts_at) : null;
         return (
-          <Pressable
+          <EdPressable
             key={event.id}
             accessibilityRole="button"
             accessibilityLabel={`View ${event.title || 'event'}`}
@@ -673,7 +673,7 @@ function NearYouSection({ events }: { events: FeedBundle['events'] }) {
               </View>
               <MaterialIcons name="chevron-right" size={20} color={ed.creamMuted} />
             </View>
-          </Pressable>
+          </EdPressable>
         );
       })}
     </View>
@@ -719,7 +719,7 @@ function CreatorsToWatch({ creators }: { creators: WatchCreator[] }) {
   return (
     <View style={{ gap: 10 }}>
       {creators.map((creator) => (
-        <Pressable
+        <EdPressable
           key={creator.id}
           accessibilityRole="button"
           accessibilityLabel={`View ${creator.name}`}
@@ -744,7 +744,7 @@ function CreatorsToWatch({ creators }: { creators: WatchCreator[] }) {
               <Text style={styles.viewPillText}>View</Text>
             </View>
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -813,7 +813,7 @@ function CommunityPulse({ rows }: { rows: PulseRowItem[] }) {
   return (
     <View style={{ gap: 10 }}>
       {rows.map((row) => (
-        <Pressable
+        <EdPressable
           key={row.id}
           accessibilityRole="button"
           accessibilityLabel={row.headline}
@@ -833,7 +833,7 @@ function CommunityPulse({ rows }: { rows: PulseRowItem[] }) {
             </View>
             {row.timeLabel ? <Text style={styles.pulseTime}>{row.timeLabel}</Text> : null}
           </View>
-        </Pressable>
+        </EdPressable>
       ))}
     </View>
   );
@@ -913,7 +913,7 @@ export function DiscoverEditorialScreen() {
           <Text style={styles.heroTitle}>
             Find what's <Text style={styles.heroTitleAccent}>moving.</Text>
           </Text>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Search PLUGGD"
             onPress={() => router.push('/search' as any)}
@@ -928,10 +928,10 @@ export function DiscoverEditorialScreen() {
                 style={styles.searchInput}
               />
             </View>
-          </Pressable>
+          </EdPressable>
           <View style={styles.chipWrap}>
             {CATEGORY_CHIPS.map((chip, index) => (
-              <Pressable
+              <EdPressable
                 key={chip.label}
                 accessibilityRole="button"
                 accessibilityLabel={chip.label}
@@ -940,7 +940,7 @@ export function DiscoverEditorialScreen() {
                 <View style={[styles.categoryChip, index === 0 && styles.categoryChipActive]}>
                   <Text style={[styles.categoryChipText, index === 0 && styles.categoryChipTextActive]}>{chip.label}</Text>
                 </View>
-              </Pressable>
+              </EdPressable>
             ))}
           </View>
         </View>

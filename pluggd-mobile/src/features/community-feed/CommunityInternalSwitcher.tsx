@@ -5,9 +5,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { COMMUNITY_TABS, type CommunityTabKey } from './communityFeedTypes';
 
 const COLORS = {
-  surface: '#12121A',
-  border: '#262637',
-  orange: '#FF5A00',
+  surface: '#171310',
+  border: '#2a221a',
+  orange: '#ff6600',
   white: '#FFFFFF',
   muted: '#8E8E9F',
 };

@@ -5,7 +5,7 @@ import { selectionHaptic } from '../src/design/haptics';
 import { pluggdFonts } from '../src/design/typography';
 import { EditorialTitle } from './EditorialTitle';
 
-const ORANGE = '#FF5A00';
+const ORANGE = '#ff6600';
 
 /**
  * Closing "Embody the culture" band — mobile port of NewHome2's final culture
@@ -23,7 +23,7 @@ export function CultureBand({ onEnterLive, onExploreDrops }: { onEnterLive: () =
       />
       {/* orange horizon glow */}
       <View pointerEvents="none" style={styles.glow}>
-        <LinearGradient colors={['rgba(255,90,0,0.34)', 'rgba(255,90,0,0)']} start={{ x: 0.5, y: 1 }} end={{ x: 0.5, y: 0 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(255,102,0,0.34)', 'rgba(255,102,0,0)']} start={{ x: 0.5, y: 1 }} end={{ x: 0.5, y: 0 }} style={StyleSheet.absoluteFill} />
       </View>
 
       <Text style={styles.kicker}>Join the culture</Text>
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,90,0,0.28)',
+    borderColor: 'rgba(255,102,0,0.28)',
   },
   glow: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '70%' },
   kicker: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 },
