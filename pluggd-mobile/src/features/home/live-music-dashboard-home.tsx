@@ -11,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type ImageSourcePropType,
 } from 'react-native';
@@ -36,6 +37,7 @@ import {
   WaveTicks,
 } from '../editorial/EditorialBits';
 import { usePlayback, type PluggdTrack } from '../../context/PlaybackProvider';
+import { useAuth } from '../../context/AuthProvider';
 import {
   loadSoundboardItemDetails,
   safeList,
@@ -67,10 +69,12 @@ import {
 const HOME_SECTION_ORDER = [
   'Top bar',
   'Hero / edition masthead',
-  'Realtime ticker',
+  'Now on PLUGGD',
   'Live now on PLUGGD',
+  'Realtime ticker',
   'The next wave is already here',
   'Featured story',
+  'The Pledge',
   'Explore your scene',
   'Soundboards',
   'Tonight on PLUGGD',
@@ -78,6 +82,7 @@ const HOME_SECTION_ORDER = [
   'Backstage / Communities',
   'Build your world',
   'Platform pulse',
+  'The Edition',
   'Embody the culture',
 ] as const;
 
@@ -376,17 +381,29 @@ function InlineLoading() {
 /* Hero — edition masthead                                             */
 /* ------------------------------------------------------------------ */
 
-function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute, scrollY }: {
+function editionMasthead() {
+  const now = new Date();
+  const volumeEpoch = new Date(now.getFullYear(), 0, 1);
+  const number = Math.max(1, Math.floor((now.getTime() - volumeEpoch.getTime()) / 86_400_000) + 1);
+  const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hour = now.getHours();
+  const headline =
+    hour >= 22 || hour < 5
+      ? { lead: 'The night belongs to', accent: 'the scene' }
+      : hour < 12
+        ? { lead: 'The culture wakes', accent: 'up loud' }
+        : { lead: 'Where music culture', accent: 'comes alive' };
+  return { number, dateLabel, headline };
+}
+
+function HomeHero({ spotlight, scrollY, signedIn }: {
   spotlight: Spotlight;
-  boardTitle?: string | null;
-  boardCount?: number | null;
-  boardImage?: string | null;
-  boardRoute?: string | null;
   scrollY: RNAnimated.Value;
+  signedIn: boolean;
 }) {
   const router = useRouter();
   const heroImage = spotlight.imageUrl || HOME_HERO_FALLBACK;
-  const polaroidImage = boardImage || spotlight.imageUrl || HOME_HERO_FALLBACK;
+  const { number, dateLabel, headline } = editionMasthead();
   // The photo drifts slower than the page and stretches on over-scroll —
   // the classic native masthead parallax.
   const parallax = {
@@ -420,45 +437,162 @@ function HomeHero({ spotlight, boardTitle, boardCount, boardImage, boardRoute, s
       />
       <View style={styles.heroContent}>
         <Enter delay={0}>
-          <Text style={styles.heroTitle}>
-            Where music culture{'\n'}comes <Text style={styles.heroTitleAccent}>alive</Text>
+          <Text style={styles.heroDateline}>
+            {`EDITION №${number} — ${dateLabel.toUpperCase()}`}
           </Text>
         </Enter>
-        <Enter delay={70}>
+        <Enter delay={60}>
+          <Text style={styles.heroTitle}>
+            {headline.lead}{'\n'}
+            <Text style={styles.heroTitleAccent}>{headline.accent}</Text>
+          </Text>
+        </Enter>
+        <Enter delay={130}>
           <Text style={styles.heroSub}>Authentic. Unfiltered. The heartbeat of the scene.</Text>
         </Enter>
-        <Enter delay={140}>
-          <Text style={styles.heroQuote}>
-            "Live music communities, creator drops, soundboards, and underground scenes - all in one place."
-          </Text>
-        </Enter>
-        {boardTitle || spotlight.kind !== 'empty' ? (
+        {!signedIn ? (
+          <Enter delay={200}>
+            <OrangeButton label="Join PLUGGD — it's free" onPress={() => router.push('/auth/signup' as any)} />
+          </Enter>
+        ) : null}
+        <Enter delay={260}>
           <EdPressable
             accessibilityRole="button"
-            accessibilityLabel={`Open ${boardTitle || spotlight.title}`}
-            onPress={() => {
-              const target = boardRoute || spotlight.route;
-              if (target) router.push(target as any);
-            }}
-            style={{ alignSelf: 'flex-start' }}
+            accessibilityLabel="Creators: claim your world"
+            onPress={() => router.push('/creator/onboarding' as any)}
+            style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}
           >
-            <View style={styles.heroPolaroid}>
-              <View style={styles.heroPolaroidImageWrap}>
-                {polaroidImage ? (
-                  <PluggdImage uri={polaroidImage} style={styles.heroPolaroidImage} />
-                ) : (
-                  <View style={[styles.heroPolaroidImage, { backgroundColor: '#1a1611' }]} />
-                )}
-              </View>
-              <Text style={styles.heroPolaroidTitle} numberOfLines={2}>
-                {boardTitle || spotlight.title}
-              </Text>
-              <Text style={styles.heroPolaroidMeta}>
-                {boardCount != null ? `${boardCount} items` : spotlight.meta}
-              </Text>
-            </View>
+            <Text style={styles.heroCreatorsLink}>CREATORS: CLAIM YOUR WORLD →</Text>
           </EdPressable>
-        ) : null}
+        </Enter>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Now on PLUGGD — curated rotating hero panel                         */
+/* ------------------------------------------------------------------ */
+
+type HeroSlide = {
+  id: string;
+  typeLabel: string;
+  title: string;
+  copy: string;
+  cta: string;
+  route: string;
+  imageUrl?: string | null;
+};
+
+function buildHeroSlides(bundle?: FeedBundle): HeroSlide[] {
+  const slides: HeroSlide[] = [];
+  const firstMix = bundle?.mixes?.find((mix) => mix.cover_url);
+  slides.push({
+    id: 'curated-mixes',
+    typeLabel: 'Now on PLUGGD',
+    title: 'PLUGGD Mixes',
+    copy: 'Full-length sets, selector journeys and scenes in motion.',
+    cta: 'Explore Mixes',
+    route: '/mixes',
+    imageUrl: firstMix?.cover_url,
+  });
+  (bundle?.releases ?? [])
+    .filter((release) => release.cover_art_url)
+    .slice(0, 2)
+    .forEach((release) => {
+      slides.push({
+        id: `release-${release.id}`,
+        typeLabel: 'Release',
+        title: release.title || 'New release',
+        copy: release.artist || 'PLUGGD creator',
+        cta: 'Open Drop',
+        route: `/release/${release.id}`,
+        imageUrl: release.cover_art_url,
+      });
+    });
+  const beat = (bundle?.beats ?? []).find((item) => item.image_url);
+  if (beat) {
+    slides.push({
+      id: `beat-${beat.id}`,
+      typeLabel: 'Beat',
+      title: beat.title || 'New beat',
+      copy: beat.producer_name || 'Producer-owned beat on BeatPlug.',
+      cta: 'License',
+      route: `/beat/${beat.id}`,
+      imageUrl: beat.image_url,
+    });
+  }
+  const event = (bundle?.events ?? []).find((item) => item.cover_image_url);
+  if (event) {
+    slides.push({
+      id: `event-${event.id}`,
+      typeLabel: 'Event',
+      title: event.title || 'Underground event',
+      copy: locationCity(event.location),
+      cta: 'View Event',
+      route: `/events/${event.id}`,
+      imageUrl: event.cover_image_url,
+    });
+  }
+  return slides.slice(0, 5);
+}
+
+function NowOnPluggd({ slides }: { slides: HeroSlide[] }) {
+  const router = useRouter();
+  const [index, setIndex] = useState(0);
+  const [engaged, setEngaged] = useState(false);
+  const active = slides[index % Math.max(slides.length, 1)] || slides[0];
+
+  useEffect(() => {
+    if (slides.length < 2 || engaged) return;
+    const timer = setInterval(() => {
+      setIndex((current) => (current + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [engaged, slides.length]);
+
+  if (!active) return null;
+
+  return (
+    <View style={styles.nowPanel}>
+      {active.imageUrl ? (
+        <PluggdImage uri={active.imageUrl} style={[StyleSheet.absoluteFillObject as any, { opacity: 0.22 }]} />
+      ) : null}
+      <LinearGradient colors={['rgba(10,8,6,0.55)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFillObject} />
+      <View style={{ padding: 18, gap: 8 }}>
+        <Text style={styles.nowEyebrow}>{active.typeLabel.toUpperCase()}</Text>
+        <Text style={styles.nowTitle} numberOfLines={2}>{active.title}</Text>
+        <Text style={styles.nowCopy} numberOfLines={2}>{active.copy}</Text>
+        <EdPressable
+          accessibilityRole="button"
+          accessibilityLabel={active.cta}
+          onPress={() => router.push(active.route as any)}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          <View style={styles.nowCta}>
+            <Text style={styles.nowCtaText}>{active.cta.toUpperCase()}</Text>
+          </View>
+        </EdPressable>
+        <View style={styles.nowDotsRow}>
+          {slides.map((slide, slideIndex) => (
+            <EdPressable
+              key={slide.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Show feature ${slideIndex + 1}`}
+              haptic={false}
+              onPress={() => {
+                setEngaged(true);
+                setIndex(slideIndex);
+              }}
+            >
+              <View style={[styles.nowDot, slideIndex === index && styles.nowDotActive]}>
+                <Text style={[styles.nowDotText, slideIndex === index && { color: ed.orange }]}>
+                  {String(slideIndex + 1).padStart(2, '0')}
+                </Text>
+              </View>
+            </EdPressable>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -837,7 +971,7 @@ function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loadi
       {loading ? (
         <InlineLoading />
       ) : items.length ? (
-        <View style={{ gap: 16 }}>
+        <View style={styles.dropGrid}>
           {items.map((item) => (
             <View key={item.id} style={styles.dropCard}>
               <EdPressable
@@ -852,7 +986,7 @@ function DropsMarketplace({ items, loading }: { items: StorePreviewItem[]; loadi
                     <View style={[styles.dropImage, { backgroundColor: '#171310' }]} />
                   )}
                 </View>
-                <InkChip text={item.kind === 'sample_pack' ? 'Pack' : item.kind} tone="orange" style={{ marginTop: 12 }} />
+                <InkChip text={item.kind === 'sample_pack' ? 'Pack' : item.kind} tone="orange" style={{ marginTop: 8 }} />
                 <Text style={styles.dropTitle} numberOfLines={1}>{item.title}</Text>
                 <Text style={styles.dropMeta} numberOfLines={1}>{item.subtitle}</Text>
               </EdPressable>
@@ -939,6 +1073,117 @@ function BackstageCommunities({ communities, loading }: { communities: Community
             <OrangeButton label="Open Community" onPress={() => router.push('/community' as any)} />
           </View>
         </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* The Pledge (paper manifesto)                                        */
+/* ------------------------------------------------------------------ */
+
+function PledgeSection({ signedIn }: { signedIn: boolean }) {
+  const router = useRouter();
+  return (
+    <View style={styles.paperSection}>
+      <Eyebrow text="The Pledge" />
+      <SerifTitle text="Own your masters. Split fairly. Keep your scene." size={28} onPaper />
+      <SectionBody
+        text="PLUGGD is built so the people who make the culture keep the rights, the revenue, and the room. No blind algorithm. No buried terms."
+        onPaper
+      />
+      <View style={{ gap: 12, marginTop: 4 }}>
+        <View style={styles.pledgeCard}>
+          <Text style={styles.pledgeCardTitle}>I make music</Text>
+          <Text style={styles.pledgeCardCopy}>Set up your world — releases, drops, splits, live rooms, memberships.</Text>
+          <OrangeButton label="Start as a creator" onPress={() => router.push('/creator/onboarding' as any)} style={{ marginTop: 4 }} />
+        </View>
+        <View style={styles.pledgeCard}>
+          <Text style={styles.pledgeCardTitle}>I'm here for the sound</Text>
+          <Text style={styles.pledgeCardCopy}>Follow scenes, back drops early, and get into the rooms where it starts.</Text>
+          {!signedIn ? (
+            <GhostButton label="Join free" onPress={() => router.push('/auth/signup' as any)} style={{ marginTop: 4 }} />
+          ) : (
+            <GhostButton label="Explore the culture" onPress={() => router.push('/discover' as any)} style={{ marginTop: 4 }} />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* The Edition — newsletter slip                                       */
+/* ------------------------------------------------------------------ */
+
+function EditionSlip() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  const subscribe = async () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
+      setStatus('error');
+      setMessage('Enter a valid email to get the edition.');
+      return;
+    }
+    setStatus('submitting');
+    try {
+      const { error } = await (supabase as any).from('fan_waitlist_submissions').insert({
+        full_name: '',
+        email: trimmed,
+        referral_source: 'homepage_edition',
+        email_consent: true,
+      });
+      if (error) {
+        if ((error as { code?: string }).code === '23505') {
+          setStatus('success');
+          setMessage("You're already on the list.");
+          return;
+        }
+        throw error;
+      }
+      setStatus('success');
+      setMessage("You're on the list — the next edition lands in your inbox.");
+    } catch {
+      setStatus('error');
+      setMessage('Something broke — try again in a moment.');
+    }
+  };
+
+  return (
+    <View style={styles.nightSection}>
+      <Eyebrow text="The Edition" />
+      <SerifTitle text="Get the edition in your inbox" caps size={27} />
+      <SectionBody text="One email when a new edition drops — the releases, rooms, and stories that mattered. No spam." />
+      {status === 'success' ? (
+        <View style={styles.editionSuccess}>
+          <Text style={styles.editionSuccessText}>{message}</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.editionRow}>
+            <TextInput
+              value={email}
+              onChangeText={(next) => {
+                setEmail(next);
+                if (status === 'error') setStatus('idle');
+              }}
+              placeholder="your@email.com"
+              placeholderTextColor="rgba(255,248,237,0.4)"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={styles.editionInput}
+            />
+            <OrangeButton
+              label={status === 'submitting' ? 'Sending...' : 'Subscribe'}
+              onPress={subscribe}
+            />
+          </View>
+          {status === 'error' && message ? <Text style={styles.editionError}>{message}</Text> : null}
+          <Text style={styles.editionConsent}>By subscribing you agree to receive the PLUGGD edition by email.</Text>
+        </>
       )}
     </View>
   );
@@ -1047,7 +1292,7 @@ function PlatformPulse({
 /* Embody the culture (closing CTA)                                    */
 /* ------------------------------------------------------------------ */
 
-function EmbodyCulture() {
+function EmbodyCulture({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
   return (
     <View style={styles.embody}>
@@ -1056,8 +1301,17 @@ function EmbodyCulture() {
         Join the rooms where music starts, follow the scenes before they break, and build your world on PLUGGD.
       </Text>
       <View style={[styles.buttonRow, { justifyContent: 'center' }]}>
-        <CreamButton label="Enter live rooms" onPress={() => router.push('/live' as any)} />
-        <GhostButton label="Explore drops" onPress={() => router.push('/market' as any)} />
+        {signedIn ? (
+          <>
+            <CreamButton label="Enter live rooms" onPress={() => router.push('/live' as any)} />
+            <GhostButton label="Explore drops" onPress={() => router.push('/market' as any)} />
+          </>
+        ) : (
+          <>
+            <CreamButton label="Join PLUGGD free" onPress={() => router.push('/auth/signup' as any)} />
+            <GhostButton label="Tune into the rotation" onPress={() => router.push('/mixes' as any)} />
+          </>
+        )}
       </View>
       <View style={styles.footerBrandRow}>
         <Image
@@ -1077,6 +1331,7 @@ function EmbodyCulture() {
 
 export function LiveMusicDashboardHome() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   // First paint renders the masthead instantly; the below-fold sections
   // mount right after interactions settle so opening the app feels
   // immediate even with thirteen sections of imagery.
@@ -1158,6 +1413,7 @@ export function LiveMusicDashboardHome() {
     [backstage.data?.communities, home.data, liveRooms],
   );
   const circuits = useMemo(() => buildSceneCircuits(home.data), [home.data]);
+  const heroSlides = useMemo(() => buildHeroSlides(home.data), [home.data]);
   const marketItems = useMemo(() => buildMarketplaceItems(home.data, store.data ?? []), [home.data, store.data]);
 
   const tickerItems = useMemo(() => {
@@ -1218,25 +1474,16 @@ export function LiveMusicDashboardHome() {
         onScroll={RNAnimated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
       >
-        <HomeHero
-          spotlight={spotlight}
-          boardTitle={firstBoard?.title}
-          boardCount={firstBoard?.item_count}
-          boardImage={
-            boardDetail.data?.items?.find((item) => item.item_type === 'image' && item.media_url)?.media_url ||
-            firstBoard?.cover_image_url ||
-            spotlight.imageUrl
-          }
-          boardRoute={firstBoard ? `/soundboards/${firstBoard.slug || firstBoard.id}` : spotlight.route}
-          scrollY={scrollY}
-        />
-        <LiveTicker items={tickerItems} variant="paper" />
+        <HomeHero spotlight={spotlight} scrollY={scrollY} signedIn={Boolean(user)} />
+        <NowOnPluggd slides={heroSlides} />
         <LiveNowOnPluggd rooms={liveRooms} loading={live.isLoading} />
+        <LiveTicker items={tickerItems} variant="paper" />
         {belowFoldReady ? (
         <Enter from="still">
         <TornEdge color={ed.paper2} />
         <NextWave bundle={home.data} loading={home.isLoading} />
         <FeaturedStory posts={stories.data ?? []} fallbackImage={home.data?.events?.[0]?.cover_image_url} />
+        <PledgeSection signedIn={Boolean(user)} />
         <TornEdge flip color={ed.paper2} />
         <ExploreYourScene circuits={circuits} loading={home.isLoading} />
         <TornEdge color={ed.paper2} />
@@ -1261,7 +1508,8 @@ export function LiveMusicDashboardHome() {
           eventCount={eventsTonight.length}
           dropCount={dropCount}
         />
-        <EmbodyCulture />
+        <EditionSlip />
+        <EmbodyCulture signedIn={Boolean(user)} />
         </Enter>
         ) : null}
       </RNAnimated.ScrollView>
@@ -1288,23 +1536,97 @@ const styles = StyleSheet.create({
   },
   heroTitleAccent: { fontFamily: edFonts.serifItalic, color: ed.orange },
   heroSub: { fontFamily: edFonts.bodyMedium, fontSize: 15.5, lineHeight: 22, color: 'rgba(255,248,237,0.86)' },
-  heroQuote: { fontFamily: edFonts.bodyMedium, fontSize: 14.5, lineHeight: 21, color: 'rgba(255,248,237,0.72)' },
-  heroPolaroid: {
-    marginTop: 8,
-    width: 172,
-    backgroundColor: ed.paper,
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
-    transform: [{ rotate: '-1.5deg' }],
+  heroDateline: {
+    fontFamily: edFonts.mono,
+    fontSize: 10.5,
+    letterSpacing: 2,
+    color: 'rgba(255,248,237,0.72)',
   },
-  heroPolaroidImageWrap: { borderRadius: 6, overflow: 'hidden', backgroundColor: '#181410' },
-  heroPolaroidImage: { width: '100%', height: 132 },
-  heroPolaroidTitle: { fontFamily: edFonts.bodyBold, fontSize: 13, lineHeight: 17, color: ed.ink, marginTop: 8 },
-  heroPolaroidMeta: { fontFamily: edFonts.bodyBlack, fontSize: 11, color: 'rgba(34,23,15,0.68)', marginTop: 2 },
+  heroCreatorsLink: {
+    fontFamily: edFonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.8,
+    color: 'rgba(255,248,237,0.78)',
+  },
+
+  /* Now on PLUGGD curated panel */
+  nowPanel: {
+    marginHorizontal: 20,
+    marginTop: -8,
+    marginBottom: 26,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.16)',
+    overflow: 'hidden',
+    backgroundColor: '#100c08',
+  },
+  nowEyebrow: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 2, color: ed.orange },
+  nowTitle: { fontFamily: edFonts.serif, fontSize: 27, lineHeight: 30, color: ed.cream },
+  nowCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 18, color: 'rgba(255,248,237,0.72)' },
+  nowCta: {
+    minHeight: 42,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.35)',
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  nowCtaText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.6, color: ed.cream },
+  nowDotsRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
+  nowDot: {
+    minWidth: 34,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  nowDotActive: { borderColor: ed.orange, backgroundColor: 'rgba(255,102,0,0.12)' },
+  nowDotText: { fontFamily: edFonts.mono, fontSize: 9.5, color: 'rgba(255,248,237,0.55)' },
+
+  /* Pledge */
+  pledgeCard: {
+    borderRadius: 14,
+    backgroundColor: '#fffdf7',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(91,56,31,0.2)',
+    padding: 16,
+    gap: 6,
+    shadowColor: '#5b381f',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  pledgeCardTitle: { fontFamily: edFonts.serif, fontSize: 22, color: ed.ink },
+  pledgeCardCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.inkMuted },
+
+  /* Edition slip */
+  editionRow: { gap: 10, marginTop: 4 },
+  editionInput: {
+    minHeight: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    color: ed.cream,
+    fontFamily: edFonts.bodyMedium,
+    fontSize: 14,
+    paddingHorizontal: 14,
+  },
+  editionSuccess: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.4)',
+    backgroundColor: 'rgba(74,222,128,0.08)',
+    padding: 14,
+  },
+  editionSuccessText: { fontFamily: edFonts.bodyBold, fontSize: 13.5, color: '#4ade80' },
+  editionError: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: '#ff8a80' },
+  editionConsent: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, lineHeight: 16, color: 'rgba(255,248,237,0.45)' },
 
   /* Section shells */
   nightSection: { backgroundColor: ed.night, paddingHorizontal: 20, paddingVertical: 40, gap: 14 },
@@ -1394,7 +1716,7 @@ const styles = StyleSheet.create({
 
   /* Circuits */
   circuitCard: {
-    minHeight: 320,
+    minHeight: 244,
     borderRadius: ed.radius,
     overflow: 'hidden',
     borderWidth: 1,
@@ -1507,24 +1829,28 @@ const styles = StyleSheet.create({
   eventViewText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: ed.orange },
 
   /* Drops */
+  dropGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   dropCard: {
+    width: '47.5%',
+    flexGrow: 1,
     backgroundColor: '#fffdf7',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91,56,31,0.2)',
-    padding: 14,
+    padding: 10,
     shadowColor: '#5b381f',
     shadowOpacity: 0.18,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
+    justifyContent: 'space-between',
   },
-  dropImageWrap: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#171310' },
-  dropImage: { width: '100%', height: 190 },
-  dropTitle: { fontFamily: edFonts.bodyBold, fontSize: 20, lineHeight: 25, color: ed.ink, marginTop: 8 },
-  dropMeta: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.inkSoft, marginTop: 2 },
+  dropImageWrap: { borderRadius: 8, overflow: 'hidden', backgroundColor: '#171310' },
+  dropImage: { width: '100%', height: 120 },
+  dropTitle: { fontFamily: edFonts.bodyBold, fontSize: 14.5, lineHeight: 18, color: ed.ink, marginTop: 7 },
+  dropMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: ed.inkSoft, marginTop: 2 },
   dropAction: {
-    marginTop: 12,
-    minHeight: 46,
+    marginTop: 10,
+    minHeight: 40,
     borderRadius: 999,
     backgroundColor: ed.paper2,
     borderWidth: 1,
@@ -1536,7 +1862,7 @@ const styles = StyleSheet.create({
 
   /* Communities */
   communityCard: {
-    minHeight: 168,
+    minHeight: 142,
     borderRadius: ed.radius,
     borderWidth: 1,
     borderColor: ed.nightLine,

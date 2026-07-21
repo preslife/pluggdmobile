@@ -14,10 +14,12 @@ assert.match(homeRoute, /LiveMusicDashboardHome/, 'Home tab must use the dedicat
 for (const token of [
   "'Top bar'",
   "'Hero / edition masthead'",
-  "'Realtime ticker'",
+  "'Now on PLUGGD'",
   "'Live now on PLUGGD'",
+  "'Realtime ticker'",
   "'The next wave is already here'",
   "'Featured story'",
+  "'The Pledge'",
   "'Explore your scene'",
   "'Soundboards'",
   "'Tonight on PLUGGD'",
@@ -25,6 +27,7 @@ for (const token of [
   "'Backstage / Communities'",
   "'Build your world'",
   "'Platform pulse'",
+  "'The Edition'",
   "'Embody the culture'",
 ]) {
   assert.match(homeSource, new RegExp(token.replace(/[()'/]/g, '\\$&')), `Home section order must include ${token}`);
@@ -33,10 +36,12 @@ for (const token of [
 // Rendered component order must follow the web home top-to-bottom.
 const expectedOrder = [
   '<HomeHero',
-  '<LiveTicker',
+  '<NowOnPluggd',
   '<LiveNowOnPluggd',
+  '<LiveTicker',
   '<NextWave',
   '<FeaturedStory',
+  '<PledgeSection',
   '<ExploreYourScene',
   '<SoundboardsBoard',
   '<TonightOnPluggd',
@@ -44,6 +49,7 @@ const expectedOrder = [
   '<BackstageCommunities',
   '<BuildYourWorldSection',
   '<PlatformPulse',
+  '<EditionSlip',
   '<EmbodyCulture',
 ];
 let lastIndex = -1;
@@ -57,6 +63,8 @@ for (const required of [
   'resolveSpotlight',
   "cta?: 'Listen' | 'Open' | 'Join Live' | 'View Event' | 'Open Soundboard'",
   'buildSceneCircuits',
+  'buildHeroSlides',
+  "from('fan_waitlist_submissions')",
   'buildMarketplaceItems',
   'WEB_PARITY_ASSETS',
   'HOME_HERO_FALLBACK',
@@ -97,12 +105,12 @@ for (const token of [
 
 for (const sizeToken of [
   'minHeight: 560',
-  'width: 172',
+  'minWidth: 34',
   'width: 280',
-  'height: 190',
-  'minHeight: 320',
+  'height: 120',
+  'minHeight: 244',
   'minHeight: 210',
-  'minHeight: 168',
+  'minHeight: 142',
   'width: 52',
 ]) {
   assert.match(homeSource, new RegExp(sizeToken), `Home must preserve specified component sizing token ${sizeToken}`);
@@ -128,6 +136,9 @@ for (const copy of [
   'Authentic. Unfiltered. The heartbeat of the scene.',
   'Live now on PLUGGD',
   'No live rooms open right now. See what is coming up.',
+  'Full-length sets, selector journeys and scenes in motion.',
+  'Own your masters. Split fairly. Keep your scene.',
+  'Get the edition in your inbox',
   'The next wave is already here',
   'Meet the artists, producers, collectives, and scenes shaping what comes next.',
   'Find the rooms, crews, and sounds moving around you.',

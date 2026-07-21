@@ -12,7 +12,7 @@ type LiveTickerProps = {
    * 'night' — inline dark row with a LIVE pill.
    * 'paper' — the web home's full-bleed cream band with ink text.
    */
-  variant?: 'night' | 'paper';
+  variant?: 'night' | 'paper' | 'nightBand';
 };
 
 const SEP = '     •     ';
@@ -27,6 +27,7 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
   const [width, setWidth] = useState(0);
   const line = items.filter(Boolean).join(SEP) + SEP;
   const paper = variant === 'paper';
+  const nightBand = variant === 'nightBand';
 
   useEffect(() => {
     if (!width) return;
@@ -46,8 +47,8 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
   if (!items.length) return null;
 
   return (
-    <View style={[styles.wrap, paper && styles.wrapPaper]}>
-      {paper ? (
+    <View style={[styles.wrap, paper && styles.wrapPaper, nightBand && styles.wrapNightBand]}>
+      {paper || nightBand ? (
         <View style={styles.paperDot} />
       ) : (
         <View style={[styles.livePill, { borderColor: accent }]}>
@@ -57,10 +58,10 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
       )}
       <View style={styles.track}>
         <Animated.View style={[styles.row, { transform: [{ translateX: translate }] }]}>
-          <Text onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper]}>
+          <Text onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand]}>
             {line}
           </Text>
-          <Text numberOfLines={1} style={[styles.text, paper && styles.textPaper]}>
+          <Text numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand]}>
             {line}
           </Text>
         </Animated.View>
@@ -73,6 +74,16 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wrapPaper: {
     backgroundColor: ed.paper2,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  wrapNightBand: {
+    backgroundColor: 'rgba(43,28,16,0.55)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,102,0,0.35)',
+    borderStyle: 'dashed',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
@@ -93,6 +104,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   text: { color: 'rgba(255,255,255,0.62)', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
   textPaper: { color: ed.ink, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
+  textNightBand: { color: '#fff8ed', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
 });
 
 export default LiveTicker;

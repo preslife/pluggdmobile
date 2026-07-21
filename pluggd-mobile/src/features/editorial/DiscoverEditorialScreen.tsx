@@ -948,7 +948,7 @@ export function DiscoverEditorialScreen() {
           </View>
         </View>
 
-        <LiveTicker items={tickerItems} variant="paper" />
+        <LiveTicker items={tickerItems} variant="nightBand" />
 
         {/* What's moving now */}
         <View style={styles.sectionNight}>

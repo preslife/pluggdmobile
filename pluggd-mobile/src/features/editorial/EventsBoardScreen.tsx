@@ -151,15 +151,8 @@ function BrowseFastList({ events, lp }: { events: EventItem[]; lp: LightPal }) {
           onPress={() => router.push(`/events/${event.id}` as any)}
         >
           <View style={[styles.fastRow, lp.card]}>
-            <View style={styles.fastThumbWrap}>
-              {event.cover_image_url ? (
-                <PluggdImage uri={event.cover_image_url} style={styles.fastThumb} />
-              ) : (
-                <View style={[styles.fastThumb, { backgroundColor: '#241a12' }]} />
-              )}
-              <View style={styles.fastThumbDate}>
-                <DateBlock event={event} size={40} />
-              </View>
+            <View style={styles.fastDateWrap}>
+              <DateBlock event={event} size={44} />
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text style={[styles.fastTitle, { color: lp.title }]} numberOfLines={1}>{event.title || 'Underground event'}</Text>
@@ -244,7 +237,7 @@ function UpcomingPosterRail({ events, lp }: { events: EventItem[]; lp: LightPal 
         </View>
         <Text style={[styles.showingText, lp.light && { color: lp.meta }]}>{Math.min(events.length, 12)} SHOWN</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={312} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={262} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
         {events.slice(0, 8).map((event) => (
           <EdPressable
             key={event.id}
@@ -554,7 +547,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 12, letterSpacing: 1.6, color: ed.orange },
-  pageTitle: { fontFamily: edFonts.bodyBlack, fontSize: 27, lineHeight: 32, color: '#ffffff' },
+  pageTitle: { fontFamily: edFonts.serif, fontSize: 30, lineHeight: 34, color: '#fff8ed' },
   pageSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.66)' },
 
   toggleRow: { flexDirection: 'row', gap: 10 },
@@ -602,7 +595,7 @@ const styles = StyleSheet.create({
 
   browseHeadRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   eventListEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 11, letterSpacing: 1.4, color: ed.orange },
-  browseFastTitle: { fontFamily: edFonts.bodyBlack, fontSize: 20, color: '#ffffff', marginTop: 2 },
+  browseFastTitle: { fontFamily: edFonts.serif, fontSize: 23, color: '#fff8ed', marginTop: 2 },
   showingText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.4, color: 'rgba(255,248,237,0.55)' },
 
   fastRow: {
@@ -614,6 +607,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,248,237,0.1)',
     backgroundColor: 'rgba(30,18,10,0.55)',
     padding: 10,
+  },
+  fastDateWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#1d1712',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fastThumbWrap: { width: 52, height: 52, borderRadius: 10, overflow: 'hidden' },
   fastThumb: { width: '100%', height: '100%' },
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
 
   upcomingTitle: { fontFamily: edFonts.bodyBlack, fontSize: 24, color: '#ffffff' },
   upcomingSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.62)', marginTop: 2 },
-  posterCard: { width: 300, height: 380, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end' },
+  posterCard: { width: 250, height: 320, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end' },
   posterDate: {
     position: 'absolute',
     top: 14,
@@ -698,7 +699,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fullPosterWrap: { borderRadius: 12, overflow: 'hidden', marginBottom: 6 },
-  fullPoster: { width: '100%', height: 320 },
+  fullPoster: { width: '100%', height: 190 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 4 },
   tagChipGrey: {
     borderRadius: 999,
@@ -715,7 +716,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   tagChipOrangeText: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: ed.orange },
-  fullTitle: { fontFamily: edFonts.bodyBlack, fontSize: 21, lineHeight: 26, color: '#ffffff', marginTop: 6 },
+  fullTitle: { fontFamily: edFonts.bodyBlack, fontSize: 18, lineHeight: 23, color: '#ffffff', marginTop: 6 },
   fullDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.62)' },
   fullMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   fullMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.66)', marginRight: 8 },

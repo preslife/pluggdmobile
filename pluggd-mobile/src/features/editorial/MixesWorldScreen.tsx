@@ -121,7 +121,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
 
   return (
     <View style={{ gap: 0 }}>
-      <View style={styles.heroTabsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heroTabsRow}>
         {HERO_TABS.map((label, index) => (
           <EdPressable
             key={label}
@@ -137,7 +137,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
             </View>
           </EdPressable>
         ))}
-      </View>
+      </ScrollView>
       <View style={styles.heroPosterWrap}>
         {hero.cover_url ? (
           <PluggdImage uri={hero.cover_url} style={styles.heroPoster} />
@@ -149,7 +149,8 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
           <Text style={styles.heroKicker}>
             {`${selectorName(hero)}${hero.city ? ` - ${hero.city}` : ''}`.toUpperCase()}
           </Text>
-          <Text style={styles.heroTitle}>{hero.title || 'The sound of tomorrow'}</Text>
+          <Text style={styles.heroTitle}>The sound{'\n'}of tomorrow</Text>
+          <Text style={styles.heroMixName} numberOfLines={1}>{hero.title || 'Featured mix'}</Text>
           {hero.description ? (
             <Text style={styles.heroDescription} numberOfLines={2}>{hero.description}</Text>
           ) : null}
@@ -1006,7 +1007,7 @@ const styles = StyleSheet.create({
   mixActionText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.6, color: ed.cream },
 
   /* Hero */
-  heroTabsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  heroTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 16, paddingRight: 20 },
   heroTab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1025,6 +1026,7 @@ const styles = StyleSheet.create({
   heroPosterBody: { padding: 18, gap: 8 },
   heroKicker: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: MIX_YELLOW },
   heroTitle: { fontFamily: edFonts.serif, fontSize: 36, lineHeight: 38, color: ed.cream, letterSpacing: -0.5 },
+  heroMixName: { fontFamily: edFonts.bodyBold, fontSize: 14, color: 'rgba(255,248,237,0.85)', marginTop: 2 },
   heroDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.8)' },
   heroCtas: { gap: 10, marginTop: 14 },
   heroPlay: {
@@ -1093,7 +1095,7 @@ const styles = StyleSheet.create({
   finderMatch: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.62)' },
 
   /* What's happening */
-  happeningCard: { borderRadius: 8, overflow: 'hidden', minHeight: 250 },
+  happeningCard: { borderRadius: 8, overflow: 'hidden', minHeight: 216 },
   happeningBody: { padding: 16, gap: 8, justifyContent: 'flex-end', flex: 1 },
   happeningPill: {
     alignSelf: 'flex-start',
@@ -1133,7 +1135,7 @@ const styles = StyleSheet.create({
   happeningRoomText: { fontFamily: edFonts.bodyBold, fontSize: 12.5, color: ed.cream },
 
   /* Listening rooms */
-  roomCard: { borderRadius: 8, overflow: 'hidden', minHeight: 210 },
+  roomCard: { borderRadius: 8, overflow: 'hidden', minHeight: 184 },
   roomBody: { padding: 16, gap: 7, justifyContent: 'flex-end', flex: 1 },
   roomOpenPill: {
     alignSelf: 'flex-start',
@@ -1172,7 +1174,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   djImageWrap: { borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
-  djImage: { width: '100%', height: 150 },
+  djImage: { width: '100%', height: 116 },
   djSelectorPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -1225,7 +1227,7 @@ const styles = StyleSheet.create({
   freshMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.6)' },
 
   /* Scene explorer */
-  sceneCard: { borderRadius: 10, overflow: 'hidden', minHeight: 250 },
+  sceneCard: { borderRadius: 10, overflow: 'hidden', minHeight: 216 },
   sceneBody: { flex: 1, padding: 16, gap: 7, justifyContent: 'flex-end' },
   sceneCountPill: {
     alignSelf: 'flex-start',
