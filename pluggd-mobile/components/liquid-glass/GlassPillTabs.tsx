@@ -45,9 +45,12 @@ export function GlassPillTabs<T extends string>({ value, items, onChange }: Glas
 const styles = StyleSheet.create({
   wrap: {
     alignSelf: 'flex-start',
+    width: '100%',
+    height: 40,
   },
   panelContent: {
     maxWidth: '100%',
+    height: 40,
   },
   row: {
     padding: 3,

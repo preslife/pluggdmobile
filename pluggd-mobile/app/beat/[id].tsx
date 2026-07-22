@@ -72,7 +72,7 @@ export default function BeatDetailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -108,6 +108,10 @@ export default function BeatDetailScreen() {
 
             <View style={styles.buttonRow}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={track ? `Preview ${beat.title || 'beat'}` : 'Beat preview unavailable'}
+                accessibilityState={{ disabled: !track }}
+                disabled={!track}
                 style={styles.primaryButton}
                 onPress={() => {
                   if (track) playTrack(track);
@@ -117,6 +121,10 @@ export default function BeatDetailScreen() {
                 <Text style={styles.primaryButtonText}>Preview</Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={track ? `Add ${beat.title || 'beat'} to queue` : 'Beat preview unavailable'}
+                accessibilityState={{ disabled: !track }}
+                disabled={!track}
                 style={styles.secondaryButton}
                 onPress={() => {
                   if (track) addToQueue(track);
@@ -128,19 +136,19 @@ export default function BeatDetailScreen() {
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={saveBeat} disabled={saving}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Save beat" accessibilityState={{ busy: saving }} style={styles.quickActionButton} onPress={saveBeat} disabled={saving}>
                 <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'beat', beatId: beat.id, type: 'beat_feedback' } } as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Post beat to community" style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'beat', beatId: beat.id, type: 'beat_feedback' } } as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={shareBeat}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share beat" style={styles.quickActionButton} onPress={shareBeat}>
                 <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/market' as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open Market" style={styles.quickActionButton} onPress={() => router.push('/market' as any)}>
                 <MaterialIcons name="storefront" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Market</Text>
               </Pressable>
@@ -162,7 +170,7 @@ export default function BeatDetailScreen() {
                   Professional beat licensing is for tracks, campaigns, and projects you make outside PLUGGD. Review the available license types, save the beat, or share it with collaborators before you commit.
                 </Text>
               )}
-              <Pressable style={styles.licenseButton} onPress={saveBeat} disabled={saving}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Save beat" accessibilityState={{ busy: saving }} style={styles.licenseButton} onPress={saveBeat} disabled={saving}>
                 <Text style={styles.licenseButtonText}>{saving ? 'Saving' : 'Save Beat'}</Text>
               </Pressable>
             </View>

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RepeatMode } from 'react-native-track-player';
 import { usePlayback } from '../src/context/PlaybackProvider';
@@ -52,6 +53,8 @@ export default function PlayerScreen() {
   const cover = String(currentTrack?.artwork || params.cover || '');
   const progressPercent = progress.duration > 0 ? Math.min((progress.position / progress.duration) * 100, 100) : 0;
   const scrubberWidth = Math.max(width - 32, 1);
+  const scrollRef = useRef<ScrollView>(null);
+  const queueOffset = useRef(0);
 
   const handleScrub = (event: any) => {
     if (!progress.duration) return;
@@ -138,7 +141,7 @@ export default function PlayerScreen() {
             numberOfLines={2}
           />
           <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
-          <Pressable style={styles.progressWrap} onPress={handleScrub}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Seek playback" style={styles.progressWrap} onPress={handleScrub}>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
             </View>
@@ -148,13 +151,15 @@ export default function PlayerScreen() {
             <Text style={styles.timeText}>{formatDuration(progress.duration)}</Text>
           </View>
           <View style={styles.controls}>
-            <Pressable onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Toggle shuffle" accessibilityState={{ selected: shuffleMode === 'on' }} onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
               <MaterialIcons name="shuffle" size={22} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
             </Pressable>
-            <Pressable onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Previous track" onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
               <MaterialIcons name="skip-previous" size={34} color="#FFFFFF" />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
               onPress={() => {
                 impactHaptic();
                 togglePlayPause();
@@ -163,10 +168,10 @@ export default function PlayerScreen() {
             >
               <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={40} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Next track" onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
               <MaterialIcons name="skip-next" size={34} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Toggle repeat" accessibilityState={{ selected: repeatMode !== RepeatMode.Off }} onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
               <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={22} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
             </Pressable>
           </View>
@@ -184,15 +189,16 @@ export default function PlayerScreen() {
       <Stack.Screen options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 12, 46), paddingBottom: insets.bottom + 34 }]}
       >
         <View style={styles.topBar}>
-          <Pressable style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close player" style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={() => router.back()}>
             <MaterialIcons name="expand-more" size={30} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.topTitle}>Now Playing</Text>
-          <Pressable style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleShare}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Share current track" style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleShare}>
             <MaterialIcons name="ios-share" size={21} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -212,16 +218,16 @@ export default function PlayerScreen() {
               numberOfLines={2}
               style={styles.trackTitle}
             />
-            <Pressable onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${artist}`} onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
               <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
             </Pressable>
           </View>
-          <Pressable style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleSave}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Save current track" style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleSave}>
             <MaterialIcons name="bookmark-border" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
 
-        <Pressable style={styles.progressWrap} onPress={handleScrub}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Seek playback" style={styles.progressWrap} onPress={handleScrub}>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
@@ -232,13 +238,15 @@ export default function PlayerScreen() {
         </View>
 
         <View style={styles.controls}>
-          <Pressable onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Toggle shuffle" accessibilityState={{ selected: shuffleMode === 'on' }} onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
             <MaterialIcons name="shuffle" size={23} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
           </Pressable>
-          <Pressable onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Previous track" onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
             <MaterialIcons name="skip-previous" size={38} color="#FFFFFF" />
           </Pressable>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
             onPress={() => {
               impactHaptic();
               togglePlayPause();
@@ -247,10 +255,10 @@ export default function PlayerScreen() {
           >
             <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={44} color="#FFFFFF" />
           </Pressable>
-          <Pressable onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Next track" onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
             <MaterialIcons name="skip-next" size={38} color="#FFFFFF" />
           </Pressable>
-          <Pressable onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Toggle repeat" accessibilityState={{ selected: repeatMode !== RepeatMode.Off }} onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}>
             <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={23} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
           </Pressable>
         </View>
@@ -258,10 +266,10 @@ export default function PlayerScreen() {
         <View style={styles.actionRow}>
           <PlayerAction icon="forum" label="Community" onPress={() => router.push('/backstage' as any)} />
           <PlayerAction icon="chat-bubble-outline" label="Comments" onPress={() => router.push('/backstage' as any)} />
-          <PlayerAction icon="playlist-add" label="Queue" />
+          <PlayerAction icon="playlist-add" label="Queue" onPress={() => scrollRef.current?.scrollTo({ y: queueOffset.current, animated: true })} />
         </View>
 
-        <View style={styles.infoCard}>
+        <View style={styles.infoCard} onLayout={(event) => { queueOffset.current = event.nativeEvent.layout.y; }}>
           <Text style={styles.infoTitle}>Queue</Text>
           {queue.length === 0 ? <Text style={styles.infoBody}>Queue will appear here as you keep listening.</Text> : null}
           {queue.slice(0, 8).map((track) => (
@@ -289,6 +297,8 @@ export default function PlayerScreen() {
 function PlayerAction({ icon, label, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; onPress?: () => void }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [styles.playerAction, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
       onPress={() => {
         selectionHaptic();

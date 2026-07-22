@@ -20,7 +20,6 @@ export default function MiniPlayer() {
   const router = useRouter();
   const pathname = usePathname() || '/';
   const normalizedPathname = pathname.replace('/(tabs)', '') || '/';
-  const feedHeavyRoute = normalizedPathname === '/community' || normalizedPathname.startsWith('/community/');
   const {
     currentTrack,
     isPlaying,
@@ -31,7 +30,7 @@ export default function MiniPlayer() {
     skipToNext,
     skipToPrevious,
   } = usePlayback();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [savedLocally, setSavedLocally] = useState(false);
   const [qaPlayerEnabled, setQaPlayerEnabled] = useState(false);
   const [qaPlaying, setQaPlaying] = useState(true);
@@ -59,8 +58,8 @@ export default function MiniPlayer() {
 
   useEffect(() => {
     setSavedLocally(false);
-    setCollapsed(feedHeavyRoute);
-  }, [currentTrack?.id, feedHeavyRoute]);
+    setCollapsed(true);
+  }, [currentTrack?.id, normalizedPathname]);
 
   const activeTrack = currentTrack ?? (qaPlayerEnabled ? QA_TRACK : null);
   const isQaTrack = !currentTrack && Boolean(activeTrack);

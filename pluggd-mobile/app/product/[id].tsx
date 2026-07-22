@@ -115,8 +115,8 @@ export default function ProductDetailRoute() {
             {product.description ? <Text style={styles.description}>{product.description}</Text> : null}
 
             <View style={styles.actions}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Product purchase status" style={styles.primaryButton} onPress={purchase}>
-                <Text style={styles.primaryText}>Purchase status</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="View purchase options" style={styles.primaryButton} onPress={purchase}>
+                <Text style={styles.primaryText}>Purchase options</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"

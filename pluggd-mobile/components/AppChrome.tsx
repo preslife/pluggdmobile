@@ -22,10 +22,14 @@ export function AppChrome() {
     normalized === '/membership' ||
     normalized.startsWith('/membership/') ||
     normalized.startsWith('/events/') ||
+    normalized.startsWith('/release/') ||
+    normalized.startsWith('/mixes/') ||
+    normalized.startsWith('/product/') ||
     normalized === '/purchases' ||
     normalized === '/following';
   const hidden =
     HIDDEN_EXACT.has(normalized) ||
+    normalized.startsWith('/mixes/') ||
     HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 
   if (hidden) return null;

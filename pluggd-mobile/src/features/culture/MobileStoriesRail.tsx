@@ -248,7 +248,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
                 name={group.user_id === user?.id ? 'You' : group.displayName}
                 imageUrl={firstUnviewed.thumbnail_url || firstUnviewed.media_url || group.avatarUrl || null}
                 viewed={group.viewed}
-                tone="violet"
+                tone="accent"
                 onPress={() => router.push(`/story/${firstUnviewed.id}` as any)}
               />
             );

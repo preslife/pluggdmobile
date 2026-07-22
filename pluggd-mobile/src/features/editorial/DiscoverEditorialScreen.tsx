@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import {
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { LiveTicker } from '../../../components/LiveTicker';
 import { ed, edFonts } from '../../design/editorial';
@@ -150,8 +152,15 @@ function WhatsMovingNowCard({ moving }: { moving: MovingNow | null }) {
       <GhostButton label="Enter Scene" onPaper onPress={() => router.push(moving.route as any)} />
       <View style={styles.movingMedia}>
         {moving.imageUrl ? (
-          <PluggdImage uri={moving.imageUrl} style={StyleSheet.absoluteFillObject as any} />
-        ) : null}
+          <PluggdImage
+            uri={moving.imageUrl}
+            fallbackSource={WEB_PARITY_ASSETS.brickRoomShow}
+            resizeMode="cover"
+            style={StyleSheet.absoluteFillObject as any}
+          />
+        ) : (
+          <Image source={WEB_PARITY_ASSETS.brickRoomShow} resizeMode="cover" style={StyleSheet.absoluteFillObject} />
+        )}
         <LinearGradient colors={['rgba(7,6,5,0.10)', 'rgba(7,6,5,0.72)']} style={StyleSheet.absoluteFillObject} />
         <View style={styles.movingChipRow}>
           {moving.chips.map((chip) => (

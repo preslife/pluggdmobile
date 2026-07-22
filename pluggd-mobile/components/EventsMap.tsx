@@ -41,7 +41,7 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
     </>
   ) : (
     <>
-      <LinearGradient colors={['#12131A', '#0B0B10']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#241d15', '#0a0806']} style={StyleSheet.absoluteFill} />
       <View style={styles.gridA} pointerEvents="none" />
       <View style={styles.gridB} pointerEvents="none" />
       <View style={styles.fallbackBody}>
@@ -54,17 +54,23 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
     </>
   );
 
+  if (!onPress) {
+    return (
+      <View accessible accessibilityRole="image" accessibilityLabel="Map of upcoming events" style={styles.card}>
+        {body}
+      </View>
+    );
+  }
+
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : 'image'}
+      accessibilityRole="button"
       accessibilityLabel="Open the events map"
-      disabled={!onPress}
       onPress={() => {
-        if (!onPress) return;
         selectionHaptic();
         onPress();
       }}
-      style={({ pressed }) => [styles.card, pressed && onPress ? styles.pressed : null]}
+      style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >
       {body}
     </Pressable>
@@ -74,6 +80,9 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
 const styles = StyleSheet.create({
   card: {
     height: 190,
+    minHeight: 190,
+    width: '100%',
+    flexShrink: 0,
     borderRadius: 22,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,

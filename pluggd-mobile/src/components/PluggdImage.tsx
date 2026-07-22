@@ -3,6 +3,8 @@ import { Animated, Image, Platform, type ImageProps, type ImageSourcePropType } 
 
 type PluggdImageProps = Omit<ImageProps, 'source'> & {
   uri: string;
+  /** Local branded artwork used when a remote image is absent or unavailable. */
+  fallbackSource?: ImageSourcePropType;
   /**
    * Target render width in physical pixels for Supabase storage images.
    * 800px covers full-bleed art on a 390pt screen at 2x. Raw storage
@@ -27,14 +29,24 @@ export function transformedUri(uri: string, width: number): string | null {
 // fade only runs on native, where onLoadEnd is reliable for cache hits.
 const FADE_ENABLED = Platform.OS !== 'web';
 
-export function PluggdImage({ uri, style, onLoadEnd, onError, displayWidth = 800, ...props }: PluggdImageProps) {
+export function PluggdImage({
+  uri,
+  fallbackSource,
+  style,
+  onLoadEnd,
+  onError,
+  displayWidth = 800,
+  ...props
+}: PluggdImageProps) {
   const opacity = useRef(new Animated.Value(FADE_ENABLED ? 0 : 1)).current;
   const [loaded, setLoaded] = useState(!FADE_ENABLED);
   // Falls back to the original object URL if the transform endpoint ever
   // rejects a request (unsupported format, transforms disabled, …).
   const [transformFailedFor, setTransformFailedFor] = useState<string | null>(null);
+  const [originalFailedFor, setOriginalFailedFor] = useState<string | null>(null);
   const resized = transformFailedFor === uri ? null : transformedUri(uri, displayWidth);
-  const source = { uri: resized || uri, cache: 'force-cache' } as ImageSourcePropType;
+  const usingFallback = Boolean(fallbackSource && (!uri || originalFailedFor === uri));
+  const source = (usingFallback ? fallbackSource : { uri: resized || uri, cache: 'force-cache' }) as ImageSourcePropType;
 
   return (
     <Animated.Image
@@ -44,6 +56,12 @@ export function PluggdImage({ uri, style, onLoadEnd, onError, displayWidth = 800
       onError={(event) => {
         if (resized) {
           setTransformFailedFor(uri);
+          return;
+        }
+        if (fallbackSource && originalFailedFor !== uri) {
+          opacity.setValue(0);
+          setLoaded(false);
+          setOriginalFailedFor(uri);
           return;
         }
         onError?.(event);

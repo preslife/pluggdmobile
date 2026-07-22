@@ -118,7 +118,12 @@ export default function MyMembershipsScreen() {
           <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
             Follow creators, subscribe with Apple, and keep active memberships in one place.
           </Text>
-          <Pressable style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]} onPress={() => go('/auth/login')}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign in for memberships"
+            style={[styles.primaryButton, styles.signedOutButton, { backgroundColor: theme.colors.accent }]}
+            onPress={() => go('/auth/login')}
+          >
             <Text style={styles.primaryButtonText}>Sign in</Text>
           </Pressable>
         </View>
@@ -307,6 +312,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   actionRow: { flexDirection: 'row', gap: 10 },
   primaryButton: { flex: 1, minHeight: 50, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  signedOutButton: { flex: 0, width: '100%', maxWidth: 280, height: 52, marginTop: 8 },
   primaryButtonText: { color: '#0a0806', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   secondaryButton: { minWidth: 118, minHeight: 50, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   secondaryButtonText: { fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },

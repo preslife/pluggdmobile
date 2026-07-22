@@ -22,6 +22,7 @@ import { useAuth } from '../../src/context/AuthProvider';
 import { useWallet } from '../../src/hooks/useWallet';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
 import { EdPressable } from '../../src/features/editorial/EditorialBits';
+import { WEB_PARITY_ASSETS } from '../../src/features/parity/webAssets';
 
 interface ReleaseDetail {
   id: string;
@@ -413,11 +414,11 @@ export default function ReleaseDetailScreen() {
       >
         {/* Art with support pill */}
         <View>
-          {release.cover_art_url ? (
-            <PluggdImage uri={release.cover_art_url} style={styles.art} />
-          ) : (
-            <View style={[styles.art, { backgroundColor: '#191410' }]} />
-          )}
+          <PluggdImage
+            uri={release.cover_art_url || ''}
+            fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
+            style={styles.art}
+          />
           <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -426,7 +427,7 @@ export default function ReleaseDetailScreen() {
           >
             <MaterialIcons name="arrow-back" size={22} color="#ffffff" />
           </EdPressable>
-          <View style={styles.supportPill}>
+          <View style={[styles.supportPill, { top: insets.top + 10 }]}>
             <Text style={styles.supportPillText}>SUPPORT THIS RELEASE</Text>
           </View>
         </View>
@@ -518,12 +519,21 @@ export default function ReleaseDetailScreen() {
                 </View>
               </EdPressable>
             ) : (
-              <View style={styles.actionCellWrap}>
+              <EdPressable
+                accessibilityRole="button"
+                accessibilityLabel={trackList.length ? `Play ${release.title}` : 'Audio unavailable'}
+                accessibilityState={{ disabled: trackList.length === 0 }}
+                disabled={trackList.length === 0}
+                onPress={handlePlayAll}
+                style={styles.actionCellWrap}
+              >
                 <View style={[styles.primaryAction, isOwned && { backgroundColor: 'rgba(74,222,128,0.16)', borderColor: 'rgba(74,222,128,0.5)' }]}>
-                  <MaterialIcons name={isOwned ? 'check-circle' : 'play-arrow'} size={18} color={isOwned ? '#4ade80' : ed.onOrange} />
-                  <Text style={[styles.primaryActionText, isOwned && { color: '#4ade80' }]}>{isOwned ? 'Owned' : 'Free stream'}</Text>
+                  <MaterialIcons name="play-arrow" size={18} color={isOwned ? '#4ade80' : ed.onOrange} />
+                  <Text style={[styles.primaryActionText, isOwned && { color: '#4ade80' }]}>
+                    {trackList.length ? (isOwned ? 'Play owned' : 'Free stream') : 'Audio unavailable'}
+                  </Text>
                 </View>
-              </View>
+              </EdPressable>
             )}
             <EdPressable
               accessibilityRole="button"
@@ -584,11 +594,11 @@ export default function ReleaseDetailScreen() {
             </View>
             <View style={styles.playerHeadRow}>
               <View style={styles.playerThumbWrap}>
-                {release.cover_art_url ? (
-                  <PluggdImage uri={release.cover_art_url} style={styles.playerThumb} />
-                ) : (
-                  <View style={[styles.playerThumb, { backgroundColor: '#191410' }]} />
-                )}
+                <PluggdImage
+                  uri={release.cover_art_url || ''}
+                  fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
+                  style={styles.playerThumb}
+                />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.playerLabel}>PLUGGD PLAYER</Text>
@@ -793,7 +803,6 @@ const styles = StyleSheet.create({
   },
   supportPill: {
     position: 'absolute',
-    top: 14,
     right: 14,
     backgroundColor: 'rgba(7,6,5,0.82)',
     borderRadius: 999,

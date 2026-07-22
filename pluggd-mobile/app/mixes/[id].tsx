@@ -194,7 +194,7 @@ export default function MixDetailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -218,26 +218,26 @@ export default function MixDetailScreen() {
             {mix.description ? <Text style={styles.description}>{mix.description}</Text> : null}
 
             <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={playMix}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Play ${mix.title || 'mix'}`} accessibilityState={{ disabled: !mix.audio_url }} disabled={!mix.audio_url} style={styles.primaryButton} onPress={playMix}>
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Play mix</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={saveMix} disabled={saving}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Save mix" accessibilityState={{ busy: saving }} style={styles.secondaryButton} onPress={saveMix} disabled={saving}>
                 <MaterialIcons name="library-music" size={20} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryButtonText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Post mix to community" style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={shareMix}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share mix" style={styles.quickActionButton} onPress={shareMix}>
                 <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/library' as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open library" style={styles.quickActionButton} onPress={() => router.push('/library' as any)}>
                 <MaterialIcons name="library-music" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Library</Text>
               </Pressable>

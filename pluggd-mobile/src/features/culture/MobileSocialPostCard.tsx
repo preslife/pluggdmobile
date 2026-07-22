@@ -374,7 +374,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
             router.push(userRouteFor(post) as any);
           }}
         >
-          <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={40} tone="violet" />
+          <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={40} tone="accent" />
         </Pressable>
 
         <View style={styles.body}>

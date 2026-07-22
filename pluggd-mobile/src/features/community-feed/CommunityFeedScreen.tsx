@@ -107,7 +107,7 @@ export function CommunityFeedScreen() {
   if (query.isLoading) {
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
         {feedHeader}
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.orange} />
@@ -119,7 +119,7 @@ export function CommunityFeedScreen() {
   if (query.isError) {
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
         {feedHeader}
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Community could not load</Text>
@@ -142,7 +142,7 @@ export function CommunityFeedScreen() {
 
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
+        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
@@ -158,7 +158,7 @@ export function CommunityFeedScreen() {
 
   return (
     <View style={styles.screen}>
-      <LiquidBackground tone="violet" style={StyleSheet.absoluteFill} />
+      <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}

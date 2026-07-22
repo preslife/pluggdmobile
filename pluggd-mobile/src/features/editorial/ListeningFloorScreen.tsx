@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   RefreshControl,
   Share,
   ScrollView,
@@ -31,6 +32,7 @@ import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, formatGBP, releasePlayableUrl, toTrack } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 
 type FloorRelease = {
   id: string;
@@ -156,10 +158,16 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
       >
         <View style={styles.deckArtWrap}>
           {release.cover_art_url ? (
-            <PluggdImage uri={release.cover_art_url} style={styles.deckArt} />
+            <PluggdImage
+              uri={release.cover_art_url}
+              fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
+              resizeMode="cover"
+              style={styles.deckArt}
+            />
           ) : (
-            <View style={[styles.deckArt, { backgroundColor: '#191410' }]} />
+            <Image source={WEB_PARITY_ASSETS.warmListeningRoom} resizeMode="cover" style={styles.deckArt} />
           )}
+          <View pointerEvents="none" style={styles.deckArtShade} />
           <View style={styles.deckFeaturedPill}>
             <Text style={styles.deckFeaturedText}>FEATURED DROP</Text>
           </View>
@@ -847,6 +855,10 @@ const styles = StyleSheet.create({
   deckHeadRight: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: ed.orange },
   deckArtWrap: { borderRadius: 4, overflow: 'hidden' },
   deckArt: { width: '100%', height: 300 },
+  deckArtShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(7,6,5,0.18)',
+  },
   deckFeaturedPill: {
     position: 'absolute',
     top: 12,

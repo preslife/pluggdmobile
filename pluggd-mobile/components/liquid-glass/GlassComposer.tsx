@@ -39,7 +39,7 @@ export function GlassComposer({
       }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed, style]}
     >
-      <GlassAvatar imageUrl={userAvatar} name={userName} size="sm" tone={signedIn ? 'accent' : 'violet'} />
+      <GlassAvatar imageUrl={userAvatar} name={userName} size="sm" tone="accent" />
       <Text style={styles.placeholder} numberOfLines={1}>
         {placeholder}
       </Text>

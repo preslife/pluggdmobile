@@ -22,13 +22,22 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
   return (
     <View style={[styles.wrap, { paddingBottom: bottomInset }]}>
       <LiftSurface depth="normal">
-        <GlassPanel intensity="subtle" radius={liquidGlassRadii.xxl} style={styles.dock} contentStyle={styles.tabRow}>
+        <View style={styles.dockShell}>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <GlassPanel intensity="subtle" radius={liquidGlassRadii.xxl} style={styles.dock} />
+          </View>
+          <View style={styles.tabRow}>
           {items.map((item) => (
             <Pressable
               key={item.label}
-              accessibilityRole="tab"
+              accessible
+              focusable
+              collapsable={false}
+              accessibilityRole="button"
               accessibilityLabel={`${item.label} tab`}
               accessibilityState={{ selected: !!item.active }}
+              importantForAccessibility="yes"
+              testID={`dock-tab-${item.label.toLowerCase()}`}
               onPress={() => {
                 selectionHaptic();
                 item.onPress();
@@ -57,6 +66,7 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
                 <Text
                   style={[styles.tabLabel, { color: item.active ? liquidGlassColors.textPrimary : liquidGlassColors.textMuted }]}
                   numberOfLines={1}
+                  maxFontSizeMultiplier={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.78}
                 >
@@ -66,7 +76,8 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
               </View>
             </Pressable>
           ))}
-        </GlassPanel>
+          </View>
+        </View>
       </LiftSurface>
     </View>
   );
@@ -84,8 +95,12 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingHorizontal: 28,
   },
+  dockShell: {
+    height: 58,
+  },
   dock: {
-    minHeight: 58,
+    width: '100%',
+    height: '100%',
     shadowColor: '#000',
     shadowOpacity: 0.68,
     shadowRadius: 42,

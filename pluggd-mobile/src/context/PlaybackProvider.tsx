@@ -18,14 +18,17 @@ import React, {
 } from 'react';
 import TrackPlayer, {
   Capability,
+  Event,
   State,
   Track,
   RepeatMode,
   usePlaybackState,
   useProgress,
   useActiveTrack,
+  useTrackPlayerEvents,
   AppKilledPlaybackBehavior,
 } from 'react-native-track-player';
+import { Alert } from 'react-native';
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type PluggdTrackKind =
@@ -145,6 +148,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [shuffleMode, setShuffleMode] = useState<ShuffleMode>('off');
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>(RepeatMode.Off);
   const originalQueue = useRef<PluggdTrack[]>([]);
+  const lastPlaybackError = useRef('');
 
   const playbackState = usePlaybackState();
   const progress = useProgress(250); // update every 250ms
@@ -154,6 +158,18 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const isBuffering =
     playbackState.state === State.Buffering ||
     playbackState.state === State.Loading;
+
+  useTrackPlayerEvents([Event.PlaybackError], (event) => {
+    const fingerprint = `${event.code}:${event.message}`;
+    if (lastPlaybackError.current === fingerprint) return;
+    lastPlaybackError.current = fingerprint;
+    console.warn('[PlaybackProvider] playback unavailable:', event.code);
+    void TrackPlayer.reset().finally(() => {
+      setQueue([]);
+      originalQueue.current = [];
+    });
+    Alert.alert('Audio unavailable', 'This upload cannot be reached right now. Please try another track.');
+  });
 
   // Initialise player
   useEffect(() => {
@@ -180,6 +196,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playTrack = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
+      lastPlaybackError.current = '';
       await TrackPlayer.reset();
       await TrackPlayer.add(track as any);
       originalQueue.current = [track];
@@ -192,6 +209,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
       if (!isReady || tracks.length === 0) return;
+      lastPlaybackError.current = '';
       originalQueue.current = tracks;
       await TrackPlayer.reset();
       await TrackPlayer.add(tracks as any);
