@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
 import { PluggdImage } from '../../components/PluggdImage';
-import { useHomeFeed } from '../culture/useCultureData';
+import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from '../discovery/discoveryModel';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
@@ -15,12 +15,17 @@ const ORANGE = '#FF6600';
 export function MusicDiscoveryHome() {
   const router = useRouter();
   const feed = useHomeFeed();
+  const live = useLiveRooms();
+  const backstage = useBackstage();
   const { playQueue } = usePlayback();
   const items = buildDiscoveryItems(feed.data);
   const scenes = buildDiscoveryScenes(feed.data);
   const featured = items[0];
   const picks = items.slice(1, 5);
   const newReleases = feed.data?.releases.slice(0, 6) ?? [];
+  const mixes = items.filter((item) => item.kind === 'mix').slice(0, 5);
+  const liveRooms = live.data?.slice(0, 4) ?? [];
+  const communities = backstage.data?.communities?.slice(0, 4) ?? [];
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
@@ -127,6 +132,25 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
+        {mixes.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>Mixes in rotation</Text><Text style={styles.sectionSubtitle}>Full journeys from selectors and scenes.</Text></View>
+              <Pressable onPress={() => router.push('/mixes' as any)}><Text style={styles.seeAll}>Enter Mixes</Text></Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mixRail}>
+              {mixes.map((mix, index) => (
+                <Pressable key={mix.id} accessibilityRole="button" accessibilityLabel={`Play mix ${mix.title}`} onPress={() => play(mix)} style={[styles.mixCard, index === 0 && styles.mixCardLead]}>
+                  <Artwork item={mix} style={styles.mixArt} iconSize={34} />
+                  <View style={styles.mixShade} />
+                  <View style={styles.mixTop}><Text style={styles.mixNumber}>{String(index + 1).padStart(2, '0')}</Text><View style={styles.mixPlay}><MaterialIcons name="play-arrow" size={20} color="#100B07" /></View></View>
+                  <View style={styles.mixCopy}><Text style={styles.mixKicker}>{mix.city || mix.genre || 'SELECTOR MIX'}</Text><Text style={styles.mixTitle} numberOfLines={2}>{mix.title}</Text><Text style={styles.mixCreator} numberOfLines={1}>{mix.creator}</Text></View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
+
         {newReleases.length ? (
           <>
             <View style={styles.sectionHeader}>
@@ -185,6 +209,49 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
+        {liveRooms.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>Live now on PLUGGD</Text><Text style={styles.sectionSubtitle}>Rooms, sessions and conversations happening now.</Text></View>
+              <Pressable onPress={() => router.push('/live' as any)}><Text style={styles.seeAll}>Open Live</Text></Pressable>
+            </View>
+            <View style={styles.signalList}>
+              {liveRooms.map((room) => (
+                <Pressable key={room.id} onPress={() => router.push(`/live/${room.id}` as any)} style={styles.signalRow}>
+                  <View style={styles.liveDot} />
+                  {room.thumbnail_url ? <PluggdImage uri={room.thumbnail_url} style={styles.signalThumb} displayWidth={180} /> : <View style={[styles.signalThumb, styles.artFallback]}><MaterialIcons name="mic" size={20} color={ORANGE} /></View>}
+                  <View style={styles.signalCopy}><Text style={styles.signalTitle} numberOfLines={1}>{room.title || 'Live room'}</Text><Text style={styles.signalMeta} numberOfLines={1}>{room.creator_name || room.category || 'PLUGGD Live'} · {room.viewer_count || 0} listening</Text></View>
+                  <MaterialIcons name="arrow-forward" size={19} color={ORANGE} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        {(feed.data?.beats.length || feed.data?.samplePacks.length) ? (
+          <>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Drops & tools</Text><Text style={styles.sectionSubtitle}>Beats, packs and work made to move.</Text></View><Pressable onPress={() => router.push('/market' as any)}><Text style={styles.seeAll}>Open Market</Text></Pressable></View>
+            <View style={styles.contextGrid}>
+              <Pressable onPress={() => router.push('/market/beats' as any)} style={styles.worldCard}><Text style={styles.worldIndex}>01</Text><MaterialIcons name="graphic-eq" size={26} color={ORANGE} /><Text style={styles.worldTitle}>BeatPlug</Text><Text style={styles.worldMeta}>{feed.data?.beats.length || 0} producer signals</Text></Pressable>
+              <Pressable onPress={() => router.push('/sample-packs' as any)} style={styles.worldCard}><Text style={styles.worldIndex}>02</Text><MaterialIcons name="folder-special" size={25} color={ORANGE} /><Text style={styles.worldTitle}>Sample packs</Text><Text style={styles.worldMeta}>{feed.data?.samplePacks.length || 0} creative tools</Text></Pressable>
+            </View>
+          </>
+        ) : null}
+
+        {communities.length ? (
+          <>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Backstage communities</Text><Text style={styles.sectionSubtitle}>Follow the people behind the sound.</Text></View><Pressable onPress={() => router.push('/community' as any)}><Text style={styles.seeAll}>Community</Text></Pressable></View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.communityRail}>
+              {communities.map((community) => (
+                <Pressable key={community.id} onPress={() => router.push(`/community/${community.slug || community.id}` as any)} style={styles.communityCard}>
+                  {community.cover_image_url || community.avatar_url ? <PluggdImage uri={(community.cover_image_url || community.avatar_url)!} style={styles.communityImage} displayWidth={400} /> : <View style={[styles.communityImage, styles.artFallback]}><MaterialIcons name="groups" size={28} color={ORANGE} /></View>}
+                  <Text style={styles.communityTitle} numberOfLines={1}>{community.title}</Text><Text style={styles.communityMeta}>{community.member_count || 0} members · {community.online_count || 0} online</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
+
         {feed.data?.profiles.length ? (
           <>
             <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Creators to know</Text><Text style={styles.sectionSubtitle}>Follow the people behind the signal.</Text></View></View>
@@ -201,10 +268,12 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
-        <Pressable onPress={() => router.push('/events' as any)} style={styles.contextRow}>
-          <View><Text style={styles.contextKicker}>WHAT'S HAPPENING</Text><Text style={styles.contextTitle}>Live rooms and events</Text></View>
-          <MaterialIcons name="arrow-forward" size={22} color={ORANGE} />
-        </Pressable>
+        <View style={styles.pulseRow}>
+          <View><Text style={styles.pulseNumber}>{items.length}</Text><Text style={styles.pulseLabel}>playable</Text></View>
+          <View><Text style={styles.pulseNumber}>{feed.data?.soundboards.length || 0}</Text><Text style={styles.pulseLabel}>soundboards</Text></View>
+          <View><Text style={styles.pulseNumber}>{feed.data?.events.length || 0}</Text><Text style={styles.pulseLabel}>events</Text></View>
+          <View><Text style={styles.pulseNumber}>{communities.length}</Text><Text style={styles.pulseLabel}>communities</Text></View>
+        </View>
         <Pressable onPress={() => router.push('/auth/register' as any)} style={styles.joinPrompt}>
           <Text style={styles.joinTitle}>Make the signal yours.</Text>
           <Text style={styles.joinBody}>Join to save finds and follow independent creators.</Text>
@@ -253,12 +322,12 @@ const styles = StyleSheet.create({
   seeAll: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   pickGrid: { gap: 10 },
   pickRow: { flexDirection: 'row', gap: 10 },
-  pick: { flex: 1, minWidth: 0, minHeight: 70, flexDirection: 'row', alignItems: 'center', backgroundColor: '#171411', padding: 6, gap: 8, borderRadius: 5 },
-  pickArt: { width: 58, height: 58, borderRadius: 3, backgroundColor: '#211C17' },
-  pickCopy: { flex: 1, minWidth: 0 },
-  pickTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 11, lineHeight: 14 },
+  pick: { flex: 1, minWidth: 0, minHeight: 154, borderRadius: 5, overflow: 'hidden' },
+  pickArt: { width: '100%', height: 108, borderRadius: 4, backgroundColor: '#211C17' },
+  pickCopy: { minWidth: 0, paddingTop: 7, paddingRight: 30 },
+  pickTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
   pickCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
-  smallPlay: { position: 'absolute', right: 5, bottom: 5, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,9,8,0.72)' },
+  smallPlay: { position: 'absolute', right: 7, top: 72, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: ORANGE },
   sceneRow: { gap: 10, paddingRight: 20 },
   scene: { width: 132, height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end', padding: 10 },
   sceneImage: { ...StyleSheet.absoluteFillObject },
@@ -266,6 +335,18 @@ const styles = StyleSheet.create({
   sceneShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,4,3,0.45)' },
   sceneLabel: { color: INK, fontFamily: 'Sora-Bold', fontSize: 15 },
   sceneDetail: { color: '#D5CEC3', fontFamily: 'Satoshi-Medium', fontSize: 10, marginTop: 2 },
+  mixRail: { gap: 11, paddingRight: 20 },
+  mixCard: { width: 178, height: 222, borderRadius: 5, overflow: 'hidden', justifyContent: 'space-between', padding: 12 },
+  mixCardLead: { width: 252 },
+  mixArt: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
+  mixShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,4,3,0.42)' },
+  mixTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mixNumber: { color: INK, fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 1.2 },
+  mixPlay: { width: 38, height: 38, borderRadius: 19, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  mixCopy: { zIndex: 2 },
+  mixKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.1, textTransform: 'uppercase' },
+  mixTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 18, lineHeight: 21, marginTop: 4 },
+  mixCreator: { color: '#DED7CC', fontFamily: 'Satoshi-Medium', fontSize: 10.5, marginTop: 4 },
   releaseRail: { gap: 12, paddingRight: 20 },
   releaseCard: { width: 126, position: 'relative' },
   releaseArt: { width: 126, height: 126, borderRadius: 4, backgroundColor: '#211C17' },
@@ -287,14 +368,31 @@ const styles = StyleSheet.create({
   eventTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 20, lineHeight: 24 },
   eventMeta: { color: '#E2DBD1', fontFamily: 'Satoshi-Medium', fontSize: 11, marginTop: 5 },
   eventArrow: { position: 'absolute', right: 14, bottom: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  signalList: { borderTopWidth: 1, borderColor: '#29251F' },
+  signalRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderColor: '#29251F' },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ORANGE },
+  signalThumb: { width: 48, height: 48, borderRadius: 4, backgroundColor: '#211C17' },
+  signalCopy: { flex: 1, minWidth: 0 },
+  signalTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12.5 },
+  signalMeta: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, marginTop: 3 },
+  contextGrid: { flexDirection: 'row', gap: 10 },
+  worldCard: { flex: 1, minHeight: 150, backgroundColor: '#171411', borderRadius: 5, padding: 13, justifyContent: 'space-between' },
+  worldIndex: { color: '#756E64', fontFamily: 'Satoshi-Black', fontSize: 9, letterSpacing: 1 },
+  worldTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 16 },
+  worldMeta: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10 },
+  communityRail: { gap: 11, paddingRight: 20 },
+  communityCard: { width: 154 },
+  communityImage: { width: 154, height: 104, borderRadius: 5, backgroundColor: '#211C17' },
+  communityTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12, marginTop: 7 },
+  communityMeta: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, marginTop: 2 },
   creatorRail: { gap: 16, paddingRight: 20 },
   creatorCard: { width: 84, alignItems: 'center' },
   creatorAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#211C17', borderWidth: 1, borderColor: '#413A31' },
   creatorName: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 7, width: 84, textAlign: 'center' },
   creatorMeta: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, marginTop: 2, width: 84, textAlign: 'center' },
-  contextRow: { minHeight: 76, marginTop: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  contextKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 9, letterSpacing: 1.2 },
-  contextTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 16, marginTop: 3 },
+  pulseRow: { minHeight: 92, marginTop: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pulseNumber: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 18, textAlign: 'center' },
+  pulseLabel: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 8.5, marginTop: 3, textAlign: 'center' },
   joinPrompt: { paddingVertical: 24 },
   joinTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17 },
   joinBody: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, marginTop: 5 },

@@ -14,6 +14,9 @@ export function AppChrome() {
   const ownsHeader =
     normalized === '/' ||
     normalized === '/discover' ||
+    normalized === '/events' ||
+    normalized === '/mixes' ||
+    normalized === '/soundboards' ||
     normalized === '/library' ||
     normalized === '/create' ||
     normalized === '/profile' ||

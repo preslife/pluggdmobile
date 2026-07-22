@@ -54,14 +54,15 @@ const CORE_TABS: TabItem[] = [
     ],
   },
   {
-    label: 'Library',
-    route: '/library',
-    icon: 'library-music',
+    label: 'Events',
+    route: '/events',
+    icon: 'event',
     aliases: [
-      '/saved',
-      '/purchases',
-      '/following',
+      '/(tabs)/events',
+      '/event',
       '/tickets',
+      '/ticket-scan',
+      '/creator/events',
     ],
   },
 ];

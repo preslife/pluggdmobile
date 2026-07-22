@@ -29,6 +29,7 @@ import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
 const SORT_CHIPS = ['Updated', 'Trending', 'Featured'] as const;
 
@@ -154,58 +155,29 @@ export function SoundboardsIndexScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: pal.screen }]}>
       <StatusBar style={light ? 'dark' : 'light'} translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={[styles.screen, { backgroundColor: pal.screen }]}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
+          paddingTop: 4,
           paddingBottom: insets.bottom + 210,
           paddingHorizontal: 20,
           gap: 18,
         }}
       >
-        {/* NEW CORE chips */}
-        <Enter delay={0}>
-        <View style={styles.coreRow}>
-          <View style={styles.newCorePill}>
-            <Text style={styles.newCoreText}>NEW CORE</Text>
-          </View>
-          <View style={[styles.sketchPill, panelOverride]}>
-            <Text style={[styles.sketchText, light && { color: pal.body }]}>Creator Sketchbooks</Text>
-          </View>
-        </View>
-
-        </Enter>
-
-        {/* Header panel */}
         <Enter delay={80}>
-        <View style={[styles.headPanel, panelOverride]}>
-          <Text style={styles.headEyebrow}>SOUNDBOARDS</Text>
-          <Text style={[styles.headTitle, { color: pal.title }]}>Ideas grow in public.</Text>
-          <Text style={[styles.headSub, { color: pal.body }]}>
-            Demos, references, voice notes, and creator process updates in a denser phone layout.
-          </Text>
+        <View style={styles.introRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headEyebrow}>CREATOR SKETCHBOOKS</Text>
+            <Text style={[styles.headTitle, { color: pal.title }]}>Soundboards</Text>
+            <Text style={[styles.headSub, { color: pal.body }]}>Ideas grow in public. Demos, references, voice notes and unfinished worlds.</Text>
+          </View>
+          <View style={styles.boardMark}><MaterialIcons name="dashboard-customize" size={23} color={ed.orange} /></View>
         </View>
         </Enter>
-
-        {/* Actions */}
-        <View style={styles.actionRow}>
-          {!user ? (
-            <EdPressable accessibilityRole="button" accessibilityLabel="Sign in" onPress={() => router.push('/auth/login' as any)}>
-              <View style={[styles.actionGhost, panelOverride]}>
-                <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Sign in</Text>
-              </View>
-            </EdPressable>
-          ) : null}
-          <EdPressable accessibilityRole="button" accessibilityLabel="Browse Releases" onPress={() => router.push('/releases' as any)}>
-            <View style={styles.actionGhost}>
-              <MaterialIcons name="music-note" size={15} color={pal.chipText} />
-              <Text style={[styles.actionGhostText, { color: pal.chipText }]}>Browse Releases</Text>
-            </View>
-          </EdPressable>
-        </View>
 
         {/* Search + sort */}
         <View style={[styles.searchPanel, panelOverride]}>
@@ -239,61 +211,29 @@ export function SoundboardsIndexScreen() {
         {boardsQuery.isLoading ? (
           <PremiumSkeleton compact label="Loading Soundboards..." />
         ) : filtered.length ? (
-          <View style={{ gap: 16 }}>
-            {filtered.map((board) => {
-              const creator = creatorFor(board.creator_id);
-              const creatorName = creator ? creator.full_name || creator.username || 'Creator' : 'Creator';
-              return (
-                <EdPressable
-                  key={board.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${board.title || 'soundboard'}`}
-                  onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)}
-                >
-                  <View style={[styles.boardCard, panelOverride]}>
-                    <View style={styles.boardCoverWrap}>
-                      {board.cover_image_url ? (
-                        <PluggdImage uri={board.cover_image_url} style={styles.boardCover} />
-                      ) : (
-                        <LinearGradient colors={['#2b1c10', '#171009']} style={styles.boardCover} />
-                      )}
-                      <View style={styles.boardPill}>
-                        <Text style={styles.boardPillText}>Soundboard</Text>
-                      </View>
-                    </View>
-                    <View style={styles.boardBody}>
-                      <Text style={[styles.boardTitle, { color: pal.title }]} numberOfLines={1}>{board.title || 'Untitled board'}</Text>
-                      {board.description ? (
-                        <Text style={[styles.boardDescription, { color: pal.body }]} numberOfLines={1}>{board.description}</Text>
-                      ) : null}
-                      <View style={styles.boardMetaRow}>
-                        <MaterialIcons name="event" size={13} color={pal.body} />
-                        <Text style={[styles.boardMeta, { color: pal.body }]}>{boardDate(board)}</Text>
-                        <View style={{ flex: 1 }} />
-                        <MaterialIcons name="layers" size={13.5} color={pal.stat} />
-                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.item_count)}</Text>
-                        <MaterialIcons name="favorite-border" size={13.5} color={pal.stat} />
-                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text>
-                        <MaterialIcons name="chat-bubble-outline" size={12.5} color={pal.stat} />
-                        <Text style={[styles.boardStat, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text>
-                      </View>
-                      <View style={styles.creatorRow}>
-                        <View style={[styles.creatorAvatar, { backgroundColor: pal.avatarFallback }]}>
-                          {creator?.avatar_url ? (
-                            <PluggdImage uri={creator.avatar_url} style={{ width: '100%', height: '100%' }} />
-                          ) : (
-                            <Text style={[styles.creatorInitials, light && { color: ed.ink }]}>
-                              {creatorName.slice(0, 2).toUpperCase()}
-                            </Text>
-                          )}
+          <View style={styles.boardGrid}>
+            {Array.from({ length: Math.ceil(filtered.length / 2) }).map((_, rowIndex) => (
+              <View key={`board-row-${rowIndex}`} style={styles.boardGridRow}>
+                {filtered.slice(rowIndex * 2, rowIndex * 2 + 2).map((board) => {
+                  const creator = creatorFor(board.creator_id);
+                  const creatorName = creator ? creator.full_name || creator.username || 'Creator' : 'Creator';
+                  return (
+                    <EdPressable key={board.id} accessibilityRole="button" accessibilityLabel={`Open ${board.title || 'soundboard'}`} onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)} style={styles.boardTilePressable}>
+                      <View style={styles.boardTile}>
+                        <View style={styles.boardTileCoverWrap}>
+                          {board.cover_image_url ? <PluggdImage uri={board.cover_image_url} style={styles.boardTileCover} /> : <LinearGradient colors={['#2b1c10', '#171009']} style={styles.boardTileCover} />}
+                          <View style={styles.boardTileBadge}><Text style={styles.boardTileBadgeText}>{formatCompact(board.item_count)} PIECES</Text></View>
                         </View>
-                        <Text style={[styles.creatorName, light && { color: pal.stat }]} numberOfLines={1}>{creatorName}</Text>
+                        <Text style={[styles.boardTileTitle, { color: pal.title }]} numberOfLines={2}>{board.title || 'Untitled board'}</Text>
+                        <Text style={[styles.boardTileCreator, { color: pal.body }]} numberOfLines={1}>{creatorName}</Text>
+                        <View style={styles.boardTileStats}><MaterialIcons name="favorite-border" size={14} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text><MaterialIcons name="chat-bubble-outline" size={13} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text></View>
                       </View>
-                    </View>
-                  </View>
-                </EdPressable>
-              );
-            })}
+                    </EdPressable>
+                  );
+                })}
+                {filtered.slice(rowIndex * 2, rowIndex * 2 + 2).length === 1 ? <View style={styles.boardTilePressable} /> : null}
+              </View>
+            ))}
           </View>
         ) : (
           <View style={[styles.emptyPanel, panelOverride]}>
@@ -302,6 +242,11 @@ export function SoundboardsIndexScreen() {
             </Text>
           </View>
         )}
+
+        <View style={styles.footerActions}>
+          {!user ? <EdPressable accessibilityRole="button" accessibilityLabel="Sign in" onPress={() => router.push('/auth/login' as any)}><View style={styles.actionGhost}><Text style={styles.actionGhostText}>Sign in to follow boards</Text></View></EdPressable> : null}
+          <EdPressable accessibilityRole="button" accessibilityLabel="Browse Releases" onPress={() => router.push('/releases' as any)}><View style={styles.actionGhost}><MaterialIcons name="music-note" size={15} color={pal.chipText} /><Text style={[styles.actionGhostText, { color: pal.chipText }]}>Browse Releases</Text></View></EdPressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -309,6 +254,8 @@ export function SoundboardsIndexScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0d0705' },
+  introRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  boardMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: 'rgba(255,248,237,0.2)', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
 
   coreRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   newCorePill: {
@@ -337,7 +284,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   headEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, letterSpacing: 1.6, color: ed.orange },
-  headTitle: { fontFamily: edFonts.bodyBlack, fontSize: 25, lineHeight: 30, color: '#ffffff' },
+  headTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 31, lineHeight: 36, letterSpacing: -1.1, color: '#ffffff', marginTop: 3 },
   headSub: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.55)' },
 
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -356,11 +303,10 @@ const styles = StyleSheet.create({
   actionGhostText: { fontFamily: edFonts.bodyBold, fontSize: 13.5, color: ed.cream },
 
   searchPanel: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.1)',
-    backgroundColor: 'rgba(24,14,8,0.5)',
-    padding: 14,
+    borderRadius: 6,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    padding: 0,
     gap: 12,
   },
   searchBar: {
@@ -377,7 +323,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.cream, paddingVertical: 0 },
   sortRow: { flexDirection: 'row', gap: 8 },
   sortChip: {
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.16)',
@@ -389,6 +335,20 @@ const styles = StyleSheet.create({
   sortChipActive: { backgroundColor: ed.orange, borderColor: ed.orange },
   sortChipText: { fontFamily: edFonts.bodyBold, fontSize: 12.5, color: ed.cream },
   sortChipTextActive: { color: '#ffffff' },
+
+  boardGrid: { gap: 18 },
+  boardGridRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  boardTilePressable: { width: '48.3%' },
+  boardTile: { width: '100%', minWidth: 0 },
+  boardTileCoverWrap: { height: 146, borderRadius: 5, overflow: 'hidden', backgroundColor: '#21170f' },
+  boardTileCover: { width: '100%', height: '100%' },
+  boardTileBadge: { position: 'absolute', left: 8, top: 8, backgroundColor: 'rgba(10,9,8,0.82)', paddingHorizontal: 7, paddingVertical: 5, borderRadius: 3 },
+  boardTileBadgeText: { fontFamily: edFonts.bodyBlack, fontSize: 8, letterSpacing: 0.9, color: ed.orange },
+  boardTileTitle: { fontFamily: 'Sora-Bold', fontSize: 13.5, lineHeight: 17, marginTop: 8 },
+  boardTileCreator: { fontFamily: edFonts.bodyMedium, fontSize: 10.5, marginTop: 3 },
+  boardTileStats: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 7 },
+  boardTileStat: { fontFamily: edFonts.bodyMedium, fontSize: 10, marginRight: 6 },
+  footerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
 
   boardCard: {
     borderRadius: 18,

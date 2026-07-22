@@ -8,7 +8,7 @@ const headerSource = read('components/MobileHeader.tsx');
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');
 
-for (const label of ['Home', 'Discover', 'Community', 'Library']) {
+for (const label of ['Home', 'Discover', 'Community', 'Events']) {
   assert.match(dockSource, new RegExp(`label:\\s*'${label}'`), `${label} must be in the locked primary nav`);
 }
 assert.doesNotMatch(dockSource, /label:\s*'Search'/, 'Search must stay in top/header access, not bottom nav');

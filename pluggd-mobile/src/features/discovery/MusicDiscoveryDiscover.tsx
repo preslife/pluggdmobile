@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -29,6 +30,12 @@ export function MusicDiscoveryDiscover() {
     return allItems.filter((item) => item.kind === 'mix');
   }, [allItems, filter]);
   const visible = items.length ? items : allItems;
+  const worlds = useMemo(() => [
+    { title: 'Mixes', meta: `${feed.data?.mixes.length || 0} selector worlds`, route: '/mixes', image: feed.data?.mixes.find((item) => item.cover_url)?.cover_url || null, icon: 'album' as const, index: '01' },
+    { title: 'Soundboards', meta: `${feed.data?.soundboards.length || 0} ideas in progress`, route: '/soundboards', image: feed.data?.soundboards.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'dashboard-customize' as const, index: '02' },
+    { title: 'Releases', meta: `${feed.data?.releases.length || 0} fresh pressings`, route: '/releases', image: feed.data?.releases.find((item) => item.cover_art_url)?.cover_art_url || null, icon: 'music-note' as const, index: '03' },
+    { title: 'Events', meta: `${feed.data?.events.length || 0} live moments`, route: '/events', image: feed.data?.events.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'event' as const, index: '04' },
+  ], [feed.data]);
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
@@ -50,6 +57,10 @@ export function MusicDiscoveryDiscover() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
           {FILTERS.map((item) => <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
         </ScrollView>
+
+        <View style={styles.worldsGrid}>
+          {worlds.map((world) => <WorldGateway key={world.title} world={world} onPress={() => router.push(world.route as any)} />)}
+        </View>
 
         {feed.isLoading ? <ActivityIndicator color={ORANGE} style={styles.loader} /> : null}
         {!feed.isLoading && !visible.length ? <View style={styles.empty}><Text style={styles.emptyTitle}>No playable signals yet.</Text><Text style={styles.emptyBody}>Try another lens or return when creators publish more music.</Text></View> : null}
@@ -122,6 +133,17 @@ export function MusicDiscoveryDiscover() {
   );
 }
 
+function WorldGateway({ world, onPress }: { world: { title: string; meta: string; image: string | null; icon: keyof typeof MaterialIcons.glyphMap; index: string }; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Explore ${world.title}`} onPress={onPress} style={styles.worldLink}>
+      {world.image ? <PluggdImage uri={world.image} style={styles.worldImage} displayWidth={520} /> : <View style={[styles.worldImage, styles.worldFallback]}><MaterialIcons name={world.icon} size={30} color={ORANGE} /></View>}
+      <LinearGradient colors={['rgba(6,5,4,0.08)', 'rgba(6,5,4,0.92)']} locations={[0.05, 1]} style={StyleSheet.absoluteFillObject} />
+      <View style={styles.worldTop}><Text style={styles.worldIndex}>{world.index}</Text><MaterialIcons name="north-east" size={17} color={INK} /></View>
+      <View style={styles.worldCopy}><Text style={styles.worldLinkTitle}>{world.title}</Text><Text style={styles.worldLinkMeta}>{world.meta}</Text></View>
+    </Pressable>
+  );
+}
+
 function SignalTile({ item, variant, onPlay }: { item: DiscoveryItem; variant: 'lead' | 'small'; onPlay: () => void }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}. ${item.discoveryReason}`} onPress={onPlay} style={variant === 'lead' ? styles.leadTile : styles.smallTile}>
     {item.artwork ? <PluggdImage uri={item.artwork} style={styles.fill} displayWidth={720} /> : <View style={[styles.fill, styles.fallback]}><MaterialIcons name="graphic-eq" size={34} color={ORANGE} /></View>}
@@ -139,6 +161,15 @@ const styles = StyleSheet.create({
   search: { minHeight: 48, marginTop: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
   searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 }, searchHint: { color: '#756E64', fontFamily: 'Satoshi-Bold', fontSize: 10 },
   filters: { gap: 8, paddingVertical: 14 }, filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#181512' }, filterActive: { backgroundColor: ORANGE }, filterText: { color: '#CBC4B9', fontFamily: 'Satoshi-Bold', fontSize: 12 }, filterTextActive: { color: '#110B07' },
+  worldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  worldLink: { width: '48.8%', height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'space-between', padding: 10, backgroundColor: '#151310' },
+  worldImage: { ...StyleSheet.absoluteFillObject },
+  worldFallback: { backgroundColor: '#211C17', alignItems: 'center', justifyContent: 'center' },
+  worldTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 2 },
+  worldIndex: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 8.5, letterSpacing: 1 },
+  worldCopy: { zIndex: 2 },
+  worldLinkTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 15.5, letterSpacing: -0.3 },
+  worldLinkMeta: { color: '#D7CFC4', fontFamily: 'Satoshi-Medium', fontSize: 9.5, marginTop: 2 },
   loader: { minHeight: 220 }, empty: { minHeight: 190, justifyContent: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F' }, emptyTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 18 }, emptyBody: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, marginTop: 6 },
   sectionHeader: { minHeight: 62, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 10 }, sectionEyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.3, marginBottom: 3 }, sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, letterSpacing: -0.35 }, liveCount: { color: MUTED, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1 }, seeAll: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 11 },
   mosaic: { height: 238, flexDirection: 'row', gap: 8 }, leadTile: { flex: 1.72, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end', padding: 13 }, mosaicStack: { flex: 1, gap: 8 }, smallTile: { flex: 1, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end', padding: 9 },

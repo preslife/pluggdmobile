@@ -48,7 +48,7 @@ for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Membership
   assert.match(accountHeader, new RegExp(escapeRegExp(accountRoute)), `Account menu must retain ${accountRoute}`);
 }
 
-for (const label of ['Home', 'Discover', 'Community', 'Library']) {
+for (const label of ['Home', 'Discover', 'Community', 'Events']) {
   assert.match(dock, new RegExp(`label:\\s*'${label}'`), `premium finish must keep ${label} in the mobile discovery dock`);
 }
 assert.doesNotMatch(dock, /label:\s*'(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD|Search)'/, 'premium finish must not regress the locked web-parity dock');

@@ -32,6 +32,7 @@ import { safeList } from '../culture/mobileServices';
 import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, toTrack, type MixItem } from '../../lib/mobileContent';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
 /** The /mixes page carries a yellow data-label accent on the live site. */
 const MIX_YELLOW = '#ffdf4d';
@@ -891,12 +892,13 @@ export function MixesWorldScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
-        contentContainerStyle={{ paddingTop: Math.max(insets.top + 76, 96), paddingBottom: insets.bottom + 210 }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: insets.bottom + 210 }}
       >
         {mixesQuery.isLoading ? (
           <View style={{ paddingHorizontal: 20 }}>
@@ -991,7 +993,7 @@ const styles = StyleSheet.create({
   nightEmpty: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
 
   mixEyebrow: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: MIX_YELLOW },
-  mixSectionTitle: { fontFamily: edFonts.serif, fontSize: 28, lineHeight: 31, color: ed.cream },
+  mixSectionTitle: { fontFamily: 'Sora-Bold', fontSize: 24, lineHeight: 29, letterSpacing: -0.7, color: ed.cream },
   mixSectionSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
   mixActionPill: {
     alignSelf: 'flex-start',
@@ -1012,7 +1014,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.25)',
@@ -1025,7 +1027,7 @@ const styles = StyleSheet.create({
   heroPoster: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroPosterBody: { padding: 18, gap: 8 },
   heroKicker: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: MIX_YELLOW },
-  heroTitle: { fontFamily: edFonts.serif, fontSize: 36, lineHeight: 38, color: ed.cream, letterSpacing: -0.5 },
+  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 35, color: ed.cream, letterSpacing: -1.1 },
   heroMixName: { fontFamily: edFonts.bodyBold, fontSize: 14, color: 'rgba(255,248,237,0.85)', marginTop: 2 },
   heroDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.8)' },
   heroCtas: { gap: 10, marginTop: 14 },
@@ -1061,7 +1063,7 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 12,
   },
-  finderTitle: { fontFamily: edFonts.serif, fontSize: 25, color: ed.cream },
+  finderTitle: { fontFamily: 'Sora-Bold', fontSize: 23, letterSpacing: -0.6, color: ed.cream },
   finderSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.62)' },
   finderSearch: {
     minHeight: 46,
@@ -1108,7 +1110,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   happeningPillText: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: ed.cream },
-  happeningTitle: { fontFamily: edFonts.serif, fontSize: 25, lineHeight: 28, color: ed.cream },
+  happeningTitle: { fontFamily: 'Sora-Bold', fontSize: 23, lineHeight: 28, letterSpacing: -0.6, color: ed.cream },
   happeningMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.72)' },
   happeningPlay: {
     minHeight: 46,

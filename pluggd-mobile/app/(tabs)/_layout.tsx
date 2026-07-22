@@ -36,7 +36,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="events"
           options={{
-            href: null,
+            title: "Events",
           }}
         />
         <Tabs.Screen

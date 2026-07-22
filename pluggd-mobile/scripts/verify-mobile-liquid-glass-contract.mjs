@@ -73,7 +73,7 @@ assert.match(composer + glassComposer, /Start a post/, 'community composer must 
 assert.match(stories, /GlassStoryRing/, 'stories rail must use GlassStoryRing');
 assert.match(socialCard, /GlassPanel[\s\S]*toggleSocialLike[\s\S]*toggleSocialBookmark[\s\S]*toggleSocialRepost/, 'social post card must use glass and keep social actions');
 
-for (const label of ['Home', 'Discover', 'Community', 'Library']) {
+for (const label of ['Home', 'Discover', 'Community', 'Events']) {
   assert.match(dock, new RegExp(`label:\\s*'${label}'`), `dock must keep ${label}`);
 }
 assert.doesNotMatch(dock, /label:\s*'(Create|Profile|Live)'/, 'dock must not add Create, Profile, or Live as tabs');

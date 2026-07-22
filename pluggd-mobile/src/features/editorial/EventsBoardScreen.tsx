@@ -30,6 +30,7 @@ import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type EventItem } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
 const CATEGORY_CHIPS = ['All events', 'Live Music', 'Culture', 'Meet-ups', 'Festivals', 'Clubbing', 'Comedy'] as const;
 
@@ -204,8 +205,7 @@ function EventSpotlight({ event }: { event?: EventItem }) {
             style={{ flex: 1 }}
           >
             <View style={styles.openEventCta}>
-              <Text style={styles.openEventText}>Open Event</Text>
-              <MaterialIcons name="arrow-forward" size={16} color="#3a1c04" />
+              <Text style={styles.openEventText}>View event</Text>
             </View>
           </EdPressable>
           <EdPressable
@@ -216,7 +216,7 @@ function EventSpotlight({ event }: { event?: EventItem }) {
           >
             <View style={styles.ticketLinkCta}>
               <MaterialIcons name="confirmation-number" size={15} color={ed.cream} />
-              <Text style={styles.ticketLinkText}>Ticket Link</Text>
+              <Text style={styles.ticketLinkText}>Tickets</Text>
             </View>
           </EdPressable>
         </View>
@@ -423,13 +423,14 @@ export function EventsBoardScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: pal.screen }]}>
       <StatusBar style={light ? 'dark' : 'light'} translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={[styles.screen, { backgroundColor: pal.screen }]}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
+          paddingTop: 4,
           paddingBottom: insets.bottom + 210,
           paddingHorizontal: 20,
           gap: 24,
@@ -438,10 +439,13 @@ export function EventsBoardScreen() {
         {/* Header — stays a dark board card in light mode, like the web */}
         <Enter delay={0}>
         <View style={light ? styles.headerBoardLight : null}>
-        <View style={{ gap: 8 }}>
-          <Text style={styles.eyebrow}>EVENTS</Text>
-          <Text style={styles.pageTitle}>Discover local shows</Text>
-          <Text style={styles.pageSub}>Live shows, club nights, and creator sessions in a tighter feed.</Text>
+        <View style={styles.eventHeadingRow}>
+          <View style={{ flex: 1, gap: 5 }}>
+            <Text style={styles.eyebrow}>LIVE CULTURE · EVENTS</Text>
+            <Text style={styles.pageTitle}>Go where the sound is.</Text>
+            <Text style={styles.pageSub}>Shows, sessions and scene-defining nights near you.</Text>
+          </View>
+          <View style={styles.calendarMark}><MaterialIcons name="event" size={23} color={ed.orange} /></View>
         </View>
 
         {/* Browse / Map toggle */}
@@ -462,8 +466,13 @@ export function EventsBoardScreen() {
           ))}
         </View>
 
+        </View>
+        </Enter>
+
+        {mode === 'browse' && spotlight ? <EventSpotlight event={spotlight} /> : null}
+
         {/* Category chips */}
-        <View style={[styles.chipWrap, { marginTop: 12 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipWrap}>
           {CATEGORY_CHIPS.map((chip) => (
             <EdPressable
               key={chip}
@@ -476,9 +485,7 @@ export function EventsBoardScreen() {
               </View>
             </EdPressable>
           ))}
-        </View>
-        </View>
-        </Enter>
+        </ScrollView>
 
         {mode === 'map' ? (
           <EventsMap points={mapQuery.data ?? []} count={filtered.length} />
@@ -503,9 +510,8 @@ export function EventsBoardScreen() {
               </EdPressable>
             </View>
 
-            <BrowseFastList events={filtered} lp={lp} />
-            <EventSpotlight event={spotlight} />
             <UpcomingPosterRail events={filtered} lp={lp} />
+            <BrowseFastList events={filtered} lp={lp} />
             <FullEventCards events={filtered} lp={lp} />
           </>
         ) : (
@@ -547,7 +553,9 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 12, letterSpacing: 1.6, color: ed.orange },
-  pageTitle: { fontFamily: edFonts.serif, fontSize: 30, lineHeight: 34, color: '#fff8ed' },
+  eventHeadingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  calendarMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: 'rgba(255,248,237,0.2)', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  pageTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 29, lineHeight: 34, letterSpacing: -1.1, color: '#fff8ed' },
   pageSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.66)' },
 
   toggleRow: { flexDirection: 'row', gap: 10 },
@@ -565,9 +573,9 @@ const styles = StyleSheet.create({
   togglePillText: { fontFamily: edFonts.bodyBlack, fontSize: 13.5, color: ed.cream },
   togglePillTextActive: { color: '#ffffff' },
 
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipWrap: { flexDirection: 'row', gap: 8, paddingRight: 20 },
   categoryChip: {
-    minHeight: 38,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.16)',
@@ -595,7 +603,7 @@ const styles = StyleSheet.create({
 
   browseHeadRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   eventListEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 11, letterSpacing: 1.4, color: ed.orange },
-  browseFastTitle: { fontFamily: edFonts.serif, fontSize: 23, color: '#fff8ed', marginTop: 2 },
+  browseFastTitle: { fontFamily: 'Sora-Bold', fontSize: 20, color: '#fff8ed', marginTop: 2 },
   showingText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.4, color: 'rgba(255,248,237,0.55)' },
 
   fastRow: {
@@ -636,7 +644,7 @@ const styles = StyleSheet.create({
   },
   viewPillText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: ed.orange },
 
-  spotlightCard: { borderRadius: 18, overflow: 'hidden', minHeight: 330 },
+  spotlightCard: { borderRadius: 7, overflow: 'hidden', minHeight: 310 },
   spotlightBody: { flex: 1, justifyContent: 'flex-end', padding: 18, gap: 9 },
   spotlightPill: {
     alignSelf: 'flex-start',
