@@ -10,11 +10,14 @@
 ## Implementation captures
 
 - Home: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home.jpg`
+- Corrected Home: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-v2.png`
+- Corrected Discover: `artifacts/screenshots/music-discovery-redesign-2026-07-22/discover-v2.png`
 - Discover with persistent mini-player: `artifacts/screenshots/music-discovery-redesign-2026-07-22/discover-mini-player.jpg`
 - Full player: `artifacts/screenshots/music-discovery-redesign-2026-07-22/full-player.jpg`
 - Community: `artifacts/screenshots/music-discovery-redesign-2026-07-22/community.jpg`
 - Library: `artifacts/screenshots/music-discovery-redesign-2026-07-22/library.jpg`
 - Direct source/implementation comparison: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-comparison.png`
+- Corrected direct comparison: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-comparison-v2.png`
 
 ## Capture conditions
 
@@ -25,7 +28,7 @@
 
 ## Full-screen comparison
 
-The implementation preserves the selected hierarchy: compact brand header, Daily Plug lead, immediate playable artwork, four choices, scene strip, contextual event entry and four-item dock. Real production data changes the exact artwork and copy, by design. It is denser than the concept while preserving clear section rhythm and has no marketing block before music.
+The corrected implementation preserves the selected hierarchy: compact brand header, Daily Plug lead, immediate playable artwork, four choices, scene strip and four-item dock. Below the opening viewport it now continues into New Releases, Soundboards, a real Featured Event, creator discovery and contextual live access. Real production data changes the exact artwork and copy, by design.
 
 ## Focused comparison
 
@@ -46,6 +49,8 @@ The implementation preserves the selected hierarchy: compact brand header, Daily
 2. Replaced the lead action with a visible 44pt orange artwork control and rendered the four picks as two explicit two-column rows.
 3. Discover rows initially lost their horizontal layout through callback-based press styling; changed layout-critical pressables to stable direct styles.
 4. Rebuilt and captured again. Home, Discover, playback and navigation passed the simulator interaction check.
+5. User review correctly identified that the first pass still diverged from the mockup and had removed too much platform depth. Home was rebuilt with stronger artwork scale and restored Releases, Soundboards, Featured Event and creator modules.
+6. Discover's ranked-list opening was removed and replaced with a three-part playable mosaic, surfaced-reason line, Scene Dial, Release Radar and independent chart. The corrected simulator captures were compared again.
 
 ## Outstanding visual issues
 

@@ -20,6 +20,7 @@ export function MusicDiscoveryHome() {
   const scenes = buildDiscoveryScenes(feed.data);
   const featured = items[0];
   const picks = items.slice(1, 5);
+  const newReleases = feed.data?.releases.slice(0, 6) ?? [];
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
@@ -62,6 +63,7 @@ export function MusicDiscoveryHome() {
               <Text style={styles.reason}>{featured.discoveryReason.toUpperCase()}</Text>
               <Text style={styles.featuredTitle} numberOfLines={2}>{featured.title}</Text>
               <Text style={styles.featuredCreator} numberOfLines={1}>{featured.creator}</Text>
+              <Text style={styles.featuredDescription} numberOfLines={3}>{featured.description}</Text>
               <View style={styles.featuredActions}>
                 <Pressable
                   accessibilityRole="button"
@@ -125,6 +127,80 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
+        {newReleases.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>New releases</Text><Text style={styles.sectionSubtitle}>Independent music, newly landed.</Text></View>
+              <Pressable onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.releaseRail}>
+              {newReleases.map((item) => {
+                const playable = items.find((entry) => entry.kind === 'release' && entry.track.releaseId === item.id);
+                return <Pressable key={item.id} onPress={() => playable ? play(playable) : router.push(`/release/${item.id}` as any)} style={styles.releaseCard} accessibilityLabel={`${playable ? 'Play' : 'Open'} ${item.title || 'release'}`}>
+                  {item.cover_art_url ? <PluggdImage uri={item.cover_art_url} style={styles.releaseArt} displayWidth={420} /> : <View style={[styles.releaseArt, styles.artFallback]}><MaterialIcons name="album" size={28} color={ORANGE} /></View>}
+                  <View style={styles.releasePlay}><MaterialIcons name={playable ? 'play-arrow' : 'arrow-forward'} size={19} color="#100B07" /></View>
+                  <Text style={styles.releaseTitle} numberOfLines={1}>{item.title || 'Untitled release'}</Text>
+                  <Text style={styles.releaseCreator} numberOfLines={1}>{item.artist || item.genre || 'PLUGGD creator'}</Text>
+                </Pressable>
+              })}
+            </ScrollView>
+          </>
+        ) : null}
+
+        {feed.data?.soundboards.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>Soundboards</Text><Text style={styles.sectionSubtitle}>Ideas, demos and worlds in progress.</Text></View>
+              <Pressable onPress={() => router.push('/soundboards' as any)}><Text style={styles.seeAll}>Open all</Text></Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.soundboardRail}>
+              {feed.data.soundboards.slice(0, 5).map((board) => (
+                <Pressable key={board.id} onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)} style={styles.soundboardCard}>
+                  {board.cover_image_url ? <PluggdImage uri={board.cover_image_url} style={styles.soundboardImage} displayWidth={520} /> : <View style={[styles.soundboardImage, styles.artFallback]}><MaterialIcons name="dashboard-customize" size={32} color={ORANGE} /></View>}
+                  <View style={styles.soundboardShade} />
+                  <Text style={styles.soundboardKicker}>{board.item_count || 0} PIECES · {board.like_count || 0} LIKES</Text>
+                  <Text style={styles.soundboardTitle} numberOfLines={2}>{board.title || 'Untitled soundboard'}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
+
+        {feed.data?.events[0] ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>Featured event</Text><Text style={styles.sectionSubtitle}>Where the scene becomes real.</Text></View>
+              <Pressable onPress={() => router.push('/events' as any)}><Text style={styles.seeAll}>All events</Text></Pressable>
+            </View>
+            <Pressable onPress={() => router.push(`/events/${feed.data!.events[0].id}` as any)} style={styles.eventCard}>
+              {feed.data.events[0].cover_image_url ? <PluggdImage uri={feed.data.events[0].cover_image_url} style={styles.eventImage} displayWidth={900} /> : <View style={[styles.eventImage, styles.artFallback]}><MaterialIcons name="event" size={42} color={ORANGE} /></View>}
+              <View style={styles.eventShade} />
+              <View style={styles.eventDate}><Text style={styles.eventDateText}>{feed.data.events[0].starts_at ? new Date(feed.data.events[0].starts_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase() : 'SOON'}</Text></View>
+              <View style={styles.eventCopy}>
+                <Text style={styles.eventTitle} numberOfLines={2}>{feed.data.events[0].title || 'PLUGGD event'}</Text>
+                <Text style={styles.eventMeta} numberOfLines={1}>{feed.data.events[0].location || 'Location TBA'} · {feed.data.events[0].rsvp_count || 0} going</Text>
+              </View>
+              <View style={styles.eventArrow}><MaterialIcons name="arrow-forward" size={21} color="#100B07" /></View>
+            </Pressable>
+          </>
+        ) : null}
+
+        {feed.data?.profiles.length ? (
+          <>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Creators to know</Text><Text style={styles.sectionSubtitle}>Follow the people behind the signal.</Text></View></View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.creatorRail}>
+              {feed.data.profiles.slice(0, 8).map((profile) => {
+                const name = profile.display_name || profile.full_name || profile.username || 'PLUGGD creator';
+                return <Pressable key={profile.user_id || profile.id || name} onPress={() => profile.username && router.push(`/creator/${profile.username}` as any)} style={styles.creatorCard}>
+                  {profile.avatar_url ? <PluggdImage uri={profile.avatar_url} style={styles.creatorAvatar} displayWidth={220} /> : <View style={[styles.creatorAvatar, styles.artFallback]}><MaterialIcons name="person" size={28} color={ORANGE} /></View>}
+                  <Text style={styles.creatorName} numberOfLines={1}>{name}</Text>
+                  <Text style={styles.creatorMeta} numberOfLines={1}>{profile.city || profile.primary_genre || 'Independent'}</Text>
+                </Pressable>;
+              })}
+            </ScrollView>
+          </>
+        ) : null}
+
         <Pressable onPress={() => router.push('/events' as any)} style={styles.contextRow}>
           <View><Text style={styles.contextKicker}>WHAT'S HAPPENING</Text><Text style={styles.contextTitle}>Live rooms and events</Text></View>
           <MaterialIcons name="arrow-forward" size={22} color={ORANGE} />
@@ -157,9 +233,9 @@ const styles = StyleSheet.create({
   empty: { minHeight: 210, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', justifyContent: 'center' },
   emptyTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 20 },
   emptyBody: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 14, lineHeight: 20, marginTop: 8, maxWidth: 280 },
-  featured: { minHeight: 194, flexDirection: 'row', gap: 17, paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F' },
+  featured: { minHeight: 214, flexDirection: 'row', gap: 17, paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F' },
   featuredArtWrap: { width: 146, position: 'relative' },
-  featuredArt: { width: 146, height: 164, borderRadius: 3, backgroundColor: '#211C17' },
+  featuredArt: { width: 146, height: 184, borderRadius: 3, backgroundColor: '#211C17' },
   kindFlag: { position: 'absolute', left: 8, top: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: 'rgba(10,9,8,0.82)' },
   kindFlagText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 8, letterSpacing: 1.1 },
   featuredPlayBadge: { position: 'absolute', right: 9, bottom: 9, width: 44, height: 44, borderRadius: 22, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
@@ -167,11 +243,13 @@ const styles = StyleSheet.create({
   reason: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 9, lineHeight: 12, letterSpacing: 1.1, marginBottom: 7 },
   featuredTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 19, lineHeight: 22, letterSpacing: -0.45 },
   featuredCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13, marginTop: 5 },
-  featuredActions: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
+  featuredDescription: { color: '#C5BDB2', fontFamily: 'Satoshi-Regular', fontSize: 10.5, lineHeight: 14, marginTop: 8 },
+  featuredActions: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   supportButton: { minHeight: 44, flexShrink: 0, justifyContent: 'center', borderBottomWidth: 1, borderColor: '#756E64' },
   supportText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   sectionHeader: { minHeight: 54, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 10 },
   sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, letterSpacing: -0.35 },
+  sectionSubtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 10.5, marginTop: 3 },
   seeAll: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   pickGrid: { gap: 10 },
   pickRow: { flexDirection: 'row', gap: 10 },
@@ -188,6 +266,32 @@ const styles = StyleSheet.create({
   sceneShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,4,3,0.45)' },
   sceneLabel: { color: INK, fontFamily: 'Sora-Bold', fontSize: 15 },
   sceneDetail: { color: '#D5CEC3', fontFamily: 'Satoshi-Medium', fontSize: 10, marginTop: 2 },
+  releaseRail: { gap: 12, paddingRight: 20 },
+  releaseCard: { width: 126, position: 'relative' },
+  releaseArt: { width: 126, height: 126, borderRadius: 4, backgroundColor: '#211C17' },
+  releasePlay: { position: 'absolute', top: 86, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  releaseTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12, marginTop: 7 },
+  releaseCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, marginTop: 2 },
+  soundboardRail: { gap: 12, paddingRight: 20 },
+  soundboardCard: { width: 224, height: 150, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end', padding: 13 },
+  soundboardImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
+  soundboardShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,4,3,0.52)' },
+  soundboardKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1 },
+  soundboardTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, lineHeight: 21, marginTop: 4 },
+  eventCard: { height: 196, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end' },
+  eventImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
+  eventShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,4,3,0.42)' },
+  eventDate: { position: 'absolute', left: 12, top: 12, backgroundColor: ORANGE, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 3 },
+  eventDateText: { color: '#100B07', fontFamily: 'Satoshi-Black', fontSize: 9, letterSpacing: 1 },
+  eventCopy: { padding: 15, paddingRight: 62 },
+  eventTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 20, lineHeight: 24 },
+  eventMeta: { color: '#E2DBD1', fontFamily: 'Satoshi-Medium', fontSize: 11, marginTop: 5 },
+  eventArrow: { position: 'absolute', right: 14, bottom: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  creatorRail: { gap: 16, paddingRight: 20 },
+  creatorCard: { width: 84, alignItems: 'center' },
+  creatorAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#211C17', borderWidth: 1, borderColor: '#413A31' },
+  creatorName: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 7, width: 84, textAlign: 'center' },
+  creatorMeta: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, marginTop: 2, width: 84, textAlign: 'center' },
   contextRow: { minHeight: 76, marginTop: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   contextKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 9, letterSpacing: 1.2 },
   contextTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 16, marginTop: 3 },

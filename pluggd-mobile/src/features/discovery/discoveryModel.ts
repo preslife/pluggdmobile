@@ -18,6 +18,10 @@ export type DiscoveryItem = {
   playableUrl: string;
   destinationRoute: string;
   discoveryReason: string;
+  description?: string;
+  genre?: string;
+  city?: string;
+  signal?: string;
   supportRoute?: string;
   track: PluggdTrack;
 };
@@ -36,6 +40,8 @@ function releaseItem(item: ReleaseItem): DiscoveryItem | null {
     playableUrl,
     destinationRoute: `/release/${item.id}`,
     discoveryReason: item.genre ? `New in ${item.genre}` : 'New independent release',
+    description: `${creator}'s latest independent release${item.genre ? `, rooted in ${item.genre}` : ''}.`,
+    genre: item.genre || undefined,
     supportRoute: `/release/${item.id}`,
     track: {
       id: item.id,
@@ -64,6 +70,11 @@ function beatItem(item: BeatItem): DiscoveryItem | null {
     playableUrl,
     destinationRoute: `/beat/${item.id}`,
     discoveryReason: item.genre ? `${item.genre} producer signal` : 'Producer signal',
+    description: item.description?.trim() && item.description.trim().length > 24
+      ? item.description.trim()
+      : `A new ${item.genre ? `${item.genre} ` : ''}beat from ${creator}${item.bpm ? ` at ${item.bpm} BPM` : ''}.`,
+    genre: item.genre || undefined,
+    signal: item.bpm ? `${item.bpm} BPM${item.key ? ` · ${item.key}` : ''}` : undefined,
     supportRoute: `/beat/${item.id}`,
     track: {
       id: item.id,
@@ -95,6 +106,10 @@ function mixItem(item: MixItem): DiscoveryItem | null {
       : item.genre_tags?.[0]
         ? `Selected for ${item.genre_tags[0]}`
         : 'Fresh selector mix',
+    description: item.description?.trim() || `${creator} connects new music in one uninterrupted selector journey.`,
+    genre: item.genre_tags?.[0] || undefined,
+    city: item.city || undefined,
+    signal: item.play_count ? `${item.play_count.toLocaleString()} plays` : undefined,
     track: {
       id: item.id,
       url: item.audio_url,
