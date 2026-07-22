@@ -780,7 +780,7 @@ export function StageDiscoveryScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[COLORS.canvas, '#120d08', COLORS.canvas]} style={StyleSheet.absoluteFill} />
       <StageHeader />
       <ScrollView
         showsVerticalScrollIndicator={false}

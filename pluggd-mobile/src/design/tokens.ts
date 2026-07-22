@@ -60,9 +60,9 @@ export const pluggdDark = {
     backgroundElevated: 'rgba(18,13,8,0.72)',
     shell: 'rgba(18,13,8,0.68)',
     surface: liquidGlassColors.surfaceDefault,
-    surfaceAlt: 'rgba(34,35,52,0.72)',
+    surfaceAlt: 'rgba(36,29,21,0.82)',
     surfaceStrong: liquidGlassColors.surfaceStrong,
-    surfaceRaised: 'rgba(26,27,43,0.72)',
+    surfaceRaised: 'rgba(31,24,17,0.86)',
     surfacePressed: liquidGlassColors.surfacePressed,
     border: liquidGlassColors.borderSoft,
     borderSubtle: 'rgba(255,255,255,0.07)',
@@ -82,7 +82,7 @@ export const pluggdDark = {
     headerGlass: 'rgba(18,13,8,0.58)',
     miniPlayerGlass: liquidGlassColors.surfaceStrong,
     shadow: '#000000',
-    artworkBase: '#111827',
+    artworkBase: '#171310',
   },
 };
 

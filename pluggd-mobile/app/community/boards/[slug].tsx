@@ -112,7 +112,7 @@ export default function CommunityBoardRoute() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[COLORS.canvas, '#120d08', COLORS.canvas]} style={StyleSheet.absoluteFill} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={boardQuery.isRefetching} onRefresh={() => boardQuery.refetch()} tintColor={COLORS.orange} />}

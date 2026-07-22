@@ -270,7 +270,7 @@ export default function CreatePostRoute() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={[CANVAS, '#090910', CANVAS]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[CANVAS, '#120d08', CANVAS]} style={StyleSheet.absoluteFill} />
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView

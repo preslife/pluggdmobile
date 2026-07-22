@@ -182,7 +182,7 @@ export default function PlayerScreen() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={['#0a0806', '#0B0B0B', '#0a0806']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#0a0806', '#120d08', '#0a0806']} style={StyleSheet.absoluteFill} />
       {cover ? <Image source={{ uri: cover }} style={styles.backdrop} blurRadius={46} /> : null}
       <LinearGradient colors={['rgba(8,8,8,0.7)', '#0a0806']} style={StyleSheet.absoluteFill} />
       <StatusBar style="light" />

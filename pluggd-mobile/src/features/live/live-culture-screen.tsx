@@ -139,7 +139,10 @@ function isReplayRoom(room: LiveRoomItem) {
 
 function isUpcomingRoom(room: LiveRoomItem) {
   if (isRealLiveRoom(room) || isReplayRoom(room) || room.source === 'community_room') return false;
-  return room.source === 'session_room' || room.source === 'scheduled_session';
+  if (room.source !== 'session_room' && room.source !== 'scheduled_session') return false;
+  if (!room.scheduled_for) return true;
+  const scheduledAt = new Date(room.scheduled_for).getTime();
+  return Number.isFinite(scheduledAt) && scheduledAt > Date.now();
 }
 
 function isCommunityRoom(room: LiveRoomItem) {
@@ -181,6 +184,7 @@ function eventCountdown(startsAt?: string | null) {
   const start = new Date(startsAt).getTime();
   if (!Number.isFinite(start)) return 'Time TBA';
   const diffMs = start - Date.now();
+  if (diffMs <= -6 * 60 * 60 * 1000) return 'Ended';
   if (diffMs <= 0) return 'Happening now';
   const mins = Math.floor(diffMs / 60000);
   const days = Math.floor(mins / 1440);
@@ -433,6 +437,7 @@ function EmptyInline({ title, body, primary, onPrimary }: { title: string; body:
 
 function FocusCard({
   source,
+  activeFilter,
   onJoinRoom,
   onToggleRoomReminder,
   onToggleEventReminder,
@@ -443,6 +448,7 @@ function FocusCard({
   onViewReplays,
 }: {
   source?: FocusSource;
+  activeFilter: LiveFilter;
   onJoinRoom: (room: LiveRoomItem) => void;
   onToggleRoomReminder: (room: LiveRoomItem) => void;
   onToggleEventReminder: (event: EventItem) => void;
@@ -467,17 +473,34 @@ function FocusCard({
   }, [scale]);
 
   if (!source) {
+    const emptyTitle = activeFilter === 'Upcoming'
+      ? 'Nothing scheduled yet'
+      : activeFilter === 'Replays'
+        ? 'No replays yet'
+        : 'No one is live right now';
+    const emptyBody = activeFilter === 'Upcoming'
+      ? 'Follow creators or check back soon for the next session.'
+      : activeFilter === 'Replays'
+        ? 'Recent sessions will appear here when creators publish them.'
+        : "See what's coming up or replay recent sessions.";
     return (
       <View style={styles.focusEmpty}>
-        <Text style={styles.focusEmptyTitle}>No one is live right now</Text>
-        <Text style={styles.focusEmptyBody}>See what's coming up or replay recent sessions.</Text>
+        <Text style={styles.focusEmptyTitle}>{emptyTitle}</Text>
+        <Text style={styles.focusEmptyBody}>{emptyBody}</Text>
         <View style={styles.focusEmptyActions}>
-          <Pressable accessibilityRole="button" onPress={onViewUpcoming} style={styles.focusEmptyPrimary}>
-            <Text style={styles.focusEmptyPrimaryText}>View Upcoming</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={activeFilter === 'Upcoming' ? 'Watch replays' : 'View upcoming sessions'}
+            onPress={activeFilter === 'Upcoming' ? onViewReplays : onViewUpcoming}
+            style={styles.focusEmptyPrimary}
+          >
+            <Text style={styles.focusEmptyPrimaryText}>{activeFilter === 'Upcoming' ? 'Watch Replays' : 'View Upcoming'}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={onViewReplays} style={styles.focusEmptySecondary}>
-            <Text style={styles.focusEmptySecondaryText}>Watch Replays</Text>
-          </Pressable>
+          {activeFilter !== 'Upcoming' && activeFilter !== 'Replays' ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Watch replays" onPress={onViewReplays} style={styles.focusEmptySecondary}>
+              <Text style={styles.focusEmptySecondaryText}>Watch Replays</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     );
@@ -988,7 +1011,7 @@ export function LiveCultureScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#090910', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[COLORS.canvas, '#120d08', COLORS.canvas]} style={StyleSheet.absoluteFill} />
       <LiveHeader />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1001,6 +1024,7 @@ export function LiveCultureScreen() {
         <View style={[styles.focusWrap, { height: focusHeight }]}>
           <FocusCard
             source={focus}
+            activeFilter={activeFilter}
             onJoinRoom={openRoom}
             onToggleRoomReminder={toggleRoomReminder}
             onToggleEventReminder={toggleEventReminder}
