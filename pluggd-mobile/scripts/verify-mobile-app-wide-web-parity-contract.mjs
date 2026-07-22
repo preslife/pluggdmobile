@@ -127,11 +127,11 @@ for (const [label, route] of [
   ['Home', '/'],
   ['Discover', '/discover'],
   ['Community', '/community'],
-  ['Events', '/events'],
-  ['Market', '/market'],
+  ['Library', '/library'],
 ]) {
-  assert.match(dockSource, new RegExp(`label:\\s*'${label}'[\\s\\S]*?route:\\s*'${route.replace('/', '\\/')}'`), `web-parity dock must expose ${label} -> ${route}`);
+  assert.match(dockSource, new RegExp(`label:\\s*'${label}'[\\s\\S]*?route:\\s*'${route.replace('/', '\\/')}'`), `mobile discovery dock must expose ${label} -> ${route}`);
 }
+assert.doesNotMatch(dockSource, /label:\s*'(Events|Market)'/, 'Events and Market must be contextual destinations, not primary tabs');
 assert.doesNotMatch(dockSource, /label:\s*'(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)'/, 'web-parity dock must not regress to old native-tab labels');
 
 console.log('mobile app-wide web parity contract verified');

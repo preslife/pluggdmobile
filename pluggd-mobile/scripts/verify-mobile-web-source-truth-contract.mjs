@@ -24,11 +24,11 @@ for (const [label, route] of [
   ['Home', '/'],
   ['Discover', '/discover'],
   ['Community', '/community'],
-  ['Events', '/events'],
-  ['Market', '/market'],
+  ['Library', '/library'],
 ]) {
   assert.match(dock, new RegExp(`label:\\s*'${label}'[\\s\\S]*?route:\\s*'${route.replace('/', '\\/')}'`), `Dock must expose ${label} -> ${route}`);
 }
+assert.doesNotMatch(dock, /label:\s*'(Events|Market)'/, 'mobile discovery IA must surface Events and Market contextually');
 assert.doesNotMatch(dock, /label:\s*'(Explore|Create|Profile|MyPLUGGD|Backstage|Stage|Live)'/, 'Dock must not expose old native-tab or compatibility labels as primary tabs');
 assert.match(chrome, /CreateActionSheet/, 'Create must be exposed through the role-aware floating action sheet');
 

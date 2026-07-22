@@ -16,8 +16,7 @@ const visibleDock = [
   ['Home', '/'],
   ['Discover', '/discover'],
   ['Community', '/community'],
-  ['Events', '/events'],
-  ['Market', '/market'],
+  ['Library', '/library'],
 ];
 
 for (const [label, route] of visibleDock) {
@@ -55,15 +54,17 @@ for (const hiddenRoute of ['explore', 'create', 'profile', 'stage', 'live', 'bac
   );
 }
 
-for (const label of ['Home', 'Discover', 'Community', 'Events', 'Market']) {
+for (const label of ['Home', 'Discover', 'Community']) {
   assert.match(tabsSource, new RegExp(`title:\\s*"${label}"`), `${label} must be a visible tab title`);
 }
 assert.doesNotMatch(tabsSource, /title:\s*"(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)"/, 'tab titles must use the web-parity dock labels');
 assert.match(chromeSource, /CreateActionSheet/, 'Create must be mounted through the role-aware floating action sheet');
-assert.match(tabDiscoverSource, /DiscoverParityScreen/, 'Discover tab must render the web-source Discover parity screen');
+assert.match(tabDiscoverSource, /MusicDiscoveryDiscover/, 'Discover tab must render the intentional mobile exploration screen');
 assert.match(tabCommunitySource, /CommunityFeedScreen/, 'Community tab must render the feed-first Community screen');
 assert.doesNotMatch(tabCommunitySource, /CommunityParityScreen/, 'Community tab must not render the generic parity screen');
 assert.match(tabEventsSource, /EventsParityScreen/, 'Events tab must render the web-source Events parity screen');
 assert.match(tabMarketSource, /MarketParityScreen/, 'Market tab must render the web-source Market parity screen');
+assert.match(tabsSource, /name="events"[\s\S]*?href:\s*null/, 'Events must remain routable but hidden from the primary dock');
+assert.match(tabsSource, /name="market"[\s\S]*?href:\s*null/, 'Market must remain routable but hidden from the primary dock');
 
 console.log('mobile navigation contract verified');

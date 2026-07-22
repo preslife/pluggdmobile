@@ -12,6 +12,9 @@ export function AppChrome() {
   const pathname = usePathname() || '/';
   const normalized = pathname.replace('/(tabs)', '') || '/';
   const ownsHeader =
+    normalized === '/' ||
+    normalized === '/discover' ||
+    normalized === '/library' ||
     normalized === '/create' ||
     normalized === '/profile' ||
     normalized === '/live' ||

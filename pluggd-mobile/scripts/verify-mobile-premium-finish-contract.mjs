@@ -5,7 +5,8 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const primitives = read('components/PluggdPrimitives.tsx');
-const home = read('src/features/home/live-music-dashboard-home.tsx');
+const home = read('src/features/home/MusicDiscoveryHome.tsx');
+const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
 const parityScreens = read('src/features/parity/AppWideParityScreens.tsx');
 const createSheet = read('components/CreateActionSheet.tsx');
 const accountHeader = read('components/MobileHeader.tsx');
@@ -34,10 +35,10 @@ for (const token of [
   assert.match(primitives, new RegExp(escapeRegExp(token)), `premium primitives must include ${token}`);
 }
 
-assert.match(home, /HomeHero[\s\S]*LinearGradient[\s\S]*PluggdImage/, 'Home must open with the photographic edition masthead (web NewHome2 hero)');
+assert.match(home, /The Daily Plug[\s\S]*featured[\s\S]*PluggdImage/, 'Home must open with a compact playable editorial pick');
 assert.match(parityScreens, /LinearGradient[\s\S]*PluggdImage[\s\S]*Hero[\s\S]*SectionBlock/, 'Discover, Community, Events and Market must use the artwork-led parity shell');
 
-assert.match(home, /edFonts\.serif[\s\S]*heroTitleAccent/, 'Home hero must carry the Instrument Serif headline with the italic-orange accent moment');
+assert.match(home + discover, /Sora-ExtraBold[\s\S]*Satoshi-Bold/, 'discovery surfaces must use the selected modern grotesk hierarchy');
 for (const exportName of ['DiscoverParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
   assert.match(parityScreens, new RegExp(`export function ${exportName}`), `${exportName} must remain a premium web-parity surface`);
 }
@@ -47,8 +48,8 @@ for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Membership
   assert.match(accountHeader, new RegExp(escapeRegExp(accountRoute)), `Account menu must retain ${accountRoute}`);
 }
 
-for (const label of ['Home', 'Discover', 'Community', 'Events', 'Market']) {
-  assert.match(dock, new RegExp(`label:\\s*'${label}'`), `premium finish must keep ${label} in the locked web-parity dock`);
+for (const label of ['Home', 'Discover', 'Community', 'Library']) {
+  assert.match(dock, new RegExp(`label:\\s*'${label}'`), `premium finish must keep ${label} in the mobile discovery dock`);
 }
 assert.doesNotMatch(dock, /label:\s*'(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD|Search)'/, 'premium finish must not regress the locked web-parity dock');
 assert.doesNotMatch(home + parityScreens + createSheet + accountHeader, /generic card-heavy|Lorem|\bFictional\b|\bTicketmaster\b|\bSpotify\b|\bTikTok\b|\bDICE\b/i, 'finished core surfaces must avoid placeholder or third-party mockup language');

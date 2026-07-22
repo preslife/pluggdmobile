@@ -1,5 +1,5 @@
-import { DiscoverParityScreen } from '../../src/features/parity/AppWideParityScreens';
+import { MusicDiscoveryDiscover } from '../../src/features/discovery/MusicDiscoveryDiscover';
 
 export default function DiscoverTabRoute() {
-  return <DiscoverParityScreen />;
+  return <MusicDiscoveryDiscover />;
 }

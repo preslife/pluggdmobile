@@ -1,3 +1,3 @@
-import { LiveMusicDashboardHome } from '../../src/features/home/live-music-dashboard-home';
+import { MusicDiscoveryHome } from '../../src/features/home/MusicDiscoveryHome';
 
-export default LiveMusicDashboardHome;
+export default MusicDiscoveryHome;

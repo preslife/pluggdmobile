@@ -30,7 +30,7 @@ export default function MiniPlayer() {
     skipToNext,
     skipToPrevious,
   } = usePlayback();
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [savedLocally, setSavedLocally] = useState(false);
   const [qaPlayerEnabled, setQaPlayerEnabled] = useState(false);
   const [qaPlaying, setQaPlaying] = useState(true);
@@ -58,7 +58,7 @@ export default function MiniPlayer() {
 
   useEffect(() => {
     setSavedLocally(false);
-    setCollapsed(true);
+    setCollapsed(false);
   }, [currentTrack?.id, normalizedPathname]);
 
   const activeTrack = currentTrack ?? (qaPlayerEnabled ? QA_TRACK : null);

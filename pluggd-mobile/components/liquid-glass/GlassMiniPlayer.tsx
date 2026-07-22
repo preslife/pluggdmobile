@@ -93,26 +93,6 @@ export function GlassMiniPlayer({
               </View>
             </Pressable>
 
-            <PlayerIconButton
-              accessibilityLabel="Collapse mini player"
-              icon="keyboard-arrow-down"
-              onPress={onToggleCollapse}
-            />
-          </View>
-
-          <View style={styles.actionRow}>
-            <View style={styles.workflowActions}>
-              <PlayerIconButton
-                accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
-                icon={liked ? 'favorite' : 'favorite-border'}
-                active={liked}
-                disabled={!canLike}
-                onPress={onLikePress}
-              />
-              <PlayerIconButton accessibilityLabel="Open lyrics and BarFlow" icon="edit" onPress={onLyricsPress} />
-              <PlayerIconButton accessibilityLabel="Open queue and playlist" icon="queue-music" onPress={onQueuePress} />
-            </View>
-
             <View style={styles.transportActions}>
               <PlayerIconButton accessibilityLabel="Previous track" icon="skip-previous" quiet onPress={onPrevious} />
               <PlayerIconButton
@@ -125,9 +105,8 @@ export function GlassMiniPlayer({
                 }}
               />
               <PlayerIconButton accessibilityLabel="Next track" icon="skip-next" quiet onPress={onNext} />
+              <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" quiet onPress={onMorePress} />
             </View>
-
-            <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" onPress={onMorePress} />
           </View>
 
           <View style={styles.progressTrack}>
@@ -238,7 +217,7 @@ function PlayerIconButton({
 
 const styles = StyleSheet.create({
   pressable: {
-    marginHorizontal: 28,
+    marginHorizontal: 20,
   },
   collapsedPressable: {
     alignSelf: 'flex-end',
@@ -259,17 +238,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    minHeight: 76,
+    minHeight: 64,
     shadowColor: '#000',
     shadowOpacity: 0.74,
     shadowRadius: 46,
     shadowOffset: { width: 0, height: 30 },
   },
   topRow: {
-    minHeight: 42,
-    paddingHorizontal: 11,
-    paddingTop: 7,
-    paddingBottom: 0,
+    minHeight: 64,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
@@ -301,7 +279,7 @@ const styles = StyleSheet.create({
   transportActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   discLift: {
     borderRadius: 999,

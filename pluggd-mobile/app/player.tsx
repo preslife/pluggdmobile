@@ -1,7 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
 import { edFonts } from '../src/design/editorial';
-import { EditorialTitle, type EditorialSegment } from '../components/EditorialTitle';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -16,13 +15,6 @@ import { formatDuration } from '../src/lib/mobileContent';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 
 const ORANGE = '#ff6600';
-
-function accentLastWord(value: string): EditorialSegment[] {
-  const trimmed = value.trim();
-  const idx = trimmed.lastIndexOf(' ');
-  if (idx < 0) return [{ text: trimmed, accent: true }];
-  return [{ text: trimmed.slice(0, idx + 1) }, { text: trimmed.slice(idx + 1), accent: true }];
-}
 
 export default function PlayerScreen() {
   const router = useRouter();
@@ -132,14 +124,7 @@ export default function PlayerScreen() {
         </View>
         <View style={styles.roomPane}>
           <Text style={styles.topTitle}>NOW PLAYING</Text>
-          <EditorialTitle
-            segments={currentTrack || params.title ? accentLastWord(title) : [{ text: title }]}
-            size={30}
-            lineHeight={34}
-            color="#FFFFFF"
-            accentColor={ORANGE}
-            numberOfLines={2}
-          />
+          <Text style={styles.roomTitle} numberOfLines={2}>{title}</Text>
           <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Seek playback" style={styles.progressWrap} onPress={handleScrub}>
             <View style={styles.progressTrack}>
@@ -209,15 +194,7 @@ export default function PlayerScreen() {
 
         <View style={styles.trackHeader}>
           <View style={styles.trackCopy}>
-            <EditorialTitle
-              segments={currentTrack || params.title ? accentLastWord(title) : [{ text: title }]}
-              size={31}
-              lineHeight={36}
-              color="#FFFFFF"
-              accentColor={ORANGE}
-              numberOfLines={2}
-              style={styles.trackTitle}
-            />
+            <Text style={styles.trackTitle} numberOfLines={2}>{title}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Open ${artist}`} onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
               <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
             </Pressable>
@@ -345,7 +322,8 @@ const styles = StyleSheet.create({
   fill: { width: '100%', height: '100%' },
   trackHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 22 },
   trackCopy: { flex: 1, minWidth: 0 },
-  trackTitle: { color: '#FFFFFF', fontSize: 31, lineHeight: 36, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  roomTitle: { color: '#FFFFFF', fontSize: 30, lineHeight: 34, fontFamily: pluggdFonts.displayExtraBold, letterSpacing: -0.8 },
+  trackTitle: { color: '#FFFFFF', fontSize: 31, lineHeight: 36, fontFamily: pluggdFonts.displayExtraBold, letterSpacing: -0.9 },
   trackArtist: { color: '#B3B3B3', fontSize: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
   saveButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
   progressWrap: { height: 28, justifyContent: 'center', marginTop: 22 },
@@ -361,7 +339,7 @@ const styles = StyleSheet.create({
   playerAction: { flex: 1, minHeight: 70, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', gap: 6 },
   playerActionText: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   infoCard: { borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 14, marginBottom: 12 },
-  infoTitle: { color: '#fff8ed', fontSize: 21, fontFamily: edFonts.serif, marginBottom: 7 },
+  infoTitle: { color: '#fff8ed', fontSize: 21, fontFamily: pluggdFonts.displayBold, marginBottom: 7 },
   infoBody: { color: '#B3B3B3', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   queueRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   queueDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ORANGE },
