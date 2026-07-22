@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
-import { GlassPanel, GlassPillTabs, LiquidBackground } from '../../../components/liquid-glass';
 import { CommunityComposer } from './CommunityComposer';
 import { CommunityFeedInterstitial } from './CommunityFeedInterstitials';
 import { CommunityBottomDockControls, CommunityInternalSwitcher } from './CommunityInternalSwitcher';
@@ -13,6 +12,9 @@ import { FEED_FILTERS, type CommunityFeedFilterKey, type CommunityTabKey } from 
 import { filterCommunityPosts, loadCommunityFeedBundle } from './communityFeedService';
 import { pluggdFonts } from '../../design/typography';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { PluggdImage } from '../../components/PluggdImage';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -37,16 +39,15 @@ function SecondaryRow({
   item,
   onPress,
 }: {
-  item: { id: string; title: string; subtitle?: string | null; eyebrow?: string | null; route?: string | null };
+  item: { id: string; title: string; subtitle?: string | null; eyebrow?: string | null; route?: string | null; imageUrl?: string | null; metric?: string | null };
   onPress: () => void;
 }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.rowTap} onPress={onPress}>
-      <GlassPanel intensity="default" radius={18} contentStyle={styles.rowCard}>
-        <Text style={styles.rowEyebrow}>{item.eyebrow || 'Community'}</Text>
-        <Text style={styles.rowTitle}>{item.title}</Text>
-        {item.subtitle ? <Text style={styles.rowSubtitle}>{item.subtitle}</Text> : null}
-      </GlassPanel>
+      {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={styles.rowImage} displayWidth={720} /> : <View style={[styles.rowImage, styles.rowFallback]}><MaterialIcons name="groups" size={30} color={COLORS.orange} /></View>}
+      <LinearGradient colors={['rgba(6,5,4,0.08)', 'rgba(6,5,4,0.92)']} style={StyleSheet.absoluteFillObject} />
+      <View style={styles.rowTop}><Text style={styles.rowEyebrow}>{item.eyebrow || 'Community'}</Text><MaterialIcons name="north-east" size={18} color={COLORS.white} /></View>
+      <View style={styles.rowCard}><Text style={styles.rowTitle}>{item.title}</Text>{item.subtitle ? <Text style={styles.rowSubtitle} numberOfLines={2}>{item.subtitle}</Text> : null}{item.metric ? <Text style={styles.rowMetric}>{item.metric}</Text> : null}</View>
     </Pressable>
   );
 }
@@ -69,14 +70,10 @@ export function CommunityFeedScreen() {
   const posts = useMemo(() => filterCommunityPosts(bundle?.posts ?? [], filter, hashtag), [bundle?.posts, filter, hashtag]);
 
   const feedHeader = (
-    <View style={{ paddingTop: Math.max(insets.top + 70, 108), paddingBottom: 10 }}>
-      {/* Web-parity compact title bar: centered "Community", globe on the right. */}
+    <View style={{ paddingTop: 4, paddingBottom: 10 }}>
       <View style={styles.header}>
-        <View style={styles.headerSide} />
-        <Text style={styles.heading}>Community</Text>
-        <View style={[styles.headerSide, styles.headerRight]}>
-          <MaterialIcons name="public" size={20} color={COLORS.muted} />
-        </View>
+        <View style={{ flex: 1 }}><Text style={styles.kicker}>SCENES IN MOTION</Text><Text style={styles.heading}>Community</Text><Text style={styles.headerBody}>Follow the conversations, works in progress and people moving independent music forward.</Text></View>
+        <View style={styles.communityMark}><MaterialIcons name="public" size={23} color={COLORS.orange} /></View>
       </View>
 
       {tab !== 'feed' ? (
@@ -87,18 +84,16 @@ export function CommunityFeedScreen() {
 
       {tab === 'feed' ? (
         <View style={styles.feedLead}>
-          <MobileStoriesRail title="Stories" compact />
-          <CommunityComposer />
           <View style={styles.switchWrap}>
             <CommunityInternalSwitcher value={tab} onChange={setTab} />
           </View>
-          <View style={styles.filters}>
-            <GlassPillTabs
-              value={filter}
-              items={FEED_FILTERS.map((item) => ({ value: item.key, label: item.label }))}
-              onChange={setFilter}
-            />
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+            {FEED_FILTERS.map((item) => {
+              const active = item.key === filter;
+              return <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: active }} style={[styles.filterTab, active && styles.filterTabActive]} onPress={() => setFilter(item.key)}><Text style={[styles.filterText, active && styles.filterTextActive]}>{item.label}</Text></Pressable>;
+            })}
+          </ScrollView>
+          <CommunityComposer />
         </View>
       ) : null}
     </View>
@@ -107,7 +102,7 @@ export function CommunityFeedScreen() {
   if (query.isLoading) {
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
+        <DiscoveryHeader />
         {feedHeader}
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.orange} />
@@ -119,7 +114,7 @@ export function CommunityFeedScreen() {
   if (query.isError) {
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
+        <DiscoveryHeader />
         {feedHeader}
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Community could not load</Text>
@@ -142,7 +137,7 @@ export function CommunityFeedScreen() {
 
     return (
       <View style={styles.screen}>
-        <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
+        <DiscoveryHeader />
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
@@ -158,7 +153,7 @@ export function CommunityFeedScreen() {
 
   return (
     <View style={styles.screen}>
-      <LiquidBackground tone="accent" style={StyleSheet.absoluteFill} />
+      <DiscoveryHeader />
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
@@ -168,6 +163,7 @@ export function CommunityFeedScreen() {
         renderItem={({ item, index }) => (
           <>
             <MobileSocialPostCard post={item} onMutated={() => void query.refetch()} />
+            {index === 0 ? <MobileStoriesRail title="Scene stories" compact /> : null}
             {index === 5 ? (
               <View style={styles.lowerShortcuts}>
                 <Text style={styles.lowerShortcutsTitle}>More ways in</Text>
@@ -187,13 +183,18 @@ export function CommunityFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  headerSide: { width: 32 },
-  headerRight: { alignItems: 'flex-end' },
-  heading: { flex: 1, textAlign: 'center', color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 18, lineHeight: 22, letterSpacing: -0.2 },
-  feedLead: { gap: 11 },
+  header: { paddingHorizontal: 20, paddingBottom: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  kicker: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 },
+  heading: { color: COLORS.white, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.2, marginTop: 3 },
+  headerBody: { color: COLORS.muted, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, marginTop: 6, maxWidth: 300 },
+  communityMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#3A332B', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  feedLead: { gap: 8 },
   switchWrap: { marginTop: 2 },
-  filters: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 4 },
+  filters: { paddingHorizontal: 20, paddingRight: 32, gap: 17 },
+  filterTab: { minHeight: 40, justifyContent: 'center', borderBottomWidth: 2, borderColor: 'transparent' },
+  filterTabActive: { borderColor: COLORS.orange },
+  filterText: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  filterTextActive: { color: COLORS.white },
   lowerShortcuts: { gap: 8, paddingTop: 4, paddingBottom: 4 },
   lowerShortcutsTitle: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginHorizontal: 16, textTransform: 'uppercase', letterSpacing: 0.8 },
   center: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
@@ -202,9 +203,13 @@ const styles = StyleSheet.create({
   emptyBody: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19 },
   retry: { marginTop: 8, height: 42, borderRadius: 21, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
   retryText: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
-  rowTap: { marginHorizontal: 16, marginBottom: 10 },
-  rowCard: { padding: 14, gap: 5 },
-  rowEyebrow: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
-  rowTitle: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBold, fontSize: 16 },
-  rowSubtitle: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
+  rowTap: { height: 210, marginHorizontal: 20, marginBottom: 12, borderRadius: 6, overflow: 'hidden', padding: 14, justifyContent: 'space-between' },
+  rowImage: { ...StyleSheet.absoluteFillObject },
+  rowFallback: { backgroundColor: '#211C17', alignItems: 'center', justifyContent: 'center' },
+  rowTop: { zIndex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowCard: { zIndex: 2, gap: 5 },
+  rowEyebrow: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, textTransform: 'uppercase', letterSpacing: 1.2 },
+  rowTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 20, lineHeight: 24 },
+  rowSubtitle: { color: '#DDD5CA', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
+  rowMetric: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' },
 });

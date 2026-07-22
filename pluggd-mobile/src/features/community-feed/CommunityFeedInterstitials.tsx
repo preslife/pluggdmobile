@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../../components/PluggdImage';
 import type { CommunityFeedBundle, CommunityInterstitialKind } from './communityFeedTypes';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const COLORS = {
   surface: '#171310',
@@ -96,9 +97,9 @@ export function CommunityFeedInterstitial({
                 <MaterialIcons name={kind === 'live_now' ? 'radio-button-checked' : kind === 'who_to_follow' ? 'person-add' : kind === 'nearby_events' ? 'event' : 'forum'} size={24} color={kind === 'live_now' ? COLORS.live : COLORS.orange} />
               </View>
             )}
-            <Text style={styles.cardEyebrow} numberOfLines={1}>{item.eyebrow}</Text>
-            <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-            <Text style={styles.cardSubtitle} numberOfLines={2}>{item.subtitle}</Text>
+            <LinearGradient colors={['rgba(6,5,4,0.06)', 'rgba(6,5,4,0.94)']} style={StyleSheet.absoluteFillObject} />
+            <View style={styles.cardTop}><Text style={styles.cardEyebrow} numberOfLines={1}>{item.eyebrow}</Text><MaterialIcons name="north-east" size={16} color={COLORS.white} /></View>
+            <View style={styles.cardCopy}><Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text><Text style={styles.cardSubtitle} numberOfLines={2}>{item.subtitle}</Text></View>
           </Pressable>
         ))}
       </ScrollView>
@@ -161,43 +162,41 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   card: {
-    width: 172,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: 'rgba(18,20,32,0.46)',
-    padding: 10,
-    gap: 7,
+    width: 210,
+    height: 184,
+    borderRadius: 6,
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
   },
   image: {
-    width: '100%',
-    height: 92,
-    borderRadius: 14,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.surface2,
   },
   imageFallback: {
-    width: '100%',
-    height: 92,
-    borderRadius: 14,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardEyebrow: {
-    color: 'rgba(255,255,255,0.44)',
+    color: COLORS.orange,
     fontSize: 10,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
+  cardTop: { zIndex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardCopy: { zIndex: 2 },
   cardTitle: {
     color: COLORS.white,
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 16,
+    lineHeight: 20,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   cardSubtitle: {
-    color: COLORS.muted,
+    color: '#D7CFC4',
     fontSize: 11,
     lineHeight: 15,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',

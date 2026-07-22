@@ -32,8 +32,9 @@ export function CommunityInternalSwitcher({
             style={[styles.pill, active && styles.pillActive]}
             onPress={() => onChange(tab.key)}
           >
-            <MaterialIcons name={tab.icon as any} size={15} color={active ? COLORS.white : COLORS.muted} />
+            <MaterialIcons name={tab.icon as any} size={17} color={active ? COLORS.orange : COLORS.muted} />
             <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
+            {active ? <View style={styles.activeLine} /> : null}
           </Pressable>
         );
       })}
@@ -54,10 +55,11 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
-      {controls.map((item) => (
+      {controls.map((item, index) => (
         <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} style={styles.quickButton} onPress={item.action}>
+          <Text style={styles.quickIndex}>{String(index + 1).padStart(2, '0')}</Text>
           <View style={styles.quickIcon}>
-            <MaterialIcons name={item.icon as any} size={17} color={COLORS.muted} />
+            <MaterialIcons name={item.icon as any} size={20} color={COLORS.orange} />
           </View>
           <Text style={styles.quickLabel}>{item.label}</Text>
         </Pressable>
@@ -68,25 +70,18 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
 
 const styles = StyleSheet.create({
   row: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 3,
-    gap: 7,
+    gap: 20,
   },
   pill: {
-    minHeight: 31,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: 'rgba(18,20,32,0.34)',
-    paddingHorizontal: 10,
+    minHeight: 44,
+    paddingHorizontal: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  pillActive: {
-    backgroundColor: 'rgba(255,255,255,0.075)',
-    borderColor: 'rgba(255,255,255,0.22)',
-  },
+  pillActive: {},
   label: {
     color: COLORS.muted,
     fontSize: 11,
@@ -96,28 +91,32 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
+  activeLine: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, backgroundColor: COLORS.orange },
   quickRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 2,
     paddingBottom: 2,
     gap: 9,
   },
   quickButton: {
-    minWidth: 94,
-    borderRadius: 16,
+    minWidth: 116,
+    minHeight: 92,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: 'rgba(18,20,32,0.44)',
     paddingHorizontal: 11,
-    paddingVertical: 9,
-    alignItems: 'center',
-    gap: 7,
+    paddingVertical: 10,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 5,
   },
+  quickIndex: { color: COLORS.muted, fontSize: 8.5, fontFamily: pluggdFonts.satoshiBlack, letterSpacing: 1 },
   quickIcon: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,102,0,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },

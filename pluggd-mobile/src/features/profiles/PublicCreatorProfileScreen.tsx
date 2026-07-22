@@ -529,15 +529,9 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
                     accessibilityState={{ selected: active }}
                     accessibilityLabel={`${tab.label} profile tab`}
                     onPress={() => setActiveTab(tab.key)}
-                    style={[
-                      styles.profileTab,
-                      {
-                        backgroundColor: active ? theme.colors.text : theme.colors.surface,
-                        borderColor: active ? theme.colors.text : theme.colors.border,
-                      },
-                    ]}
+                    style={[styles.profileTab, { borderColor: active ? theme.colors.accent : theme.colors.border }]}
                   >
-                    <Text style={[styles.profileTabText, { color: active ? theme.colors.background : theme.colors.textSecondary }]}>
+                    <Text style={[styles.profileTabText, { color: active ? theme.colors.accent : theme.colors.textSecondary }]}>
                       {tab.label}{typeof count === 'number' ? ` ${count}` : ''}
                     </Text>
                   </Pressable>
@@ -581,7 +575,7 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
                           <Pressable
                             key={item.id}
                             onPress={() => router.push(item.route as any)}
-                            style={[styles.contentCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                            style={styles.contentCard}
                           >
                             <View style={[styles.artwork, { backgroundColor: theme.colors.surfaceAlt }]}>
                               {item.imageUrl ? (
@@ -679,8 +673,7 @@ const styles = StyleSheet.create({
     top: 54,
     width: 42,
     height: 42,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -734,8 +727,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   followButton: {
-    height: 40,
-    borderRadius: 13,
+    height: 44,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -786,8 +779,7 @@ const styles = StyleSheet.create({
   },
   profileTab: {
     minHeight: 44,
-    borderRadius: 999,
-    borderWidth: 1,
+    borderBottomWidth: 2,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -806,14 +798,12 @@ const styles = StyleSheet.create({
   },
   contentCard: {
     width: 132,
-    borderRadius: 13,
-    borderWidth: 1,
-    padding: 8,
+    paddingBottom: 7,
   },
   artwork: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 10,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -833,15 +823,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   selectedGalleryCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 10,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 10,
     overflow: 'hidden',
   },
   selectedGalleryImage: {
     width: '100%',
     aspectRatio: 1.18,
-    borderRadius: 14,
+    borderRadius: 5,
     backgroundColor: '#171717',
   },
   selectedGalleryTitle: { fontFamily: pluggdFonts.satoshiBlack,
@@ -857,8 +847,8 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     minHeight: 58,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
@@ -869,9 +859,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   aboutCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 16,
   },
   aboutTitle: {
     fontFamily: 'Satoshi-Black',

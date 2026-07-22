@@ -63,11 +63,14 @@ for (const token of ['GlassHeroCard', 'GlassRailCard', 'LiquidBackground', 'Sect
   assert.match(parityScreens, new RegExp(escapeRegExp(token)), `Discover/Events/Market scaffold must use ${token}`);
 }
 
-for (const token of ['LiquidBackground', 'GlassPillTabs', 'MobileStoriesRail', 'CommunityComposer', 'MobileSocialPostCard']) {
+// Community now uses the flatter editorial discovery system so posts, filters,
+// and scene imagery carry the hierarchy. Glass remains reserved for persistent
+// system chrome (dock, mini-player and sheets), where the material is useful.
+for (const token of ['DiscoveryHeader', 'filterTabActive', 'MobileStoriesRail', 'CommunityComposer', 'MobileSocialPostCard']) {
   assert.match(community, new RegExp(escapeRegExp(token)), `Community feed must include ${token}`);
 }
 
-assert.match(composer, /GlassComposer/, 'community composer must use GlassComposer');
+assert.match(composer, /ADD TO THE SIGNAL[\s\S]*JOIN THE CONVERSATION/, 'community composer must use the compact editorial entry treatment');
 assert.match(composer + glassComposer, /Sign in to post/, 'community composer must keep signed-out compose gate');
 assert.match(composer + glassComposer, /Start a post/, 'community composer must keep signed-in compose entry');
 assert.match(stories, /GlassStoryRing/, 'stories rail must use GlassStoryRing');

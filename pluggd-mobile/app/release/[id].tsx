@@ -433,24 +433,6 @@ export default function ReleaseDetailScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 16, marginTop: 14 }}>
-          {/* Credits ledger */}
-          {creditRows.length ? (
-            <View style={styles.panel}>
-              <View style={styles.panelHeadRow}>
-                <Text style={styles.panelEyebrow}>CREDITS</Text>
-                <Text style={styles.panelHeadRight}>{creditRows.length} LISTED</Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                {creditRows.map((row) => (
-                  <View key={row.label} style={styles.creditRow}>
-                    <Text style={styles.creditLabel}>{row.label.toUpperCase()}</Text>
-                    <Text style={styles.creditValue} numberOfLines={1}>{row.value}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
           {/* Meta row + title + artist */}
           <View style={{ gap: 10 }}>
             <View style={styles.metaRow}>
@@ -505,7 +487,7 @@ export default function ReleaseDetailScreen() {
                 accessibilityLabel={`Unlock for ${creditsNeeded} credits`}
                 onPress={handleUnlock}
                 disabled={unlocking}
-                style={styles.actionCellWrap}
+                style={[styles.actionCellWrap, styles.primaryCellWrap]}
               >
                 <View style={styles.primaryAction}>
                   {unlocking ? (
@@ -525,7 +507,7 @@ export default function ReleaseDetailScreen() {
                 accessibilityState={{ disabled: trackList.length === 0 }}
                 disabled={trackList.length === 0}
                 onPress={handlePlayAll}
-                style={styles.actionCellWrap}
+                style={[styles.actionCellWrap, styles.primaryCellWrap]}
               >
                 <View style={[styles.primaryAction, isOwned && { backgroundColor: 'rgba(74,222,128,0.16)', borderColor: 'rgba(74,222,128,0.5)' }]}>
                   <MaterialIcons name="play-arrow" size={18} color={isOwned ? '#4ade80' : ed.onOrange} />
@@ -666,6 +648,23 @@ export default function ReleaseDetailScreen() {
               </View>
             ))}
           </View>
+
+          {creditRows.length ? (
+            <View style={styles.panel}>
+              <View style={styles.panelHeadRow}>
+                <Text style={styles.panelEyebrow}>FULL CREDITS</Text>
+                <Text style={styles.panelHeadRight}>{creditRows.length} CONTRIBUTORS</Text>
+              </View>
+              <View>
+                {creditRows.map((row) => (
+                  <View key={row.label} style={styles.creditRow}>
+                    <Text style={styles.creditLabel}>{row.label.toUpperCase()}</Text>
+                    <Text style={styles.creditValue} numberOfLines={1}>{row.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {/* Discussion */}
           <View style={styles.panel}>
@@ -812,11 +811,9 @@ const styles = StyleSheet.create({
   supportPillText: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.4, color: ed.cream },
 
   panel: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    padding: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,248,237,0.16)',
+    paddingVertical: 18,
     gap: 12,
   },
   panelHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
@@ -829,10 +826,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,248,237,0.1)',
+    paddingVertical: 12,
   },
   creditLabel: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: 'rgba(255,248,237,0.55)' },
   creditValue: { flexShrink: 1, fontFamily: edFonts.bodyBold, fontSize: 13.5, color: ed.cream },
@@ -879,11 +875,12 @@ const styles = StyleSheet.create({
   },
   statChipText: { fontFamily: edFonts.bodyBold, fontSize: 11.5, color: 'rgba(255,248,237,0.8)' },
 
-  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  actionCellWrap: { width: '47.5%', flexGrow: 1 },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,248,237,0.16)', paddingVertical: 12, gap: 0 },
+  actionCellWrap: { width: '33.33%' },
+  primaryCellWrap: { width: '100%', marginBottom: 8 },
   primaryAction: {
     minHeight: 50,
-    borderRadius: 12,
+    borderRadius: 5,
     backgroundColor: ed.orange,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.7)',
@@ -895,25 +892,18 @@ const styles = StyleSheet.create({
   },
   primaryActionText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.onOrange },
   ghostAction: {
-    minHeight: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    flexDirection: 'row',
+    minHeight: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingHorizontal: 8,
+    gap: 5,
+    paddingHorizontal: 4,
   },
   ghostActionText: { fontFamily: edFonts.bodyBold, fontSize: 13, color: ed.cream },
 
   playbackCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,102,0,0.4)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,102,0,0.42)',
+    paddingVertical: 18,
     gap: 12,
   },
   playerHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -932,7 +922,7 @@ const styles = StyleSheet.create({
   },
   playBar: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: 5,
     backgroundColor: ed.orange,
     alignItems: 'center',
     justifyContent: 'center',
@@ -941,11 +931,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: 'rgba(255,248,237,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 11,
+    paddingVertical: 11,
   },
   trackRowActive: { borderColor: 'rgba(255,102,0,0.55)' },
   trackNumber: {
@@ -965,15 +953,10 @@ const styles = StyleSheet.create({
   scrubTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,248,237,0.16)' },
   scrubFill: { height: 4, borderRadius: 2, backgroundColor: ed.orange },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statsGrid: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,248,237,0.14)', paddingVertical: 14 },
   statCell: {
-    width: '47.5%',
-    flexGrow: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    padding: 13,
+    flex: 1,
+    paddingHorizontal: 5,
     gap: 4,
   },
   statCellLabel: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: 'rgba(255,248,237,0.5)' },

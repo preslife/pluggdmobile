@@ -244,15 +244,19 @@ export function MyProfileScreen() {
           </View>
 
           <View style={styles.accountRail}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" style={[styles.accountRailButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} onPress={() => go('/wallet')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open library" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/library')}>
+              <MaterialIcons name="library-music" size={21} color={theme.colors.accent} />
+              <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Library</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/wallet')}>
               <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.accent} />
               <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Wallet</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open tickets" style={[styles.accountRailButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} onPress={() => go('/tickets')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open tickets" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/tickets')}>
               <MaterialIcons name="confirmation-number" size={21} color={theme.colors.accent} />
               <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Tickets</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open settings" style={[styles.accountRailButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} onPress={() => go('/settings')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open settings" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/settings')}>
               <MaterialIcons name="settings" size={21} color={theme.colors.accent} />
               <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Settings</Text>
             </Pressable>
@@ -337,7 +341,7 @@ function GridList({ items, empty }: { items: Array<{ id: string; title: string; 
   return (
     <View style={styles.grid}>
       {items.map((item) => (
-        <Pressable key={`${item.route}-${item.id}`} style={[styles.gridItem, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={() => router.push(item.route as any)}>
+        <Pressable key={`${item.route}-${item.id}`} style={styles.gridItem} onPress={() => router.push(item.route as any)}>
           <View style={[styles.gridArt, { backgroundColor: theme.colors.surfaceAlt }]}>
             {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <MaterialIcons name="graphic-eq" size={22} color={theme.colors.accent} />}
           </View>
@@ -358,7 +362,7 @@ const styles = StyleSheet.create({
   identityBlock: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 6, paddingBottom: 18 },
   profilePremiumHeader: { width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 14 },
   profileHero: { width: '100%', marginBottom: 18 },
-  profileCover: { width: '100%', height: 158, borderRadius: 28, borderWidth: 1, overflow: 'hidden', marginBottom: -50 },
+  profileCover: { width: '100%', height: 158, borderRadius: 6, borderWidth: 1, overflow: 'hidden', marginBottom: -50 },
   profileCoverFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   profileCoverText: { fontFamily: 'Satoshi-Bold', fontSize: 13 },
   avatarWrap: { width: 120, height: 120, marginBottom: 10 },
@@ -366,7 +370,7 @@ const styles = StyleSheet.create({
   avatarPlus: { position: 'absolute', right: 2, bottom: 4, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontFamily: 'Satoshi-Black', fontSize: 36 },
   profileBadgeRow: { minHeight: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  profileBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, overflow: 'hidden', fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase' },
+  profileBadge: { borderBottomWidth: 2, paddingHorizontal: 4, paddingVertical: 5, overflow: 'hidden', fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase' },
   profileName: { fontFamily: 'Satoshi-Black', fontSize: 29, lineHeight: 34, letterSpacing: -0.4 },
   profileHandle: { marginTop: 2, fontSize: 16, lineHeight: 21 },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 34, marginTop: 22 },
@@ -375,23 +379,23 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 14, lineHeight: 18, marginTop: 2 },
   bio: { marginTop: 18, fontSize: 16, lineHeight: 22, textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 12, marginTop: 22 },
-  actionButton: { flex: 1, minWidth: 146, minHeight: 48, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  actionButton: { flex: 1, minWidth: 146, minHeight: 48, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   actionButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  accountRail: { width: '100%', flexDirection: 'row', gap: 8, marginTop: 14 },
-  accountRailButton: { flex: 1, minHeight: 52, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  accountRail: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
+  accountRailButton: { width: '50%', minHeight: 58, borderBottomWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', gap: 4 },
   accountRailText: { fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 16 },
   tabBar: { height: 58, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   profileTab: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' },
   profileTabIndicator: { position: 'absolute', bottom: 0, width: 44, height: 2, borderRadius: 1 },
   postList: { gap: 12, paddingTop: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 16 },
-  gridItem: { width: '48.5%', borderRadius: 16, borderWidth: 1, padding: 10 },
-  gridArt: { height: 118, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  gridItem: { width: '48.5%', paddingBottom: 8 },
+  gridArt: { height: 146, borderRadius: 5, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   gridTitle: { marginTop: 9, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   gridMeta: { marginTop: 3, fontSize: 12 },
-  emptyPanel: { margin: 16, borderRadius: 16, borderWidth: 1, padding: 18, gap: 7 },
+  emptyPanel: { margin: 16, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 24, gap: 7 },
   emptyTitle: { fontFamily: 'Satoshi-Bold', fontSize: 16, textAlign: 'center' },
   emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  primaryButton: { minHeight: 48, borderRadius: 24, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { minHeight: 48, borderRadius: 5, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 14, color: '#0a0806' },
 });

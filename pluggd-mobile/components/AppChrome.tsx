@@ -14,6 +14,7 @@ export function AppChrome() {
   const ownsHeader =
     normalized === '/' ||
     normalized === '/discover' ||
+    normalized === '/community' ||
     normalized === '/events' ||
     normalized === '/mixes' ||
     normalized === '/soundboards' ||
@@ -31,6 +32,9 @@ export function AppChrome() {
     normalized.startsWith('/release/') ||
     normalized.startsWith('/mixes/') ||
     normalized.startsWith('/product/') ||
+    normalized.startsWith('/beat/') ||
+    normalized.startsWith('/sample-pack/') ||
+    normalized.startsWith('/soundboards/') ||
     normalized === '/purchases' ||
     normalized === '/following';
   const hidden =

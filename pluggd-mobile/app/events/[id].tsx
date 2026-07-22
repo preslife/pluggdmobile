@@ -99,6 +99,17 @@ export default function EventDetailScreen() {
               <Meta label="Interest" value={`${event.rsvp_count ?? 0}`} />
             </View>
 
+            <View style={styles.buttonRow}>
+              <Pressable style={styles.primaryButton} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
+                <MaterialIcons name="confirmation-number" size={20} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>Tickets / RSVP</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
+                <MaterialIcons name="forum" size={20} color={PLUGGD_ORANGE} />
+                <Text style={styles.secondaryButtonText}>Event thread</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.statusCard}>
               <Text style={styles.metaLabel}>Your status</Text>
               <Text style={styles.statusText}>
@@ -120,17 +131,6 @@ export default function EventDetailScreen() {
             {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
 
             <MobileStoriesRail eventId={event.id} title="Event moments" />
-
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
-                <MaterialIcons name="confirmation-number" size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Tickets / RSVP</Text>
-              </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
-                <MaterialIcons name="forum" size={20} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryButtonText}>Event thread</Text>
-              </Pressable>
-            </View>
 
             {culture.data?.attendance.attendees.length ? (
               <View style={styles.contextCard}>
@@ -259,34 +259,34 @@ const styles = StyleSheet.create({
   backButton: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  hero: { height: 310, borderRadius: 8, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#262626' },
+  hero: { height: 270, borderRadius: 6, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   heroImage: { width: '100%', height: '100%' },
   eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textTransform: 'uppercase', marginTop: 18 },
   title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
   subtitle: { color: '#B8B8B8', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
-  metaRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  metaCard: { flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 12 },
+  metaRow: { flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
+  metaCard: { flex: 1, paddingVertical: 13, paddingRight: 8 },
   metaLabel: { color: '#8E8E8E', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textTransform: 'uppercase' },
   metaValue: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
   description: { color: '#D4D4D4', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
-  statusCard: { marginTop: 16, borderRadius: 14, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, gap: 8 },
+  statusCard: { marginTop: 18, borderBottomWidth: 1, borderColor: '#2B2723', paddingBottom: 14, gap: 8 },
   statusText: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   rsvpRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  rsvpButton: { minHeight: 34, borderRadius: 17, borderWidth: 1, borderColor: '#262626', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  rsvpButtonActive: { borderColor: PLUGGD_ORANGE, backgroundColor: 'rgba(255,102,0,0.15)' },
+  rsvpButton: { minHeight: 44, borderBottomWidth: 2, borderColor: '#37312C', paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  rsvpButtonActive: { borderColor: PLUGGD_ORANGE },
   rsvpText: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'capitalize' },
   rsvpTextActive: { color: PLUGGD_ORANGE },
   buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
-  primaryButton: { flex: 1, height: 54, borderRadius: 8, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  primaryButton: { flex: 1.25, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  secondaryButton: { flex: 1, height: 54, borderRadius: 8, borderWidth: 1, borderColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButton: { flex: 0.75, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  liveCard: { marginTop: 16, borderRadius: 8, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, flexDirection: 'row', alignItems: 'center' },
-  ticketCard: { marginTop: 16, borderRadius: 8, borderWidth: 1, borderColor: '#3B281D', backgroundColor: '#171310', padding: 13, flexDirection: 'row', alignItems: 'center' },
+  liveCard: { minHeight: 74, marginTop: 2, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
+  ticketCard: { minHeight: 74, marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B281D', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
   liveText: { flex: 1, marginLeft: 11 },
   liveTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   liveMeta: { color: '#AFAFAF', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
-  contextCard: { marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 14, gap: 12 },
+  contextCard: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 14, gap: 12 },
   contextHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   contextTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   contextMeta: { color: '#8E8E9F', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
@@ -295,16 +295,16 @@ const styles = StyleSheet.create({
   attendeeImage: { width: '100%', height: '100%' },
   attendeeInitial: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   contextGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 12 },
-  contextTile: { flexGrow: 1, flexBasis: '47%', minHeight: 112, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, gap: 8 },
+  contextTile: { flexGrow: 1, flexBasis: '47%', minHeight: 112, borderTopWidth: 2, borderColor: '#513422', backgroundColor: '#14110F', padding: 13, gap: 8 },
   contextTileTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   contextTileMeta: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  threadLinkCard: { marginBottom: 10, borderRadius: 14, borderWidth: 1, borderColor: '#3B281D', backgroundColor: 'rgba(255,102,0,0.08)', padding: 13, flexDirection: 'row', alignItems: 'center' },
+  threadLinkCard: { minHeight: 72, marginBottom: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B281D', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { color: '#FFFFFF', fontSize: 19, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 20, marginBottom: 10 },
-  commentComposer: { borderRadius: 14, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 12, gap: 10 },
+  commentComposer: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 12, gap: 10 },
   commentInput: { minHeight: 70, color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-  commentButton: { height: 42, borderRadius: 21, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
+  commentButton: { height: 46, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
   commentButtonText: { color: '#0a0806', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  commentCard: { marginTop: 10, borderRadius: 14, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13 },
+  commentCard: { marginTop: 2, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 13 },
   commentBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   commentMeta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
 });

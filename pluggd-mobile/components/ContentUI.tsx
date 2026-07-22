@@ -198,9 +198,7 @@ export function ListCard({
       style={[
         styles.listCard,
         {
-          backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
-          shadowColor: theme.colors.shadow,
         },
       ]}
     >
@@ -372,21 +370,16 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
   },
   listCard: {
-    minHeight: 72,
-    borderRadius: pluggdRadii.control,
-    borderWidth: 1,
-    padding: 10,
+    minHeight: 76,
+    borderBottomWidth: 1,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 7 },
   },
   thumb: {
-    width: 50,
-    height: 50,
-    borderRadius: pluggdRadii.control,
+    width: 54,
+    height: 54,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

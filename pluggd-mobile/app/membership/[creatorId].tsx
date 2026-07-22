@@ -262,7 +262,7 @@ export default function CreatorMembershipScreen() {
 
         {/* ── Already subscribed banner ── */}
         {existingMembership && (
-          <View className="mx-4 mt-4 p-4 rounded-2xl bg-primary/10 border border-primary/20 flex-row items-center gap-3">
+          <View className="mx-4 mt-4 py-4 border-y border-primary/20 flex-row items-center gap-3">
             <SymbolIcon name="verified" className="text-primary text-2xl" />
             <View className="flex-1">
               <Text className="text-white font-bold">
@@ -318,9 +318,9 @@ export default function CreatorMembershipScreen() {
                   key={tier.id}
                   onPress={() => setSelectedTier(isSelected ? null : tier.id)}
                   activeOpacity={0.85}
-                  className={`rounded-2xl overflow-hidden border ${
+                  className={`overflow-hidden border-y ${
                     isSelected ? 'border-primary' : 'border-white/10'
-                  } bg-zinc-900/80`}
+                  }`}
                 >
                   {/* Tier header */}
                   <View
@@ -376,7 +376,7 @@ export default function CreatorMembershipScreen() {
                         <TouchableOpacity
                           onPress={() => handleSubscribe(tier)}
                           disabled={purchasing}
-                          className="w-full h-12 rounded-full items-center justify-center flex-row gap-2"
+                        className="w-full h-12 rounded-md items-center justify-center flex-row gap-2"
                           style={{ backgroundColor: accentColor }}
                         >
                           {purchasing ? (
@@ -393,7 +393,7 @@ export default function CreatorMembershipScreen() {
                       )}
 
                       {isFull && (
-                        <View className="w-full h-12 rounded-full items-center justify-center bg-zinc-800">
+                        <View className="w-full h-12 rounded-md items-center justify-center bg-zinc-800">
                           <Text className="text-zinc-500 font-medium">Tier Full</Text>
                         </View>
                       )}
