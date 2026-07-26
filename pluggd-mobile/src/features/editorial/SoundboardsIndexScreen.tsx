@@ -1,5 +1,5 @@
 /**
- * Soundboards — direct mobile port of the web /soundboards index:
+ * Soundboards — selected mobile creator-sketchbook system:
  * "NEW CORE / Creator Sketchbooks" chips, "Ideas grow in public."
  * header, Browse Releases shortcut, search, Updated/Trending/Featured
  * chips, and the dense board cards (cover with Soundboard pill, title,

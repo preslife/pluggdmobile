@@ -14,7 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { PremiumScreenBackdrop, PremiumScreenHeader } from '../components/PluggdPrimitives';
+import { PremiumScreenHeader } from '../components/PluggdPrimitives';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
@@ -139,7 +139,7 @@ export default function WalletScreen() {
   };
 
   return (
-    <PremiumScreenBackdrop tone="muted" style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -258,7 +258,7 @@ export default function WalletScreen() {
                 style={[
                   styles.packCard,
                   {
-                    backgroundColor: selected ? theme.colors.surfaceStrong : theme.colors.surface,
+                    backgroundColor: selected ? 'rgba(255,102,0,0.06)' : 'transparent',
                     borderColor: selected ? theme.colors.accent : theme.colors.border,
                     shadowColor: theme.colors.shadow,
                   },
@@ -354,7 +354,7 @@ export default function WalletScreen() {
         <View
           style={[
             styles.entitlementCard,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            { borderColor: theme.colors.border },
           ]}
         >
           <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Wallet vault</Text>
@@ -383,7 +383,7 @@ export default function WalletScreen() {
           <View
             style={[
               styles.activityCard,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              { borderColor: theme.colors.border },
             ]}
           >
             <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Recent activity</Text>
@@ -397,7 +397,7 @@ export default function WalletScreen() {
           </View>
         )}
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   infoButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
+    borderRadius: 5,
     backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 16,
+    borderRadius: 5,
     padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   balanceIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 14,
+    borderRadius: 5,
     backgroundColor: '#21130E',
     borderWidth: 1,
     borderColor: '#3B261A',
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontSize: 27,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    fontFamily: pluggdFonts.displayExtraBold,
   },
   balanceLabel: {
     fontSize: 15,
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 21,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    fontFamily: pluggdFonts.displayBold,
   },
   balanceValue: {
     color: '#8F8F8F',
@@ -577,21 +577,20 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   packList: {
-    gap: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#262626',
   },
   packCard: {
     minHeight: 74,
-    backgroundColor: '#171310',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#262626',
-    borderRadius: 14,
-    paddingHorizontal: 13,
+    borderRadius: 0,
+    paddingHorizontal: 2,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0,
   },
   packCardSelected: {
     borderColor: PLUGGD_ORANGE,
@@ -600,7 +599,7 @@ const styles = StyleSheet.create({
   packIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 5,
     backgroundColor: '#222222',
     alignItems: 'center',
     justifyContent: 'center',
@@ -667,7 +666,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     height: 54,
-    borderRadius: 16,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -677,9 +676,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   ctaText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    color: '#120B06',
+    fontSize: 13,
+    letterSpacing: 0.8,
+    fontFamily: pluggdFonts.satoshiBlack,
   },
   restoreButton: {
     paddingVertical: 12,
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111111',
     borderWidth: 1,
     borderColor: '#262626',
-    borderRadius: 14,
+    borderRadius: 5,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -709,18 +709,20 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   activityCard: {
-    backgroundColor: '#171310',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#262626',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 0,
+    paddingVertical: 14,
     marginTop: 16,
   },
   entitlementCard: {
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#262626',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 0,
+    paddingVertical: 14,
     marginTop: 12,
     marginBottom: 12,
   },

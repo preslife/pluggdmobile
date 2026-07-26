@@ -156,11 +156,23 @@ export function MyProfileScreen() {
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.signedOut}>
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Sign in to build your profile</Text>
-          <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Your posts, playlists, tickets and community circles collect here.</Text>
-          <Pressable style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]} onPress={() => go('/auth/login')}>
-            <Text style={styles.primaryButtonText}>Sign in</Text>
-          </Pressable>
+          <View style={[styles.signedOutPanel, { borderColor: theme.colors.border }]}>
+            <View style={[styles.signedOutRule, { backgroundColor: theme.colors.accent }]} />
+            <Text style={[styles.signedOutEyebrow, { color: theme.colors.accent }]}>MY PLUGGD</Text>
+            <Text style={[styles.signedOutTitle, { color: theme.colors.text }]}>Build the world around your sound.</Text>
+            <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
+              Sign in to collect posts, playlists, tickets, saved music and the communities you move with.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to My PLUGGD"
+              style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}
+              onPress={() => go('/auth/login')}
+            >
+              <Text style={styles.primaryButtonText}>Sign in</Text>
+              <MaterialIcons name="arrow-forward" size={18} color="#0a0806" />
+            </Pressable>
+          </View>
         </View>
       </PremiumScreenBackdrop>
     );
@@ -356,7 +368,12 @@ function GridList({ items, empty }: { items: Array<{ id: string; title: string; 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: 0 },
-  signedOut: { flex: 1, minHeight: 540, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  signedOut: { flex: 1, minHeight: 540, paddingHorizontal: 16, justifyContent: 'center' },
+  signedOutPanel: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 26 },
+  signedOutRule: { width: 42, height: 4, borderRadius: 2, marginBottom: 17 },
+  signedOutEyebrow: { fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 1.6 },
+  signedOutTitle: { maxWidth: 320, marginTop: 8, fontFamily: 'Sora-ExtraBold', fontSize: 30, lineHeight: 34, letterSpacing: -0.8 },
+  signedOutBody: { maxWidth: 320, marginTop: 10, fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 21 },
   topBar: { height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   topIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   identityBlock: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 6, paddingBottom: 18 },
@@ -371,7 +388,7 @@ const styles = StyleSheet.create({
   avatarInitial: { fontFamily: 'Satoshi-Black', fontSize: 36 },
   profileBadgeRow: { minHeight: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   profileBadge: { borderBottomWidth: 2, paddingHorizontal: 4, paddingVertical: 5, overflow: 'hidden', fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase' },
-  profileName: { fontFamily: 'Satoshi-Black', fontSize: 29, lineHeight: 34, letterSpacing: -0.4 },
+  profileName: { fontFamily: 'Sora-ExtraBold', fontSize: 29, lineHeight: 34, letterSpacing: -0.6 },
   profileHandle: { marginTop: 2, fontSize: 16, lineHeight: 21 },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 34, marginTop: 22 },
   statItem: { alignItems: 'center', minWidth: 68 },
@@ -394,8 +411,8 @@ const styles = StyleSheet.create({
   gridTitle: { marginTop: 9, fontFamily: 'Satoshi-Bold', fontSize: 14 },
   gridMeta: { marginTop: 3, fontSize: 12 },
   emptyPanel: { margin: 16, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 24, gap: 7 },
-  emptyTitle: { fontFamily: 'Satoshi-Bold', fontSize: 16, textAlign: 'center' },
+  emptyTitle: { fontFamily: 'Sora-Bold', fontSize: 16, textAlign: 'left' },
   emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  primaryButton: { minHeight: 48, borderRadius: 5, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { alignSelf: 'flex-start', minHeight: 48, marginTop: 20, borderRadius: 5, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 14, color: '#0a0806' },
 });

@@ -269,7 +269,13 @@ export default function CreateLiveRoomScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.topBar}>
-          <Pressable style={styles.iconButton} onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={6}
+            style={styles.iconButton}
+            onPress={() => router.back()}
+          >
             <MaterialIcons name="chevron-left" size={27} color="#FFFFFF" />
           </Pressable>
 
@@ -288,6 +294,9 @@ export default function CreateLiveRoomScreen() {
             return (
               <Pressable
                 key={item.key}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title}. ${item.description}`}
+                accessibilityState={{ selected }}
                 style={[styles.modeCard, selected && styles.modeCardSelected]}
                 onPress={() => handleModePress(item.key)}
               >
@@ -391,11 +400,21 @@ export default function CreateLiveRoomScreen() {
               </Text>
             </View>
             <View style={styles.stepper}>
-              <Pressable style={styles.stepperButton} onPress={() => incrementStage(-1)}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remove one stage participant"
+                style={styles.stepperButton}
+                onPress={() => incrementStage(-1)}
+              >
                 <MaterialIcons name="remove" size={18} color="#FFFFFF" />
               </Pressable>
               <Text style={styles.stepperValue}>{maxStageParticipants}</Text>
-              <Pressable style={styles.stepperButton} onPress={() => incrementStage(1)}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add one stage participant"
+                style={styles.stepperButton}
+                onPress={() => incrementStage(1)}
+              >
                 <MaterialIcons name="add" size={18} color="#FFFFFF" />
               </Pressable>
             </View>
@@ -413,15 +432,22 @@ export default function CreateLiveRoomScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={createRoom} disabled={saving}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={scheduleMode === 'now' ? 'Start room' : 'Schedule room'}
+          accessibilityState={{ disabled: saving }}
+          style={styles.cta}
+          onPress={createRoom}
+          disabled={saving}
+        >
           {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color="#0A0806" />
           ) : (
             <>
               <MaterialIcons
                 name={scheduleMode === 'now' ? 'settings-input-antenna' : 'event'}
                 size={21}
-                color="#FFFFFF"
+                color="#0A0806"
               />
               <Text style={styles.ctaText}>{scheduleMode === 'now' ? 'Start room' : 'Schedule room'}</Text>
             </>
@@ -446,7 +472,13 @@ function SegmentButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.segmentButton, active && styles.segmentButtonActive]} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      style={[styles.segmentButton, active && styles.segmentButtonActive]}
+      onPress={onPress}
+    >
       <Text style={[styles.segmentButtonText, active && styles.segmentButtonTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -502,9 +534,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 5,
     backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
@@ -535,13 +567,13 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginTop: 2,
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginBottom: 10,
   },
   modeGrid: {
@@ -553,7 +585,7 @@ const styles = StyleSheet.create({
   modeCard: {
     width: '48.8%',
     minHeight: 150,
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#171310',
@@ -572,7 +604,7 @@ const styles = StyleSheet.create({
   modeIconBox: {
     width: 42,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 5,
     backgroundColor: '#222222',
     alignItems: 'center',
     justifyContent: 'center',
@@ -593,18 +625,18 @@ const styles = StyleSheet.create({
   modeTitle: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold,
   },
   modeDescription: {
     color: '#AFAFAF',
     fontSize: 12,
     lineHeight: 17,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium,
     marginTop: 7,
   },
   card: {
     backgroundColor: '#171310',
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 14,
@@ -613,7 +645,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 19,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold,
     marginBottom: 10,
   },
   fieldLabel: {
@@ -626,13 +658,13 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#303030',
     backgroundColor: '#101010',
     color: '#FFFFFF',
     fontSize: 15,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium,
     paddingHorizontal: 12,
   },
   textArea: {
@@ -642,7 +674,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#303030',
     backgroundColor: '#101010',
@@ -651,8 +683,8 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 7,
+    height: 44,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -687,7 +719,7 @@ const styles = StyleSheet.create({
   rowIconBox: {
     width: 42,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 5,
     backgroundColor: '#222222',
     alignItems: 'center',
     justifyContent: 'center',
@@ -701,13 +733,13 @@ const styles = StyleSheet.create({
   rowTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold,
   },
   rowSubtitle: {
     color: '#A5A5A5',
     fontSize: 12,
     lineHeight: 17,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium,
     marginTop: 4,
   },
   stepperRow: {
@@ -722,8 +754,8 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   stepper: {
-    height: 42,
-    borderRadius: 8,
+    height: 44,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#343434',
     backgroundColor: '#101010',
@@ -731,8 +763,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepperButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -744,7 +776,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   infoCard: {
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#111111',
@@ -758,7 +790,7 @@ const styles = StyleSheet.create({
     color: '#B8B8B8',
     fontSize: 13,
     lineHeight: 19,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiMedium,
   },
   footer: {
     position: 'absolute',
@@ -774,7 +806,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     height: 56,
-    borderRadius: 8,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -782,8 +814,8 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   ctaText: {
-    color: '#FFFFFF',
+    color: '#0A0806',
     fontSize: 18,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBlack,
   },
 });

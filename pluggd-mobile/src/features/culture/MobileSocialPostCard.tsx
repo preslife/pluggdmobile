@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   },
   destinationPill: {
     minHeight: 26,
-    borderRadius: 13,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: 'rgba(255,255,255,0.045)',
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   },
   singleMedia: {
     height: 244,
-    borderRadius: 16,
+    borderRadius: 5,
     overflow: 'hidden',
     backgroundColor: COLORS.surface2,
   },
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    borderRadius: 16,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   gridMedia: {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   videoCard: {
     minHeight: 76,
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface2,
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   },
   audioCard: {
     minHeight: 74,
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface2,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   },
   linkCard: {
     minHeight: 86,
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface2,
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   quoteCard: {
-    borderRadius: 16,
+    borderRadius: 5,
   },
   quoteContent: {
     padding: 12,
@@ -670,12 +670,12 @@ const styles = StyleSheet.create({
   },
   quoteImage: {
     height: 92,
-    borderRadius: 12,
+    borderRadius: 4,
     overflow: 'hidden',
     backgroundColor: COLORS.canvas,
   },
   pollCard: {
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface2,
@@ -688,8 +688,8 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
   pollOption: {
-    minHeight: 42,
-    borderRadius: 12,
+    minHeight: 44,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',

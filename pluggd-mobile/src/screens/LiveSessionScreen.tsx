@@ -1528,7 +1528,7 @@ const styles = StyleSheet.create({
   hostName: {
     color: '#FFFFFF',
     fontSize: 21,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     maxWidth: 170,
   },
   liveMetaRow: {
@@ -1603,7 +1603,7 @@ const styles = StyleSheet.create({
   placeholderTitle: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginTop: 14,
     textAlign: 'center',
   },
@@ -1662,7 +1662,7 @@ const styles = StyleSheet.create({
   sessionTitle: {
     color: '#FFFFFF',
     fontSize: 25,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   sessionSubtitle: {
     color: '#D1D1D1',
@@ -1994,7 +1994,7 @@ const styles = StyleSheet.create({
   audioTitle: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   audioSubtitle: {
     color: '#C9C9C9',

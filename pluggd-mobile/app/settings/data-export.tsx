@@ -1,88 +1,90 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { SymbolIcon } from '../../components/SymbolIcon';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { pluggdFonts } from '../../src/design/typography';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 const DATA_ITEMS = [
-  { id: 'purchases', label: 'Purchases', icon: 'receipt_long' },
-  { id: 'messages', label: 'Messages', icon: 'chat' },
-  { id: 'media', label: 'Posts & Media', icon: 'photo_library' },
-];
+  { id: 'profile', label: 'Profile & account', detail: 'Identity, preferences and account history', icon: 'person-outline' },
+  { id: 'purchases', label: 'Purchases & support', detail: 'Receipts, tickets, memberships and wallet activity', icon: 'receipt-long' },
+  { id: 'messages', label: 'Messages & community', detail: 'Messages, comments and social interactions', icon: 'chat-bubble-outline' },
+  { id: 'media', label: 'Posts & media', detail: 'Uploads, posts, playlists and saved items', icon: 'library-music' },
+] as const;
 
 export default function DataExportScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+
+  const requestExport = () => {
+    Alert.alert('Identity verification required', 'Secure in-app export requests are being finalised. For now, request your archive through PLUGGD support or web account settings.');
+  };
 
   return (
-    <View className="flex-1 justify-between overflow-hidden bg-background-dark">
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.back, { borderColor: theme.colors.border }]}>
+          <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
+        </Pressable>
 
-      <View className="relative z-10 flex-row items-center justify-center border-b border-white/5 bg-background-dark/50 p-6 pt-14">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="absolute left-4 top-14 h-10 w-10 items-center justify-center rounded-full bg-white/5"
-        >
-          <SymbolIcon name="arrow_back" className="text-white" style={{ fontSize: 22 }} />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold tracking-tight text-white">Data Export Request</Text>
-      </View>
-
-      <View className="relative z-10 flex-1 items-center justify-center px-6 py-8">
-        <View className="relative mb-12 items-center justify-center">
-          <View className="absolute h-40 w-40 scale-150 rounded-full bg-primary/20 blur-3xl" />
-          <View className="relative h-40 w-40 items-center justify-center rounded-full border-4 border-white/5 bg-surface-dark shadow-2xl">
-            <View className="absolute inset-0 -rotate-45 rounded-full border-4 border-b-transparent border-l-transparent border-r-primary/40 border-t-primary" />
-            <SymbolIcon name="hourglass_top" className="text-primary" style={{ fontSize: 64 }} />
+        <View style={styles.hero}>
+          <View style={[styles.signal, { borderColor: theme.colors.border }]}>
+            <MaterialIcons name="archive" size={32} color={theme.colors.accent} />
+            <Text style={[styles.signalText, { color: theme.colors.textSubtle }]}>SECURE ARCHIVE</Text>
           </View>
-          <View className="absolute -bottom-5 flex-row items-center gap-2 rounded-full border border-primary/30 bg-[#2a221a] px-5 py-2 shadow-lg">
-            <View className="h-2.5 w-2.5 rounded-full bg-primary" />
-            <Text className="text-xs font-bold uppercase tracking-wider text-primary">
-              In Progress
-            </Text>
-          </View>
+          <Text style={[styles.kicker, { color: theme.colors.accent }]}>DATA EXPORT</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Take your PLUGGD history<Text style={styles.titleAccent}> with you.</Text></Text>
+          <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Request a portable copy of the personal data connected to your account. We verify every request before preparing the archive.</Text>
         </View>
 
-        <View className="w-full gap-6">
-          <View className="items-center gap-4">
-            <Text className="text-center text-3xl font-bold tracking-tight text-white">
-              Preparing Archive
-            </Text>
-            <Text className="px-4 text-center text-base leading-relaxed text-gray-400">
-              We are currently compiling a secure archive of your personal data. This process happens in the background.
-            </Text>
-          </View>
-
-          <View className="w-full rounded-2xl border border-white/5 bg-white/5 p-6 shadow-inner">
-            <Text className="mb-4 border-b border-white/5 pb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-              Data Included
-            </Text>
-            <View className="gap-4">
-              {DATA_ITEMS.map((item) => (
-                <View key={item.id} className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-3">
-                    <View className="h-8 w-8 items-center justify-center rounded-lg bg-surface-dark">
-                      <SymbolIcon name={item.icon} className="text-primary" style={{ fontSize: 20 }} />
-                    </View>
-                    <Text className="text-base font-semibold text-gray-200">{item.label}</Text>
-                  </View>
-                  <SymbolIcon name="check" className="text-green-500" style={{ fontSize: 20 }} />
-                </View>
-              ))}
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSubtle }]}>WHAT YOUR ARCHIVE INCLUDES</Text>
+        <View style={[styles.ledger, { borderTopColor: theme.colors.border }]}>
+          {DATA_ITEMS.map((item, index) => (
+            <View key={item.id} style={[styles.row, { borderBottomColor: theme.colors.border }]}>
+              <Text style={[styles.number, { color: theme.colors.textSubtle }]}>{String(index + 1).padStart(2, '0')}</Text>
+              <MaterialIcons name={item.icon} size={20} color={theme.colors.accent} />
+              <View style={styles.rowCopy}>
+                <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{item.label}</Text>
+                <Text style={[styles.rowDetail, { color: theme.colors.textMuted }]}>{item.detail}</Text>
+              </View>
             </View>
-          </View>
-
-          <Text className="mx-auto max-w-xs text-center text-sm text-gray-500">
-            Once ready, we will email a download link to your registered email address.
-          </Text>
+          ))}
         </View>
-      </View>
 
-      <View className="relative z-10 w-full bg-background-dark p-6 pb-8">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="h-14 w-full items-center justify-center rounded-xl bg-primary shadow-lg shadow-orange-900/20"
-        >
-          <Text className="text-lg font-bold tracking-wide text-[#181411]">Close</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={[styles.note, { borderColor: theme.colors.border }]}>
+          <MaterialIcons name="verified-user" size={20} color={theme.colors.accent} />
+          <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>The download link is sent only to your verified account email and expires for your protection.</Text>
+        </View>
+
+        <Pressable accessibilityRole="button" onPress={requestExport} style={styles.primary}>
+          <Text style={styles.primaryText}>REQUEST MY ARCHIVE</Text>
+          <MaterialIcons name="arrow-forward" size={19} color="#120B06" />
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  content: { paddingHorizontal: 16, paddingTop: 58, paddingBottom: 176 },
+  back: { width: 42, height: 42, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: { marginTop: 24, marginBottom: 34 },
+  signal: { width: 112, height: 112, borderWidth: 1, borderRadius: 5, justifyContent: 'center', alignItems: 'center', gap: 9, marginBottom: 24 },
+  signalText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 8, letterSpacing: 1.4 },
+  kicker: { fontFamily: pluggdFonts.satoshiBold, fontSize: 11, lineHeight: 14, letterSpacing: 1.8, marginBottom: 9 },
+  title: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, letterSpacing: -0.6, maxWidth: 355 },
+  titleAccent: { color: '#F46A1B', fontFamily: pluggdFonts.displayBold },
+  intro: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, marginTop: 11, maxWidth: 350 },
+  sectionTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.7, marginBottom: 10 },
+  ledger: { borderTopWidth: StyleSheet.hairlineWidth },
+  row: { minHeight: 76, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 10, paddingHorizontal: 2 },
+  number: { width: 22, fontFamily: pluggdFonts.satoshiBold, fontSize: 10 },
+  rowCopy: { flex: 1, gap: 3 },
+  rowTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14, lineHeight: 18 },
+  rowDetail: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11.5, lineHeight: 16 },
+  note: { marginTop: 24, borderWidth: 1, borderRadius: 5, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  noteText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 18 },
+  primary: { minHeight: 52, marginTop: 16, borderRadius: 5, backgroundColor: '#F46A1B', paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  primaryText: { color: '#120B06', fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 0.8 },
+});

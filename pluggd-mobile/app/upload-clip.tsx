@@ -5,7 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { EmptyState, ScreenShell, SectionTitle } from '../components/ContentUI';
+import { ScreenShell } from '../components/ContentUI';
 import { useAuth } from '../src/context/AuthProvider';
 import { createMobileClipRecord } from '../src/features/culture/mobileServices';
 import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
@@ -107,25 +107,43 @@ export default function UploadClipScreen() {
 
   if (!user) {
     return (
-      <ScreenShell title="Upload Clip" subtitle="Short-form mobile clip upload.">
+      <ScreenShell title="Creator Clips" subtitle="A release moment, built for discovery.">
         <StatusBar style="light" />
         <Stack.Screen options={{ headerShown: false }} />
-        <EmptyState title="Sign in required" body="Creator accounts can upload mobile clips after signing in." />
+        <View style={styles.accessHero}>
+          <View style={styles.signalMark}>
+            <MaterialIcons name="slow-motion-video" size={31} color="#0A0806" />
+          </View>
+          <Text style={styles.accessKicker}>CREATOR ACCESS</Text>
+          <Text style={styles.accessTitle}>Turn a release moment into a signal.</Text>
+          <Text style={styles.accessBody}>Publish a real clip into PLUGGD discovery without losing the route back to your music.</Text>
+        </View>
+        <View style={styles.requirementLedger}>
+          <Requirement index="01" title="Creator identity" body="Clips stay connected to a verified creator profile." />
+          <Requirement index="02" title="Real video" body="Upload up to two minutes from your device library." />
+          <Requirement index="03" title="Human review" body="Every clip is checked before it reaches public discovery." last />
+        </View>
         <Pressable style={styles.primaryButton} onPress={() => router.push('/auth/login' as any)}>
-          <Text style={styles.primaryButtonText}>Sign In</Text>
+          <Text style={styles.primaryButtonText}>Sign in to continue</Text>
+        </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push('/auth/signup' as any)}>
+          <Text style={styles.secondaryButtonText}>Create a creator account</Text>
+          <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
         </Pressable>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell title="Upload Clip" subtitle="Upload a short creator moment for Discover, Live, or Community review.">
+    <ScreenShell title="Upload Clip" subtitle="Shape a short creator moment for Discover, Live, or Community.">
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SectionTitle title="Clip" />
+      <WorkflowLabel index="01" title="Media" detail="MP4 · MOV · up to 2 minutes" />
       <Pressable style={styles.pickCard} onPress={pickClip}>
-        <MaterialIcons name={clip ? 'movie' : 'add-photo-alternate'} size={34} color={PLUGGD_ORANGE} />
+        <View style={[styles.mediaMark, clip && styles.mediaMarkSelected]}>
+          <MaterialIcons name={clip ? 'movie' : 'add-photo-alternate'} size={30} color={clip ? '#0A0806' : PLUGGD_ORANGE} />
+        </View>
         <View style={styles.pickCopy}>
           <Text style={styles.pickTitle}>{clip?.fileName || 'Choose video clip'}</Text>
           <Text style={styles.pickBody}>
@@ -134,36 +152,85 @@ export default function UploadClipScreen() {
         </View>
       </Pressable>
 
-      <SectionTitle title="Caption" />
+      <WorkflowLabel index="02" title="Context" detail={`${caption.length}/240`} />
       <TextInput
         value={caption}
         onChangeText={setCaption}
         placeholder="Add context for fans..."
         placeholderTextColor="#737373"
         multiline
+        maxLength={240}
         style={styles.caption}
       />
+
+      <View style={styles.reviewLedger}>
+        <MaterialIcons name="verified-user" size={19} color={PLUGGD_ORANGE} />
+        <View style={styles.pickCopy}>
+          <Text style={styles.reviewTitle}>Review before reach</Text>
+          <Text style={styles.reviewBody}>Your upload is private until moderation is complete. No live status is implied.</Text>
+        </View>
+      </View>
 
       <Pressable style={[styles.primaryButton, uploading && styles.disabledButton]} onPress={uploadClip} disabled={uploading}>
         {uploading ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.primaryButtonText}>Upload Clip</Text>}
       </Pressable>
 
-      <EmptyState
-        title="Clip review"
-        body="Uploaded clips are reviewed before they appear publicly."
-      />
     </ScreenShell>
+  );
+}
+
+function Requirement({ index, title, body, last = false }: { index: string; title: string; body: string; last?: boolean }) {
+  return (
+    <View style={[styles.requirementRow, last && styles.requirementRowLast]}>
+      <Text style={styles.requirementIndex}>{index}</Text>
+      <View style={styles.pickCopy}>
+        <Text style={styles.requirementTitle}>{title}</Text>
+        <Text style={styles.requirementBody}>{body}</Text>
+      </View>
+    </View>
+  );
+}
+
+function WorkflowLabel({ index, title, detail }: { index: string; title: string; detail: string }) {
+  return (
+    <View style={styles.workflowLabel}>
+      <Text style={styles.workflowIndex}>{index}</Text>
+      <Text style={styles.workflowTitle}>{title}</Text>
+      <Text style={styles.workflowDetail}>{detail}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
-  pickCard: { minHeight: 96, borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  accessHero: { paddingTop: 8, paddingBottom: 26 },
+  signalMark: { width: 58, height: 58, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  accessKicker: { color: PLUGGD_ORANGE, fontSize: 11, letterSpacing: 1.8, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  accessTitle: { color: '#FFFFFF', fontSize: 35, lineHeight: 39, letterSpacing: -1.3, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 8, maxWidth: 340 },
+  accessBody: { color: '#A8A29E', fontSize: 14, lineHeight: 21, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 12, maxWidth: 335 },
+  requirementLedger: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#302A26' },
+  requirementRow: { minHeight: 78, flexDirection: 'row', gap: 15, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#302A26', paddingVertical: 13 },
+  requirementRowLast: { borderBottomWidth: 0 },
+  requirementIndex: { width: 28, color: PLUGGD_ORANGE, fontSize: 11, letterSpacing: 1, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  requirementTitle: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  requirementBody: { color: '#928A84', fontSize: 12.5, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
+  secondaryButton: { minHeight: 52, borderRadius: 5, borderWidth: 1, borderColor: '#3A332E', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 10 },
+  secondaryButtonText: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  workflowLabel: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  workflowIndex: { color: PLUGGD_ORANGE, fontSize: 11, letterSpacing: 1.2, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  workflowTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  workflowDetail: { marginLeft: 'auto', color: '#79716C', fontSize: 10.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  pickCard: { minHeight: 104, borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#14110F', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
+  mediaMark: { width: 60, height: 60, borderRadius: 4, borderWidth: 1, borderStyle: 'dashed', borderColor: '#5A4030', alignItems: 'center', justifyContent: 'center' },
+  mediaMarkSelected: { backgroundColor: PLUGGD_ORANGE, borderStyle: 'solid', borderColor: PLUGGD_ORANGE },
   pickCopy: { flex: 1, minWidth: 0 },
   pickTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   pickBody: { color: '#B3B3B3', fontSize: 12.5, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5, lineHeight: 18 },
-  caption: { minHeight: 120, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', color: '#FFFFFF', padding: 14, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlignVertical: 'top' },
-  primaryButton: { minHeight: 52, borderRadius: 26, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 14 },
+  caption: { minHeight: 116, borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#14110F', color: '#FFFFFF', padding: 14, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlignVertical: 'top' },
+  reviewLedger: { minHeight: 78, flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#302A26', paddingVertical: 14, marginTop: 18 },
+  reviewTitle: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  reviewBody: { color: '#8F8883', fontSize: 11.5, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
+  primaryButton: { minHeight: 52, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 18 },
   primaryButtonText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabledButton: { opacity: 0.65 },
 });

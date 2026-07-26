@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { impactHaptic } from '../../src/design/haptics';
+import { pluggdFonts } from '../../src/design/typography';
 import { createMobilePlaylist } from '../../src/features/culture/mobileServices';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { useState } from 'react';
@@ -89,13 +90,13 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 28, lineHeight: 32 },
   content: { flex: 1, padding: 16, paddingTop: 26 },
   kicker: { color: PLUGGD_ORANGE, fontFamily: 'Satoshi-Black', fontSize: 12, letterSpacing: 1.1 },
-  title: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 32, lineHeight: 36, marginTop: 8 },
-  body: { color: '#B3B3B3', fontSize: 15, lineHeight: 22, marginTop: 8 },
+  title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, marginTop: 8 },
+  body: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 15, lineHeight: 22, marginTop: 8 },
   form: { marginTop: 28, gap: 10 },
   label: { color: '#8E8E9F', fontFamily: 'Satoshi-Bold', fontSize: 13, textTransform: 'uppercase' },
-  input: { minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 16 },
+  input: { minHeight: 52, borderRadius: 5, borderWidth: 1, borderColor: '#262626', backgroundColor: '#111116', color: '#FFFFFF', paddingHorizontal: 14, fontFamily: pluggdFonts.satoshiMedium, fontSize: 16 },
   textArea: { minHeight: 116, paddingTop: 14, textAlignVertical: 'top' },
-  primaryButton: { minHeight: 52, borderRadius: 26, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: 26 },
+  primaryButton: { minHeight: 52, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: 26 },
   primaryText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 15, textTransform: 'uppercase' },
   disabled: { opacity: 0.48 },
 });

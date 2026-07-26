@@ -4,7 +4,7 @@ import { edFonts } from '../src/design/editorial';
 export type EditorialSegment = { text: string; accent?: boolean };
 
 type EditorialTitleProps = {
-  /** Ordered text segments; mark the word(s) to italicise + accent with `accent: true`. */
+  /** Ordered text segments; mark the word(s) to accent with `accent: true`. */
   segments: EditorialSegment[];
   size?: number;
   lineHeight?: number;
@@ -15,10 +15,9 @@ type EditorialTitleProps = {
 };
 
 /**
- * The PLUGGD signature headline: an Instrument Serif statement line with an
- * italic accent moment in the brand orange — the same display voice as the
- * web app's "Where music culture comes alive" / "Find what's moving." and
- * the BeatPlug night-press floor (editorial.css .bp-floor h1).
+ * Compatibility wrapper for segmented headlines in the selected redesign.
+ * Both base and accent segments use the Sora display family; orange provides
+ * emphasis without reviving the retired serif system.
  */
 export function EditorialTitle({
   segments,

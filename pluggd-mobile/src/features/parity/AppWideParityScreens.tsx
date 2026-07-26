@@ -137,6 +137,30 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'This surface could not load right now.';
 }
 
+function hasPublishedSurfaceContent(payload: ParityPayload) {
+  return Boolean(
+    payload.hero
+    || payload.mapPoints?.length
+    || payload.actions?.length
+    || payload.sections?.some((section) => section.items.length),
+  );
+}
+
+function emptySurfaceCopy(title: string) {
+  if (title === 'Hubs') {
+    return {
+      eyebrow: 'NO PUBLIC HUBS YET',
+      title: 'The next scene starts here.',
+      body: 'Public hubs will appear here when creators and communities publish them. Until then, follow the active signal in Discover.',
+    };
+  }
+  return {
+    eyebrow: 'CURRENT STATE',
+    title: `No ${title.toLowerCase()} published yet.`,
+    body: 'This view only shows verified PLUGGD content. Open Discover to hear what is active across the platform now.',
+  };
+}
+
 function accentLastWord(title?: string | null): EditorialSegment[] {
   const trimmed = (title || '').trim();
   if (!trimmed) return [{ text: title || '' }];
@@ -269,6 +293,7 @@ function Hero({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: Image
       title={item.title}
       subtitle={item.subtitle}
       image={usableImageUrl(item.imageUrl)}
+      fallbackSource={fallbackAsset}
       metadata={metadata}
       fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
       onPress={item.route ? () => router.push(item.route as any) : undefined}
@@ -285,6 +310,7 @@ function RailCard({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: I
       title={item.title}
       subtitle={item.subtitle}
       imageUrl={usableImageUrl(item.imageUrl)}
+      fallbackSource={fallbackAsset}
       metric={metric}
       fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
       onPress={canOpen ? () => router.push(item.route as any) : undefined}
@@ -1212,6 +1238,30 @@ function ParityScaffold({
 
             <SurfaceTopTools title={title} />
 
+            {!hasPublishedSurfaceContent(payload) ? (
+              <View style={[styles.surfaceEmpty, { borderColor: theme.colors.border }]}>
+                <View style={styles.surfaceEmptyRule} />
+                <Text style={[styles.surfaceEmptyEyebrow, { color: theme.colors.accent }]}>
+                  {emptySurfaceCopy(title).eyebrow}
+                </Text>
+                <Text style={[styles.surfaceEmptyTitle, { color: theme.colors.text }]}>
+                  {emptySurfaceCopy(title).title}
+                </Text>
+                <Text style={[styles.surfaceEmptyBody, { color: theme.colors.textMuted }]}>
+                  {emptySurfaceCopy(title).body}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Discover"
+                  onPress={() => router.push('/discover' as any)}
+                  style={styles.surfaceEmptyAction}
+                >
+                  <Text style={styles.surfaceEmptyActionText}>Open Discover</Text>
+                  <MaterialIcons name="arrow-forward" size={18} color="#100B07" />
+                </Pressable>
+              </View>
+            ) : null}
+
             {payload.mapPoints ? (
               <EventsMap points={payload.mapPoints} onPress={() => router.push('/events' as any)} />
             ) : null}
@@ -1249,7 +1299,7 @@ function ParityScaffold({
 }
 
 export function DiscoverParityScreen() {
-  // Faithful port of the web /discover page (serif hero, What's moving now,
+  // Selected mobile discovery system (Sora hierarchy, What's moving now,
   // For You, Live Now, Trending Scenes, New From Creators, Soundboards Worth
   // Opening, Near You, Creators to Watch, Community Pulse).
   return <DiscoverEditorialScreen />;
@@ -1293,31 +1343,31 @@ export function MarketParityScreen() {
 }
 
 export function ReleasesParityScreen() {
-  // Faithful port of the web /releases "Listening Floor" (featured deck,
+  // Selected mobile /releases "Listening Floor" (featured deck,
   // Wall/Ledger browse, Fresh pressings, The chart, Pressing orders,
   // Listening passes, The racks).
   return <ListeningFloorScreen />;
 }
 
 export function MixesParityScreen() {
-  // Faithful port of the web /mixes editorial world (numbered hero tabs,
+  // Selected mobile /mixes listening-room system (numbered hero tabs,
   // Find your next mix, What's happening, Listening rooms, Rising DJs,
   // New & notable, Scene explorer, PLUGGD radio, Editorial highlights).
   return <MixesWorldScreen />;
 }
 
 export function SoundboardsParityScreen() {
-  // Faithful port of the web /soundboards index ("Ideas grow in public.",
+  // Selected mobile /soundboards index ("Ideas grow in public.",
   // search + Updated/Trending/Featured, dense board stat cards).
   return <SoundboardsIndexScreen />;
 }
 
 export function SamplePacksParityScreen() {
-  return <ParityScaffold title="Sample Packs" queryKey={['parity', 'sample-packs']} queryFn={loadSamplePacksParity} />;
+  return <ParityScaffold title="Sample Packs" queryKey={['parity', 'sample-packs']} queryFn={loadSamplePacksParity} primarySurface />;
 }
 
 export function EventsParityScreen() {
-  // Faithful port of the web /events page (Discover local shows, Browse/Map,
+  // Selected mobile /events system (Discover local shows, Browse/Map,
   // category chips, Browse fast list, Event Spotlight, Upcoming Events
   // posters, full event cards, Open Opportunities, For Promoters).
   return <EventsBoardScreen />;
@@ -1325,11 +1375,11 @@ export function EventsParityScreen() {
 
 export function HubsParityScreen() {
   const params = useLocalSearchParams<{ slug?: string }>();
-  return <ParityScaffold title="Hubs" queryKey={['parity', 'hubs', params.slug || 'all']} queryFn={() => loadHubsParity(params.slug)} />;
+  return <ParityScaffold title="Hubs" queryKey={['parity', 'hubs', params.slug || 'all']} queryFn={() => loadHubsParity(params.slug)} primarySurface />;
 }
 
 export function MapSignalsParityScreen() {
-  return <ParityScaffold title="Maps" queryKey={['parity', 'maps']} queryFn={loadMapSignalsParity} />;
+  return <ParityScaffold title="Maps" queryKey={['parity', 'maps']} queryFn={loadMapSignalsParity} primarySurface />;
 }
 
 export function HashtagParityScreen() {
@@ -1339,7 +1389,7 @@ export function HashtagParityScreen() {
 
 export function ConnectCardParityScreen() {
   const params = useLocalSearchParams<{ slug?: string }>();
-  return <ParityScaffold title="Connect Card" queryKey={['parity', 'connect', params.slug || 'missing']} queryFn={() => loadConnectCardParity(params.slug)} />;
+  return <ParityScaffold title="Connect Card" queryKey={['parity', 'connect', params.slug || 'missing']} queryFn={() => loadConnectCardParity(params.slug)} primarySurface />;
 }
 
 export function StudioParityScreen() {
@@ -2306,6 +2356,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  surfaceEmpty: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 24,
+    paddingHorizontal: 2,
+  },
+  surfaceEmptyRule: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FF6600',
+    marginBottom: 16,
+  },
+  surfaceEmptyEyebrow: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
+  surfaceEmptyTitle: {
+    marginTop: 8,
+    maxWidth: 300,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 27,
+    lineHeight: 31,
+    letterSpacing: -0.7,
+  },
+  surfaceEmptyBody: {
+    marginTop: 10,
+    maxWidth: 320,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  surfaceEmptyAction: {
+    marginTop: 20,
+    alignSelf: 'flex-start',
+    minHeight: 46,
+    borderRadius: 5,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FF6600',
+  },
+  surfaceEmptyActionText: {
+    color: '#100B07',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 13,
   },
   studioDock: {
     borderWidth: StyleSheet.hairlineWidth,

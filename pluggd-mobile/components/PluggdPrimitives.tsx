@@ -918,7 +918,7 @@ const premiumStyles = StyleSheet.create({
   },
   heroCta: {
     minHeight: 44,
-    borderRadius: pluggdRadii.pill,
+    borderRadius: 5,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -957,7 +957,7 @@ const premiumStyles = StyleSheet.create({
   },
   listRow: {
     minHeight: 72,
-    borderRadius: pluggdRadii.card,
+    borderRadius: 5,
     borderWidth: 1,
     padding: 10,
     flexDirection: 'row',
@@ -967,7 +967,7 @@ const premiumStyles = StyleSheet.create({
   listArtwork: {
     width: 52,
     height: 52,
-    borderRadius: 12,
+    borderRadius: 4,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -977,7 +977,7 @@ const premiumStyles = StyleSheet.create({
     gap: 3,
   },
   listTitle: {
-    fontFamily: 'Satoshi-Bold',
+    fontFamily: 'Sora-Bold',
     fontSize: 15,
     lineHeight: 19,
   },
@@ -993,10 +993,11 @@ const premiumStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   empty: {
-    borderRadius: pluggdRadii.card,
-    borderWidth: 1,
-    padding: 18,
-    alignItems: 'center',
+    borderRadius: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 20,
+    alignItems: 'flex-start',
     gap: 8,
   },
   emptyIcon: {
@@ -1007,15 +1008,15 @@ const premiumStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    fontFamily: 'Satoshi-Bold',
+    fontFamily: 'Sora-Bold',
     fontSize: 16,
     lineHeight: 20,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   emptyBody: {
     fontSize: 13,
     lineHeight: 19,
-    textAlign: 'center',
+    textAlign: 'left',
   },
 });
 

@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
   rewardsTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
   rewardsBody: { marginTop: 5, color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 13, lineHeight: 17 },
   emptyInline: { marginHorizontal: 16, minHeight: 104, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  emptyTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
+  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
   emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 6, color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600', textAlign: 'center' },
   emptyActions: { marginTop: 12, flexDirection: 'row', gap: 8 },
   emptyPrimary: { minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, backgroundColor: COLORS.orange },

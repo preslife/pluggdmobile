@@ -1472,7 +1472,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  emptyTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
+  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
   emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 6, color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600', textAlign: 'center' },
   emptyAction: { marginTop: 12, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, backgroundColor: COLORS.orange },
   emptyActionText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 13 },

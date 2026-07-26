@@ -161,8 +161,14 @@ export default function TicketScanScreen() {
         <StatusBar style="light" />
         <Stack.Screen options={{ headerShown: false }} />
         <EmptyState title="Sign in required" body="Promoter and venue accounts can verify tickets after signing in." />
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/auth/login' as any)}>
-          <Text style={styles.primaryButtonText}>Sign In</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign in to scan tickets"
+          style={styles.primaryButton}
+          onPress={() => router.push('/auth/login' as any)}
+        >
+          <Text style={styles.primaryButtonText}>SIGN IN TO SCAN</Text>
+          <MaterialIcons name="arrow-forward" size={18} color="#0A0806" />
         </Pressable>
       </ScreenShell>
     );
@@ -215,13 +221,23 @@ export default function TicketScanScreen() {
             <Text style={styles.permissionText}>
               Promoter and venue accounts can scan PLUGGD ticket QR payloads after camera permission is enabled.
             </Text>
-            <Pressable style={styles.permissionButton} onPress={() => requestCameraPermission()}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Enable camera"
+              style={styles.permissionButton}
+              onPress={() => requestCameraPermission()}
+            >
               <Text style={styles.permissionButtonText}>Enable Camera</Text>
             </Pressable>
           </View>
         )}
         {!scannerActive ? (
-          <Pressable style={styles.secondaryButton} onPress={resetScanner}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Scan another ticket"
+            style={styles.secondaryButton}
+            onPress={resetScanner}
+          >
             <Text style={styles.secondaryButtonText}>Scan Another Ticket</Text>
           </Pressable>
         ) : null}
@@ -241,7 +257,14 @@ export default function TicketScanScreen() {
           placeholderTextColor="#737373"
           style={styles.input}
         />
-        <Pressable style={styles.lookupButton} onPress={() => lookup.mutate(undefined)} disabled={lookup.isPending}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Verify ticket payload"
+          accessibilityState={{ disabled: lookup.isPending }}
+          style={styles.lookupButton}
+          onPress={() => lookup.mutate(undefined)}
+          disabled={lookup.isPending}
+        >
           {lookup.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.lookupText}>Verify</Text>}
         </Pressable>
       </View>
@@ -268,6 +291,9 @@ export default function TicketScanScreen() {
           </View>
           <Text style={styles.payload} numberOfLines={2}>{result.qr_code_data}</Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={result.status === 'checked_in' ? 'Ticket already checked in' : 'Check in ticket'}
+            accessibilityState={{ disabled: checkIn.isPending || result.status === 'checked_in' }}
             style={[styles.primaryButton, result.status === 'checked_in' && styles.disabledButton]}
             onPress={() => checkIn.mutate()}
             disabled={checkIn.isPending || result.status === 'checked_in'}
@@ -295,39 +321,39 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
-  cameraCard: { borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 10, gap: 10, overflow: 'hidden' },
-  cameraFrame: { height: 280, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0a0806' },
+  cameraCard: { borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#171310', padding: 10, gap: 10, overflow: 'hidden' },
+  cameraFrame: { height: 280, borderRadius: 4, overflow: 'hidden', backgroundColor: '#0a0806' },
   camera: { ...StyleSheet.absoluteFillObject },
   scanOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.18)' },
   scanHint: { position: 'absolute', bottom: 18, color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase' },
-  cornerTopLeft: { position: 'absolute', top: 58, left: 52, width: 42, height: 42, borderLeftWidth: 3, borderTopWidth: 3, borderColor: PLUGGD_ORANGE, borderTopLeftRadius: 12 },
-  cornerTopRight: { position: 'absolute', top: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderTopWidth: 3, borderColor: PLUGGD_ORANGE, borderTopRightRadius: 12 },
-  cornerBottomLeft: { position: 'absolute', bottom: 58, left: 52, width: 42, height: 42, borderLeftWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomLeftRadius: 12 },
-  cornerBottomRight: { position: 'absolute', bottom: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomRightRadius: 12 },
-  permissionCard: { minHeight: 240, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', alignItems: 'center', justifyContent: 'center', padding: 22 },
-  permissionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 12 },
-  permissionText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlign: 'center', lineHeight: 19, marginTop: 8 },
-  permissionButton: { height: 44, borderRadius: 22, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 16 },
+  cornerTopLeft: { position: 'absolute', top: 58, left: 52, width: 42, height: 42, borderLeftWidth: 3, borderTopWidth: 3, borderColor: PLUGGD_ORANGE, borderTopLeftRadius: 4 },
+  cornerTopRight: { position: 'absolute', top: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderTopWidth: 3, borderColor: PLUGGD_ORANGE, borderTopRightRadius: 4 },
+  cornerBottomLeft: { position: 'absolute', bottom: 58, left: 52, width: 42, height: 42, borderLeftWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomLeftRadius: 4 },
+  cornerBottomRight: { position: 'absolute', bottom: 58, right: 52, width: 42, height: 42, borderRightWidth: 3, borderBottomWidth: 3, borderColor: PLUGGD_ORANGE, borderBottomRightRadius: 4 },
+  permissionCard: { minHeight: 240, borderRadius: 4, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#0a0806', alignItems: 'flex-start', justifyContent: 'center', padding: 22 },
+  permissionTitle: { color: '#FFFFFF', fontSize: 20, fontFamily: pluggdFonts.displayBold, marginTop: 12 },
+  permissionText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiMedium, textAlign: 'left', lineHeight: 19, marginTop: 8 },
+  permissionButton: { minHeight: 44, borderRadius: 4, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 16 },
   permissionButtonText: { color: '#0a0806', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  secondaryButton: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: '#3A3A44', backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  secondaryButton: { minHeight: 44, borderRadius: 4, borderWidth: 1, borderColor: '#3A3A44', backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   secondaryButtonText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  scanCard: { borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 12, gap: 10 },
-  input: { minHeight: 54, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', color: '#FFFFFF', paddingHorizontal: 12, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  lookupButton: { height: 48, borderRadius: 24, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
+  scanCard: { borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#171310', padding: 12, gap: 10 },
+  input: { minHeight: 54, borderRadius: 4, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#0a0806', color: '#FFFFFF', paddingHorizontal: 12, fontSize: 14, fontFamily: pluggdFonts.satoshiMedium },
+  lookupButton: { height: 48, borderRadius: 4, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
   lookupText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  resultCard: { marginTop: 16, borderRadius: 18, borderWidth: 1, borderColor: '#3B281D', backgroundColor: '#171310', padding: 14, gap: 13 },
+  resultCard: { marginTop: 16, borderRadius: 5, borderWidth: 1, borderColor: '#3B281D', backgroundColor: '#171310', padding: 14, gap: 13 },
   resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   statusIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#262626', alignItems: 'center', justifyContent: 'center' },
   statusIconChecked: { backgroundColor: PLUGGD_ORANGE },
   resultCopy: { flex: 1, minWidth: 0 },
-  resultTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  resultMeta: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 4 },
+  resultTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.displayBold },
+  resultMeta: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiMedium, marginTop: 4 },
   detailGrid: { flexDirection: 'row', gap: 8 },
-  detail: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', padding: 10 },
+  detail: { flex: 1, borderRadius: 4, borderWidth: 1, borderColor: '#262626', backgroundColor: '#0a0806', padding: 10 },
   detailLabel: { color: '#737373', fontSize: 10, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   detailValue: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 5, textTransform: 'capitalize' },
   payload: { color: '#8E8E9F', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', lineHeight: 16 },
-  primaryButton: { minHeight: 50, borderRadius: 25, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 12 },
-  primaryButtonText: { color: '#0a0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  primaryButton: { minHeight: 50, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 12, flexDirection: 'row', gap: 9 },
+  primaryButtonText: { color: '#0a0806', fontSize: 12, letterSpacing: 0.8, fontFamily: pluggdFonts.satoshiBlack },
   disabledButton: { opacity: 0.6 },
 });

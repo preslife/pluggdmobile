@@ -92,10 +92,10 @@ for (const token of [
 for (const token of [
   'loadLiveRoomMessagePreview',
   'PanResponder',
-  'live swipe feed',
+  'Close live feed',
   'Join Live Room',
   "router.push({ pathname: '/live/session'",
-  'No active live rooms',
+  'There are no verified live sessions right now',
 ]) {
   assert.match(liveFeedSource, new RegExp(token.replace(/[()']/g, '\\$&')), `${token} must be wired in the full-screen Live Feed`);
 }

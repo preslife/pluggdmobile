@@ -1,11 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
 import {
   liquidGlassColors,
-  liquidGlassRadii,
   type LiquidGlassTone,
 } from '../../src/design/liquidGlassTokens';
 import { pluggdFonts } from '../../src/design/typography';
@@ -19,6 +18,7 @@ type GlassHeroCardProps = {
   subtitle?: string;
   description?: string;
   image?: string | null;
+  fallbackSource?: ImageSourcePropType;
   fallbackTone?: LiquidGlassTone;
   primaryAction?: ReactNode;
   metadata?: string;
@@ -32,6 +32,7 @@ export function GlassHeroCard({
   subtitle,
   description,
   image,
+  fallbackSource,
   fallbackTone = 'accent',
   primaryAction,
   metadata,
@@ -50,7 +51,7 @@ export function GlassHeroCard({
       style={({ pressed }) => [pressed && styles.pressed, style]}
     >
       <LiftSurface depth="high">
-        <GlassPanel intensity="strong" radius={liquidGlassRadii.xxl} style={styles.card} contentStyle={styles.content}>
+        <GlassPanel intensity="strong" radius={5} style={styles.card} contentStyle={styles.content}>
           <View style={styles.heroGrid}>
             <View style={styles.copy}>
               <View style={styles.badge}>
@@ -92,7 +93,7 @@ export function GlassHeroCard({
             </View>
             <View style={styles.artStage}>
               <View pointerEvents="none" style={styles.artStageShadow} />
-              <GlassAlbumArt imageUrl={image} tone={fallbackTone} style={styles.heroArtwork} />
+              <GlassAlbumArt imageUrl={image} fallbackSource={fallbackSource} tone={fallbackTone} style={styles.heroArtwork} />
               <View pointerEvents="none" style={styles.artGlow} />
             </View>
           </View>
@@ -108,20 +109,20 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   card: {
-    minHeight: 268,
+    minHeight: 246,
     shadowColor: '#000',
-    shadowOpacity: 0.72,
-    shadowRadius: 56,
-    shadowOffset: { width: 0, height: 34 },
+    shadowOpacity: 0.34,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
   },
   content: {
-    padding: 20,
+    padding: 16,
     gap: 0,
   },
   badge: {
     alignSelf: 'flex-start',
     minHeight: 24,
-    borderRadius: liquidGlassRadii.pill,
+    borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: liquidGlassColors.borderSoft,
     backgroundColor: 'rgba(255,255,255,0.045)',
@@ -175,12 +176,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   playLift: {
-    borderRadius: liquidGlassRadii.pill,
+    borderRadius: 5,
   },
   playButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 2,
     height: 26,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: 'rgba(0,0,0,0.48)',
     transform: [{ scaleX: 1.08 }],
   },
@@ -236,12 +237,12 @@ const styles = StyleSheet.create({
     right: '18%',
     bottom: 2,
     height: 31,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: 'rgba(138,125,255,0.18)',
   },
   heroArtwork: {
     width: 136,
     height: 136,
-    borderRadius: 24,
+    borderRadius: 5,
   },
 });

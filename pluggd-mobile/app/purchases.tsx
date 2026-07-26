@@ -102,7 +102,7 @@ function iconForKind(kind: string): keyof typeof MaterialIcons.glyphMap {
 const styles = StyleSheet.create({
   restoreButton: {
     minHeight: 36,
-    borderRadius: 18,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.48)',
     backgroundColor: 'rgba(255,102,0,0.08)',
@@ -115,12 +115,12 @@ const styles = StyleSheet.create({
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   entitlementCard: {
     minHeight: 76,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#262626',
-    backgroundColor: '#171310',
-    padding: 13,
-    marginBottom: 10,
+    backgroundColor: 'transparent',
+    paddingVertical: 13,
+    paddingHorizontal: 2,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.3)',
     backgroundColor: 'rgba(255,102,0,0.1)',

@@ -6,7 +6,7 @@ import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
 
 const HIDDEN_PREFIXES = ['/auth', '/player', '/studio'];
-const HIDDEN_EXACT = new Set(['/live/session']);
+const HIDDEN_EXACT = new Set(['/live/session', '/live/feed', '/live/create', '/ticket-scan', '/swipe-beats']);
 
 export function AppChrome() {
   const pathname = usePathname() || '/';
@@ -20,6 +20,7 @@ export function AppChrome() {
     normalized === '/soundboards' ||
     normalized === '/library' ||
     normalized === '/create' ||
+    normalized === '/create-post' ||
     normalized === '/profile' ||
     normalized === '/live' ||
     normalized === '/stage' ||
@@ -35,10 +36,21 @@ export function AppChrome() {
     normalized.startsWith('/beat/') ||
     normalized.startsWith('/sample-pack/') ||
     normalized.startsWith('/soundboards/') ||
-    normalized === '/purchases' ||
-    normalized === '/following';
+    normalized === '/following' ||
+    normalized === '/settings' ||
+    normalized.startsWith('/settings/') ||
+    normalized === '/commerce/checkout' ||
+    normalized === '/commerce/success' ||
+    normalized.startsWith('/genre/') ||
+    normalized.startsWith('/u/') ||
+    normalized.startsWith('/user/') ||
+    normalized.startsWith('/creator/') ||
+    normalized === '/creator/events' ||
+    normalized === '/creator/onboarding' ||
+    normalized === '/playlists/new';
   const hidden =
     HIDDEN_EXACT.has(normalized) ||
+    normalized.startsWith('/story/') ||
     normalized.startsWith('/mixes/') ||
     HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 

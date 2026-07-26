@@ -1412,15 +1412,19 @@ export function CreateHubScreen() {
         <Image source={WEB_PARITY_ASSETS.bedroomStudio} resizeMode="cover" style={styles.createHeroImage} />
         <LinearGradient colors={['rgba(10,8,6,0.18)', 'rgba(10,8,6,0.72)', 'rgba(10,8,6,0.96)']} style={StyleSheet.absoluteFill} />
         <Text style={styles.passKicker}>CREATOR QUICK SWITCH</Text>
-        <Text style={styles.passTitle}>Move the room without leaving mobile.</Text>
-        <Text style={styles.passBody}>Post, go live, start a thread, or send fans toward an event from one place.</Text>
+        <Text style={styles.passTitle}>Move the room from mobile.</Text>
+        <Text style={styles.passBody}>Publish, broadcast or route fans into what happens next.</Text>
       </View>
-      <View style={styles.actionGrid}>
-        {actions.map((action) => (
+      <View style={styles.createActionList}>
+        {actions.map((action, index) => (
           <Pressable key={action.label} style={styles.createAction} onPress={() => router.push(action.route as any)}>
-            <MaterialIcons name={action.icon} size={24} color={action.accent} />
-            <Text style={styles.creatorActionText}>{action.label}</Text>
-            <Text style={styles.createActionMeta}>{action.meta}</Text>
+            <Text style={styles.createActionIndex}>{String(index + 1).padStart(2, '0')}</Text>
+            <View style={styles.createActionIcon}><MaterialIcons name={action.icon} size={22} color={action.accent} /></View>
+            <View style={styles.createActionCopy}>
+              <Text style={styles.creatorActionText}>{action.label}</Text>
+              <Text style={styles.createActionMeta}>{action.meta}</Text>
+            </View>
+            <MaterialIcons name="arrow-forward" size={19} color="#62627A" />
           </Pressable>
         ))}
       </View>
@@ -1687,7 +1691,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   verifiedNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  stageArtistName: { color: TEXT, fontSize: 18, lineHeight: 23, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  stageArtistName: { color: TEXT, fontSize: 18, lineHeight: 23, fontFamily: pluggdFonts.displayBold },
   stageDescription: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiRegular, fontWeight: '400' },
   stageBottomActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
   stagePlayCta: { height: 42, borderRadius: 999, backgroundColor: EMERALD, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 16 },
@@ -1711,7 +1715,7 @@ const styles = StyleSheet.create({
   passLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, backgroundColor: 'rgba(124,58,237,0.18)', paddingHorizontal: 9, paddingVertical: 5 },
   livePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: EMERALD },
   passLiveText: { color: TEXT, fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  passTitle: { color: TEXT, fontSize: 25, lineHeight: 29, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  passTitle: { color: TEXT, fontSize: 25, lineHeight: 29, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
   passBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500' },
   passStats: { flexDirection: 'row', gap: 8 },
   passStat: { flex: 1, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', padding: 10 },
@@ -1726,13 +1730,13 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 14, gap: 12 },
   premiumScreenHeader: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 },
   pageHeader: { gap: 5, paddingBottom: 0 },
-  pageTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 31, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  pageTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 31, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800' },
   pageSubtitle: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   loadingBlock: { minHeight: 120, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadingText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   emptyCard: { borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', borderRadius: 14, padding: 16, gap: 8 },
   emptyIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#20130D', alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { color: '#FFFFFF', fontSize: 18, lineHeight: 23, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  emptyTitle: { color: '#FFFFFF', fontSize: 18, lineHeight: 23, fontFamily: pluggdFonts.displayBold },
   emptyBody: { color: '#B3B3B3', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   filterRow: { gap: 8, paddingRight: 14 },
   filterPill: { minHeight: 34, borderRadius: 999, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
@@ -1740,7 +1744,7 @@ const styles = StyleSheet.create({
   filterText: { color: '#B3B3B3', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   filterTextActive: { color: ORANGE },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 },
-  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.displayBold },
   sectionAction: { color: ORANGE, fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   railBlock: { gap: 9 },
   railContent: { gap: 11, paddingRight: 18 },
@@ -1784,7 +1788,7 @@ const styles = StyleSheet.create({
   stageTag: { position: 'absolute', top: 12, left: 12, borderRadius: 999, backgroundColor: 'rgba(8,8,8,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9, paddingVertical: 5 },
   stageTagText: { color: '#FFFFFF', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   stageText: { padding: 14, gap: 4 },
-  stageTitle: { color: '#FFFFFF', fontSize: 25, lineHeight: 29, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  stageTitle: { color: '#FFFFFF', fontSize: 25, lineHeight: 29, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
   stageCreator: { color: '#DADADA', fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   stageActions: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
   primaryAction: { height: 42, borderRadius: 12, backgroundColor: EMERALD, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 15 },
@@ -1838,9 +1842,13 @@ const styles = StyleSheet.create({
   pulseRow: { minHeight: 48, borderTopWidth: 1, borderTopColor: '#202020', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13 },
   pulseLabel: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   pulseValue: { color: ORANGE, fontSize: 12.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  createHero: { minHeight: 270, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: NOIR_CARD, borderRadius: 22, padding: 16, gap: 10, justifyContent: 'flex-end', overflow: 'hidden' },
+  createHero: { minHeight: 178, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: NOIR_CARD, borderRadius: 5, padding: 16, gap: 7, justifyContent: 'flex-end', overflow: 'hidden' },
   createHeroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', opacity: 0.72 },
-  createAction: { width: '48%', minHeight: 116, borderRadius: 16, borderWidth: 1, borderColor: NOIR_BORDER, backgroundColor: '#171310', padding: 13, justifyContent: 'space-between' },
+  createActionList: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: NOIR_BORDER },
+  createAction: { minHeight: 70, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: NOIR_BORDER, paddingHorizontal: 2, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  createActionIndex: { width: 22, color: '#62627A', fontFamily: pluggdFonts.satoshiBlack, fontSize: 9.5 },
+  createActionIcon: { width: 40, height: 40, borderRadius: 5, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
+  createActionCopy: { flex: 1, minWidth: 0, gap: 2 },
   createActionMeta: { color: '#8E8E9F', fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   profilePass: { borderWidth: 1, borderColor: 'rgba(124,58,237,0.42)', backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 18, padding: 16, gap: 10 },
   profileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

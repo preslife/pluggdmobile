@@ -1,151 +1,119 @@
-import { useState } from 'react';
-import { Alert, View, Text, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { SymbolIcon } from '../../components/SymbolIcon';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { pluggdFonts } from '../../src/design/typography';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function PrivacySettingsScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const [privateProfile, setPrivateProfile] = useState(false);
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
 
   return (
-    <View className="flex-1 bg-background-light dark:bg-background-dark">
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.back, { borderColor: theme.colors.border }]}>
+          <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
+        </Pressable>
 
-      <View className="flex-row items-center justify-between border-b border-transparent bg-background-light p-4 pb-2 pt-14 dark:border-white/5 dark:bg-background-dark">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="h-12 w-12 items-center justify-start"
-        >
-          <SymbolIcon name="arrow_back" className="text-slate-900 dark:text-white" style={{ fontSize: 24 }} />
-        </TouchableOpacity>
-        <Text className="flex-1 pr-12 text-center text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
-          Privacy & GDPR
-        </Text>
-      </View>
-
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <View className="gap-6">
-          <View className="gap-2">
-            <Text className="mb-1 pl-2 text-xs font-bold uppercase tracking-wider text-[#b9ab9d]">
-              Account Privacy
-            </Text>
-            <View className="overflow-hidden rounded-xl border border-white/5 bg-surface-dark/50 dark:bg-[#221910]">
-              <View className="flex-row items-center justify-between border-b border-white/5 p-4">
-                <View className="flex-1 gap-1 pr-4">
-                  <Text className="text-base font-medium text-slate-900 dark:text-white">
-                    Private Profile
-                  </Text>
-                  <Text className="text-sm text-[#b9ab9d]">
-                    Only approved followers can see your tracks and playlists.
-                  </Text>
-                </View>
-                <Switch
-                  value={privateProfile}
-                  onValueChange={setPrivateProfile}
-                  trackColor={{ false: '#374151', true: '#ff6600' }}
-                  thumbColor="#fff"
-                />
-              </View>
-              <View className="flex-row items-center justify-between p-4">
-                <View className="flex-1 gap-1 pr-4">
-                  <Text className="text-base font-medium text-slate-900 dark:text-white">
-                    Show Online Status
-                  </Text>
-                  <Text className="text-sm text-[#b9ab9d]">
-                    Allow others to see when you are active on PLUGGD.
-                  </Text>
-                </View>
-                <Switch
-                  value={showOnlineStatus}
-                  onValueChange={setShowOnlineStatus}
-                  trackColor={{ false: '#374151', true: '#ff6600' }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
-          </View>
-
-          <View className="gap-2">
-            <Text className="mb-1 pl-2 text-xs font-bold uppercase tracking-wider text-[#b9ab9d]">
-              Safety
-            </Text>
-            <View className="overflow-hidden rounded-xl border border-white/5 bg-surface-dark/50 dark:bg-[#221910]">
-              <SettingsRow icon="block" label="Blocked Users" onPress={() => Alert.alert('Blocked users', 'Blocked-user controls will appear here.')} />
-              <View className="h-px bg-white/5" />
-              <SettingsRow icon="filter_list" label="Content Filters" onPress={() => Alert.alert('Content filters', 'Content filter controls will appear here once mobile moderation preferences are enabled.')} />
-            </View>
-          </View>
-
-          <View className="gap-2">
-            <Text className="mb-1 pl-2 text-xs font-bold uppercase tracking-wider text-[#b9ab9d]">
-              Data & GDPR
-            </Text>
-            <View className="gap-5 rounded-xl border border-white/5 bg-surface-dark/50 p-5 dark:bg-[#221910]">
-              <View>
-                <View className="mb-2 flex-row items-center gap-2">
-                  <SymbolIcon name="database" className="text-primary" />
-                  <Text className="text-base font-bold text-slate-900 dark:text-white">
-                    Your Data
-                  </Text>
-                </View>
-                <Text className="text-sm leading-relaxed text-[#b9ab9d]">
-                  Request a copy of your personal data, including your listening history, uploaded tracks, and account interactions.
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => router.push('/settings/data-export')}
-                className="h-12 w-full flex-row items-center justify-center rounded-lg bg-primary px-4 shadow-lg shadow-orange-900/20"
-              >
-                <SymbolIcon name="download" className="mr-2 text-[#181411]" style={{ fontSize: 20 }} />
-                <Text className="text-base font-bold tracking-wide text-[#181411]">
-                  Request Data Export
-                </Text>
-              </TouchableOpacity>
-
-              <View className="h-px w-full bg-white/5" />
-
-              <View className="flex-row items-center justify-between pt-1">
-                <View className="gap-1">
-                  <Text className="text-sm font-medium text-slate-900 dark:text-white">
-                    Delete Account
-                  </Text>
-                  <Text className="text-xs text-[#b9ab9d]">
-                    Permanently remove your account and data
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  className="rounded-lg px-3 py-2"
-                  onPress={() => Alert.alert('Account deletion', 'For safety, account deletion must be completed through account support or web account settings until mobile deletion confirmation is enabled.')}
-                >
-                  <Text className="text-sm font-bold text-red-500">Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          <View className="px-2 pb-8">
-            <Text className="text-center text-xs text-[#b9ab9d]/60">
-              Review our Privacy Policy and Terms of Service for more information regarding your data rights.
-            </Text>
-          </View>
+        <View style={styles.hero}>
+          <Text style={[styles.kicker, { color: theme.colors.accent }]}>PRIVACY & SAFETY</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Your music life.<Text style={styles.titleAccent}> Your terms.</Text></Text>
+          <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Control who can find you, what the community can see, and how your PLUGGD data is handled.</Text>
         </View>
+
+        <Section title="VISIBILITY" borderColor={theme.colors.border} subtle={theme.colors.textSubtle}>
+          <ToggleRow
+            icon="lock-outline"
+            title="Private profile"
+            detail="Only approved followers can see your tracks and playlists."
+            value={privateProfile}
+            onValueChange={setPrivateProfile}
+            colors={theme.colors}
+          />
+          <ToggleRow
+            icon="sensors"
+            title="Show online status"
+            detail="Let others see when you are active on PLUGGD."
+            value={showOnlineStatus}
+            onValueChange={setShowOnlineStatus}
+            colors={theme.colors}
+          />
+        </Section>
+
+        <Section title="COMMUNITY SAFETY" borderColor={theme.colors.border} subtle={theme.colors.textSubtle}>
+          <ActionRow icon="block" title="Blocked accounts" detail="Review people you have blocked" colors={theme.colors} onPress={() => Alert.alert('Blocked accounts', 'Your blocked-account controls will appear here when mobile moderation preferences are enabled.')} />
+          <ActionRow icon="tune" title="Content filters" detail="Manage sensitive-content preferences" colors={theme.colors} onPress={() => Alert.alert('Content filters', 'Content filtering is not yet configurable in the mobile app.')} />
+        </Section>
+
+        <Section title="YOUR DATA" borderColor={theme.colors.border} subtle={theme.colors.textSubtle}>
+          <ActionRow icon="download" title="Download your archive" detail="Purchases, messages, posts and account activity" colors={theme.colors} onPress={() => router.push('/settings/data-export')} accent />
+          <ActionRow icon="delete-outline" title="Delete account" detail="Permanently remove your account and data" colors={theme.colors} danger onPress={() => Alert.alert('Delete account', 'For your protection, account deletion currently requires confirmation through PLUGGD support or web account settings.')} />
+        </Section>
+
+        <Text style={[styles.legal, { color: theme.colors.textSubtle }]}>PLUGGD processes account data in line with its Privacy Policy and Terms of Service. Export and deletion requests require identity verification.</Text>
       </ScrollView>
     </View>
   );
 }
 
-function SettingsRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function Section({ title, borderColor, subtle, children }: { title: string; borderColor: string; subtle: string; children: React.ReactNode }) {
   return (
-    <TouchableOpacity className="flex-row items-center justify-between p-4" onPress={onPress}>
-      <View className="flex-row items-center gap-3">
-        <View className="h-8 w-8 items-center justify-center rounded-full bg-[#393028]">
-          <SymbolIcon name={icon} className="text-[#b9ab9d]" style={{ fontSize: 20 }} />
-        </View>
-        <Text className="text-base font-medium text-slate-900 dark:text-white">{label}</Text>
-      </View>
-      <SymbolIcon name="chevron_right" className="text-[#b9ab9d]" />
-    </TouchableOpacity>
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: subtle }]}>{title}</Text>
+      <View style={[styles.ledger, { borderTopColor: borderColor }]}>{children}</View>
+    </View>
   );
 }
+
+type ThemeColors = ReturnType<typeof usePluggdTheme>['colors'];
+
+function ToggleRow({ icon, title, detail, value, onValueChange, colors }: { icon: keyof typeof MaterialIcons.glyphMap; title: string; detail: string; value: boolean; onValueChange: (value: boolean) => void; colors: ThemeColors }) {
+  return (
+    <View style={[styles.row, { borderBottomColor: colors.border }]}>
+      <MaterialIcons name={icon} size={21} color={colors.accent} style={styles.rowIcon} />
+      <View style={styles.rowCopy}>
+        <Text style={[styles.rowTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.rowDetail, { color: colors.textMuted }]}>{detail}</Text>
+      </View>
+      <Switch accessibilityLabel={title} value={value} onValueChange={onValueChange} trackColor={{ false: colors.surfaceAlt, true: '#F46A1B' }} thumbColor="#FFFFFF" ios_backgroundColor={colors.surfaceAlt} />
+    </View>
+  );
+}
+
+function ActionRow({ icon, title, detail, colors, onPress, accent, danger }: { icon: keyof typeof MaterialIcons.glyphMap; title: string; detail: string; colors: ThemeColors; onPress: () => void; accent?: boolean; danger?: boolean }) {
+  const color = danger ? '#E85D5D' : accent ? colors.accent : colors.text;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} onPress={onPress} style={[styles.row, { borderBottomColor: colors.border }]}>
+      <MaterialIcons name={icon} size={21} color={color} style={styles.rowIcon} />
+      <View style={styles.rowCopy}>
+        <Text style={[styles.rowTitle, { color }]}>{title}</Text>
+        <Text style={[styles.rowDetail, { color: colors.textMuted }]}>{detail}</Text>
+      </View>
+      <MaterialIcons name="arrow-forward" size={19} color={colors.textSubtle} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  content: { paddingHorizontal: 16, paddingTop: 58, paddingBottom: 176 },
+  back: { width: 42, height: 42, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: { marginTop: 24, marginBottom: 34 },
+  kicker: { fontFamily: pluggdFonts.satoshiBold, fontSize: 11, lineHeight: 14, letterSpacing: 1.8, marginBottom: 9 },
+  title: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 35, lineHeight: 39, letterSpacing: -0.6, maxWidth: 350 },
+  titleAccent: { color: '#F46A1B', fontFamily: pluggdFonts.displayBold },
+  intro: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 350 },
+  section: { marginBottom: 30 },
+  sectionTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.7, marginBottom: 10 },
+  ledger: { borderTopWidth: StyleSheet.hairlineWidth },
+  row: { minHeight: 74, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 2 },
+  rowIcon: { width: 32, textAlign: 'center' },
+  rowCopy: { flex: 1, gap: 3 },
+  rowTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 15, lineHeight: 19 },
+  rowDetail: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
+  legal: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, lineHeight: 16, paddingBottom: 10 },
+});

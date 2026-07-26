@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     top: 58,
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: 5,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 33,
     lineHeight: 39,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    fontFamily: pluggdFonts.displayExtraBold,
   },
   subtitle: {
     marginTop: 9,
@@ -172,9 +172,9 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 18,
     gap: 13,
   },
   inputGroup: {
@@ -188,14 +188,14 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 50,
     borderWidth: 1,
-    borderRadius: 13,
+    borderRadius: 5,
     paddingHorizontal: 13,
     fontSize: 16,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   message: {
     borderWidth: 1,
-    borderRadius: 13,
+    borderRadius: 5,
     padding: 11,
     flexDirection: 'row',
     gap: 8,
@@ -208,15 +208,16 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 52,
-    borderRadius: 15,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    color: '#120B06',
+    fontSize: 12,
+    letterSpacing: 0.8,
+    fontFamily: pluggdFonts.satoshiBlack,
   },
   actionRow: {
     flexDirection: 'row',
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     minHeight: 48,
-    borderRadius: 14,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',

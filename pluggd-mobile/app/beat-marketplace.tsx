@@ -1,6 +1,6 @@
 import { BeatPlugScreen } from '../src/features/editorial/BeatPlugScreen';
 
-// Web parity: the beat marketplace is the BeatPlug audition floor.
+// The beat marketplace resolves to the selected BeatPlug audition floor.
 export default function BeatMarketplaceRoute() {
   return <BeatPlugScreen />;
 }

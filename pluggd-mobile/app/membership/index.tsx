@@ -1,6 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -16,7 +15,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { useAuth } from '../../src/context/AuthProvider';
 import { selectionHaptic } from '../../src/design/haptics';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
@@ -109,30 +107,59 @@ export default function MyMembershipsScreen() {
 
   if (!user) {
     return (
-      <PremiumScreenBackdrop tone="accent" style={[styles.screen, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <View style={[styles.screen, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.signedOutTop}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={[styles.iconButton, { borderColor: theme.colors.border }]} onPress={() => router.back()}>
+            <MaterialIcons name="arrow-back-ios-new" size={19} color={theme.colors.text} />
+          </Pressable>
+        </View>
         <View style={styles.signedOut}>
-          <MaterialIcons name="workspace-premium" size={36} color={theme.colors.accent} />
-          <Text style={[styles.signedOutTitle, { color: theme.colors.text }]}>Sign in for memberships</Text>
+          <View style={[styles.memberMark, { borderColor: theme.colors.border }]}>
+            <MaterialIcons name="workspace-premium" size={42} color={theme.colors.accent} />
+            <Text style={[styles.memberMarkText, { color: theme.colors.textSubtle }]}>CREATOR ACCESS</Text>
+          </View>
+          <Text style={[styles.kicker, { color: theme.colors.accent }]}>MEMBERSHIPS</Text>
+          <Text style={[styles.signedOutTitle, { color: theme.colors.text }]}>Back the artists shaping your world.</Text>
           <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
-            Follow creators, subscribe with Apple, and keep active memberships in one place.
+            Join creator tiers for direct support, early releases and member-only moments. Billing stays protected by Apple.
           </Text>
+          <View style={[styles.benefitRail, { borderTopColor: theme.colors.border, borderBottomColor: theme.colors.border }]}>
+            {[
+              ['01', 'EARLY DROPS'],
+              ['02', 'MEMBER MOMENTS'],
+              ['03', 'DIRECT SUPPORT'],
+            ].map(([number, label]) => (
+              <View key={number} style={styles.benefit}>
+                <Text style={[styles.benefitNumber, { color: theme.colors.accent }]}>{number}</Text>
+                <Text style={[styles.benefitLabel, { color: theme.colors.text }]}>{label}</Text>
+              </View>
+            ))}
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Sign in for memberships"
             style={[styles.primaryButton, styles.signedOutButton, { backgroundColor: theme.colors.accent }]}
             onPress={() => go('/auth/login')}
           >
-            <Text style={styles.primaryButtonText}>Sign in</Text>
+            <Text style={styles.primaryButtonText}>SIGN IN TO CONTINUE</Text>
+            <MaterialIcons name="arrow-forward" size={19} color="#0a0806" />
           </Pressable>
+          <Pressable accessibilityRole="button" style={[styles.signedOutSecondary, { borderColor: theme.colors.border }]} onPress={() => go('/discover')}>
+            <Text style={[styles.signedOutSecondaryText, { color: theme.colors.text }]}>EXPLORE CREATORS</Text>
+          </Pressable>
+          <View style={styles.appleLine}>
+            <MaterialIcons name="verified-user" size={16} color={theme.colors.textSubtle} />
+            <Text style={[styles.appleLineText, { color: theme.colors.textSubtle }]}>Subscriptions managed securely through Apple</Text>
+          </View>
         </View>
-      </PremiumScreenBackdrop>
+      </View>
     );
   }
 
   return (
-    <PremiumScreenBackdrop tone="accent" style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
@@ -149,12 +176,7 @@ export default function MyMembershipsScreen() {
           </Pressable>
         </View>
 
-        <LinearGradient
-          colors={['rgba(255,102,0,0.24)', 'rgba(255,255,255,0.08)', 'rgba(10,8,6,0.96)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, { borderColor: theme.colors.borderAccent }]}
-        >
+        <View style={[styles.hero, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.surface }]}>
           <View style={styles.heroKickerRow}>
             <MaterialIcons name="workspace-premium" size={16} color={theme.colors.accent} />
             <Text style={[styles.kicker, { color: theme.colors.accent }]}>Memberships</Text>
@@ -167,7 +189,7 @@ export default function MyMembershipsScreen() {
             <StatPill label="Active" value={`${activeMemberships.length}`} />
             <StatPill label="Apple tiers" value={`${visibleTiers.length}`} />
           </View>
-        </LinearGradient>
+        </View>
 
         {error ? (
           <Pressable style={[styles.errorCard, { borderColor: theme.colors.danger }]} onPress={clearError}>
@@ -226,7 +248,7 @@ export default function MyMembershipsScreen() {
           </View>
         </View>
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
@@ -256,7 +278,7 @@ function MembershipCard({ membership, onPress }: { membership: ActiveMembership;
   const isActive = membership.status === 'active';
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.membershipCard, { borderColor: theme.colors.border }, pressed && { opacity: 0.82 }]}>
-      <LinearGradient colors={[`${accent}33`, 'rgba(255,255,255,0.06)', 'rgba(10,8,6,0.96)']} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${accent}10` }]} />
       <View style={[styles.membershipBadge, { backgroundColor: `${accent}24`, borderColor: `${accent}66` }]}>
         <MaterialIcons name="workspace-premium" size={24} color={accent} />
       </View>
@@ -295,38 +317,49 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 18 },
   topBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
-  signedOut: { flex: 1, minHeight: 560, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, gap: 12 },
-  signedOutTitle: { fontSize: 24, lineHeight: 29, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textAlign: 'center' },
-  signedOutBody: { fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textAlign: 'center' },
-  hero: { borderRadius: 28, borderWidth: 1, padding: 18, gap: 13, overflow: 'hidden' },
+  iconButton: { width: 44, height: 44, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.03)' },
+  signedOutTop: { paddingHorizontal: 16, paddingTop: 12 },
+  signedOut: { flex: 1, minHeight: 650, justifyContent: 'center', paddingHorizontal: 18, paddingBottom: 94 },
+  memberMark: { width: 116, height: 116, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 22 },
+  memberMarkText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 8, letterSpacing: 1.3 },
+  signedOutTitle: { fontSize: 35, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, maxWidth: 355 },
+  signedOutBody: { fontSize: 14, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, marginTop: 10, maxWidth: 350 },
+  benefitRail: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 13, marginTop: 24, marginBottom: 16 },
+  benefit: { flex: 1, gap: 4, paddingRight: 5 },
+  benefitNumber: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 10 },
+  benefitLabel: { fontFamily: pluggdFonts.satoshiBold, fontSize: 9.5, lineHeight: 13 },
+  hero: { borderRadius: 5, borderWidth: 1, padding: 18, gap: 13, overflow: 'hidden' },
   heroKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   kicker: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0 },
-  heroTitle: { fontSize: 34, lineHeight: 37, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 0 },
+  heroTitle: { fontSize: 34, lineHeight: 37, fontFamily: pluggdFonts.displayExtraBold, letterSpacing: 0 },
   heroBody: { fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   heroStats: { flexDirection: 'row', gap: 10, marginTop: 2 },
-  statPill: { minWidth: 108, borderRadius: 18, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12 },
+  statPill: { minWidth: 108, borderRadius: 5, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12 },
   statValue: { fontSize: 22, lineHeight: 25, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   statLabel: { marginTop: 1, fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
-  errorCard: { borderWidth: 1, borderRadius: 18, padding: 12 },
+  errorCard: { borderWidth: 1, borderRadius: 5, padding: 12 },
   errorText: { fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   actionRow: { flexDirection: 'row', gap: 10 },
-  primaryButton: { flex: 1, minHeight: 50, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  signedOutButton: { flex: 0, width: '100%', maxWidth: 280, height: 52, marginTop: 8 },
-  primaryButtonText: { color: '#0a0806', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  secondaryButton: { minWidth: 118, minHeight: 50, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primaryButton: { flex: 1, minHeight: 50, borderRadius: 5, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  signedOutButton: { flex: 0, width: '100%', height: 52, flexDirection: 'row', gap: 8, marginTop: 0 },
+  primaryButtonText: { color: '#0a0806', fontSize: 12, letterSpacing: 0.8, fontFamily: pluggdFonts.satoshiBlack },
+  signedOutSecondary: { width: '100%', minHeight: 48, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  signedOutSecondaryText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12, letterSpacing: 0.7 },
+  appleLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14 },
+  appleLineText: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 10.5 },
+  secondaryButton: { minWidth: 118, minHeight: 50, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   secondaryButtonText: { fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   section: { gap: 11 },
   sectionHead: { gap: 4 },
-  sectionTitle: { fontSize: 23, lineHeight: 27, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  sectionTitle: { fontSize: 23, lineHeight: 27, fontFamily: pluggdFonts.displayBold },
   sectionSubtitle: { fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   loadingCard: { minHeight: 120, alignItems: 'center', justifyContent: 'center' },
   stack: { gap: 10 },
-  emptyCard: { borderWidth: 1, borderRadius: 22, padding: 18, gap: 9, alignItems: 'flex-start' },
-  emptyTitle: { fontSize: 19, lineHeight: 23, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  emptyCard: { borderWidth: 1, borderRadius: 5, padding: 18, gap: 9, alignItems: 'flex-start' },
+  emptyTitle: { fontSize: 19, lineHeight: 23, fontFamily: pluggdFonts.displayBold },
   emptyBody: { fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  membershipCard: { minHeight: 104, borderRadius: 22, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
-  membershipBadge: { width: 58, height: 58, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  membershipCard: { minHeight: 104, borderRadius: 5, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  membershipBadge: { width: 58, height: 58, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   membershipCopy: { flex: 1, minWidth: 0, gap: 5 },
   membershipTitle: { fontSize: 17, lineHeight: 21, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   membershipMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
@@ -335,12 +368,12 @@ const styles = StyleSheet.create({
   membershipStatus: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'capitalize' },
   membershipRenewal: { fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   tierGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tierCard: { width: '48.4%', minHeight: 136, borderRadius: 20, borderWidth: 1, padding: 13, gap: 7 },
-  tierIcon: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  tierCard: { width: '48.4%', minHeight: 136, borderRadius: 5, borderWidth: 1, padding: 13, gap: 7 },
+  tierIcon: { width: 42, height: 42, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   tierTitle: { fontSize: 17, lineHeight: 20, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   tierPrice: { fontSize: 14, lineHeight: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   tierCaption: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  reviewCard: { borderWidth: 1, borderRadius: 20, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  reviewCard: { borderWidth: 1, borderRadius: 5, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
   reviewCopy: { flex: 1, gap: 4 },
   reviewTitle: { fontSize: 15, lineHeight: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   reviewBody: { fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },

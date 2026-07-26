@@ -1,10 +1,7 @@
 /**
- * Events — direct mobile port of the web /events page: bold "Discover
- * local shows" header, Browse/Map toggle, category chips, Filters/Reset
- * row, the "Browse fast" event list with date-block thumbnails, the
- * Event Spotlight card, the Upcoming Events poster rail, full event
- * cards with tag + status chips, and the Open Opportunities / For
- * Promoters panels.
+ * Events — selected mobile discovery system: fast filters, one authored
+ * spotlight, artwork-led event rails, compact date-led rows and honest
+ * promoter/opportunity states.
  */
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -548,7 +545,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0d0705' },
   headerBoardLight: {
     backgroundColor: '#0d0705',
-    borderRadius: 20,
+    borderRadius: 5,
     padding: 16,
   },
 
@@ -561,7 +558,7 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', gap: 10 },
   togglePill: {
     minHeight: 44,
-    borderRadius: 999,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.2)',
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -576,7 +573,7 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', gap: 8, paddingRight: 20 },
   categoryChip: {
     minHeight: 44,
-    borderRadius: 999,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.16)',
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -590,8 +587,8 @@ const styles = StyleSheet.create({
 
   filtersRow: { flexDirection: 'row', gap: 10 },
   filterGhost: {
-    minHeight: 42,
-    borderRadius: 999,
+    minHeight: 44,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.16)',
     backgroundColor: 'rgba(20,12,8,0.8)',
@@ -610,7 +607,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 14,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.1)',
     backgroundColor: 'rgba(30,18,10,0.55)',
@@ -619,12 +616,12 @@ const styles = StyleSheet.create({
   fastDateWrap: {
     width: 52,
     height: 52,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: '#1d1712',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fastThumbWrap: { width: 52, height: 52, borderRadius: 10, overflow: 'hidden' },
+  fastThumbWrap: { width: 52, height: 52, borderRadius: 4, overflow: 'hidden' },
   fastThumb: { width: '100%', height: '100%' },
   fastThumbDate: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,5,2,0.45)' },
   dateBlock: { alignItems: 'center', justifyContent: 'center' },
@@ -634,8 +631,8 @@ const styles = StyleSheet.create({
   fastMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.66)' },
   fastVenue: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.5)' },
   viewPill: {
-    minHeight: 36,
-    borderRadius: 999,
+    minHeight: 44,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.6)',
     paddingHorizontal: 14,
@@ -649,19 +646,19 @@ const styles = StyleSheet.create({
   spotlightPill: {
     alignSelf: 'flex-start',
     backgroundColor: ed.orange,
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 13,
     paddingVertical: 7,
   },
   spotlightPillText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: '#3a1c04' },
-  spotlightTitle: { fontFamily: edFonts.bodyBlack, fontSize: 26, lineHeight: 31, color: '#ffffff' },
+  spotlightTitle: { fontFamily: edFonts.displayExtraBold, fontSize: 26, lineHeight: 31, color: '#ffffff', letterSpacing: -0.5 },
   spotlightDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.78)' },
   spotlightMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   spotlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.75)', marginRight: 8 },
   spotlightCtaRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
   openEventCta: {
     minHeight: 48,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: ed.orange,
     flexDirection: 'row',
     alignItems: 'center',
@@ -671,7 +668,7 @@ const styles = StyleSheet.create({
   openEventText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: '#3a1c04' },
   ticketLinkCta: {
     minHeight: 48,
-    borderRadius: 10,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.25)',
     backgroundColor: 'rgba(10,5,2,0.6)',
@@ -682,55 +679,55 @@ const styles = StyleSheet.create({
   },
   ticketLinkText: { fontFamily: edFonts.bodyBold, fontSize: 13, color: ed.cream },
 
-  upcomingTitle: { fontFamily: edFonts.bodyBlack, fontSize: 24, color: '#ffffff' },
+  upcomingTitle: { fontFamily: edFonts.displayBold, fontSize: 24, color: '#ffffff', letterSpacing: -0.4 },
   upcomingSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.62)', marginTop: 2 },
-  posterCard: { width: 250, height: 320, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end' },
+  posterCard: { width: 250, height: 320, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end' },
   posterDate: {
     position: 'absolute',
     top: 14,
     left: 14,
-    borderRadius: 10,
+    borderRadius: 4,
     backgroundColor: 'rgba(20,12,6,0.92)',
     paddingHorizontal: 4,
     paddingVertical: 4,
   },
   posterBody: { padding: 14, gap: 3 },
-  posterTitle: { fontFamily: edFonts.bodyBlack, fontSize: 19, lineHeight: 24, color: '#ffffff' },
+  posterTitle: { fontFamily: edFonts.displayBold, fontSize: 19, lineHeight: 24, color: '#ffffff' },
   posterVenue: { fontFamily: edFonts.bodyBold, fontSize: 12, color: ed.orange },
 
   fullCard: {
-    borderRadius: 18,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.1)',
     backgroundColor: 'rgba(24,14,8,0.6)',
     padding: 14,
     gap: 8,
   },
-  fullPosterWrap: { borderRadius: 12, overflow: 'hidden', marginBottom: 6 },
+  fullPosterWrap: { borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
   fullPoster: { width: '100%', height: 190 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 4 },
   tagChipGrey: {
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.09)',
     paddingHorizontal: 11,
     paddingVertical: 5,
   },
   tagChipGreyText: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.78)' },
   tagChipOrange: {
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.6)',
     paddingHorizontal: 11,
     paddingVertical: 5,
   },
   tagChipOrangeText: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: ed.orange },
-  fullTitle: { fontFamily: edFonts.bodyBlack, fontSize: 18, lineHeight: 23, color: '#ffffff', marginTop: 6 },
+  fullTitle: { fontFamily: edFonts.displayBold, fontSize: 18, lineHeight: 23, color: '#ffffff', marginTop: 6 },
   fullDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.62)' },
   fullMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   fullMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.66)', marginRight: 8 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   soonChip: {
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.6)',
     backgroundColor: 'rgba(255,102,0,0.1)',
@@ -739,7 +736,7 @@ const styles = StyleSheet.create({
   },
   soonChipText: { fontFamily: edFonts.bodyBold, fontSize: 11.5, color: ed.orange },
   ticketsChip: {
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(58,215,131,0.55)',
     backgroundColor: 'rgba(58,215,131,0.1)',
@@ -750,7 +747,7 @@ const styles = StyleSheet.create({
   fullCtaRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
   getTicketsCta: {
     minHeight: 48,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: ed.orange,
     alignItems: 'center',
     justifyContent: 'center',

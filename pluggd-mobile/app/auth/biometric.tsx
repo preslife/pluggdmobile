@@ -1,91 +1,53 @@
-
-import { View, Text, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandLogo } from '../../components/BrandLogo';
-import { SymbolIcon } from '../../components/SymbolIcon';
+import { pluggdFonts } from '../../src/design/typography';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function BiometricUnlock() {
   const router = useRouter();
-
-  const handleBiometric = async () => {
-    router.replace('/auth/login');
-  };
-
-  const handlePasscode = () => {
-    router.replace('/auth/login');
-  };
+  const theme = usePluggdTheme();
+  const continueToLogin = () => router.replace('/auth/login');
 
   return (
-    <View className="flex-1 bg-background-light dark:bg-background-dark items-center justify-between px-6 py-8">
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-
-      {/* Ambient Glow */}
-      <View
-        className="absolute bg-primary/10 rounded-full"
-        style={{
-          width: 320,
-          height: 320,
-          top: '35%',
-          left: '50%',
-          marginLeft: -160,
-          marginTop: -160,
-          opacity: 0.5,
-        }}
-      />
-
-      <View className="z-10 w-full items-center pt-8">
-        <BrandLogo width={132} height={56} />
-      </View>
-
-      {/* Center: Biometric Icon */}
-      <View className="z-10 items-center justify-center gap-8">
-        <View className="relative items-center justify-center">
-          {/* Glow rings */}
-          <View className="absolute bg-primary/20 rounded-full w-40 h-40" />
-          <View className="absolute bg-primary/10 rounded-full w-56 h-56" style={{ opacity: 0.5 }} />
-          {/* Main fingerprint icon */}
-          <SymbolIcon name="fingerprint" className="text-primary z-10"
-            style={{
-              fontSize: 128,
-              textShadowColor: 'rgba(236,127,19,0.7)',
-              textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: 25,
-            }} />
+      <BrandLogo variant="auto" width={116} height={47} />
+      <View style={styles.content}>
+        <View style={[styles.identityMark, { borderColor: theme.colors.border }]}>
+          <MaterialIcons name="fingerprint" size={67} color={theme.colors.accent} />
+          <View style={styles.scanLine} />
         </View>
-
-        <View className="items-center gap-2">
-          <Text className="text-slate-900 dark:text-white tracking-tight text-[32px] font-bold leading-tight">
-            Secure sign-in
-          </Text>
-          <Text className="text-slate-500 dark:text-white/60 text-base">
-            Continue with your PLUGGD account credentials
-          </Text>
-        </View>
+        <Text style={[styles.kicker, { color: theme.colors.accent }]}>SECURE ACCESS</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Your PLUGGD,<Text style={styles.titleAccent}> protected.</Text></Text>
+        <Text style={[styles.body, { color: theme.colors.textMuted }]}>Continue to account sign-in. Biometric unlock becomes available after you enable it on this device.</Text>
       </View>
-
-      {/* Bottom Actions */}
-      <View className="z-10 w-full gap-3 pb-8">
-        <TouchableOpacity
-          onPress={handleBiometric}
-          className="w-full h-14 rounded-xl bg-primary flex-row items-center justify-center gap-2"
-          style={{
-            shadowColor: '#ff6600',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.3,
-            shadowRadius: 20,
-          }}
-        >
-          <SymbolIcon name="login" className="text-[#181411]" style={{ fontSize: 20 }} />
-          <Text className="text-[#181411] text-lg font-bold tracking-wide">Continue to login</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handlePasscode}
-          className="w-full h-12 rounded-xl items-center justify-center"
-        >
-          <Text className="text-slate-600 dark:text-white/80 text-base font-medium">Back to login</Text>
-        </TouchableOpacity>
+      <View style={[styles.actions, { borderTopColor: theme.colors.border }]}>
+        <Pressable accessibilityRole="button" onPress={continueToLogin} style={styles.primary}>
+          <Text style={styles.primaryText}>CONTINUE TO LOGIN</Text>
+          <MaterialIcons name="arrow-forward" size={19} color="#120B06" />
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={continueToLogin} style={styles.textAction}>
+          <Text style={[styles.textActionLabel, { color: theme.colors.textMuted }]}>Use account password</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 58, paddingBottom: 32 },
+  content: { flex: 1, justifyContent: 'center' },
+  identityMark: { width: 142, height: 142, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 27 },
+  scanLine: { position: 'absolute', left: 20, right: 20, bottom: 35, height: 2, backgroundColor: '#F46A1B', opacity: 0.78 },
+  kicker: { fontFamily: pluggdFonts.satoshiBold, fontSize: 11, letterSpacing: 1.8, marginBottom: 9 },
+  title: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 36, lineHeight: 40, letterSpacing: -0.7, maxWidth: 350 },
+  titleAccent: { color: '#F46A1B', fontFamily: pluggdFonts.displayBold },
+  body: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, marginTop: 11, maxWidth: 350 },
+  actions: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 16, gap: 8 },
+  primary: { minHeight: 52, borderRadius: 5, backgroundColor: '#F46A1B', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 17 },
+  primaryText: { color: '#120B06', fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 0.8 },
+  textAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  textActionLabel: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+});

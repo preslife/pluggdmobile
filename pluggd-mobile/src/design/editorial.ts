@@ -1,10 +1,8 @@
 /**
- * PLUGGD editorial visual system — direct port of the web app's
- * public-visual-system.css + editorial.css tokens so mobile surfaces
- * render the same dark/cream editorial rhythm as pluggd.fm.
+ * PLUGGD selected mobile discovery system.
  *
- * Display: Instrument Serif (italic for emphasis moments)
- * Data labels: JetBrains Mono (uppercase, tracked)
+ * Display: Sora
+ * Data labels: Satoshi Black (uppercase, tracked)
  * UI/body: Satoshi
  * Brand accent: #ff6600
  */
@@ -43,12 +41,13 @@ export const ed = {
 } as const;
 
 export const edFonts = {
-  /** Instrument Serif 400 — section titles, editorial headlines */
-  serif: 'InstrumentSerif-Regular',
-  /** Instrument Serif 400 italic — emphasis moments ("comes alive") */
-  serifItalic: 'InstrumentSerif-Italic',
-  /** JetBrains Mono 500 — tracked uppercase data labels */
-  mono: 'JetBrainsMono-Medium',
+  /** Compatibility names retained while every surface moves to the selected system. */
+  serif: 'Sora-SemiBold',
+  serifItalic: 'Sora-Bold',
+  displayBold: 'Sora-Bold',
+  displayExtraBold: 'Sora-ExtraBold',
+  /** Satoshi Black — tracked uppercase data labels */
+  mono: 'Satoshi-Black',
   body: 'Satoshi-Regular',
   bodyMedium: 'Satoshi-Medium',
   bodyBold: 'Satoshi-Bold',
@@ -64,7 +63,7 @@ export const edEyebrow = {
   textTransform: 'uppercase' as const,
 };
 
-/** Mono variant used for ledger/data labels (JetBrains Mono, tracked). */
+/** Tracked Satoshi variant used for ledger/data labels. */
 export const edMonoLabel = {
   fontFamily: edFonts.mono,
   fontSize: 11,
@@ -72,7 +71,7 @@ export const edMonoLabel = {
   textTransform: 'uppercase' as const,
 };
 
-/** pvs-serif-title: Instrument Serif 400, tight leading. */
+/** Selected display title: Sora, tight leading. */
 export function edSerifTitle(size: number) {
   return {
     fontFamily: edFonts.serif,

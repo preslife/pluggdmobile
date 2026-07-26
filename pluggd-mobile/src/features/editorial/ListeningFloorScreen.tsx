@@ -1,6 +1,6 @@
 /**
- * Releases — direct mobile port of the web /releases "Listening Floor":
- * featured listening deck (art, serif title, mono artist·genre, waveform
+ * Releases — selected mobile "Listening Floor" system:
+ * featured listening deck (art, Sora title, tracked artist·genre, waveform
  * scrubber, transport, support pill, format/released ledger), search +
  * type chips + Wall/Ledger toggle, then the numbered editorial sections —
  * 01 Fresh pressings, 02 The chart, 03 Pressing orders, 05 Listening

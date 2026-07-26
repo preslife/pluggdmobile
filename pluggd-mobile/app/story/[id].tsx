@@ -204,8 +204,8 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   iconButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   authorMeta: { fontFamily: pluggdFonts.satoshiBold, color: '#B3B3B3', fontSize: 12, fontWeight: '800', marginTop: 2 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
   emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
   bottom: {
     position: 'absolute',
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 42,
     padding: 16,
-    borderRadius: 18,
+    borderRadius: 5,
     backgroundColor: 'rgba(23,19,16,0.74)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   audioButton: {
     minHeight: 58,
-    borderRadius: 18,
+    borderRadius: 5,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',

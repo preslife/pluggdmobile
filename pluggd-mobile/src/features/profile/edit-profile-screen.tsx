@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { minHeight: 72, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontFamily: 'Satoshi-Black', fontSize: 19 },
+  headerTitle: { fontFamily: 'Sora-Bold', fontSize: 19 },
   saveButton: { minWidth: 44, height: 44, alignItems: 'flex-end', justifyContent: 'center' },
   saveText: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
   content: { paddingTop: 20 },

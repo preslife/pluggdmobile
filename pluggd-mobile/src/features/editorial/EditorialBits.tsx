@@ -1,7 +1,6 @@
 /**
- * Shared editorial primitives — direct ports of the pluggd.fm public
- * visual system (dark/cream rhythm, Instrument Serif titles, JetBrains
- * Mono data labels, torn paper edges, corkboard pieces).
+ * Shared legacy-named primitives, now rendered through the selected mobile
+ * redesign system: Sora hierarchy, Satoshi copy and disciplined orange.
  */
 import { MaterialIcons } from '@expo/vector-icons';
 import {
@@ -79,7 +78,7 @@ export function Eyebrow({ text, onPaper = false, color, style }: { text: string;
   );
 }
 
-/** Instrument Serif display title. Pass `caps` for the ALL-CAPS section voice. */
+/** Sora display title. Pass `caps` for the ALL-CAPS section voice. */
 export function SerifTitle({
   text,
   size = 27,
@@ -93,7 +92,7 @@ export function SerifTitle({
   onPaper?: boolean;
   caps?: boolean;
   style?: StyleProp<TextStyle>;
-  /** Optional trailing italic-orange emphasis segment. */
+  /** Optional trailing orange emphasis segment. */
   accent?: string;
 }) {
   const base: TextStyle = {

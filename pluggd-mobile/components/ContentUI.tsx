@@ -15,7 +15,7 @@ import {
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { PLUGGD_ORANGE, pluggdRadii, pluggdTypography } from '../src/design/tokens';
 import { contentInitials } from '../src/lib/mobileContent';
-import { PluggdChip, PremiumScreenBackdrop, PremiumScreenHeader } from './PluggdPrimitives';
+import { PluggdChip, PremiumScreenHeader } from './PluggdPrimitives';
 
 export function ScreenShell({
   title,
@@ -28,8 +28,9 @@ export function ScreenShell({
   children: ReactNode;
   action?: ReactNode;
 }) {
+  const theme = usePluggdTheme();
   return (
-    <PremiumScreenBackdrop tone="accent" style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
         <PremiumScreenHeader
           eyebrow="PLUGGD"
@@ -42,7 +43,7 @@ export function ScreenShell({
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {children}
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
@@ -247,14 +248,11 @@ export function EmptyState({ title, body }: { title: string; body?: string }) {
       style={[
         styles.empty,
         {
-          backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
         },
       ]}
     >
-      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.surfaceStrong }]}>
-        <MaterialIcons name="search-off" size={30} color={theme.colors.accent} />
-      </View>
+      <View style={styles.emptySignal}><View style={[styles.emptySignalBar, { backgroundColor: theme.colors.accent }]} /><Text style={[styles.emptyEyebrow, { color: theme.colors.accent }]}>CURRENT STATE</Text></View>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text>
       {body ? <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>{body}</Text> : null}
     </View>
@@ -289,7 +287,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.displayBold, fontWeight: pluggdTypography.weights.heavy,
   },
   sectionAction: {
     flexDirection: 'row',
@@ -350,7 +348,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 15,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.displayBold, fontWeight: pluggdTypography.weights.heavy,
   },
   cardSubtitle: {
     fontSize: pluggdTypography.meta,
@@ -396,7 +394,7 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     fontSize: pluggdTypography.control,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
+    fontFamily: pluggdFonts.displayBold, fontWeight: pluggdTypography.weights.heavy,
   },
   listSubtitle: {
     fontSize: pluggdTypography.meta,
@@ -421,29 +419,39 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   empty: {
-    minHeight: 170,
-    borderRadius: pluggdRadii.control,
-    borderWidth: 1,
-    alignItems: 'center',
+    minHeight: 148,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    padding: 18,
+    paddingVertical: 20,
   },
-  emptyIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  emptySignal: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+  },
+  emptySignalBar: {
+    width: 20,
+    height: 3,
+    borderRadius: 2,
+  },
+  emptyEyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontWeight: '900',
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: pluggdTypography.weights.heavy,
-    marginTop: 9,
+    fontSize: 20,
+    fontFamily: pluggdFonts.displayBold, fontWeight: pluggdTypography.weights.heavy,
+    marginTop: 10,
   },
   emptyBody: {
     fontSize: 13.5,
-    lineHeight: 19,
-    textAlign: 'center',
+    lineHeight: 20,
+    textAlign: 'left',
     marginTop: 6,
+    maxWidth: 340,
   },
 });

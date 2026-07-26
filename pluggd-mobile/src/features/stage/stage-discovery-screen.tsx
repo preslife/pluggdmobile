@@ -973,6 +973,6 @@ const styles = StyleSheet.create({
   followButton: { minWidth: 74, minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
   followText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   emptyInline: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16 },
-  emptyTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16 },
+  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 16 },
   emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
 });

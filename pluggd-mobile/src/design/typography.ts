@@ -11,12 +11,12 @@ export const pluggdFonts = {
   satoshiMedium: 'Satoshi-Medium',
   satoshiBold: 'Satoshi-Bold',
   satoshiBlack: 'Satoshi-Black',
-  // Editorial italic-serif accent (matches the web app's "comes alive" / "what's moving." treatment)
-  serifItalic: 'PlayfairDisplay-Italic',
-  serifItalicBold: 'PlayfairDisplay-SemiBoldItalic',
-  // Roman serif for web-parity section headings ("New From Creators", "Community Pulse")
-  serif: 'PlayfairDisplay-SemiBold',
-  interSemiBold: 'Inter-SemiBold',
+  // Compatibility aliases. The selected mobile redesign uses the concept-1
+  // Sora/Satoshi typography system everywhere, including older call sites.
+  serifItalic: 'Sora-SemiBold',
+  serifItalicBold: 'Sora-Bold',
+  serif: 'Sora-SemiBold',
+  interSemiBold: 'Satoshi-Bold',
   system: undefined,
 } as const;
 
@@ -70,10 +70,12 @@ export const pluggdTextStyles = {
     textTransform: 'uppercase',
   },
   body: {
+    fontFamily: pluggdFonts.satoshiRegular,
     fontSize: 14,
     lineHeight: 21,
   },
   meta: {
+    fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 12,
     lineHeight: 16,
   },

@@ -1,6 +1,6 @@
 /**
- * Discover — direct mobile port of the web /discover page:
- * serif "Find what's moving." hero, category chips, realtime ticker,
+ * Discover — selected mobile exploration system:
+ * Sora "Find what's moving." hierarchy, category chips, realtime ticker,
  * "What's moving now" paper card, For You grid, Live Now, Trending
  * Scenes, New From Creators, Soundboards Worth Opening, Near You,
  * Creators to Watch, Community Pulse, and the closing explore CTA.

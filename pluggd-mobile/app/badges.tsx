@@ -5,11 +5,13 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ScreenShell, SectionTitle } from '../components/ContentUI';
+import { useAuth } from '../src/context/AuthProvider';
 import { loadFanIdentitySummary } from '../src/features/culture/mobileServices';
 import { PLUGGD_ORANGE, formatDate } from '../src/lib/mobileContent';
 
 export default function BadgesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const query = useQuery({
     queryKey: ['culture', 'fan-identity'],
     queryFn: () => loadFanIdentitySummary(),
@@ -21,7 +23,13 @@ export default function BadgesScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       {!query.isLoading && !identity ? (
-        <EmptyState title="Sign in to view fan identity" body="Badges, rewards, event attendance and joined communities are tied to your PLUGGD account." />
+        <View style={styles.identityGate}>
+          <View style={styles.gateMark}><MaterialIcons name="fingerprint" size={32} color="#0A0806" /></View>
+          <Text style={styles.heroEyebrow}>FAN IDENTITY</Text>
+          <Text style={styles.gateTitle}>Your presence should mean something.</Text>
+          <Text style={styles.heroBody}>Communities joined, events attended and genuine rewards become a portable PLUGGD identity—only when the account has real signals.</Text>
+          <Pressable style={styles.gateButton} onPress={() => router.push((user ? '/community' : '/auth/login') as any)}><Text style={styles.gateButtonText}>{user ? 'Find a community' : 'Sign in to see your identity'}</Text></Pressable>
+        </View>
       ) : null}
 
       {identity ? (
@@ -77,13 +85,18 @@ function IdentityRow({ icon, title, subtitle }: { icon: keyof typeof MaterialIco
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 180 },
-  heroCard: { borderRadius: 18, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 16, marginBottom: 20 },
+  identityGate: { paddingTop: 8 },
+  gateMark: { width: 58, height: 58, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  gateTitle: { color: '#FFFFFF', fontSize: 35, lineHeight: 39, letterSpacing: -1.2, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 8 },
+  gateButton: { minHeight: 52, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
+  gateButtonText: { color: '#0A0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  heroCard: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#302A26', paddingVertical: 18, marginBottom: 20 },
   heroEyebrow: { color: PLUGGD_ORANGE, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1 },
-  heroTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 33, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 5 },
+  heroTitle: { color: '#FFFFFF', fontSize: 30, lineHeight: 34, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
   heroBody: { color: '#B3B3B3', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 8 },
-  row: { minHeight: 74, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, marginBottom: 9, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,102,0,0.1)', alignItems: 'center', justifyContent: 'center' },
+  row: { minHeight: 74, borderBottomWidth: 1, borderColor: '#302A26', paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWrap: { width: 42, height: 42, borderRadius: 4, backgroundColor: 'rgba(255,102,0,0.1)', alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 },
-  title: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  title: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
   subtitle: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
 });

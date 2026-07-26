@@ -1,6 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
-import { edFonts } from '../../src/design/editorial';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +19,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
-import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
@@ -149,12 +147,7 @@ export default function Login() {
             </Text>
           </View>
 
-          <PluggdGlassSurface
-            glassEffectStyle="regular"
-            borderColor={theme.colors.border}
-            fallbackColor={theme.colors.glassFallback}
-            style={styles.formCard}
-          >
+          <View style={[styles.formCard, { borderColor: theme.colors.border }]}>
             <InputRow
               label="Email"
               icon="mail-outline"
@@ -215,7 +208,7 @@ export default function Login() {
             >
               {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Log in</Text>}
             </Pressable>
-          </PluggdGlassSurface>
+          </View>
 
           <Text style={[styles.signupText, { color: theme.colors.textMuted }]}>
             Don't have an account?{' '}
@@ -288,7 +281,7 @@ const styles = StyleSheet.create({
   topButton: {
     minWidth: 82,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 5,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -302,7 +295,7 @@ const styles = StyleSheet.create({
   },
   modeButton: {
     height: 40,
-    borderRadius: 20,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 11,
     flexDirection: 'row',
@@ -327,7 +320,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: 35,
     letterSpacing: -0.5,
-    fontFamily: edFonts.serif,
+    fontFamily: pluggdFonts.displayExtraBold,
   },
   subtitle: {
     marginTop: 8,
@@ -336,8 +329,9 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   formCard: {
-    borderRadius: 16,
-    padding: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 18,
   },
   inputGroup: {
     marginBottom: 13,
@@ -350,7 +344,7 @@ const styles = StyleSheet.create({
   },
   inputShell: {
     minHeight: 50,
-    borderRadius: 13,
+    borderRadius: 5,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -365,7 +359,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     minHeight: 42,
-    borderRadius: 12,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 11,
     flexDirection: 'row',
@@ -390,7 +384,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     minHeight: 50,
-    borderRadius: 16,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -400,9 +394,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    color: '#120B06',
+    fontSize: 13,
+    letterSpacing: 0.8,
+    fontFamily: pluggdFonts.satoshiBlack,
   },
   dividerRow: {
     marginTop: 18,

@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   lowerShortcutsTitle: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginHorizontal: 16, textTransform: 'uppercase', letterSpacing: 0.8 },
   center: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { marginHorizontal: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: 20, padding: 18, gap: 8 },
-  emptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBlack, fontSize: 17 },
+  emptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 17 },
   emptyBody: { color: COLORS.muted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19 },
   retry: { marginTop: 8, height: 42, borderRadius: 21, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
   retryText: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },

@@ -1,6 +1,6 @@
 /**
- * Market — direct mobile port of the web /store culture shop (the web
- * /market route resolves to /store): giant serif "PLUGGD Store" hero
+ * Market — selected mobile culture-shop system (/market resolves to
+ * /store): Sora-led "PLUGGD Store" hierarchy
  * with trust chips, Featured collection panel, What's Next drops,
  * Creator shops, the Digital shelf, Book talent services, From the
  * scene, and the full product grid. BeatPlug stays its own floor at

@@ -35,19 +35,25 @@ assert.match(typography, /displaySemiBold:\s*'Sora-SemiBold'/, 'Sora SemiBold di
 assert.match(typography, /displayBold:\s*'Sora-Bold'/, 'Sora Bold display font must be exposed');
 assert.match(typography, /displayExtraBold:\s*'Sora-ExtraBold'/, 'Sora ExtraBold display font must be exposed');
 assert.match(typography, /brandDisplay:\s*'PluggdSans5-Regular'/, 'legacy PLUGGD display font must only remain as an explicit brand alias');
-assert.match(typography, /satoshiBlack:\s*'Satoshi-Black'/, 'hero/section typography must expose Satoshi Black');
+assert.match(typography, /satoshiBlack:\s*'Satoshi-Black'/, 'label and utility typography must expose Satoshi Black');
 assert.match(typography, /satoshiBold:\s*'Satoshi-Bold'/, 'CTA typography must expose Satoshi Bold');
-assert.match(typography, /interSemiBold:\s*'Inter-SemiBold'/, 'Backstage forum/user-count updates must expose real Inter Semi-Bold');
-assert.match(typography, /system:\s*undefined/, 'body typography must preserve native system font usage');
+assert.match(typography, /interSemiBold:\s*'Satoshi-Bold'/, 'legacy Inter call sites must resolve to the selected Satoshi body family');
+assert.match(typography, /body:\s*{[^}]*fontFamily:\s*pluggdFonts\.satoshiRegular/s, 'body typography must use Satoshi Regular');
+assert.match(typography, /meta:\s*{[^}]*fontFamily:\s*pluggdFonts\.satoshiMedium/s, 'metadata typography must use Satoshi Medium');
 assert.doesNotMatch(typography, /Neue Montreal|Neue Haas Grotesk|ABC Diatype Monument/, 'old font plan must not remain active');
+assert.doesNotMatch(typography, /Inter-SemiBold/, 'Inter must not remain in the selected typography map');
 assert.doesNotMatch(typography, /StyleSheet as any\)\.create|TextInput\.defaultProps|Text\.defaultProps/, 'typography must not monkey-patch React Native globals');
 
 for (const family of ['PluggdSans5-Regular', 'Satoshi-Light', 'Satoshi-Regular', 'Satoshi-Medium', 'Satoshi-Bold', 'Satoshi-Black']) {
   assert.match(layout, new RegExp(`${family}`), `${family} must be loaded in app/_layout.tsx`);
 }
-assert.match(packageJson, /@expo-google-fonts\/inter/, 'Inter font package must be installed for Backstage Semi-Bold text');
-assert.match(layout, /Inter_600SemiBold/, 'Inter Semi-Bold font must be imported from @expo-google-fonts/inter');
-assert.match(layout, /"Inter-SemiBold":\s*Inter_600SemiBold/, 'Inter Semi-Bold must be loaded through expo-font');
+assert.doesNotMatch(packageJson, /@expo-google-fonts\/inter/, 'retired Inter dependency must not remain installed');
+assert.doesNotMatch(
+  packageJson,
+  /@expo-google-fonts\/(instrument-serif|jetbrains-mono|playfair-display)/,
+  'retired display-font dependencies must not remain installed',
+);
+assert.doesNotMatch(layout, /Inter_600SemiBold|Inter-SemiBold/, 'retired Inter font must not be loaded');
 assert.match(packageJson, /@expo-google-fonts\/sora/, 'Sora font package must be installed to match web display typography');
 for (const [importName, family] of [
   ['Sora_600SemiBold', 'Sora-SemiBold'],
@@ -71,8 +77,8 @@ for (const primitive of ['PluggdTitle', 'PluggdHeading', 'PluggdSectionTitle', '
 assert.match(primitives, /headerTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayExtraBold/s, 'premium primitive page titles must use Sora ExtraBold');
 assert.match(primitives, /heroTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'premium primitive hero titles must use Sora Bold');
 assert.match(primitives, /railTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'premium primitive section titles must use Sora Bold');
-assert.match(home, /heroTitle:\s*{[^}]*fontFamily:\s*edFonts\.serif/s, 'home hero heading must use the Instrument Serif editorial display face (web parity)');
-assert.match(home, /SerifTitle/, 'home section headings must use the shared Instrument Serif section title');
+assert.match(home, /heroTitle:\s*{[^}]*fontFamily:\s*edFonts\.serif/s, 'home hero heading must use the selected Sora display alias');
+assert.match(home, /SerifTitle/, 'home section headings must use the shared selected-system title component');
 assert.match(live, /focusTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'live focus heading must use Sora Bold');
 assert.match(studio, /sectionTitle:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'studio section headings must use Sora Bold');
 assert.match(liquidSectionHeader, /title:\s*{[^}]*fontFamily:\s*pluggdFonts\.displayBold/s, 'liquid section heading must use Sora Bold');

@@ -11,16 +11,23 @@ const wallet = read('app/wallet.tsx');
 const membership = read('app/membership/[creatorId].tsx');
 const tickets = read('app/tickets.tsx');
 
-assert.match(contentUi, /PremiumScreenBackdrop/, 'shared ScreenShell must use the premium app backdrop');
 assert.match(contentUi, /PremiumScreenHeader/, 'shared ScreenShell must use the premium app header');
+assert.match(contentUi, /theme\.colors\.background/, 'shared ScreenShell must use the selected theme canvas');
+assert.doesNotMatch(contentUi, /PremiumScreenBackdrop/, 'shared ScreenShell must not reintroduce the obsolete promotional backdrop');
 
 for (const [name, source] of [
   ['beat detail', beat],
   ['event detail', event],
+]) {
+  assert.match(source, /PremiumScreenBackdrop/, `${name} must opt into the shared premium backdrop`);
+}
+
+for (const [name, source] of [
   ['wallet', wallet],
   ['membership', membership],
 ]) {
-  assert.match(source, /PremiumScreenBackdrop/, `${name} must opt into the shared premium backdrop`);
+  assert.match(source, /theme\.colors\.background/, `${name} must use the selected theme canvas`);
+  assert.doesNotMatch(source, /PremiumScreenBackdrop/, `${name} must not reintroduce the obsolete promotional backdrop`);
 }
 
 // Release detail is the mobile discovery editorial page: art and identity

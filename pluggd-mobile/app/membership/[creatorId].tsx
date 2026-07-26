@@ -17,10 +17,12 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { SymbolIcon } from '../../components/SymbolIcon';
-import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
+import { pluggdFonts } from '../../src/design/typography';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
 import {
@@ -82,6 +84,7 @@ interface CreatorProfile {
 
 export default function CreatorMembershipScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const { creatorId } = useLocalSearchParams<{ creatorId: string }>();
   const { user } = useAuth();
   const {
@@ -205,15 +208,15 @@ export default function CreatorMembershipScreen() {
 
   if (loading) {
     return (
-      <PremiumScreenBackdrop tone="accent" style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <View style={[styles.screen, { backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color="#ff6600" />
-      </PremiumScreenBackdrop>
+      </View>
     );
   }
 
   return (
-    <PremiumScreenBackdrop tone="accent">
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
@@ -233,7 +236,7 @@ export default function CreatorMembershipScreen() {
           <View className="absolute top-0 left-0 right-0 pt-14 px-4 flex-row items-center justify-between z-20">
             <TouchableOpacity
               onPress={() => router.back()}
-              className="size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md"
+              className="size-10 items-center justify-center rounded-md bg-black/40 backdrop-blur-md"
             >
               <SymbolIcon name="arrow_back" className="text-white text-xl" />
             </TouchableOpacity>
@@ -252,10 +255,10 @@ export default function CreatorMembershipScreen() {
               )}
             </View>
             <View className="flex-1 mb-1">
-              <Text className="text-white text-xl font-bold">
+              <Text className="text-white text-xl font-bold" style={styles.creatorName}>
                 {creator?.full_name ?? creator?.username ?? 'Creator'}
               </Text>
-              <Text className="text-white/60 text-sm">Membership Tiers</Text>
+              <Text className="text-white/60 text-sm" style={styles.meta}>Membership tiers</Text>
             </View>
           </View>
         </View>
@@ -265,10 +268,10 @@ export default function CreatorMembershipScreen() {
           <View className="mx-4 mt-4 py-4 border-y border-primary/20 flex-row items-center gap-3">
             <SymbolIcon name="verified" className="text-primary text-2xl" />
             <View className="flex-1">
-              <Text className="text-white font-bold">
+              <Text className="text-white font-bold" style={styles.rowTitle}>
                 You're a {existingMembership.tier_name} member
               </Text>
-              <Text className="text-white/50 text-sm">
+              <Text className="text-white/50 text-sm" style={styles.meta}>
                 Subscribed to {existingMembership.creator_name}
               </Text>
             </View>
@@ -278,18 +281,18 @@ export default function CreatorMembershipScreen() {
         {/* ── Bio section ── */}
         {creator?.bio ? (
           <View className="px-4 mt-4">
-            <Text className="text-zinc-400 text-sm leading-relaxed">{creator.bio}</Text>
+            <Text className="text-zinc-400 text-sm leading-relaxed" style={styles.body}>{creator.bio}</Text>
           </View>
         ) : null}
 
         {/* ── Tier Cards ── */}
         <View className="px-4 mt-6">
-          <Text className="text-white text-lg font-bold mb-4">Choose your tier</Text>
+          <Text className="text-white text-lg font-bold mb-4" style={styles.sectionTitle}>Choose your tier</Text>
 
           {tiers.length === 0 && (
             <View className="items-center py-12">
               <SymbolIcon name="loyalty" className="text-zinc-600 text-5xl mb-3" />
-              <Text className="text-zinc-500 text-base">
+              <Text className="text-zinc-500 text-base" style={styles.body}>
                 This creator hasn't set up membership tiers yet.
               </Text>
             </View>
@@ -329,23 +332,23 @@ export default function CreatorMembershipScreen() {
                   >
                     <View className="flex-row items-center gap-3">
                       <View
-                        className="size-12 rounded-full items-center justify-center"
+                        className="size-12 rounded-md items-center justify-center"
                         style={{ backgroundColor: `${accentColor}20` }}
                       >
                         <SymbolIcon name={icon} className="text-2xl"
                           style={{ color: accentColor }} />
                       </View>
                       <View>
-                        <Text className="text-white font-bold text-base">{tier.name}</Text>
+                        <Text className="text-white font-bold text-base" style={styles.rowTitle}>{tier.name}</Text>
                         {tier.current_members > 0 && (
-                          <Text className="text-zinc-500 text-xs">
+                          <Text className="text-zinc-500 text-xs" style={styles.meta}>
                             {tier.current_members} member{tier.current_members !== 1 ? 's' : ''}
                           </Text>
                         )}
                       </View>
                     </View>
                     <View className="items-end">
-                      <Text className="text-white font-bold text-lg">{priceLabel}</Text>
+                      <Text className="text-white font-bold text-lg" style={styles.price}>{priceLabel}</Text>
                     </View>
                   </View>
 
@@ -353,7 +356,7 @@ export default function CreatorMembershipScreen() {
                   {isSelected && (
                     <View className="p-4">
                       {tier.description && (
-                        <Text className="text-zinc-400 text-sm mb-3 leading-relaxed">
+                        <Text className="text-zinc-400 text-sm mb-3 leading-relaxed" style={styles.body}>
                           {tier.description}
                         </Text>
                       )}
@@ -365,7 +368,7 @@ export default function CreatorMembershipScreen() {
                             <View key={i} className="flex-row items-start gap-2">
                               <SymbolIcon name="check_circle" className="text-sm mt-0.5"
                                 style={{ color: accentColor }} />
-                              <Text className="text-zinc-300 text-sm flex-1">{feature}</Text>
+                              <Text className="text-zinc-300 text-sm flex-1" style={styles.body}>{feature}</Text>
                             </View>
                           ))}
                         </View>
@@ -384,7 +387,7 @@ export default function CreatorMembershipScreen() {
                           ) : (
                             <>
                               <SymbolIcon name="loyalty" className="text-white text-xl" />
-                              <Text className="text-white font-bold text-base">
+                              <Text className="text-white font-bold text-base" style={styles.buttonText}>
                                 Subscribe — {priceLabel}
                               </Text>
                             </>
@@ -394,7 +397,7 @@ export default function CreatorMembershipScreen() {
 
                       {isFull && (
                         <View className="w-full h-12 rounded-md items-center justify-center bg-zinc-800">
-                          <Text className="text-zinc-500 font-medium">Tier Full</Text>
+                          <Text className="text-zinc-500 font-medium" style={styles.buttonText}>Tier full</Text>
                         </View>
                       )}
                     </View>
@@ -407,12 +410,24 @@ export default function CreatorMembershipScreen() {
 
         {/* ── Footer note ── */}
         <View className="px-4 mt-8 items-center">
-          <Text className="text-zinc-600 text-xs text-center leading-relaxed">
+          <Text className="text-zinc-600 text-xs text-center leading-relaxed" style={styles.legal}>
             Subscriptions are billed monthly through Apple. You can manage or cancel
             anytime in your iPhone Settings → Subscriptions.
           </Text>
         </View>
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  creatorName: { fontFamily: pluggdFonts.displayBold, letterSpacing: -0.3 },
+  sectionTitle: { fontFamily: pluggdFonts.displayBold, fontSize: 22, lineHeight: 27 },
+  rowTitle: { fontFamily: pluggdFonts.satoshiBold },
+  price: { fontFamily: pluggdFonts.displayBold },
+  meta: { fontFamily: pluggdFonts.satoshiMedium },
+  body: { fontFamily: pluggdFonts.satoshiMedium, lineHeight: 20 },
+  buttonText: { fontFamily: pluggdFonts.satoshiBlack, letterSpacing: 0.2 },
+  legal: { fontFamily: pluggdFonts.satoshiMedium, lineHeight: 18 },
+});

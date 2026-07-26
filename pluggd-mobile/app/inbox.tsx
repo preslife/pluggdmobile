@@ -44,11 +44,11 @@ export default function InboxRoute() {
 }
 
 const styles = StyleSheet.create({
-  threadCard: { minHeight: 92, borderRadius: 16, borderWidth: 1, borderColor: '#262626', backgroundColor: '#171310', padding: 13, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  threadCard: { minHeight: 92, borderBottomWidth: 1, borderColor: '#302A26', paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWrap: { width: 44, height: 44, borderRadius: 4, backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  title: { flex: 1, color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
   unread: { minWidth: 22, height: 22, borderRadius: 11, overflow: 'hidden', backgroundColor: PLUGGD_ORANGE, color: '#0a0806', textAlign: 'center', textAlignVertical: 'center', fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   preview: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 4 },
   meta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 6 },

@@ -73,7 +73,7 @@ export default function EventDetailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -100,11 +100,11 @@ export default function EventDetailScreen() {
             </View>
 
             <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
-                <MaterialIcons name="confirmation-number" size={20} color="#FFFFFF" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Open tickets and RSVP" style={styles.primaryButton} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
+                <MaterialIcons name="confirmation-number" size={20} color="#0A0806" />
                 <Text style={styles.primaryButtonText}>Tickets / RSVP</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open event thread" style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
                 <MaterialIcons name="forum" size={20} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryButtonText}>Event thread</Text>
               </Pressable>
@@ -119,6 +119,9 @@ export default function EventDetailScreen() {
                 {(['interested', 'going', 'cancelled'] as const).map((status) => (
                   <Pressable
                     key={status}
+                    accessibilityRole="button"
+                    accessibilityLabel={`RSVP ${status}`}
+                    accessibilityState={{ selected: event.rsvp_status === status }}
                     style={[styles.rsvpButton, event.rsvp_status === status && styles.rsvpButtonActive]}
                     onPress={() => rsvpMutation.mutate(status)}
                   >
@@ -151,21 +154,21 @@ export default function EventDetailScreen() {
             {culture.data?.venue || culture.data?.promoter || culture.data?.discussion.backstageRoute ? (
               <View style={styles.contextGrid}>
                 {culture.data?.venue ? (
-                  <Pressable style={styles.contextTile} onPress={() => undefined}>
+                  <View style={styles.contextTile}>
                     <MaterialIcons name="location-on" size={20} color={PLUGGD_ORANGE} />
                     <Text style={styles.contextTileTitle} numberOfLines={1}>{culture.data.venue.name || event.location || 'Venue TBA'}</Text>
                     <Text style={styles.contextTileMeta} numberOfLines={2}>{culture.data.venue.address || culture.data.venue.city || 'Location context will appear when backed.'}</Text>
-                  </Pressable>
+                  </View>
                 ) : null}
                 {culture.data?.promoter ? (
-                  <Pressable style={styles.contextTile} onPress={() => culture.data?.promoter?.route && router.push(culture.data.promoter.route as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open ${culture.data.promoter.name || 'promoter'} profile`} style={styles.contextTile} onPress={() => culture.data?.promoter?.route && router.push(culture.data.promoter.route as any)}>
                     <MaterialIcons name="campaign" size={20} color={PLUGGD_ORANGE} />
                     <Text style={styles.contextTileTitle} numberOfLines={1}>{culture.data.promoter.name || 'Promoter'}</Text>
                     <Text style={styles.contextTileMeta} numberOfLines={1}>{culture.data.promoter.username ? `@${culture.data.promoter.username}` : 'Promoter profile'}</Text>
                   </Pressable>
                 ) : null}
                 {culture.data?.discussion.backstageRoute ? (
-                  <Pressable style={styles.contextTile} onPress={() => router.push(culture.data?.discussion.backstageRoute as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Open community hub" style={styles.contextTile} onPress={() => router.push(culture.data?.discussion.backstageRoute as any)}>
                     <MaterialIcons name="groups" size={20} color={PLUGGD_ORANGE} />
                     <Text style={styles.contextTileTitle} numberOfLines={1}>Community hub</Text>
                     <Text style={styles.contextTileMeta} numberOfLines={2}>Open event hub, ticket threads and fan discussion.</Text>
@@ -175,7 +178,7 @@ export default function EventDetailScreen() {
             ) : null}
 
             {event.has_order || event.has_ticket ? (
-              <Pressable style={styles.ticketCard} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open linked ticket" style={styles.ticketCard} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
                 <MaterialIcons name="confirmation-number" size={24} color={PLUGGD_ORANGE} />
                 <View style={styles.liveText}>
                   <Text style={styles.liveTitle}>Ticket linked to this account</Text>
@@ -187,6 +190,8 @@ export default function EventDetailScreen() {
 
             {event.stream_url || event.playback_url ? (
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open linked live session"
                 style={styles.liveCard}
                 onPress={() => router.push('/live' as any)}
               >
@@ -201,7 +206,7 @@ export default function EventDetailScreen() {
 
             <Text style={styles.sectionTitle}>Event discussion</Text>
             {culture.data?.discussion.socialPosts.length ? (
-              <Pressable style={styles.threadLinkCard} onPress={() => router.push(`/post/${culture.data?.discussion.socialPosts[0]?.id}` as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open social thread" style={styles.threadLinkCard} onPress={() => router.push(`/post/${culture.data?.discussion.socialPosts[0]?.id}` as any)}>
                 <MaterialIcons name="forum" size={22} color={PLUGGD_ORANGE} />
                 <View style={styles.liveText}>
                   <Text style={styles.liveTitle}>Open social thread</Text>
@@ -219,7 +224,14 @@ export default function EventDetailScreen() {
                 style={styles.commentInput}
                 multiline
               />
-              <Pressable style={styles.commentButton} onPress={() => commentMutation.mutate()} disabled={commentMutation.isPending}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Post event comment"
+                accessibilityState={{ disabled: commentMutation.isPending }}
+                style={styles.commentButton}
+                onPress={() => commentMutation.mutate()}
+                disabled={commentMutation.isPending}
+              >
                 <Text style={styles.commentButtonText}>{commentMutation.isPending ? 'Posting...' : 'Post'}</Text>
               </Pressable>
             </View>
@@ -256,13 +268,13 @@ function Meta({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 14, paddingTop: 54, paddingBottom: 220 },
-  backButton: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  backButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   hero: { height: 270, borderRadius: 6, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   heroImage: { width: '100%', height: '100%' },
   eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textTransform: 'uppercase', marginTop: 18 },
-  title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
+  title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
   subtitle: { color: '#B8B8B8', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
   metaRow: { flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
   metaCard: { flex: 1, paddingVertical: 13, paddingRight: 8 },
@@ -278,17 +290,17 @@ const styles = StyleSheet.create({
   rsvpTextActive: { color: PLUGGD_ORANGE },
   buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
   primaryButton: { flex: 1.25, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  primaryButtonText: { color: '#0A0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack },
   secondaryButton: { flex: 0.75, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   liveCard: { minHeight: 74, marginTop: 2, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
   ticketCard: { minHeight: 74, marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B281D', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
   liveText: { flex: 1, marginLeft: 11 },
-  liveTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  liveMeta: { color: '#AFAFAF', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 3 },
+  liveTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.displayBold },
+  liveMeta: { color: '#AFAFAF', fontSize: 13, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
   contextCard: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 14, gap: 12 },
   contextHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  contextTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  contextTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.displayBold },
   contextMeta: { color: '#8E8E9F', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   avatarStack: { flexDirection: 'row', alignItems: 'center', paddingLeft: 2 },
   attendeeAvatar: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: '#171310', overflow: 'hidden', backgroundColor: '#262626', alignItems: 'center', justifyContent: 'center' },
@@ -296,10 +308,10 @@ const styles = StyleSheet.create({
   attendeeInitial: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   contextGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 12 },
   contextTile: { flexGrow: 1, flexBasis: '47%', minHeight: 112, borderTopWidth: 2, borderColor: '#513422', backgroundColor: '#14110F', padding: 13, gap: 8 },
-  contextTileTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  contextTileMeta: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  contextTileTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.displayBold },
+  contextTileMeta: { color: '#B3B3B3', fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiMedium },
   threadLinkCard: { minHeight: 72, marginBottom: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B281D', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
-  sectionTitle: { color: '#FFFFFF', fontSize: 19, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 20, marginBottom: 10 },
+  sectionTitle: { color: '#FFFFFF', fontSize: 19, fontFamily: pluggdFonts.displayBold, marginTop: 20, marginBottom: 10 },
   commentComposer: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 12, gap: 10 },
   commentInput: { minHeight: 70, color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   commentButton: { height: 46, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },

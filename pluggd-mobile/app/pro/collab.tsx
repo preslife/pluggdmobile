@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { EditorialTitle } from '../../components/EditorialTitle';
 import { selectionHaptic } from '../../src/design/haptics';
 import { pluggdFonts } from '../../src/design/typography';
@@ -130,7 +129,7 @@ export default function CollabHubScreen() {
   const collabs = (query.data ?? []).filter((collab) => !/closed|archived|deleted/i.test(collab.status || ''));
 
   return (
-    <PremiumScreenBackdrop>
+    <View style={styles.root}>
       <Stack.Screen options={{ title: 'Collab Hub', headerShown: false }} />
       <StatusBar style="light" />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -159,20 +158,21 @@ export default function CollabHubScreen() {
           </View>
         )}
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0A0806' },
   screen: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 108, paddingBottom: 226, gap: 14 },
+  content: { paddingHorizontal: 16, paddingTop: 128, paddingBottom: 226, gap: 14 },
   pageKicker: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, letterSpacing: 1.2 },
   summary: { color: '#B9B9C7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginBottom: 6 },
   card: {
-    borderRadius: 20,
+    borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#101018',
+    backgroundColor: '#14110F',
     padding: 15,
     gap: 9,
   },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: ORANGE,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   desc: { color: '#B9B9C7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19 },
   skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   skillChip: {
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.16)',
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -209,20 +209,22 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 9, marginTop: 3 },
   pressed: { opacity: 0.9 },
   primary: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 5,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   primaryText: { color: '#0E0E12', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   secondary: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.3)',
     paddingHorizontal: 14,
@@ -231,14 +233,13 @@ const styles = StyleSheet.create({
   secondaryText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   center: { minHeight: 180, alignItems: 'center', justifyContent: 'center' },
   empty: {
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#101018',
-    padding: 24,
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#302A26',
+    paddingVertical: 22,
+    alignItems: 'flex-start',
     gap: 8,
   },
-  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
-  emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
+  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 18 },
+  emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'left' },
 });

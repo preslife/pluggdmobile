@@ -1,11 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { selectionHaptic } from '../../src/design/haptics';
 import {
   liquidGlassColors,
-  liquidGlassRadii,
   liquidGlassToneColors,
   type LiquidGlassTone,
 } from '../../src/design/liquidGlassTokens';
@@ -16,6 +15,7 @@ type GlassRailCardProps = {
   title: string;
   subtitle?: string;
   imageUrl?: string | null;
+  fallbackSource?: ImageSourcePropType;
   fallbackTone?: LiquidGlassTone;
   metric?: string | null;
   onPress?: () => void;
@@ -26,6 +26,7 @@ export function GlassRailCard({
   title,
   subtitle,
   imageUrl,
+  fallbackSource,
   fallbackTone = 'violet',
   metric,
   onPress,
@@ -45,7 +46,7 @@ export function GlassRailCard({
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed, style]}
     >
       <LiftSurface depth="normal">
-        <GlassPanel intensity="default" radius={liquidGlassRadii.lg} style={styles.card} contentStyle={styles.content}>
+        <GlassPanel intensity="default" radius={5} style={styles.card} contentStyle={styles.content}>
           <View pointerEvents="none" style={styles.rearPlate} />
           <LinearGradient
             colors={[colors[0], '#111528', '#04050B']}
@@ -56,11 +57,10 @@ export function GlassRailCard({
           />
           <View style={styles.coverPlane}>
             {imageUrl ? <PluggdImage uri={imageUrl} style={styles.image} resizeMode="cover" /> : null}
-            {!imageUrl ? (
+            {!imageUrl && fallbackSource ? <Image source={fallbackSource} style={styles.image} resizeMode="cover" /> : null}
+            {!imageUrl && !fallbackSource ? (
               <View style={styles.fallbackMark}>
-                <View style={styles.trackFigure} />
-                <View style={styles.trackBeam} />
-                <MaterialIcons name="graphic-eq" size={28} color="rgba(255,255,255,0.26)" />
+                <MaterialIcons name="graphic-eq" size={32} color="rgba(255,255,255,0.42)" />
               </View>
             ) : null}
           </View>
@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
   card: {
     height: 214,
     shadowColor: '#000',
-    shadowOpacity: 0.66,
-    shadowRadius: 34,
-    shadowOffset: { width: 0, height: 22 },
+    shadowOpacity: 0.32,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
   content: {
     flex: 1,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   coverPlane: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
-    borderRadius: liquidGlassRadii.lg,
+    borderRadius: 5,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.24)',
     borderLeftWidth: StyleSheet.hairlineWidth,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     right: -4,
     top: 10,
     bottom: -6,
-    borderRadius: liquidGlassRadii.lg,
+    borderRadius: 5,
     backgroundColor: 'rgba(0,0,0,0.30)',
   },
   topBevel: {
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: liquidGlassColors.textPrimary,
-    fontFamily: 'Satoshi-Bold',
+    fontFamily: 'Sora-Bold',
     fontSize: 13,
     lineHeight: 17,
   },
@@ -211,33 +211,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  trackFigure: {
-    position: 'absolute',
-    left: '28%',
-    bottom: 0,
-    width: '34%',
-    height: '58%',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    backgroundColor: 'rgba(40,45,75,0.86)',
-    shadowColor: '#9A91FF',
-    shadowOpacity: 0.28,
-    shadowRadius: 26,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  trackBeam: {
-    position: 'absolute',
-    bottom: '12%',
-    left: '47%',
-    width: 3,
-    height: '58%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.80)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.76,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
   },
   imageGlow: {
     position: 'absolute',

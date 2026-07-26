@@ -1,7 +1,7 @@
 /**
- * Mixes — direct mobile port of the web /mixes editorial world:
+ * Mixes — selected mobile listening-room system:
  * numbered pill tabs (01 Mix of week / 02 DJ spotlight / 03 Scene report),
- * poster hero with serif headline + "Play featured mix", the cream
+ * poster hero with Sora headline + "Play featured mix", the cream
  * "Find your next mix" filter sheet, then the yellow-eyebrow editorial
  * run — What's happening, Listening rooms, Rising DJs, New & notable
  * mixes, Scene explorer, PLUGGD radio, Upcoming events and the cream

@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { EditorialTitle } from '../../components/EditorialTitle';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { selectionHaptic } from '../../src/design/haptics';
@@ -116,7 +115,7 @@ export default function CrowdfundingScreen() {
   const campaigns = query.data ?? [];
 
   return (
-    <PremiumScreenBackdrop>
+    <View style={styles.root}>
       <Stack.Screen options={{ title: 'Crowdfunding', headerShown: false }} />
       <StatusBar style="light" />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -145,21 +144,22 @@ export default function CrowdfundingScreen() {
           </View>
         )}
       </ScrollView>
-    </PremiumScreenBackdrop>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0A0806' },
   screen: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 108, paddingBottom: 226, gap: 14 },
+  content: { paddingHorizontal: 16, paddingTop: 128, paddingBottom: 226, gap: 14 },
   kicker: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, letterSpacing: 1.2 },
   summary: { color: '#B9B9C7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginBottom: 6 },
   card: {
-    borderRadius: 22,
+    borderRadius: 5,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#101018',
+    backgroundColor: '#14110F',
   },
   cover: { height: 150, backgroundColor: '#1A1A24' },
   coverFallback: { alignItems: 'center', justifyContent: 'center' },
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: 'rgba(10,8,6,0.62)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
@@ -186,20 +186,22 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 9, marginTop: 3 },
   pressed: { opacity: 0.9 },
   primary: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 5,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   primaryText: { color: '#0E0E12', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   secondary: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.3)',
     paddingHorizontal: 14,
@@ -208,14 +210,13 @@ const styles = StyleSheet.create({
   secondaryText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   center: { minHeight: 180, alignItems: 'center', justifyContent: 'center' },
   empty: {
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#101018',
-    padding: 24,
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#302A26',
+    paddingVertical: 22,
+    alignItems: 'flex-start',
     gap: 8,
   },
-  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
-  emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
+  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 18 },
+  emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'left' },
 });

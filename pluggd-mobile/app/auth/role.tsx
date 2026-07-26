@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 44,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
     letterSpacing: 1,
   },
   logoAccent: {
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 28,
     lineHeight: 34,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    fontFamily: pluggdFonts.displayExtraBold,
     textAlign: 'center',
   },
   subtitle: {
@@ -506,10 +506,10 @@ const styles = StyleSheet.create({
   },
   roleCard: {
     minHeight: 58,
-    backgroundColor: '#171310',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#262626',
-    borderRadius: 14,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 9,
     flexDirection: 'row',
@@ -517,12 +517,12 @@ const styles = StyleSheet.create({
   },
   roleCardSelected: {
     borderColor: PLUGGD_ORANGE,
-    backgroundColor: '#1A120E',
+    backgroundColor: 'rgba(255,102,0,0.06)',
   },
   roleIconBox: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: 5,
     backgroundColor: '#242424',
     alignItems: 'center',
     justifyContent: 'center',
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   secondaryChip: {
     width: '48.8%',
     minHeight: 40,
-    borderRadius: 12,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#2A2A2A',
     backgroundColor: '#171310',
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     height: 56,
-    borderRadius: 16,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -656,8 +656,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   ctaText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
+    color: '#120B06',
+    fontSize: 13,
+    letterSpacing: 0.8,
+    fontFamily: pluggdFonts.satoshiBlack,
   },
 });

@@ -1,6 +1,6 @@
 /**
- * BeatPlug — direct mobile port of the web /market/beats audition floor
- * (.bp-floor night-press voice): numbered discovery tabs, serif "Find
+ * BeatPlug — selected mobile audition-floor system
+ * (.bp-floor night-press voice): numbered discovery tabs, Sora "Find
  * the beat that starts the record." hero with the featured audition
  * track, search + sort, the four buyer benefits, BeatPlug picks,
  * Browse BeatPlug grid, license cards, top producers, From Soundboards,

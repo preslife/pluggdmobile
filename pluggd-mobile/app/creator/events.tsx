@@ -15,7 +15,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#ff6600';
@@ -95,10 +94,6 @@ function formatMoneyFromCents(cents: number) {
 function formatNumber(value: number) {
   if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}K`;
   return String(Math.max(0, Math.round(value)));
-}
-
-function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={106} height={32} />;
 }
 
 export default function CreatorEventsScreen() {
@@ -328,7 +323,7 @@ export default function CreatorEventsScreen() {
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <PluggdWordmark />
+            <Text style={styles.headerEyebrow}>CREATOR OPERATIONS</Text>
             <Text style={styles.pageTitle}>Events</Text>
           </View>
 
@@ -476,7 +471,8 @@ export default function CreatorEventsScreen() {
           </View>
         ) : (
           <View style={styles.emptyCard}>
-            <MaterialIcons name="event" size={38} color="#FFFFFF33" />
+            <View style={styles.emptyMark}><MaterialIcons name="event" size={27} color="#0A0806" /></View>
+            <Text style={styles.emptyEyebrow}>NO ACTIVE DATES</Text>
             <Text style={styles.emptyTitle}>
               {tab === 'upcoming' ? 'No upcoming events' : 'No past events'}
             </Text>
@@ -607,9 +603,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 5,
     backgroundColor: '#171310',
     borderWidth: 1,
     borderColor: '#262626',
@@ -617,7 +613,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerCenter: {
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
   },
   logoTextRow: {
     flexDirection: 'row',
@@ -633,31 +631,39 @@ const styles = StyleSheet.create({
   logoAccent: {
     color: PLUGGD_ORANGE,
   },
+  headerEyebrow: {
+    color: PLUGGD_ORANGE,
+    fontSize: 9.5,
+    letterSpacing: 1.5,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontWeight: '900',
+  },
   pageTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
     marginTop: 2,
   },
   summaryGrid: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#302A26',
+    marginBottom: 16,
   },
   summaryTile: {
     flex: 1,
-    minHeight: 86,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#171310',
-    padding: 10,
+    minHeight: 82,
+    borderRightWidth: 1,
+    borderRightColor: '#302A26',
+    paddingVertical: 11,
+    paddingHorizontal: 10,
     justifyContent: 'space-between',
   },
   summaryValue: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   summaryLabel: {
     color: '#AFAFAF',
@@ -665,7 +671,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   formCard: {
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#171310',
@@ -680,12 +686,12 @@ const styles = StyleSheet.create({
   formTitle: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   closeButton: {
     width: 34,
     height: 34,
-    borderRadius: 8,
+    borderRadius: 5,
     backgroundColor: '#101010',
     borderWidth: 1,
     borderColor: '#303030',
@@ -702,7 +708,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#303030',
     backgroundColor: '#101010',
@@ -725,7 +731,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     height: 52,
-    borderRadius: 8,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -740,7 +746,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#303030',
     backgroundColor: '#101010',
@@ -749,8 +755,8 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 7,
+    height: 44,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -779,21 +785,19 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   eventList: {
-    gap: 10,
+    gap: 0,
   },
   eventCard: {
     minHeight: 120,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#171310',
-    padding: 12,
+    borderBottomWidth: 1,
+    borderColor: '#302A26',
+    paddingVertical: 14,
     flexDirection: 'row',
   },
   eventDateBox: {
     width: 58,
     height: 76,
-    borderRadius: 8,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#3B261A',
     backgroundColor: '#20130E',
@@ -804,12 +808,12 @@ const styles = StyleSheet.create({
   eventMonth: {
     color: PLUGGD_ORANGE,
     fontSize: 11,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   eventDay: {
     color: '#FFFFFF',
     fontSize: 26,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginTop: 2,
   },
   eventBody: {
@@ -832,9 +836,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   smallIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 4,
     backgroundColor: '#101010',
     borderWidth: 1,
     borderColor: '#303030',
@@ -861,7 +865,7 @@ const styles = StyleSheet.create({
   },
   eventPill: {
     minHeight: 30,
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#343434',
     backgroundColor: '#101010',
@@ -876,19 +880,20 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   emptyCard: {
-    minHeight: 180,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#171310',
-    alignItems: 'center',
+    minHeight: 220,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#302A26',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    padding: 22,
+    paddingVertical: 24,
   },
+  emptyMark: { width: 54, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
+  emptyEyebrow: { color: PLUGGD_ORANGE, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 20 },
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 19,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
     marginTop: 10,
   },
   emptyBody: {
@@ -896,12 +901,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-    textAlign: 'center',
+    textAlign: 'left',
     marginTop: 6,
   },
   emptyButton: {
-    height: 42,
-    borderRadius: 8,
+    minHeight: 48,
+    borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -909,8 +914,8 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
+    color: '#0A0806',
     fontSize: 14,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
 });

@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   avatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#241d15', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   eyebrow: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  title: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 34, lineHeight: 38, fontWeight: '900' },
+  title: { fontFamily: pluggdFonts.displayExtraBold, color: '#FFFFFF', fontSize: 34, lineHeight: 38, fontWeight: '800' },
   meta: { fontFamily: pluggdFonts.satoshiBold, color: MUTED, fontSize: 13, fontWeight: '800' },
   description: { fontFamily: pluggdFonts.satoshiMedium, color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontWeight: '600' },
   tabs: { paddingHorizontal: 16, paddingTop: 16, gap: 8 },
@@ -306,6 +306,6 @@ const styles = StyleSheet.create({
   soundboardCard: { minHeight: 136, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
   soundboardArt: { width: 84, height: 104, borderRadius: 14, backgroundColor: '#241d15', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   emptyCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 8 },
-  emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
+  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
   emptyBody: { fontFamily: pluggdFonts.satoshiMedium, color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
 });
