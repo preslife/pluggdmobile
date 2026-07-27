@@ -10,8 +10,6 @@
  */
 import { useEffect, useCallback, useState, useRef } from 'react';
 import {
-  initConnection,
-  endConnection,
   getProducts,
   requestPurchase,
   finishTransaction,
@@ -25,6 +23,7 @@ import {
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useWalletStore } from './useWallet';
+import { useStoreKit } from '../context/StoreKitProvider';
 
 // ─── SKU Definitions ──────────────────────────────────────────────────
 export const CREDIT_PACK_SKUS = [
@@ -165,23 +164,20 @@ export function useCredits() {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+  const { ready: connected, connectionError } = useStoreKit();
 
   const setBalance = useWalletStore((s) => s.setBalance);
   const purchaseUpdateSub = useRef<any>(null);
   const purchaseErrorSub = useRef<any>(null);
 
-  // ── Connect to IAP ──
+  // ── Fetch credit products after the root StoreKit connection is ready ──
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' || !connected) return;
 
     let mounted = true;
 
     async function init() {
       try {
-        await initConnection();
-        if (mounted) setConnected(true);
-
         const prods = await getProducts({ skus: [...CREDIT_PACK_SKUS] });
         if (mounted) {
           setProducts(prods);
@@ -197,9 +193,12 @@ export function useCredits() {
 
     return () => {
       mounted = false;
-      endConnection();
     };
-  }, []);
+  }, [connected]);
+
+  useEffect(() => {
+    if (connectionError) setError(connectionError);
+  }, [connectionError]);
 
   // ── Purchase listeners ──
   useEffect(() => {

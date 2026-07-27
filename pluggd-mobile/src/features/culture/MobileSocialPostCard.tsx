@@ -11,13 +11,14 @@ import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
 import { GlassAvatar, GlassPanel } from '../../../components/liquid-glass';
 import {
-  reportSocialPost,
   toggleSocialBookmark,
   toggleSocialLike,
   toggleSocialRepost,
   voteMobilePoll,
 } from './mobileSocial';
 import type { MobileSocialPost, MobileSocialPostPreview } from './mobileTypes';
+import { blockUser } from '../safety/accountSafety';
+import { showReportActions } from '../safety/reportActions';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -347,9 +348,23 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
       {
         text: 'Report post',
         style: 'destructive',
+        onPress: () => showReportActions({
+          targetType: 'post',
+          targetId: actionPostId(post),
+          label: 'post',
+        }),
+      },
+      {
+        text: `Block ${displayName}`,
+        style: 'destructive',
         onPress: async () => {
-          const result = await reportSocialPost(actionPostId(post));
-          Alert.alert(result.success ? 'Report sent' : 'Report unavailable', result.success ? 'Thanks. We will review this post.' : result.error || 'Please try again later.');
+          try {
+            await blockUser(post.user_id, 'Blocked from community post');
+            refresh();
+            Alert.alert('Account blocked', `${displayName}'s posts will no longer appear.`);
+          } catch (error: any) {
+            Alert.alert('Could not block account', error?.message ?? 'Please try again.');
+          }
         },
       },
       { text: 'Cancel', style: 'cancel' },

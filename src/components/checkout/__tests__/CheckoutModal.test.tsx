@@ -91,13 +91,20 @@ beforeEach(() => {
     total_spent: 200,
   });
 
-  invokeMock.mockResolvedValue({
-    data: {
-      url: 'https://stripe.test/checkout',
-      sessionId: 'sess_123',
-      paymentIntentId: 'pi_456',
-    },
-  });
+  invokeMock.mockImplementation((functionName: string) => Promise.resolve({
+    data: functionName === 'get-checkout-session'
+      ? {
+          status: 'complete',
+          payment_status: 'paid',
+          payment_intent_id: 'pi_456',
+        }
+      : {
+          url: 'https://stripe.test/checkout',
+          sessionId: 'sess_123',
+          paymentIntentId: 'pi_456',
+        },
+    error: null,
+  }));
 
   processPurchaseMock.mockImplementation((_userId, _items, options) => {
     if (options?.previewOnly) {
@@ -273,7 +280,6 @@ describe('CheckoutModal hybrid checkout flow', () => {
         'user-123',
         enrichedCheckoutItems,
         expect.objectContaining({
-          previewOnly: undefined,
           stripeCheckoutSessionId: 'sess_123',
           stripePaymentIntentId: 'pi_456',
         }),

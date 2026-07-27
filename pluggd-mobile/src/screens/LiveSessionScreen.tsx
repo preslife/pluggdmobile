@@ -27,7 +27,8 @@ import {
 } from '../lib/agora';
 import { useAuth } from '../context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../design/haptics';
-import { reportLiveRoom } from '../features/culture/mobileServices';
+import { blockUser, loadBlockedUserIds } from '../features/safety/accountSafety';
+import { showReportActions } from '../features/safety/reportActions';
 import { useWallet } from '../hooks/useWallet';
 import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
@@ -218,6 +219,7 @@ export default function LiveSessionScreen() {
   const reactionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const giftChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const sessionRef = useRef<SessionRoom | null>(null);
+  const blockedUserIdsRef = useRef<Set<string>>(new Set());
 
   const host = profileName(session?.profiles);
   const isAudioRoom = session?.live_mode === 'audio_room';
@@ -236,6 +238,7 @@ export default function LiveSessionScreen() {
   );
 
   const appendMessage = useCallback((message: ChatMessage) => {
+    if (blockedUserIdsRef.current.has(message.user_id)) return;
     setMessages((current) => {
       if (current.some((item) => item.id === message.id)) return current;
       return [...current, message].slice(-80);
@@ -348,6 +351,8 @@ export default function LiveSessionScreen() {
 
   const loadChat = useCallback(async () => {
     if (!currentRoomId) return;
+    const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+    blockedUserIdsRef.current = blockedUserIds;
 
     const { data, error } = await (supabase as any)
       .from('session_messages')
@@ -357,7 +362,7 @@ export default function LiveSessionScreen() {
       .limit(80);
 
     if (!error && data) {
-      setMessages(data as ChatMessage[]);
+      setMessages((data as ChatMessage[]).filter((message) => !blockedUserIds.has(message.user_id)));
     }
 
     const channel = supabase
@@ -879,24 +884,53 @@ export default function LiveSessionScreen() {
     });
   };
 
-  const reportRoom = () => {
+  const openRoomSafety = () => {
     selectionHaptic();
     if (!currentRoomId || !session?.host_id) {
-      Alert.alert('Report unavailable', 'This room cannot be reported from mobile right now.');
+      Alert.alert('Safety options unavailable', 'This room does not expose a verified host yet. For urgent concerns, contact support@pluggd.fm.');
       return;
     }
 
-    Alert.alert('Report live room?', 'This sends a moderation report for the host profile with the current live room attached for review.', [
-      { text: 'Cancel', style: 'cancel' },
+    const actions: any[] = [
       {
-        text: 'Report',
+        text: 'Report live room',
         style: 'destructive',
-        onPress: async () => {
-          const result = await reportLiveRoom(currentRoomId, session.host_id);
-          Alert.alert(result.success ? 'Report submitted' : 'Report failed', result.success ? 'Thanks. The PLUGGD moderation queue will review it.' : result.error || 'Please try again.');
-        },
+        onPress: () => showReportActions({
+          targetType: 'profile',
+          targetId: session.host_id,
+          label: 'live room',
+          details: `Reported from live room ${currentRoomId}: ${session.title}.`,
+        }),
       },
-    ]);
+    ];
+    if (user?.id !== session.host_id) {
+      actions.push({
+        text: 'Block host',
+        style: 'destructive',
+        onPress: () => Alert.alert(
+          `Block ${host}?`,
+          'This host and their posts, comments, recommendations and live activity will no longer appear to you.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Block',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await blockUser(session.host_id, `Blocked from live room ${currentRoomId}`);
+                  router.back();
+                  Alert.alert('Host blocked', `${host} has been removed from your PLUGGD experience.`);
+                } catch (error: any) {
+                  Alert.alert('Could not block host', error?.message ?? 'Please try again.');
+                }
+              },
+            },
+          ],
+        ),
+      });
+    }
+    actions.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(session.title, 'Live-room safety', actions);
   };
 
   const endLive = async () => {
@@ -1046,7 +1080,7 @@ export default function LiveSessionScreen() {
             <RailButton icon="local-fire-department" label="Boost" onPress={() => sendReaction('fire')} />
             <RailButton icon="card-giftcard" label="Gift" loading={sendingGift} onPress={sendGift} />
             <RailButton icon="ios-share" label="Share" onPress={shareRoom} />
-            <RailButton icon="flag" label="Report" onPress={reportRoom} />
+            <RailButton icon="more-horiz" label="Safety" onPress={openRoomSafety} />
             <RailButton icon={muted ? 'mic-off' : 'mic'} label={muted ? 'Muted' : 'Mute'} onPress={toggleMute} />
           </View>
 

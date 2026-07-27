@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { loadBlockedUserIds, moderateUserContent } from '../safety/accountSafety';
 import type {
   BackstageBoard,
   BackstageBoardDetail,
@@ -61,6 +62,12 @@ async function currentUserId() {
 
 function isDuplicateError(error: SupabaseErrorLike) {
   return error?.code === '23505' || /duplicate key|unique constraint/i.test(error?.message || '');
+}
+
+function isVisiblePost(row: SocialPostRow) {
+  if (row.is_deleted) return false;
+  const state = String(row.moderation_status || row.status || '').toLowerCase();
+  return !['removed', 'deleted', 'hidden', 'rejected', 'cancelled'].includes(state);
 }
 
 async function safeList<T>(query: PromiseLike<{ data: unknown; error: SupabaseErrorLike }>, fallback: T[] = []) {
@@ -410,16 +417,22 @@ export async function loadMobileSocialFeed(options: {
     const focused = await safeMaybe<SocialPostRow>(
       (supabase as any).from('social_posts').select('*').eq('id', options.focusPostId).maybeSingle(),
     );
-    if (focused && !focused.parent_id) rows = [focused, ...rows];
+    if (focused && !focused.parent_id && isVisiblePost(focused)) rows = [focused, ...rows];
   }
 
-  return enrichPosts(rows.filter((row) => !row.parent_id), userId);
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+  return enrichPosts(
+    rows.filter((row) => !row.parent_id && isVisiblePost(row) && !blockedUserIds.has(row.user_id)),
+    userId,
+  );
 }
 
 export async function loadThreadDetail(postId: string): Promise<MobileThreadDetail> {
   const userId = await currentUserId();
   const focused = await safeMaybe<SocialPostRow>((supabase as any).from('social_posts').select('*').eq('id', postId).maybeSingle());
-  if (!focused) return { post: null, threadPosts: [], comments: [] };
+  if (!focused || !isVisiblePost(focused)) return { post: null, threadPosts: [], comments: [] };
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+  if (blockedUserIds.has(focused.user_id)) return { post: null, threadPosts: [], comments: [] };
 
   const threadId = focused.thread_id || focused.id;
   const threadRows = await safeList<SocialPostRow>(
@@ -430,7 +443,11 @@ export async function loadThreadDetail(postId: string): Promise<MobileThreadDeta
       .order('created_at', { ascending: true }),
     [focused],
   );
-  const enrichedThread = await enrichPosts(threadRows.length ? threadRows : [focused], userId);
+  const enrichedThread = await enrichPosts(
+    (threadRows.length ? threadRows : [focused])
+      .filter((row) => isVisiblePost(row) && !blockedUserIds.has(row.user_id)),
+    userId,
+  );
   const post = enrichedThread.find((item) => item.id === focused.id) ?? (await enrichPosts([focused], userId))[0] ?? null;
   const comments = await loadSocialComments(focused.id);
   return { post, threadPosts: enrichedThread, comments };
@@ -445,8 +462,10 @@ export async function loadSocialComments(postId: string): Promise<MobileSocialCo
       .order('created_at', { ascending: true })
       .limit(120),
   );
-  const profileMap = await loadProfiles(rows.map((row) => row.user_id));
-  return rows.map((row) => {
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+  const visibleRows = rows.filter((row) => !blockedUserIds.has(row.user_id));
+  const profileMap = await loadProfiles(visibleRows.map((row) => row.user_id));
+  return visibleRows.map((row) => {
     const profile = profileMap.get(row.user_id);
     return {
       id: row.id,
@@ -466,6 +485,18 @@ export async function addSocialComment(postId: string, content: string) {
   if (!userId) return { success: false, error: 'Sign in to reply.' };
   const body = cleanContent(content);
   if (!body) return { success: false, error: 'Write a reply first.' };
+  const moderation = await moderateUserContent({
+    contentKind: 'comment',
+    text: body,
+    destination: { type: 'post', id: postId },
+  });
+  if (moderation.decision !== 'allow') {
+    return {
+      success: moderation.decision === 'review',
+      pending: moderation.decision === 'review',
+      error: moderation.message,
+    };
+  }
   const { error } = await (supabase as any).from('social_comments').insert({ post_id: postId, user_id: userId, content: body });
   return error ? { success: false, error: error.message } : { success: true };
 }
@@ -572,6 +603,31 @@ export async function createMobileSocialPost(input: {
   const scopedDestinations = input.destinations?.length ? input.destinations : [];
   const destinations = dedupeDestinations(scopedDestinations.length ? [...scopedDestinations, ...defaultDestinations(userId)] : defaultDestinations(userId));
   const communityDestination = destinations.find((destination) => destination.destination_type === 'creator_community');
+  const mediaUrls = [
+    ...(input.images || []),
+    input.video,
+    input.audio,
+    input.gif,
+  ].filter((value): value is string => Boolean(value));
+  const moderation = await moderateUserContent({
+    contentKind: input.poll ? 'poll' : postType,
+    text: content,
+    mediaUrls,
+    destination: communityDestination
+      ? { type: communityDestination.destination_type, id: communityDestination.destination_id }
+      : { type: 'global_feed', id: 'community' },
+  });
+  if (moderation.decision === 'reject') {
+    return { success: false, error: moderation.message || 'This content cannot be posted.' };
+  }
+  if (moderation.decision === 'review') {
+    return {
+      success: true,
+      pending: true,
+      id: moderation.submissionId,
+      message: moderation.message || 'Your post is being reviewed before it appears.',
+    };
+  }
 
   const { data, error } = await (supabase as any)
     .from('social_posts')
@@ -773,6 +829,7 @@ export async function searchSocialContent(term: string) {
   const safeTerm = normalized.replace(/[%_]/g, '');
   const pattern = `%${safeTerm}%`;
   const userId = await currentUserId();
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
 
   const [postRows, hashtagRows, boards] = await Promise.all([
     safeList<SocialPostRow>(
@@ -798,7 +855,7 @@ export async function searchSocialContent(term: string) {
   ]);
 
   return {
-    posts: await enrichPosts(postRows.filter((row) => !row.parent_id), userId),
+    posts: await enrichPosts(postRows.filter((row) => !row.parent_id && !blockedUserIds.has(row.user_id)), userId),
     boards,
     hashtags: hashtagRows.map((row) => String(row.tag || '')).filter(Boolean),
   };

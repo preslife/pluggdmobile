@@ -13,6 +13,8 @@ import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobile
 import { addComment, loadPostDetail, toggleLike } from '../../src/features/culture/mobileServices';
 import { toggleSocialBookmark, toggleSocialRepost, voteMobilePoll } from '../../src/features/culture/mobileSocial';
 import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPostCard';
+import { blockUser } from '../../src/features/safety/accountSafety';
+import { showReportActions } from '../../src/features/safety/reportActions';
 
 const ORANGE = '#ff6600';
 const CANVAS = '#0a0806';
@@ -53,6 +55,10 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       setComment('');
+      if ('pending' in result && result.pending) {
+        Alert.alert('Submitted for review', result.error || 'Your comment will appear after its safety review.');
+        return;
+      }
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
@@ -103,6 +109,46 @@ export default function SocialPostDetailRoute() {
   const displayName = post?.display_name || post?.username || 'PLUGGD user';
   const handle = post?.username ? `@${post.username}` : 'pluggd';
   const threadPosts = query.data?.threadPosts || [];
+
+  const openCommentSafety = (row: { id: string; user_id: string; display_name?: string | null; username?: string | null }) => {
+    const authorName = row.display_name || row.username || 'this account';
+    Alert.alert(authorName, 'Comment safety', [
+      {
+        text: 'Report comment',
+        onPress: () => showReportActions({
+          targetType: 'comment',
+          targetId: row.id,
+          label: 'comment',
+          details: `Reported from post ${String(id)}.`,
+        }),
+      },
+      {
+        text: `Block ${authorName}`,
+        style: 'destructive',
+        onPress: () => Alert.alert(
+          `Block ${authorName}?`,
+          'Their posts, comments, recommendations and live activity will no longer appear to you.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Block',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await blockUser(row.user_id, 'Blocked from comment');
+                  await query.refetch();
+                  Alert.alert('Account blocked', `${authorName}'s content has been removed from this conversation.`);
+                } catch (error: any) {
+                  Alert.alert('Could not block account', error?.message ?? 'Please try again.');
+                }
+              },
+            },
+          ],
+        ),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   return (
     <View style={styles.screen}>
@@ -190,6 +236,16 @@ export default function SocialPostDetailRoute() {
                   <Text style={styles.commentBody}>{row.content}</Text>
                   <Text style={styles.postTime}>{formatDate(row.created_at)}</Text>
                 </View>
+                {row.user_id !== user?.id ? (
+                  <Pressable
+                    style={styles.commentMenu}
+                    onPress={() => openCommentSafety(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Safety options for comment by ${row.display_name || row.username || 'PLUGGD user'}`}
+                  >
+                    <MaterialIcons name="more-horiz" size={21} color={MUTED} />
+                  </Pressable>
+                ) : null}
               </View>
             )) : (
               <View style={styles.emptyCard}>
@@ -249,6 +305,7 @@ const styles = StyleSheet.create({
   commentCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, flexDirection: 'row', gap: 10 },
   commentAuthor: { color: ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', width: 36 },
   commentCopy: { flex: 1, minWidth: 0 },
+  commentMenu: { width: 44, height: 44, marginTop: -8, marginRight: -8, alignItems: 'center', justifyContent: 'center' },
   commentBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   emptyCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 8 },
   emptyTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },

@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
+import { LAUNCH_ACCESS_REQUIRED } from '../../src/config/environment';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
@@ -50,7 +51,7 @@ export default function Login() {
       const normalizedEmail = email.trim();
       const code = accessCode.trim();
 
-      if (code) {
+      if (LAUNCH_ACCESS_REQUIRED && code) {
         const validation = await validateAccessCode(code, normalizedEmail);
         if (!validation.valid) {
           setError(validation.message);
@@ -174,14 +175,16 @@ export default function Login() {
                 </Pressable>
               }
             />
-            <InputRow
-              label="Access code"
-              icon="confirmation-number"
-              value={accessCode}
-              onChangeText={setAccessCode}
-              placeholder="Optional for existing accounts"
-              autoCapitalize="characters"
-            />
+            {LAUNCH_ACCESS_REQUIRED ? (
+              <InputRow
+                label="Access code"
+                icon="confirmation-number"
+                value={accessCode}
+                onChangeText={setAccessCode}
+                placeholder="Optional for existing accounts"
+                autoCapitalize="characters"
+              />
+            ) : null}
 
             {launchAccessNotice || error ? (
               <View style={[styles.errorBox, { backgroundColor: 'rgba(255,92,92,0.1)', borderColor: theme.colors.danger }]}>

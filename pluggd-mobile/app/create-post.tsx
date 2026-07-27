@@ -232,6 +232,7 @@ export default function CreatePostRoute() {
           fileName: item.fileName,
           mimeType: item.mimeType,
           folder: 'post',
+          quarantine: true,
         });
         if (!upload.success || !upload.url) throw new Error(upload.error || 'Media upload failed.');
         uploaded.push({ kind: item.kind, url: upload.url, durationSeconds: item.durationSeconds });
@@ -262,6 +263,11 @@ export default function CreatePostRoute() {
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'backstage'] });
       setMedia([]);
+      if ('pending' in result && result.pending) {
+        router.replace('/community' as any);
+        Alert.alert('Submitted for review', result.message || 'Your post will appear after its safety review.');
+        return;
+      }
       if (result.id) router.replace(`/post/${result.id}` as any);
       else router.replace('/community' as any);
     },

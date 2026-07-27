@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const packageJson = JSON.parse(read('package.json'));
+const config = read('app.config.ts');
+const auth = read('src/context/AuthProvider.tsx');
+const login = read('app/auth/login.tsx');
+const signup = read('app/auth/signup.tsx');
+const privacy = read('app/settings/privacy.tsx');
+const dataExport = read('app/settings/data-export.tsx');
+const safety = read('src/features/safety/accountSafety.ts');
+const social = read('src/features/culture/mobileSocial.ts');
+const storeKit = read('src/context/StoreKitProvider.tsx');
+const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
+const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
+const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
+const notifications = read('../supabase/functions/apple-server-notification/index.ts');
+
+assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'Stripe native SDK must not ship');
+assert.match(config, /supportsTablet:\s*false/, 'release must be iPhone-only');
+assert.match(config, /ITSAppUsesNonExemptEncryption:\s*false/, 'export compliance must be explicit');
+assert.doesNotMatch(config, /merchantIdentifier|stripe-react-native/i, 'native config must not contain Stripe or Apple Pay');
+assert.match(auth, /if \(!LAUNCH_ACCESS_REQUIRED\)/, 'production auth must bypass launch access');
+assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field must be development-only');
+assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');
+assert.match(signup, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'signup access-code field must be development-only');
+assert.match(signup, /minimum_age_confirmed:\s*true/, 'signup must persist age confirmation');
+assert.match(signup, /LEGAL_URLS\.terms/, 'signup must expose legal terms');
+assert.match(privacy, /deleteMyAccount/, 'account deletion must be an in-app server action');
+assert.match(privacy, /blocked-accounts/, 'blocked account manager must be reachable');
+assert.doesNotMatch(privacy, /will appear here|not yet configurable|requires confirmation through PLUGGD support/i, 'privacy controls must not be placeholders');
+assert.match(dataExport, /requestDataExport/, 'data export must use the authenticated export action');
+assert.match(safety, /block-user/, 'safety client must use the server block action');
+assert.match(social, /moderateUserContent/, 'UGC must pass through pre-publication moderation');
+assert.match(social, /loadBlockedUserIds/, 'community content must filter blocked authors');
+assert.match(storeKit, /initConnection/, 'StoreKit must have one root connection owner');
+assert.match(verifier, /SignedDataVerifier/, 'Apple official signed-data verifier is required');
+assert.match(receipt, /verifyAppleTransaction/, 'client transaction must be cryptographically verified');
+assert.doesNotMatch(receipt, /proceeding with basic validation|decodeJWSPayload/, 'unverified receipt fallback is forbidden');
+assert.match(notifications, /verifyAppleNotification/, 'server notification must be cryptographically verified');
+assert.doesNotMatch(notifications, /without cryptographic verification|decodeJWSPayload/, 'unverified notification decoding is forbidden');
+assert.match(manifest, /NSPrivacyCollectedDataTypeEmailAddress/, 'privacy manifest must declare linked email');
+assert.match(manifest, /NSPrivacyCollectedDataTypeOtherUserContent/, 'privacy manifest must declare UGC');
+assert.equal(existsSync(new URL('../app/auth/biometric.tsx', import.meta.url)), false, 'decorative biometric route must not ship');
+
+console.log('iOS App Store readiness contract passed');

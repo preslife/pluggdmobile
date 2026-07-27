@@ -18,6 +18,11 @@ import {
   safeList,
 } from './mobileServices';
 import { searchSocialContent } from './mobileSocial';
+import {
+  canShowSensitiveContent,
+  loadBlockedUserIds,
+  loadSafetySettings,
+} from '../safety/accountSafety';
 export type {
   BackstageCommunity,
   BackstageBoard,
@@ -123,6 +128,12 @@ export function useUniversalSearch(term: string) {
     enabled: normalized.length >= 2,
     queryFn: async (): Promise<CultureSearchResults> => {
       const pattern = `%${normalized.replace(/[%_]/g, '')}%`;
+      const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+      const safetySettings = await loadSafetySettings().catch(() => ({
+        ageBand: null,
+        sensitiveContentEnabled: false,
+      } as const));
+      const showSensitiveContent = canShowSensitiveContent(safetySettings);
       const [
         creators,
         tracks,
@@ -151,7 +162,7 @@ export function useUniversalSearch(term: string) {
         safeList<ReleaseItem>(
           supabase
             .from('releases')
-            .select('id,title,artist,cover_art_url,preview_url,download_url,genre,price,download_price,minimum_price,created_at')
+            .select('id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,created_at')
             .or(`title.ilike.${pattern},artist.ilike.${pattern},genre.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(12),
@@ -166,7 +177,7 @@ export function useUniversalSearch(term: string) {
         safeList<BeatItem>(
           (supabase as any)
             .from('beats')
-            .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
+            .select('id,user_id,owner_id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
             .eq('is_published', true)
             .or(`title.ilike.${pattern},producer_name.ilike.${pattern},genre.ilike.${pattern},description.ilike.${pattern}`)
             .order('created_at', { ascending: false })
@@ -313,22 +324,24 @@ export function useUniversalSearch(term: string) {
 
       const communities = [...communityRows, ...hubRows].slice(0, 16);
       return {
-        creators,
-        tracks,
+        creators: creators.filter((item: any) => !blockedUserIds.has(item.user_id)),
+        tracks: tracks.filter((item: any) =>
+          !blockedUserIds.has(item.user_id || item.owner_id || '')
+          && (!item.explicit || showSensitiveContent)),
         mixes,
-        beats,
-        videos,
+        beats: beats.filter((item: any) => !blockedUserIds.has(item.user_id || item.owner_id || '')),
+        videos: videos.filter((item: any) => !blockedUserIds.has(item.artist_id || '')),
         events,
-        communities,
-        users,
-        liveStreams,
+        communities: communities.filter((item) => !blockedUserIds.has(item.creator_id || '')),
+        users: users.filter((item) => !blockedUserIds.has(item.user_id || '')),
+        liveStreams: liveStreams.filter((item) => !blockedUserIds.has(item.creator_id || '')),
         posts: social.posts,
         boards: social.boards,
         hashtags: social.hashtags,
         playlists,
-        stories,
-        storefront,
-        memberships,
+        stories: stories.filter((item) => !blockedUserIds.has(item.user_id)),
+        storefront: storefront.filter((item) => !blockedUserIds.has(item.creator_id || '')),
+        memberships: memberships.filter((item) => !blockedUserIds.has(item.creator_id || '')),
       };
     },
     staleTime: 1000 * 60,

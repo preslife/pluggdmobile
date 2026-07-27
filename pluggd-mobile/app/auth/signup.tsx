@@ -20,8 +20,10 @@ import { BrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
+import { LAUNCH_ACCESS_REQUIRED, LEGAL_URLS, MINIMUM_AGE } from '../../src/config/environment';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
+import * as Linking from 'expo-linking';
 
 function getPasswordStrength(password: string): { level: number; label: string; color: string } {
   if (!password) return { level: 0, label: '', color: '' };
@@ -46,6 +48,7 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const strength = getPasswordStrength(password);
@@ -63,20 +66,27 @@ export default function SignUp() {
       const normalizedEmail = email.trim();
       const code = accessCode.trim();
 
-      if (!code) {
+      if (!ageConfirmed) {
+        setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+        setLoading(false);
+        return;
+      }
+
+      if (LAUNCH_ACCESS_REQUIRED && !code) {
         setError('Access code required for new accounts during early access.');
         setLoading(false);
         return;
       }
 
-      const validation = await validateAccessCode(code, normalizedEmail);
+      const validation = LAUNCH_ACCESS_REQUIRED
+        ? await validateAccessCode(code, normalizedEmail)
+        : { valid: true, code: '' };
       if (!validation.valid) {
-        setError(validation.message);
+        setError('message' in validation ? validation.message : 'That access code is not valid.');
         setLoading(false);
         return;
       }
-
-      await storePendingAccessCode(validation.code);
+      if (LAUNCH_ACCESS_REQUIRED) await storePendingAccessCode(validation.code);
 
       const { error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -84,7 +94,9 @@ export default function SignUp() {
         options: {
           data: {
             full_name: fullName,
-            access_code: validation.code,
+            access_code: LAUNCH_ACCESS_REQUIRED ? validation.code : undefined,
+            age_band: '16_plus',
+            minimum_age_confirmed: true,
           },
         },
       });
@@ -185,14 +197,38 @@ export default function SignUp() {
                 </Pressable>
               }
             />
-            <InputField
-              label="Access code"
-              icon="confirmation-number"
-              value={accessCode}
-              onChangeText={setAccessCode}
-              placeholder="Required during early access"
-              autoCapitalize="characters"
-            />
+            {LAUNCH_ACCESS_REQUIRED ? (
+              <InputField
+                label="Access code"
+                icon="confirmation-number"
+                value={accessCode}
+                onChangeText={setAccessCode}
+                placeholder="Required during early access"
+                autoCapitalize="characters"
+              />
+            ) : null}
+
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: ageConfirmed }}
+              accessibilityLabel={`I confirm that I am at least ${MINIMUM_AGE}`}
+              onPress={() => setAgeConfirmed((value) => !value)}
+              style={styles.consentRow}
+            >
+              <View style={[styles.checkbox, { borderColor: ageConfirmed ? theme.colors.accent : theme.colors.border, backgroundColor: ageConfirmed ? theme.colors.accent : 'transparent' }]}>
+                {ageConfirmed ? <MaterialIcons name="check" size={16} color="#120B06" /> : null}
+              </View>
+              <Text style={[styles.consentText, { color: theme.colors.textMuted }]}>
+                I confirm that I am at least {MINIMUM_AGE}.
+              </Text>
+            </Pressable>
+
+            <Text style={[styles.legalText, { color: theme.colors.textSubtle }]}>
+              By creating an account you agree to the{' '}
+              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => Linking.openURL(LEGAL_URLS.terms)}>Terms</Text>
+              {' '}and acknowledge the{' '}
+              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => Linking.openURL(LEGAL_URLS.privacy)}>Privacy Policy</Text>.
+            </Text>
 
             {password.length > 0 ? (
               <View style={styles.strengthWrap}>
@@ -435,6 +471,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.8,
     fontFamily: pluggdFonts.satoshiBlack,
+  },
+  consentRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 1,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  consentText: {
+    flex: 1,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  legalText: {
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 11.5,
+    lineHeight: 17,
   },
   dividerRow: {
     marginTop: 18,

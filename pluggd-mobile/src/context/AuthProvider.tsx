@@ -5,6 +5,7 @@ import {
   enforceLaunchAccess,
   storeLaunchAccessNotice,
 } from "../features/auth/launch-access";
+import { LAUNCH_ACCESS_REQUIRED } from "../config/environment";
 import { registerMobilePushToken } from "../lib/localNotifications";
 import { supabase } from "../lib/supabase";
 
@@ -43,6 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const applySession = async (nextSession: Session | null) => {
+      if (!LAUNCH_ACCESS_REQUIRED) {
+        if (!mounted) return;
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        return;
+      }
+
       const access = await enforceLaunchAccess(nextSession);
       if (!mounted) return;
 

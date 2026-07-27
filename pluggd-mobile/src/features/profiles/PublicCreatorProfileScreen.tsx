@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   RefreshControl,
@@ -17,6 +18,8 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
 import { loadCreatorProfileBundle } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
+import { blockUser } from '../safety/accountSafety';
+import { showReportActions } from '../safety/reportActions';
 
 const PLUGGD_ORANGE = '#ff6600';
 
@@ -401,6 +404,41 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
     }
   };
 
+  const openSafetyMenu = () => {
+    if (!profile || currentUserId === profile.user_id) return;
+    Alert.alert(displayName, 'Community safety', [
+      {
+        text: 'Report profile',
+        onPress: () => showReportActions({
+          targetType: 'profile',
+          targetId: profile.id,
+          label: 'profile',
+        }),
+      },
+      {
+        text: 'Block account',
+        style: 'destructive',
+        onPress: () => Alert.alert(`Block ${displayName}?`, 'You will no longer see each other’s profiles or community posts.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await blockUser(profile.user_id, 'Blocked from public profile');
+                router.replace('/community' as any);
+                Alert.alert('Account blocked', `${displayName} has been blocked.`);
+              } catch (error: any) {
+                Alert.alert('Could not block account', error?.message ?? 'Please try again.');
+              }
+            },
+          },
+        ]),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -441,6 +479,16 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
               >
                 <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
               </Pressable>
+              {currentUserId !== profile.user_id ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Profile safety options"
+                  onPress={openSafetyMenu}
+                  style={[styles.safetyButton, { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border }]}
+                >
+                  <MaterialIcons name="more-horiz" size={23} color={theme.colors.text} />
+                </Pressable>
+              ) : null}
             </View>
 
             <View style={styles.profileBlock}>
@@ -674,6 +722,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  safetyButton: {
+    position: 'absolute',
+    right: 16,
+    top: 54,
+    width: 44,
+    height: 44,
+    borderRadius: 5,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

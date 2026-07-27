@@ -256,7 +256,7 @@ export const useMembershipAccessRuleEditor = ({
         return;
       }
 
-      if (!gateEnabled || availableTiers.length === 0) {
+      if (!gateEnabled) {
         await deleteMembershipAccessRules(contentType, contentId);
         void logEvent('membership_access_rule_disabled', { contentId });
         return;

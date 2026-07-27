@@ -129,11 +129,19 @@ const { module: supabaseClientMock, helpers: supabaseHelpers } = vi.hoisted(() =
 
   const channelFactory = vi.fn(() => channel);
   const removeChannelMock = vi.fn();
+  const fromMock = vi.fn(() => {
+    const query: any = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
+    };
+    return query;
+  });
 
   return {
     module: {
       supabase: {
         rpc: rpcMock,
+        from: fromMock,
         channel: channelFactory,
         removeChannel: removeChannelMock,
       },
@@ -143,6 +151,7 @@ const { module: supabaseClientMock, helpers: supabaseHelpers } = vi.hoisted(() =
       channel,
       channelFactory,
       removeChannelMock,
+      fromMock,
       setRpcHandlers: (handlers: Record<string, RpcHandler>) => {
         rpcHandlers = handlers;
       },
@@ -153,6 +162,7 @@ const { module: supabaseClientMock, helpers: supabaseHelpers } = vi.hoisted(() =
         channel.subscribe.mockClear();
         channelFactory.mockClear();
         removeChannelMock.mockClear();
+        fromMock.mockClear();
         channelCallbacks.length = 0;
       },
       emitMessage: (payload: any) => {
@@ -487,7 +497,9 @@ describe("MessagingCenter", () => {
       target: { value: "Test reply" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
+    const sendButton = screen.getByRole("button", { name: /Send message/i });
+    await waitFor(() => expect(sendButton).not.toBeDisabled());
+    fireEvent.click(sendButton);
 
     await waitFor(() => {
       expect(loggerSpies.logError).toHaveBeenCalledWith(

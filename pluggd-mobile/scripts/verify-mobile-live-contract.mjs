@@ -100,7 +100,7 @@ for (const token of [
   assert.match(liveFeedSource, new RegExp(token.replace(/[()']/g, '\\$&')), `${token} must be wired in the full-screen Live Feed`);
 }
 
-for (const action of ['reportLiveRoom', 'Report live room?', 'Report submitted', 'flag']) {
+for (const action of ['openRoomSafety', 'showReportActions', 'Block host', 'Safety']) {
   assert.match(liveSessionSource, new RegExp(action.replace(/[?'()]/g, '\\$&')), `${action} live-session moderation action must be wired`);
 }
 

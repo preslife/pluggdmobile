@@ -6,6 +6,7 @@ import InboxPage from '@/pages/Inbox';
 import type { LocaleCode } from '@/lib/locales';
 
 const supabaseTableData: Record<string, any[]> = {};
+const toast = vi.fn();
 
 const createBuilder = (table: string) => {
   const result = { data: supabaseTableData[table] ?? [], error: null };
@@ -14,6 +15,7 @@ const createBuilder = (table: string) => {
     eq: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
+    in: vi.fn(() => builder),
     update: vi.fn(() => Promise.resolve({ data: null, error: null })),
     insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
     upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
@@ -29,6 +31,11 @@ const createBuilder = (table: string) => {
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: (table: string) => createBuilder(table),
+    rpc: (functionName: string) =>
+      Promise.resolve({
+        data: functionName === 'get_unified_inbox_messages' ? (supabaseTableData.unified_inbox ?? []) : null,
+        error: null,
+      }),
     functions: {
       invoke: vi.fn(() => Promise.resolve({ data: null, error: null })),
     },
@@ -40,7 +47,7 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast }),
 }));
 
 vi.mock('@/lib/seo', () => ({

@@ -1,0 +1,49 @@
+# App Review Notes
+
+## Review focus
+
+PLUGGD is an iPhone music-discovery and creator-community app. The opening Home screen contains playable music immediately. Discover explores releases, mixes, beats, soundboards, scenes, cities and events. Community includes user-generated posts. Library stores saved music. A persistent mini-player opens the full player.
+
+## Account access
+
+Production registration is open and does not require an invite code. Supply a dedicated review account in App Store Connect immediately before submission; do not commit its credentials to the repository.
+
+Recommended reviewer path:
+
+1. Create an account or sign in with the App Review account.
+2. On Home, tap the first play control.
+3. Move between Home, Discover, Community and Library to confirm uninterrupted playback.
+4. Open Discover to inspect scene, genre, city, event, mix, beat and soundboard routes.
+5. Open a Community post’s overflow menu to see Report and Block.
+6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.
+7. Open Wallet or a creator Membership to test StoreKit products and Restore Purchases.
+
+## User-generated content safety
+
+- Report with a specific reason is available on community posts, comments, stories,
+  public profiles and live rooms.
+- Block is available from those same safety menus, with unblock management in
+  Settings → Privacy & safety → Blocked accounts.
+- Blocked authors are removed from Home and Community feeds, search,
+  recommendations, stories, notifications, comments and live-room chat.
+- Text and media submissions receive server-side pre-publication moderation. Media and risk-signalled submissions are held in a private moderation queue.
+- Community Guidelines: https://www.pluggd.fm/community-guidelines
+- Safety contact: support@pluggd.fm
+
+## Purchases
+
+Digital credits and creator memberships use Apple In-App Purchase only. No Stripe, card or web checkout is exposed for digital content in the iOS app. The app includes Restore Purchases and a link to Apple subscription management. App Store Server Notification V2 and client StoreKit 2 transactions are cryptographically verified using Apple’s official server library before entitlements are granted.
+
+## Account deletion
+
+Settings → Privacy & safety → Delete account performs immediate server-side deletion after recent authentication and typing `DELETE`. The screen explains that Apple subscriptions must be cancelled separately and links to Apple subscription settings.
+
+## Hardware permissions
+
+- Camera: event ticket scanning or user-created live/profile content.
+- Microphone: joining or hosting live audio rooms.
+- Photo library: selecting profile/creator media; saving an export only on request.
+
+## External dependencies for review
+
+The Supabase production deployment, Apple IAP products, App Store Server Notification URL, Apple root certificates and App Apple ID must be configured before the review build is uploaded. The release checklist documents the exact gate.

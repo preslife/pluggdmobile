@@ -1,8 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { pluggdFonts } from '../../src/design/typography';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { requestDataExport } from '../../src/features/safety/accountSafety';
 
 const DATA_ITEMS = [
   { id: 'profile', label: 'Profile & account', detail: 'Identity, preferences and account history', icon: 'person-outline' },
@@ -14,9 +17,22 @@ const DATA_ITEMS = [
 export default function DataExportScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const [loading, setLoading] = useState(false);
 
-  const requestExport = () => {
-    Alert.alert('Identity verification required', 'Secure in-app export requests are being finalised. For now, request your archive through PLUGGD support or web account settings.');
+  const requestExport = async () => {
+    setLoading(true);
+    try {
+      const result = await requestDataExport();
+      Alert.alert('Your archive is ready', 'The private link expires in 24 hours.', [
+        { text: 'Close', style: 'cancel' },
+        { text: 'Share link', onPress: () => void Share.share({ url: result.downloadUrl, message: result.downloadUrl }) },
+        { text: 'Download', onPress: () => void Linking.openURL(result.downloadUrl) },
+      ]);
+    } catch (error: any) {
+      Alert.alert('Could not prepare archive', error?.message ?? 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,9 +72,9 @@ export default function DataExportScreen() {
           <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>The download link is sent only to your verified account email and expires for your protection.</Text>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={requestExport} style={styles.primary}>
-          <Text style={styles.primaryText}>REQUEST MY ARCHIVE</Text>
-          <MaterialIcons name="arrow-forward" size={19} color="#120B06" />
+        <Pressable accessibilityRole="button" disabled={loading} onPress={requestExport} style={[styles.primary, { opacity: loading ? 0.6 : 1 }]}>
+          <Text style={styles.primaryText}>{loading ? 'PREPARING ARCHIVE…' : 'REQUEST MY ARCHIVE'}</Text>
+          {!loading ? <MaterialIcons name="arrow-forward" size={19} color="#120B06" /> : null}
         </Pressable>
       </ScrollView>
     </View>

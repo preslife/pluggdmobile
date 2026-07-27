@@ -9,9 +9,7 @@
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  decode as base64Decode,
-} from "https://deno.land/std@0.190.0/encoding/base64url.ts";
+import { verifyAppleTransaction } from "../_shared/appleSignedData.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,14 +84,6 @@ const SKU_TIER_MAP: Record<string, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-/** Decode a JWS payload (base64url-encoded JSON) */
-function decodeJWSPayload<T>(jws: string): T {
-  const parts = jws.split(".");
-  if (parts.length !== 3) throw new Error("Invalid JWS format");
-  const payloadBytes = base64Decode(parts[1]);
-  return JSON.parse(new TextDecoder().decode(payloadBytes)) as T;
-}
-
 interface TransactionInfo {
   transactionId: string;
   originalTransactionId: string;
@@ -104,6 +94,7 @@ interface TransactionInfo {
   type: string;
   environment: string;
   appAccountToken?: string;
+  revocationDate?: number;
 }
 
 type SupabaseServiceClient = ReturnType<typeof createClient>;
@@ -282,6 +273,27 @@ serve(async (req) => {
       `[validate-iap] user=${user.id} product=${product_id} tx=${transaction_id} type=${inferredType}`,
     );
 
+    if (typeof receipt_data !== "string" || receipt_data.split(".").length !== 3) {
+      throw new Error("A StoreKit 2 signed transaction is required");
+    }
+
+    // Verify the JWS certificate chain, signature, bundle ID and App Apple ID
+    // before trusting any client-supplied transaction fields.
+    const verified = await verifyAppleTransaction(receipt_data);
+    const decodedTx = verified.payload as TransactionInfo;
+    if (
+      decodedTx.productId !== product_id ||
+      decodedTx.transactionId !== transaction_id
+    ) {
+      throw new Error("Signed transaction does not match the requested product or transaction");
+    }
+    if (!decodedTx.appAccountToken || decodedTx.appAccountToken !== user.id) {
+      throw new Error("Signed transaction is not assigned to this PLUGGD account");
+    }
+    if (decodedTx.revocationDate) {
+      throw new Error("This transaction has been revoked");
+    }
+
     // ── Check for duplicate transaction ──
     const { data: existingTx } = await supabaseClient
       .from("iap_transactions")
@@ -327,16 +339,6 @@ serve(async (req) => {
       }
     }
 
-    // ── Decode the receipt if it's a signed transaction (StoreKit 2) ──
-    let decodedTx: TransactionInfo | null = null;
-    if (receipt_data && receipt_data.includes(".")) {
-      try {
-        decodedTx = decodeJWSPayload<TransactionInfo>(receipt_data);
-      } catch {
-        console.warn("[validate-iap] Could not decode JWS receipt, proceeding with basic validation");
-      }
-    }
-
     // ── Record the transaction ──
     if (!alreadyLoggedTransaction) {
       const { error: txError } = await supabaseClient
@@ -347,18 +349,15 @@ serve(async (req) => {
           original_transaction_id: decodedTx?.originalTransactionId ?? transaction_id,
           product_id,
           type: inferredType,
-          environment: decodedTx?.environment ?? "Production",
-          purchase_date: decodedTx?.purchaseDate
+          environment: decodedTx.environment ?? verified.verifiedEnvironment,
+          purchase_date: decodedTx.purchaseDate
             ? new Date(decodedTx.purchaseDate).toISOString()
             : new Date().toISOString(),
-          expires_date: decodedTx?.expiresDate
+          expires_date: decodedTx.expiresDate
             ? new Date(decodedTx.expiresDate).toISOString()
             : null,
           status: "validated",
-          raw_receipt:
-            typeof receipt_data === "string"
-              ? receipt_data.substring(0, 500)
-              : null,
+          raw_receipt: null,
         });
 
       if (txError) {
@@ -412,7 +411,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (pendingSub) {
-        const expiresDate = decodedTx?.expiresDate
+        const expiresDate = decodedTx.expiresDate
           ? new Date(decodedTx.expiresDate).toISOString()
           : null;
 
@@ -426,7 +425,7 @@ serve(async (req) => {
               apple_sku: product_id,
               apple_transaction_id: transaction_id,
               apple_original_transaction_id:
-                decodedTx?.originalTransactionId ?? transaction_id,
+                decodedTx.originalTransactionId,
               tier_name: tierName,
               platform: "ios",
             },

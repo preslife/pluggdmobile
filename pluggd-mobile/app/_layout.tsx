@@ -12,6 +12,7 @@ import { AppChrome } from "../components/AppChrome";
 import { LiquidBackground } from "../components/liquid-glass";
 import { AuthProvider } from "../src/context/AuthProvider";
 import { PlaybackProvider } from "../src/context/PlaybackProvider";
+import { StoreKitProvider } from "../src/context/StoreKitProvider";
 import { PluggdThemeProvider, usePluggdTheme } from "../src/design/usePluggdTheme";
 import { addLocalNotificationResponseListener, configureLocalNotificationHandler } from "../src/lib/localNotifications";
 import { lockAppPortrait } from "../src/lib/orientation";
@@ -75,13 +76,15 @@ function LayoutContent() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <PlaybackProvider>
-            <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-              <LiquidBackground style={{ ...StyleSheet.absoluteFillObject }} />
-              <Slot />
-              <AppChrome />
-            </View>
-          </PlaybackProvider>
+          <StoreKitProvider>
+            <PlaybackProvider>
+              <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+                <LiquidBackground style={{ ...StyleSheet.absoluteFillObject }} />
+                <Slot />
+                <AppChrome />
+              </View>
+            </PlaybackProvider>
+          </StoreKitProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

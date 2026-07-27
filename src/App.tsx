@@ -60,6 +60,7 @@ import Subscription from "./pages/Subscription";
 import Contracts from "./pages/Contracts";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import CommunityGuidelines from "./pages/CommunityGuidelines";
 import Refunds from "./pages/Refunds";
 import TestPage from "./pages/TestPage";
 import AdminPayoutsPage from "./pages/AdminPayouts";
@@ -382,6 +383,7 @@ const AppContent = () => {
         <Route path="/terms" element={<Terms />} />
         <Route path="/test" element={<TestPage />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/community-guidelines" element={<CommunityGuidelines />} />
         <Route path="/refunds" element={<Refunds />} />
         <Route path="/partners" element={<Partners />} />
         <Route path="/docs" element={<Docs />} />

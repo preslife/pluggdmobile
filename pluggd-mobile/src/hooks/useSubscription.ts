@@ -22,6 +22,7 @@ import {
 } from 'react-native-iap';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useStoreKit } from '../context/StoreKitProvider';
 
 // ─── Fixed Apple Subscription SKUs ────────────────────────────────────
 export const SUBSCRIPTION_SKUS = [
@@ -95,6 +96,7 @@ function membershipTierName(row: FanSubscriptionRow): string | null {
 
 // ─── Hook ─────────────────────────────────────────────────────────────
 export function useSubscription() {
+  const { ready: storeKitReady, connectionError } = useStoreKit();
   const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
   const [activeMemberships, setActiveMemberships] = useState<ActiveMembership[]>([]);
   const [purchasing, setPurchasing] = useState(false);
@@ -111,6 +113,7 @@ export function useSubscription() {
       setLoading(false);
       return;
     }
+    if (!storeKitReady) return;
 
     async function loadProducts() {
       try {
@@ -134,7 +137,14 @@ export function useSubscription() {
     }
 
     loadProducts();
-  }, []);
+  }, [storeKitReady]);
+
+  useEffect(() => {
+    if (connectionError) {
+      setError(connectionError);
+      setLoading(false);
+    }
+  }, [connectionError]);
 
   // ── Fetch active memberships from Supabase ──
   const refreshMemberships = useCallback(async () => {
@@ -257,6 +267,10 @@ export function useSubscription() {
   // ── Subscribe to a creator ──
   const subscribe = useCallback(
     async (sku: SubscriptionSKU, creatorId: string) => {
+      if (!storeKitReady) {
+        setError('App Store not connected');
+        return;
+      }
       setPurchasing(true);
       setError(null);
 
@@ -294,7 +308,7 @@ export function useSubscription() {
         }
       }
     },
-    [],
+    [storeKitReady],
   );
 
   // ── Restore subscriptions ──

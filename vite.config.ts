@@ -4,10 +4,12 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
+  server: mode === "test" || process.env.VITEST
+    ? { hmr: false }
+    : {
+        host: "::",
+        port: 8080,
+      },
   plugins: [
     react(),
   ].filter(Boolean),
@@ -24,5 +26,13 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts", "./src/tests/setup.ts"],
     css: true,
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/cypress/**",
+      "**/.{idea,git,cache,output,temp}/**",
+      ".claude/**",
+      "tests/e2e/**",
+    ],
   },
 }));

@@ -6,12 +6,15 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../src/components/PluggdImage';
+import { useAuth } from '../../src/context/AuthProvider';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { loadMobileStoryDeck, markMobileStoryViewed } from '../../src/features/culture/mobileServices';
 import type { MobileStory } from '../../src/features/culture/mobileTypes';
+import { blockUser } from '../../src/features/safety/accountSafety';
+import { showReportActions } from '../../src/features/safety/reportActions';
 
 function StoryVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (instance) => {
@@ -43,6 +46,7 @@ export default function StoryViewerRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { playTrack, currentTrack, isPlaying, togglePlayPause } = usePlayback();
   const [activeIndex, setActiveIndex] = useState(0);
   const { data: stories = [], isLoading } = useQuery({
@@ -94,6 +98,50 @@ export default function StoryViewerRoute() {
     });
   };
 
+  const openSafetyMenu = () => {
+    if (!story) return;
+    const authorName = story.author?.full_name || story.author?.username || 'this account';
+    const actions: any[] = [
+      {
+        text: 'Report story',
+        onPress: () => showReportActions({
+          targetType: 'story',
+          targetId: story.id,
+          label: 'story',
+          details: `Reported from the iPhone story viewer. Creator: ${story.user_id}.`,
+        }),
+      },
+    ];
+    if (user?.id && user.id !== story.user_id) {
+      actions.push({
+        text: `Block ${authorName}`,
+        style: 'destructive',
+        onPress: () => Alert.alert(
+          `Block ${authorName}?`,
+          'Their stories, posts, comments, recommendations and live activity will no longer appear to you.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Block',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await blockUser(story.user_id, 'Blocked from story viewer');
+                  router.back();
+                  Alert.alert('Account blocked', `${authorName} has been removed from your PLUGGD experience.`);
+                } catch (error: any) {
+                  Alert.alert('Could not block account', error?.message ?? 'Please try again.');
+                }
+              },
+            },
+          ],
+        ),
+      });
+    }
+    actions.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(authorName, 'Story safety', actions);
+  };
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -128,6 +176,9 @@ export default function StoryViewerRoute() {
         ) : (
           <View style={styles.iconButton} />
         )}
+        <Pressable style={styles.iconButton} onPress={openSafetyMenu} accessibilityRole="button" accessibilityLabel="Story safety options">
+          <MaterialIcons name="more-horiz" size={23} color="#FFFFFF" />
+        </Pressable>
       </View>
 
       {isLoading ? (

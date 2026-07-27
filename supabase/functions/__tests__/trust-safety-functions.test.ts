@@ -145,7 +145,13 @@ describe('trust & safety edge handlers', () => {
       maybeSingle: vi.fn(() => Promise.resolve({ data: { owner_id: 'creator-1', title: 'Release' }, error: null })),
     };
 
-    const reportsTable = {
+    const reportsTable: any = {
+      select: vi.fn(() => reportsTable),
+      eq: vi.fn(() => reportsTable),
+      in: vi.fn(() => reportsTable),
+      order: vi.fn(() => reportsTable),
+      limit: vi.fn(() => reportsTable),
+      maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
       insert: vi.fn(() => ({
         select: vi.fn(() => ({
           single: vi.fn(() => Promise.resolve({ data: { id: 'report-1', status: 'pending' }, error: null })),

@@ -1,6 +1,6 @@
 import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
 
-export type ReportTargetType = "release" | "beat" | "post" | "profile" | "comment" | "blog_post";
+export type ReportTargetType = "release" | "beat" | "post" | "profile" | "comment" | "blog_post" | "story";
 
 export type SubmitReportPayload = {
   targetType: ReportTargetType;
@@ -18,7 +18,7 @@ export type ReportReason =
   | "violence"
   | "other";
 
-const ALLOWED_TARGET_TYPES: ReportTargetType[] = ["release", "beat", "post", "profile", "comment", "blog_post"];
+const ALLOWED_TARGET_TYPES: ReportTargetType[] = ["release", "beat", "post", "profile", "comment", "blog_post", "story"];
 const ALLOWED_REPORT_REASONS: ReportReason[] = [
   "inappropriate_content",
   "spam",
@@ -93,16 +93,27 @@ export const resolveTargetOwner = async (
       };
     }
     case "post": {
-      const { data, error } = await serviceClient
+      const { data: socialPost, error: socialError } = await serviceClient
+        .from("social_posts")
+        .select("id, user_id, content")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (!socialError && socialPost) {
+        return {
+          ownerId: socialPost.user_id ?? null,
+          metadata: { title: socialPost.content?.slice(0, 120) ?? null, type: "post" },
+        };
+      }
+      const { data: legacyPost, error: legacyError } = await serviceClient
         .from("posts")
         .select("id, user_id, title")
         .eq("id", targetId)
         .maybeSingle();
-      if (error) throw new Error(`Failed to load post: ${error.message}`);
-      if (!data) return { ownerId: null, metadata: null };
+      if (legacyError && socialError) throw new Error(`Failed to load post: ${legacyError.message ?? socialError.message}`);
+      if (!legacyPost) return { ownerId: null, metadata: null };
       return {
-        ownerId: data.user_id ?? null,
-        metadata: { title: data.title ?? null, type: "post" },
+        ownerId: legacyPost.user_id ?? null,
+        metadata: { title: legacyPost.title ?? null, type: "post" },
       };
     }
     case "profile": {
@@ -119,16 +130,27 @@ export const resolveTargetOwner = async (
       };
     }
     case "comment": {
-      const { data, error } = await serviceClient
+      const { data: socialComment, error: socialError } = await serviceClient
+        .from("social_comments")
+        .select("id, user_id, post_id")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (!socialError && socialComment) {
+        return {
+          ownerId: socialComment.user_id ?? null,
+          metadata: { post_id: socialComment.post_id, type: "comment" },
+        };
+      }
+      const { data: legacyComment, error: legacyError } = await serviceClient
         .from("comments")
         .select("id, user_id, post_id")
         .eq("id", targetId)
         .maybeSingle();
-      if (error) throw new Error(`Failed to load comment: ${error.message}`);
-      if (!data) return { ownerId: null, metadata: null };
+      if (legacyError && socialError) throw new Error(`Failed to load comment: ${legacyError.message ?? socialError.message}`);
+      if (!legacyComment) return { ownerId: null, metadata: null };
       return {
-        ownerId: data.user_id,
-        metadata: { post_id: data.post_id, type: "comment" },
+        ownerId: legacyComment.user_id,
+        metadata: { post_id: legacyComment.post_id, type: "comment" },
       };
     }
     case "blog_post": {
@@ -142,6 +164,19 @@ export const resolveTargetOwner = async (
       return {
         ownerId: data.created_by ?? null,
         metadata: { title: data.title ?? null, type: "blog_post" },
+      };
+    }
+    case "story": {
+      const { data, error } = await serviceClient
+        .from("social_stories")
+        .select("id, user_id, creator_id, caption")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (error) throw new Error(`Failed to load story: ${error.message}`);
+      if (!data) return { ownerId: null, metadata: null };
+      return {
+        ownerId: data.user_id ?? data.creator_id ?? null,
+        metadata: { caption: data.caption?.slice(0, 120) ?? null, type: "story" },
       };
     }
     default:
@@ -254,6 +289,34 @@ export const createSubmitReportHandler = ({
           await logger.warn("submit_report_blocked_relationship", { ownerId, reporterId: authData.user.id });
           return jsonResponse({ error: "Interaction not allowed between blocked users" }, 403, corsHeaders);
         }
+      }
+
+      const { data: existingReport, error: existingError } = await serviceClient
+        .from("content_reports")
+        .select("id, status, created_at, target_type, target_id")
+        .eq("reporter_id", authData.user.id)
+        .eq("target_type", targetType)
+        .eq("target_id", targetId)
+        .in("status", ["pending", "investigating"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingError) {
+        await logger.error("submit_report_duplicate_lookup_failed", existingError, { targetType, targetId });
+        return jsonResponse({ error: "Unable to verify report status" }, 500, corsHeaders);
+      }
+
+      if (existingReport) {
+        await logger.info("submit_report_duplicate", {
+          report_id: existingReport.id,
+          target_type: targetType,
+        });
+        return jsonResponse({
+          report: existingReport,
+          duplicate: true,
+          correlationId: logger.correlationId,
+        }, 200, corsHeaders);
       }
 
       const insertPayload = {

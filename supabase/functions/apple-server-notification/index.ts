@@ -17,8 +17,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
-  decode as base64Decode,
-} from "https://deno.land/std@0.190.0/encoding/base64url.ts";
+  verifyAppleNotification,
+  verifyAppleRenewalInfo,
+  verifyAppleTransaction,
+} from "../_shared/appleSignedData.ts";
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface DecodedNotification {
@@ -71,20 +73,6 @@ const SKU_TIER_MAP: Record<string, string> = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-
-/** Decode a JWS payload without cryptographic verification (Supabase edge
- *  functions don't have access to Apple's root certificates for full
- *  chain verification). The App Store signs with ES256; in production
- *  you'd verify against Apple's root CA. For now we decode the claims. */
-function decodeJWSPayload<T>(jws: string): T {
-  const parts = jws.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Invalid JWS format");
-  }
-  const payloadBytes = base64Decode(parts[1]);
-  const payloadText = new TextDecoder().decode(payloadBytes);
-  return JSON.parse(payloadText) as T;
-}
 
 /** Map Apple notification type + subtype → fan_subscriptions status */
 function resolveStatus(
@@ -141,8 +129,10 @@ serve(async (req) => {
       });
     }
 
-    // ── Decode the notification ──
-    const notification = decodeJWSPayload<DecodedNotification>(signedPayload);
+    // Verify the outer notification JWS certificate chain, signature, bundle
+    // ID and App Apple ID before processing any notification fields.
+    const verifiedNotification = await verifyAppleNotification(signedPayload);
+    const notification = verifiedNotification.payload as DecodedNotification;
     const { notificationType, subtype, notificationUUID } = notification;
 
     console.log(
@@ -164,16 +154,21 @@ serve(async (req) => {
       });
     }
 
-    // ── Decode transaction info ──
-    const txInfo = decodeJWSPayload<TransactionInfo>(
+    if (!notification.data?.signedTransactionInfo) {
+      throw new Error("Verified notification is missing signed transaction data");
+    }
+
+    // The nested transaction is independently signed and must also verify.
+    const verifiedTransaction = await verifyAppleTransaction(
       notification.data.signedTransactionInfo,
     );
+    const txInfo = verifiedTransaction.payload as TransactionInfo;
 
     let renewalInfo: RenewalInfo | null = null;
     if (notification.data.signedRenewalInfo) {
-      renewalInfo = decodeJWSPayload<RenewalInfo>(
-        notification.data.signedRenewalInfo,
-      );
+      renewalInfo = (
+        await verifyAppleRenewalInfo(notification.data.signedRenewalInfo)
+      ).payload as RenewalInfo;
     }
 
     const {
@@ -185,6 +180,7 @@ serve(async (req) => {
     } = txInfo;
 
     const tierName = SKU_TIER_MAP[productId] ?? null;
+    if (!tierName) throw new Error(`Unknown subscription product: ${productId}`);
     const newStatus = resolveStatus(notificationType, subtype);
 
     console.log(
@@ -234,20 +230,6 @@ serve(async (req) => {
         .maybeSingle();
 
       subscriptionRecord = byToken;
-    }
-
-    // Second fallback: match by apple_sku in metadata for pending records
-    if (!subscriptionRecord) {
-      const { data: byPending } = await supabaseClient
-        .from("fan_subscriptions")
-        .select("id, fan_id, creator_id, status, apple_sku, tier_id, metadata")
-        .eq("metadata->>apple_sku", productId)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      subscriptionRecord = byPending;
     }
 
     if (!subscriptionRecord) {
@@ -415,8 +397,8 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[apple-notification] Error:", message);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: "Invalid App Store notification" }), {
+      status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }

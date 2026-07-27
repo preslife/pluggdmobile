@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { PluggdTrack, PluggdTrackKind } from '../context/PlaybackProvider';
+import { canShowSensitiveContent, loadSafetySettings } from '../features/safety/accountSafety';
 
 export const PLUGGD_ORANGE = '#ff6600';
 
@@ -16,6 +17,8 @@ export type ContentKind =
 
 export type ReleaseItem = {
   id: string;
+  user_id?: string | null;
+  owner_id?: string | null;
   title: string | null;
   artist: string | null;
   cover_art_url: string | null;
@@ -23,6 +26,7 @@ export type ReleaseItem = {
   preview_url?: string | null;
   download_url?: string | null;
   genre: string | null;
+  explicit?: boolean | null;
   price: number | null;
   download_price: number | null;
   minimum_price: number | null;
@@ -31,6 +35,8 @@ export type ReleaseItem = {
 
 export type BeatItem = {
   id: string;
+  user_id?: string | null;
+  owner_id?: string | null;
   title: string | null;
   producer_name: string | null;
   image_url: string | null;
@@ -50,6 +56,8 @@ export type BeatItem = {
 
 export type SamplePackItem = {
   id: string;
+  user_id?: string | null;
+  owner_id?: string | null;
   title: string | null;
   description: string | null;
   cover_art_url: string | null;
@@ -219,7 +227,7 @@ export type FeedBundle = {
 };
 
 export const RELEASE_LIST_SELECT =
-  'id,title,artist,cover_art_url,preview_url,download_url,genre,price,download_price,minimum_price,created_at';
+  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,created_at';
 
 export function formatGBP(value?: number | null, options?: { cents?: boolean }) {
   const numeric = Number(value ?? 0);
@@ -403,6 +411,24 @@ async function list<T>(query: PromiseLike<{ data: unknown; error: unknown }>, fa
 
 export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
   const nowIso = new Date().toISOString();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const blockedRows = user
+    ? await list<{ blocked_user_id: string }>(
+        (supabase as any)
+          .from('user_blocks')
+          .select('blocked_user_id')
+          .eq('blocker_id', user.id)
+          .eq('status', 'active'),
+      )
+    : [];
+  const blockedUserIds = new Set(blockedRows.map((row) => row.blocked_user_id));
+  const safetySettings = await loadSafetySettings().catch(() => ({
+    ageBand: null,
+    sensitiveContentEnabled: false,
+  } as const));
+  const showSensitiveContent = canShowSensitiveContent(safetySettings);
   const [
     releases,
     beats,
@@ -424,7 +450,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<BeatItem>(
       supabase
         .from('beats')
-        .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
+        .select('id,user_id,owner_id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(limit),
@@ -432,7 +458,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<SamplePackItem>(
       (supabase as any)
         .from('sample_packs')
-        .select('id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
+        .select('id,user_id,owner_id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
         .order('created_at', { ascending: false })
         .limit(limit),
     ),
@@ -520,5 +546,17 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     ),
   ]);
 
-  return { releases, beats, samplePacks, mixes, events, soundboards, profiles, posts, mapPlugs };
+  return {
+    releases: releases.filter((item) =>
+      !blockedUserIds.has(item.user_id || item.owner_id || '')
+      && (!item.explicit || showSensitiveContent)),
+    beats: beats.filter((item) => !blockedUserIds.has(item.user_id || item.owner_id || '')),
+    samplePacks: samplePacks.filter((item) => !blockedUserIds.has(item.user_id || item.owner_id || '')),
+    mixes,
+    events,
+    soundboards: soundboards.filter((item) => !blockedUserIds.has(item.creator_id || '')),
+    profiles: profiles.filter((item) => !blockedUserIds.has(item.user_id || '')),
+    posts: posts.filter((item) => !item.is_deleted && !blockedUserIds.has(item.user_id || '')),
+    mapPlugs: mapPlugs.filter((item) => !blockedUserIds.has(item.user_id || item.creator_id || '')),
+  };
 }

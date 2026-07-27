@@ -65,6 +65,7 @@ import {
   loadThreadDetail,
   toggleSocialLike,
 } from './mobileSocial';
+import { loadBlockedUserIds } from '../safety/accountSafety';
 
 type SupabaseListResult = { data: unknown; error: unknown };
 
@@ -150,23 +151,28 @@ export async function uploadSocialMediaAsset(input: {
   fileName?: string | null;
   mimeType?: string | null;
   folder?: string;
+  quarantine?: boolean;
 }) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: 'Sign in to upload media.' };
   const ext = fileExtension(input.fileName, input.mimeType);
   const folder = input.folder || 'posts';
+  const bucket = input.quarantine ? 'ugc-quarantine' : 'social-media';
   const storagePath = `${userId}/${folder}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   try {
     const response = await fetch(input.uri);
     const blob = await response.blob();
     const { error } = await (supabase as any).storage
-      .from('social-media')
+      .from(bucket)
       .upload(storagePath, blob, {
         contentType: input.mimeType || 'application/octet-stream',
         upsert: false,
       });
     if (error) throw error;
-    const { data } = (supabase as any).storage.from('social-media').getPublicUrl(storagePath);
+    if (input.quarantine) {
+      return { success: true, url: `storage://${bucket}/${storagePath}`, storagePath };
+    }
+    const { data } = (supabase as any).storage.from(bucket).getPublicUrl(storagePath);
     if (!data?.publicUrl) return { success: false, error: 'Media uploaded but no public URL was returned.' };
     return { success: true, url: data.publicUrl as string, storagePath };
   } catch (error) {
@@ -530,6 +536,7 @@ async function loadMemberships(userId: string | null) {
 }
 
 export async function loadLiveRooms() {
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   const [sessionRooms, liveSessions, scheduledSessions, communityRooms] = await Promise.all([
     safeList<any>(
       (supabase as any)
@@ -575,7 +582,8 @@ export async function loadLiveRooms() {
   }));
   const taggedCommunityRooms = communityRooms.map((row) => ({ ...row, __source: 'community_room' }));
 
-  const rawRows = [...taggedSessionRooms, ...taggedLiveSessions, ...taggedScheduledSessions, ...taggedCommunityRooms];
+  const rawRows = [...taggedSessionRooms, ...taggedLiveSessions, ...taggedScheduledSessions, ...taggedCommunityRooms]
+    .filter((row) => !blockedUserIds.has(row.host_id ?? row.creator_id ?? ''));
   const profiles = await loadProfileMap(rawRows.map((row) => row.host_id ?? row.creator_id));
   const merged = rawRows.map((row) => mapLiveRoom(row, profiles.get(row.host_id ?? row.creator_id) ?? null));
   const seen = new Set<string>();
@@ -606,6 +614,7 @@ export async function loadLiveRoomMessagePreview(roomIds: string[]) {
 
 export async function loadMobileStories(input: { creatorId?: string | null; communityId?: string | null; eventId?: string | null; limit?: number } = {}) {
   const userId = await getCurrentUserId();
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   const rows = await safeList<any>(
     (supabase as any)
       .from('social_stories')
@@ -615,6 +624,9 @@ export async function loadMobileStories(input: { creatorId?: string | null; comm
   );
   const now = Date.now();
   const filtered = rows.filter((row) => {
+    if (blockedUserIds.has(row.user_id || row.creator_id)) return false;
+    if (row.is_deleted) return false;
+    if (['removed', 'deleted', 'hidden', 'rejected'].includes(String(row.moderation_status || row.status || '').toLowerCase())) return false;
     if (row.expires_at && new Date(row.expires_at).getTime() < now) return false;
     if (input.creatorId && row.user_id !== input.creatorId && row.creator_id !== input.creatorId) return false;
     if (input.communityId && row.community_id !== input.communityId && row.destination_id !== input.communityId) return false;
@@ -631,6 +643,7 @@ export async function loadMobileStories(input: { creatorId?: string | null; comm
 
 export async function loadMobileStoryDeck(storyId: string) {
   const userId = await getCurrentUserId();
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   const seed = await safeMaybe<any>(
     (supabase as any)
       .from('social_stories')
@@ -639,7 +652,12 @@ export async function loadMobileStoryDeck(storyId: string) {
       .maybeSingle(),
   );
 
-  if (!seed) return loadMobileStories({ limit: 50 });
+  if (
+    !seed
+    || seed.is_deleted
+    || ['removed', 'deleted', 'hidden', 'rejected'].includes(String(seed.moderation_status || seed.status || '').toLowerCase())
+    || blockedUserIds.has(seed.user_id || seed.creator_id)
+  ) return loadMobileStories({ limit: 50 });
 
   const nowIso = new Date().toISOString();
   const authorId = seed.user_id || seed.creator_id;
@@ -654,7 +672,11 @@ export async function loadMobileStoryDeck(storyId: string) {
           .limit(30),
       )
     : [seed];
-  const rows = deckRows.some((row) => row.id === seed.id) ? deckRows : [seed, ...deckRows];
+  const rows = (deckRows.some((row) => row.id === seed.id) ? deckRows : [seed, ...deckRows])
+    .filter((row) =>
+      !row.is_deleted
+      && !['removed', 'deleted', 'hidden', 'rejected'].includes(String(row.moderation_status || row.status || '').toLowerCase())
+      && !blockedUserIds.has(row.user_id || row.creator_id));
   const views = userId
     ? await safeList<any>((supabase as any).from('social_story_views').select('story_id').eq('viewer_id', userId).in('story_id', rows.map((row) => row.id)))
     : [];
@@ -2613,7 +2635,18 @@ export async function loadMobileNotifications(limit = 40): Promise<MobileNotific
           .order('created_at', { ascending: false })
           .limit(limit),
       );
-  return rows.map((row: any) => ({
+  const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
+  return rows.filter((row: any) => {
+    const actorId = row.actor_id
+      || row.sender_id
+      || row.source_user_id
+      || row.data?.actor_id
+      || row.data?.sender_id
+      || row.data?.user_id
+      || row.payload?.actor_id
+      || row.payload?.sender_id;
+    return !actorId || !blockedUserIds.has(actorId);
+  }).map((row: any) => ({
     id: row.id,
     type: row.type || row.notification_type || null,
     title: row.title || row.heading || 'Activity',

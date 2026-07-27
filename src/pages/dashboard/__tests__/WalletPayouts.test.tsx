@@ -10,6 +10,7 @@ const { limitMock, queryBuilder, fromMock } = vi.hoisted(() => {
     eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     limit: limitMock,
+    maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
   };
   const fromMock = vi.fn(() => builder);
   return { limitMock, queryBuilder: builder, fromMock };
@@ -18,6 +19,10 @@ const { limitMock, queryBuilder, fromMock } = vi.hoisted(() => {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (...args: any[]) => fromMock(...args),
+    rpc: vi.fn(() => Promise.resolve({
+      data: { commission_rate: 0.1, tier_name: "Creator" },
+      error: null,
+    })),
   },
 }));
 
