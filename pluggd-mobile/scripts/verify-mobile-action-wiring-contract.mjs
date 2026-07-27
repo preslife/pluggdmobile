@@ -66,7 +66,8 @@ assert.match(login, /resetPasswordForEmail/, 'forgot password must call the Supa
 
 const samplePack = read('app/sample-pack/[id].tsx');
 assert.match(samplePack, /from\('sample_pack_purchases'\)/, 'sample pack claim flow must use sample_pack_purchases');
-assert.match(samplePack, /router\.push\('\/wallet'/, 'paid sample pack path must route to wallet credits instead of external checkout');
+assert.doesNotMatch(samplePack, /router\.push\('\/wallet'|spendCredits|openHostedCheckout/, 'paid digital sample packs must not use credits or external checkout in iOS v1');
+assert.match(samplePack, /preview|read-only|not available|unavailable/i, 'paid digital sample packs must expose an honest preview/read-only state');
 
 const soundboard = read('app/soundboards/[id].tsx');
 assert.match(soundboard, /from\('user_follows'\)/, 'soundboard follow button must follow the linked creator');
@@ -94,7 +95,6 @@ for (const legacyTabRoute of [
 }
 
 for (const legacyRoute of [
-  'app/commerce/license-preview.tsx',
   'app/commerce/orders.tsx',
   'app/gamification/battles.tsx',
   'app/gamification/courses.tsx',

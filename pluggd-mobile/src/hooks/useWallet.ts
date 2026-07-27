@@ -11,6 +11,7 @@
 import { useEffect, useCallback } from 'react';
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { resolveCommercePolicy } from '../commerce/policy';
 
 // ─── Types (matched to web) ──────────────────────────────────────────
 export type WalletTransactionKind =
@@ -25,6 +26,8 @@ export type WalletTransactionKind =
   | 'convert_sub_applied'
   | 'spend_gift'
   | 'earn_gift';
+
+export type CreditSpendKind = 'spend_tip' | 'spend_unlock';
 
 export interface WalletBalance {
   balance_credits: number;
@@ -45,6 +48,7 @@ export interface WalletLedgerEntry {
 
 // ─── Constants ────────────────────────────────────────────────────────
 export const CREDITS_PER_GBP = 100;
+export const CREDIT_EXPIRY_COPY = 'Credits never expire.';
 
 export function creditsToGBP(credits: number): number {
   return credits / CREDITS_PER_GBP;
@@ -135,13 +139,29 @@ export function useWallet() {
   const spendCredits = useCallback(
     async (
       amount: number,
-      kind: WalletTransactionKind,
+      kind: CreditSpendKind,
       ref_type?: string,
       ref_id?: string,
       counterparty_id?: string,
     ): Promise<{ success: boolean; error?: string }> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
+
+      if (kind === 'spend_unlock' && ref_type !== 'release') {
+        return { success: false, error: 'Credits can only unlock eligible releases.' };
+      }
+      if (kind === 'spend_tip' && (!ref_id || !counterparty_id)) {
+        return { success: false, error: 'A verified creator is required for tips.' };
+      }
+
+      const policy = await resolveCommercePolicy({
+        kind: kind === 'spend_unlock' ? 'release_unlock' : 'tip',
+        itemId: ref_id ?? null,
+        classification: 'digital',
+      });
+      if (policy.permittedRail !== 'credits') {
+        return { success: false, error: policy.reason };
+      }
 
       if (balance.available_credits < amount) {
         return { success: false, error: 'Insufficient credits' };
@@ -166,6 +186,7 @@ export function useWallet() {
             body: {
               amount_credits: amount,
               kind,
+              request_id: `${kind}:${ref_id}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
               ...metadata,
             },
           },
@@ -197,11 +218,22 @@ export function useWallet() {
       if (!user) return { success: false, error: 'Not authenticated' };
 
       try {
-        const { error } = await supabase.functions.invoke('cash-out-credits', {
-          body: { amount_credits: amount },
+        const { data, error } = await supabase.functions.invoke('cash-out-credits', {
+          body: {
+            amount_credits: amount,
+            request_id: `cashout:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+          },
         });
 
         if (error) throw error;
+        if (data?.success === false) {
+          await refreshBalance();
+          await refreshLedger();
+          return {
+            success: false,
+            error: data.error ?? 'Payout is pending and can be retried safely.',
+          };
+        }
 
         await refreshBalance();
         await refreshLedger();

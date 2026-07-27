@@ -10,6 +10,12 @@ import {
 } from "./helpers.ts";
 import { createPreferenceCache, executeWithNotificationPreference } from "../_shared/notificationPreferences.ts";
 import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
+import {
+  expireHybridCheckout,
+  finalizeHybridCheckout,
+  reinstateHybridCheckout,
+  reverseHybridCheckout,
+} from "./hybridCommerce.ts";
 
 type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -426,9 +432,15 @@ const handleSplitAttribution = async (
 };
 
 serve(async (req) => {
+  let webhookClient: any = null;
+  let verifiedEventId: string | null = null;
+  let logStep = async (
+    message: string,
+    details?: Record<string, unknown>,
+  ) => {
+    console.log(JSON.stringify({ message, ...(details ?? {}) }));
+  };
   try {
-    await logStep("Webhook received");
-
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
@@ -447,7 +459,7 @@ serve(async (req) => {
       metadata: { path: requestUrl.pathname, method: req.method },
     });
     let currentLogger: Logger = baseLogger;
-    const logStep = (message: string, details?: Record<string, unknown>) =>
+    logStep = (message: string, details?: Record<string, unknown>) =>
       currentLogger.info(normalizeEventName(message), { message, ...(details ?? {}) });
 
     await logStep('Webhook received');
@@ -466,13 +478,81 @@ serve(async (req) => {
     }
 
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    webhookClient = supabaseClient;
+    verifiedEventId = event.id;
     currentLogger = baseLogger.with({ eventId: event.id, eventType: event.type });
     await logStep("Event verified", { type: event.type, id: event.id });
+
+    const { data: priorWebhook } = await supabaseClient
+      .from("stripe_webhook_events")
+      .select("event_id,status,attempts,updated_at")
+      .eq("event_id", event.id)
+      .maybeSingle();
+    if (priorWebhook?.status === "completed") {
+      await logStep("Duplicate webhook already completed", { eventId: event.id });
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    const processingLeaseIsFresh = priorWebhook?.status === "processing" &&
+      Date.now() - new Date(priorWebhook.updated_at).getTime() < 5 * 60 * 1000;
+    if (processingLeaseIsFresh) {
+      await logStep("Duplicate webhook is already processing", {
+        eventId: event.id,
+      });
+      return new Response(
+        JSON.stringify({ received: true, processing: true }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+    const claim = {
+      event_id: event.id,
+      event_type: event.type,
+      status: "processing",
+      attempts: Number(priorWebhook?.attempts ?? 0) + 1,
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    };
+    const claimResult = priorWebhook
+      ? await supabaseClient.from("stripe_webhook_events")
+        .update(claim).eq("event_id", event.id)
+        .eq("status", priorWebhook.status)
+        .eq("updated_at", priorWebhook.updated_at)
+        .select("event_id")
+      : await supabaseClient.from("stripe_webhook_events")
+        .insert({
+          ...claim,
+          created_at: new Date().toISOString(),
+        })
+        .select("event_id");
+    if (claimResult.error) {
+      // A concurrent verified delivery won the primary-key claim.
+      if (claimResult.error.code === "23505") {
+        return new Response(
+          JSON.stringify({ received: true, processing: true }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+      throw new Error(`Webhook replay guard failed: ${claimResult.error.message}`);
+    }
+    if (!claimResult.data?.length) {
+      throw new Error("Webhook replay guard could not claim the event");
+    }
 
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         await logStep("Checkout session completed", { sessionId: session.id });
+        if (
+          await finalizeHybridCheckout(
+            supabaseClient,
+            session,
+            scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+          )
+        ) {
+          break;
+        }
 
         if (session.metadata?.transaction_type === 'crowdfunding_contribution') {
           const campaignId = session.metadata.campaign_id;
@@ -1451,11 +1531,11 @@ serve(async (req) => {
                     });
 
                   } catch (transferError: any) {
-                    await logStep("Stripe transfer failed, creating PayPal payout record", { 
+                    await logStep("Stripe Connect transfer failed; payout remains pending", {
                       error: transferError.message 
                     });
                     
-                    // Fallback to PayPal payout system
+                    // Stripe Connect remains the only settlement rail.
                     await supabaseClient
                       .from('producer_payouts')
                       .insert({
@@ -1469,7 +1549,7 @@ serve(async (req) => {
                       });
                   }
                 } else {
-                  // No Stripe Connect account - use PayPal payout system
+                  // Await completion of Stripe Connect onboarding.
                   await supabaseClient
                     .from('producer_payouts')
                     .insert({
@@ -1482,7 +1562,7 @@ serve(async (req) => {
                       payout_status: 'pending'
                     });
 
-                  await logStep("Created PayPal payout record (no Stripe Connect)", { 
+                  await logStep("Payout pending Stripe Connect onboarding", {
                     producerId: beat.user_id, 
                     netAmount 
                   });
@@ -1580,24 +1660,48 @@ serve(async (req) => {
                     });
                 }
               } else {
-                // Mark as pending for PayPal or manual processing
+                // Stripe Connect remains the only creator settlement rail.
                 await supabaseClient
                   .from('payout_records')
                   .insert({
                     user_id: producerId,
                     beat_id: beatId,
                     amount: producerEarnings / 100,
-                    payout_method: 'paypal',
+                    payout_method: 'stripe',
                     payout_status: 'pending'
                   });
 
-                await logStep("Payout marked as pending (no Stripe Connect)", { producerId });
+                await logStep("Payout pending Stripe Connect onboarding", { producerId });
               }
             }
           }
         }
         break;
       }
+
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await logStep("Async checkout payment succeeded", {
+          sessionId: session.id,
+        });
+        await finalizeHybridCheckout(
+          supabaseClient,
+          session,
+          scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+        );
+        break;
+      }
+
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await expireHybridCheckout(
+          supabaseClient,
+          session,
+          scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+        );
+        break;
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
@@ -1899,6 +2003,21 @@ serve(async (req) => {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         await logStep('Charge refunded', { chargeId: charge.id, amount_refunded: charge.amount_refunded });
+        const paymentIntentId = typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : charge.payment_intent?.id ?? null;
+        if (
+          paymentIntentId &&
+          await reverseHybridCheckout(
+            supabaseClient,
+            paymentIntentId,
+            charge.amount_refunded,
+            "refund",
+            scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+          )
+        ) {
+          break;
+        }
         await handleChargeReversal(
           supabaseClient,
           charge,
@@ -1906,6 +2025,38 @@ serve(async (req) => {
           'refund',
           scopeLogger(currentLogger, { scope: 'charge_reversal', eventId: event.id, chargeId: charge.id, reason: 'refund' }),
         );
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id ?? null;
+        if (paymentIntentId) {
+          await reverseHybridCheckout(
+            supabaseClient,
+            paymentIntentId,
+            dispute.amount,
+            "dispute",
+            scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+          );
+        }
+        break;
+      }
+
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id ?? null;
+        if (paymentIntentId && dispute.status === "won") {
+          await reinstateHybridCheckout(
+            supabaseClient,
+            paymentIntentId,
+            scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+          );
+        }
         break;
       }
 
@@ -2048,6 +2199,12 @@ serve(async (req) => {
         await logStep("Unhandled event type", { type: event.type });
     }
 
+    await supabaseClient.from("stripe_webhook_events").update({
+      status: "completed",
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("event_id", event.id);
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
@@ -2055,6 +2212,13 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await logStep("ERROR in stripe-webhook", { message: errorMessage });
+    if (webhookClient && verifiedEventId) {
+      await webhookClient.from("stripe_webhook_events").update({
+        status: "failed",
+        last_error: errorMessage.slice(0, 1000),
+        updated_at: new Date().toISOString(),
+      }).eq("event_id", verifiedEventId);
+    }
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { "Content-Type": "application/json" },
       status: 500,

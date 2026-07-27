@@ -1,5 +1,11 @@
 # PLUGGD iOS Remaining Manual Tasks Guide
 
+> **Superseded commerce guidance.** This historical task log contains an
+> all-IAP mobile assumption that is no longer valid for professional beat
+> licences and verified real-world event tickets. Follow
+> `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md` and the current
+> `docs/app-store/RELEASE_CHECKLIST.md` for submission work.
+
 Status: 2026-05-15  
 Scope: tasks that require Apple, Supabase project access, payment/compliance decisions, licensed assets, or real role-bearing accounts.
 

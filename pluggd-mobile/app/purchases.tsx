@@ -18,11 +18,16 @@ export default function PurchasesScreen() {
   return (
     <ScreenShell
       title="Purchases"
-      subtitle="Unlocked releases, sample packs, tickets, and account entitlements."
+      subtitle="Verified releases, licences, memberships, tickets, merchandise, downloads and receipts."
       action={
-        <Pressable accessibilityRole="button" style={styles.restoreButton} onPress={() => router.push('/wallet' as any)}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Restore App Store memberships"
+          style={styles.restoreButton}
+          onPress={() => router.push('/membership' as any)}
+        >
           <MaterialIcons name="restore" size={18} color={PLUGGD_ORANGE} />
-          <Text style={styles.restoreText}>Restore</Text>
+          <Text style={styles.restoreText}>Restore Apple</Text>
         </Pressable>
       }
     >
@@ -38,7 +43,7 @@ export default function PurchasesScreen() {
       {!library.isLoading && purchases.length + tickets.length + entitlements.length === 0 ? (
         <EmptyState
           title="No purchases yet"
-          body="Apple credit unlocks, claimed sample packs, and verified event tickets will appear here when they are linked to your account."
+          body="Verified release unlocks, beat licences, memberships, tickets and physical orders will appear here—regardless of where the payment began."
         />
       ) : null}
 
@@ -85,7 +90,11 @@ export default function PurchasesScreen() {
           subtitle={ticket.venue || ticket.status}
           meta="ticket"
           imageUrl={ticket.event_image_url}
-          onPress={() => router.push(`/events/${ticket.event_id}` as any)}
+          onPress={() => router.push(
+            (ticket.source === 'ticket_orders' || ticket.ticket_order_id
+              ? `/commerce/order?id=${ticket.ticket_order_id || ticket.id}&kind=event_ticket`
+              : `/tickets?eventId=${ticket.event_id}`) as any,
+          )}
         />
       ))}
     </ScreenShell>
@@ -94,6 +103,9 @@ export default function PurchasesScreen() {
 
 function iconForKind(kind: string): keyof typeof MaterialIcons.glyphMap {
   if (kind === 'ticket') return 'confirmation-number';
+  if (kind === 'beat') return 'library-music';
+  if (kind === 'creator_membership') return 'workspace-premium';
+  if (kind === 'physical_merch') return 'shopping-bag';
   if (kind === 'sample_pack') return 'graphic-eq';
   if (kind === 'credits') return 'paid';
   return 'lock-open';
@@ -101,7 +113,7 @@ function iconForKind(kind: string): keyof typeof MaterialIcons.glyphMap {
 
 const styles = StyleSheet.create({
   restoreButton: {
-    minHeight: 36,
+    minHeight: 44,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,102,0,0.48)',

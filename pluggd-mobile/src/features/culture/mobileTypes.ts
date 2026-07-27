@@ -281,6 +281,7 @@ export type EventCultureCard = EventItem & {
 export type TicketWalletItem = {
   id: string;
   source: 'event_tickets' | 'ticket_orders';
+  ticket_order_id?: string | null;
   event_id: string;
   event_title: string;
   event_image_url?: string | null;
@@ -289,6 +290,10 @@ export type TicketWalletItem = {
   status: string;
   ticket_type?: string | null;
   qr_code_data?: string | null;
+  quantity?: number | null;
+  total_amount_cents?: number | null;
+  currency?: string | null;
+  purchased_at?: string | null;
 };
 
 export type SocialPostDetail = {
@@ -310,6 +315,9 @@ export type SocialEngagementState = {
 export type SavedContentKind =
   | 'release'
   | 'beat'
+  | 'beat_license'
+  | 'creator_membership'
+  | 'physical_merch'
   | 'sample_pack'
   | 'mix'
   | 'playlist'
@@ -337,8 +345,16 @@ export type SavedContentItem = {
     | 'release_purchases'
     | 'release_plays'
     | 'sample_pack_purchases'
+    | 'purchases'
+    | 'licensing_contracts'
+    | 'fan_subscriptions'
+    | 'external_checkout_sessions'
     | 'ticket_orders'
     | 'local-unavailable';
+  status?: string | null;
+  acquiredAt?: string | null;
+  documentAvailable?: boolean;
+  downloadAvailable?: boolean;
 };
 
 export type StageMediaItem = {
@@ -398,7 +414,7 @@ export type CreatorModePulse = {
 
 export type WalletEntitlementItem = {
   id: string;
-  kind: 'release' | 'beat' | 'sample_pack' | 'ticket' | 'credits';
+  kind: 'release' | 'beat' | 'sample_pack' | 'ticket' | 'credits' | 'creator_membership' | 'physical_merch';
   title: string;
   status: string;
   acquired_at?: string | null;

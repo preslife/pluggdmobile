@@ -20,9 +20,10 @@ import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvide
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useWallet } from '../../src/hooks/useWallet';
-import { releasePlayableUrl } from '../../src/lib/mobileContent';
 import { EdPressable } from '../../src/features/editorial/EditorialBits';
 import { WEB_PARITY_ASSETS } from '../../src/features/parity/webAssets';
+import TipModal from '../../src/components/CommerceTipModal';
+import { openHostedCheckout, reconcileHostedCheckout, useCommercePolicy } from '../../src/commerce/policy';
 
 interface ReleaseDetail {
   id: string;
@@ -150,6 +151,15 @@ export default function ReleaseDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tipVisible, setTipVisible] = useState(false);
+  const [externalPurchasing, setExternalPurchasing] = useState(false);
+  const externalPolicyRequest = useMemo(() => ({
+    kind: 'release_unlock' as const,
+    itemId: id,
+    optionId: 'external',
+    classification: 'digital' as const,
+  }), [id]);
+  const externalPolicy = useCommercePolicy(externalPolicyRequest);
 
   useEffect(() => {
     if (id) fetchRelease();
@@ -211,12 +221,17 @@ export default function ReleaseDetailScreen() {
   function buildTrackList(): PluggdTrack[] {
     if (!release) return [];
 
+    const freeRelease = getReleaseCreditPrice(release) <= 0;
     if (tracks.length > 0) {
       return tracks
-        .filter((t) => t.audio_url)
+        .map((track) => ({
+          ...track,
+          playableUrl: isOwned || freeRelease ? track.audio_url || track.preview_url : track.preview_url,
+        }))
+        .filter((track) => track.playableUrl)
         .map((t) => ({
           id: t.id,
-          url: t.audio_url!,
+          url: t.playableUrl!,
           title: t.title,
           artist: release.artist || 'Unknown',
           artwork: release.cover_art_url || undefined,
@@ -225,7 +240,9 @@ export default function ReleaseDetailScreen() {
         }));
     }
 
-    const releaseUrl = releasePlayableUrl(release);
+    const releaseUrl = isOwned || freeRelease
+      ? release.preview_url || release.audio_url || release.download_url
+      : release.preview_url;
     if (releaseUrl) {
       return [
         {
@@ -241,6 +258,55 @@ export default function ReleaseDetailScreen() {
     }
 
     return [];
+  }
+
+  async function handleExternalPurchase() {
+    if (!release || externalPurchasing) return;
+    if (externalPolicy.permittedRail !== 'stripe_checkout') {
+      Alert.alert('Purchase unavailable', externalPolicy.reason);
+      return;
+    }
+    setExternalPurchasing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-release-purchase', {
+        body: {
+          releaseId: release.id,
+          requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          storefront: externalPolicy.storefront,
+          returnUrl: 'pluggd://commerce/success',
+        },
+      });
+      if (error) throw error;
+      const response = (data ?? {}) as Record<string, unknown>;
+      const checkoutUrl = String(response.checkoutUrl ?? response.checkout_url ?? response.url ?? '');
+      const sessionId = typeof (response.sessionId ?? response.session_id) === 'string'
+        ? String(response.sessionId ?? response.session_id)
+        : null;
+      const checkout = await openHostedCheckout(checkoutUrl, {
+        reconcile: async () => (await reconcileHostedCheckout({
+          kind: 'release_unlock',
+          sessionId,
+          itemId: release.id,
+        })).state,
+      });
+      if (checkout.state === 'success') {
+        setIsOwned(true);
+        await fetchRelease();
+      }
+      router.push({
+        pathname: '/commerce/success',
+        params: {
+          kind: 'release_unlock',
+          status: checkout.state,
+          sessionId: sessionId ?? '',
+          itemId: release.id,
+        },
+      } as any);
+    } catch (error) {
+      Alert.alert('Purchase unavailable', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setExternalPurchasing(false);
+    }
   }
 
   function handlePlayAll() {
@@ -517,10 +583,27 @@ export default function ReleaseDetailScreen() {
                 </View>
               </EdPressable>
             )}
+            {!isOwned && creditsNeeded > 0 && externalPolicy.permittedRail === 'stripe_checkout' ? (
+              <EdPressable
+                accessibilityRole="button"
+                accessibilityLabel="Buy this release through secure hosted checkout"
+                accessibilityState={{ busy: externalPurchasing }}
+                onPress={handleExternalPurchase}
+                disabled={externalPurchasing}
+                style={styles.actionCellWrap}
+              >
+                <View style={styles.ghostAction}>
+                  {externalPurchasing
+                    ? <ActivityIndicator size="small" color={ed.cream} />
+                    : <MaterialIcons name="open-in-new" size={17} color={ed.cream} />}
+                  <Text style={styles.ghostActionText}>Buy release</Text>
+                </View>
+              </EdPressable>
+            ) : null}
             <EdPressable
               accessibilityRole="button"
               accessibilityLabel="Tip artist"
-              onPress={() => (release.user_id ? router.push(`/user/${release.user_id}` as any) : undefined)}
+              onPress={() => release.user_id && setTipVisible(true)}
               style={styles.actionCellWrap}
             >
               <View style={styles.ghostAction}>
@@ -601,7 +684,7 @@ export default function ReleaseDetailScreen() {
                 <MaterialIcons name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play-arrow'} size={26} color={ed.onOrange} />
               </View>
             </EdPressable>
-            {(tracks.length ? tracks : [{ id: release.id, title: release.title, track_number: 1, duration: null, audio_url: releasePlayableUrl(release) }]).map((track, index) => {
+            {(tracks.length ? tracks : [{ id: release.id, title: release.title, track_number: 1, duration: null, audio_url: trackList[0]?.url ?? null }]).map((track, index) => {
               const active = currentTrack?.id === track.id || (tracks.length === 0 && isCurrentlyPlaying);
               return (
                 <EdPressable
@@ -780,6 +863,14 @@ export default function ReleaseDetailScreen() {
           ) : null}
         </View>
       </ScrollView>
+      {release.user_id ? (
+        <TipModal
+          visible={tipVisible}
+          onClose={() => setTipVisible(false)}
+          artistName={release.artist || 'this artist'}
+          artistId={release.user_id}
+        />
+      ) : null}
     </View>
   );
 }

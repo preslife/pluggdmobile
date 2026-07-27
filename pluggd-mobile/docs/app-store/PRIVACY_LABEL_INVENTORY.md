@@ -7,13 +7,18 @@ This inventory must match App Store Connect and `ios/Pluggd/PrivacyInfo.xcprivac
 | Name | Yes | No | App functionality |
 | Email address | Yes | No | Account authentication and support |
 | User ID | Yes | No | Account, safety and entitlement state |
-| Purchase history | Yes | No | Credits, memberships, restore and fraud prevention |
+| Purchase history | Yes | No | Credits, memberships, release access, beat licences, ticket orders, merchandise, restore and fraud prevention |
 | Photos or videos | Yes | No | User-selected profile and community media |
 | Audio data | Yes | No | User-uploaded music and live audio |
 | Other user content | Yes | No | Posts, comments, messages and reports |
 | Product interaction | Yes | No | Core functionality and aggregate product analytics |
 
 PLUGGD does not declare tracking and does not use data from the iOS app to track a person across other companies’ apps or websites for advertising. If a future SDK changes this behaviour, both this inventory and App Store Connect must be updated before that build.
+
+Payment Information remains undeclared only while eligible external purchases
+use Stripe-hosted Checkout and PLUGGD does not receive or store raw card or bank
+details. Reassess this label before shipping any native payment SDK, saved
+payment method or PLUGGD-hosted payment form.
 
 Required-reason APIs declared by the native privacy manifest:
 

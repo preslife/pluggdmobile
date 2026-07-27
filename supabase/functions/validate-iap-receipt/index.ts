@@ -65,21 +65,17 @@ const CREDIT_PACKS: Record<string, CreditPackConfig> = {
   },
 };
 
-// ─── Subscription SKUs ───────────────────────────────────────────────
-const SUBSCRIPTION_SKUS = [
-  "pluggd_tier_299",
-  "pluggd_tier_499",
-  "pluggd_tier_999",
-  "pluggd_tier_1999",
-  "pluggd_tier_4999",
-];
-
-const SKU_TIER_MAP: Record<string, string> = {
-  pluggd_tier_299: "Bronze",
-  pluggd_tier_499: "Silver",
-  pluggd_tier_999: "Gold",
-  pluggd_tier_1999: "Platinum",
-  pluggd_tier_4999: "Diamond",
+type MembershipProductRecord = {
+  id: string;
+  creator_id: string;
+  membership_tier_id: string;
+  product_id: string;
+  legacy_product_id?: string | null;
+  price_point_cents: number;
+  currency: string;
+  billing_period: "monthly" | "yearly";
+  status: string;
+  membership_tiers?: { name?: string | null } | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -135,8 +131,7 @@ async function hasWalletLedgerEntryForTransaction(
     .from("wallet_ledger")
     .select("id")
     .eq("user_id", userId)
-    .eq("ref_type", "apple_iap")
-    .contains("meta", { transaction_id: transactionId })
+    .eq("idempotency_key", `apple-iap:${transactionId}`)
     .limit(1)
     .maybeSingle();
 
@@ -174,6 +169,7 @@ async function insertCreditLedgerEntry(
       base_credits: pack.baseCredits,
       bonus_credits: pack.bonusCredits,
     },
+    idempotency_key: `apple-iap:${transactionId}`,
   };
 
   const payloadWithBalances = {
@@ -211,6 +207,63 @@ async function insertCreditLedgerEntry(
   return getWalletBalance(supabaseClient, userId);
 }
 
+async function resolveMembershipProduct(
+  supabaseClient: SupabaseServiceClient,
+  userId: string,
+  productId: string,
+  originalTransactionId: string,
+): Promise<MembershipProductRecord | null> {
+  const { data: activeProduct, error: productError } = await supabaseClient
+    .from("membership_iap_products")
+    .select(
+      "id,creator_id,membership_tier_id,product_id,legacy_product_id,price_point_cents,currency,billing_period,status,membership_tiers(name)",
+    )
+    .eq("product_id", productId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (productError) {
+    throw new Error(`Membership catalogue lookup failed: ${productError.message}`);
+  }
+  if (activeProduct) return activeProduct as MembershipProductRecord;
+
+  // Shared legacy SKUs are intentionally never used to create a new membership:
+  // they can only reconcile an already mapped subscription for this account.
+  const { data: legacySubscription, error: legacyError } = await supabaseClient
+    .from("fan_subscriptions")
+    .select("creator_id,tier_id,price_cents,currency,metadata")
+    .eq("fan_id", userId)
+    .eq("metadata->>apple_original_transaction_id", originalTransactionId)
+    .eq("metadata->>apple_sku", productId)
+    .maybeSingle();
+
+  if (legacyError) {
+    throw new Error(`Legacy membership lookup failed: ${legacyError.message}`);
+  }
+  if (!legacySubscription?.tier_id || !legacySubscription.creator_id) {
+    return null;
+  }
+
+  const { data: tier } = await supabaseClient
+    .from("membership_tiers")
+    .select("name")
+    .eq("id", legacySubscription.tier_id)
+    .maybeSingle();
+
+  return {
+    id: `legacy:${originalTransactionId}`,
+    creator_id: legacySubscription.creator_id,
+    membership_tier_id: legacySubscription.tier_id,
+    product_id: productId,
+    legacy_product_id: productId,
+    price_point_cents: Number(legacySubscription.price_cents ?? 0),
+    currency: String(legacySubscription.currency ?? "USD").toUpperCase(),
+    billing_period: "monthly",
+    status: "legacy_mapped",
+    membership_tiers: tier ?? null,
+  };
+}
+
 // ─── Main handler ────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -239,7 +292,6 @@ serve(async (req) => {
       product_id,
       transaction_id,
       platform,
-      type, // 'credits' | 'subscription'
     } = await req.json();
 
     if (!product_id || !transaction_id) {
@@ -249,29 +301,6 @@ serve(async (req) => {
     if (platform !== "ios") {
       throw new Error("Only iOS receipts are supported");
     }
-
-    const inferredType = type ??
-      (SUBSCRIPTION_SKUS.includes(product_id)
-        ? "subscription"
-        : CREDIT_PACKS[product_id]
-        ? "credits"
-        : null);
-
-    if (inferredType !== "credits" && inferredType !== "subscription") {
-      throw new Error(`Unknown product: ${product_id}`);
-    }
-
-    const creditPack = inferredType === "credits"
-      ? CREDIT_PACKS[product_id]
-      : null;
-
-    if (inferredType === "credits" && !creditPack) {
-      throw new Error(`Unknown credit pack SKU: ${product_id}`);
-    }
-
-    console.log(
-      `[validate-iap] user=${user.id} product=${product_id} tx=${transaction_id} type=${inferredType}`,
-    );
 
     if (typeof receipt_data !== "string" || receipt_data.split(".").length !== 3) {
       throw new Error("A StoreKit 2 signed transaction is required");
@@ -293,6 +322,29 @@ serve(async (req) => {
     if (decodedTx.revocationDate) {
       throw new Error("This transaction has been revoked");
     }
+
+    const creditPack = CREDIT_PACKS[product_id] ?? null;
+    const membershipProduct = creditPack
+      ? null
+      : await resolveMembershipProduct(
+        supabaseClient,
+        user.id,
+        product_id,
+        decodedTx.originalTransactionId ?? transaction_id,
+      );
+    const inferredType = creditPack
+      ? "credits"
+      : membershipProduct
+      ? "subscription"
+      : null;
+
+    if (!inferredType) {
+      throw new Error(`Product is not provisioned for this account: ${product_id}`);
+    }
+
+    console.log(
+      `[validate-iap] user=${user.id} product=${product_id} tx=${transaction_id} type=${inferredType}`,
+    );
 
     // ── Check for duplicate transaction ──
     const { data: existingTx } = await supabaseClient
@@ -328,14 +380,6 @@ serve(async (req) => {
             },
           );
         }
-      } else {
-        return new Response(
-          JSON.stringify({ success: true, duplicate: true }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          },
-        );
       }
     }
 
@@ -358,11 +402,11 @@ serve(async (req) => {
             : null,
           status: "validated",
           raw_receipt: null,
+          idempotency_key: `apple-iap:${transaction_id}`,
         });
 
       if (txError) {
-        console.error("[validate-iap] Failed to record transaction:", txError.message);
-        // Don't throw — continue processing even if logging fails
+        throw new Error(`Failed to record verified Apple transaction: ${txError.message}`);
       }
     }
 
@@ -395,88 +439,84 @@ serve(async (req) => {
     }
 
     // ── Handle subscription purchases ──
-    if (inferredType === "subscription") {
-      const tierName = SKU_TIER_MAP[product_id] ?? "Membership";
+    if (inferredType === "subscription" && membershipProduct) {
+      const tierName = membershipProduct.membership_tiers?.name ??
+        "Creator membership";
+      const expiresDate = decodedTx.expiresDate
+        ? new Date(decodedTx.expiresDate).toISOString()
+        : null;
+      const metadata = {
+        apple_sku: product_id,
+        apple_catalog_id: membershipProduct.id,
+        apple_transaction_id: transaction_id,
+        apple_original_transaction_id:
+          decodedTx.originalTransactionId ?? transaction_id,
+        tier_name: tierName,
+        billing_period: membershipProduct.billing_period,
+        platform: "ios",
+        legacy_mapped: membershipProduct.status === "legacy_mapped",
+      };
 
-      // Find and update the pending fan_subscriptions record
-      // (created by the client before initiating the purchase)
-      const { data: pendingSub } = await supabaseClient
-        .from("fan_subscriptions")
-        .select("id, fan_id, creator_id")
-        .eq("fan_id", user.id)
-        .eq("metadata->>apple_sku", product_id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (pendingSub) {
-        const expiresDate = decodedTx.expiresDate
-          ? new Date(decodedTx.expiresDate).toISOString()
-          : null;
-
-        const { error: updateError } = await supabaseClient
+      const { data: subscription, error: subscriptionError } =
+        await supabaseClient
           .from("fan_subscriptions")
-          .update({
+          .upsert({
+            fan_id: user.id,
+            creator_id: membershipProduct.creator_id,
+            tier_id: membershipProduct.membership_tier_id,
+            apple_sku: product_id,
+            price_cents: membershipProduct.price_point_cents,
+            currency: membershipProduct.currency,
             status: "active",
             last_payment_at: new Date().toISOString(),
+            current_period_end: expiresDate,
             updated_at: new Date().toISOString(),
-            metadata: {
-              apple_sku: product_id,
-              apple_transaction_id: transaction_id,
-              apple_original_transaction_id:
-                decodedTx.originalTransactionId,
-              tier_name: tierName,
-              platform: "ios",
-            },
-            ...(expiresDate ? { current_period_end: expiresDate } : {}),
-          })
-          .eq("id", pendingSub.id);
+            metadata,
+          }, { onConflict: "fan_id,creator_id" })
+          .select("id")
+          .single();
 
-        if (updateError) {
-          console.error(
-            "[validate-iap] Failed to activate subscription:",
-            updateError.message,
-          );
-          throw new Error("Failed to activate subscription");
-        }
-
-        console.log(
-          `[validate-iap] Activated subscription ${pendingSub.id} for ${user.id}`,
+      if (subscriptionError || !subscription) {
+        throw new Error(
+          `Failed to activate verified membership: ${
+            subscriptionError?.message ?? "missing subscription record"
+          }`,
         );
+      }
 
-        // Notify the creator
+      console.log(
+        `[validate-iap] Activated subscription ${subscription.id} for ${user.id}`,
+      );
+
+      if (!alreadyLoggedTransaction) {
         try {
           await supabaseClient.functions.invoke("broadcast-notification", {
             body: {
-              recipients: [pendingSub.creator_id],
+              recipients: [membershipProduct.creator_id],
               type: "membership",
               title: "New member!",
               message: `Someone just subscribed to your ${tierName} tier.`,
               payload: {
-                subscription_id: pendingSub.id,
+                subscription_id: subscription.id,
                 fan_id: user.id,
                 tier: tierName,
               },
-              relatedId: pendingSub.id,
+              relatedId: subscription.id,
               relatedType: "fan_subscription",
             },
           });
         } catch (notifyErr) {
           console.warn("[validate-iap] Creator notification failed:", notifyErr);
         }
-      } else {
-        console.warn(
-          `[validate-iap] No pending subscription found for user=${user.id} product=${product_id}`,
-        );
       }
 
       return new Response(
         JSON.stringify({
           success: true,
+          duplicate: alreadyLoggedTransaction,
           type: "subscription",
           tier: tierName,
-          subscription_id: pendingSub?.id ?? null,
+          subscription_id: subscription.id,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

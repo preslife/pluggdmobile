@@ -1,151 +1,103 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+import {
+  handleCreateBeatPurchase,
+  type BeatCheckoutDependencies,
+} from "./handler.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-BEAT-PURCHASE] ${step}${detailsStr}`);
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    logStep("Function started");
-
-    const { beatId, licenseFee } = await req.json();
-    if (!beatId || !licenseFee) {
-      throw new Error("beatId and licenseFee are required");
-    }
-
-    logStep("Request validated", { beatId, licenseFee });
-
-    // Initialize Supabase clients
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
-    // Get authenticated user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
-
-    // Get beat details and producer info
-    const { data: beatData, error: beatError } = await supabaseService
-      .from("beats")
-      .select(`
-        *,
-        profiles!beats_user_id_fkey(*)
-      `)
-      .eq("id", beatId)
-      .single();
-
-    if (beatError || !beatData) {
-      throw new Error("Beat not found");
-    }
-
-    logStep("Beat found", { beatTitle: beatData.title, producerId: beatData.user_id });
-
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
-
-    // Check for existing Stripe customer
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-    }
-
-    logStep("Stripe customer checked", { customerId });
-
-    // Calculate platform fee (20% for beat licensing)
-    const licenseFeeGBP = Math.round(licenseFee / 100 * 100) / 100; // Convert pence to pounds
-    const platformFeePercent = 20;
-    const platformFeeGBP = Math.round(licenseFeeGBP * platformFeePercent) / 100;
-    const producerEarningsGBP = licenseFeeGBP - platformFeeGBP;
-
-    logStep("Fees calculated", { 
-      licenseFeeGBP, 
-      platformFeeGBP, 
-      producerEarningsGBP 
-    });
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: "gbp",
-            product_data: {
-              name: `Beat License - ${beatData.title}`,
-              description: `Licensing for beat "${beatData.title}" by ${beatData.producer_name || 'Producer'}`,
-              metadata: {
-                type: 'beat_license',
-                beat_id: beatId,
-                producer_id: beatData.user_id
-              }
-            },
-            unit_amount: licenseFee, // Amount in pence
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.get("origin")}/beat-purchase-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/beats/${beatId}`,
-      metadata: {
-        type: 'beat_license',
-        beat_id: beatId,
-        producer_id: beatData.user_id,
-        artist_id: user.id,
-        license_fee_pence: licenseFee.toString(),
-        platform_fee_pence: Math.round(platformFeeGBP * 100).toString(),
-        producer_earnings_pence: Math.round(producerEarningsGBP * 100).toString()
-      }
-    });
-
-    logStep("Stripe session created", { sessionId: session.id, url: session.url });
-
-    return new Response(JSON.stringify({ 
-      url: session.url,
-      sessionId: session.id 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-beat-purchase", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
+const url = Deno.env.get("SUPABASE_URL") ?? "";
+const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+  auth: { persistSession: false },
 });
+const service = createClient(
+  url,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  { auth: { persistSession: false } },
+);
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
+  apiVersion: "2023-10-16",
+});
+
+const deps: BeatCheckoutDependencies = {
+  async authenticate(req) {
+    const header = req.headers.get("Authorization");
+    if (!header?.startsWith("Bearer ")) return null;
+    const { data, error } = await anon.auth.getUser(header.slice(7));
+    return error || !data.user
+      ? null
+      : { id: data.user.id, email: data.user.email };
+  },
+  async loadSource({ beatId, licenseOptionId, contractId }) {
+    const [beatResult, optionResult, contractResult] = await Promise.all([
+      service.from("beats")
+        .select("id,user_id,title,producer_name,is_published")
+        .eq("id", beatId).maybeSingle(),
+      service.from("licensing_options")
+        .select("id,beat_id,license_type,price_pence,is_available")
+        .eq("id", licenseOptionId).eq("beat_id", beatId).maybeSingle(),
+      service.from("licensing_contracts")
+        .select(
+          "id,beat_id,producer_id,artist_id,template_type,status,amount_cents,currency,producer_signature,artist_signature,contract_data,pricing_snapshot",
+        )
+        .eq("id", contractId).maybeSingle(),
+    ]);
+    if (!beatResult.data || !optionResult.data || !contractResult.data) return null;
+    return {
+      beat: beatResult.data,
+      option: optionResult.data,
+      contract: contractResult.data,
+    };
+  },
+  async loadPolicy() {
+    const { data } = await service.from("commerce_policy_rules")
+      .select("*").eq("purchase_kind", "beat_license").maybeSingle();
+    return data;
+  },
+  async loadPayoutAccount(producerId) {
+    const { data } = await service.from("producer_stripe_accounts")
+      .select("stripe_account_id,onboarding_complete,payouts_enabled")
+      .eq("user_id", producerId).maybeSingle();
+    return data;
+  },
+  async findCheckout(idempotencyKey) {
+    const { data } = await service.from("external_checkout_sessions")
+      .select("id,stripe_checkout_session_id,status,provider_metadata")
+      .eq("idempotency_key", idempotencyKey).maybeSingle();
+    return data;
+  },
+  async createCheckout(input) {
+    const { data, error } = await service.from("external_checkout_sessions")
+      .insert(input)
+      .select("id,stripe_checkout_session_id,status,provider_metadata").single();
+    if (error || !data) throw new Error(error?.message ?? "Checkout insert failed");
+    return data;
+  },
+  async createStripeSession(input, idempotencyKey) {
+    return await stripe.checkout.sessions.create(
+      input as Stripe.Checkout.SessionCreateParams,
+      { idempotencyKey },
+    );
+  },
+  async updateCheckout(id, input) {
+    const { error } = await service.from("external_checkout_sessions")
+      .update(input).eq("id", id);
+    if (error) throw error;
+  },
+  async updateContract(id, input) {
+    const { error } = await service.from("licensing_contracts")
+      .update(input).eq("id", id);
+    if (error) throw error;
+  },
+  now: () => new Date(),
+};
+
+serve((req) =>
+  handleCreateBeatPurchase(req, deps).catch((error) => {
+    console.error("[CREATE-BEAT-PURCHASE]", error);
+    return new Response(JSON.stringify({ error: "Unable to create checkout" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  })
+);

@@ -37,22 +37,23 @@ for (const sku of [
   'pluggd_credits_value',
   'pluggd_credits_premium',
   'pluggd_credits_ultimate',
-  'pluggd_tier_299',
-  'pluggd_tier_499',
-  'pluggd_tier_999',
-  'pluggd_tier_1999',
-  'pluggd_tier_4999',
 ]) {
   assert.match(lockfile, new RegExp(sku), `${sku} must be listed in Apple lockfile`);
 }
 
+assert.match(lockfile, /unique Apple auto-renewable subscription product per sellable creator tier/i, 'Apple lockfile must require unique creator-tier products');
+assert.match(lockfile, /one Apple subscription group per creator/i, 'Apple lockfile must require creator-specific subscription groups');
+assert.match(lockfile, /migration-only identifiers/i, 'shared membership SKUs must be explicitly migration-only');
+
 for (const secretName of [
-  'APPLE_IAP_ISSUER_ID',
-  'APPLE_IAP_KEY_ID',
-  'APPLE_IAP_PRIVATE_KEY',
   'APPLE_BUNDLE_ID',
-  'APPLE_SERVER_NOTIFICATION_SECRET',
+  'APPLE_APP_ID',
   'APPLE_IAP_ENVIRONMENT',
+  'APPLE_ROOT_CA_G2_BASE64',
+  'APPLE_ROOT_CA_G3_BASE64',
+  'ACCOUNT_DELETION_AUDIT_SALT',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
 ]) {
   assert.match(lockfile, new RegExp(secretName), `${secretName} expected secret name missing`);
 }
@@ -86,6 +87,8 @@ for (const phrase of [
   'professional beat licensing',
   'real-world/off-app events',
   'Stripe Connect',
+  'unique Apple product',
+  'Paid virtual events do not use this checkout',
 ]) {
   assert.match(reviewNotes, new RegExp(phrase, 'i'), `App Review notes must explain: ${phrase}`);
 }

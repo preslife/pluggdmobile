@@ -34,13 +34,16 @@ Join creator communities, find live rooms and events, save what matters, and fol
 
 SUPPORT CREATORS
 
-Use PLUGGD credits and creator memberships to support music you believe in. Eligible digital purchases are securely processed by Apple.
+Use PLUGGD credits and creator memberships to support music you believe in. In-app credit packs and memberships are securely processed by Apple.
 
 STAY IN CONTROL
 
 Report or block accounts and posts, manage age-aware content settings, download a portable account archive, and permanently delete your account inside the app.
 
-Some content and features require a free PLUGGD account. Subscriptions renew through Apple until cancelled in Apple account settings.
+Some content and features require a free PLUGGD account. Subscriptions renew
+through Apple until cancelled in Apple account settings. Professional beat
+licences provide usage rights for creative work outside PLUGGD. Eligible ticket
+checkout is limited to real-world events.
 
 ## Keywords
 
@@ -48,4 +51,6 @@ music discovery,independent music,new music,mixes,beats,artists,producers,soundb
 
 ## Version 1.0 release notes
 
-Welcome to PLUGGD for iPhone: immediate music discovery, scene-led exploration, creator communities, events, soundboards, uninterrupted playback, Apple in-app purchases and complete privacy and safety controls.
+Welcome to PLUGGD for iPhone: immediate music discovery, scene-led exploration,
+creator communities, events, soundboards, uninterrupted playback, creator
+support and complete privacy and safety controls.

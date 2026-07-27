@@ -65,7 +65,12 @@ export async function handleContractExecution(
     const body = (await req.json()) as ContractExecutionBody;
     const { contractId, signature, signerType } = body;
 
-    if (!contractId || !signature || (signerType !== "producer" && signerType !== "artist")) {
+    const normalizedSignature = signature?.trim();
+    if (
+      !contractId || !normalizedSignature ||
+      normalizedSignature.length < 2 || normalizedSignature.length > 160 ||
+      (signerType !== "producer" && signerType !== "artist")
+    ) {
       return new Response(JSON.stringify({ error: "Invalid request payload" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -74,7 +79,7 @@ export async function handleContractExecution(
 
     const { data: contract, error: contractError } = await supabase
       .from("licensing_contracts")
-      .select("id, producer_id, artist_id, producer_signature, artist_signature, signed_at")
+      .select("id, producer_id, artist_id, producer_signature, artist_signature, signed_at, status")
       .eq("id", contractId)
       .single();
 
@@ -99,22 +104,39 @@ export async function handleContractExecution(
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (!["pending", "signed"].includes(contract.status)) {
+      return new Response(JSON.stringify({
+        error: "This contract can no longer be signed",
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const ipAddress = getClientIp(req);
     const userAgent = req.headers.get("user-agent") ?? "unknown";
     const signedAt = new Date().toISOString();
 
-    const { error: insertError } = await supabase
-      .from("contract_signatures")
-      .insert({
-        contract_id: contractId,
-        signer_id: userId,
-        signer_type: signerType,
-        signature_data: signature,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-        signed_at: signedAt,
-      });
+    const existingSignature = await supabase.from("contract_signatures")
+      .select("id")
+      .eq("contract_id", contractId)
+      .eq("signer_id", userId)
+      .eq("signer_type", signerType)
+      .maybeSingle();
+    const newlyRecorded = !existingSignature.data;
+    const insertError = !newlyRecorded
+      ? null
+      : (await supabase
+        .from("contract_signatures")
+        .insert({
+          contract_id: contractId,
+          signer_id: userId,
+          signer_type: signerType,
+          signature_data: normalizedSignature,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          signed_at: signedAt,
+        })).error;
 
     if (insertError) {
       return new Response(JSON.stringify({ error: "Failed to record signature" }), {
@@ -124,17 +146,19 @@ export async function handleContractExecution(
     }
 
     const auditIpAddress = ipAddress === "unknown" ? null : ipAddress;
-    const { error: auditError } = await supabase
-      .from("security_audit_log")
-      .insert({
-        user_id: userId,
-        table_name: "licensing_contracts",
-        action: `contract_signed_${signerType}`,
-        record_id: contractId,
-        ip_address: auditIpAddress,
-        user_agent: userAgent,
-        created_at: signedAt,
-      });
+    const auditError = !newlyRecorded
+      ? null
+      : (await supabase
+        .from("security_audit_log")
+        .insert({
+          user_id: userId,
+          table_name: "licensing_contracts",
+          action: `contract_signed_${signerType}`,
+          record_id: contractId,
+          ip_address: auditIpAddress,
+          user_agent: userAgent,
+          created_at: signedAt,
+        })).error;
 
     if (auditError) {
       return new Response(JSON.stringify({ error: "Failed to record contract audit" }), {
@@ -148,10 +172,10 @@ export async function handleContractExecution(
     };
 
     if (signerType === "producer") {
-      updatePayload.producer_signature = signature;
+      updatePayload.producer_signature = normalizedSignature;
       updatePayload.producer_ip_address = ipAddress;
     } else {
-      updatePayload.artist_signature = signature;
+      updatePayload.artist_signature = normalizedSignature;
       updatePayload.artist_ip_address = ipAddress;
     }
 

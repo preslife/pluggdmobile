@@ -33,6 +33,7 @@ import { useWallet } from '../hooks/useWallet';
 import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
+import { resolveCommercePolicy } from '../commerce/policy';
 
 const PLUGGD_ORANGE = '#ff6600';
 const REACTION_TTL_MS = 2400;
@@ -706,6 +707,15 @@ export default function LiveSessionScreen() {
 
     setSendingGift(true);
     try {
+      const policy = await resolveCommercePolicy({
+        kind: 'live_gift',
+        itemId: gift.id,
+        classification: 'digital',
+      });
+      if (policy.permittedRail !== 'credits') {
+        throw new Error(policy.reason);
+      }
+
       const { data, error } = await supabase.functions.invoke('send-live-gift', {
         body: {
           room_id: currentRoomId,

@@ -9,6 +9,7 @@ const marketIndexSource = read('app/market/index.tsx');
 const marketSectionSource = read('app/market/[section].tsx');
 const beatMarketplaceSource = read('app/beat-marketplace.tsx');
 const beatDetailSource = read('app/beat/[id].tsx');
+const beatLicenceSource = read('app/commerce/license-preview.tsx');
 const parityServiceSource = read('src/features/parity/appWideParityServices.ts');
 
 assert.equal(
@@ -19,8 +20,8 @@ assert.equal(
 
 assert.doesNotMatch(
   `${marketplaceSource}\n${marketIndexSource}\n${marketSectionSource}\n${beatMarketplaceSource}`,
-  /Coming into Market|card payment|Stripe|Start checkout|external checkout link/i,
-  'Marketplace routes must not expose unfinished card, Stripe, or external digital checkout surfaces',
+  /Coming into Market|STRIPE_SECRET_KEY|PaymentSheet|client-provided price/i,
+  'Marketplace routes must not expose unfinished, secret-bearing, native-Stripe or client-priced checkout surfaces',
 );
 
 // Web routing parity: /market resolves to the /store culture shop (via
@@ -51,14 +52,14 @@ assert.doesNotMatch(
 );
 
 assert.doesNotMatch(
-  beatDetailSource,
-  /Start checkout|checkout|Open Wallet|router\.push\('\/wallet'|Choose MP3 lease, premium WAV, stems, or exclusive licensing at checkout/i,
-  'Beat detail must not expose external or stale checkout language',
+  `${beatDetailSource}\n${beatLicenceSource}`,
+  /Open Wallet|router\.push\('\/wallet'|licenseFee|price(?:Cents|Pence)\s*:/i,
+  'Beat detail must not route licensing through credits or submit an authoritative client price',
 );
 assert.match(
-  beatDetailSource,
-  /Save Beat|View license options|License on web|Licensing coming soon/,
-  'Beat detail must use an App Review-safe professional licensing CTA',
+  `${beatDetailSource}\n${beatLicenceSource}`,
+  /useCommercePolicy[\s\S]*licenseOptionId[\s\S]*openHostedCheckout/,
+  'Beat detail must policy-gate a trusted professional licence before hosted checkout',
 );
 
 console.log('mobile market contract verified');

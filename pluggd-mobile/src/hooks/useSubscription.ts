@@ -1,66 +1,31 @@
-/**
- * useSubscription — Apple IAP subscription management for memberships.
- *
- * Handles:
- *  - Fetching subscription products from App Store (fixed SKUs)
- *  - Purchasing subscriptions
- *  - Checking active subscription status
- *  - Restoring subscriptions
- *  - Mapping Apple SKU → creator tier
- */
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
-  getSubscriptions,
-  requestSubscription,
   finishTransaction,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
   getAvailablePurchases,
-  type Subscription,
+  getSubscriptions,
+  purchaseErrorListener,
+  purchaseUpdatedListener,
+  requestSubscription,
   type Purchase,
   type PurchaseError,
+  type Subscription,
 } from 'react-native-iap';
-import { Platform } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { useStoreKit } from '../context/StoreKitProvider';
+import { supabase } from '../lib/supabase';
 
-// ─── Fixed Apple Subscription SKUs ────────────────────────────────────
-export const SUBSCRIPTION_SKUS = [
-  'pluggd_tier_299',
-  'pluggd_tier_499',
-  'pluggd_tier_999',
-  'pluggd_tier_1999',
-  'pluggd_tier_4999',
-] as const;
-
-export type SubscriptionSKU = (typeof SUBSCRIPTION_SKUS)[number];
-
-export interface SubscriptionTier {
-  sku: SubscriptionSKU;
-  price: string; // e.g. "£2.99"
-  localizedPrice: string;
+export interface MembershipProduct {
+  catalogId: string;
+  sku: string;
+  creatorId: string;
+  tierId: string;
   label: string;
+  localizedPrice: string | null;
   product: Subscription | null;
+  provisioned: boolean;
 }
 
-// Map SKU → display info (prices are approximate — real price from App Store)
-const SKU_INFO: Record<SubscriptionSKU, { label: string; fallbackPrice: string }> = {
-  pluggd_tier_299: { label: 'Bronze', fallbackPrice: '£2.99/mo' },
-  pluggd_tier_499: { label: 'Silver', fallbackPrice: '£4.99/mo' },
-  pluggd_tier_999: { label: 'Gold', fallbackPrice: '£9.99/mo' },
-  pluggd_tier_1999: { label: 'Platinum', fallbackPrice: '£19.99/mo' },
-  pluggd_tier_4999: { label: 'Diamond', fallbackPrice: '£49.99/mo' },
-};
-
-function getLocalizedSubscriptionPrice(
-  product: Subscription | null,
-  fallback: string,
-): string {
-  if (product && 'localizedPrice' in product && product.localizedPrice) {
-    return product.localizedPrice;
-  }
-  return fallback;
-}
+export type SubscriptionTier = MembershipProduct;
 
 export interface ActiveMembership {
   id: string;
@@ -72,72 +37,131 @@ export interface ActiveMembership {
   current_period_end: string | null;
 }
 
+type CatalogRow = {
+  id: string;
+  creator_id: string;
+  membership_tier_id: string;
+  product_id: string;
+  status: string;
+  membership_tiers?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
 type FanSubscriptionRow = {
   id: string;
   creator_id: string;
   apple_sku?: string | null;
-  status: 'active' | 'cancelled' | 'past_due' | 'expired';
+  status: ActiveMembership['status'];
   current_period_end: string | null;
   metadata?: Record<string, any> | null;
   membership_tiers?: { name?: string | null } | Array<{ name?: string | null }> | null;
 };
 
-type CreatorProfileRow = {
-  user_id: string;
-  full_name?: string | null;
-  username?: string | null;
-};
-
-function membershipTierName(row: FanSubscriptionRow): string | null {
-  const tier = row.membership_tiers;
-  if (Array.isArray(tier)) return tier[0]?.name ?? null;
-  return tier?.name ?? null;
+function relatedName(value: CatalogRow['membership_tiers'] | FanSubscriptionRow['membership_tiers']) {
+  return Array.isArray(value) ? value[0]?.name ?? null : value?.name ?? null;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────
-export function useSubscription() {
+function localizedPrice(product: Subscription | null): string | null {
+  if (!product) return null;
+  if ('localizedPrice' in product && typeof product.localizedPrice === 'string') {
+    return product.localizedPrice;
+  }
+  return null;
+}
+
+export function useSubscription(options?: { creatorId?: string | null }) {
+  const creatorId = options?.creatorId ?? null;
   const { ready: storeKitReady, connectionError } = useStoreKit();
-  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
+  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [tiers, setTiers] = useState<MembershipProduct[]>([]);
   const [activeMemberships, setActiveMemberships] = useState<ActiveMembership[]>([]);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const purchaseUpdateSub = useRef<{ remove: () => void } | null>(null);
+  const purchaseErrorSub = useRef<{ remove: () => void } | null>(null);
 
-  const purchaseUpdateSub = useRef<any>(null);
-  const purchaseErrorSub = useRef<any>(null);
+  const productIds = useMemo(
+    () => Array.from(new Set(catalog.map((row) => row.product_id).filter(Boolean))),
+    [catalog],
+  );
+  const knownProductIds = useRef(new Set<string>());
+  useEffect(() => {
+    knownProductIds.current = new Set(productIds);
+  }, [productIds]);
 
-  // ── Fetch subscription products ──
+  const loadCatalog = useCallback(async () => {
+    let query = (supabase as any)
+      .from('membership_iap_products')
+      .select('id,creator_id,membership_tier_id,product_id,status,membership_tiers(name)')
+      .eq('status', 'active');
+    if (creatorId) query = query.eq('creator_id', creatorId);
+    const { data, error: catalogError } = await query.order('created_at', { ascending: true });
+    if (catalogError) {
+      console.warn('[useSubscription] product catalogue unavailable:', catalogError.message);
+      setCatalog([]);
+      setTiers([]);
+      setLoading(false);
+      return;
+    }
+    setCatalog((data ?? []) as CatalogRow[]);
+  }, [creatorId]);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+
   useEffect(() => {
     if (Platform.OS !== 'ios') {
       setLoading(false);
       return;
     }
-    if (!storeKitReady) return;
-
-    async function loadProducts() {
-      try {
-        const subs = await getSubscriptions({ skus: [...SUBSCRIPTION_SKUS] });
-        const built: SubscriptionTier[] = SUBSCRIPTION_SKUS.map((sku) => {
-          const product = subs.find((s) => s.productId === sku) ?? null;
-          return {
-            sku,
-            price: SKU_INFO[sku].fallbackPrice,
-            localizedPrice: getLocalizedSubscriptionPrice(product, SKU_INFO[sku].fallbackPrice),
-            label: SKU_INFO[sku].label,
-            product,
-          };
-        });
-        setTiers(built);
-      } catch (err: any) {
-        console.error('[useSubscription] loadProducts failed:', err);
-      } finally {
+    if (!storeKitReady || !catalog.length) {
+      if (storeKitReady) {
+        setTiers([]);
         setLoading(false);
       }
+      return;
     }
-
-    loadProducts();
-  }, [storeKitReady]);
+    let mounted = true;
+    void (async () => {
+      setLoading(true);
+      try {
+        const subscriptions = await getSubscriptions({ skus: productIds });
+        if (!mounted) return;
+        setTiers(catalog.map((row) => {
+          const product = subscriptions.find((item) => item.productId === row.product_id) ?? null;
+          return {
+            catalogId: row.id,
+            sku: row.product_id,
+            creatorId: row.creator_id,
+            tierId: row.membership_tier_id,
+            label: relatedName(row.membership_tiers) ?? 'Creator membership',
+            localizedPrice: localizedPrice(product),
+            product,
+            provisioned: Boolean(product),
+          };
+        }));
+      } catch (loadError) {
+        console.warn('[useSubscription] App Store product load failed:', loadError);
+        if (mounted) setTiers(catalog.map((row) => ({
+          catalogId: row.id,
+          sku: row.product_id,
+          creatorId: row.creator_id,
+          tierId: row.membership_tier_id,
+          label: relatedName(row.membership_tiers) ?? 'Creator membership',
+          localizedPrice: null,
+          product: null,
+          provisioned: false,
+        })));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [catalog, productIds.join('|'), storeKitReady]);
 
   useEffect(() => {
     if (connectionError) {
@@ -146,189 +170,136 @@ export function useSubscription() {
     }
   }, [connectionError]);
 
-  // ── Fetch active memberships from Supabase ──
   const refreshMemberships = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error: fetchErr } = await supabase
-        .from('fan_subscriptions' as any)
-        .select('id, creator_id, apple_sku, status, current_period_end, metadata, membership_tiers(name)')
+      if (!user) {
+        setActiveMemberships([]);
+        return;
+      }
+      const { data, error: fetchError } = await (supabase as any)
+        .from('fan_subscriptions')
+        .select('id,creator_id,apple_sku,status,current_period_end,metadata,membership_tiers(name)')
         .eq('fan_id', user.id)
         .in('status', ['active', 'past_due'])
         .order('created_at', { ascending: false });
-
-      if (fetchErr) throw fetchErr;
-
-      const rows = ((data ?? []) as unknown) as FanSubscriptionRow[];
+      if (fetchError) throw fetchError;
+      const rows = (data ?? []) as FanSubscriptionRow[];
       const creatorIds = Array.from(new Set(rows.map((row) => row.creator_id).filter(Boolean)));
-      const creatorById = new Map<string, CreatorProfileRow>();
-
-      if (creatorIds.length) {
-        const { data: creators, error: creatorErr } = await supabase
-          .from('profiles' as any)
-          .select('user_id, full_name, username')
-          .in('user_id', creatorIds);
-
-        if (creatorErr) {
-          console.warn('[useSubscription] creator profile lookup skipped:', creatorErr.message);
-        } else {
-          ((creators as unknown) as CreatorProfileRow[] | null)?.forEach((creator) => {
-            creatorById.set(creator.user_id, creator);
-          });
-        }
-      }
-
-      const memberships: ActiveMembership[] = rows.map((row) => {
-        const meta = row.metadata ?? {};
-        const appleSku = row.apple_sku ?? meta.apple_sku ?? '';
+      const creators = creatorIds.length
+        ? await (supabase as any).from('profiles').select('user_id,full_name,username').in('user_id', creatorIds)
+        : { data: [] };
+      const creatorById = new Map<string, any>((creators.data ?? []).map((row: any) => [row.user_id, row]));
+      setActiveMemberships(rows.map((row) => {
+        const metadata = row.metadata ?? {};
         const creator = creatorById.get(row.creator_id);
-        const tierLabel = membershipTierName(row) ?? meta.tier_name ?? (appleSku ? SKU_INFO[appleSku as SubscriptionSKU]?.label : null) ?? 'Membership';
         return {
           id: row.id,
           creator_id: row.creator_id,
           creator_name: creator?.full_name ?? creator?.username ?? 'Creator',
-          tier_name: tierLabel,
-          apple_sku: appleSku,
+          tier_name: relatedName(row.membership_tiers) ?? metadata.tier_name ?? 'Membership',
+          apple_sku: row.apple_sku ?? metadata.apple_sku ?? '',
           status: row.status,
           current_period_end: row.current_period_end,
         };
-      });
-
-      setActiveMemberships(memberships);
-    } catch (err) {
-      console.warn('[useSubscription] refreshMemberships skipped:', err);
+      }));
+    } catch (refreshError) {
+      console.warn('[useSubscription] membership refresh failed:', refreshError);
     }
   }, []);
 
   useEffect(() => {
-    refreshMemberships();
+    void refreshMemberships();
   }, [refreshMemberships]);
 
-  // ── Purchase listeners ──
+  const validateReceipt = useCallback(async (purchase: Purchase) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Sign in to validate this membership.');
+    const { error: validationError } = await supabase.functions.invoke('validate-iap-receipt', {
+      body: {
+        receipt_data: purchase.transactionReceipt,
+        product_id: purchase.productId,
+        transaction_id: purchase.transactionId,
+        platform: 'ios',
+        type: 'subscription',
+      },
+    });
+    if (validationError) throw validationError;
+  }, []);
+
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
-
-    purchaseUpdateSub.current = purchaseUpdatedListener(
-      async (purchase: Purchase) => {
-        // Only handle subscription purchases here
-        if (!SUBSCRIPTION_SKUS.includes(purchase.productId as SubscriptionSKU)) return;
-
-        try {
-          await validateSubscriptionReceipt(purchase);
-          await finishTransaction({ purchase, isConsumable: false });
-          setPurchasing(false);
-          setError(null);
-          await refreshMemberships();
-        } catch (err: any) {
-          console.error('[useSubscription] validation failed:', err);
-          setPurchasing(false);
-          setError(err?.message ?? 'Subscription validation failed');
-        }
-      },
-    );
-
-    purchaseErrorSub.current = purchaseErrorListener((err: PurchaseError) => {
-      if (!SUBSCRIPTION_SKUS.includes(err.productId as SubscriptionSKU)) return;
-      setPurchasing(false);
-      if (err.code !== 'E_USER_CANCELLED') {
-        setError(err.message ?? 'Subscription purchase failed');
+    purchaseUpdateSub.current = purchaseUpdatedListener(async (purchase: Purchase) => {
+      if (!knownProductIds.current.has(purchase.productId)) return;
+      try {
+        await validateReceipt(purchase);
+        await finishTransaction({ purchase, isConsumable: false });
+        setPurchasing(false);
+        setError(null);
+        await refreshMemberships();
+      } catch (validationError) {
+        setPurchasing(false);
+        setError(validationError instanceof Error ? validationError.message : 'Subscription validation failed');
       }
     });
-
+    purchaseErrorSub.current = purchaseErrorListener((purchaseError: PurchaseError) => {
+      if (purchaseError.productId && !knownProductIds.current.has(purchaseError.productId)) return;
+      setPurchasing(false);
+      if (purchaseError.code !== 'E_USER_CANCELLED') setError(purchaseError.message ?? 'Subscription purchase failed');
+    });
     return () => {
       purchaseUpdateSub.current?.remove();
       purchaseErrorSub.current?.remove();
     };
-  }, [refreshMemberships]);
+  }, [refreshMemberships, validateReceipt]);
 
-  // ── Validate subscription receipt ──
-  async function validateSubscriptionReceipt(purchase: Purchase) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { error: fnError } = await supabase.functions.invoke(
-      'validate-iap-receipt',
-      {
-        body: {
-          receipt_data: purchase.transactionReceipt,
-          product_id: purchase.productId,
-          transaction_id: purchase.transactionId,
-          platform: 'ios',
-          type: 'subscription',
-        },
-      },
-    );
-
-    if (fnError) throw fnError;
-  }
-
-  // ── Subscribe to a creator ──
-  const subscribe = useCallback(
-    async (sku: SubscriptionSKU, creatorId: string) => {
-      if (!storeKitReady) {
-        setError('App Store not connected');
-        return;
+  const subscribe = useCallback(async (productId: string) => {
+    const product = tiers.find((tier) => tier.sku === productId);
+    if (!storeKitReady) {
+      setError('The App Store is not connected.');
+      return;
+    }
+    if (!product?.product || !product.provisioned) {
+      setError('This creator tier is not yet available through the App Store.');
+      return;
+    }
+    setPurchasing(true);
+    setError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sign in to subscribe.');
+      await requestSubscription({
+        sku: productId,
+        appAccountToken: user.id,
+        andDangerouslyFinishTransactionAutomaticallyIOS: false,
+      });
+    } catch (purchaseError: any) {
+      setPurchasing(false);
+      if (purchaseError?.code !== 'E_USER_CANCELLED') {
+        setError(purchaseError?.message ?? 'Subscription purchase failed');
       }
-      setPurchasing(true);
-      setError(null);
+    }
+  }, [storeKitReady, tiers]);
 
-      try {
-        // Store the creator mapping before purchase so the webhook can find it
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        // Create a pending subscription record
-        await supabase.from('fan_subscriptions' as any).upsert({
-          fan_id: user.id,
-          creator_id: creatorId,
-          apple_sku: sku,
-          status: 'pending',
-          price_cents: 0,
-          metadata: {
-            apple_sku: sku,
-            tier_name: SKU_INFO[sku].label,
-            platform: 'ios',
-          },
-        }, {
-          onConflict: 'fan_id,creator_id',
-        });
-
-        await requestSubscription({
-          sku,
-          appAccountToken: user.id,
-          andDangerouslyFinishTransactionAutomaticallyIOS: false,
-        });
-        // Purchase listener handles the rest
-      } catch (err: any) {
-        setPurchasing(false);
-        if (err?.code !== 'E_USER_CANCELLED') {
-          setError(err?.message ?? 'Subscription failed');
-        }
-      }
-    },
-    [storeKitReady],
-  );
-
-  // ── Restore subscriptions ──
   const restoreSubscriptions = useCallback(async () => {
     setRestoring(true);
+    setError(null);
     try {
       const purchases = await getAvailablePurchases();
       for (const purchase of purchases) {
-        if (SUBSCRIPTION_SKUS.includes(purchase.productId as SubscriptionSKU)) {
-          await validateSubscriptionReceipt(purchase);
-          await finishTransaction({ purchase, isConsumable: false });
-        }
+        const isCurrentProduct = knownProductIds.current.has(purchase.productId);
+        const isLegacyMembership = purchase.productId.startsWith('pluggd_tier_');
+        if (!isCurrentProduct && !isLegacyMembership) continue;
+        await validateReceipt(purchase);
+        await finishTransaction({ purchase, isConsumable: false });
       }
       await refreshMemberships();
+    } catch (restoreError) {
+      setError(restoreError instanceof Error ? restoreError.message : 'Restore failed');
+    } finally {
       setRestoring(false);
-    } catch (err: any) {
-      setRestoring(false);
-      setError(err?.message ?? 'Restore failed');
     }
-  }, [refreshMemberships]);
+  }, [refreshMemberships, validateReceipt]);
 
   return {
     tiers,
@@ -340,6 +311,7 @@ export function useSubscription() {
     subscribe,
     restoreSubscriptions,
     refreshMemberships,
+    refreshCatalog: loadCatalog,
     clearError: () => setError(null),
   };
 }

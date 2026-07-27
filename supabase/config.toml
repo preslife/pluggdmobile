@@ -55,7 +55,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.paypal-payout]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-store-checkout]
 verify_jwt = true
@@ -133,4 +133,34 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.moderate-user-content]
+verify_jwt = true
+
+[functions.resolve-commerce-policy]
+verify_jwt = true
+
+[functions.spend-credits]
+verify_jwt = true
+
+[functions.prepare-beat-license]
+verify_jwt = true
+
+[functions.create-beat-purchase]
+verify_jwt = true
+
+[functions.create-event-checkout]
+verify_jwt = true
+
+[functions.create-merch-checkout]
+verify_jwt = true
+
+[functions.reconcile-commerce-checkout]
+verify_jwt = true
+
+[functions.commerce-document-url]
+verify_jwt = true
+
+[functions.cash-out-credits]
+verify_jwt = true
+
+[functions.contract-execution]
 verify_jwt = true

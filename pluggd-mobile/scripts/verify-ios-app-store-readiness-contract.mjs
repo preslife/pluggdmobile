@@ -16,11 +16,17 @@ const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
 const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
 const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
 const notifications = read('../supabase/functions/apple-server-notification/index.ts');
+const policy = read('src/commerce/policy.ts');
 
 assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'Stripe native SDK must not ship');
+assert.ok(packageJson.dependencies['expo-web-browser'], 'eligible hosted checkout must use expo-web-browser');
 assert.match(config, /supportsTablet:\s*false/, 'release must be iPhone-only');
 assert.match(config, /ITSAppUsesNonExemptEncryption:\s*false/, 'export compliance must be explicit');
 assert.doesNotMatch(config, /merchantIdentifier|stripe-react-native/i, 'native config must not contain Stripe or Apple Pay');
+assert.match(policy, /useCommercePolicy/, 'App Store build must route commerce through the unified policy');
+assert.match(policy, /resolve-commerce-policy/, 'commerce eligibility must be server resolved');
+assert.match(policy, /unavailable/, 'commerce policy must support fail-closed unavailable results');
+assert.match(policy, /expo-web-browser[\s\S]*openHostedCheckout/, 'eligible external rails must use hosted checkout without the native Stripe SDK');
 assert.match(auth, /if \(!LAUNCH_ACCESS_REQUIRED\)/, 'production auth must bypass launch access');
 assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field must be development-only');
 assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');

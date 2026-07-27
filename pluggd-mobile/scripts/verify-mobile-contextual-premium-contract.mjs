@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const contentUi = read('components/ContentUI.tsx');
 const release = read('app/release/[id].tsx');
 const beat = read('app/beat/[id].tsx');
+const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
 const wallet = read('app/wallet.tsx');
 const membership = read('app/membership/[creatorId].tsx');
@@ -40,12 +41,18 @@ assert.match(release, /PLAYBACK[\s\S]*FULL CREDITS[\s\S]*DISCUSSION[\s\S]*WHERE 
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release detail must keep credit unlock wired through the wallet ledger');
 assert.match(release, /Save[\s\S]*Post[\s\S]*Share/, 'release detail must keep save, post-to-feed and share actions');
 
-assert.match(beat, /professional beat licensing/i, 'beat detail must frame licensing as professional/off-app use, not generic in-app checkout');
+assert.match(`${beat}\n${beatLicence}`, /professional (?:beat )?licensing/i, 'beat flow must frame licensing as professional/off-app use, not generic in-app checkout');
 assert.doesNotMatch(beat, /Open Wallet|router\.push\('\/wallet'/, 'beat licensing must not route professional/off-app licensing into the Apple credits wallet');
-assert.match(beat, /Save Beat|View license options|License on web|Licensing coming soon/, 'beat licensing must use an App Review-safe CTA');
+assert.match(beat, /licenseOptionId/, 'beat detail must route a trusted licence-option identifier');
+assert.match(beatLicence, /useCommercePolicy/, 'beat licensing must be server-policy gated');
+assert.match(beatLicence, /licenseOptionId/, 'beat licensing must submit a trusted licence-option identifier');
+assert.match(beatLicence, /openHostedCheckout/, 'eligible professional beat licences must use hosted checkout');
 
-assert.match(event, /Tickets \/ RSVP/, 'event detail must preserve tickets and RSVP entry points');
+assert.match(event, /EventTicketPurchase/, 'event detail must preserve policy-gated ticket purchase');
+assert.match(event, /setEventRsvp/, 'event detail must preserve free RSVP');
 assert.match(event, /Event thread/, 'event detail must preserve event-thread social handoff');
+assert.match(event, /useCommercePolicy/, 'paid event tickets must be server-policy gated');
+assert.match(event, /ticketTypeId/, 'paid event tickets must submit a trusted ticket-type identifier');
 
 assert.match(wallet, /Restore Purchases/, 'wallet must expose Apple restore purchases');
 assert.match(wallet, /Credits never expire/, 'wallet must keep App Review-safe credit expiry language');
@@ -60,7 +67,8 @@ for (const sku of [
 }
 
 assert.match(membership, /Apple[\s\S]*Settings[\s\S]*Subscriptions/, 'membership screen must keep Apple subscription cancel/manage guidance');
-assert.match(membership, /pluggd_tier_299[\s\S]*pluggd_tier_499[\s\S]*pluggd_tier_999[\s\S]*pluggd_tier_1999[\s\S]*pluggd_tier_4999/, 'membership screen must preserve Apple subscription SKU mapping');
+assert.match(membership, /membership_iap_products/, 'membership screen must load unique creator-tier Apple product mappings');
+assert.doesNotMatch(membership, /pluggd_tier_(?:299|499|999|1999|4999)/, 'membership screen must not use shared price SKUs as creator identity');
 
 assert.match(tickets, /Entry codes appear only for eligible tickets/, 'tickets must keep honest QR/pass limitations');
 assert.match(tickets, /issueTicketEntryToken/, 'tickets must keep rotating entry token integration');

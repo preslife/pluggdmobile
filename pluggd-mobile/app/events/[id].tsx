@@ -3,7 +3,7 @@ import { pluggdFonts } from '../../src/design/typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { DetailTitle } from '../../components/DetailTitle';
@@ -11,6 +11,8 @@ import { PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileConten
 import { addEventComment, loadEventCultureContext, loadEventDetail, setEventRsvp } from '../../src/features/culture/mobileServices';
 import { MobileStoriesRail } from '../../src/features/culture/MobileStoriesRail';
 import { cancelEventLocalReminder, scheduleEventLocalReminder } from '../../src/lib/localNotifications';
+import { openHostedCheckout, reconcileHostedCheckout, useCommercePolicy } from '../../src/commerce/policy';
+import { supabase } from '../../src/lib/supabase';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -100,15 +102,22 @@ export default function EventDetailScreen() {
             </View>
 
             <View style={styles.buttonRow}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Open tickets and RSVP" style={styles.primaryButton} onPress={() => router.push(`/tickets?eventId=${event.id}` as any)}>
-                <MaterialIcons name="confirmation-number" size={20} color="#0A0806" />
-                <Text style={styles.primaryButtonText}>Tickets / RSVP</Text>
-              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Open event thread" style={styles.secondaryButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'event', eventId: event.id, type: 'thread' } } as any)}>
                 <MaterialIcons name="forum" size={20} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryButtonText}>Event thread</Text>
               </Pressable>
             </View>
+
+            {!event.has_order && !event.has_ticket ? (
+              <EventTicketPurchase
+                eventId={event.id}
+                title={event.title || 'Event'}
+                onComplete={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['culture', 'event-detail', id] });
+                  void queryClient.invalidateQueries({ queryKey: ['culture', 'library'] });
+                }}
+              />
+            ) : null}
 
             <View style={styles.statusCard}>
               <Text style={styles.metaLabel}>Your status</Text>
@@ -265,6 +274,188 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
+type TicketType = {
+  id: string;
+  name: string;
+  price_cents: number;
+  available_quantity: number | null;
+  max_per_order: number;
+  fee_cents: number;
+  currency: string;
+  refund_terms: string | null;
+};
+
+function formatTicketMoney(amountCents: number, currency: string) {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'GBP';
+  try {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: code }).format(amountCents / 100);
+  } catch {
+    return formatGBP(amountCents, { cents: true });
+  }
+}
+
+function EventTicketPurchase({ eventId, title, onComplete }: { eventId: string; title: string; onComplete: () => void }) {
+  const router = useRouter();
+  const [tiers, setTiers] = useState<TicketType[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [buying, setBuying] = useState(false);
+  const policyRequest = useMemo(() => ({ kind: 'event_ticket' as const, itemId: eventId }), [eventId]);
+  const policy = useCommercePolicy(policyRequest);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from('event_ticket_tiers')
+        .select('id,name,price_cents,available_quantity,max_per_order,fee_cents,currency,refund_terms')
+        .eq('event_id', eventId)
+        .eq('is_active', true)
+        .order('price_cents', { ascending: true });
+      if (!mounted) return;
+      const rows = error ? [] : ((data ?? []) as TicketType[]);
+      setTiers(rows);
+      setSelectedId(rows[0]?.id ?? null);
+      setLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [eventId]);
+
+  const selected = tiers.find((tier) => tier.id === selectedId) ?? null;
+  const unitPrice = Number(selected?.price_cents ?? 0);
+  const fees = Number(selected?.fee_cents ?? 0) * quantity;
+  const total = unitPrice * quantity + fees;
+  const maxQuantity = Math.max(1, Math.min(
+    Number(selected?.max_per_order ?? 4),
+    selected?.available_quantity == null ? 4 : Number(selected.available_quantity),
+  ));
+
+  const buy = async () => {
+    if (!selected || buying) return;
+    if (policy.permittedRail !== 'stripe_checkout') {
+      Alert.alert('Tickets unavailable', policy.reason);
+      return;
+    }
+    setBuying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-event-checkout', {
+        body: {
+          eventId,
+          ticketTypeId: selected.id,
+          quantity,
+          storefront: policy.storefront,
+          returnUrl: 'pluggd://commerce/success',
+          requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        },
+      });
+      if (error) throw error;
+      const response = (data ?? {}) as Record<string, unknown>;
+      const checkoutUrl = String(response.checkoutUrl ?? response.checkout_url ?? response.url ?? '');
+      const sessionId = typeof (response.sessionId ?? response.session_id) === 'string'
+        ? String(response.sessionId ?? response.session_id)
+        : null;
+      const checkout = await openHostedCheckout(checkoutUrl, {
+        reconcile: async () => (await reconcileHostedCheckout({
+          kind: 'event_ticket',
+          sessionId,
+          itemId: eventId,
+        })).state,
+      });
+      onComplete();
+      router.push({
+        pathname: '/commerce/success',
+        params: {
+          kind: 'event_ticket',
+          status: checkout.state,
+          sessionId: sessionId ?? '',
+          itemId: eventId,
+        },
+      } as any);
+    } catch (error) {
+      Alert.alert('Checkout unavailable', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  if (loading || policy.loading) {
+    return <View style={styles.ticketPurchase}><ActivityIndicator color={PLUGGD_ORANGE} /></View>;
+  }
+
+  if (!tiers.length || policy.permittedRail !== 'stripe_checkout') {
+    return (
+      <View style={styles.ticketPurchase}>
+        <Text style={styles.ticketKicker}>TICKET ACCESS</Text>
+        <Text style={styles.ticketHeading}>Purchase not available</Text>
+        <Text style={styles.ticketBody}>{policy.reason || 'Verified ticket tiers have not been published for this event.'}</Text>
+        <Text style={styles.ticketFootnote}>Free RSVP remains available below. This event is online, so paid tickets are not sold here.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.ticketPurchase}>
+      <Text style={styles.ticketKicker}>REAL-WORLD EVENT · VERIFIED INVENTORY</Text>
+      <Text style={styles.ticketHeading}>Choose your ticket</Text>
+      <Text style={styles.ticketBody}>{title}</Text>
+      <View style={styles.ticketTierList}>
+        {tiers.map((tier) => {
+          const selectedTier = tier.id === selectedId;
+          return (
+            <Pressable
+              key={tier.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: selectedTier }}
+              accessibilityLabel={`${tier.name}, ${formatTicketMoney(tier.price_cents, tier.currency)}`}
+              onPress={() => {
+                setSelectedId(tier.id);
+                setQuantity(1);
+              }}
+              style={[styles.ticketTier, selectedTier && styles.ticketTierSelected]}
+            >
+              <View style={styles.ticketTierCopy}>
+                <Text style={styles.ticketTierName}>{tier.name}</Text>
+                <Text style={styles.ticketTierMeta}>{tier.available_quantity == null ? 'Inventory confirmed at checkout' : `${tier.available_quantity} remaining`}</Text>
+              </View>
+              <Text style={styles.ticketTierPrice}>{formatTicketMoney(tier.price_cents, tier.currency)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.quantityRow}>
+        <View><Text style={styles.ticketQuantityLabel}>QUANTITY</Text><Text style={styles.ticketTierMeta}>Maximum {maxQuantity} per order</Text></View>
+        <View style={styles.quantityControl}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Decrease ticket quantity" accessibilityState={{ disabled: quantity <= 1 }} disabled={quantity <= 1} style={styles.quantityButton} onPress={() => setQuantity((value) => Math.max(1, value - 1))}>
+            <MaterialIcons name="remove" size={19} color="#FFF" />
+          </Pressable>
+          <Text accessibilityLabel={`${quantity} tickets`} style={styles.quantityValue}>{quantity}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Increase ticket quantity" accessibilityState={{ disabled: quantity >= maxQuantity }} disabled={quantity >= maxQuantity} style={styles.quantityButton} onPress={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}>
+            <MaterialIcons name="add" size={19} color="#FFF" />
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.totalRow}>
+        <View>
+          <Text style={styles.totalLabel}>TOTAL</Text>
+          <Text style={styles.ticketTierMeta}>{fees > 0 ? `${formatTicketMoney(unitPrice * quantity, selected?.currency || 'GBP')} + ${formatTicketMoney(fees, selected?.currency || 'GBP')} fees` : 'No additional fees'}</Text>
+        </View>
+        <Text style={styles.totalValue}>{formatTicketMoney(total, selected?.currency || 'GBP')}</Text>
+      </View>
+      {selected?.refund_terms ? <Text style={styles.refundTerms}>{selected.refund_terms}</Text> : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={`Continue to secure checkout for ${quantity} ${selected?.name} ticket${quantity === 1 ? '' : 's'}`} accessibilityState={{ busy: buying }} disabled={buying} style={styles.ticketBuyButton} onPress={buy}>
+        {buying ? <ActivityIndicator color="#0A0806" /> : <>
+          <Text style={styles.ticketBuyText}>Continue securely</Text>
+          <MaterialIcons name="arrow-forward" size={19} color="#0A0806" />
+        </>}
+      </Pressable>
+      <Text style={styles.ticketFootnote}>Your QR ticket is issued only after verified payment and inventory confirmation.</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
   content: { padding: 14, paddingTop: 54, paddingBottom: 220 },
@@ -291,7 +482,7 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
   primaryButton: { flex: 1.25, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   primaryButtonText: { color: '#0A0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack },
-  secondaryButton: { flex: 0.75, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButton: { flex: 1, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   liveCard: { minHeight: 74, marginTop: 2, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
   ticketCard: { minHeight: 74, marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B281D', paddingVertical: 13, flexDirection: 'row', alignItems: 'center' },
@@ -319,4 +510,27 @@ const styles = StyleSheet.create({
   commentCard: { marginTop: 2, borderBottomWidth: 1, borderColor: '#2B2723', paddingVertical: 13 },
   commentBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   commentMeta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
+  ticketPurchase: { marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B3028', paddingVertical: 18 },
+  ticketKicker: { color: PLUGGD_ORANGE, fontSize: 9, letterSpacing: 1.35, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  ticketHeading: { color: '#FFF', fontSize: 23, lineHeight: 28, fontFamily: pluggdFonts.displayBold, marginTop: 6 },
+  ticketBody: { color: '#AFA7A0', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, marginTop: 5 },
+  ticketTierList: { marginTop: 14, borderTopWidth: 1, borderColor: '#302A26' },
+  ticketTier: { minHeight: 68, borderBottomWidth: 1, borderColor: '#302A26', paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  ticketTierSelected: { borderLeftWidth: 3, borderLeftColor: PLUGGD_ORANGE, paddingLeft: 11 },
+  ticketTierCopy: { flex: 1 },
+  ticketTierName: { color: '#FFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  ticketTierMeta: { color: '#8F8882', fontSize: 11, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
+  ticketTierPrice: { color: PLUGGD_ORANGE, fontSize: 14, fontFamily: pluggdFonts.displayBold },
+  quantityRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#302A26' },
+  ticketQuantityLabel: { color: '#817A75', fontSize: 9, letterSpacing: 1.3, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  quantityControl: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  quantityButton: { width: 44, height: 44, borderWidth: 1, borderColor: '#443C36', alignItems: 'center', justifyContent: 'center' },
+  quantityValue: { width: 38, color: '#FFF', textAlign: 'center', fontSize: 16, fontFamily: pluggdFonts.displayBold },
+  totalRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalLabel: { color: '#FFF', fontSize: 10, letterSpacing: 1.3, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  totalValue: { color: '#FFF', fontSize: 22, fontFamily: pluggdFonts.displayBold },
+  refundTerms: { color: '#A49D97', fontSize: 11, lineHeight: 16, fontFamily: pluggdFonts.satoshiMedium, marginBottom: 12 },
+  ticketBuyButton: { minHeight: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  ticketBuyText: { color: '#0A0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  ticketFootnote: { color: '#746D67', fontSize: 10, lineHeight: 15, fontFamily: pluggdFonts.satoshiMedium, marginTop: 10 },
 });

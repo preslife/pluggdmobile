@@ -130,6 +130,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-router',
+    'expo-web-browser',
     'expo-video',
     [
       'expo-screen-orientation',

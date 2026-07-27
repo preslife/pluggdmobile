@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  defaultDeny,
+  resolveCommercePolicy,
+} from "../_shared/commercePolicy.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,13 +40,22 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
     const {
       releaseId,
       amount,
       payWhatYouWant,
       giftRecipientEmail,
       giftRecipientName,
-      giftMessage
+      giftMessage,
+      requestId,
+      returnUrl,
+      storefront,
     } = await req.json();
     if (!releaseId) throw new Error("Release ID is required");
     
@@ -109,6 +122,214 @@ serve(async (req) => {
 
     if (existingPurchase?.status === 'completed' && !isGift && !isPreorder) {
       throw new Error("You have already purchased this release");
+    }
+
+    const isIosHostedCheckout = returnUrl === "pluggd://commerce/success";
+    if (isIosHostedCheckout) {
+      if (
+        amount !== undefined || payWhatYouWant !== undefined ||
+        giftRecipientEmail !== undefined || giftRecipientName !== undefined ||
+        giftMessage !== undefined
+      ) {
+        throw new Error("The iOS checkout accepts only trusted release identifiers");
+      }
+      if (
+        requestId !== undefined &&
+        (
+          typeof requestId !== "string" ||
+          !/^[A-Za-z0-9_-]{8,100}$/.test(requestId)
+        )
+      ) {
+        throw new Error("Request ID is invalid");
+      }
+
+      const { data: rule } = await supabaseService
+        .from("commerce_policy_rules")
+        .select("*")
+        .eq("purchase_kind", "release_unlock")
+        .maybeSingle();
+      const decision = rule
+        ? resolveCommercePolicy({
+          purchaseKind: "release_unlock",
+          itemId: releaseId,
+          optionId: "external",
+          classification: "digital",
+          storefront: typeof storefront === "string" ? storefront : null,
+          platform: "ios",
+        }, rule)
+        : defaultDeny(
+          typeof storefront === "string" ? storefront : null,
+          "Commerce policy could not be verified.",
+        );
+      if (decision.permittedRail !== "stripe_checkout") {
+        return new Response(JSON.stringify({
+          error: decision.reason,
+          decision,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+
+      const amountCents = Math.round(releasePrice * 100);
+      if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+        throw new Error("Release cash pricing is unavailable");
+      }
+      const currency = String(release.currency ?? "GBP").toUpperCase();
+      if (!/^[A-Z]{3}$/.test(currency)) {
+        throw new Error("Release currency is invalid");
+      }
+
+      const idempotencyKey =
+        `release-external:${user.id}:${releaseId}:${requestId ?? "initial"}`;
+      const { data: existingCheckout } = await supabaseService
+        .from("external_checkout_sessions")
+        .select("id,stripe_checkout_session_id,status,provider_metadata")
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      const existingUrl =
+        typeof existingCheckout?.provider_metadata?.checkout_url === "string"
+          ? existingCheckout.provider_metadata.checkout_url
+          : null;
+      if (
+        existingUrl && existingCheckout?.stripe_checkout_session_id &&
+        ["created", "open"].includes(existingCheckout.status)
+      ) {
+        return new Response(JSON.stringify({
+          checkoutUrl: existingUrl,
+          sessionId: existingCheckout.stripe_checkout_session_id,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      const pricingSnapshot = {
+        release_id: releaseId,
+        release_title: release.title,
+        creator_id: release.user_id,
+        amount_cents: amountCents,
+        currency,
+      };
+      let checkout = existingCheckout;
+      if (!checkout) {
+        const created = await supabaseService
+          .from("external_checkout_sessions")
+          .insert({
+            user_id: user.id,
+            purchase_kind: "release_unlock",
+            resource_id: releaseId,
+            quantity: 1,
+            amount_cents: amountCents,
+            currency,
+            status: "created",
+            idempotency_key: idempotencyKey,
+            policy_version: decision.policyVersion,
+            pricing_snapshot: pricingSnapshot,
+            provider_metadata: {},
+          })
+          .select("id")
+          .single();
+        if (created.error || !created.data) {
+          throw new Error(
+            created.error?.message ?? "Unable to initialise checkout",
+          );
+        }
+        checkout = created.data;
+      }
+
+      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+        apiVersion: "2023-10-16",
+      });
+      const metadata = {
+        type: "release_purchase",
+        purchase_kind: "release_unlock",
+        external_checkout_id: checkout.id,
+        userId: user.id,
+        releaseId,
+        creator_id: release.user_id ?? "",
+        amount_cents: String(amountCents),
+        currency,
+        policy_version: decision.policyVersion ?? "",
+      };
+      const session = await stripe.checkout.sessions.create({
+        customer_email: user.email,
+        line_items: [{
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: `${release.title} — ${release.artist}`,
+              description: `Digital release by ${release.artist}`,
+              images: release.cover_art_url ? [release.cover_art_url] : undefined,
+              metadata,
+            },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url:
+          `pluggd://commerce/success?status=success&sessionId={CHECKOUT_SESSION_ID}&kind=release_unlock&itemId=${release.id}`,
+        cancel_url:
+          `pluggd://commerce/success?status=cancelled&kind=release_unlock&itemId=${release.id}`,
+        metadata,
+        payment_intent_data: { metadata },
+      }, { idempotencyKey });
+      if (!session.url) throw new Error("Stripe returned no checkout URL");
+
+      const purchasePayload = {
+        user_id: user.id,
+        purchaser_id: user.id,
+        release_id: releaseId,
+        amount_paid: amountCents / 100,
+        amount_cents: amountCents,
+        currency,
+        permitted_rail: "stripe_checkout",
+        status: "pending",
+        pricing_snapshot: pricingSnapshot,
+        policy_version: decision.policyVersion,
+        idempotency_key: idempotencyKey,
+        stripe_session_id: session.id,
+        purchased_at: new Date().toISOString(),
+        is_preorder: isPreorder,
+        available_at: availabilityIso,
+      };
+      const purchaseWrite = existingPurchase?.id
+        ? await supabaseService.from("release_purchases")
+          .update(purchasePayload).eq("id", existingPurchase.id)
+          .select("id").single()
+        : await supabaseService.from("release_purchases")
+          .insert(purchasePayload).select("id").single();
+      if (purchaseWrite.error || !purchaseWrite.data) {
+        await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+        await supabaseService.from("external_checkout_sessions").update({
+          status: "failed",
+        }).eq("id", checkout.id);
+        throw new Error(
+          purchaseWrite.error?.message ?? "Unable to create release purchase",
+        );
+      }
+      const checkoutUpdate = await supabaseService
+        .from("external_checkout_sessions").update({
+          stripe_checkout_session_id: session.id,
+          status: "open",
+          provider_metadata: {
+            checkout_url: session.url,
+            release_purchase_id: purchaseWrite.data.id,
+          },
+        }).eq("id", checkout.id);
+      if (checkoutUpdate.error) {
+        await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+        throw new Error("Unable to secure release checkout state");
+      }
+
+      return new Response(JSON.stringify({
+        checkoutUrl: session.url,
+        sessionId: session.id,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // Determine price
@@ -179,12 +400,6 @@ serve(async (req) => {
     logStep("Stripe session created", { sessionId: session.id });
 
     // Create pending purchase record
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
     const purchasePayload = {
       user_id: user.id,
       purchaser_id: user.id,

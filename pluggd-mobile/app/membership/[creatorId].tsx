@@ -5,7 +5,7 @@
  * Route: /membership/[creatorId]
  *
  * Loads tiers from `membership_tiers` table (owner_type='profile', owner_id=creatorId),
- * maps each to the matching Apple IAP SKU, and lets the fan purchase via StoreKit.
+ * maps each to its unique creator-tier App Store product, and purchases via StoreKit.
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -25,11 +25,11 @@ import { pluggdFonts } from '../../src/design/typography';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
-import {
-  useSubscription,
-  SUBSCRIPTION_SKUS,
-  type SubscriptionSKU,
-} from '../../src/hooks/useSubscription';
+import { useSubscription } from '../../src/hooks/useSubscription';
+import { resolveCommercePolicy } from '../../src/commerce/policy';
+
+// Product identity is loaded by useSubscription from membership_iap_products;
+// the creator and tier are never inferred from a shared price-point SKU.
 
 // ─── Tier colour accents (matching the tier names) ──────────────────
 const TIER_COLORS: Record<string, string> = {
@@ -46,15 +46,6 @@ const TIER_ICONS: Record<string, string> = {
   Gold: 'emoji_events',
   Platinum: 'diamond',
   Diamond: 'auto_awesome',
-};
-
-// Map tier_order → Apple SKU index
-const TIER_ORDER_TO_SKU: Record<number, SubscriptionSKU> = {
-  0: 'pluggd_tier_299',
-  1: 'pluggd_tier_499',
-  2: 'pluggd_tier_999',
-  3: 'pluggd_tier_1999',
-  4: 'pluggd_tier_4999',
 };
 
 interface MembershipTier {
@@ -94,7 +85,7 @@ export default function CreatorMembershipScreen() {
     purchasing,
     error: subscriptionError,
     clearError,
-  } = useSubscription();
+  } = useSubscription({ creatorId });
 
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
@@ -171,16 +162,24 @@ export default function CreatorMembershipScreen() {
         return;
       }
 
-      // Map tier_order to the corresponding Apple SKU
-      const sku = TIER_ORDER_TO_SKU[tier.tier_order];
-      if (!sku) {
-        Alert.alert('Error', 'This tier is not available for purchase right now.');
+      const appleProduct = appleTiers.find((product) => product.tierId === tier.id);
+      if (!appleProduct?.provisioned || !appleProduct.localizedPrice) {
+        Alert.alert('Available soon', 'You can browse this tier, but its Apple subscription is not provisioned yet.');
         return;
       }
 
-      // Find matching Apple product to show real price
-      const appleProduct = appleTiers.find((t) => t.sku === sku);
-      const priceLabel = appleProduct?.localizedPrice ?? `£${((tier.price_monthly ?? 0) / 100).toFixed(2)}/mo`;
+      const policy = await resolveCommercePolicy({
+        kind: 'creator_membership',
+        itemId: creatorId,
+        optionId: tier.id,
+        classification: 'digital',
+      });
+      if (policy.permittedRail !== 'apple_subscription') {
+        Alert.alert('Subscription unavailable', policy.reason);
+        return;
+      }
+
+      const priceLabel = appleProduct.localizedPrice;
 
       Alert.alert(
         `Subscribe to ${tier.name}`,
@@ -189,7 +188,7 @@ export default function CreatorMembershipScreen() {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Subscribe',
-            onPress: () => subscribe(sku, creatorId!),
+            onPress: () => subscribe(appleProduct.sku),
           },
         ]
       );
@@ -236,7 +235,7 @@ export default function CreatorMembershipScreen() {
           <View className="absolute top-0 left-0 right-0 pt-14 px-4 flex-row items-center justify-between z-20">
             <TouchableOpacity
               onPress={() => router.back()}
-              className="size-10 items-center justify-center rounded-md bg-black/40 backdrop-blur-md"
+              className="size-11 items-center justify-center rounded-md bg-black/40 backdrop-blur-md"
             >
               <SymbolIcon name="arrow_back" className="text-white text-xl" />
             </TouchableOpacity>
@@ -302,15 +301,8 @@ export default function CreatorMembershipScreen() {
             {tiers.map((tier) => {
               const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#ff6600';
               const icon = TIER_ICONS[tier.name] ?? 'star';
-              const sku = TIER_ORDER_TO_SKU[tier.tier_order];
-              const appleProduct = sku
-                ? appleTiers.find((t) => t.sku === sku)
-                : null;
-              const priceLabel =
-                appleProduct?.localizedPrice ??
-                (tier.price_monthly
-                  ? `£${(tier.price_monthly / 100).toFixed(2)}/mo`
-                  : 'Free');
+              const appleProduct = appleTiers.find((product) => product.tierId === tier.id) ?? null;
+              const priceLabel = appleProduct?.localizedPrice ?? 'Not yet on sale';
               const isSelected = selectedTier === tier.id;
               const isFull =
                 tier.max_members !== null &&
@@ -375,7 +367,7 @@ export default function CreatorMembershipScreen() {
                       )}
 
                       {/* Subscribe button */}
-                      {!existingMembership && !isFull && (
+                      {!existingMembership && !isFull && appleProduct?.provisioned && (
                         <TouchableOpacity
                           onPress={() => handleSubscribe(tier)}
                           disabled={purchasing}
@@ -393,6 +385,15 @@ export default function CreatorMembershipScreen() {
                             </>
                           )}
                         </TouchableOpacity>
+                      )}
+
+                      {!existingMembership && !isFull && !appleProduct?.provisioned && (
+                        <View className="w-full min-h-12 px-4 rounded-md justify-center border border-white/10 bg-zinc-900">
+                          <Text className="text-white font-bold" style={styles.buttonText}>Browse only</Text>
+                          <Text className="text-zinc-500 text-xs mt-1" style={styles.meta}>
+                            This creator tier is not yet provisioned in the App Store.
+                          </Text>
+                        </View>
                       )}
 
                       {isFull && (

@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const capabilities = read('src/features/culture/mobileCapabilities.ts');
 const services = read('src/features/culture/mobileServices.ts');
 const types = read('src/features/culture/mobileTypes.ts');
+const eventDetail = read('app/events/[id].tsx');
 
 for (const token of [
   'MobileCapabilityMap',
@@ -15,7 +16,6 @@ for (const token of [
   'eventComments',
   'ticketOrders',
   'genericSavedContent',
-  'nativeTicketCheckout',
 ]) {
   assert.match(capabilities, new RegExp(token), `capability map must define ${token}`);
 }
@@ -58,7 +58,9 @@ assert.match(services, /from\('community_members'\)/, 'Backstage join state must
 assert.match(services, /from\('event_rsvps'\)/, 'Event RSVP must use event_rsvps');
 assert.match(services, /from\('event_comments'\)/, 'Event discussion must use event_comments');
 assert.match(services, /from\('ticket_orders'\)/, 'Wallet tickets must inspect ticket_orders for QR payloads');
-assert.match(capabilities, /nativeTicketCheckout:\s*'unavailable'/, 'Native ticket checkout must remain unavailable until compliance path exists');
+assert.match(eventDetail, /useCommercePolicy/, 'real-world ticket checkout must use the unified commerce policy');
+assert.match(eventDetail, /permittedRail\s*!==\s*'stripe_checkout'/, 'ticket checkout must fail closed unless the server permits Stripe');
+assert.match(eventDetail, /ticketTypeId[\s\S]*quantity/, 'ticket checkout must send trusted ticket type and quantity identifiers');
 assert.match(capabilities, /reminders:\s*'available'/, 'Event and scheduled-live reminders must be available now that backend rows and local notifications are wired');
 assert.match(capabilities, /genericSavedContent:\s*'available'/, 'Generic saved-content must be available through the mobile saved_content contract');
 assert.match(capabilities, /dynamicQr:\s*'available'/, 'Dynamic ticket entry payloads must be available through the rotating token contract');

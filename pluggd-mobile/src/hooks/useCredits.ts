@@ -24,6 +24,7 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useWalletStore } from './useWallet';
 import { useStoreKit } from '../context/StoreKitProvider';
+import { resolveCommercePolicy } from '../commerce/policy';
 
 // ─── SKU Definitions ──────────────────────────────────────────────────
 export const CREDIT_PACK_SKUS = [
@@ -129,8 +130,7 @@ function formatExpectedPrice(fallbackPriceGBP: number) {
 function displayPriceForProduct(product: Product | null, fallbackPriceGBP: number) {
   const expectedPrice = formatExpectedPrice(fallbackPriceGBP);
   if (!product?.localizedPrice) return expectedPrice;
-  if (product.currency === 'GBP' || product.localizedPrice.includes('£')) return product.localizedPrice;
-  return expectedPrice;
+  return product.localizedPrice;
 }
 
 function buildCreditPacks(prods: Product[] = []): CreditPack[] {
@@ -280,6 +280,15 @@ export function useCredits() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
+
+        const policy = await resolveCommercePolicy({
+          kind: 'credit_pack',
+          itemId: sku,
+          classification: 'digital',
+        });
+        if (policy.permittedRail !== 'apple_iap') {
+          throw new Error(policy.reason);
+        }
 
         await requestPurchase({
           sku,

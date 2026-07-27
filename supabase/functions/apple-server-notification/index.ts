@@ -63,15 +63,6 @@ interface RenewalInfo {
   renewalDate?: number;
 }
 
-// ─── SKU → tier label mapping (must match useSubscription.ts) ────────
-const SKU_TIER_MAP: Record<string, string> = {
-  pluggd_tier_299: "Bronze",
-  pluggd_tier_499: "Silver",
-  pluggd_tier_999: "Gold",
-  pluggd_tier_1999: "Platinum",
-  pluggd_tier_4999: "Diamond",
-};
-
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /** Map Apple notification type + subtype → fan_subscriptions status */
@@ -179,14 +170,7 @@ serve(async (req) => {
       appAccountToken,
     } = txInfo;
 
-    const tierName = SKU_TIER_MAP[productId] ?? null;
-    if (!tierName) throw new Error(`Unknown subscription product: ${productId}`);
     const newStatus = resolveStatus(notificationType, subtype);
-
-    console.log(
-      `[apple-notification] tx=${transactionId} original=${originalTransactionId} ` +
-        `product=${productId} tier=${tierName} status=${newStatus}`,
-    );
 
     // ── Log the notification ──
     await supabaseClient.from("apple_notification_log").insert({
@@ -206,9 +190,23 @@ serve(async (req) => {
       }
     });
 
-    // ── Find the fan_subscriptions record ──
+    // ── Resolve the verified product and subscription record ──
+    const { data: catalogueProduct, error: catalogueError } =
+      await supabaseClient
+        .from("membership_iap_products")
+        .select(
+          "id,creator_id,membership_tier_id,product_id,price_point_cents,currency,billing_period,status,membership_tiers(name)",
+        )
+        .eq("product_id", productId)
+        .eq("status", "active")
+        .maybeSingle();
+    if (catalogueError) {
+      throw new Error(`Membership catalogue lookup failed: ${catalogueError.message}`);
+    }
+
     // Strategy: match by original_transaction_id first (set during purchase),
-    // then fall back to appAccountToken (subscriber_id) + product_id
+    // then by appAccountToken + product. Shared legacy products are allowed only
+    // through an existing mapped subscription and never create new ownership.
     let subscriptionRecord: any = null;
 
     // Try by apple_original_transaction_id
@@ -226,10 +224,51 @@ serve(async (req) => {
         .from("fan_subscriptions")
         .select("id, fan_id, creator_id, status, apple_sku, tier_id, metadata")
         .eq("fan_id", appAccountToken)
-        .eq("metadata->>apple_sku", productId)
+        .eq("apple_sku", productId)
         .maybeSingle();
 
       subscriptionRecord = byToken;
+    }
+
+    if (!subscriptionRecord && catalogueProduct && appAccountToken) {
+      const tierName = catalogueProduct.membership_tiers?.name ??
+        "Creator membership";
+      const { data: created, error: createError } = await supabaseClient
+        .from("fan_subscriptions")
+        .upsert({
+          fan_id: appAccountToken,
+          creator_id: catalogueProduct.creator_id,
+          tier_id: catalogueProduct.membership_tier_id,
+          apple_sku: productId,
+          price_cents: catalogueProduct.price_point_cents,
+          currency: catalogueProduct.currency,
+          status: newStatus ?? "active",
+          current_period_end: expiresDate
+            ? new Date(expiresDate).toISOString()
+            : null,
+          last_payment_at:
+            notificationType === "DID_RENEW" ||
+              notificationType === "SUBSCRIBED"
+              ? new Date().toISOString()
+              : null,
+          metadata: {
+            apple_catalog_id: catalogueProduct.id,
+            apple_original_transaction_id: originalTransactionId,
+            apple_transaction_id: transactionId,
+            apple_sku: productId,
+            tier_name: tierName,
+            billing_period: catalogueProduct.billing_period,
+            platform: "ios",
+          },
+        }, { onConflict: "fan_id,creator_id" })
+        .select("id, fan_id, creator_id, status, apple_sku, tier_id, metadata")
+        .single();
+      if (createError) {
+        throw new Error(
+          `Verified membership reconciliation failed: ${createError.message}`,
+        );
+      }
+      subscriptionRecord = created;
     }
 
     if (!subscriptionRecord) {
@@ -250,6 +289,14 @@ serve(async (req) => {
         },
       );
     }
+
+    const tierName = catalogueProduct?.membership_tiers?.name ??
+      subscriptionRecord.metadata?.tier_name ??
+      "Creator membership";
+    console.log(
+      `[apple-notification] tx=${transactionId} original=${originalTransactionId} ` +
+        `product=${productId} tier=${tierName} status=${newStatus}`,
+    );
 
     // ── Update the subscription record ──
     if (newStatus) {

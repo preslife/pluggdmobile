@@ -1,5 +1,10 @@
 # PLUGGD iOS Consumer-First Rebuild Tasks
 
+> **Historical implementation log.** Its commerce decisions are superseded by
+> `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md`. In particular,
+> professional beat licences do not use credits and eligible real-world ticket
+> checkout is no longer categorically disabled.
+
 Date: 2026-05-14
 
 Primary repo: `/Users/apple/pluggd-mobile-workspace/pluggd-mobile`

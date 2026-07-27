@@ -19,10 +19,8 @@ import { useAuth } from '../../src/context/AuthProvider';
 import { selectionHaptic } from '../../src/design/haptics';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import {
-  SUBSCRIPTION_SKUS,
   useSubscription,
   type ActiveMembership,
-  type SubscriptionTier,
 } from '../../src/hooks/useSubscription';
 
 const TIER_COLORS: Record<string, string> = {
@@ -37,17 +35,6 @@ function tierAccent(label: string) {
   return TIER_COLORS[label] ?? '#ff6600';
 }
 
-function tierCaption(label: string) {
-  const captions: Record<string, string> = {
-    Bronze: 'Starter creator support',
-    Silver: 'Core creator support',
-    Gold: 'Premium creator access',
-    Platinum: 'Top-tier fan access',
-    Diamond: 'Highest supporter tier',
-  };
-  return captions[label] ?? 'Monthly creator membership';
-}
-
 function formatDate(value: string | null) {
   if (!value) return 'Renews through Apple';
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -59,7 +46,6 @@ export default function MyMembershipsScreen() {
   const theme = usePluggdTheme();
   const { user } = useAuth();
   const {
-    tiers,
     activeMemberships,
     restoreSubscriptions,
     refreshMemberships,
@@ -69,16 +55,6 @@ export default function MyMembershipsScreen() {
     clearError,
   } = useSubscription();
   const [refreshing, setRefreshing] = useState(false);
-
-  const visibleTiers = tiers.length
-    ? tiers
-    : SUBSCRIPTION_SKUS.map((sku, index) => ({
-        sku,
-        label: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'][index] ?? 'Membership',
-        price: ['£2.99/mo', '£4.99/mo', '£9.99/mo', '£19.99/mo', '£49.99/mo'][index] ?? 'Apple subscription',
-        localizedPrice: ['£2.99/mo', '£4.99/mo', '£9.99/mo', '£19.99/mo', '£49.99/mo'][index] ?? 'Apple subscription',
-        product: null,
-      }));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -187,7 +163,7 @@ export default function MyMembershipsScreen() {
           </Text>
           <View style={styles.heroStats}>
             <StatPill label="Active" value={`${activeMemberships.length}`} />
-            <StatPill label="Apple tiers" value={`${visibleTiers.length}`} />
+            <StatPill label="Billing" value="Apple" />
           </View>
         </View>
 
@@ -227,15 +203,6 @@ export default function MyMembershipsScreen() {
               </Text>
             </View>
           )}
-        </View>
-
-        <View style={styles.section}>
-          <SectionHead title="Apple subscription tiers" subtitle="The products available for creator memberships on iOS." />
-          <View style={styles.tierGrid}>
-            {visibleTiers.map((tier) => (
-              <TierCard key={tier.sku} tier={tier} />
-            ))}
-          </View>
         </View>
 
         <View style={[styles.reviewCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -298,21 +265,6 @@ function MembershipCard({ membership, onPress }: { membership: ActiveMembership;
   );
 }
 
-function TierCard({ tier }: { tier: SubscriptionTier }) {
-  const theme = usePluggdTheme();
-  const accent = tierAccent(tier.label);
-  return (
-    <View style={[styles.tierCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <View style={[styles.tierIcon, { backgroundColor: `${accent}20`, borderColor: `${accent}55` }]}>
-        <MaterialIcons name="star" size={20} color={accent} />
-      </View>
-      <Text style={[styles.tierTitle, { color: theme.colors.text }]}>{tier.label}</Text>
-      <Text style={[styles.tierPrice, { color: theme.colors.accent }]}>{tier.localizedPrice || tier.price}</Text>
-      <Text style={[styles.tierCaption, { color: theme.colors.textMuted }]} numberOfLines={2}>{tierCaption(tier.label)}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 18 },
@@ -367,12 +319,6 @@ const styles = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 999 },
   membershipStatus: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'capitalize' },
   membershipRenewal: { fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  tierGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tierCard: { width: '48.4%', minHeight: 136, borderRadius: 5, borderWidth: 1, padding: 13, gap: 7 },
-  tierIcon: { width: 42, height: 42, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  tierTitle: { fontSize: 17, lineHeight: 20, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  tierPrice: { fontSize: 14, lineHeight: 17, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  tierCaption: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
   reviewCard: { borderWidth: 1, borderRadius: 5, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
   reviewCopy: { flex: 1, gap: 4 },
   reviewTitle: { fontSize: 15, lineHeight: 18, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },

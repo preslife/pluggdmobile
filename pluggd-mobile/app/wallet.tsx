@@ -165,7 +165,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'PLUGGD credits',
-                '100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, fan interactions, and account purchases.',
+                '100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.',
               )
             }
           >
@@ -347,7 +347,7 @@ export default function WalletScreen() {
         >
           <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
           <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
-            100 credits = £1. Credits never expire and can be used for eligible unlocks, tips, gifts, and fan interactions.
+            100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
           </Text>
         </View>
 

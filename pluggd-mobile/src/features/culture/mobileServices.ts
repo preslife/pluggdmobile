@@ -1679,7 +1679,7 @@ export async function loadEventDetail(eventId: string) {
       ? safeList<any>((supabase as any).from('event_tickets').select('id,event_id,user_id,payment_status,created_at').eq('event_id', eventId).eq('user_id', userId))
       : Promise.resolve([]),
     userId
-      ? safeList<any>((supabase as any).from('ticket_orders').select('id,event_id,user_id,status,quantity,total_cents,qr_code_data,created_at').eq('event_id', eventId).eq('user_id', userId))
+      ? safeList<any>((supabase as any).from('ticket_orders').select('id,event_id,user_id,status,quantity,total_amount_cents,currency,completed_at,created_at,event_ticket_tiers(name)').eq('event_id', eventId).eq('user_id', userId).in('status', ['reserved', 'checkout_open', 'completed']))
       : Promise.resolve([]),
   ]);
 
@@ -2080,8 +2080,8 @@ export async function loadWalletTickets(): Promise<TicketWalletItem[]> {
   const userId = await getCurrentUserId();
   if (!userId) return [];
   const [tickets, orders] = await Promise.all([
-    safeList<any>((supabase as any).from('event_tickets').select('id,event_id,user_id,payment_status,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
-    safeList<any>((supabase as any).from('ticket_orders').select('id,event_id,user_id,status,quantity,total_cents,qr_code_data,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('event_tickets').select('id,event_id,user_id,ticket_order_id,ticket_tier_id,quantity,payment_status,status,issued_at,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('ticket_orders').select('id,event_id,user_id,status,quantity,total_amount_cents,currency,completed_at,created_at,event_ticket_tiers(name)').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
   ]);
 
   const eventIds = Array.from(new Set([...tickets, ...orders].map((item) => item.event_id).filter(Boolean)));
@@ -2096,32 +2096,42 @@ export async function loadWalletTickets(): Promise<TicketWalletItem[]> {
   const eventById = new Map(events.map((event) => [event.id, event]));
 
   return [
-    ...tickets.map<TicketWalletItem>((ticket) => {
+    ...tickets.filter((ticket) => !ticket.ticket_order_id || !orders.some((order) => order.id === ticket.ticket_order_id)).map<TicketWalletItem>((ticket) => {
       const event = eventById.get(ticket.event_id);
       return {
         id: ticket.id,
         source: 'event_tickets',
+        ticket_order_id: ticket.ticket_order_id ?? null,
         event_id: ticket.event_id,
         event_title: event?.title || 'Event ticket',
         event_image_url: event?.cover_image_url,
         venue: event?.location,
         starts_at: event?.starts_at,
-        status: ticket.payment_status || 'confirmed',
+        status: ticket.status || ticket.payment_status || 'confirmed',
+        quantity: ticket.quantity ?? null,
+        purchased_at: ticket.issued_at || ticket.created_at,
+        qr_code_data: null,
       };
     }),
     ...orders.map<TicketWalletItem>((order) => {
       const event = eventById.get(order.event_id);
+      const issuedTicket = tickets.find((ticket) => ticket.ticket_order_id === order.id);
       return {
         id: order.id,
         source: 'ticket_orders',
+        ticket_order_id: order.id,
         event_id: order.event_id,
         event_title: event?.title || 'Event ticket',
         event_image_url: event?.cover_image_url,
         venue: event?.location,
         starts_at: event?.starts_at,
         status: order.status || 'confirmed',
-        ticket_type: order.quantity ? `${order.quantity} ticket${Number(order.quantity) === 1 ? '' : 's'}` : null,
-        qr_code_data: order.qr_code_data || null,
+        ticket_type: (Array.isArray(order.event_ticket_tiers) ? order.event_ticket_tiers[0]?.name : order.event_ticket_tiers?.name) || null,
+        quantity: order.quantity ?? null,
+        total_amount_cents: order.total_amount_cents ?? null,
+        currency: order.currency ?? null,
+        purchased_at: order.completed_at || order.created_at,
+        qr_code_data: null,
       };
     }),
   ];
@@ -2186,14 +2196,18 @@ export async function toggleSavedContent(kind: SavedContentKind, id: string) {
 export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const userId = await getCurrentUserId();
   if (!userId) return { saved: [], purchases: [], tickets: [], entitlements: [] };
-  const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, tickets] = await Promise.all([
+  const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, tickets] = await Promise.all([
     safeList<any>((supabase as any).from('favorites').select('id,beat_id,release_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('saved_content').select('id,content_type,content_id,metadata,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100)),
     safeList<any>((supabase as any).from('event_rsvps').select('id,event_id,status,created_at,updated_at').eq('user_id', userId).in('status', ['interested', 'going']).order('updated_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('community_members').select('id,community_id,status,joined_at,last_active_at').eq('user_id', userId).eq('status', 'active').order('last_active_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('user_follows').select('id,following_id,created_at').eq('follower_id', userId).order('created_at', { ascending: false }).limit(50)),
-    safeList<any>((supabase as any).from('release_purchases').select('id,release_id,status,amount_paid,purchased_at').or(`user_id.eq.${userId},purchaser_id.eq.${userId}`).order('purchased_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('release_purchases').select('id,release_id,status,amount_paid,purchased_at,paid_at,receipt_pdf_url,download_expires_at').or(`user_id.eq.${userId},purchaser_id.eq.${userId}`).order('purchased_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('sample_pack_purchases').select('id,sample_pack_id,amount_paid,purchased_at,download_url').eq('user_id', userId).order('purchased_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('purchases').select('id,beat_id,status,amount,license_type,license_pdf_url,created_at').eq('buyer_id', userId).order('created_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('licensing_contracts').select('id,beat_id,status,license_fee,contract_pdf_url,transaction_id,signed_at,created_at').eq('artist_id', userId).order('created_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('fan_subscriptions').select('id,creator_id,tier_id,apple_sku,status,current_period_end,last_payment_at,created_at,updated_at,membership_tiers(name)').eq('fan_id', userId).order('updated_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('external_checkout_sessions').select('id,resource_id,status,quantity,amount_cents,currency,provider_metadata,pricing_snapshot,completed_at,created_at').eq('user_id', userId).eq('purchase_kind', 'physical_merch').order('created_at', { ascending: false }).limit(50)),
     loadWalletTickets(),
   ]);
 
@@ -2204,7 +2218,12 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     return groups;
   }, {});
 
-  const beatIds = Array.from(new Set([...favorites.map((item) => item.beat_id).filter(Boolean), ...(genericByType.beat ?? []).map((item) => item.content_id).filter(Boolean)]));
+  const beatIds = Array.from(new Set([
+    ...favorites.map((item) => item.beat_id).filter(Boolean),
+    ...(genericByType.beat ?? []).map((item) => item.content_id).filter(Boolean),
+    ...beatPurchases.map((item) => item.beat_id).filter(Boolean),
+    ...licensingContracts.map((item) => item.beat_id).filter(Boolean),
+  ]));
   const favoriteReleaseIds = favorites.map((item) => item.release_id).filter(Boolean);
   const releaseIds = Array.from(new Set([...favoriteReleaseIds, ...releasePurchases.map((item) => item.release_id).filter(Boolean)]));
   const genericReleaseIds = Array.from(new Set([...(genericByType.release ?? []).map((item) => item.content_id).filter(Boolean), ...(genericByType.mix ?? []).map((item) => item.content_id).filter(Boolean)]));
@@ -2213,9 +2232,27 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const videoIds = (genericByType.video ?? []).map((item) => item.content_id).filter(Boolean);
   const eventIds = Array.from(new Set([...eventRsvps.map((item) => item.event_id).filter(Boolean), ...(genericByType.event ?? []).map((item) => item.content_id).filter(Boolean)]));
   const communityIds = Array.from(new Set([...memberships.map((item) => item.community_id).filter(Boolean), ...(genericByType.community ?? []).map((item) => item.content_id).filter(Boolean)]));
-  const followedIds = Array.from(new Set([...follows.map((item) => item.following_id).filter(Boolean), ...(genericByType.profile ?? []).map((item) => item.content_id).filter(Boolean)]));
+  const followedIds = Array.from(new Set([
+    ...follows.map((item) => item.following_id).filter(Boolean),
+    ...(genericByType.profile ?? []).map((item) => item.content_id).filter(Boolean),
+    ...fanSubscriptions.map((item) => item.creator_id).filter(Boolean),
+  ]));
+  const merchSource = (session: any) =>
+    session.provider_metadata?.product_source || session.pricing_snapshot?.product_source || 'store_products';
+  const merchStoreProductIds = Array.from(new Set(
+    merchCheckoutSessions
+      .filter((session) => merchSource(session) !== 'creator_merchandise')
+      .map((item) => item.resource_id)
+      .filter(Boolean),
+  ));
+  const merchCreatorProductIds = Array.from(new Set(
+    merchCheckoutSessions
+      .filter((session) => merchSource(session) === 'creator_merchandise')
+      .map((item) => item.resource_id)
+      .filter(Boolean),
+  ));
 
-  const [beats, releases, genericReleases, samplePacks, genericSamplePacks, videos, events, communities, profiles] = await Promise.all([
+  const [beats, releases, genericReleases, samplePacks, genericSamplePacks, videos, events, communities, profiles, merchProducts, creatorMerchProducts] = await Promise.all([
     beatIds.length
       ? safeList<BeatItem>((supabase as any).from('beats').select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at').in('id', beatIds))
       : Promise.resolve([]),
@@ -2243,6 +2280,12 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     followedIds.length
       ? safeList<ProfileItem>((supabase as any).from('profiles').select('id,user_id,username,full_name,avatar_url,bio,profile_type,user_type,is_creator,is_verified,city').in('user_id', followedIds))
       : Promise.resolve([]),
+    merchStoreProductIds.length
+      ? safeList<any>((supabase as any).from('store_products').select('id,title,image_url,product_type').in('id', merchStoreProductIds))
+      : Promise.resolve([]),
+    merchCreatorProductIds.length
+      ? safeList<any>((supabase as any).from('creator_merchandise').select('id,title,image_url,product_type').in('id', merchCreatorProductIds))
+      : Promise.resolve([]),
   ]);
 
   const beatById = new Map(beats.map((item) => [item.id, item]));
@@ -2254,6 +2297,9 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const eventById = new Map(events.map((item) => [item.id, item]));
   const communityById = new Map(communities.map((item) => [item.id, item]));
   const profileById = new Map(profiles.map((item) => [item.user_id, item]));
+  const merchProductById = new Map(
+    [...merchProducts, ...creatorMerchProducts].map((item) => [item.id, item]),
+  );
 
   const saved = [
     ...favorites
@@ -2428,8 +2474,12 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         title: release?.title || 'Purchased release',
         subtitle: release?.artist || purchase.status || 'Release',
         imageUrl: release?.cover_art_url,
-        route: `/release/${purchase.release_id}`,
+        route: `/commerce/order?id=${purchase.id}&kind=release_unlock`,
         source: 'release_purchases',
+        status: purchase.status || 'pending',
+        acquiredAt: purchase.paid_at || purchase.purchased_at,
+        documentAvailable: Boolean(purchase.receipt_pdf_url),
+        downloadAvailable: purchase.status === 'completed',
       };
     }),
     ...samplePackPurchases.map<SavedContentItem>((purchase) => {
@@ -2442,6 +2492,85 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         imageUrl: pack?.cover_art_url,
         route: `/sample-pack/${purchase.sample_pack_id}`,
         source: 'sample_pack_purchases',
+        status: 'available',
+        acquiredAt: purchase.purchased_at,
+        downloadAvailable: Boolean(purchase.download_url),
+      };
+    }),
+    ...beatPurchases.map<SavedContentItem>((purchase) => {
+      const beat = beatById.get(purchase.beat_id);
+      const complete = ['completed', 'active', 'paid'].includes(String(purchase.status || 'completed').toLowerCase());
+      return {
+        id: purchase.id,
+        kind: 'beat_license',
+        title: beat?.title || 'Beat licence',
+        subtitle: `${purchase.license_type || 'Professional licence'} · ${purchase.status || 'completed'}`,
+        imageUrl: beat?.image_url,
+        route: `/commerce/order?id=${purchase.id}&kind=beat_license`,
+        source: 'purchases',
+        status: purchase.status || 'completed',
+        acquiredAt: purchase.created_at,
+        documentAvailable: Boolean(purchase.license_pdf_url),
+        // Professional beat deliverables are consumed off-app and are delivered
+        // through the web account/email, not downloaded inside the iOS app.
+        downloadAvailable: false,
+      };
+    }),
+    ...licensingContracts.filter((contract) => {
+      const complete = ['signed', 'completed', 'active', 'paid'].includes(String(contract.status || '').toLowerCase());
+      return !complete || !beatPurchases.some((purchase) => purchase.beat_id === contract.beat_id);
+    }).map<SavedContentItem>((contract) => {
+      const beat = beatById.get(contract.beat_id);
+      const complete = ['signed', 'completed', 'active', 'paid'].includes(String(contract.status || '').toLowerCase());
+      return {
+        id: contract.id,
+        kind: 'beat_license',
+        title: beat?.title || 'Beat licence',
+        subtitle: `${beat?.producer_name || 'Producer'} · ${contract.status || 'pending'}`,
+        imageUrl: beat?.image_url,
+        route: `/commerce/order?id=${contract.id}&kind=beat_license`,
+        source: 'licensing_contracts',
+        status: contract.status || 'pending',
+        acquiredAt: contract.signed_at || contract.created_at,
+        documentAvailable: Boolean(contract.contract_pdf_url),
+        downloadAvailable: false,
+      };
+    }),
+    ...fanSubscriptions.map<SavedContentItem>((subscription) => {
+      const creator = profileById.get(subscription.creator_id);
+      const tierRelation = Array.isArray(subscription.membership_tiers)
+        ? subscription.membership_tiers[0]
+        : subscription.membership_tiers;
+      const tierName = tierRelation?.name || 'Creator membership';
+      const creatorName = creator?.display_name || creator?.full_name || creator?.username || 'Creator';
+      return {
+        id: subscription.id,
+        kind: 'creator_membership',
+        title: creatorName,
+        subtitle: `${tierName} · ${subscription.status || 'pending'}`,
+        imageUrl: creator?.avatar_url,
+        route: `/membership/${subscription.creator_id}`,
+        source: 'fan_subscriptions',
+        status: subscription.status || 'pending',
+        acquiredAt: subscription.last_payment_at || subscription.created_at,
+        documentAvailable: false,
+        downloadAvailable: false,
+      };
+    }),
+    ...merchCheckoutSessions.map<SavedContentItem>((session) => {
+      const product = merchProductById.get(session.resource_id);
+      return {
+        id: session.id,
+        kind: 'physical_merch',
+        title: product?.title || 'Merchandise order',
+        subtitle: `${session.quantity || 1} item${Number(session.quantity) === 1 ? '' : 's'} · ${session.status || 'pending'}`,
+        imageUrl: product?.image_url,
+        route: `/commerce/order?id=${session.id}&kind=physical_merch`,
+        source: 'external_checkout_sessions',
+        status: session.status || 'pending',
+        acquiredAt: session.completed_at || session.created_at,
+        documentAvailable: false,
+        downloadAvailable: false,
       };
     }),
   ];
@@ -2449,9 +2578,18 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const entitlements = [
     ...purchases.map<WalletEntitlementItem>((item) => ({
       id: item.id,
-      kind: item.kind === 'sample_pack' ? 'sample_pack' : 'release',
+      kind: item.kind === 'sample_pack'
+        ? 'sample_pack'
+        : item.kind === 'beat_license'
+          ? 'beat'
+          : item.kind === 'creator_membership'
+            ? 'creator_membership'
+          : item.kind === 'physical_merch'
+            ? 'physical_merch'
+            : 'release',
       title: item.title,
-      status: 'available',
+      status: item.status || 'available',
+      acquired_at: item.acquiredAt,
       route: item.route,
     })),
     ...tickets.map<WalletEntitlementItem>((ticket) => ({

@@ -26,17 +26,31 @@ export default function BeatDetailScreen() {
   const [beat, setBeat] = useState<BeatItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [licenseOptions, setLicenseOptions] = useState<Array<{
+    id: string;
+    license_type: string;
+    price: number;
+  }>>([]);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      const { data, error } = await supabase
-        .from('beats')
-        .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
-        .eq('id', id)
-        .maybeSingle();
+      const [{ data, error }, { data: options }] = await Promise.all([
+        supabase
+          .from('beats')
+          .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
+          .eq('id', id)
+          .maybeSingle(),
+        supabase
+          .from('licensing_options')
+          .select('id,license_type,price')
+          .eq('beat_id', id)
+          .eq('is_available', true)
+          .order('price', { ascending: true }),
+      ]);
       if (mounted) {
         setBeat(error ? null : (data as BeatItem | null));
+        setLicenseOptions((options ?? []) as Array<{ id: string; license_type: string; price: number }>);
         setLoading(false);
       }
     };
@@ -47,12 +61,6 @@ export default function BeatDetailScreen() {
   }, [id]);
 
   const track = beat ? toTrack(beat, 'beat') : null;
-
-  const licenseEntries = Array.isArray(beat?.available_licenses)
-    ? beat.available_licenses
-    : beat?.license_prices && typeof beat.license_prices === 'object'
-      ? Object.entries(beat.license_prices as Record<string, unknown>).map(([label, value]) => ({ label, value }))
-      : [];
 
   const saveBeat = async () => {
     if (!beat || saving) return;
@@ -155,24 +163,39 @@ export default function BeatDetailScreen() {
             </View>
 
             <View style={styles.licenseCard}>
-              <Text style={styles.cardTitle}>Licensing</Text>
-              {licenseEntries.length > 0 ? (
+              <Text style={styles.licenseEyebrow}>PROFESSIONAL USE</Text>
+              <Text style={styles.cardTitle}>Choose the rights your project needs.</Text>
+              <Text style={styles.cardBody}>
+                Every tier is priced and validated by PLUGGD. You will review usage rights, restrictions, files, territory, term and licence terms before payment.
+              </Text>
+              {licenseOptions.length > 0 ? (
                 <View style={styles.licenseList}>
-                  {licenseEntries.slice(0, 4).map((entry: any, index) => (
-                    <View key={`${entry?.label || entry?.type || index}`} style={styles.licenseRow}>
-                      <Text style={styles.licenseName}>{String(entry?.label || entry?.type || `License ${index + 1}`).replace(/_/g, ' ')}</Text>
-                      <Text style={styles.licensePrice}>{typeof entry?.value === 'number' ? formatGBP(entry.value) : typeof entry?.price === 'number' ? formatGBP(entry.price) : 'Available'}</Text>
-                    </View>
+                  {licenseOptions.map((option, index) => (
+                    <Pressable
+                      key={option.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Review ${option.license_type.replace(/_/g, ' ')} licence, ${formatGBP(option.price)}`}
+                      style={styles.licenseRow}
+                      onPress={() => router.push({
+                        pathname: '/commerce/license-preview',
+                        params: { beatId: beat.id, licenseOptionId: option.id },
+                      } as any)}
+                    >
+                      <Text style={styles.licenseIndex}>{String(index + 1).padStart(2, '0')}</Text>
+                      <View style={styles.licenseCopy}>
+                        <Text style={styles.licenseName}>{option.license_type.replace(/_/g, ' ')}</Text>
+                        <Text style={styles.licenseHint}>Review rights and licence agreement</Text>
+                      </View>
+                      <Text style={styles.licensePrice}>{formatGBP(option.price)}</Text>
+                      <MaterialIcons name="arrow-forward" size={18} color={PLUGGD_ORANGE} />
+                    </Pressable>
                   ))}
                 </View>
               ) : (
                 <Text style={styles.cardBody}>
-                  Professional beat licensing is for tracks, campaigns, and projects you make outside PLUGGD. Review the available license types, save the beat, or share it with collaborators before you commit.
+                  This producer has not published a licence tier for this beat. Save it to your library and check back later.
                 </Text>
               )}
-              <Pressable accessibilityRole="button" accessibilityLabel="Save beat" accessibilityState={{ busy: saving }} style={styles.licenseButton} onPress={saveBeat} disabled={saving}>
-                <Text style={styles.licenseButtonText}>{saving ? 'Saving' : 'Save Beat'}</Text>
-              </Pressable>
             </View>
           </>
         ) : null}
@@ -230,12 +253,14 @@ const styles = StyleSheet.create({
   quickActionButton: { minHeight: 48, flex: 1, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   licenseCard: { marginTop: 28, borderTopWidth: 1, borderColor: '#2B2723', paddingTop: 18 },
-  cardTitle: { color: '#FFFFFF', fontSize: 19, fontFamily: pluggdFonts.displayBold },
+  licenseEyebrow: { color: PLUGGD_ORANGE, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  cardTitle: { color: '#FFFFFF', fontSize: 23, lineHeight: 28, fontFamily: pluggdFonts.displayBold, marginTop: 7 },
   cardBody: { color: '#B8B8B8', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
-  licenseList: { marginTop: 10 },
-  licenseRow: { minHeight: 48, borderBottomWidth: 1, borderColor: '#2B2723', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  licenseName: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'capitalize' },
+  licenseList: { marginTop: 16, borderTopWidth: 1, borderColor: '#2B2723' },
+  licenseRow: { minHeight: 70, borderBottomWidth: 1, borderColor: '#2B2723', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  licenseIndex: { width: 22, color: '#716961', fontSize: 9, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  licenseCopy: { flex: 1, minWidth: 0 },
+  licenseName: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'capitalize' },
+  licenseHint: { color: '#8E8782', fontSize: 11, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
   licensePrice: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  licenseButton: { marginTop: 16, height: 50, borderRadius: 5, backgroundColor: '#21130E', borderWidth: 1, borderColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
-  licenseButtonText: { color: PLUGGD_ORANGE, fontSize: 15, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
 });

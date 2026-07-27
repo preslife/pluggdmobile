@@ -66,12 +66,8 @@ export default function SamplePackDetailScreen() {
 
     if (price > 0) {
       Alert.alert(
-        'Use PLUGGD credits',
-        'Add credits in Wallet, then return here to unlock eligible sample packs.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
-        ],
+        'Preview only on iPhone',
+        'Paid digital sample-pack purchasing is not available in this version of the iOS app. You can still audition every published preview and save the pack for later.',
       );
       return;
     }
@@ -167,7 +163,7 @@ export default function SamplePackDetailScreen() {
               </Pressable>
               <Pressable style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
                 {claiming ? <ActivityIndicator color={PLUGGD_ORANGE} /> : <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />}
-                <Text style={styles.secondaryButtonText}>{pack.price ? 'Use credits' : 'Claim pack'}</Text>
+                <Text style={styles.secondaryButtonText}>{pack.price ? 'Preview only' : 'Claim free pack'}</Text>
               </Pressable>
             </View>
 

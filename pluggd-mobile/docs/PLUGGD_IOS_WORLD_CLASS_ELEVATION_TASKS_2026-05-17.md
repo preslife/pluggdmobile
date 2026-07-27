@@ -1,5 +1,9 @@
 # PLUGGD iOS World-Class Elevation Tasks
 
+> **Historical task sheet.** Its commerce checklist is superseded by
+> `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md` and the current App
+> Store release checklist.
+
 Date: 2026-05-17  
 Repo: `/Users/apple/pluggd-mobile-workspace/pluggd-mobile`  
 Read-only reference: `/Users/apple/PLUGGD_NEW`

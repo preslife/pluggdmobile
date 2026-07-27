@@ -1,5 +1,9 @@
 # PLUGGD iOS World-Class Gap Report
 
+> **Historical audit.** Commerce recommendations in this report are superseded
+> by `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md`. Do not restore its
+> all-IAP beat assumption or its unconditional external-link prohibition.
+
 Date: 2026-05-14  
 Primary repo: `/Users/apple/pluggd-mobile-workspace/pluggd-mobile`  
 Reference-only repo: `/Users/apple/PLUGGD_NEW`

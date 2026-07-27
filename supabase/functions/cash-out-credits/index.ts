@@ -1,239 +1,150 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createSystemLogger, generateCorrelationId } from "../_shared/systemLog.ts";
-import { recordWalletTransaction } from "../_shared/walletTransactions.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
-
-const CREDITS_PER_GBP = 100;
-
-interface LedgerErrorNormalization {
-  status: number;
-  body: Record<string, unknown>;
-  logMeta: Record<string, unknown>;
-}
-
-const normalizeLedgerError = (
-  message: string | null | undefined,
-  complianceMeta: Record<string, unknown>,
-): LedgerErrorNormalization => {
-  if (message?.includes("WALLET_BALANCE_NEGATIVE")) {
-    return {
-      status: 409,
-      body: {
-        error: "Cash-out is blocked because the wallet balance would drop below zero.",
-        code: "WALLET_BALANCE_NEGATIVE",
-        compliance_block: true,
-      },
-      logMeta: { reason: "balance_negative", message, ...complianceMeta },
-    };
-  }
-
-  return {
-    status: 500,
-    body: {
-      error: "Unable to record cash-out request.",
-      code: "LEDGER_INSERT_FAILED",
-    },
-    logMeta: { reason: "unknown", message, ...complianceMeta },
-  };
-};
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  const supabaseClient = createClient(
-    supabaseUrl,
-    supabaseServiceRoleKey,
-    { auth: { persistSession: false } },
-  );
-
-  let rawPayload: Record<string, unknown> = {};
-  try {
-    rawPayload = await req.json();
-  } catch {
-    rawPayload = {};
-  }
-
-  const amountCredits = typeof rawPayload?.amount_credits === "number"
-    ? (rawPayload.amount_credits as number)
-    : undefined;
-  const requestCorrelationId =
-    (typeof rawPayload?.correlationId === "string" ? (rawPayload.correlationId as string) : undefined) ??
-    req.headers.get("x-correlation-id") ??
-    generateCorrelationId();
-
-  const logger = createSystemLogger(supabaseClient, {
-    component: "cash_out_credits",
-    feature: "wallet",
-    correlationId: requestCorrelationId,
-    message: "Wallet cash-out request",
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-  let userId: string | null = null;
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    await logger.info("cash_out_request_received", {
-      amount_credits: amountCredits,
-    });
+    const authorization = req.headers.get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const service = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const { data: { user }, error: authError } = await service.auth.getUser(
+      authorization.slice(7),
+    );
+    if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    userId = user.id;
-
-    await logger.info("cash_out_user_authenticated", {
-      user_id: user.id,
-    });
-
-    if (!amountCredits || amountCredits < 1000) {
-      throw new Error("Minimum cash-out is 1,000 credits (£10)");
+    const body = await req.json();
+    const amountCredits = Number(body.amount_credits);
+    const requestId = typeof body.request_id === "string"
+      ? body.request_id.trim()
+      : "";
+    if (
+      !Number.isSafeInteger(amountCredits) || amountCredits < 1000 ||
+      requestId.length < 8
+    ) {
+      return json({
+        error: "A minimum of 1,000 credits and a request ID are required",
+      }, 400);
     }
 
-    const { data: balanceData, error: balanceError } = await supabaseClient.rpc("get_wallet_balance", {
-      p_user_id: user.id,
-    });
-    if (balanceError) throw new Error(`Balance check failed: ${balanceError.message}`);
-
-    const balance = balanceData as any;
-    if (balance.available_credits < amountCredits) {
-      throw new Error("Insufficient available credits");
-    }
-
-    await logger.info("cash_out_balance_validated", {
-      user_id: user.id,
-      available_credits: balance.available_credits,
-      amount_credits: amountCredits,
-    });
-
-    const { data: stripeAccount, error: stripeError } = await supabaseClient
+    const { data: stripeAccount } = await service
       .from("producer_stripe_accounts")
-      .select("*")
+      .select("stripe_account_id,onboarding_complete,payouts_enabled")
       .eq("user_id", user.id)
-      .single();
-    if (stripeError || !stripeAccount) {
-      throw new Error("Stripe Connect account not found. Please set up your payout account first.");
+      .maybeSingle();
+    if (
+      !stripeAccount?.stripe_account_id ||
+      !stripeAccount.onboarding_complete ||
+      !stripeAccount.payouts_enabled
+    ) {
+      return json({
+        error: "Complete Stripe Connect onboarding before requesting a payout.",
+      }, 409);
     }
 
-    if (!stripeAccount.onboarding_complete || !stripeAccount.payouts_enabled) {
-      throw new Error("Stripe Connect account not fully set up for payouts");
+    const { data: tier } = await service.rpc("get_user_tier_limits", {
+      user_id: user.id,
+    });
+    const commissionRate = Number(tier?.commission_rate ?? 15);
+    const idempotencyKey = `credit-cashout:${user.id}:${requestId}`;
+    const { data: reserved, error: reserveError } = await service.rpc(
+      "reserve_mobile_credit_cashout",
+      {
+        p_user_id: user.id,
+        p_amount_credits: amountCredits,
+        p_commission_rate: commissionRate,
+        p_idempotency_key: idempotencyKey,
+      },
+    );
+    if (reserveError) {
+      const status = reserveError.message?.includes("Insufficient") ? 409 : 400;
+      return json({
+        error: status === 409
+          ? "Insufficient available credits"
+          : "Cash-out request could not be reserved",
+      }, status);
+    }
+    if (reserved?.status === "completed") {
+      return json({
+        success: true,
+        requestId: reserved.request_id,
+        status: "completed",
+      });
     }
 
-    const { data: tierData, error: tierError } = await supabaseClient.rpc("get_user_tier_limits", {
-      user_id: user.id,
+    await service.from("credit_cashout_requests").update({
+      status: "processing",
+      failure_reason: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", reserved.request_id);
+
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
+      apiVersion: "2023-10-16",
     });
-    if (tierError) throw new Error(`Tier check failed: ${tierError.message}`);
-
-    const commissionRate = (tierData as any)?.commission_rate || 15.0;
-
-    const grossAmountPence = Math.round((amountCredits / CREDITS_PER_GBP) * 100);
-    const commissionAmountPence = Math.round(grossAmountPence * (commissionRate / 100));
-    const netAmountPence = grossAmountPence - commissionAmountPence;
-
-    await logger.info("cash_out_amounts_calculated", {
-      user_id: user.id,
-      amount_credits: amountCredits,
-      gross_amount_pence: grossAmountPence,
-      commission_amount_pence: commissionAmountPence,
-      net_amount_pence: netAmountPence,
-      commission_rate: commissionRate,
-    });
-
-    const complianceMeta = {
-      event: "cash_out_request",
-      actor_user_id: user.id,
-      occurred_at: new Date().toISOString(),
-      amount_credits: amountCredits,
-      gross_amount_pence: grossAmountPence,
-      commission_amount_pence: commissionAmountPence,
-      net_amount_pence: netAmountPence,
-      available_before: balance.available_credits,
-      available_after: balance.available_credits - amountCredits,
-    } as Record<string, unknown>;
-
     try {
-      await recordWalletTransaction(
-        supabaseClient,
-        {
-          userId: user.id,
-          amountCredits: -amountCredits,
-          kind: "convert_cashout",
-          refType: "cashout",
-          meta: {
-            gross_amount_pence: grossAmountPence,
-            commission_amount_pence: commissionAmountPence,
-            net_amount_pence: netAmountPence,
-            commission_rate: commissionRate,
-            compliance: complianceMeta,
-          },
+      const transfer = await stripe.transfers.create({
+        amount: Number(reserved.net_amount_cents),
+        currency: "gbp",
+        destination: stripeAccount.stripe_account_id,
+        description: "PLUGGD creator support payout",
+        metadata: {
+          user_id: user.id,
+          cashout_request_id: reserved.request_id,
+          source: "ios_credits",
         },
-        { logger, correlationId: requestCorrelationId },
-      );
-    } catch (ledgerError: any) {
-      const normalized = normalizeLedgerError(
-        typeof ledgerError?.message === "string" ? ledgerError.message : null,
-        complianceMeta,
-      );
-      await logger.warn("cash_out_ledger_blocked", {
-        user_id: user.id,
-        ...normalized.logMeta,
+      }, { idempotencyKey: `credit-cashout:${reserved.request_id}` });
+      const { error: completionError } = await service
+        .from("credit_cashout_requests").update({
+          status: "completed",
+          stripe_transfer_id: transfer.id,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", reserved.request_id);
+      if (completionError) {
+        throw new Error("Payout completed but reconciliation is pending");
+      }
+      return json({
+        success: true,
+        requestId: reserved.request_id,
+        status: "completed",
+        netAmountGbp: (Number(reserved.net_amount_cents) / 100).toFixed(2),
       });
-      return new Response(JSON.stringify({ ...normalized.body, correlationId: requestCorrelationId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: normalized.status,
-      });
-    }
-
-    const { error: payoutError } = await supabaseClient
-      .from("producer_payouts")
-      .insert({
-        producer_id: user.id,
-        amount_pence: netAmountPence,
-        commission_pence: commissionAmountPence,
+    } catch (error) {
+      await service.from("credit_cashout_requests").update({
+        status: "failed",
+        failure_reason: error instanceof Error ? error.message.slice(0, 500) : "Stripe transfer failed",
+        updated_at: new Date().toISOString(),
+      }).eq("id", reserved.request_id);
+      return json({
+        success: false,
+        requestId: reserved.request_id,
         status: "pending",
-        payout_type: "wallet_cashout",
-        from_credits: true,
-        created_at: new Date().toISOString(),
-      });
-
-    if (payoutError) throw new Error(`Payout record creation failed: ${payoutError.message}`);
-
-    await logger.info("cash_out_request_created", {
-      user_id: user.id,
-      net_amount_pence: netAmountPence,
-    });
-
-    return new Response(JSON.stringify({
-      success: true,
-      net_amount_gbp: (netAmountPence / 100).toFixed(2),
-      correlationId: requestCorrelationId,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+        error: "Payout is pending and can be retried safely.",
+      }, 202);
+    }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    await logger.error("cash_out_failed", error, {
-      user_id: userId,
-      amount_credits: amountCredits,
+    console.error("cash-out-credits failed", {
+      error: error instanceof Error ? error.message : String(error),
     });
-
-    return new Response(JSON.stringify({ error: errorMessage, code: "UNEXPECTED_ERROR", correlationId: requestCorrelationId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return json({ error: "Cash-out is unavailable" }, 500);
   }
 });

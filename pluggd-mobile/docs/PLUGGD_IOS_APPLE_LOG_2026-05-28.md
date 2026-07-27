@@ -2,6 +2,12 @@
 
 Last updated: 2026-05-28
 
+> **Superseded commerce checkpoint.** This file records the May 2026 Apple
+> setup audit and must not be used as the current membership or payment
+> architecture. The canonical source is
+> `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md`; the current Apple
+> setup record is `/docs/IOS_APPLE_SETUP_LOCKFILE.md`.
+
 ## Bundle ID
 
 Confirmed mobile bundle ID: `com.pluggd.mobile`

@@ -4,6 +4,16 @@ import { handleContractExecution } from '../contract-execution/handler.ts';
 describe('contract-execution handler', () => {
   const buildSupabaseMock = () => {
     const insertMock = vi.fn().mockResolvedValue({ error: null });
+    const signatureMaybeSingleMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    const signatureTypeEqMock = vi.fn(() => ({
+      maybeSingle: signatureMaybeSingleMock,
+    }));
+    const signatureSignerEqMock = vi.fn(() => ({ eq: signatureTypeEqMock }));
+    const signatureContractEqMock = vi.fn(() => ({ eq: signatureSignerEqMock }));
+    const signatureSelectMock = vi.fn(() => ({ eq: signatureContractEqMock }));
     const auditInsertMock = vi.fn().mockResolvedValue({ error: null });
     const finalizeUpdateEqMock = vi.fn().mockResolvedValue({ error: null });
     const selectAfterUpdateMock = vi.fn().mockResolvedValue({
@@ -34,6 +44,7 @@ describe('contract-execution handler', () => {
         producer_signature: null,
         artist_signature: null,
         signed_at: null,
+        status: 'pending',
       },
       error: null,
     });
@@ -50,6 +61,7 @@ describe('contract-execution handler', () => {
 
       if (table === 'contract_signatures') {
         return {
+          select: signatureSelectMock,
           insert: insertMock,
         };
       }
@@ -80,6 +92,7 @@ describe('contract-execution handler', () => {
       signatureUpdateEqMock,
       selectAfterUpdateMock,
       selectSingleMock,
+      signatureMaybeSingleMock,
     } as const;
   };
 
@@ -161,6 +174,7 @@ describe('contract-execution handler', () => {
         producer_signature: 'signed-producer',
         artist_signature: null,
         signed_at: null,
+        status: 'pending',
       },
       error: null,
     });

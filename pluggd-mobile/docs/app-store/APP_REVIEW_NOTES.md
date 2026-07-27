@@ -17,6 +17,10 @@ Recommended reviewer path:
 5. Open a Community post’s overflow menu to see Report and Block.
 6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.
 7. Open Wallet or a creator Membership to test StoreKit products and Restore Purchases.
+8. Open a published beat, choose a professional usage licence, review its terms
+   and continue to the reviewer-ready hosted checkout.
+9. Open a verified real-world event, choose a ticket tier and continue to the
+   reviewer-ready hosted ticket checkout.
 
 ## User-generated content safety
 
@@ -32,7 +36,35 @@ Recommended reviewer path:
 
 ## Purchases
 
-Digital credits and creator memberships use Apple In-App Purchase only. No Stripe, card or web checkout is exposed for digital content in the iOS app. The app includes Restore Purchases and a link to Apple subscription management. App Store Server Notification V2 and client StoreKit 2 transactions are cryptographically verified using Apple’s official server library before entitlements are granted.
+PLUGGD uses a category-specific hybrid commerce model:
+
+- Credit packs are Apple consumable in-app purchases. Credits do not expire and
+  can be used for release unlocks, tips and live gifts.
+- Creator memberships are Apple auto-renewable subscriptions. Every sellable
+  creator tier maps to its own App Store product.
+- Professional beat licences use hosted Stripe Checkout. The purchase grants
+  usage rights and professional files for creative work outside the app; credits
+  cannot purchase beat licences.
+- Eligible ticket checkout is limited to verified real-world events. Paid
+  virtual events are not routed through Stripe.
+- Physical merchandise may use hosted checkout. Paid digital sample packs and
+  downloads are not sold through external checkout in iOS v1.
+- Release access always has an Apple-backed credit unlock path. An optional
+  external release CTA is enabled in the United States storefront initially and
+  only in separately approved entitled storefronts thereafter.
+- Stripe Connect supports creator settlement and payouts; it is not an
+  alternative in-app digital unlock method.
+
+External actions are resolved by server-owned policy and fail closed when the
+storefront, entitlement or item classification cannot be confirmed. The app does
+not include the native Stripe SDK; eligible external purchases use secure hosted
+checkout and return to PLUGGD, where access is refreshed after the signed
+provider webhook completes.
+
+The app includes Restore Purchases and a link to Apple subscription management.
+App Store Server Notification V2 and client StoreKit 2 transactions are
+cryptographically verified using Apple's official server library before
+entitlements are granted.
 
 ## Account deletion
 

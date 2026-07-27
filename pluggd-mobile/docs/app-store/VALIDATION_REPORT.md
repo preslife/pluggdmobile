@@ -2,6 +2,12 @@
 
 Validated on 27 July 2026 from branch `codex/app-store-readiness`.
 
+> Historical checkpoint: this report predates the hybrid-commerce correction.
+> Its security and native-build results remain useful, but it is not evidence
+> that professional beat licensing, physical ticket checkout, unique
+> creator-tier subscriptions or storefront policy have passed. Replace it with a
+> fresh report after the hybrid-commerce release checklist is complete.
+
 ## Completed locally
 
 - Mobile release contracts, TypeScript and native dependency checks pass.
