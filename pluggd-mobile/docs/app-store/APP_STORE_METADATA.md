@@ -3,7 +3,7 @@
 ## App identity
 
 - Name: PLUGGD
-- Subtitle: Discover music beyond the algorithm
+- Subtitle: Music beyond the algorithm
 - Primary category: Music
 - Secondary category: Social Networking
 - Age rating target: 16+

@@ -14,7 +14,8 @@
 
 ## Production configuration
 
-- [ ] EAS project linked to the correct Expo organisation.
+- [ ] EAS project linked to the correct Expo organisation. The local CLI is not
+  signed in and `app.config.ts` has no EAS project ID.
 - [ ] Apple team and bundle ID `com.pluggd.mobile` confirmed; distribution certificate and provisioning profile still require archive validation.
 - [x] App Store Connect app record and numeric Apple App ID `6765738727` confirmed.
 - [x] Production Supabase URL and anon key are used by the production build; no service key is bundled in the app.
@@ -37,7 +38,8 @@
 - [ ] Every sellable creator membership tier has a unique Apple product ID and the expected creator subscription group.
 - [ ] Unprovisioned creator tiers remain browse-only and expose no fallback purchase CTA.
 - [ ] Products are approved or submitted with the app version and available in required storefronts.
-- [ ] App Store Server Notification V2 production and sandbox URLs point to `apple-server-notification`.
+- [x] App Store Server Notification V2 production and sandbox URLs point to
+  `apple-server-notification`.
 - [ ] Test notification succeeds and appears once in `apple_notification_log`.
 - [ ] Sandbox credit purchase grants exactly once.
 - [ ] Interrupted consumable completes after server verification.
@@ -69,20 +71,31 @@
 - [x] Sensitive-content defaults are safe for accounts without an age band.
 - [x] Data archive downloads through a private 24-hour signed URL.
 - [x] Account deletion requires recent authentication and removes the auth account.
-- [ ] Legal URLs resolve publicly and support@pluggd.fm is monitored.
+- [x] Support, privacy, terms and community-guidelines URLs resolve publicly.
+- [ ] `support@pluggd.fm` monitoring is confirmed.
 
 ## App Store Connect
 
-- [ ] Metadata copied from `APP_STORE_METADATA.md` and proofread.
+- [x] Version 1.0 promotional text, description, keywords, support URL,
+  marketing URL and copyright are saved in App Store Connect.
+- [x] App Information subtitle and Music / Social Networking categories are
+  saved and verified after a clean reload.
 - [ ] App Review account added securely in App Store Connect.
 - [ ] Review notes copied from `APP_REVIEW_NOTES.md` and updated with any special test state.
 - [ ] Reviewer account has access to one StoreKit membership, one professional beat licence test item and one verified real-world ticket test item.
-- [ ] App Privacy answers match `PRIVACY_LABEL_INVENTORY.md`.
-- [ ] Age rating answers match a 16+ community/music service.
+- [x] App Privacy answers match `PRIVACY_LABEL_INVENTORY.md`. All eight data
+  types and the privacy-policy URL were published after the account owner
+  confirmed Apple’s accuracy and compliance attestation.
+- [x] Age rating answers match a 16+ community/music service. Apple’s
+  questionnaire calculates 13+ from the content answers and applies the saved
+  16+ override required by PLUGGD’s Terms and signup gate.
 - [ ] Content rights register fully cleared.
 - [ ] Export compliance answered using `ITSAppUsesNonExemptEncryption=false`.
 - [ ] Screenshots captured from the final build and uploaded.
-- [ ] Agreements, tax and banking are active.
+- [x] Free Apps and Paid Apps agreements, bank account, tax forms and Digital
+  Services Act compliance are active.
+- [x] The app is configured as free and publicly available on app release in
+  all 175 App Store countries or regions.
 
 Current catalogue state: five credit consumables exist as App Store Connect
 drafts in every storefront. Their review copy now describes only release
@@ -102,3 +115,18 @@ sandbox verification remain required.
 - [ ] Camera, microphone, photos and notifications each ask only at point of use.
 - [ ] No placeholder copy, false claims, debug controls or nonfunctional buttons.
 - [ ] Product/legal sign-off recorded for professional beat licensing and real-world event classification.
+
+## Account and signing observations
+
+- [x] Legacy Apple key `35836M9T34` is absent from the Apple Developer key
+  list; only the replacement Sign in with Apple key remains.
+- [x] Temporary and obsolete Supabase CLI access tokens created during this
+  release session were deleted and verified absent.
+- [x] Revoked legacy private-key material was removed from
+  `/Users/apple/Documents/PLUGGD IOS.rtf`; the non-secret notes were preserved.
+- [ ] Install or create a valid Apple Development / Distribution signing
+  identity and provisioning profile. This Mac currently reports no valid code
+  signing identities.
+- [ ] Re-test native Sign in with Apple in a signed development or TestFlight
+  build on a device with an Apple account. The unsigned simulator build reaches
+  Apple’s consent flow but fails at the native authorization layer.

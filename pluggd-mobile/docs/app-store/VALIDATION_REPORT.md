@@ -48,29 +48,53 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 - Five consumable credit products exist as drafts with the expected IDs and
   credit values. Their review notes now restrict use to release unlocks, tips
   and live gifts. They are not yet submitted or sandbox-verified.
+- App Store Server Notification V2 production and sandbox URLs are configured
+  to the production `apple-server-notification` function. The notification
+  delivery test and idempotency evidence are still pending.
+- The version 1.0 promotional text, description, keywords, support URL,
+  marketing URL and copyright are saved. The subtitle has been shortened to
+  the valid 26-character `Music beyond the algorithm`; the Music / Social
+  Networking categories are saved and verified after reload.
+- App Privacy now contains the eight data types from the native manifest and
+  the public privacy-policy URL. Each type is linked to the account and not
+  used for tracking; Product Interaction is used for App Functionality and
+  Analytics. The account owner confirmed Apple’s accuracy and compliance
+  attestation and the answers are published.
+- The age-rating content responses calculate 13+. The saved 16+ override
+  matches PLUGGD’s Terms and signup gate.
+- The app has a free price schedule and is publicly available on app release
+  in all 175 App Store countries or regions.
+- Free Apps Agreement, Paid Apps Agreement, banking, tax forms and Digital
+  Services Act compliance are active.
+- The legacy Apple key `35836M9T34` is absent from the Developer key list, and
+  obsolete Supabase CLI tokens used during this audit were removed.
+- The revoked legacy private-key block was removed from
+  `/Users/apple/Documents/PLUGGD IOS.rtf` without deleting its non-secret
+  planning notes.
 
 ## Submission blockers still open
 
-1. Complete and verify App Store public metadata, review contact, reviewer
-   account, privacy answers, age rating, content-rights answers and export
-   compliance.
-2. Provision unique creator-tier auto-renewable subscription products and
+1. Finish the content-rights declaration only after the rights register has
+   retrievable evidence for every submitted asset.
+2. Complete the review contact, dedicated reviewer account, review notes and
+   release mode.
+3. Provision unique creator-tier auto-renewable subscription products and
    import the resulting product catalogue. Unprovisioned tiers must remain
    browse-only.
-3. Configure and test App Store Server Notification V2 in sandbox and
-   production, then exercise purchase, restore, renewal, expiry, refund and
-   revoke paths.
-4. Audit agreements, tax and banking and resolve the Apple membership renewal
-   payment-method warning.
-5. Produce a signed archive and TestFlight build, then complete device,
+4. Test App Store Server Notification V2 in sandbox and production, then
+   exercise purchase, restore, renewal, expiry, refund and revoke paths.
+5. Resolve the Apple Developer membership renewal payment-method warning.
+6. Sign in to or link the correct Expo account, or configure Xcode signing;
+   this Mac currently has no valid signing identity. Produce a signed archive
+   and TestFlight build, then complete device,
    accessibility, permission, offline and commerce-return testing.
-6. Capture and upload rights-cleared final App Store screenshots and select the
+7. Capture and upload rights-cleared final App Store screenshots and select the
    reviewed build.
-7. Revoke the legacy Apple private key exposed in
-   `/Users/apple/Documents/PLUGGD IOS.rtf`, replace any dependent secret, and
-   remove the plaintext copy.
-8. Finish the native Apple sign-in handoff after the account owner accepts the
-   displayed PLUGGD Terms and Privacy Policy.
+8. Re-test native Apple sign-in in a signed development or TestFlight build.
+   The account owner accepted the displayed PLUGGD Terms and Privacy Policy,
+   but the unsigned simulator app failed with Apple authentication error
+   `-7026`; the Mac has no valid signing identity and the simulator has no
+   usable Apple account.
 
 Do not submit or add the version for review until every unchecked item in
 `RELEASE_CHECKLIST.md` is complete.

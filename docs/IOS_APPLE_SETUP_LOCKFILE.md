@@ -17,9 +17,17 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
 - Bundle ID: `com.pluggd.mobile` - Verified from local app config and
   `pluggd-mobile/ios/Pluggd.xcodeproj/project.pbxproj`.
 - App Store Connect app name: `PLUGGD`.
-- App Store Connect SKU: confirm in App Store Connect before submission.
+- App Store Connect SKU: `com.pluggd.mobile`.
 - Apple Team: ROWSON GROUP LTD (`37X2468U5U`).
 - App Apple ID: `6765738727`.
+- App Store subtitle: `Music beyond the algorithm`.
+- Categories: Music (primary), Social Networking (secondary).
+- Age rating: saved 16+ override (content questionnaire calculated 13+).
+- Price: free.
+- Availability: public on app release in all 175 App Store countries or
+  regions.
+- App Privacy: published on 28 July 2026 with the eight data types recorded in
+  `pluggd-mobile/docs/app-store/PRIVACY_LABEL_INVENTORY.md`.
 - Associated capabilities seen locally:
   - Push/APNs entitlement in `pluggd-mobile/ios/Pluggd/Pluggd.entitlements`.
   - StoreKit/IAP product usage: `react-native-iap` in `pluggd-mobile/package.json`.
@@ -38,6 +46,14 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
   - Web domain: `qkwvqmubhyondemhasjp.supabase.co`.
   - Supabase Apple provider enabled for both client IDs on 28 July 2026.
   - Rotate the provider client secret before 24 January 2027.
+  - Only replacement key `YR9NGV4BVT` is present in Apple Developer; legacy key
+    `35836M9T34` is absent.
+  - The revoked legacy private-key block was removed from
+    `/Users/apple/Documents/PLUGGD IOS.rtf` on 28 July 2026; its non-secret
+    notes were preserved.
+  - The in-app Terms and Privacy consent was accepted in the simulator. Native
+    authorization must be re-tested in a properly signed build because the
+    current Mac has no valid signing identity.
 
 ## IAP credit packs
 
@@ -120,6 +136,11 @@ Backend function used for receipt validation:
 App Store Server Notifications handler:
 
 - `apple-server-notification` with `verify_jwt = false` in `supabase/config.toml`.
+- Production and sandbox App Store Server Notification V2 URLs both point to
+  the deployed production handler. The query credential is intentionally not
+  recorded here.
+- Apple’s test notification and the resulting single
+  `apple_notification_log` row remain to be verified.
 
 Supabase tables used for Apple transactions:
 
@@ -137,6 +158,14 @@ Hybrid-commerce foundation confirmed in production on 28 July 2026:
 
 Unique creator-tier Apple products still require provisioning and catalogue
 import before membership purchase controls may be enabled.
+
+App Store Connect business status verified on 28 July 2026:
+
+- Free Apps Agreement active.
+- Paid Apps Agreement active.
+- GBP bank account active.
+- Required United States tax forms active.
+- Digital Services Act trader compliance active.
 
 Related support:
 
