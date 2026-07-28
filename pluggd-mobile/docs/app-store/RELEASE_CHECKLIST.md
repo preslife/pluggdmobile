@@ -37,8 +37,10 @@
 ## StoreKit and server notifications
 
 - [x] Credit product IDs exactly match the five App Store Connect consumable drafts.
-- [ ] Every sellable creator membership tier has a unique Apple product ID and the expected creator subscription group.
-- [ ] Unprovisioned creator tiers remain browse-only and expose no fallback purchase CTA.
+- [x] Every currently active sellable creator membership tier has a unique
+  Apple product ID and the expected creator subscription group.
+- [x] Unprovisioned or non-active creator products remain browse-only and expose
+  no fallback purchase CTA.
 - [ ] Products are approved or submitted with the app version and available in required storefronts.
 - [x] App Store Server Notification V2 production and sandbox URLs point to
   `apple-server-notification`.
@@ -131,9 +133,11 @@ sandbox verification remain required.
   `PLUGGD App Store 2026` are installed. The Release archive and exported IPA
   pass strict signature verification with production APNs, Sign in with Apple,
   `get-task-allow=false` and the expected application identifier.
-- [ ] Upload the signed `1.0.0 (1)` IPA to App Store Connect and confirm that it
-  completes Apple processing in TestFlight. Local upload is currently waiting
-  on an App Store Connect upload credential or API-access approval.
+- [x] Upload the signed `1.0.0 (1)` IPA to App Store Connect. Apple accepted
+  delivery `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation or upload
+  errors on 28 July 2026.
+- [ ] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
+  as a TestFlight build. App Store Connect currently reports `Processing`.
 - [ ] Re-test native Sign in with Apple in a signed development or TestFlight
   build on a device with an Apple account. The unsigned simulator build reaches
   Apple’s consent flow but fails at the native authorization layer.

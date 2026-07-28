@@ -71,9 +71,14 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
   `get-task-allow=false`, `beta-reports-active=true` and no native Stripe SDK.
 - IPA SHA-256:
   `190ac7fdc322ec37e4f00e5f2e1d9425c4e8e113cc1041b8b372adc89053e752`.
-- App Store Connect API access is not yet enabled for the organization. Do not
-  record any future `.p8` contents here; keep upload credentials in Keychain or
-  another approved secret store only.
+- App Store Connect organization API access was approved on 28 July 2026.
+- App Store Connect issuer ID: `518dca2d-5479-4d96-8d4e-7872c6455f4b`.
+- Active Developer-role upload key: `PLUGGD TestFlight Upload`, key ID
+  `4Z23TZVP84`. Its private key is stored outside the repository with
+  owner-only permissions; never copy its contents into source or documentation.
+- The unusable one-time-download key `47JF3XF5UB` was revoked on 28 July 2026.
+- Apple accepted the `1.0.0 (1)` IPA for TestFlight processing on 28 July 2026.
+  Delivery UUID: `3a09f0ea-9a2f-47fb-8b93-973b7e48641e`.
 
 ## IAP credit packs
 
@@ -115,6 +120,17 @@ The production model is:
 Product IDs and group IDs are generated/provisioned operational data and must be
 exported from App Store Connect into the server catalogue. Do not maintain a
 global source allowlist of creator membership product IDs in the mobile bundle.
+
+Provisioned production catalogue as of 28 July 2026:
+
+- subscription group `Kxngdom Memberships` (`22271259`);
+- monthly product `com.pluggd.membership.kxngdom.vip.monthly` (Apple ID
+  `6795673482`) for the `VIP supporters` tier at USD 2.99;
+- English (U.K.) display metadata, worldwide availability and App Review notes
+  are saved in App Store Connect;
+- the server catalogue row is intentionally `provisioned`, not `active`, until
+  an accurate review screenshot and signed StoreKit sandbox verification are
+  complete. The app therefore keeps this tier browse-only.
 
 ## StoreKit / App Store Server API setup
 

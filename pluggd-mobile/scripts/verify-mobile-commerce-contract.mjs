@@ -26,6 +26,7 @@ const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
 const release = read('app/release/[id].tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const mobileServices = read('src/features/culture/mobileServices.ts');
 const packageJson = JSON.parse(read('package.json'));
 const adr = read('docs/PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md');
 const backendPolicy = readFileSync(backendPolicyPath, 'utf8');
@@ -169,6 +170,21 @@ assert.doesNotMatch(
   membership,
   /pluggd_tier_(?:299|499|999|1999|4999)/,
   'membership UI must not use shared price-point SKUs as creator identity',
+);
+assert.match(
+  membership,
+  /\.or\(`id\.eq\.\$\{creatorId\},user_id\.eq\.\$\{creatorId\}`\)/,
+  'membership routes must resolve both public profile IDs and creator account IDs',
+);
+assert.match(
+  membership,
+  /useSubscription\(\{\s*creatorId:\s*creatorUserId/,
+  'StoreKit catalogue lookup must use the resolved creator account ID',
+);
+assert.match(
+  mobileServices,
+  /from\('membership_tiers'\)[\s\S]*\.eq\('owner_type', 'profile'\)[\s\S]*\.eq\('owner_id', creatorId\)/,
+  'creator membership discovery must query the canonical membership tier owner columns',
 );
 
 assert.match(

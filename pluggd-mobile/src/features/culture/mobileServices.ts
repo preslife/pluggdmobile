@@ -1199,7 +1199,10 @@ export async function loadCreatorMemberships(creatorId: string): Promise<Members
       (supabase as any)
         .from('membership_tiers')
         .select('*')
-        .eq('creator_id', creatorId)
+        .eq('owner_type', 'profile')
+        .eq('owner_id', creatorId)
+        .eq('status', 'active')
+        .order('tier_order', { ascending: true })
         .limit(12),
     ),
     safeList<any>(
@@ -1212,12 +1215,12 @@ export async function loadCreatorMemberships(creatorId: string): Promise<Members
   ]);
   return [...tierRows, ...membershipRows].map((row) => ({
     id: row.id,
-    creator_id: row.creator_id || creatorId,
+    creator_id: row.creator_id || row.owner_id || creatorId,
     title: row.title || row.name || 'Membership',
     description: row.description || row.summary || null,
-    price_cents: row.price_cents ?? null,
+    price_cents: row.price_cents ?? row.price_monthly ?? null,
     currency: row.currency || 'GBP',
-    member_count: row.member_count ?? row.members_count ?? null,
+    member_count: row.member_count ?? row.members_count ?? row.current_members ?? null,
     is_member: Boolean(row.is_member),
     route: `/membership/${creatorId}`,
   }));

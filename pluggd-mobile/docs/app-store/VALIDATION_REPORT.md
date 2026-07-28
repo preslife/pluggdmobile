@@ -96,17 +96,19 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
    retrievable evidence for every submitted asset.
 2. Complete the review contact, dedicated reviewer account, review notes and
    release mode.
-3. Provision unique creator-tier auto-renewable subscription products and
-   import the resulting product catalogue. Unprovisioned tiers must remain
-   browse-only.
+3. Complete signed StoreKit sandbox validation and upload an accurate review
+   screenshot for the provisioned Kxngdom monthly membership, then promote its
+   server catalogue status from `provisioned` to `active`. The unique product,
+   creator subscription group, storefront metadata and fail-closed catalogue
+   row are already in place.
 4. Test App Store Server Notification V2 in sandbox and production, then
    exercise purchase, restore, renewal, expiry, refund and revoke paths.
 5. Resolve the Apple Developer membership renewal payment-method warning.
-6. Upload the completed signed IPA and confirm Apple processing in TestFlight.
-   Xcode has no App Store Connect account stored locally, and organization API
-   access is not yet enabled, so the automated upload path still requires an
-   approved upload credential. Then complete device, accessibility, permission,
-   offline and commerce-return testing.
+6. Confirm Apple finishes processing the uploaded `1.0.0 (1)` build. Apple
+   accepted delivery `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation
+   or upload errors on 28 July 2026; App Store Connect currently reports
+   `Processing`. Then complete device, accessibility, permission, offline and
+   commerce-return testing.
 7. Capture and upload rights-cleared final App Store screenshots and select the
    reviewed build.
 8. Re-test native Apple sign-in in the signed TestFlight build. The account

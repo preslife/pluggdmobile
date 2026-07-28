@@ -66,6 +66,7 @@ interface MembershipTier {
 
 interface CreatorProfile {
   id: string;
+  user_id: string | null;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
@@ -78,6 +79,7 @@ export default function CreatorMembershipScreen() {
   const theme = usePluggdTheme();
   const { creatorId } = useLocalSearchParams<{ creatorId: string }>();
   const { user } = useAuth();
+  const [creatorUserId, setCreatorUserId] = useState<string | null>(null);
   const {
     tiers: appleTiers,
     activeMemberships,
@@ -85,7 +87,7 @@ export default function CreatorMembershipScreen() {
     purchasing,
     error: subscriptionError,
     clearError,
-  } = useSubscription({ creatorId });
+  } = useSubscription({ creatorId: creatorUserId ?? '__creator_pending__' });
 
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
@@ -94,7 +96,7 @@ export default function CreatorMembershipScreen() {
 
   // Check if fan already subscribes to this creator
   const existingMembership = activeMemberships.find(
-    (m) => m.creator_id === creatorId
+    (m) => m.creator_id === creatorUserId
   );
 
   useEffect(() => {
@@ -107,18 +109,21 @@ export default function CreatorMembershipScreen() {
       // Fetch creator profile
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url, cover_image_url, bio')
-        .eq('id', creatorId)
+        .select('id, user_id, full_name, username, avatar_url, cover_image_url, bio')
+        .or(`id.eq.${creatorId},user_id.eq.${creatorId}`)
         .maybeSingle();
 
-      if (profileData) setCreator(profileData);
+      if (profileData) {
+        setCreator(profileData);
+        setCreatorUserId(profileData.user_id ?? creatorId);
+      }
 
       // Fetch published membership tiers for this creator
       const { data: tiersData, error: tiersErr } = await supabase
         .from('membership_tiers' as any)
         .select('id, name, slug, description, tier_order, price_monthly, price_yearly, features, color, emoji, image_url, current_members, max_members')
         .eq('owner_type', 'profile')
-        .eq('owner_id', creatorId)
+        .eq('owner_id', profileData?.id ?? creatorId)
         .eq('status', 'active')
         .order('tier_order', { ascending: true });
 
@@ -170,7 +175,7 @@ export default function CreatorMembershipScreen() {
 
       const policy = await resolveCommercePolicy({
         kind: 'creator_membership',
-        itemId: creatorId,
+        itemId: creatorUserId ?? creatorId,
         optionId: tier.id,
         classification: 'digital',
       });
@@ -193,7 +198,7 @@ export default function CreatorMembershipScreen() {
         ]
       );
     },
-    [user, creatorId, existingMembership, appleTiers, subscribe]
+    [user, creatorId, creatorUserId, existingMembership, appleTiers, subscribe]
   );
 
   // Show subscription error
