@@ -199,21 +199,21 @@ function EventSpotlight({ event }: { event?: EventItem }) {
             accessibilityRole="button"
             accessibilityLabel={`Open ${event.title || 'event'}`}
             onPress={() => router.push(`/events/${event.id}` as any)}
-            style={{ flex: 1 }}
+            style={styles.spotlightPrimaryPressable}
           >
             <View style={styles.openEventCta}>
-              <Text style={styles.openEventText}>View event</Text>
+              <Text style={styles.openEventText} numberOfLines={1}>View event</Text>
             </View>
           </EdPressable>
           <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Ticket link"
             onPress={() => router.push(`/events/${event.id}` as any)}
-            style={{ flex: 1 }}
+            style={styles.spotlightSecondaryPressable}
           >
             <View style={styles.ticketLinkCta}>
               <MaterialIcons name="confirmation-number" size={15} color={ed.cream} />
-              <Text style={styles.ticketLinkText}>Tickets</Text>
+              <Text style={styles.ticketLinkText} numberOfLines={1}>Tickets</Text>
             </View>
           </EdPressable>
         </View>
@@ -656,10 +656,14 @@ const styles = StyleSheet.create({
   spotlightMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   spotlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.75)', marginRight: 8 },
   spotlightCtaRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  spotlightPrimaryPressable: { flexGrow: 0, flexShrink: 0, flexBasis: 132, width: 132, maxWidth: 132 },
+  spotlightSecondaryPressable: { flexGrow: 0, flexShrink: 0, flexBasis: 108, width: 108, maxWidth: 108 },
   openEventCta: {
+    width: 132,
     minHeight: 48,
     borderRadius: 5,
     backgroundColor: ed.orange,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -667,11 +671,13 @@ const styles = StyleSheet.create({
   },
   openEventText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: '#3a1c04' },
   ticketLinkCta: {
+    width: 108,
     minHeight: 48,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.25)',
     backgroundColor: 'rgba(10,5,2,0.6)',
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
