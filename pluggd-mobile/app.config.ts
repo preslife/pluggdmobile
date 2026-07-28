@@ -24,6 +24,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     usesAppleSignIn: true,
     buildNumber: process.env.IOS_BUILD_NUMBER ?? '1',
     bundleIdentifier: 'com.pluggd.mobile',
+    entitlements: {
+      'aps-environment': IS_PRODUCTION ? 'production' : 'development',
+    },
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',

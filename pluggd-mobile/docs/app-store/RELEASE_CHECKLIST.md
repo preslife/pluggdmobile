@@ -9,14 +9,16 @@
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
-- [ ] Release configuration archive build
-- [ ] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
+- [x] Release configuration archive build
+- [x] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
 
 ## Production configuration
 
 - [ ] EAS project linked to the correct Expo organisation. The local CLI is not
   signed in and `app.config.ts` has no EAS project ID.
-- [ ] Apple team and bundle ID `com.pluggd.mobile` confirmed; distribution certificate and provisioning profile still require archive validation.
+- [x] Apple team and bundle ID `com.pluggd.mobile` confirmed in the signed
+  archive. Apple Distribution certificate `59DCV9XJQ8` and App Store profile
+  `PLUGGD App Store 2026` are installed and valid through 28 July 2027.
 - [x] App Store Connect app record and numeric Apple App ID `6765738727` confirmed.
 - [x] Production Supabase URL and anon key are used by the production build; no service key is bundled in the app.
 - [x] `APPLE_BUNDLE_ID=com.pluggd.mobile`
@@ -124,9 +126,14 @@ sandbox verification remain required.
   release session were deleted and verified absent.
 - [x] Revoked legacy private-key material was removed from
   `/Users/apple/Documents/PLUGGD IOS.rtf`; the non-secret notes were preserved.
-- [ ] Install or create a valid Apple Development / Distribution signing
-  identity and provisioning profile. This Mac currently reports no valid code
-  signing identities.
+- [x] Apple Distribution identity
+  `Apple Distribution: ROWSON GROUP LTD (37X2468U5U)` and App Store profile
+  `PLUGGD App Store 2026` are installed. The Release archive and exported IPA
+  pass strict signature verification with production APNs, Sign in with Apple,
+  `get-task-allow=false` and the expected application identifier.
+- [ ] Upload the signed `1.0.0 (1)` IPA to App Store Connect and confirm that it
+  completes Apple processing in TestFlight. Local upload is currently waiting
+  on an App Store Connect upload credential or API-access approval.
 - [ ] Re-test native Sign in with Apple in a signed development or TestFlight
   build on a device with an Apple account. The unsigned simulator build reaches
   Apple’s consent flow but fails at the native authorization layer.

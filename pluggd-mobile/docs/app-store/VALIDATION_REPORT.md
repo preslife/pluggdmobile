@@ -12,6 +12,9 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
   legacy-schema migration contract.
 - A production-configured iOS Release build succeeds on the iPhone 17 Pro Max
   simulator.
+- A device Release archive succeeds with Apple Distribution signing. The
+  exported `1.0.0 (1)` IPA passes strict signature verification and has
+  `get-task-allow=false`.
 - Native smoke tests confirm immediate playback, persistent mini-player
   navigation, signed-out discovery, the 16+ consent gate and a working native
   Sign in with Apple entry point.
@@ -70,6 +73,17 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
   corrected and re-verified in the rebuilt app.
 - Free Apps Agreement, Paid Apps Agreement, banking, tax forms and Digital
   Services Act compliance are active.
+- Apple Distribution certificate `59DCV9XJQ8` is installed with the WWDR G3
+  intermediate and is valid through 28 July 2027.
+- App Store provisioning profile `PLUGGD App Store 2026`
+  (`3b08cb87-302a-44e0-85fc-eac957e360e2`) is installed and valid through
+  28 July 2027.
+- The signed archive uses bundle ID `com.pluggd.mobile`, production APNs,
+  Sign in with Apple, application identifier
+  `37X2468U5U.com.pluggd.mobile`, the expected privacy manifest and
+  `ITSAppUsesNonExemptEncryption=false`.
+- The exported IPA SHA-256 is
+  `190ac7fdc322ec37e4f00e5f2e1d9425c4e8e113cc1041b8b372adc89053e752`.
 - The legacy Apple key `35836M9T34` is absent from the Developer key list, and
   obsolete Supabase CLI tokens used during this audit were removed.
 - The revoked legacy private-key block was removed from
@@ -88,17 +102,17 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 4. Test App Store Server Notification V2 in sandbox and production, then
    exercise purchase, restore, renewal, expiry, refund and revoke paths.
 5. Resolve the Apple Developer membership renewal payment-method warning.
-6. Sign in to or link the correct Expo account, or configure Xcode signing;
-   this Mac currently has no valid signing identity. Produce a signed archive
-   and TestFlight build, then complete device,
-   accessibility, permission, offline and commerce-return testing.
+6. Upload the completed signed IPA and confirm Apple processing in TestFlight.
+   Xcode has no App Store Connect account stored locally, and organization API
+   access is not yet enabled, so the automated upload path still requires an
+   approved upload credential. Then complete device, accessibility, permission,
+   offline and commerce-return testing.
 7. Capture and upload rights-cleared final App Store screenshots and select the
    reviewed build.
-8. Re-test native Apple sign-in in a signed development or TestFlight build.
-   The account owner accepted the displayed PLUGGD Terms and Privacy Policy,
-   but the unsigned simulator app failed with Apple authentication error
-   `-7026`; the Mac has no valid signing identity and the simulator has no
-   usable Apple account.
+8. Re-test native Apple sign-in in the signed TestFlight build. The account
+   owner accepted the displayed PLUGGD Terms and Privacy Policy, but the
+   simulator has no usable Apple account and therefore cannot complete the
+   production identity flow.
 
 Do not submit or add the version for review until every unchecked item in
 `RELEASE_CHECKLIST.md` is complete.

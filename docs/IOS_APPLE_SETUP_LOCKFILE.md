@@ -52,8 +52,28 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
     `/Users/apple/Documents/PLUGGD IOS.rtf` on 28 July 2026; its non-secret
     notes were preserved.
   - The in-app Terms and Privacy consent was accepted in the simulator. Native
-    authorization must be re-tested in a properly signed build because the
-    current Mac has no valid signing identity.
+    authorization must be re-tested in the signed TestFlight build because the
+    simulator has no usable Apple account.
+
+## Distribution signing
+
+- Apple Distribution certificate ID: `59DCV9XJQ8`.
+- Certificate subject: `Apple Distribution: ROWSON GROUP LTD (37X2468U5U)`.
+- Certificate SHA-1: `C9694294F46F1BD335979F1734A8B6FB5EB3A857`.
+- Certificate expiry: 28 July 2027.
+- Apple WWDR intermediate: G3, valid through 20 February 2030.
+- App Store profile name: `PLUGGD App Store 2026`.
+- App Store profile ID: `QYFF5M7ZKB`.
+- App Store profile UUID: `3b08cb87-302a-44e0-85fc-eac957e360e2`.
+- Profile application identifier: `37X2468U5U.com.pluggd.mobile`.
+- The `1.0.0 (1)` Release archive and IPA were produced on 28 July 2026.
+- The signed IPA has production APNs, Sign in with Apple,
+  `get-task-allow=false`, `beta-reports-active=true` and no native Stripe SDK.
+- IPA SHA-256:
+  `190ac7fdc322ec37e4f00e5f2e1d9425c4e8e113cc1041b8b372adc89053e752`.
+- App Store Connect API access is not yet enabled for the organization. Do not
+  record any future `.p8` contents here; keep upload credentials in Keychain or
+  another approved secret store only.
 
 ## IAP credit packs
 
