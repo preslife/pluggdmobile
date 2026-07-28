@@ -85,7 +85,8 @@
 - [x] App Information subtitle and Music / Social Networking categories are
   saved and verified after a clean reload.
 - [ ] App Review account added securely in App Store Connect.
-- [ ] Review notes copied from `APP_REVIEW_NOTES.md` and updated with any special test state.
+- [x] Review notes saved with the hybrid-commerce rails, account-deletion path,
+  restore path and intentional browse-only behaviour.
 - [ ] Reviewer account has access to one StoreKit membership, one professional beat licence test item and one verified real-world ticket test item.
 - [x] App Privacy answers match `PRIVACY_LABEL_INVENTORY.md`. All eight data
   types and the privacy-policy URL were published after the account owner
@@ -94,8 +95,13 @@
   questionnaire calculates 13+ from the content answers and applies the saved
   16+ override required by PLUGGD’s Terms and signup gate.
 - [ ] Content rights register fully cleared.
-- [ ] Export compliance answered using `ITSAppUsesNonExemptEncryption=false`.
+- [x] Export compliance is represented by
+  `ITSAppUsesNonExemptEncryption=false`; Apple build metadata reports “App Uses
+  Non-Exempt Encryption: No.”
 - [ ] Screenshots captured from the final build and uploaded.
+- [x] Processed build `1.0.0 (1)` selected for App Store version 1.0.
+- [x] Version release mode set to manual so approval cannot trigger an
+  unintended public launch.
 - [x] Free Apps and Paid Apps agreements, bank account, tax forms and Digital
   Services Act compliance are active.
 - [x] The app is configured as free and publicly available on app release in

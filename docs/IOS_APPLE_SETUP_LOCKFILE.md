@@ -80,6 +80,10 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
 - Apple accepted and processed the `1.0.0 (1)` IPA on 28 July 2026. Delivery
   UUID: `3a09f0ea-9a2f-47fb-8b93-973b7e48641e`; TestFlight status is
   `Ready to Submit`.
+- App Store version 1.0 is linked to build `1.0.0 (1)` and uses manual release.
+  TestFlight test instructions and the `PLUGGD Submission QA` internal group
+  are configured; no tester was added because the only available account was
+  not selectable by App Store Connect.
 
 ## IAP credit packs
 

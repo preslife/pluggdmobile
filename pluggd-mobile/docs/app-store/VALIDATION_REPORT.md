@@ -94,8 +94,8 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 
 1. Finish the content-rights declaration only after the rights register has
    retrievable evidence for every submitted asset.
-2. Complete the review contact, dedicated reviewer account, review notes and
-   release mode.
+2. Complete the review contact and dedicated reviewer account. The reviewed
+   build, hybrid-commerce notes and controlled manual-release mode are saved.
 3. Complete signed StoreKit sandbox validation and upload an accurate review
    screenshot for the provisioned Kxngdom monthly membership, then promote its
    server catalogue status from `provisioned` to `active`. The unique product,
