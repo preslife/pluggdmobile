@@ -34,7 +34,9 @@ Join creator communities, find live rooms and events, save what matters, and fol
 
 SUPPORT CREATORS
 
-Use PLUGGD credits and creator memberships to support music you believe in. In-app credit packs and memberships are securely processed by Apple.
+Unlock releases and send creator support with PLUGGD credits, or join a creator
+membership through Apple. Credit packs and memberships are securely processed
+by Apple as separate purchase types.
 
 STAY IN CONTROL
 

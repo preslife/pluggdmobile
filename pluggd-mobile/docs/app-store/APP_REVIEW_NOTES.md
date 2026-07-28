@@ -2,7 +2,11 @@
 
 ## Review focus
 
-PLUGGD is an iPhone music-discovery and creator-community app. The opening Home screen contains playable music immediately. Discover explores releases, mixes, beats, soundboards, scenes, cities and events. Community includes user-generated posts. Library stores saved music. A persistent mini-player opens the full player.
+PLUGGD is an iPhone music-discovery and creator-community app. The opening Home
+screen contains playable music immediately. Discover explores releases, mixes,
+beats, soundboards, scenes and cities. Community includes user-generated posts.
+Events surfaces verified live culture, with saved music and purchases available
+from the account area. A persistent mini-player opens the full player.
 
 ## Account access
 
@@ -12,7 +16,7 @@ Recommended reviewer path:
 
 1. Create an account or sign in with the App Review account.
 2. On Home, tap the first play control.
-3. Move between Home, Discover, Community and Library to confirm uninterrupted playback.
+3. Move between Home, Discover, Community and Events to confirm uninterrupted playback.
 4. Open Discover to inspect scene, genre, city, event, mix, beat and soundboard routes.
 5. Open a Community post’s overflow menu to see Report and Block.
 6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.

@@ -64,6 +64,10 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
   matches PLUGGD’s Terms and signup gate.
 - The app has a free price schedule and is publicly available on app release
   in all 175 App Store countries or regions.
+- A clean production-configured Release build was rebuilt for the iPhone 17 Pro
+  Max simulator and launched successfully. Home, Discover, Community and Events
+  were captured at 1320×2868. A spotlight-action overflow found on Events was
+  corrected and re-verified in the rebuilt app.
 - Free Apps Agreement, Paid Apps Agreement, banking, tax forms and Digital
   Services Act compliance are active.
 - The legacy Apple key `35836M9T34` is absent from the Developer key list, and
