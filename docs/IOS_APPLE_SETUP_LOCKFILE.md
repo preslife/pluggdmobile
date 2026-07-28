@@ -77,8 +77,9 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
   `4Z23TZVP84`. Its private key is stored outside the repository with
   owner-only permissions; never copy its contents into source or documentation.
 - The unusable one-time-download key `47JF3XF5UB` was revoked on 28 July 2026.
-- Apple accepted the `1.0.0 (1)` IPA for TestFlight processing on 28 July 2026.
-  Delivery UUID: `3a09f0ea-9a2f-47fb-8b93-973b7e48641e`.
+- Apple accepted and processed the `1.0.0 (1)` IPA on 28 July 2026. Delivery
+  UUID: `3a09f0ea-9a2f-47fb-8b93-973b7e48641e`; TestFlight status is
+  `Ready to Submit`.
 
 ## IAP credit packs
 

@@ -136,8 +136,8 @@ sandbox verification remain required.
 - [x] Upload the signed `1.0.0 (1)` IPA to App Store Connect. Apple accepted
   delivery `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation or upload
   errors on 28 July 2026.
-- [ ] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
-  as a TestFlight build. App Store Connect currently reports `Processing`.
+- [x] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
+  as a TestFlight build. App Store Connect reports `Ready to Submit`.
 - [ ] Re-test native Sign in with Apple in a signed development or TestFlight
   build on a device with an Apple account. The unsigned simulator build reaches
   Apple’s consent flow but fails at the native authorization layer.

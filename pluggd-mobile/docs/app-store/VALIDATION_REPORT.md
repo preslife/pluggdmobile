@@ -104,11 +104,10 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 4. Test App Store Server Notification V2 in sandbox and production, then
    exercise purchase, restore, renewal, expiry, refund and revoke paths.
 5. Resolve the Apple Developer membership renewal payment-method warning.
-6. Confirm Apple finishes processing the uploaded `1.0.0 (1)` build. Apple
-   accepted delivery `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation
-   or upload errors on 28 July 2026; App Store Connect currently reports
-   `Processing`. Then complete device, accessibility, permission, offline and
-   commerce-return testing.
+6. Complete device, accessibility, permission, offline and commerce-return
+   testing on the processed `1.0.0 (1)` build. Apple accepted delivery
+   `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation or upload errors
+   and App Store Connect reports `Ready to Submit`.
 7. Capture and upload rights-cleared final App Store screenshots and select the
    reviewed build.
 8. Re-test native Apple sign-in in the signed TestFlight build. The account
