@@ -10,11 +10,22 @@ assert.ok(
   existsSync(pathFor('src/features/auth/launch-access.ts')),
   'mobile auth must have a launch access service',
 );
+assert.ok(
+  existsSync(pathFor('src/features/auth/apple-sign-in.ts')),
+  'mobile auth must have a native Sign in with Apple service',
+);
+assert.ok(
+  existsSync(pathFor('components/AppleSignInButton.tsx')),
+  'mobile auth must use Apple’s official authentication button',
+);
 
 const launchAccessSource = read('src/features/auth/launch-access.ts');
+const appleAuthSource = read('src/features/auth/apple-sign-in.ts');
+const appleButtonSource = read('components/AppleSignInButton.tsx');
 const authProviderSource = read('src/context/AuthProvider.tsx');
 const loginSource = read('app/auth/login.tsx');
 const signupSource = read('app/auth/signup.tsx');
+const appConfigSource = read('app.config.ts');
 
 for (const rpc of [
   'platform_validate_access_code',
@@ -51,6 +62,17 @@ for (const [name, source] of [
 ]) {
   assert.match(source, /Access code/, `${name} screen must include an access-code field`);
   assert.match(source, /storePendingAccessCode/, `${name} screen must store pending access code before auth`);
+  assert.match(source, /AppleSignInButton/, `${name} screen must expose native Apple authentication`);
 }
+
+assert.match(appConfigSource, /usesAppleSignIn:\s*true/, 'iOS must declare Sign in with Apple');
+assert.match(appConfigSource, /expo-apple-authentication/, 'Expo must install the Apple authentication capability');
+assert.match(appleButtonSource, /AppleAuthenticationButton/, 'Apple auth must use Apple’s official button');
+assert.match(appleAuthSource, /getRandomBytesAsync/, 'Apple auth must generate a cryptographic nonce and state');
+assert.match(appleAuthSource, /CryptoDigestAlgorithm\.SHA256/, 'Apple auth must hash the nonce sent to Apple');
+assert.match(appleAuthSource, /credential\.state !== expectedState/, 'Apple auth must verify returned state');
+assert.match(appleAuthSource, /signInWithIdToken/, 'Apple identity tokens must be verified by Supabase Auth');
+assert.match(appleAuthSource, /nonce:\s*rawNonce/, 'Supabase must receive the unhashed nonce for verification');
+assert.match(appleAuthSource, /full_name/, 'Apple’s one-time full name must be persisted');
 
 console.log('mobile auth contract verified');

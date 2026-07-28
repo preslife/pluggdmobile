@@ -21,6 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: false,
     requireFullScreen: true,
+    usesAppleSignIn: true,
     buildNumber: process.env.IOS_BUILD_NUMBER ?? '1',
     bundleIdentifier: 'com.pluggd.mobile',
     infoPlist: {
@@ -130,6 +131,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-router',
+    'expo-apple-authentication',
     'expo-web-browser',
     'expo-video',
     [

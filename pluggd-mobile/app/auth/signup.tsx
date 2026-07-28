@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
+import { AppleSignInButton } from '../../components/AppleSignInButton';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
@@ -24,6 +25,10 @@ import { LAUNCH_ACCESS_REQUIRED, LEGAL_URLS, MINIMUM_AGE } from '../../src/confi
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
 import * as Linking from 'expo-linking';
+import {
+  isAppleSignInCancellation,
+  signInWithApple,
+} from '../../src/features/auth/apple-sign-in';
 
 function getPasswordStrength(password: string): { level: number; label: string; color: string } {
   if (!password) return { level: 0, label: '', color: '' };
@@ -105,6 +110,27 @@ export default function SignUp() {
       else router.replace('/auth/role' as any);
     } catch (authError: any) {
       setError(authError?.message ?? 'Unable to create account.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignUp = async () => {
+    setError('');
+    if (!ageConfirmed) {
+      setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+      return;
+    }
+
+    setLoading(true);
+    await clearLaunchAccessNotice();
+    try {
+      await signInWithApple();
+      router.replace('/auth/role' as any);
+    } catch (authError: any) {
+      if (!isAppleSignInCancellation(authError)) {
+        setError(authError?.message ?? 'Unable to sign up with Apple.');
+      }
     } finally {
       setLoading(false);
     }
@@ -264,6 +290,22 @@ export default function SignUp() {
               <Text style={styles.ctaText}>{loading ? 'Creating...' : 'Create account'}</Text>
               {!loading ? <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /> : null}
             </Pressable>
+
+            {!LAUNCH_ACCESS_REQUIRED ? (
+              <>
+                <View style={styles.authDivider}>
+                  <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
+                  <Text style={[styles.authDividerText, { color: theme.colors.textSubtle }]}>OR</Text>
+                  <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
+                </View>
+                <AppleSignInButton
+                  mode="sign-up"
+                  onPress={() => void handleAppleSignUp()}
+                  light={theme.scheme === 'light'}
+                  disabled={loading}
+                />
+              </>
+            ) : null}
           </View>
 
           <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
@@ -308,6 +350,22 @@ function InputField({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  authDivider: {
+    marginVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  authDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  authDividerText: {
+    fontSize: 11,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
   keyboard: {
     flex: 1,

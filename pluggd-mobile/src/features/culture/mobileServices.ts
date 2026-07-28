@@ -499,7 +499,7 @@ function mapPlaylistTrack(row: any, release?: ReleaseItem | null, beat?: BeatIte
   const sourceTitle = release?.title || beat?.title || mix?.title || row.title || 'Untitled track';
   const creator = release?.artist || beat?.producer_name || mix?.city || row.artist || row.creator_name || null;
   const image = release?.cover_art_url || beat?.image_url || mix?.cover_url || row.image_url || row.cover_url || null;
-  const audio = release?.audio_url || release?.preview_url || beat?.audio_url || beat?.tagged_url || mix?.audio_url || row.audio_url || null;
+  const audio = release?.preview_url || release?.audio_url || beat?.tagged_url || beat?.audio_url || mix?.audio_url || row.audio_url || null;
   const route = release?.id
     ? `/release/${release.id}`
     : beat?.id

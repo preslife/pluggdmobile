@@ -57,7 +57,9 @@ function releaseItem(item: ReleaseItem): DiscoveryItem | null {
 }
 
 function beatItem(item: BeatItem): DiscoveryItem | null {
-  const playableUrl = item.audio_url || item.tagged_url;
+  // The tagged preview is the listening-safe asset. Masters are commonly
+  // 32-bit float WAV files, which AVPlayer cannot stream reliably on iOS.
+  const playableUrl = item.tagged_url || item.audio_url;
   if (!playableUrl) return null;
   const title = item.title?.trim() || 'Untitled beat';
   const creator = item.producer_name?.trim() || 'PLUGGD producer';

@@ -19,6 +19,7 @@ for (const token of ['DiscoveryItem', 'playableUrl', 'destinationRoute', 'discov
   assert.match(model, new RegExp(token), `unified discovery model must include ${token}`);
 }
 assert.match(model, /releasePlayableUrl/, 'release playback must keep the existing safe URL resolver');
+assert.match(model, /item\.tagged_url \|\| item\.audio_url/, 'beat discovery must prefer the iOS-safe tagged preview over the master WAV');
 assert.match(chrome, /normalized === '\/'[\s\S]*normalized === '\/discover'/, 'Home and Discover must own their compact discovery header');
 
 const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
