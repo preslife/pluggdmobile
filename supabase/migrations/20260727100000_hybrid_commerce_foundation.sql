@@ -332,11 +332,80 @@ create table if not exists public.ticket_orders (
   unique (stripe_payment_intent_id)
 );
 
+-- Production already has a legacy ticket_orders table. `create table if not
+-- exists` intentionally leaves that table in place, so add the trusted checkout
+-- fields separately before creating indexes or policies. The legacy table is
+-- retained for compatibility (`tier_id`, `total_cents`, `stripe_session_id`,
+-- and `qr_code_data` remain untouched). New hybrid-commerce orders always write
+-- the canonical columns below.
+alter table public.ticket_orders
+  add column if not exists ticket_tier_id uuid
+    references public.event_ticket_tiers(id) on delete restrict,
+  add column if not exists unit_amount_cents integer,
+  add column if not exists fee_amount_cents integer not null default 0,
+  add column if not exists total_amount_cents integer,
+  add column if not exists currency text not null default 'GBP',
+  add column if not exists reservation_expires_at timestamptz,
+  add column if not exists stripe_checkout_session_id text,
+  add column if not exists stripe_payment_intent_id text,
+  add column if not exists idempotency_key text,
+  add column if not exists policy_version text,
+  add column if not exists pricing_snapshot jsonb not null default '{}'::jsonb,
+  add column if not exists refunded_amount_cents integer not null default 0,
+  add column if not exists refund_reason text,
+  add column if not exists refunded_at timestamptz,
+  add column if not exists completed_at timestamptz;
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ticket_orders'
+      and column_name = 'total_cents'
+  ) then
+    execute $backfill$
+      update public.ticket_orders
+      set
+        total_amount_cents = coalesce(total_amount_cents, total_cents),
+        unit_amount_cents = coalesce(
+          unit_amount_cents,
+          case when quantity > 0 then total_cents / quantity else total_cents end
+        )
+      where total_amount_cents is null or unit_amount_cents is null
+    $backfill$;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ticket_orders'
+      and column_name = 'stripe_session_id'
+  ) then
+    execute $backfill$
+      update public.ticket_orders
+      set stripe_checkout_session_id = stripe_session_id
+      where stripe_checkout_session_id is null
+        and stripe_session_id is not null
+    $backfill$;
+  end if;
+end
+$$;
+
 create index if not exists ticket_orders_user_created_idx
   on public.ticket_orders (user_id, created_at desc);
 create index if not exists ticket_orders_active_reservation_idx
   on public.ticket_orders (ticket_tier_id, reservation_expires_at)
   where status in ('reserved', 'checkout_open');
+create unique index if not exists ticket_orders_idempotency_uidx
+  on public.ticket_orders (idempotency_key)
+  where idempotency_key is not null;
+create unique index if not exists ticket_orders_checkout_session_uidx
+  on public.ticket_orders (stripe_checkout_session_id)
+  where stripe_checkout_session_id is not null;
+create unique index if not exists ticket_orders_payment_intent_uidx
+  on public.ticket_orders (stripe_payment_intent_id)
+  where stripe_payment_intent_id is not null;
 
 alter table public.ticket_orders enable row level security;
 drop policy if exists "Users view own ticket orders" on public.ticket_orders;
@@ -912,6 +981,12 @@ as $$
       and status = 'completed'
   );
 $$;
+
+-- Some production environments predate explicit release credit pricing.
+-- Null preserves the existing GBP-price fallback used by the app and the
+-- server-owned debit function below.
+alter table public.releases
+  add column if not exists credits_price numeric;
 
 -- Provider callbacks and server-side wallet operations must be replay-safe.
 alter table public.iap_transactions

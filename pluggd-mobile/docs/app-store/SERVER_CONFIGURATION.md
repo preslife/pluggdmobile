@@ -6,7 +6,7 @@ Store these as Supabase function secrets:
 
 ```text
 APPLE_BUNDLE_ID=com.pluggd.mobile
-APPLE_APP_ID=<numeric App Store Connect ID>
+APPLE_APP_ID=6765738727
 APPLE_IAP_ENVIRONMENT=Both
 APPLE_ROOT_CA_G2_BASE64=<base64 DER or PEM certificate bytes>
 APPLE_ROOT_CA_G3_BASE64=<base64 DER or PEM certificate bytes>
@@ -14,6 +14,28 @@ ACCOUNT_DELETION_AUDIT_SALT=<strong random production secret>
 ```
 
 Download current Apple Root CA certificates only from Apple PKI. Keep certificate rotation in the release calendar. Production and sandbox signed data are each verified with the environment-specific verifier; accepting `Both` supports TestFlight without weakening signature or app identity checks.
+
+Production configuration was verified on 28 July 2026 for Supabase project
+`qkwvqmubhyondemhasjp`. Apple root G2/G3 certificates were downloaded directly
+from Apple PKI and validated before installation. Secret values remain outside
+the repository.
+
+## Sign in with Apple
+
+The production identity configuration is:
+
+```text
+APPLE_TEAM_ID=37X2468U5U
+APPLE_KEY_ID=YR9NGV4BVT
+APPLE_SERVICES_ID=com.pluggd.mobile.web
+APPLE_NATIVE_CLIENT_ID=com.pluggd.mobile
+APPLE_CALLBACK_URL=https://qkwvqmubhyondemhasjp.supabase.co/auth/v1/callback
+```
+
+The Supabase Apple provider is enabled for both
+`com.pluggd.mobile.web` and `com.pluggd.mobile`. Its signed client secret was
+created on 28 July 2026 and must be rotated before 24 January 2027. Never commit
+the `.p8` private key or generated client secret.
 
 ## Commerce policy
 

@@ -5,7 +5,7 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`48` files / `145` tests)
+- [x] Root test suite (`50` files / `167` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
@@ -15,25 +15,25 @@
 ## Production configuration
 
 - [ ] EAS project linked to the correct Expo organisation.
-- [ ] Apple team, bundle ID `com.pluggd.mobile`, distribution certificate and provisioning profile configured.
-- [ ] App Store Connect app record and numeric Apple App ID created.
-- [ ] Production Supabase URL and anon key stored in EAS environment; no service key in the app.
-- [ ] `APPLE_BUNDLE_ID=com.pluggd.mobile`
-- [ ] `APPLE_APP_ID=<numeric App Store Connect app id>`
-- [ ] `APPLE_IAP_ENVIRONMENT=Both` for production + TestFlight verification
-- [ ] `APPLE_ROOT_CA_G2_BASE64` and `APPLE_ROOT_CA_G3_BASE64` use current certificates from Apple PKI.
-- [ ] `ACCOUNT_DELETION_AUDIT_SALT` is a strong production secret.
-- [ ] Stripe production key and signed webhook secret are configured only in Supabase.
+- [ ] Apple team and bundle ID `com.pluggd.mobile` confirmed; distribution certificate and provisioning profile still require archive validation.
+- [x] App Store Connect app record and numeric Apple App ID `6765738727` confirmed.
+- [x] Production Supabase URL and anon key are used by the production build; no service key is bundled in the app.
+- [x] `APPLE_BUNDLE_ID=com.pluggd.mobile`
+- [x] `APPLE_APP_ID=6765738727`
+- [x] `APPLE_IAP_ENVIRONMENT=Both` for production + TestFlight verification
+- [x] `APPLE_ROOT_CA_G2_BASE64` and `APPLE_ROOT_CA_G3_BASE64` use current certificates from Apple PKI.
+- [x] `ACCOUNT_DELETION_AUDIT_SALT` is a strong production secret.
+- [x] Stripe production key and signed webhook secret are configured only in Supabase.
 - [ ] Hosted checkout success/cancel return URLs use the approved PLUGGD app/web allowlist.
-- [ ] Commerce policy defaults to restricted for an unknown storefront or failed policy request.
-- [ ] External release checkout is US-only until another storefront entitlement is explicitly approved.
+- [x] Commerce policy defaults to restricted for an unknown storefront or failed policy request.
+- [x] External release checkout is US-only until another storefront entitlement is explicitly approved.
 - [ ] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
-- [ ] New migration deployed.
-- [ ] Account/safety, Apple verification, commerce policy, beat checkout, event checkout and Stripe webhook functions deployed.
+- [x] Account/safety and hybrid-commerce migrations deployed to production.
+- [x] Account/safety, Apple verification, commerce policy, beat checkout, event checkout and Stripe webhook functions deployed and active.
 
 ## StoreKit and server notifications
 
-- [ ] Credit product IDs exactly match the approved consumable catalogue.
+- [x] Credit product IDs exactly match the five App Store Connect consumable drafts.
 - [ ] Every sellable creator membership tier has a unique Apple product ID and the expected creator subscription group.
 - [ ] Unprovisioned creator tiers remain browse-only and expose no fallback purchase CTA.
 - [ ] Products are approved or submitted with the app version and available in required storefronts.
@@ -48,12 +48,12 @@
 
 ## Hybrid commerce
 
-- [ ] Credits can fund only releases, tips and live gifts; they cannot fund beats, memberships, tickets or merchandise.
-- [ ] Beat checkout accepts trusted beat/licence/contract identifiers and rejects client price or creator tampering.
+- [x] Credits can fund only releases, tips and live gifts; they cannot fund beats, memberships, tickets or merchandise.
+- [x] Beat checkout accepts trusted beat/licence/agreement identifiers and rejects client price or creator tampering.
 - [ ] A beat contract requiring signature cannot enter checkout until its required acceptance is valid.
 - [ ] Beat webhook replay is idempotent; success, cancellation, delayed completion, refund and revocation reconcile correctly.
 - [ ] Real-world event checkout validates event classification, tier, quantity, price, sales window and inventory server-side.
-- [ ] Paid virtual events are rejected by external checkout.
+- [x] Paid virtual events are rejected by external checkout.
 - [ ] Concurrent ticket purchases cannot oversell; abandoned reservations expire and refunds return inventory correctly.
 - [ ] Hosted Stripe Checkout offers Apple Pay/card only where the Stripe account and customer device support them.
 - [ ] Checkout cancellation and app termination do not grant access; foreground/return reconciliation waits for provider confirmation.
@@ -83,6 +83,11 @@
 - [ ] Export compliance answered using `ITSAppUsesNonExemptEncryption=false`.
 - [ ] Screenshots captured from the final build and uploaded.
 - [ ] Agreements, tax and banking are active.
+
+Current catalogue state: five credit consumables exist as App Store Connect
+drafts in every storefront. Their review copy now describes only release
+unlocks, tips and live gifts. Draft existence is not approval; submission and
+sandbox verification remain required.
 
 ## Final human smoke test
 

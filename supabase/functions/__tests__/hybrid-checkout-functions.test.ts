@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   handlePrepareBeatLicense,
   type PrepareBeatLicenseDependencies,
@@ -25,6 +27,35 @@ const request = (body: unknown) =>
     },
     body: JSON.stringify(body),
   });
+
+const hybridMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/20260727100000_hybrid_commerce_foundation.sql",
+  ),
+  "utf8",
+);
+
+describe("hybrid commerce migration compatibility", () => {
+  it("upgrades the deployed legacy ticket order schema without replacing it", () => {
+    expect(hybridMigration).toContain(
+      "alter table public.ticket_orders\n  add column if not exists ticket_tier_id",
+    );
+    expect(hybridMigration).toContain(
+      "total_amount_cents = coalesce(total_amount_cents, total_cents)",
+    );
+    expect(hybridMigration).toContain(
+      "stripe_checkout_session_id = stripe_session_id",
+    );
+    expect(hybridMigration).toContain(
+      "create unique index if not exists ticket_orders_idempotency_uidx",
+    );
+    expect(hybridMigration).toContain(
+      "alter table public.releases\n  add column if not exists credits_price numeric",
+    );
+    expect(hybridMigration).not.toContain("drop table public.ticket_orders");
+  });
+});
 
 const policy = (kind: "beat_license" | "event_ticket", overrides = {}) => ({
   purchase_kind: kind,

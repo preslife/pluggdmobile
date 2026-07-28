@@ -1,6 +1,6 @@
 # iOS Apple Setup Lockfile
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 This file records non-secret Apple/App Store/IAP setup facts that must survive the iOS UI reset. Do not paste private keys, sandbox tester passwords, App Store Connect API private key contents, Supabase service-role keys, or personal secrets into this file.
 
@@ -16,27 +16,46 @@ This file records non-secret Apple/App Store/IAP setup facts that must survive t
 
 - Bundle ID: `com.pluggd.mobile` - Verified from local app config and
   `pluggd-mobile/ios/Pluggd.xcodeproj/project.pbxproj`.
-- App Store Connect app name: not found locally; expected app name is `Pluggd`.
-- App Store Connect SKU: not found locally; confirm in App Store Connect.
-- Apple Team ID: not found locally; confirm in Apple Developer/App Store Connect.
-- App Apple ID: not found locally; confirm in App Store Connect.
+- App Store Connect app name: `PLUGGD`.
+- App Store Connect SKU: confirm in App Store Connect before submission.
+- Apple Team: ROWSON GROUP LTD (`37X2468U5U`).
+- App Apple ID: `6765738727`.
 - Associated capabilities seen locally:
   - Push/APNs entitlement in `pluggd-mobile/ios/Pluggd/Pluggd.entitlements`.
   - StoreKit/IAP product usage: `react-native-iap` in `pluggd-mobile/package.json`.
-- Capabilities needing Apple portal confirmation:
-  - In-App Purchase capability.
-  - Push Notifications production capability/certificates/keys.
-  - Sign in with Apple identifiers, Services ID, and return URLs if already configured.
+- Capabilities confirmed in Apple:
+  - In-App Purchase.
+  - Apple Pay.
+  - Associated Domains.
+  - Push Notifications.
+  - Sign in with Apple.
+- Sign in with Apple:
+  - Key ID: `YR9NGV4BVT`.
+  - Services ID: `com.pluggd.mobile.web`.
+  - Native client ID: `com.pluggd.mobile`.
+  - Return URL:
+    `https://qkwvqmubhyondemhasjp.supabase.co/auth/v1/callback`.
+  - Web domain: `qkwvqmubhyondemhasjp.supabase.co`.
+  - Supabase Apple provider enabled for both client IDs on 28 July 2026.
+  - Rotate the provider client secret before 24 January 2027.
 
 ## IAP credit packs
 
 Expected active Apple consumable product IDs and backend mapping:
 
-- `pluggd_credits_starter` - Starter Credits - GBP 5.00 expected - 500 credits - product type: consumable - App Store Connect status: confirm in Apple - backend mapping: present in `validate-iap-receipt`.
-- `pluggd_credits_popular` - Plus Credits - GBP 9.99 expected - 1,050 credits - product type: consumable - App Store Connect status: confirm in Apple - backend mapping: present in mobile and `validate-iap-receipt`.
-- `pluggd_credits_value` - Value Credits - GBP 24.99 expected - 2,750 credits - product type: consumable - App Store Connect status: confirm in Apple - backend mapping: present in mobile and `validate-iap-receipt`.
-- `pluggd_credits_premium` - Premium Credits - GBP 49.99 expected - 5,750 credits - product type: consumable - App Store Connect status: confirm in Apple - backend mapping: present in mobile and `validate-iap-receipt`.
-- `pluggd_credits_ultimate` - Ultimate Credits - GBP 99.99 expected - 12,000 credits - product type: consumable - App Store Connect status: confirm in Apple - backend mapping: present in mobile and `validate-iap-receipt`.
+- `pluggd_credits_starter` - Starter Credits - 500 credits - Apple ID
+  `6765751701` - consumable draft in all storefronts.
+- `pluggd_credits_popular` - Plus Credits - 1,050 credits - Apple ID
+  `6765758284` - consumable draft in all storefronts.
+- `pluggd_credits_value` - Value Credits - 2,750 credits - Apple ID
+  `6765759369` - consumable draft in all storefronts.
+- `pluggd_credits_premium` - Premium Credits - 5,750 credits - Apple ID
+  `6765760475` - consumable draft in all storefronts.
+- `pluggd_credits_ultimate` - Ultimate Credits - 12,000 credits - Apple ID
+  `6765761038` - consumable draft in all storefronts.
+
+The five products are configured, not approved. Submission and sandbox purchase
+verification remain release gates.
 
 Note: prior local docs treated `pluggd_credits_starter` as hidden/pending. Current product decision is that it is an active expected credit product and must be preserved.
 
@@ -66,7 +85,8 @@ global source allowlist of creator membership product IDs in the mobile bundle.
 - StoreKit config exists locally: no.
 - StoreKit config file path: none found by local `*.storekit` search.
 - StoreKit sandbox tester notes: no tester email or credentials found locally. Do not record sandbox passwords in this repo.
-- App Store Server API key exists in Apple: unknown; confirm in App Store Connect.
+- App Store Server API key material is configured in Supabase. Confirm the key
+  remains active in App Store Connect before TestFlight testing.
 - Expected Supabase secret names only:
   - `APPLE_BUNDLE_ID`
   - `APPLE_APP_ID`
@@ -108,12 +128,15 @@ Supabase tables used for Apple transactions:
 - `wallet_ledger`
 - `fan_subscriptions`
 
-Required hybrid-commerce additions before release:
+Hybrid-commerce foundation confirmed in production on 28 July 2026:
 
-- a server-owned commerce policy and independent rail kill switches;
-- a unique creator-tier Apple product catalogue;
+- server-owned commerce policy with independent rail kill switches;
 - provider-neutral entitlement/source fields;
-- idempotent hosted-checkout order and Stripe event records.
+- idempotent hosted-checkout and Stripe event records;
+- production Edge Functions for policy, checkout, reconciliation and webhooks.
+
+Unique creator-tier Apple products still require provisioning and catalogue
+import before membership purchase controls may be enabled.
 
 Related support:
 

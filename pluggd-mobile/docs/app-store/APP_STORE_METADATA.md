@@ -47,7 +47,7 @@ checkout is limited to real-world events.
 
 ## Keywords
 
-music discovery,independent music,new music,mixes,beats,artists,producers,soundboards,events,community
+music discovery,indie music,new music,mixes,beats,artists,producers,soundboards,events,community
 
 ## Version 1.0 release notes
 
