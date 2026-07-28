@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
 import { PluggdImage } from '../src/components/PluggdImage';
+import { pluggdFonts } from '../src/design/typography';
 import { DiscoveryHeader } from '../src/features/discovery/DiscoveryHeader';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
@@ -78,32 +79,32 @@ function LibraryRow({ index, title, subtitle, image, meta, onPress }: { index: n
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' },
   content: { paddingHorizontal: 20, paddingBottom: 150 },
-  kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7, marginTop: 6 },
-  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.2, marginTop: 4 },
-  subtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 14, lineHeight: 20, marginTop: 7 },
+  kicker: { color: ORANGE, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.7, marginTop: 6 },
+  title: { color: INK, fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 39, letterSpacing: -1.2, marginTop: 4 },
+  subtitle: { color: MUTED, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 20, marginTop: 7 },
   summaryRow: { minHeight: 78, marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  summaryNumber: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 20, textAlign: 'center' },
-  summaryLabel: { color: MUTED, fontFamily: 'Satoshi-Bold', fontSize: 8, letterSpacing: 1.1, marginTop: 3, textAlign: 'center' },
+  summaryNumber: { color: INK, fontFamily: pluggdFonts.displayExtraBold, fontSize: 20, textAlign: 'center' },
+  summaryLabel: { color: MUTED, fontFamily: pluggdFonts.satoshiBold, fontSize: 8, letterSpacing: 1.1, marginTop: 3, textAlign: 'center' },
   filters: { flexDirection: 'row', gap: 22, marginTop: 16, borderBottomWidth: 1, borderColor: '#29251F' },
   filter: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 2, borderColor: 'transparent' },
   filterActive: { borderColor: ORANGE },
-  filterText: { color: '#CBC4B9', fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  filterText: { color: '#CBC4B9', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
   filterTextActive: { color: INK },
   loader: { minHeight: 230 },
   empty: { marginTop: 24, minHeight: 240, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', paddingHorizontal: 22 },
-  emptyTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 18, textAlign: 'center', marginTop: 13 },
-  emptyBody: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 7 },
+  emptyTitle: { color: INK, fontFamily: pluggdFonts.displayBold, fontSize: 18, textAlign: 'center', marginTop: 13 },
+  emptyBody: { color: MUTED, fontFamily: pluggdFonts.satoshiRegular, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 7 },
   discoverButton: { minHeight: 44, marginTop: 18, paddingHorizontal: 18, justifyContent: 'center', backgroundColor: ORANGE, borderRadius: 4 },
-  discoverButtonText: { color: '#100B07', fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  discoverButtonText: { color: '#100B07', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
   section: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderColor: '#29251F' },
-  sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 18 },
-  sectionCount: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 9, letterSpacing: 1.1 },
+  sectionTitle: { color: INK, fontFamily: pluggdFonts.displayBold, fontSize: 18 },
+  sectionCount: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.1 },
   row: { minHeight: 82, flexDirection: 'row', alignItems: 'center', gap: 11, borderBottomWidth: 1, borderColor: '#29251F' },
-  rowIndex: { width: 20, color: '#756E64', fontFamily: 'Satoshi-Black', fontSize: 9 },
+  rowIndex: { width: 20, color: '#756E64', fontFamily: pluggdFonts.satoshiBlack, fontSize: 9 },
   art: { width: 58, height: 58, borderRadius: 3, backgroundColor: '#211C17' },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   rowCopy: { flex: 1, minWidth: 0 },
-  rowTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  rowSubtitle: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 11, marginTop: 2 },
-  rowMeta: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 9, letterSpacing: 1, marginTop: 4 },
+  rowTitle: { color: INK, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  rowSubtitle: { color: MUTED, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, marginTop: 2 },
+  rowMeta: { color: ORANGE, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1, marginTop: 4 },
 });

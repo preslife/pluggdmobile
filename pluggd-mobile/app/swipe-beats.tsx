@@ -8,6 +8,7 @@ import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, View } from
 import { PluggdImage } from '../src/components/PluggdImage';
 import { usePlayback } from '../src/context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
+import { pluggdFonts } from '../src/design/typography';
 import { safeList, toggleSavedContent } from '../src/features/culture/mobileServices';
 import { contentInitials, toTrack, type BeatItem } from '../src/lib/mobileContent';
 import { supabase } from '../src/lib/supabase';
@@ -166,22 +167,22 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806', paddingHorizontal: 16 },
   header: { height: 92, paddingTop: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 30, lineHeight: 34 },
+  headerTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 30, lineHeight: 34 },
   card: { flex: 1, maxHeight: 590, borderRadius: 5, overflow: 'hidden', borderWidth: 1, borderColor: '#302A26', justifyContent: 'flex-end' },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  initials: { alignSelf: 'center', marginTop: 190, color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 52 },
+  initials: { alignSelf: 'center', marginTop: 190, color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 52 },
   cardCopy: { padding: 20 },
-  title: { color: '#FFFFFF', fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -0.6 },
-  meta: { color: '#B3B3B3', fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 20, marginTop: 8 },
+  title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 32, lineHeight: 36, letterSpacing: -0.6 },
+  meta: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginTop: 8 },
   playButton: { alignSelf: 'flex-start', minHeight: 46, borderRadius: 5, paddingHorizontal: 18, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18 },
-  playText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  playText: { color: '#0a0806', fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
   actions: { height: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', gap: 14 },
   actionButton: { minWidth: 92, minHeight: 54, borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
   saveButton: { backgroundColor: ORANGE, borderColor: ORANGE },
-  actionText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 2 },
+  actionText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
   saveText: { color: '#0a0806' },
-  instructions: { color: '#8E8E9F', fontFamily: 'Satoshi-Medium', fontSize: 12, textAlign: 'center', marginBottom: 18 },
+  instructions: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, textAlign: 'center', marginBottom: 18 },
   empty: { flex: 1, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 24 },
-  emptyTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 24 },
-  emptyText: { color: '#B3B3B3', fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 21, textAlign: 'left', marginTop: 8 },
+  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 24 },
+  emptyText: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, textAlign: 'left', marginTop: 8 },
 });

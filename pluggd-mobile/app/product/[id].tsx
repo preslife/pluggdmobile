@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   hero: { height: 430, borderRadius: 6, overflow: 'hidden', backgroundColor: '#171310', justifyContent: 'flex-end' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroCopy: { padding: 18 },
-  eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  eyebrow: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
   title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, marginTop: 6 },
   subtitle: { fontFamily: pluggdFonts.satoshiBold, color: '#B3B3B3', fontSize: 14, fontWeight: '800', marginTop: 7 },
   description: { fontFamily: pluggdFonts.satoshiBold, color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 16 },

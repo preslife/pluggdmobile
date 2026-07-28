@@ -6,10 +6,11 @@ import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
+import { BrandLogo } from '../../../components/BrandLogo';
 import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
 import { selectionHaptic } from '../../design/haptics';
-import { pluggdTextStyles } from '../../design/typography';
+import { pluggdFonts } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { contentInitials, formatCompact } from '../../lib/mobileContent';
 import { supabase } from '../../lib/supabase';
@@ -156,6 +157,7 @@ export function MyProfileScreen() {
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.signedOut}>
+          <BrandLogo width={86} height={28} variant={theme.scheme === 'dark' ? 'dark' : 'light'} />
           <View style={[styles.signedOutPanel, { borderColor: theme.colors.border }]}>
             <View style={[styles.signedOutRule, { backgroundColor: theme.colors.accent }]} />
             <Text style={[styles.signedOutEyebrow, { color: theme.colors.accent }]}>MY PLUGGD</Text>
@@ -163,6 +165,11 @@ export function MyProfileScreen() {
             <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
               Sign in to collect posts, playlists, tickets, saved music and the communities you move with.
             </Text>
+            <View style={[styles.signedOutBenefits, { borderColor: theme.colors.border }]}>
+              <SignedOutBenefit icon="headphones" title="Keep every discovery" detail="Music, mixes and soundboards" />
+              <SignedOutBenefit icon="confirmation-number" title="Carry your access" detail="Tickets, memberships and purchases" />
+              <SignedOutBenefit icon="groups" title="Move with your scene" detail="Posts, circles and creator updates" />
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Sign in to My PLUGGD"
@@ -326,6 +333,22 @@ export function MyProfileScreen() {
   );
 }
 
+function SignedOutBenefit({ icon, title, detail }: { icon: keyof typeof MaterialIcons.glyphMap; title: string; detail: string }) {
+  const theme = usePluggdTheme();
+  return (
+    <View style={[styles.signedOutBenefit, { borderColor: theme.colors.border }]}>
+      <View style={[styles.signedOutBenefitIcon, { backgroundColor: theme.colors.surface }]}>
+        <MaterialIcons name={icon} size={20} color={theme.colors.accent} />
+      </View>
+      <View style={styles.signedOutBenefitCopy}>
+        <Text style={[styles.signedOutBenefitTitle, { color: theme.colors.text }]}>{title}</Text>
+        <Text style={[styles.signedOutBenefitDetail, { color: theme.colors.textMuted }]}>{detail}</Text>
+      </View>
+      <MaterialIcons name="arrow-forward" size={17} color={theme.colors.inactive} />
+    </View>
+  );
+}
+
 function Stat({ value, label }: { value: number; label: string }) {
   const theme = usePluggdTheme();
   return (
@@ -368,12 +391,18 @@ function GridList({ items, empty }: { items: Array<{ id: string; title: string; 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: 0 },
-  signedOut: { flex: 1, minHeight: 540, paddingHorizontal: 16, justifyContent: 'center' },
-  signedOutPanel: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 26 },
+  signedOut: { flex: 1, minHeight: 540, paddingHorizontal: 18, paddingTop: 22 },
+  signedOutPanel: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 20, marginTop: 18 },
   signedOutRule: { width: 42, height: 4, borderRadius: 2, marginBottom: 17 },
-  signedOutEyebrow: { fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 1.6 },
-  signedOutTitle: { maxWidth: 320, marginTop: 8, fontFamily: 'Sora-ExtraBold', fontSize: 30, lineHeight: 34, letterSpacing: -0.8 },
-  signedOutBody: { maxWidth: 320, marginTop: 10, fontFamily: 'Satoshi-Medium', fontSize: 14, lineHeight: 21 },
+  signedOutEyebrow: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, letterSpacing: 1.6 },
+  signedOutTitle: { maxWidth: 320, marginTop: 8, fontFamily: pluggdFonts.displayExtraBold, fontSize: 30, lineHeight: 34, letterSpacing: -0.8 },
+  signedOutBody: { maxWidth: 320, marginTop: 10, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21 },
+  signedOutBenefits: { marginTop: 18, borderTopWidth: 1 },
+  signedOutBenefit: { minHeight: 58, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  signedOutBenefitIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  signedOutBenefitCopy: { flex: 1 },
+  signedOutBenefitTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  signedOutBenefitDetail: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, marginTop: 2 },
   topBar: { height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   topIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   identityBlock: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 6, paddingBottom: 18 },
@@ -381,26 +410,26 @@ const styles = StyleSheet.create({
   profileHero: { width: '100%', marginBottom: 18 },
   profileCover: { width: '100%', height: 158, borderRadius: 6, borderWidth: 1, overflow: 'hidden', marginBottom: -50 },
   profileCoverFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  profileCoverText: { fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  profileCoverText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
   avatarWrap: { width: 120, height: 120, marginBottom: 10 },
   avatar: { width: 116, height: 116, borderRadius: 58, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   avatarPlus: { position: 'absolute', right: 2, bottom: 4, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontFamily: 'Satoshi-Black', fontSize: 36 },
+  avatarInitial: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 36 },
   profileBadgeRow: { minHeight: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  profileBadge: { borderBottomWidth: 2, paddingHorizontal: 4, paddingVertical: 5, overflow: 'hidden', fontFamily: 'Satoshi-Black', fontSize: 11, textTransform: 'uppercase' },
-  profileName: { fontFamily: 'Sora-ExtraBold', fontSize: 29, lineHeight: 34, letterSpacing: -0.6 },
+  profileBadge: { borderBottomWidth: 2, paddingHorizontal: 4, paddingVertical: 5, overflow: 'hidden', fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, textTransform: 'uppercase' },
+  profileName: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 29, lineHeight: 34, letterSpacing: -0.6 },
   profileHandle: { marginTop: 2, fontSize: 16, lineHeight: 21 },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 34, marginTop: 22 },
   statItem: { alignItems: 'center', minWidth: 68 },
-  statValue: { fontFamily: 'Satoshi-Black', fontSize: 23, lineHeight: 27 },
+  statValue: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 23, lineHeight: 27 },
   statLabel: { fontSize: 14, lineHeight: 18, marginTop: 2 },
   bio: { marginTop: 18, fontSize: 16, lineHeight: 22, textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 12, marginTop: 22 },
   actionButton: { flex: 1, minWidth: 146, minHeight: 48, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  actionButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
+  actionButtonText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
   accountRail: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
   accountRailButton: { width: '50%', minHeight: 58, borderBottomWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  accountRailText: { fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 16 },
+  accountRailText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12, lineHeight: 16 },
   tabBar: { height: 58, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   profileTab: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' },
   profileTabIndicator: { position: 'absolute', bottom: 0, width: 44, height: 2, borderRadius: 1 },
@@ -408,11 +437,11 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 16 },
   gridItem: { width: '48.5%', paddingBottom: 8 },
   gridArt: { height: 146, borderRadius: 5, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  gridTitle: { marginTop: 9, fontFamily: 'Satoshi-Bold', fontSize: 14 },
+  gridTitle: { marginTop: 9, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
   gridMeta: { marginTop: 3, fontSize: 12 },
   emptyPanel: { margin: 16, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 24, gap: 7 },
-  emptyTitle: { fontFamily: 'Sora-Bold', fontSize: 16, textAlign: 'left' },
+  emptyTitle: { fontFamily: pluggdFonts.displayBold, fontSize: 16, textAlign: 'left' },
   emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   primaryButton: { alignSelf: 'flex-start', minHeight: 48, marginTop: 20, borderRadius: 5, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  primaryButtonText: { fontFamily: 'Satoshi-Bold', fontSize: 14, color: '#0a0806' },
+  primaryButtonText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14, color: '#0a0806' },
 });

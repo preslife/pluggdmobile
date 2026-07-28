@@ -386,12 +386,15 @@ function EventTicketPurchase({ eventId, title, onComplete }: { eventId: string; 
   }
 
   if (!tiers.length || policy.permittedRail !== 'stripe_checkout') {
+    const unavailableMessage = tiers.length
+      ? 'Paid tickets are not available for this event right now.'
+      : 'No paid ticket tiers have been published for this event.';
     return (
       <View style={styles.ticketPurchase}>
         <Text style={styles.ticketKicker}>TICKET ACCESS</Text>
         <Text style={styles.ticketHeading}>Purchase not available</Text>
-        <Text style={styles.ticketBody}>{policy.reason || 'Verified ticket tiers have not been published for this event.'}</Text>
-        <Text style={styles.ticketFootnote}>Free RSVP remains available below. This event is online, so paid tickets are not sold here.</Text>
+        <Text style={styles.ticketBody}>{unavailableMessage}</Text>
+        <Text style={styles.ticketFootnote}>Free RSVP remains available below. Paid tickets appear only when eligible inventory is ready.</Text>
       </View>
     );
   }

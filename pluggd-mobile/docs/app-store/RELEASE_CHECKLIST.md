@@ -32,6 +32,9 @@
 - [x] External release checkout is US-only until another storefront entitlement is explicitly approved.
 - [ ] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
 - [x] Account/safety and hybrid-commerce migrations deployed to production.
+- [x] Public database views execute as the caller and retain underlying RLS;
+  CRM, private-demographic, creator-pool and operational views are service-role
+  only. Supabase security advisors report no remaining ERROR-level findings.
 - [x] Account/safety, Apple verification, commerce policy, beat checkout, event checkout and Stripe webhook functions deployed and active.
 
 ## StoreKit and server notifications
@@ -42,6 +45,8 @@
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
   no fallback purchase CTA.
 - [ ] Products are approved or submitted with the app version and available in required storefronts.
+- [ ] Review screenshots are attached to all five credit consumables and the
+  Kxngdom monthly membership before they are added for review.
 - [x] App Store Server Notification V2 production and sandbox URLs point to
   `apple-server-notification`.
 - [ ] Test notification succeeds and appears once in `apple_notification_log`.
@@ -116,7 +121,8 @@ sandbox verification remain required.
 
 - [ ] Signed out, signup, email confirmation, sign in and sign out.
 - [x] Signed-out Home, Discover, Community and Events; mini-player persists without restart.
-- [ ] Release, mix, beat, soundboard, event and creator routes.
+- [x] Release, mix, beat-marketplace, soundboard and event routes in the signed-out simulator.
+- [ ] Signed-in creator profile, creator membership and role-specific Studio routes.
 - [ ] Restricted, US and approved-entitlement storefront commerce matrix.
 - [ ] Hosted beat and ticket checkout return, cancel, pending, refund and unavailable states.
 - [ ] Offline images, unavailable audio, empty and loading states.

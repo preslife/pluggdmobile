@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     maxWidth: 230,
   },
   roomTrackNumber: { fontFamily: edFonts.mono, fontSize: 9.5, color: PLUGGD_ORANGE },
-  roomTrackTitle: { fontFamily: 'Satoshi-Bold', fontSize: 12.5, color: ed.cream, flexShrink: 1 },
+  roomTrackTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5, color: ed.cream, flexShrink: 1 },
   content: { padding: 14, paddingTop: 54, paddingBottom: 220 },
   backButton: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },

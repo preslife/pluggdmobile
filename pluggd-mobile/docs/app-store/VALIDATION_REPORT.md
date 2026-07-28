@@ -32,6 +32,11 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 - Production contains all eight expected commerce policy rows. Unknown
   storefronts fail closed; a complete US professional beat licence resolves to
   hosted Stripe Checkout; a GB release unlock resolves to credits.
+- Public database views now use caller permissions so their underlying RLS
+  policies remain authoritative. Anonymous discovery/community view queries
+  continue to pass, while CRM contact and operational webhook views reject the
+  anonymous role. Supabase's post-migration security scan has no ERROR-level
+  findings.
 - Apple identity, IAP environment, current Apple root certificates, deletion
   audit salt, Stripe signing and existing Supabase secrets are configured
   server-side.
@@ -71,6 +76,13 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
   Max simulator and launched successfully. Home, Discover, Community and Events
   were captured at 1320×2868. A spotlight-action overflow found on Events was
   corrected and re-verified in the rebuilt app.
+- A second submission-readiness run exercised Home, Discover, Community,
+  Events, event detail, Soundboards, Mixes, Releases, Beat marketplace, Search,
+  signed-out Library, account, Privacy & Safety, the persistent mini-player and
+  full player. Playback started in one tap and persisted across the primary
+  navigation. Production-mode authentication visibly exposes Sign in with
+  Apple. The misleading unavailable-ticket copy and sparse signed-out account
+  gateway found during this run were corrected and re-captured.
 - Free Apps Agreement, Paid Apps Agreement, banking, tax forms and Digital
   Services Act compliance are active.
 - Apple Distribution certificate `59DCV9XJQ8` is installed with the WWDR G3
@@ -97,10 +109,11 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
 2. Complete the review contact and dedicated reviewer account. The reviewed
    build, hybrid-commerce notes and controlled manual-release mode are saved.
 3. Complete signed StoreKit sandbox validation and upload an accurate review
-   screenshot for the provisioned Kxngdom monthly membership, then promote its
-   server catalogue status from `provisioned` to `active`. The unique product,
-   creator subscription group, storefront metadata and fail-closed catalogue
-   row are already in place.
+   screenshot for the provisioned Kxngdom monthly membership and all five
+   credit consumables, add those products to the first app review submission,
+   then promote the membership's server catalogue status from `provisioned` to
+   `active`. The unique product, creator subscription group, storefront
+   metadata and fail-closed catalogue row are already in place.
 4. Test App Store Server Notification V2 in sandbox and production, then
    exercise purchase, restore, renewal, expiry, refund and revoke paths.
 5. Resolve the Apple Developer membership renewal payment-method warning.
@@ -108,8 +121,8 @@ Validated on 28 July 2026 from branch `codex/ios-hybrid-commerce`.
    testing on the processed `1.0.0 (1)` build. Apple accepted delivery
    `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation or upload errors
    and App Store Connect reports `Ready to Submit`.
-7. Capture and upload rights-cleared final App Store screenshots and select the
-   reviewed build.
+7. Capture and upload rights-cleared final App Store screenshots. Processed
+   build `1.0.0 (1)` is already selected.
 8. Re-test native Apple sign-in in the signed TestFlight build. The account
    owner accepted the displayed PLUGGD Terms and Privacy Policy, but the
    simulator has no usable Apple account and therefore cannot complete the

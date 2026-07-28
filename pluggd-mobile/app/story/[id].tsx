@@ -294,8 +294,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   audioCopy: { flex: 1, minWidth: 0 },
-  audioTitle: { color: '#0a0806', fontFamily: 'Satoshi-Black', fontSize: 14 },
-  audioMeta: { color: '#62627A', fontFamily: 'Satoshi-Bold', fontSize: 11, marginTop: 2 },
+  audioTitle: { color: '#0a0806', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
+  audioMeta: { color: '#62627A', fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
   caption: { fontFamily: pluggdFonts.satoshiBold, color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '800' },
   tapZones: {
     ...StyleSheet.absoluteFillObject,
