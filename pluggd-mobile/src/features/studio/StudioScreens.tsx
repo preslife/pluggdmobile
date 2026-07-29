@@ -8,9 +8,11 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -1540,78 +1542,256 @@ function StudioConnectCardContent({
   query: ReturnType<typeof useStudioQuery>;
 }) {
   const router = useRouter();
+  const params = useLocalSearchParams<{ preview?: string }>();
+  const previewQuery = __DEV__ && params.preview === 'creator' ? '?preview=creator' : '';
   const publicRoute = data.connectProfile?.slug ? `/connect/${data.connectProfile.slug}` : undefined;
-  const privateViews = [
-    { id: 'collab-token', title: 'Collaborator view', detail: 'Private availability, services and working details.', icon: 'group-work' },
-    { id: 'contract-token', title: 'Deal view', detail: 'Private rates, terms and project context.', icon: 'description' },
+  const creatorName = data.connectProfile?.display_name || studioCreatorName(data);
+  const slug = data.connectProfile?.slug || (__DEV__ && params.preview === 'creator' ? 'arivale' : '');
+  const cardViews = [
+    {
+      id: 'public',
+      label: 'Connect',
+      eyebrow: 'PUBLIC',
+      detail: 'Fans, networking and instant contact exchange.',
+      icon: 'language',
+      route: slug ? `/connect/${slug}${previewQuery}` : '/edit-profile',
+      image: WEB_PARITY_ASSETS.intimateVocalist,
+      tone: ['rgba(255,106,0,0.08)', 'rgba(4,4,5,0.94)'] as [string, string],
+    },
+    {
+      id: 'business',
+      label: 'Work With Me',
+      eyebrow: 'BOOKINGS',
+      detail: 'Business contact, availability, portfolio and EPK.',
+      icon: 'business-center',
+      route: slug ? `/connect/${slug}/business${previewQuery}` : '/edit-profile',
+      image: WEB_PARITY_ASSETS.bedroomStudio,
+      tone: ['rgba(52,28,14,0.18)', 'rgba(4,4,5,0.96)'] as [string, string],
+    },
+    {
+      id: 'rates',
+      label: 'Rates',
+      eyebrow: 'SERVICES',
+      detail: 'Premium services, starting prices and enquiry.',
+      icon: 'sell',
+      route: slug ? `/connect/${slug}/rates${previewQuery}` : '/edit-profile',
+      image: WEB_PARITY_ASSETS.marketBeatStore,
+      tone: ['rgba(255,106,0,0.12)', 'rgba(4,4,5,0.96)'] as [string, string],
+    },
+    {
+      id: 'collab',
+      label: 'Collaborator',
+      eyebrow: 'PRIVATE',
+      detail: 'Split-ready identity for trusted collaborators.',
+      icon: 'group-work',
+      route: slug ? `/connect/${slug}/collab${previewQuery}` : '/edit-profile',
+      image: WEB_PARITY_ASSETS.warmListeningRoom,
+      tone: ['rgba(31,75,61,0.20)', 'rgba(4,4,5,0.96)'] as [string, string],
+    },
+    {
+      id: 'contract',
+      label: 'Legal Share',
+      eyebrow: 'SECURE',
+      detail: 'Token-protected company and legal details.',
+      icon: 'verified-user',
+      route: slug ? `/connect/${slug}/contract${previewQuery}` : '/edit-profile',
+      image: WEB_PARITY_ASSETS.brickRoomShow,
+      tone: ['rgba(43,45,71,0.22)', 'rgba(4,4,5,0.96)'] as [string, string],
+    },
   ];
+  const readyCount = data.connectProfile ? 3 : 0;
+
   return (
     <StudioShell active="more" title="Connect Card" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.30)', 'rgba(44,22,10,0.96)', 'rgba(8,8,11,0.99)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.connectHero}
-      >
-        <View style={styles.connectHeroTop}>
-          <Text style={styles.connectKicker}>Your Connect Card</Text>
-          <StatusChip label={publicRoute ? 'Live' : 'Setup'} tone={publicRoute ? 'native' : 'limited'} />
+      <View style={styles.connectOwnerHero}>
+        <View style={styles.connectOwnerCover}>
+          <PluggdImage
+            uri={data.profile?.cover_image_url || ''}
+            fallbackSource={WEB_PARITY_ASSETS.intimateVocalist}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            accessibilityLabel={`${creatorName} Connect Card cover`}
+          />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.08)', 'rgba(4,4,5,0.35)', 'rgba(4,4,5,0.98)']}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.connectOwnerTop}>
+            <View style={styles.connectOwnerProduct}>
+              <MaterialIcons name="contact-page" size={16} color={STUDIO.orangeSoft} />
+              <Text style={styles.connectOwnerProductText}>PLUGGD CONNECT</Text>
+            </View>
+            <StatusChip label={publicRoute || slug ? 'Live' : 'Setup'} tone={publicRoute || slug ? 'native' : 'limited'} />
+          </View>
         </View>
-        <View style={styles.connectIdentity}>
-          <View style={styles.connectAvatar}>
+        <View style={styles.connectOwnerIdentity}>
+          <View style={styles.connectOwnerAvatar}>
             {data.profile?.avatar_url ? (
               <PluggdImage uri={data.profile.avatar_url} style={StyleSheet.absoluteFill} accessibilityLabel={studioCreatorName(data)} />
             ) : (
-              <LinearGradient colors={['rgba(255,106,0,0.66)', 'rgba(30,18,11,0.96)']} style={styles.connectAvatarFallback}>
-                <Text style={styles.connectAvatarText}>{initials(studioCreatorName(data))}</Text>
-              </LinearGradient>
+              <PluggdImage
+                uri=""
+                fallbackSource={WEB_PARITY_ASSETS.intimateVocalist}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                accessibilityLabel={creatorName}
+              />
             )}
+            <View style={styles.connectOwnerVerified}>
+              <MaterialIcons name="check" size={17} color="#FFFFFF" />
+            </View>
           </View>
-          <View style={styles.connectIdentityCopy}>
-            <Text style={styles.connectTitle}>
-          {data.connectProfile?.display_name || studioCreatorName(data)}
-            </Text>
-            <Text style={styles.connectText}>
-              {data.connectProfile?.headline || 'Public identity, services, links and private collaboration details.'}
+          <View style={styles.connectOwnerCopy}>
+            <Text style={styles.connectOwnerEyebrow}>YOUR DIGITAL IDENTITY</Text>
+            <Text style={styles.connectOwnerName}>{creatorName}</Text>
+            <Text style={styles.connectOwnerRole}>
+              {data.connectProfile?.headline || 'Creator · independent · PLUGGD'}
             </Text>
           </View>
         </View>
-        <View style={styles.connectRouteBand}>
-          <MaterialIcons name="link" size={17} color={STUDIO.orangeSoft} />
-          <Text style={styles.connectRouteText} numberOfLines={1}>
-            {data.connectProfile?.slug ? `pluggd.co/connect/${data.connectProfile.slug}` : 'Choose your public Connect Card address'}
+        <View style={styles.connectOwnerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={publicRoute || slug ? 'Open public card' : 'Set up Connect Card'}
+            onPress={() => routePush(router, publicRoute ? `${publicRoute}${previewQuery}` : slug ? `/connect/${slug}${previewQuery}` : '/edit-profile')}
+            style={styles.connectOwnerPrimary}
+          >
+            <MaterialIcons name="visibility" size={19} color="#170A03" />
+            <Text style={styles.connectOwnerPrimaryText}>{publicRoute || slug ? 'Preview live card' : 'Start setup'}</Text>
+            <MaterialIcons name="arrow-forward" size={18} color="#170A03" />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Share Connect Card"
+            onPress={() => {
+              if (!slug) {
+                routePush(router, '/edit-profile');
+                return;
+              }
+              void Share.share({
+                title: `${creatorName} on PLUGGD`,
+                message: `https://pluggd.fm/connect/${slug}`,
+                url: `https://pluggd.fm/connect/${slug}`,
+              });
+            }}
+            style={styles.connectOwnerSecondary}
+          >
+            <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+          </Pressable>
+        </View>
+        <View style={styles.connectOwnerAddress}>
+          <MaterialIcons name="link" size={16} color={STUDIO.orangeSoft} />
+          <Text style={styles.connectOwnerAddressText} numberOfLines={1}>
+            {slug ? `pluggd.fm/connect/${slug}` : 'Choose your Connect Card address'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.connectHealth}>
+        <View style={styles.connectHealthCopy}>
+          <Text style={styles.connectHealthEyebrow}>CARD SYSTEM</Text>
+          <Text style={styles.connectHealthTitle}>{readyCount}/5 views ready</Text>
+          <Text style={styles.connectHealthText}>
+            One identity, shaped for fans, clients, collaborators and legal teams.
+          </Text>
+        </View>
+        <View style={styles.connectHealthRing}>
+          <Text style={styles.connectHealthRingValue}>{readyCount ? '60' : '0'}</Text>
+          <Text style={styles.connectHealthRingUnit}>%</Text>
+        </View>
+      </View>
+
+      <View>
+        <SectionTitle title="Five cards. One identity." />
+        <Text style={styles.privateViewsIntro}>
+          Every share is focused for its audience. Private details stay protected.
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectViewRail}>
+          {cardViews.map((view) => (
+            <Pressable
+              key={view.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Preview ${view.label} card`}
+              onPress={() => routePush(router, view.route)}
+              style={({ pressed }) => [styles.connectViewCard, pressed && { opacity: 0.82 }]}
+            >
+              <PluggdImage
+                uri=""
+                fallbackSource={view.image}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                accessibilityLabel=""
+              />
+              <LinearGradient colors={view.tone} style={StyleSheet.absoluteFill} />
+              <View style={styles.connectViewCardTop}>
+                <View style={styles.connectViewIcon}>
+                  <MaterialIcons name={iconName(view.icon)} size={20} color="#FFFFFF" />
+                </View>
+                <Text style={styles.connectViewEyebrow}>{view.eyebrow}</Text>
+              </View>
+              <View style={styles.connectViewCardBottom}>
+                <Text style={styles.connectViewLabel}>{view.label}</Text>
+                <Text style={styles.connectViewDetail}>{view.detail}</Text>
+                <View style={styles.connectViewFooter}>
+                  <Text style={styles.connectViewOpen}>{view.id === 'collab' || view.id === 'contract' ? 'Secure preview' : 'Open preview'}</Text>
+                  <MaterialIcons name="north-east" size={17} color={STUDIO.orangeSoft} />
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View>
+        <SectionTitle title="Exchange tools" />
+        <View style={styles.connectToolGrid}>
+          {[
+            { id: 'qr', icon: 'qr-code-2', title: 'Room-ready QR', detail: 'Open your card and show a full-screen code.', route: slug ? `/connect/${slug}${previewQuery}` : '/edit-profile' },
+            { id: 'wallet', icon: 'wallet', title: 'Apple Wallet', detail: 'Keep your identity one tap from the Lock Screen.', route: 'https://pluggd.fm/studio' },
+            { id: 'access', icon: 'shield', title: 'Private access', detail: 'Control collaborator and legal sharing links.', route: 'https://pluggd.fm/studio' },
+            { id: 'analytics', icon: 'insights', title: 'Card signals', detail: 'Review views, saves, shares and requests.', route: '/studio/analytics' },
+          ].map((tool) => (
+            <Pressable
+              key={tool.id}
+              accessibilityRole="button"
+              accessibilityLabel={tool.title}
+              onPress={() => tool.route.startsWith('http') ? void Linking.openURL(tool.route) : routePush(router, tool.route)}
+              style={styles.connectToolCard}
+            >
+              <View style={styles.connectToolIcon}>
+                <MaterialIcons name={iconName(tool.icon)} size={21} color={STUDIO.orangeSoft} />
+              </View>
+              <Text style={styles.connectToolTitle}>{tool.title}</Text>
+              <Text style={styles.connectToolDetail}>{tool.detail}</Text>
+              <MaterialIcons name="arrow-forward" size={17} color={STUDIO.textSubtle} />
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <LinearGradient
+        colors={['rgba(255,106,0,0.18)', 'rgba(255,106,0,0.03)']}
+        style={styles.connectFinishPanel}
+      >
+        <View style={styles.connectFinishIcon}>
+          <MaterialIcons name="tune" size={22} color={STUDIO.orangeSoft} />
+        </View>
+        <View style={styles.connectFinishCopy}>
+          <Text style={styles.connectFinishTitle}>Make every introduction count</Text>
+          <Text style={styles.connectFinishText}>
+            Complete the five views, choose exactly what each audience can see, and keep one permanent creator link.
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={publicRoute ? 'Open public card' : 'Set up Connect Card'}
-          onPress={() => routePush(router, publicRoute || '/edit-profile')}
-          style={styles.connectPrimaryButton}
+          accessibilityLabel="Open full Connect Card editor"
+          onPress={() => void Linking.openURL('https://pluggd.fm/studio')}
+          style={styles.connectFinishButton}
         >
-          <Text style={styles.connectPrimaryText}>{publicRoute ? 'Open public card' : 'Set up Connect Card'}</Text>
-          <MaterialIcons name="arrow-forward" size={18} color="#170A03" />
+          <Text style={styles.connectFinishButtonText}>Open full editor</Text>
+          <MaterialIcons name="open-in-new" size={16} color="#170A03" />
         </Pressable>
       </LinearGradient>
-
-      <View>
-        <SectionTitle title="Private Views" />
-        <Text style={styles.privateViewsIntro}>Share a focused view without exposing your full creator account.</Text>
-        <View style={styles.privateViewGrid}>
-          {privateViews.map((view) => (
-            <View key={view.id} style={styles.privateViewCard}>
-              <View style={styles.privateViewIcon}>
-                <MaterialIcons name={iconName(view.icon)} size={20} color={STUDIO.orangeSoft} />
-              </View>
-              <Text style={styles.privateViewTitle}>{view.title}</Text>
-              <Text style={styles.privateViewDetail}>{view.detail}</Text>
-              <View style={styles.privateViewFooter}>
-                <MaterialIcons name="lock" size={13} color={STUDIO.textSubtle} />
-                <Text style={styles.privateViewStatus}>Desktop setup</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
     </StudioShell>
   );
 }
@@ -3348,6 +3528,348 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
+  },
+  connectOwnerHero: {
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.36)',
+    backgroundColor: '#08080A',
+    overflow: 'hidden',
+  },
+  connectOwnerCover: {
+    height: 186,
+    overflow: 'hidden',
+  },
+  connectOwnerTop: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    right: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectOwnerProduct: {
+    minHeight: 34,
+    paddingHorizontal: 11,
+    borderRadius: 17,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.38)',
+    backgroundColor: 'rgba(6,6,8,0.80)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  connectOwnerProductText: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1.1,
+  },
+  connectOwnerIdentity: {
+    minHeight: 104,
+    marginTop: -46,
+    paddingHorizontal: 17,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 13,
+  },
+  connectOwnerAvatar: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 3,
+    borderColor: STUDIO.orange,
+    backgroundColor: STUDIO.bg,
+    overflow: 'hidden',
+  },
+  connectOwnerVerified: {
+    position: 'absolute',
+    right: -2,
+    bottom: 5,
+    width: 29,
+    height: 29,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: '#08080A',
+    backgroundColor: STUDIO.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectOwnerCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingBottom: 7,
+    gap: 3,
+  },
+  connectOwnerEyebrow: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1.25,
+  },
+  connectOwnerName: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  connectOwnerRole: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  connectOwnerActions: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    flexDirection: 'row',
+    gap: 9,
+  },
+  connectOwnerPrimary: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    backgroundColor: STUDIO.orange,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  connectOwnerPrimaryText: {
+    flex: 1,
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 12,
+  },
+  connectOwnerSecondary: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panel,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectOwnerAddress: {
+    minHeight: 44,
+    margin: 16,
+    marginTop: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectOwnerAddressText: {
+    flex: 1,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 11,
+  },
+  connectHealth: {
+    minHeight: 124,
+    borderRadius: 23,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panelDeep,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  connectHealthCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  connectHealthEyebrow: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1.3,
+  },
+  connectHealthTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 20,
+  },
+  connectHealthText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiRegular,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  connectHealthRing: {
+    width: 67,
+    height: 67,
+    borderRadius: 34,
+    borderWidth: 6,
+    borderColor: STUDIO.orange,
+    backgroundColor: 'rgba(255,106,0,0.08)',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    paddingTop: 17,
+  },
+  connectHealthRingValue: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 20,
+  },
+  connectHealthRingUnit: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+  },
+  connectViewRail: {
+    gap: 11,
+    paddingRight: 4,
+  },
+  connectViewCard: {
+    width: 248,
+    height: 224,
+    borderRadius: 23,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.17)',
+    overflow: 'hidden',
+    padding: 15,
+    justifyContent: 'space-between',
+  },
+  connectViewCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectViewIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(4,4,5,0.58)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectViewEyebrow: {
+    color: '#FFFFFF',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1.2,
+  },
+  connectViewCardBottom: {
+    gap: 5,
+  },
+  connectViewLabel: {
+    color: '#FFFFFF',
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  connectViewDetail: {
+    minHeight: 34,
+    color: 'rgba(255,255,255,0.76)',
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  connectViewFooter: {
+    marginTop: 4,
+    paddingTop: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.16)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectViewOpen: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+  },
+  connectToolGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  connectToolCard: {
+    width: '48%',
+    minHeight: 165,
+    borderRadius: 21,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panelDeep,
+    padding: 14,
+    gap: 8,
+  },
+  connectToolIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectToolTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  connectToolDetail: {
+    flex: 1,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiRegular,
+    fontSize: 10.5,
+    lineHeight: 15,
+  },
+  connectFinishPanel: {
+    borderRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.34)',
+    padding: 16,
+    gap: 13,
+  },
+  connectFinishIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectFinishCopy: {
+    gap: 5,
+  },
+  connectFinishTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  connectFinishText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiRegular,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  connectFinishButton: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    borderRadius: 14,
+    backgroundColor: STUDIO.orange,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectFinishButtonText: {
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 11,
   },
   connectHero: {
     borderRadius: 26,

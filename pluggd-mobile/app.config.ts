@@ -33,6 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSMicrophoneUsageDescription: 'PLUGGD uses the microphone when you join or host a live audio room.',
       NSPhotoLibraryUsageDescription: 'PLUGGD lets you choose images and media for your profile and creator content.',
       NSPhotoLibraryAddUsageDescription: 'PLUGGD saves an exported creator asset only when you ask it to.',
+      NSContactsUsageDescription: 'PLUGGD opens the iPhone contact form only when you choose to save a creator Connect Card.',
     },
     privacyManifests: {
       NSPrivacyTracking: false,
@@ -135,6 +136,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-router',
     'expo-apple-authentication',
+    [
+      'expo-contacts',
+      {
+        contactsPermission: 'PLUGGD opens the contact form only when you choose to save a creator Connect Card.',
+      },
+    ],
     'expo-web-browser',
     'expo-video',
     [

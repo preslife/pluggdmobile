@@ -5,7 +5,7 @@ import MiniPlayer from './MiniPlayer';
 import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
 
-const HIDDEN_PREFIXES = ['/auth', '/player', '/studio'];
+const HIDDEN_PREFIXES = ['/auth', '/player', '/studio', '/connect'];
 const HIDDEN_EXACT = new Set([
   '/live/session',
   '/live/feed',

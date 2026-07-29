@@ -1,5 +1,5 @@
-import { ConnectCardParityScreen } from '../../src/features/parity/AppWideParityScreens';
+import { ConnectCardScreen } from '../../src/features/connect/ConnectCardScreen';
 
 export default function ConnectCardRoute() {
-  return <ConnectCardParityScreen />;
+  return <ConnectCardScreen viewType="public" />;
 }
