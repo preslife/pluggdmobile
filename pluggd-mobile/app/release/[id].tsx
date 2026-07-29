@@ -14,6 +14,7 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../src/components/PluggdImage';
+import { ReleaseArtwork } from '../../src/components/ReleaseArtwork';
 import { ed, edFonts } from '../../src/design/editorial';
 import { supabase } from '../../src/lib/supabase';
 import { usePlayback, type PluggdTrack } from '../../src/context/PlaybackProvider';
@@ -480,7 +481,7 @@ export default function ReleaseDetailScreen() {
       >
         {/* Art with support pill */}
         <View>
-          <PluggdImage
+          <ReleaseArtwork
             uri={release.cover_art_url || ''}
             fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
             style={styles.art}
@@ -659,7 +660,7 @@ export default function ReleaseDetailScreen() {
             </View>
             <View style={styles.playerHeadRow}>
               <View style={styles.playerThumbWrap}>
-                <PluggdImage
+                <ReleaseArtwork
                   uri={release.cover_art_url || ''}
                   fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
                   style={styles.playerThumb}
@@ -880,7 +881,7 @@ const styles = StyleSheet.create({
   notFoundTitle: { fontFamily: edFonts.bodyBlack, fontSize: 18, color: ed.cream },
   notFoundBody: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.6)', textAlign: 'center' },
 
-  art: { width: '100%', height: 390 },
+  art: { width: '100%', aspectRatio: 1 },
   backButton: {
     position: 'absolute',
     left: 14,

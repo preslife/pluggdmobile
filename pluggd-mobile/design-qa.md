@@ -60,3 +60,26 @@ The corrected implementation preserves the selected hierarchy: compact brand hea
 ## Final result: passed
 
 The approved Home direction, intentional Discover surface, persistent mini-player, modern full player, four-part navigation and redesigned Library are implemented and verified against the selected concept.
+
+## Release artwork correction — 29 July 2026
+
+- Source visual truth: the live `Still ah Link` 3000 × 3000px release cover and the existing square-cover presentation used throughout PLUGGD.
+- Defective implementation capture: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-before.jpg` at 368 × 800px.
+- Corrected implementation captures:
+  - Home: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-after.jpg`
+  - Release detail: `artifacts/screenshots/release-artwork-correction-2026-07-29/release-detail-after.jpg`
+  - Home comparison: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-comparison.jpg`
+  - Release detail comparison: `artifacts/screenshots/release-artwork-correction-2026-07-29/release-detail-comparison.jpg`
+- Viewport: iPhone 17 Pro Max simulator, optimized 368 × 800px capture.
+- State: live public feed, `Still ah Link` featured on Home and opened on its public release route.
+- Root cause: the Supabase derivative request supplied `width` without an explicit resize strategy, returning a distorted 520 × 3000px derivative from the square 3000 × 3000px source.
+- Fix: derivative requests now use `resize=contain`, preserving the source ratio before React Native applies the card's edge-to-edge `cover` fit. Release hero, Home lead, release tiles, Listening Floor wall, ledger, chart and support cards use consistent artwork frames.
+- Full-view comparison: the corrected Home shows complete, correctly proportioned square covers while rectangular cards remain edge-to-edge with a modest centred crop. No blurred bars or narrow poster strips remain.
+- Focused comparison: Home lead and release detail hero both preserve the full square composition; typography, spacing, orange controls, copy and card hierarchy are unchanged.
+- Accessibility and interaction: existing labelled press targets and one-tap playback remain unchanged.
+- Comparison history:
+  1. The original rendering showed severe zoom caused by the malformed derivative.
+  2. A contain-plus-blurred-backdrop treatment exposed the malformed derivative as a narrow strip and was rejected.
+  3. Inspecting the live source and derivative proved the data was correct and the resize response was not.
+  4. The derivative was corrected, the app rebuilt, and Home plus release detail were recaptured on the same simulator.
+- Final result: passed.

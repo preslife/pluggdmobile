@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
 import { PluggdImage } from '../../components/PluggdImage';
+import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import {
   buildBalancedHomePicks,
@@ -197,7 +198,7 @@ export function MusicDiscoveryHome() {
               {newReleases.map((item) => {
                 const playable = items.find((entry) => entry.kind === 'release' && entry.track.releaseId === item.id);
                 return <Pressable key={item.id} onPress={() => playable ? play(playable) : router.push(`/release/${item.id}` as any)} style={styles.releaseCard} accessibilityLabel={`${playable ? 'Play' : 'Open'} ${item.title || 'release'}`}>
-                  {item.cover_art_url ? <PluggdImage uri={item.cover_art_url} style={styles.releaseArt} displayWidth={420} /> : <View style={[styles.releaseArt, styles.artFallback]}><MaterialIcons name="album" size={28} color={ORANGE} /></View>}
+                  {item.cover_art_url ? <ReleaseArtwork uri={item.cover_art_url} style={styles.releaseArt} displayWidth={420} /> : <View style={[styles.releaseArt, styles.artFallback]}><MaterialIcons name="album" size={28} color={ORANGE} /></View>}
                   <View style={styles.releasePlay}><MaterialIcons name={playable ? 'play-arrow' : 'arrow-forward'} size={19} color="#100B07" /></View>
                   <Text style={styles.releaseTitle} numberOfLines={1}>{item.title || 'Untitled release'}</Text>
                   <Text style={styles.releaseCreator} numberOfLines={1}>{item.artist || item.genre || 'PLUGGD creator'}</Text>
@@ -320,6 +321,9 @@ export function MusicDiscoveryHome() {
 }
 
 function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; iconSize: number }) {
+  if (item.kind === 'release' && item.artwork) {
+    return <ReleaseArtwork uri={item.artwork} style={style} displayWidth={520} />;
+  }
   return item.artwork ? (
     <PluggdImage uri={item.artwork} style={style} resizeMode="cover" displayWidth={520} />
   ) : (
@@ -338,9 +342,9 @@ const styles = StyleSheet.create({
   empty: { minHeight: 210, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F', justifyContent: 'center' },
   emptyTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 20 },
   emptyBody: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 14, lineHeight: 20, marginTop: 8, maxWidth: 280 },
-  featured: { minHeight: 214, flexDirection: 'row', gap: 17, paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F' },
-  featuredArtWrap: { width: 146, position: 'relative' },
-  featuredArt: { width: 146, height: 184, borderRadius: 3, backgroundColor: '#211C17' },
+  featured: { minHeight: 180, flexDirection: 'row', gap: 17, paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#29251F' },
+  featuredArtWrap: { width: 146, height: 146, alignSelf: 'center', position: 'relative' },
+  featuredArt: { width: 146, height: 146, borderRadius: 3, backgroundColor: '#211C17' },
   kindFlag: { position: 'absolute', left: 8, top: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: 'rgba(10,9,8,0.82)' },
   kindFlagText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 8, letterSpacing: 1.1 },
   featuredPlayBadge: { position: 'absolute', right: 9, bottom: 9, width: 44, height: 44, borderRadius: 22, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
@@ -358,8 +362,8 @@ const styles = StyleSheet.create({
   seeAll: { marginLeft: 12, color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   pickGrid: { gap: 10 },
   pickRow: { flexDirection: 'row', gap: 10 },
-  pick: { flex: 1, minWidth: 0, minHeight: 154, borderRadius: 5, overflow: 'hidden' },
-  pickArt: { width: '100%', height: 108, borderRadius: 4, backgroundColor: '#211C17' },
+  pick: { flex: 1, minWidth: 0, minHeight: 174, borderRadius: 5, overflow: 'hidden' },
+  pickArt: { width: '100%', height: 128, borderRadius: 4, backgroundColor: '#211C17' },
   pickKind: {
     position: 'absolute',
     left: 7,
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
   pickCopy: { minWidth: 0, paddingTop: 7, paddingRight: 30 },
   pickTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
   pickCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
-  smallPlay: { position: 'absolute', right: 7, top: 72, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: ORANGE },
+  smallPlay: { position: 'absolute', right: 7, top: 92, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: ORANGE },
   sceneRow: { gap: 10, paddingRight: 20 },
   scene: { width: 132, height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end', padding: 10 },
   sceneImage: { ...StyleSheet.absoluteFillObject },

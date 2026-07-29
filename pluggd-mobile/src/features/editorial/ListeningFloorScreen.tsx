@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
+import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
 import { usePlayback } from '../../context/PlaybackProvider';
@@ -158,10 +159,9 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
       >
         <View style={styles.deckArtWrap}>
           {release.cover_art_url ? (
-            <PluggdImage
+            <ReleaseArtwork
               uri={release.cover_art_url}
               fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom}
-              resizeMode="cover"
               style={styles.deckArt}
             />
           ) : (
@@ -290,7 +290,7 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
 /* Wall tile + editors quote                                           */
 /* ------------------------------------------------------------------ */
 
-function WallTile({ release, tall }: { release: FloorRelease; tall?: boolean }) {
+function WallTile({ release }: { release: FloorRelease; tall?: boolean }) {
   const router = useRouter();
   const playback = usePlayback();
   const quickActions = () => {
@@ -320,9 +320,9 @@ function WallTile({ release, tall }: { release: FloorRelease; tall?: boolean }) 
       <View style={styles.wallTile}>
         <View style={styles.wallArtWrap}>
           {release.cover_art_url ? (
-            <PluggdImage uri={release.cover_art_url} style={[styles.wallArt, tall && { height: 200 }]} />
+            <ReleaseArtwork uri={release.cover_art_url} style={styles.wallArt} />
           ) : (
-            <View style={[styles.wallArt, tall && { height: 200 }, { backgroundColor: '#191410' }]} />
+            <View style={[styles.wallArt, { backgroundColor: '#191410' }]} />
           )}
           {daysAgoLabel(release.created_at) ? (
             <View style={styles.wallAgeChip}>
@@ -394,7 +394,7 @@ function LedgerRows({ releases }: { releases: FloorRelease[] }) {
           <View style={styles.ledgerRow}>
             <View style={styles.ledgerThumbWrap}>
               {release.cover_art_url ? (
-                <PluggdImage uri={release.cover_art_url} style={styles.ledgerThumb} />
+                <ReleaseArtwork uri={release.cover_art_url} style={styles.ledgerThumb} />
               ) : (
                 <View style={[styles.ledgerThumb, { backgroundColor: '#191410' }]} />
               )}
@@ -442,7 +442,7 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
             <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
             <View style={styles.chartThumbWrap}>
               {release.cover_art_url ? (
-                <PluggdImage uri={release.cover_art_url} style={styles.chartThumb} />
+                <ReleaseArtwork uri={release.cover_art_url} style={styles.chartThumb} />
               ) : (
                 <View style={[styles.chartThumb, { backgroundColor: '#191410' }]} />
               )}
@@ -481,7 +481,7 @@ function PressingOrders({ releases, signals }: { releases: FloorRelease[]; signa
           <View key={release.id} style={styles.pressingCard}>
             <View style={styles.pressingArtWrap}>
               {release.cover_art_url ? (
-                <PluggdImage uri={release.cover_art_url} style={styles.pressingArt} />
+                <ReleaseArtwork uri={release.cover_art_url} style={styles.pressingArt} />
               ) : (
                 <View style={[styles.pressingArt, { backgroundColor: '#191410' }]} />
               )}
@@ -859,7 +859,7 @@ const styles = StyleSheet.create({
   deckHeadLabel: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: 'rgba(255,248,237,0.6)' },
   deckHeadRight: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: ed.orange },
   deckArtWrap: { borderRadius: 4, overflow: 'hidden' },
-  deckArt: { width: '100%', height: 300 },
+  deckArt: { width: '100%', aspectRatio: 1 },
   deckArtShade: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(7,6,5,0.18)',
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
   wallColumn: { flex: 1, gap: 18 },
   wallTile: { gap: 6 },
   wallArtWrap: { borderRadius: 3, overflow: 'hidden' },
-  wallArt: { width: '100%', height: 150 },
+  wallArt: { width: '100%', aspectRatio: 1 },
   wallAgeChip: {
     position: 'absolute',
     top: 8,

@@ -21,7 +21,11 @@ const STORAGE_RENDER_PATH = '/storage/v1/render/image/public/';
 export function transformedUri(uri: string, width: number): string | null {
   if (!uri || !uri.includes(STORAGE_PUBLIC_PATH)) return null;
   const base = uri.replace(STORAGE_PUBLIC_PATH, STORAGE_RENDER_PATH);
-  return `${base}${base.includes('?') ? '&' : '?'}width=${Math.round(width)}&quality=80`;
+  // Supabase's renderer can retain the source pixel height when only `width`
+  // is supplied, producing a distorted derivative (for example 520×3000
+  // from a 3000×3000 cover). `resize=contain` preserves the source aspect
+  // ratio while still serving the requested display width.
+  return `${base}${base.includes('?') ? '&' : '?'}width=${Math.round(width)}&resize=contain&quality=80`;
 }
 
 // On web, browser-cached images can complete before React attaches the

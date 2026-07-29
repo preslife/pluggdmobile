@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const root = new URL('../', import.meta.url);
 const source = readFileSync(new URL('src/features/parity/webAssets.ts', root), 'utf8');
+const imageSource = readFileSync(new URL('src/components/PluggdImage.tsx', root), 'utf8');
 
 const requiredAssets = [
   'assets/web-parity/home/homepage-hero.jpeg',
@@ -32,5 +33,11 @@ for (const asset of requiredAssets) {
 for (const token of ['WEB_PARITY_ASSETS', 'WEB_PARITY_ASSET_GROUPS', 'homeHero', 'discoverPaperWide', 'marketBeatStore']) {
   assert.match(source, new RegExp(token), `webAssets.ts must expose ${token}`);
 }
+
+assert.match(
+  imageSource,
+  /width=\$\{Math\.round\(width\)\}&resize=contain&quality=80/,
+  'Supabase image derivatives must preserve the source aspect ratio',
+);
 
 console.log('mobile web asset contract verified');
