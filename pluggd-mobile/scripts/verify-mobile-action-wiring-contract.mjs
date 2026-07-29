@@ -61,7 +61,11 @@ assert.doesNotMatch(fanSetup, /SUGGESTED_CREATORS|Maya Sol|Kairo Beats|Selecta N
 
 const login = read('app/auth/login.tsx');
 const signup = read('app/auth/signup.tsx');
-assert.doesNotMatch(login + signup, /SocialButton|or continue with/, 'auth must not show OAuth buttons unless a provider is wired');
+const googleSignIn = read('src/features/auth/google-sign-in.ts');
+assert.match(login, /AppleSignInButton[\s\S]*GoogleSignInButton/, 'login must expose the wired Apple and Google providers');
+assert.match(signup, /AppleSignInButton[\s\S]*GoogleSignInButton/, 'standard account creation must expose the wired Apple and Google providers');
+assert.match(googleSignIn, /signInWithOAuth\([\s\S]*provider:\s*'google'/, 'Google auth must use the configured Supabase provider');
+assert.match(googleSignIn, /openAuthSessionAsync[\s\S]*exchangeCodeForSession/, 'Google auth must return securely to the app and exchange its code');
 assert.match(login, /resetPasswordForEmail/, 'forgot password must call the Supabase reset flow');
 
 const samplePack = read('app/sample-pack/[id].tsx');
@@ -107,10 +111,17 @@ for (const legacyRoute of [
   'app/creator/licensing.tsx',
   'app/creator/memberships.tsx',
   'app/creator/payouts.tsx',
-  'app/creator/upload.tsx',
 ]) {
   assert.match(read(legacyRoute), /<Redirect href=/, `${legacyRoute} must intentionally redirect instead of exposing a stale placeholder screen`);
 }
+
+const creatorUpload = read('app/creator/upload.tsx');
+assert.doesNotMatch(creatorUpload, /<Redirect href=/, 'creator upload must remain a native Studio workflow');
+assert.match(creatorUpload, /expo-image-picker/, 'creator upload must provide artwork selection');
+assert.match(creatorUpload, /expo-document-picker/, 'creator upload must provide audio selection');
+assert.match(creatorUpload, /details[\s\S]*media[\s\S]*rights[\s\S]*review/, 'creator upload must cover details, media, rights and review');
+assert.match(creatorUpload, /AsyncStorage\.setItem/, 'creator upload must persist honest mobile drafts');
+assert.match(creatorUpload, /Final publishing|final publishing/i, 'creator upload must clearly distinguish mobile drafts from final publishing');
 
 // Crowdfunding and the Collab Hub graduated from redirects to real, data-backed
 // screens: campaigns with live progress, and open collaboration briefs.

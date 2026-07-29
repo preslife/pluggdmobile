@@ -130,9 +130,9 @@ export function getCreateActions(roles: EcosystemRole[] = []): CreateAction[] {
   const canMix = roleSet.has('dj') || roleSet.has('curator') || roleSet.has('artist');
   const canEvent = roleSet.has('promoter') || roleSet.has('venue') || roleSet.has('dj') || roleSet.has('manager');
 
-  if (canRelease) add(actions, { key: 'release', label: 'Upload Release', route: '/studio/action?type=release' });
-  if (canBeat) add(actions, { key: 'beat', label: 'Upload Beat', route: '/studio/action?type=beat' });
-  if (canMix) add(actions, { key: 'mix', label: 'Upload Mix', route: '/studio/action?type=mix' });
+  if (canRelease) add(actions, { key: 'release', label: 'Upload Release', route: '/creator/upload?type=release' });
+  if (canBeat) add(actions, { key: 'beat', label: 'Upload Beat', route: '/creator/upload?type=beat' });
+  if (canMix) add(actions, { key: 'mix', label: 'Upload Mix', route: '/creator/upload?type=mix' });
   if (canRelease || canMix || roleSet.has('curator')) {
     add(actions, { key: 'soundboard', label: 'Create Soundboard', route: '/soundboards' });
   }

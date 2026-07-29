@@ -5,6 +5,7 @@ import TrackPlayer from "react-native-track-player";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
 import { useFonts } from "expo-font";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect } from "react";
 import { NativeModules, StyleSheet, View } from "react-native";
 import "../global.css";
@@ -50,9 +51,11 @@ export default function Layout() {
   }
 
   return (
-    <PluggdThemeProvider>
-      <LayoutContent />
-    </PluggdThemeProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <PluggdThemeProvider>
+        <LayoutContent />
+      </PluggdThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

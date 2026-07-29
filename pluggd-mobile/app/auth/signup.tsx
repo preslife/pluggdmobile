@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { AppleSignInButton } from '../../components/AppleSignInButton';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
@@ -29,6 +30,10 @@ import {
   isAppleSignInCancellation,
   signInWithApple,
 } from '../../src/features/auth/apple-sign-in';
+import {
+  isGoogleSignInCancellation,
+  signInWithGoogle,
+} from '../../src/features/auth/google-sign-in';
 
 function getPasswordStrength(password: string): { level: number; label: string; color: string } {
   if (!password) return { level: 0, label: '', color: '' };
@@ -130,6 +135,27 @@ export default function SignUp() {
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
         setError(authError?.message ?? 'Unable to sign up with Apple.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setError('');
+    if (!ageConfirmed) {
+      setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+      return;
+    }
+
+    setLoading(true);
+    await clearLaunchAccessNotice();
+    try {
+      await signInWithGoogle();
+      router.replace('/auth/role' as any);
+    } catch (authError: any) {
+      if (!isGoogleSignInCancellation(authError)) {
+        setError(authError?.message ?? 'Unable to sign up with Google.');
       }
     } finally {
       setLoading(false);
@@ -302,6 +328,11 @@ export default function SignUp() {
                   mode="sign-up"
                   onPress={() => void handleAppleSignUp()}
                   light={theme.scheme === 'light'}
+                  disabled={loading}
+                />
+                <GoogleSignInButton
+                  mode="sign-up"
+                  onPress={() => void handleGoogleSignUp()}
                   disabled={loading}
                 />
               </>

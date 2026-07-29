@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { AppleSignInButton } from '../../components/AppleSignInButton';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { LAUNCH_ACCESS_REQUIRED } from '../../src/config/environment';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
@@ -27,6 +28,10 @@ import {
   isAppleSignInCancellation,
   signInWithApple,
 } from '../../src/features/auth/apple-sign-in';
+import {
+  isGoogleSignInCancellation,
+  signInWithGoogle,
+} from '../../src/features/auth/google-sign-in';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
@@ -129,6 +134,33 @@ export default function Login() {
     );
   };
 
+  const performGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    await clearLaunchAccessNotice();
+    try {
+      const result = await signInWithGoogle();
+      router.replace(result.isNewUser ? ('/auth/role' as any) : ('/' as any));
+    } catch (authError: any) {
+      if (!isGoogleSignInCancellation(authError)) {
+        setError(authError?.message ?? 'Unable to sign in with Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    Alert.alert(
+      'Continue with Google',
+      'By continuing, you confirm that you are at least 16 and agree to the PLUGGD Terms and Privacy Policy.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => void performGoogleLogin() },
+      ],
+    );
+  };
+
   const cycleThemeMode = () => {
     const nextMode: PluggdThemeMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
     setMode(nextMode);
@@ -181,6 +213,27 @@ export default function Login() {
           </View>
 
           <View style={[styles.formCard, { borderColor: theme.colors.border }]}>
+            <View style={styles.appleAuthBlock}>
+              <Text style={[styles.appleAuthEyebrow, { color: theme.colors.textMuted }]}>
+                FAST, PRIVATE SIGN-IN
+              </Text>
+              <AppleSignInButton
+                onPress={handleAppleLogin}
+                light={theme.scheme === 'light'}
+                disabled={loading}
+              />
+              <GoogleSignInButton
+                onPress={handleGoogleLogin}
+                disabled={loading}
+              />
+            </View>
+
+            <View style={styles.authDivider}>
+              <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
+              <Text style={[styles.authDividerText, { color: theme.colors.textSubtle }]}>OR CONTINUE WITH EMAIL</Text>
+              <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
+            </View>
+
             <InputRow
               label="Email"
               icon="mail-outline"
@@ -243,21 +296,6 @@ export default function Login() {
             >
               {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Log in</Text>}
             </Pressable>
-
-            {!LAUNCH_ACCESS_REQUIRED ? (
-              <>
-                <View style={styles.authDivider}>
-                  <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
-                  <Text style={[styles.authDividerText, { color: theme.colors.textSubtle }]}>OR</Text>
-                  <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
-                </View>
-                <AppleSignInButton
-                  onPress={handleAppleLogin}
-                  light={theme.scheme === 'light'}
-                  disabled={loading}
-                />
-              </>
-            ) : null}
           </View>
 
           <Text style={[styles.signupText, { color: theme.colors.textMuted }]}>
@@ -312,7 +350,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   authDivider: {
-    marginVertical: 18,
+    marginVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -322,10 +360,19 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
   },
   authDividerText: {
-    fontSize: 11,
+    fontSize: 9,
     fontFamily: pluggdFonts.satoshiBold,
     fontWeight: '800',
-    letterSpacing: 1.4,
+    letterSpacing: 1.1,
+  },
+  appleAuthBlock: {
+    gap: 10,
+  },
+  appleAuthEyebrow: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 1.3,
   },
   keyboard: {
     flex: 1,

@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useReducedMotion } from '../../design/useReducedMotion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
@@ -441,7 +442,12 @@ function FeaturedHero({
   onSave: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
+    if (reducedMotion) {
+      scale.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, { toValue: 1.07, duration: 9500, useNativeDriver: true }),
@@ -450,7 +456,7 @@ function FeaturedHero({
     );
     loop.start();
     return () => loop.stop();
-  }, [scale]);
+  }, [reducedMotion, scale]);
 
   if (!item) {
     return (

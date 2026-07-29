@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
@@ -24,6 +24,7 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { formatCompact } from '../../lib/mobileContent';
 import {
   loadStudioData,
+  createStudioPreviewData,
   setStudioModulePlugged,
   studioCreatorName,
   type StudioAction,
@@ -319,22 +320,23 @@ function HeaderAvatar({ data }: { data: StudioData }) {
   );
 }
 
-function StudioMenuButton() {
+function StudioMenuButton({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Open Studio apps"
+      accessibilityLabel={signedIn ? 'Open Studio apps' : 'Back to PLUGGD'}
       onPress={() => {
         selectionHaptic();
-        router.push('/studio/apps' as any);
+        if (signedIn) router.push('/studio/apps' as any);
+        else router.replace('/' as any);
       }}
       style={styles.studioMenuTap}
     >
       {({ pressed }) => (
         <View style={[styles.studioMenuButton, pressed && { backgroundColor: STUDIO.panelPressed }]}>
-          <MaterialIcons name="view-sidebar" size={17} color={STUDIO.text} />
-          <Text style={styles.studioMenuText}>Menu</Text>
+          <MaterialIcons name={signedIn ? 'view-sidebar' : 'arrow-back'} size={17} color={STUDIO.text} />
+          <Text style={styles.studioMenuText}>{signedIn ? 'Menu' : 'Back'}</Text>
         </View>
       )}
     </Pressable>
@@ -344,7 +346,7 @@ function StudioMenuButton() {
 function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
   return (
     <View style={styles.topBar}>
-      <StudioMenuButton />
+      <StudioMenuButton signedIn={data.signedIn} />
       <View style={styles.studioBrand}>
         <Text style={styles.studioBrandPlug}>PLUGGD</Text>
         <Text style={styles.studioBrandTitle} numberOfLines={1}>STUDIO</Text>
@@ -352,7 +354,7 @@ function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
       <View style={styles.studioAccountPill}>
         <HeaderAvatar data={data} />
         <Text style={styles.studioAccountText} numberOfLines={1}>
-          {data.profile?.username ? `@${data.profile.username}` : 'Personal'}
+          {data.profile?.username ? `@${data.profile.username}` : data.signedIn ? 'Personal' : 'Guest'}
         </Text>
         <MaterialIcons name="expand-more" size={15} color={STUDIO.textMid} />
       </View>
@@ -424,6 +426,7 @@ function StudioShell({
   data,
   refreshing,
   onRefresh,
+  showDock = true,
 }: {
   active: StudioRouteKey;
   title: string;
@@ -431,6 +434,7 @@ function StudioShell({
   data: StudioData;
   refreshing: boolean;
   onRefresh: () => void;
+  showDock?: boolean;
 }) {
   const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
@@ -439,15 +443,22 @@ function StudioShell({
       <Stack.Screen options={{ title, headerShown: false }} />
       <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <ScrollView
+        key={active}
         contentInsetAdjustmentBehavior="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />}
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(10, insets.top + 8), paddingBottom: Math.max(146, insets.bottom + 132) }]}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(10, insets.top + 8),
+            paddingBottom: showDock ? Math.max(146, insets.bottom + 132) : Math.max(32, insets.bottom + 24),
+          },
+        ]}
       >
         <StudioTopBar data={data} title={title} />
         {children}
       </ScrollView>
-      <StudioDock active={active} />
+      {showDock ? <StudioDock active={active} /> : null}
     </View>
   );
 }
@@ -485,27 +496,81 @@ function AccessState({ data, active, title }: { data: StudioData; active: Studio
     ? { label: 'Choose roles', route: '/auth/role', icon: 'admin-panel-settings' }
     : { label: 'Sign in', route: '/auth/login', icon: 'login' };
   return (
-    <StudioShell active={active} title={title} data={data} refreshing={false} onRefresh={() => undefined}>
-      <View style={[styles.accessCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <MaterialIcons name={iconName(action.icon)} size={32} color={theme.colors.accent} />
-        <Text style={[styles.accessTitle, { color: theme.colors.text }]}>
-          {data.signedIn ? 'Creator access needed' : 'Open Studio'}
+    <StudioShell active={active} title={title} data={data} refreshing={false} onRefresh={() => undefined} showDock={false}>
+      <LinearGradient
+        colors={['rgba(255,106,0,0.28)', 'rgba(255,255,255,0.075)', 'rgba(4,4,5,0.98)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.accessHero}
+      >
+        <View pointerEvents="none" style={styles.accessGlow} />
+        <View style={styles.accessHeroTop}>
+          <View style={styles.accessHeroIcon}>
+            <MaterialIcons name="graphic-eq" size={26} color={STUDIO.orange} />
+          </View>
+          <StatusChip label="Creator workspace" tone="limited" />
+        </View>
+        <Text style={styles.accessEyebrow}>YOUR WORK, IN MOTION</Text>
+        <Text style={styles.accessHeroTitle}>
+          Build, read the signal,{'\n'}move the catalog.
         </Text>
-        <Text style={[styles.accessText, { color: theme.colors.textMuted }]}>
-          {data.signedIn
-            ? 'Studio is available for artist, producer, DJ, promoter, venue, curator, service, or manager roles.'
-            : 'Sign in with a creator account to use PLUGGD Studio.'}
+        <Text style={styles.accessHeroBody}>
+          Upload drafts, catalog health, audience signals and launch controls in one focused mobile workspace.
         </Text>
-        <Pressable accessibilityRole="button" onPress={() => routePush(router, action.route)} style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}>
-          <Text style={styles.primaryButtonText}>{action.label}</Text>
-        </Pressable>
+        <View style={styles.accessHeroActions}>
+          <Pressable accessibilityRole="button" onPress={() => routePush(router, action.route)} style={styles.accessPrimary}>
+            <Text style={styles.accessPrimaryText}>{action.label}</Text>
+            <MaterialIcons name="arrow-forward" size={18} color="#130A04" />
+          </Pressable>
+          {!data.signedIn ? (
+            <Pressable accessibilityRole="button" onPress={() => routePush(router, '/auth/signup')} style={styles.accessSecondary}>
+              <Text style={styles.accessSecondaryText}>Create account</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </LinearGradient>
+
+      <View>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionKicker}>STUDIO ON MOBILE</Text>
+            <Text style={styles.sectionTitle}>Close to the work.</Text>
+          </View>
+          <Text style={styles.accessSectionMeta}>4 CORE TOOLS</Text>
+        </View>
+        <View style={styles.accessCapabilityGrid}>
+          {[
+            { icon: 'cloud-upload', title: 'Upload drafts', body: 'Release, beat and mix preparation.' },
+            { icon: 'library-music', title: 'Catalog', body: 'Your work, status and next moves.' },
+            { icon: 'insights', title: 'Signals', body: 'Audience and catalog health.' },
+            { icon: 'bolt', title: 'Actions', body: 'Live, events, wallet and launch tools.' },
+          ].map((item) => (
+            <View key={item.title} style={styles.accessCapability}>
+              <View style={styles.accessCapabilityIcon}>
+                <MaterialIcons name={iconName(item.icon)} size={20} color={STUDIO.orange} />
+              </View>
+              <Text style={styles.accessCapabilityTitle}>{item.title}</Text>
+              <Text style={styles.accessCapabilityBody}>{item.body}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.accessTrustBand}>
+        <MaterialIcons name="verified-user" size={19} color={STUDIO.orangeSoft} />
+        <Text style={styles.accessTrustText}>
+          Creator access keeps private drafts, business signals and account controls behind your sign-in.
+        </Text>
       </View>
     </StudioShell>
   );
 }
 
 function withStudioData(active: StudioRouteKey, title: string, render: (data: StudioData, query: ReturnType<typeof useStudioQuery>) => React.ReactNode) {
+  const params = useLocalSearchParams<{ preview?: string }>();
   const query = useStudioQuery();
+  const previewData = __DEV__ && params.preview === 'creator' ? createStudioPreviewData() : null;
+  if (previewData) return render(previewData, query);
   if (query.isLoading) return <LoadingState title={title} />;
   if (query.error) {
     const message = query.error instanceof Error ? query.error.message : 'Studio could not load.';
@@ -1628,8 +1693,8 @@ const styles = StyleSheet.create({
     backgroundColor: STUDIO.dock,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    gap: 6,
+    padding: 7,
+    gap: 2,
   },
   dockItem: {
     flex: 1,
@@ -1637,10 +1702,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   dockActionWrap: {
-    flex: 1.18,
+    flex: 1,
   },
   dockItemActiveWrap: {
-    flex: 1.32,
+    flex: 1,
   },
   dockItemInner: {
     flex: 1,
@@ -1679,8 +1744,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dockLabel: { fontFamily: pluggdFonts.satoshiBlack,
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 12,
     fontWeight: '900',
     letterSpacing: 0,
   },
@@ -1707,23 +1772,154 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
-  accessCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 26,
-    padding: 22,
+  accessHero: {
+    minHeight: 342,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.34)',
+    borderRadius: 28,
+    padding: 20,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  accessGlow: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    right: -96,
+    top: -84,
+    backgroundColor: 'rgba(255,106,0,0.18)',
+  },
+  accessHeroTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  accessTitle: { fontFamily: pluggdFonts.displayBold,
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '900',
+  accessHeroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.42)',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  accessText: { fontFamily: pluggdFonts.satoshiBold,
-    textAlign: 'center',
-    fontSize: 14,
+  accessEyebrow: {
+    marginTop: 24,
+    color: STUDIO.orange,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9.5,
+    letterSpacing: 1.5,
+  },
+  accessHeroTitle: {
+    marginTop: 8,
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -1,
+  },
+  accessHeroBody: {
+    maxWidth: 310,
+    marginTop: 11,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 13.5,
     lineHeight: 20,
-    fontWeight: '700',
+  },
+  accessHeroActions: {
+    marginTop: 20,
+    flexDirection: 'row',
+    gap: 9,
+  },
+  accessPrimary: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 17,
+    backgroundColor: STUDIO.orange,
+    paddingHorizontal: 17,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  accessPrimaryText: {
+    color: '#130A04',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 13.5,
+  },
+  accessSecondary: {
+    minHeight: 50,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: STUDIO.line,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accessSecondaryText: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 13,
+  },
+  accessSectionMeta: {
+    color: STUDIO.textSubtle,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 8.5,
+    letterSpacing: 1.25,
+  },
+  accessCapabilityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+  },
+  accessCapability: {
+    width: '48.5%',
+    minHeight: 128,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panel,
+    padding: 14,
+  },
+  accessCapabilityIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,106,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accessCapabilityTitle: {
+    marginTop: 12,
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 14,
+  },
+  accessCapabilityBody: {
+    marginTop: 4,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  accessTrustBand: {
+    minHeight: 70,
+    borderLeftWidth: 2,
+    borderLeftColor: STUDIO.orange,
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  accessTrustText: {
+    flex: 1,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 12,
+    lineHeight: 17,
   },
   commandCard: {
     borderWidth: StyleSheet.hairlineWidth,

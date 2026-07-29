@@ -51,8 +51,45 @@ const TAG_KEYWORDS: Array<{ tag: string; words: string[] }> = [
   { tag: 'electronic', words: ['electronic', 'd&b', 'drum & bass', 'garage'] },
 ];
 
+const MUSIC_SPOTLIGHT_KEYWORDS = [
+  'live music',
+  'concert',
+  'gig',
+  'showcase',
+  'festival',
+  'club',
+  'rave',
+  'dj',
+  'band',
+  'singer',
+  'album',
+  'release',
+  'acoustic',
+  'session',
+  'techno',
+  'house',
+  'afro',
+  'dancehall',
+  'rock',
+  'rap',
+  'hip-hop',
+  'jazz',
+  'electronic',
+  'garage',
+  'drum & bass',
+];
+
 function eventText(event: EventItem) {
   return `${event.title || ''} ${event.description || ''}`.toLowerCase();
+}
+
+function musicSpotlightScore(event: EventItem) {
+  const text = eventText(event);
+  const musicSignals = MUSIC_SPOTLIGHT_KEYWORDS.reduce(
+    (score, keyword) => score + (text.includes(keyword) ? 1 : 0),
+    0,
+  );
+  return musicSignals * 10 + (event.cover_image_url ? 2 : 0) + (event.description ? 1 : 0);
 }
 
 function matchesCategory(event: EventItem, category: string) {
@@ -406,7 +443,7 @@ export function EventsBoardScreen() {
   });
 
   const spotlight = useMemo(
-    () => filtered.find((event) => event.cover_image_url && event.description) || filtered[0],
+    () => [...filtered].sort((a, b) => musicSpotlightScore(b) - musicSpotlightScore(a))[0],
     [filtered],
   );
 

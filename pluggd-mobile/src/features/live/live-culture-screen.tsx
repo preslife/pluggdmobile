@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useReducedMotion } from '../../design/useReducedMotion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
@@ -460,8 +461,13 @@ function FocusCard({
 }) {
   const router = useRouter();
   const scale = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      scale.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, { toValue: 1.06, duration: 9000, useNativeDriver: true }),
@@ -470,7 +476,7 @@ function FocusCard({
     );
     loop.start();
     return () => loop.stop();
-  }, [scale]);
+  }, [reducedMotion, scale]);
 
   if (!source) {
     const emptyTitle = activeFilter === 'Upcoming'

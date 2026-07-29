@@ -6,7 +6,15 @@ import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
 
 const HIDDEN_PREFIXES = ['/auth', '/player', '/studio'];
-const HIDDEN_EXACT = new Set(['/live/session', '/live/feed', '/live/create', '/ticket-scan', '/swipe-beats']);
+const HIDDEN_EXACT = new Set([
+  '/live/session',
+  '/live/feed',
+  '/live/create',
+  '/ticket-scan',
+  '/swipe-beats',
+  '/creator/upload',
+  '/creator/onboarding',
+]);
 
 export function AppChrome() {
   const pathname = usePathname() || '/';

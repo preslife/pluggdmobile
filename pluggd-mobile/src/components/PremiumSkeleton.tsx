@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { pluggdFonts } from '../design/typography';
+import { useReducedMotion } from '../design/useReducedMotion';
 import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 const COLORS = {
@@ -19,8 +20,13 @@ export function PremiumSkeleton({
   style?: ViewStyle;
 }) {
   const opacity = useRef(new Animated.Value(0.46)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      opacity.setValue(0.7);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 0.92, duration: 760, useNativeDriver: true }),
@@ -29,7 +35,7 @@ export function PremiumSkeleton({
     );
     loop.start();
     return () => loop.stop();
-  }, [opacity]);
+  }, [opacity, reducedMotion]);
 
   return (
     <View

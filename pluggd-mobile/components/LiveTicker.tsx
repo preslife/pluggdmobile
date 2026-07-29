@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { pluggdFonts } from '../src/design/typography';
 import { ed } from '../src/design/editorial';
+import { useReducedMotion } from '../src/design/useReducedMotion';
 
 type LiveTickerProps = {
   items: string[];
@@ -25,12 +26,16 @@ const SEP = '     •     ';
 export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'night' }: LiveTickerProps) {
   const translate = useRef(new Animated.Value(0)).current;
   const [width, setWidth] = useState(0);
+  const reducedMotion = useReducedMotion();
   const line = items.filter(Boolean).join(SEP) + SEP;
   const paper = variant === 'paper';
   const nightBand = variant === 'nightBand';
 
   useEffect(() => {
-    if (!width) return;
+    if (!width || reducedMotion) {
+      translate.setValue(0);
+      return;
+    }
     translate.setValue(0);
     const anim = Animated.loop(
       Animated.timing(translate, {
@@ -42,7 +47,7 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
     );
     anim.start();
     return () => anim.stop();
-  }, [width, speed, translate]);
+  }, [reducedMotion, width, speed, translate]);
 
   if (!items.length) return null;
 

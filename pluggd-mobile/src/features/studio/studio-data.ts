@@ -222,37 +222,37 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     id: 'upload_release',
     title: 'Upload Release',
     shortTitle: 'Release',
+    route: '/creator/upload?type=release',
     icon: 'cloud-upload',
     section: 'create',
-    status: 'web_only',
+    status: 'limited',
     defaultRoles: ['artist'],
     description: 'Prepare release drafts, tracks, artwork, credits, and rights context.',
-    addsToStudio: 'Adds release planning to Studio.',
-    unavailableReason: 'Use desktop Studio for release upload, distribution, tax, and rights submission.',
+    addsToStudio: 'Create a complete mobile release draft. Distribution review remains on desktop.',
   },
   {
     id: 'upload_beat',
     title: 'Upload Beat',
     shortTitle: 'Beat',
+    route: '/creator/upload?type=beat',
     icon: 'cloud-upload',
     section: 'create',
-    status: 'web_only',
+    status: 'limited',
     defaultRoles: ['producer'],
     description: 'Prepare beat audio, artwork, previews, and license tiers.',
-    addsToStudio: 'Adds beat planning to Studio.',
-    unavailableReason: 'Use desktop Studio for beat license setup and checkout.',
+    addsToStudio: 'Create a complete mobile beat draft. Licence publishing remains on desktop.',
   },
   {
     id: 'upload_mix',
     title: 'Upload Mix',
     shortTitle: 'Mix',
+    route: '/creator/upload?type=mix',
     icon: 'cloud-upload',
     section: 'create',
-    status: 'web_only',
+    status: 'limited',
     defaultRoles: ['dj'],
     description: 'Prepare DJ mixes, artwork, tracklist context, and publishing state.',
-    addsToStudio: 'Adds mix planning to Studio.',
-    unavailableReason: 'Use desktop Studio for mix upload and advanced audio management.',
+    addsToStudio: 'Create a complete mobile mix draft. Final publishing remains on desktop.',
   },
   {
     id: 'releases',
@@ -916,6 +916,92 @@ function emptyStats(): StudioStats {
 
 export function studioCreatorName(data: StudioData) {
   return displayName(data.profile);
+}
+
+/**
+ * Simulator-only fixture used to visually QA authenticated Studio surfaces
+ * without weakening the production creator-access gate.
+ */
+export function createStudioPreviewData(): StudioData {
+  const profile: NavProfile = {
+    display_name: 'Ari Vale',
+    full_name: 'Ari Vale',
+    username: 'arivale',
+    bio: 'Electronic artist and producer.',
+    avatar_url: null,
+    cover_image_url: null,
+    custom_url: 'arivale',
+    website_url: 'https://pluggd.com',
+    instagram_url: null,
+    twitter_url: null,
+    youtube_url: null,
+    tiktok_url: null,
+    soundcloud_url: null,
+    spotify_url: null,
+    embed_settings: null,
+    user_type: 'creator',
+    profile_type: 'artist',
+    is_creator: true,
+    is_label: false,
+    onboarding_progress: 80,
+  };
+  const primaryRole: StudioRole = 'artist';
+  const enabledModuleIds: StudioModuleId[] = ['events', 'soundboards', 'analytics_audience', 'memberships'];
+  const modules = buildModuleStates(primaryRole, enabledModuleIds);
+  const catalogItems: StudioCatalogItem[] = [
+    { id: 'preview-release', title: 'Afterimage', subtitle: 'Release · 18 Jul', route: '/releases', kind: 'release' },
+    { id: 'preview-mix', title: 'Night Signal 004', subtitle: 'Mix · 11 Jul', route: '/mixes', kind: 'mix' },
+    { id: 'preview-board', title: 'Warehouse Heat', subtitle: '12 items', route: '/soundboards', kind: 'soundboard' },
+    { id: 'preview-event', title: 'Signal Room: London', subtitle: '2 Aug · Dalston', route: '/events', kind: 'event' },
+  ];
+  const connectProfile: StudioConnectProfile = {
+    id: 'preview-connect',
+    slug: 'arivale',
+    display_name: 'Ari Vale',
+    headline: 'Artist · producer · London',
+    avatar_url: null,
+    updated_at: new Date().toISOString(),
+  };
+  const setupTasks = buildSetupTasks({
+    profile,
+    catalogCount: 8,
+    connectProfile,
+    eventCount: 2,
+    liveCount: 1,
+    audienceCount: 1284,
+  });
+  const stats: StudioStats = {
+    catalogCount: 8,
+    releaseCount: 3,
+    beatCount: 1,
+    mixCount: 2,
+    soundboardCount: 2,
+    eventCount: 2,
+    liveCount: 1,
+    audienceCount: 1284,
+    connectCardCount: 1,
+    completedTasks: setupTasks.filter((task) => task.complete).length,
+    totalTasks: setupTasks.length,
+    healthPercent: 86,
+  };
+
+  return {
+    signedIn: true,
+    userId: 'studio-preview',
+    creatorAccess: true,
+    profile,
+    roles: ['artist', 'producer'],
+    primaryRole,
+    enabledModuleIds,
+    modules,
+    stats,
+    catalogItems,
+    connectProfile,
+    setupTasks,
+    nextMove: buildNextMove(setupTasks, primaryRole),
+    nativeActions: buildNativeActions(modules, primaryRole),
+    webOnlyActions: buildWebOnlyActions(modules),
+  };
 }
 
 export async function loadStudioData(): Promise<StudioData> {
