@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -17,6 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { PluggdGlassSurface } from '../../../components/PluggdPrimitives';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
 import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
@@ -33,6 +35,7 @@ import {
   type StudioModuleSection,
   type StudioModuleState,
 } from './studio-data';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 
 type StudioRouteKey = 'home' | 'apps' | 'action' | 'analytics' | 'my-pluggd' | 'connect-card' | 'more';
 type MyPluggdSectionId = 'overview' | 'profile' | 'page' | 'connect-card' | 'embeds' | 'settings';
@@ -112,7 +115,7 @@ const ROLE_LABELS: Record<string, string> = {
 const DOCK_ITEMS: Array<{ key: StudioRouteKey; label: string; route: string; icon: string }> = [
   { key: 'home', label: 'Home', route: '/studio', icon: 'home' },
   { key: 'apps', label: 'Apps', route: '/studio/apps', icon: 'apps' },
-  { key: 'action', label: 'Action', route: '/studio/action', icon: 'add-circle' },
+  { key: 'action', label: 'Create', route: '/studio/action', icon: 'add' },
   { key: 'analytics', label: 'Insights', route: '/studio/analytics', icon: 'insights' },
   { key: 'more', label: 'More', route: '/studio/more', icon: 'more-horiz' },
 ];
@@ -366,54 +369,80 @@ function StudioDock({ active }: { active: StudioRouteKey }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return (
-    <View pointerEvents="box-none" style={[styles.dockWrap, { paddingBottom: Math.max(8, insets.bottom + 4) }]}>
+    <View
+      pointerEvents="box-none"
+      accessible={false}
+      collapsable={false}
+      style={[styles.dockWrap, { paddingBottom: Math.max(8, insets.bottom + 4) }]}
+    >
       <View style={styles.dock}>
-        {DOCK_ITEMS.map((item) => {
+        <PluggdGlassSurface
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          blurIntensity={64}
+          tintColor="rgba(12,12,16,0.44)"
+          fallbackColor="rgba(7,7,10,0.92)"
+          borderColor="rgba(255,255,255,0.13)"
+          disabled={false}
+          style={styles.dockGlass}
+        />
+        <View accessible={false} collapsable={false} style={styles.dockInner}>
+          {DOCK_ITEMS.map((item) => {
           const isActive = item.key === active;
           const isAction = item.key === 'action';
+          if (isAction) {
+            return (
+              <Pressable
+                key={item.key}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Studio Create"
+                accessibilityHint="Opens creator actions"
+                accessibilityState={{ selected: isActive }}
+                onPress={() => routePush(router, item.route)}
+                style={styles.dockCreateTap}
+              >
+                <LinearGradient
+                  colors={isActive ? ['#ffb06f', '#ff6a00'] : ['#ff7a1a', '#e95300']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.dockCreateButton}
+                >
+                  <View style={styles.dockCreateIcon}>
+                    <MaterialIcons name="add" size={24} color="#160A03" />
+                  </View>
+                  <Text style={styles.dockCreateLabel}>Create</Text>
+                </LinearGradient>
+              </Pressable>
+            );
+          }
           return (
             <Pressable
               key={item.key}
-              accessibilityRole="tab"
+              accessible
+              accessibilityRole="button"
               accessibilityLabel={`Studio ${item.label}`}
+              accessibilityHint={`Opens the ${item.label} Studio section`}
+              accessibilityState={{ selected: isActive }}
               onPress={() => routePush(router, item.route)}
               style={({ pressed }) => [
                 styles.dockItem,
-                isActive && styles.dockItemActiveWrap,
-                isAction && styles.dockActionWrap,
                 pressed && { opacity: 0.76 },
               ]}
             >
-              <LinearGradient
-                colors={
-                  isActive
-                    ? ['rgba(255,106,0,0.62)', 'rgba(96,44,15,0.98)', 'rgba(35,17,8,0.98)']
-                    : isAction
-                      ? ['rgba(255,106,0,0.22)', 'rgba(5,5,6,0.98)', 'rgba(0,0,0,0.99)']
-                      : ['rgba(255,255,255,0.015)', 'rgba(255,255,255,0.01)']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[
-                  styles.dockItemInner,
-                  isActive && styles.dockItemActive,
-                  isAction && styles.dockActionItem,
-                ]}
-              >
-                <View style={[styles.dockIconShell, isAction && styles.dockActionIcon, isActive && styles.dockIconActive]}>
-                  <MaterialIcons
-                    name={iconName(item.icon)}
-                    size={isAction ? 27 : 24}
-                    color={isActive || isAction ? STUDIO.orange : 'rgba(255,255,255,0.78)'}
-                  />
+              <View style={[styles.dockItemInner, isActive && styles.dockItemActive]}>
+                <View style={[styles.dockIconShell, isActive && styles.dockIconActive]}>
+                  <MaterialIcons name={iconName(item.icon)} size={22} color={isActive ? STUDIO.orange : 'rgba(255,255,255,0.72)'} />
                 </View>
                 <Text style={[styles.dockLabel, { color: isActive ? STUDIO.orangeSoft : 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
                   {item.label}
                 </Text>
-              </LinearGradient>
+                {isActive ? <View style={styles.dockActiveSignal} /> : null}
+              </View>
             </Pressable>
           );
-        })}
+          })}
+        </View>
       </View>
     </View>
   );
@@ -634,80 +663,158 @@ function CommandCard({ data }: { data: StudioData }) {
   const router = useRouter();
   const name = studioCreatorName(data);
   const commandActions = buildMobileCommandActions(data);
+  const primaryAction = commandActions.find((action) => action.primary) || commandActions[0];
+  const quickActions = commandActions.filter((action) => action.id !== primaryAction?.id).slice(0, 3);
+  const heroImage = data.profile?.cover_image_url || data.catalogItems.find((item) => item.imageUrl)?.imageUrl;
   return (
-    <LinearGradient
-      colors={['rgba(255,255,255,0.105)', 'rgba(14,14,18,0.92)', 'rgba(0,0,0,0.95)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.commandCard}
-    >
-      <View pointerEvents="none" style={styles.commandOrbit} />
-      <View pointerEvents="none" style={styles.commandGlow} />
-      <View style={styles.commandTop}>
-        <View style={styles.commandCopy}>
-          <Text style={styles.commandTitle} numberOfLines={2}>
-            Welcome back,{'\n'}{name}.
-          </Text>
-          <Text style={styles.commandBody} numberOfLines={3}>
-            Your studio is live. Revenue, catalog, audience and setup in one command center.
-          </Text>
-        </View>
-        <HealthRing percent={data.stats.healthPercent} />
-      </View>
+    <View style={styles.commandCard}>
+      {heroImage ? (
+        <PluggdImage uri={heroImage} style={styles.commandBackdrop} resizeMode="cover" />
+      ) : (
+        <Image source={WEB_PARITY_ASSETS.bedroomStudio} style={styles.commandBackdrop} resizeMode="cover" />
+      )}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(0,0,0,0.06)', 'rgba(3,3,5,0.68)', 'rgba(2,2,3,0.98)']}
+        locations={[0, 0.54, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(255,106,0,0.28)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.75, y: 0.75 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={styles.commandActions}>
-        {commandActions.map((action, index) => (
-          <Pressable
-            key={action.id}
-            accessibilityRole="button"
-            accessibilityLabel={action.title}
-            onPress={() => routePush(router, action.route)}
-            style={({ pressed }) => [
-              styles.commandPillTap,
-              action.primary ? styles.commandPillPrimary : styles.commandPillSecondary,
-              index === 3 && styles.commandPillSmall,
-              pressed && { opacity: 0.78 },
-            ]}
-          >
-            <LinearGradient
-              colors={
-                action.primary
-                  ? ['rgba(255,106,0,0.44)', 'rgba(74,30,8,0.92)']
-                  : ['rgba(38,38,43,0.96)', 'rgba(18,18,22,0.96)']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.commandPillInner, action.primary ? styles.commandPillInnerPrimary : styles.commandPillInnerSecondary]}
+      <View style={styles.commandContent}>
+        <View style={styles.commandTop}>
+          <View style={styles.commandCopy}>
+            <Text style={styles.commandKicker}>Today in your studio</Text>
+            <Text style={styles.commandTitle} numberOfLines={2}>
+              Welcome back,{'\n'}{name}.
+            </Text>
+            <Text style={styles.commandBody} numberOfLines={2}>
+              Your catalogue, audience and next release—ready to move.
+            </Text>
+          </View>
+          <HealthRing percent={data.stats.healthPercent} />
+        </View>
+
+        <View style={styles.commandActionDeck}>
+          {primaryAction ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={primaryAction.title}
+              onPress={() => routePush(router, primaryAction.route)}
+              style={({ pressed }) => [styles.commandPrimaryTap, pressed && { transform: [{ scale: 0.985 }] }]}
             >
-              <MaterialIcons name={iconName(action.icon)} size={17} color={action.primary ? STUDIO.orangeSoft : STUDIO.textMid} />
-              <Text style={[styles.commandPillText, { color: action.primary ? STUDIO.orangeSoft : STUDIO.text }]} numberOfLines={1}>
-                {action.title}
-              </Text>
-            </LinearGradient>
-          </Pressable>
+              <LinearGradient colors={['#ff9b50', '#ff6500']} style={styles.commandPrimaryAction}>
+                <View style={styles.commandPrimaryIcon}>
+                  <MaterialIcons name={iconName(primaryAction.icon)} size={20} color="#170A03" />
+                </View>
+                <Text style={styles.commandPrimaryText} numberOfLines={1}>{primaryAction.title}</Text>
+                <MaterialIcons name="arrow-forward" size={18} color="#170A03" />
+              </LinearGradient>
+            </Pressable>
+          ) : null}
+          <View style={styles.commandQuickRow}>
+            {quickActions.map((action) => (
+              <Pressable
+                key={action.id}
+                accessibilityRole="button"
+                accessibilityLabel={action.title}
+                onPress={() => routePush(router, action.route)}
+                style={({ pressed }) => [styles.commandQuickAction, pressed && { backgroundColor: 'rgba(255,255,255,0.16)' }]}
+              >
+                <MaterialIcons name={iconName(action.icon)} size={17} color={STUDIO.orangeSoft} />
+                <Text style={styles.commandQuickText} numberOfLines={1}>{action.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Next move ${data.nextMove.title}`}
+          onPress={() => routePush(router, data.nextMove.route)}
+          style={({ pressed }) => [styles.nextMove, { opacity: pressed ? 0.74 : 1 }]}
+        >
+          <View style={styles.nextMoveText}>
+            <Text style={styles.nextMoveKicker}>Next Move</Text>
+            <Text style={styles.nextMoveTitle} numberOfLines={1}>
+              {data.nextMove.title}
+            </Text>
+            <Text style={styles.nextMoveDetail} numberOfLines={1}>
+              {data.nextMove.detail}
+            </Text>
+          </View>
+          <View style={styles.roundIcon}>
+            <MaterialIcons name="arrow-outward" size={18} color={STUDIO.orange} />
+          </View>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function ActionBoard({ data }: { data: StudioData }) {
+  const router = useRouter();
+  const actionRows = Array.from({ length: Math.ceil(data.nativeActions.length / 2) }, (_, index) =>
+    data.nativeActions.slice(index * 2, index * 2 + 2),
+  );
+  return (
+    <>
+      <LinearGradient
+        colors={['rgba(255,106,0,0.27)', 'rgba(32,17,10,0.96)', 'rgba(7,7,10,0.98)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.actionBoardHero}
+      >
+        <View style={styles.actionBoardSignal}>
+          <MaterialIcons name="bolt" size={18} color="#160A03" />
+        </View>
+        <Text style={styles.actionBoardKicker}>Creator actions</Text>
+        <Text style={styles.actionBoardTitle}>What are you moving today?</Text>
+        <Text style={styles.actionBoardBody}>Publish, go live, build your audience or prepare the next drop.</Text>
+      </LinearGradient>
+      <View style={styles.actionBoardGrid}>
+        {actionRows.map((row, rowIndex) => (
+          <View key={`action-row-${rowIndex}`} style={styles.actionBoardRow}>
+            {row.map((action, columnIndex) => (
+              <Pressable
+                key={action.id}
+                accessibilityRole="button"
+                accessibilityLabel={action.title}
+                onPress={() => routePush(router, action.route)}
+                style={({ pressed }) => [styles.actionBoardTile, pressed && { transform: [{ scale: 0.985 }] }]}
+              >
+                <LinearGradient
+                  colors={rowIndex === 0 && columnIndex === 0 ? ['rgba(255,106,0,0.24)', 'rgba(19,19,23,0.98)'] : ['rgba(255,255,255,0.09)', 'rgba(14,14,18,0.98)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionBoardTileInner}
+                >
+                  <View style={styles.actionBoardTileTop}>
+                    <View style={styles.actionBoardIcon}>
+                      <MaterialIcons name={iconName(action.icon)} size={22} color={STUDIO.orangeSoft} />
+                    </View>
+                    <MaterialIcons name="north-east" size={18} color={STUDIO.textSubtle} />
+                  </View>
+                  <Text style={styles.actionBoardTileTitle} numberOfLines={2}>{action.title}</Text>
+                  <Text style={styles.actionBoardTileBody} numberOfLines={2}>{action.detail}</Text>
+                  <StatusChip
+                    label={action.status === 'web_only' ? 'Desktop' : action.status === 'limited' ? 'Preview' : 'Ready'}
+                    tone={action.status === 'native' ? 'native' : 'limited'}
+                  />
+                </LinearGradient>
+              </Pressable>
+            ))}
+            {row.length === 1 ? <View style={styles.actionBoardTileSpacer} /> : null}
+          </View>
         ))}
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Next move ${data.nextMove.title}`}
-        onPress={() => routePush(router, data.nextMove.route)}
-        style={({ pressed }) => [styles.nextMove, { opacity: pressed ? 0.74 : 1 }]}
-      >
-        <View style={styles.nextMoveText}>
-          <Text style={styles.nextMoveKicker}>Next Move</Text>
-          <Text style={styles.nextMoveTitle} numberOfLines={1}>
-            {data.nextMove.title}
-          </Text>
-          <Text style={styles.nextMoveDetail} numberOfLines={1}>
-            {data.nextMove.detail}
-          </Text>
-        </View>
-        <View style={styles.roundIcon}>
-          <MaterialIcons name="arrow-outward" size={18} color={STUDIO.orange} />
-        </View>
-      </Pressable>
-    </LinearGradient>
+    </>
   );
 }
 
@@ -726,7 +833,6 @@ function KpiCard({
   route?: string;
   cardWidth?: number;
 }) {
-  const theme = usePluggdTheme();
   const router = useRouter();
   return (
     <Pressable
@@ -1146,19 +1252,32 @@ export function StudioAppsScreen() {
     const recommendedCount = data.modules.filter((module) => module.recommendedForRole && !module.plugged).length;
     return (
       <StudioShell active="apps" title="Studio Apps" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-        <View style={styles.appsHero}>
-          <View>
-            <Text style={styles.appsEyebrow}>Studio Apps</Text>
-            <Text style={styles.appsTitle}>Plug modules into your workspace.</Text>
-            <Text style={styles.appsBody}>Choose the modules you want close at hand. Desktop tools stay visible for planning.</Text>
+        <LinearGradient
+          colors={['rgba(255,106,0,0.24)', 'rgba(26,15,10,0.96)', 'rgba(8,8,11,0.98)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.appsHero}
+        >
+          <View style={styles.appsHeroIcon}>
+            <MaterialIcons name="widgets" size={22} color="#180B04" />
           </View>
+          <Text style={styles.appsEyebrow}>Your creator toolkit</Text>
+          <Text style={styles.appsTitle}>Build the Studio around your work.</Text>
+          <Text style={styles.appsBody}>Keep the tools you use daily close. Specialist desktop modules remain visible when a bigger workflow is needed.</Text>
           <View style={styles.appsStats}>
-            <KpiCard label="Plugged" value={formatCompact(pluggedCount)} detail="Modules" icon="apps" />
-            <KpiCard label="Suggested" value={formatCompact(recommendedCount)} detail={ROLE_LABELS[data.primaryRole] ?? 'Role'} icon="auto-awesome" />
+            <View style={styles.appsStat}>
+              <Text style={styles.appsStatValue}>{formatCompact(pluggedCount)}</Text>
+              <Text style={styles.appsStatLabel}>Plugged in</Text>
+            </View>
+            <View style={styles.appsStatDivider} />
+            <View style={styles.appsStat}>
+              <Text style={styles.appsStatValue}>{formatCompact(recommendedCount)}</Text>
+              <Text style={styles.appsStatLabel}>Suggested for {ROLE_LABELS[data.primaryRole] ?? 'you'}</Text>
+            </View>
           </View>
-        </View>
+        </LinearGradient>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentStrip}>
+        <View style={styles.segmentStrip}>
           {(['all', ...SECTION_ORDER] as Array<StudioModuleSection | 'all'>).map((item) => {
             const active = item === section;
             return (
@@ -1174,9 +1293,11 @@ export function StudioAppsScreen() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
-        <View style={styles.stack}>
+        <View>
+          <SectionTitle title={section === 'all' ? 'Your toolkit' : SECTION_LABELS[section]} />
+          <View style={styles.stack}>
           {visibleModules.map((module) => (
             <ModuleCard
               key={module.id}
@@ -1185,6 +1306,7 @@ export function StudioAppsScreen() {
               onToggle={(nextModule) => mutation.mutate({ data, module: nextModule })}
             />
           ))}
+          </View>
         </View>
         <ComplianceNote />
       </StudioShell>
@@ -1195,15 +1317,7 @@ export function StudioAppsScreen() {
 export function StudioActionScreen() {
   return withStudioData('action', 'Action', (data, query) => (
     <StudioShell active="action" title="Action" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <CommandCard data={data} />
-      <View>
-        <SectionTitle title="Available Now" />
-        <View style={styles.stack}>
-          {data.nativeActions.map((action) => (
-            <ActionRow key={action.id} action={action} />
-          ))}
-        </View>
-      </View>
+      <ActionBoard data={data} />
       <View>
         <SectionTitle title="Desktop Tools" />
         <View style={styles.stack}>
@@ -1254,6 +1368,9 @@ function StudioIdentityContent({
 }) {
   const theme = usePluggdTheme();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.max(320, Math.floor(width - 24));
+  const tabWidth = Math.floor((contentWidth - 16) / 3);
   const sections = useMemo(() => buildMyPluggdSections(data), [data]);
   const readyCount = sections.filter((section) => section.complete).length;
   const nextSection = sections.find((section) => !section.complete) || sections[0];
@@ -1298,7 +1415,7 @@ function StudioIdentityContent({
         </View>
       </LinearGradient>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.myPluggdTabs}>
+      <View style={styles.myPluggdTabs}>
         {MY_PLUGGD_TABS.map((tab) => {
           const active = tab.id === 'overview';
           const section = sections.find((item) => item.id === tab.id);
@@ -1309,13 +1426,13 @@ function StudioIdentityContent({
               onPress={() => {
                 if (section) routePush(router, section.route);
               }}
-              style={[styles.myPluggdTab, active && styles.myPluggdTabActive]}
+              style={[styles.myPluggdTab, { width: tabWidth }, active && styles.myPluggdTabActive]}
             >
               <Text style={[styles.myPluggdTabText, active && styles.myPluggdTabTextActive]}>{tab.label}</Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       <View style={styles.myPluggdStatusCard}>
         <View style={styles.myPluggdStatusTop}>
@@ -1422,34 +1539,77 @@ function StudioConnectCardContent({
   data: StudioData;
   query: ReturnType<typeof useStudioQuery>;
 }) {
-  const theme = usePluggdTheme();
+  const router = useRouter();
   const publicRoute = data.connectProfile?.slug ? `/connect/${data.connectProfile.slug}` : undefined;
+  const privateViews = [
+    { id: 'collab-token', title: 'Collaborator view', detail: 'Private availability, services and working details.', icon: 'group-work' },
+    { id: 'contract-token', title: 'Deal view', detail: 'Private rates, terms and project context.', icon: 'description' },
+  ];
   return (
     <StudioShell active="more" title="Connect Card" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <View style={[styles.connectHero, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <View style={[styles.connectIcon, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
-          <MaterialIcons name="badge" size={32} color={theme.colors.accent} />
+      <LinearGradient
+        colors={['rgba(255,106,0,0.30)', 'rgba(44,22,10,0.96)', 'rgba(8,8,11,0.99)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.connectHero}
+      >
+        <View style={styles.connectHeroTop}>
+          <Text style={styles.connectKicker}>Your Connect Card</Text>
+          <StatusChip label={publicRoute ? 'Live' : 'Setup'} tone={publicRoute ? 'native' : 'limited'} />
         </View>
-        <Text style={[styles.connectTitle, { color: theme.colors.text }]}>
+        <View style={styles.connectIdentity}>
+          <View style={styles.connectAvatar}>
+            {data.profile?.avatar_url ? (
+              <PluggdImage uri={data.profile.avatar_url} style={StyleSheet.absoluteFill} accessibilityLabel={studioCreatorName(data)} />
+            ) : (
+              <LinearGradient colors={['rgba(255,106,0,0.66)', 'rgba(30,18,11,0.96)']} style={styles.connectAvatarFallback}>
+                <Text style={styles.connectAvatarText}>{initials(studioCreatorName(data))}</Text>
+              </LinearGradient>
+            )}
+          </View>
+          <View style={styles.connectIdentityCopy}>
+            <Text style={styles.connectTitle}>
           {data.connectProfile?.display_name || studioCreatorName(data)}
-        </Text>
-        <Text style={[styles.connectText, { color: theme.colors.textMuted }]}>
-          {data.connectProfile?.headline || 'Public business card, links, rates, and private collaboration details.'}
-        </Text>
-        <View style={styles.moduleButtons}>
-          {publicRoute ? (
-            <ActionRow action={{ id: 'public-card', title: 'Public card', detail: data.connectProfile?.slug ? `/connect/${data.connectProfile.slug}` : 'Public route', route: publicRoute, icon: 'open-in-new', status: 'native' }} />
-          ) : (
-            <ActionRow action={{ id: 'setup-card', title: 'Set up card', detail: 'Add public contact and profile fields first.', route: '/edit-profile', icon: 'edit', status: 'native' }} />
-          )}
+            </Text>
+            <Text style={styles.connectText}>
+              {data.connectProfile?.headline || 'Public identity, services, links and private collaboration details.'}
+            </Text>
+          </View>
         </View>
-      </View>
+        <View style={styles.connectRouteBand}>
+          <MaterialIcons name="link" size={17} color={STUDIO.orangeSoft} />
+          <Text style={styles.connectRouteText} numberOfLines={1}>
+            {data.connectProfile?.slug ? `pluggd.co/connect/${data.connectProfile.slug}` : 'Choose your public Connect Card address'}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={publicRoute ? 'Open public card' : 'Set up Connect Card'}
+          onPress={() => routePush(router, publicRoute || '/edit-profile')}
+          style={styles.connectPrimaryButton}
+        >
+          <Text style={styles.connectPrimaryText}>{publicRoute ? 'Open public card' : 'Set up Connect Card'}</Text>
+          <MaterialIcons name="arrow-forward" size={18} color="#170A03" />
+        </Pressable>
+      </LinearGradient>
 
       <View>
         <SectionTitle title="Private Views" />
-        <View style={styles.stack}>
-          <ActionRow action={{ id: 'collab-token', title: 'Private collab view', detail: 'Only invited collaborators can see private collaboration fields.', icon: 'lock', status: 'web_only' }} />
-          <ActionRow action={{ id: 'contract-token', title: 'Private deal view', detail: 'Private deal details stay separate from the public card.', icon: 'lock', status: 'web_only' }} />
+        <Text style={styles.privateViewsIntro}>Share a focused view without exposing your full creator account.</Text>
+        <View style={styles.privateViewGrid}>
+          {privateViews.map((view) => (
+            <View key={view.id} style={styles.privateViewCard}>
+              <View style={styles.privateViewIcon}>
+                <MaterialIcons name={iconName(view.icon)} size={20} color={STUDIO.orangeSoft} />
+              </View>
+              <Text style={styles.privateViewTitle}>{view.title}</Text>
+              <Text style={styles.privateViewDetail}>{view.detail}</Text>
+              <View style={styles.privateViewFooter}>
+                <MaterialIcons name="lock" size={13} color={STUDIO.textSubtle} />
+                <Text style={styles.privateViewStatus}>Desktop setup</Text>
+              </View>
+            </View>
+          ))}
         </View>
       </View>
     </StudioShell>
@@ -1709,74 +1869,102 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: 10,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.86)',
+    paddingTop: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
   },
   dock: {
-    minHeight: 88,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: STUDIO.line,
-    backgroundColor: STUDIO.dock,
+    width: '100%',
+    alignSelf: 'stretch',
+    minHeight: 68,
+    borderRadius: 26,
+    padding: 5,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  dockGlass: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 26,
+  },
+  dockInner: {
+    flex: 1,
+    width: '100%',
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 7,
-    gap: 2,
+    gap: 3,
   },
   dockItem: {
-    width: '19.2%',
+    width: 55,
     flexGrow: 0,
     flexShrink: 0,
-    minHeight: 70,
-    borderRadius: 22,
-  },
-  dockActionWrap: {
-    width: '19.2%',
-  },
-  dockItemActiveWrap: {
-    width: '19.2%',
+    height: 54,
+    borderRadius: 18,
   },
   dockItemInner: {
     flex: 1,
-    minHeight: 70,
-    borderRadius: 22,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 3,
     overflow: 'hidden',
   },
   dockItemActive: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,106,0,0.34)',
-  },
-  dockActionItem: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,106,0,0.55)',
+    backgroundColor: 'rgba(255,106,0,0.11)',
   },
   dockIconShell: {
-    width: 34,
-    height: 30,
+    width: 32,
+    height: 28,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dockIconActive: {
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: 'rgba(255,106,0,0.12)',
   },
-  dockActionIcon: {
-    width: 35,
-    height: 35,
+  dockActiveSignal: {
+    position: 'absolute',
+    bottom: 4,
+    width: 16,
+    height: 2,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: STUDIO.lineHot,
+    backgroundColor: STUDIO.orange,
+  },
+  dockCreateTap: {
+    width: 76,
+    height: 58,
+    marginHorizontal: 1,
+    borderRadius: 21,
+  },
+  dockCreateButton: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    shadowColor: STUDIO.orange,
+    shadowOpacity: 0.32,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  dockCreateIcon: {
+    width: 30,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dockCreateLabel: {
+    color: '#160A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9.5,
+    lineHeight: 12,
+    fontWeight: '900',
+  },
   dockLabel: { fontFamily: pluggdFonts.satoshiBlack,
-    fontSize: 10.5,
-    lineHeight: 13,
+    fontSize: 9.5,
+    lineHeight: 12,
     fontWeight: '900',
     letterSpacing: 0,
   },
@@ -1954,32 +2142,25 @@ const styles = StyleSheet.create({
   },
   commandCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: STUDIO.line,
-    borderRadius: 22,
-    padding: 13,
-    gap: 11,
+    borderColor: 'rgba(255,255,255,0.19)',
+    borderRadius: 26,
+    minHeight: 438,
     overflow: 'hidden',
     position: 'relative',
   },
-  commandOrbit: {
+  commandBackdrop: {
     position: 'absolute',
-    top: -84,
-    right: -64,
-    width: 190,
-    height: 190,
-    borderRadius: 999,
-    borderWidth: 38,
-    borderColor: 'rgba(255,106,0,0.19)',
-    opacity: 0.9,
+    top: 0,
+    left: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
   },
-  commandGlow: {
-    position: 'absolute',
-    right: -42,
-    bottom: -62,
-    width: 190,
-    height: 120,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.055)',
+  commandContent: {
+    minHeight: 438,
+    padding: 16,
+    justifyContent: 'flex-end',
+    gap: 14,
   },
   commandTop: {
     flexDirection: 'row',
@@ -1989,7 +2170,16 @@ const styles = StyleSheet.create({
   commandCopy: {
     flex: 1,
     minWidth: 0,
-    gap: 10,
+    gap: 7,
+  },
+  commandKicker: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   kickerRow: {
     flexDirection: 'row',
@@ -2007,14 +2197,14 @@ const styles = StyleSheet.create({
   commandTitle: {
     ...pluggdTextStyles.heroTitle,
     color: STUDIO.text,
-    fontSize: 34,
+    fontSize: 35,
     lineHeight: 37,
     letterSpacing: 0,
   },
   commandBody: { fontFamily: pluggdFonts.satoshiBold,
     color: STUDIO.textMid,
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
   },
   liveChip: {
@@ -2067,46 +2257,62 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  commandActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 8,
-    rowGap: 8,
+  commandActionDeck: {
+    gap: 8,
   },
-  commandPillTap: {
-    minHeight: 42,
-    borderRadius: 999,
+  commandPrimaryTap: {
+    minHeight: 48,
+    borderRadius: 17,
     overflow: 'hidden',
   },
-  commandPillPrimary: {
-    minWidth: 144,
-  },
-  commandPillSecondary: {
-    minWidth: 104,
-  },
-  commandPillSmall: {
-    minWidth: 88,
-  },
-  commandPillInner: {
-    minHeight: 42,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
+  commandPrimaryAction: {
+    minHeight: 48,
+    borderRadius: 17,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 11,
     gap: 9,
   },
-  commandPillInnerPrimary: {
-    borderColor: 'rgba(255,106,0,0.86)',
+  commandPrimaryIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  commandPillInnerSecondary: {
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  commandPillText: { fontFamily: pluggdFonts.satoshiBlack,
-    maxWidth: 150,
+  commandPrimaryText: {
+    flex: 1,
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 13,
+    lineHeight: 16,
     fontWeight: '900',
+  },
+  commandQuickRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  commandQuickAction: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 54,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(8,8,11,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 5,
+  },
+  commandQuickText: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9.5,
+    lineHeight: 12,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   nextMove: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -2151,6 +2357,106 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionBoardHero: {
+    minHeight: 188,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.34)',
+    padding: 17,
+    overflow: 'hidden',
+  },
+  actionBoardSignal: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: STUDIO.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  actionBoardKicker: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  actionBoardTitle: {
+    marginTop: 5,
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 29,
+    lineHeight: 32,
+    fontWeight: '900',
+  },
+  actionBoardBody: {
+    marginTop: 8,
+    maxWidth: 310,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  actionBoardGrid: {
+    gap: 10,
+  },
+  actionBoardRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBoardTile: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 176,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  actionBoardTileSpacer: {
+    flex: 1,
+  },
+  actionBoardTileInner: {
+    flex: 1,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    padding: 13,
+    alignItems: 'flex-start',
+  },
+  actionBoardTileTop: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  actionBoardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBoardTileTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 16,
+    lineHeight: 19,
+    fontWeight: '900',
+  },
+  actionBoardTileBody: {
+    minHeight: 32,
+    marginTop: 5,
+    marginBottom: 10,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
   },
   kpiGrid: {
     alignSelf: 'stretch',
@@ -2540,43 +2846,88 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   appsHero: {
-    gap: 14,
+    minHeight: 276,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.31)',
+    padding: 17,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  appsHeroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: STUDIO.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   appsEyebrow: { fontFamily: pluggdFonts.satoshiBlack,
-    color: '#ff6600',
-    fontSize: 11,
-    lineHeight: 14,
+    color: STUDIO.orangeSoft,
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: '900',
     textTransform: 'uppercase',
-    letterSpacing: 0,
+    letterSpacing: 1.1,
   },
   appsTitle: { fontFamily: pluggdFonts.displayExtraBold,
     marginTop: 6,
     color: '#FFFFFF',
-    fontSize: 28,
-    lineHeight: 32,
+    maxWidth: 320,
+    fontSize: 30,
+    lineHeight: 33,
     fontWeight: '900',
     letterSpacing: 0,
   },
   appsBody: { fontFamily: pluggdFonts.satoshiBold,
     marginTop: 6,
     color: '#A9A9B6',
-    fontSize: 14,
-    lineHeight: 20,
+    maxWidth: 325,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
   },
   appsStats: {
+    marginTop: 18,
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'stretch',
+    minHeight: 48,
+  },
+  appsStat: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  appsStatDivider: {
+    width: StyleSheet.hairlineWidth,
+    marginHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  appsStatValue: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 20,
+    lineHeight: 23,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  appsStatLabel: {
+    marginTop: 2,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 10.5,
+    lineHeight: 13,
+    fontWeight: '700',
   },
   segmentStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingRight: 8,
   },
   segment: {
     minHeight: 38,
-    borderRadius: 999,
-    paddingHorizontal: 14,
+    borderRadius: 14,
+    paddingHorizontal: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#15151D',
@@ -2596,10 +2947,10 @@ const styles = StyleSheet.create({
     color: '#0a0806',
   },
   moduleCard: {
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 14,
-    gap: 12,
+    gap: 10,
   },
   moduleTop: {
     flexDirection: 'row',
@@ -2607,9 +2958,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   moduleIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2649,6 +3000,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    justifyContent: 'flex-end',
   },
   secondaryButton: {
     minHeight: 38,
@@ -2775,16 +3127,17 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   myPluggdTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingRight: 8,
   },
   myPluggdTab: {
-    minHeight: 36,
-    borderRadius: 999,
+    minHeight: 44,
+    borderRadius: 15,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: STUDIO.line,
     backgroundColor: STUDIO.chip,
-    paddingHorizontal: 13,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2999,30 +3352,164 @@ const styles = StyleSheet.create({
   connectHero: {
     borderRadius: 26,
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.34)',
     padding: 18,
-    alignItems: 'center',
-    gap: 12,
+    gap: 16,
+    overflow: 'hidden',
   },
-  connectIcon: {
-    width: 72,
-    height: 72,
+  connectHeroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectKicker: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  connectIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+  },
+  connectAvatar: {
+    width: 74,
+    height: 74,
     borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.34)',
+  },
+  connectAvatarFallback: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  connectAvatarText: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  connectIdentityCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
   connectTitle: { fontFamily: pluggdFonts.displayBold,
+    color: STUDIO.text,
     fontSize: 24,
     lineHeight: 28,
     fontWeight: '900',
-    textAlign: 'center',
   },
   connectText: { fontFamily: pluggdFonts.satoshiBold,
-    maxWidth: 280,
-    fontSize: 14,
-    lineHeight: 20,
+    color: STUDIO.textMid,
+    fontSize: 12,
+    lineHeight: 17,
     fontWeight: '700',
-    textAlign: 'center',
+  },
+  connectRouteBand: {
+    minHeight: 42,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.30)',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectRouteText: {
+    flex: 1,
+    minWidth: 0,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  connectPrimaryButton: {
+    minHeight: 48,
+    borderRadius: 17,
+    backgroundColor: STUDIO.orange,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectPrimaryText: {
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
+  privateViewsIntro: {
+    marginTop: -2,
+    marginBottom: 10,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  privateViewGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  privateViewCard: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 168,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panelDeep,
+    padding: 13,
+  },
+  privateViewIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  privateViewTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '900',
+  },
+  privateViewDetail: {
+    minHeight: 47,
+    marginTop: 5,
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  privateViewFooter: {
+    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  privateViewStatus: {
+    color: STUDIO.textSubtle,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   moreHero: {
     borderRadius: 24,
