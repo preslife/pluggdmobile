@@ -75,14 +75,24 @@ export function GlassMiniPlayer({
   return (
     <View style={styles.pressable}>
       <LiftSurface depth="high">
-        <GlassPanel intensity="strong" radius={liquidGlassRadii.xl} style={styles.card}>
+        <GlassPanel
+          intensity="strong"
+          radius={liquidGlassRadii.xl}
+          style={styles.card}
+          contentStyle={styles.cardContent}
+        >
           <View style={styles.topRow}>
             <Pressable
+              accessible
+              focusable
+              collapsable={false}
               accessibilityRole="button"
               accessibilityLabel="Open full player"
+              testID="mini-player-open"
               onPress={onOpen}
-              style={({ pressed }) => [styles.trackTapTarget, pressed && styles.trackTapPressed]}
-            >
+              style={({ pressed }) => [styles.trackTapOverlay, pressed && styles.trackTapPressed]}
+            />
+            <View pointerEvents="none" style={styles.trackTapTarget}>
               <LiftSurface depth="low" style={styles.discLift}>
                 <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} />
               </LiftSurface>
@@ -91,7 +101,29 @@ export function GlassMiniPlayer({
                 <Text style={styles.title} numberOfLines={1}>{title}</Text>
                 <Text style={styles.artist} numberOfLines={1}>{locked ? `${artist} · Locked preview` : artist}</Text>
               </View>
-            </Pressable>
+            </View>
+
+            <View style={styles.collapseSlot}>
+              <PlayerIconButton
+                accessibilityLabel="Collapse mini player"
+                icon="keyboard-arrow-down"
+                onPress={onToggleCollapse}
+              />
+            </View>
+          </View>
+
+          <View style={styles.actionRow}>
+            <View style={styles.workflowActions}>
+              <PlayerIconButton
+                accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
+                icon={liked ? 'favorite' : 'favorite-border'}
+                active={liked}
+                disabled={!canLike}
+                onPress={onLikePress}
+              />
+              <PlayerIconButton accessibilityLabel="Open lyrics and BarFlow" icon="lyrics" onPress={onLyricsPress} />
+              <PlayerIconButton accessibilityLabel="Open queue and playlist" icon="queue-music" onPress={onQueuePress} />
+            </View>
 
             <View style={styles.transportActions}>
               <PlayerIconButton accessibilityLabel="Previous track" icon="skip-previous" quiet onPress={onPrevious} />
@@ -105,8 +137,9 @@ export function GlassMiniPlayer({
                 }}
               />
               <PlayerIconButton accessibilityLabel="Next track" icon="skip-next" quiet onPress={onNext} />
-              <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" quiet onPress={onMorePress} />
             </View>
+
+            <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" onPress={onMorePress} />
           </View>
 
           <View style={styles.progressTrack}>
@@ -191,6 +224,7 @@ function PlayerIconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: isDisabled, selected: !!active }}
+      hitSlop={5}
       disabled={isDisabled}
       onPress={(event: GestureResponderEvent) => {
         event.stopPropagation();
@@ -208,7 +242,7 @@ function PlayerIconButton({
     >
       <MaterialIcons
         name={icon}
-        size={prominent ? 22 : 17}
+        size={prominent ? 25 : 20}
         color={active ? liquidGlassColors.accent : prominent ? liquidGlassColors.textPrimary : liquidGlassColors.textMuted}
       />
     </Pressable>
@@ -217,12 +251,15 @@ function PlayerIconButton({
 
 const styles = StyleSheet.create({
   pressable: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
   },
   collapsedPressable: {
     alignSelf: 'flex-end',
     marginRight: 28,
     marginLeft: 28,
+    marginBottom: 12,
+    width: 58,
+    height: 58,
   },
   collapsedLift: {
     borderRadius: liquidGlassRadii.pill,
@@ -238,34 +275,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    minHeight: 64,
+    minHeight: 104,
     shadowColor: '#000',
     shadowOpacity: 0.74,
     shadowRadius: 46,
     shadowOffset: { width: 0, height: 30 },
   },
+  cardContent: {
+    width: '100%',
+    minHeight: 104,
+  },
   topRow: {
-    minHeight: 64,
-    paddingHorizontal: 9,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
+    minHeight: 58,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
+    position: 'relative',
+    justifyContent: 'center',
   },
   trackTapTarget: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    width: '100%',
+    minHeight: 46,
+    paddingRight: 44,
+    position: 'relative',
+  },
+  trackTapOverlay: {
+    position: 'absolute',
+    left: 10,
+    right: 54,
+    top: 8,
+    height: 46,
+    zIndex: 2,
+    borderRadius: 16,
+  },
+  collapseSlot: {
+    position: 'absolute',
+    right: 10,
+    top: 12,
   },
   trackTapPressed: {
     opacity: 0.86,
   },
   actionRow: {
-    paddingHorizontal: 11,
-    paddingBottom: 6,
-    minHeight: 30,
+    paddingHorizontal: 10,
+    paddingBottom: 9,
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -274,14 +328,17 @@ const styles = StyleSheet.create({
   workflowActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 3,
   },
   transportActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   discLift: {
+    position: 'absolute',
+    left: 0,
+    top: 2,
     borderRadius: 999,
   },
   artwork: {
@@ -342,8 +399,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   trackInfo: {
-    flex: 1,
-    minWidth: 0,
+    position: 'absolute',
+    left: 52,
+    right: 0,
+    top: 7,
     gap: 2,
   },
   title: {
@@ -359,8 +418,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   iconButton: {
-    width: 26,
-    height: 26,
+    width: 34,
+    height: 34,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -377,8 +436,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconButtonProminent: {
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     borderColor: liquidGlassColors.borderTop,
     backgroundColor: 'rgba(255,255,255,0.085)',
@@ -403,14 +462,14 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     bottom: 0,
-    height: 2,
-    borderRadius: 1,
+    height: 3,
+    borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.11)',
     overflow: 'hidden',
   },
   progressFill: {
-    height: 2,
-    borderRadius: 1,
+    height: 3,
+    borderRadius: 2,
     backgroundColor: liquidGlassColors.accent,
   },
 });

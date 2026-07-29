@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors, liquidGlassRadii } from '../../src/design/liquidGlassTokens';
 import { GlassPanel } from './GlassPanel';
@@ -44,13 +45,24 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
               style={({ pressed }) => [styles.tabPressable, pressed && styles.tabPressed]}
             >
               <View style={styles.tabItem}>
-                <View style={[styles.iconShell, item.active && styles.iconShellActive]}>
+                <LinearGradient
+                  colors={
+                    item.active
+                      ? ['rgba(255,255,255,0.28)', 'rgba(255,102,0,0.22)', 'rgba(20,12,6,0.56)']
+                      : ['rgba(255,255,255,0.13)', 'rgba(255,255,255,0.035)', 'rgba(0,0,0,0.28)']
+                  }
+                  start={{ x: 0.3, y: 0.12 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.iconShell, webOrbLift, item.active && styles.iconShellActive]}
+                >
+                  <View pointerEvents="none" style={styles.iconOrbHighlight} />
                   <MaterialIcons
                     name={item.icon}
-                    size={21}
-                    color={item.active ? liquidGlassColors.accent : liquidGlassColors.textMuted}
+                    size={20}
+                    color={item.active ? liquidGlassColors.textPrimary : liquidGlassColors.textMuted}
                   />
-                </View>
+                </LinearGradient>
+                {item.active ? <View style={styles.activeOrbDot} /> : null}
                 <Text
                   style={[styles.tabLabel, { color: item.active ? liquidGlassColors.textPrimary : liquidGlassColors.textMuted }]}
                   numberOfLines={1}
@@ -71,13 +83,20 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
   );
 }
 
+const webOrbLift = Platform.select({
+  web: {
+    filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.78)) drop-shadow(0px 7px 12px rgba(0,0,0,0.42))',
+  },
+  default: {},
+}) as ViewStyle;
+
 const styles = StyleSheet.create({
   wrap: {
-    paddingTop: 6,
-    paddingHorizontal: 20,
+    paddingTop: 5,
+    paddingHorizontal: 16,
   },
   dockShell: {
-    height: 58,
+    height: 68,
   },
   dock: {
     width: '100%',
@@ -88,7 +107,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 22 },
   },
   tabRow: {
-    height: 58,
+    height: 68,
     paddingHorizontal: 7,
     paddingVertical: 5,
     flexDirection: 'row',
@@ -98,34 +117,65 @@ const styles = StyleSheet.create({
   },
   tabPressable: {
     flex: 1,
-    height: 48,
+    height: 58,
   },
   tabPressed: {
     transform: [{ scale: 0.985 }],
     opacity: 0.86,
   },
   tabItem: {
-    height: 48,
-    borderRadius: 16,
+    height: 58,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
   },
   iconShell: {
-    width: 30,
-    height: 27,
+    width: 38,
+    height: 34,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000',
+    shadowOpacity: 0.46,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 9 },
+    overflow: 'hidden',
   },
   iconShellActive: {
-    backgroundColor: 'rgba(255,102,0,0.08)',
+    borderColor: 'rgba(255,255,255,0.22)',
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  iconOrbHighlight: {
+    position: 'absolute',
+    left: 7,
+    top: 4,
+    width: 12,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  activeOrbDot: {
+    position: 'absolute',
+    top: 36,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: liquidGlassColors.accent,
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
   tabLabel: {
     fontFamily: 'Satoshi-Bold',
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 11,
+    lineHeight: 14,
   },
   activeIndicator: {
     width: 0,

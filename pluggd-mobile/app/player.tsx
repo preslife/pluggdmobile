@@ -254,7 +254,17 @@ export default function PlayerScreen() {
           <PlayerAction icon="playlist-add" label="Queue" onPress={() => scrollRef.current?.scrollTo({ y: queueOffset.current, animated: true })} />
         </View>
 
-        <View style={styles.queueSection} onLayout={(event) => { queueOffset.current = event.nativeEvent.layout.y; }}>
+        <View
+          style={styles.queueSection}
+          onLayout={(event) => {
+            queueOffset.current = event.nativeEvent.layout.y;
+            if (String(params.focus || '') === 'queue') {
+              requestAnimationFrame(() => {
+                scrollRef.current?.scrollTo({ y: Math.max(0, queueOffset.current - 12), animated: true });
+              });
+            }
+          }}
+        >
           <View style={styles.sectionHead}><Text style={styles.sectionKicker}>UP NEXT</Text><Text style={styles.queueCount}>{String(queue.length).padStart(2, '0')} TRACKS</Text></View>
           <Text style={styles.infoTitle}>Keep the signal moving</Text>
           {queue.length === 0 ? <Text style={styles.infoBody}>Queue will appear here as you keep listening.</Text> : null}
