@@ -23,6 +23,7 @@ export type DiscoveryItem = {
   city?: string;
   signal?: string;
   supportRoute?: string;
+  isEditorialPick?: boolean;
   track: PluggdTrack;
 };
 
@@ -43,6 +44,7 @@ function releaseItem(item: ReleaseItem): DiscoveryItem | null {
     description: `${creator}'s latest independent release${item.genre ? `, rooted in ${item.genre}` : ''}.`,
     genre: item.genre || undefined,
     supportRoute: `/release/${item.id}`,
+    isEditorialPick: Boolean(item.is_featured),
     track: {
       id: item.id,
       url: playableUrl,
@@ -171,6 +173,16 @@ export function buildBalancedHomePicks(
   }
 
   return selected.slice(0, limit);
+}
+
+/** Prefers a genuinely featured release, then rotates the freshest playable kinds by day. */
+export function selectDailyFeature(items: DiscoveryItem[], date = new Date()): DiscoveryItem | undefined {
+  const editorial = items.find((item) => item.isEditorialPick);
+  if (editorial) return editorial;
+  const candidates = items.slice(0, Math.min(items.length, 9));
+  if (!candidates.length) return undefined;
+  const dayKey = Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86_400_000);
+  return candidates[dayKey % candidates.length];
 }
 
 export type DiscoveryScene = {

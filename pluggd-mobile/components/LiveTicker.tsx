@@ -13,7 +13,7 @@ type LiveTickerProps = {
    * 'night' — inline dark row with a LIVE pill.
    * 'paper' — the web home's full-bleed cream band with ink text.
    */
-  variant?: 'night' | 'paper' | 'nightBand';
+  variant?: 'night' | 'paper' | 'nightBand' | 'home';
 };
 
 const SEP = '     •     ';
@@ -30,6 +30,8 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
   const line = items.filter(Boolean).join(SEP) + SEP;
   const paper = variant === 'paper';
   const nightBand = variant === 'nightBand';
+  const home = variant === 'home';
+  const accessibilitySummary = items.filter(Boolean).slice(0, 5).join('. ');
 
   useEffect(() => {
     if (!width || reducedMotion) {
@@ -52,8 +54,12 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
   if (!items.length) return null;
 
   return (
-    <View style={[styles.wrap, paper && styles.wrapPaper, nightBand && styles.wrapNightBand]}>
-      {paper || nightBand ? (
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={`Live signal. ${accessibilitySummary}`}
+      style={[styles.wrap, paper && styles.wrapPaper, nightBand && styles.wrapNightBand, home && styles.wrapHome]}
+    >
+      {paper || nightBand || home ? (
         <View style={styles.paperDot} />
       ) : (
         <View style={[styles.livePill, { borderColor: accent }]}>
@@ -61,15 +67,31 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
           <Text style={[styles.liveText, { color: accent }]}>LIVE</Text>
         </View>
       )}
+      {home ? <Text style={styles.homeLabel}>LIVE SIGNAL</Text> : null}
       <View style={styles.track}>
-        <Animated.View style={[styles.row, { transform: [{ translateX: translate }] }]}>
-          <Text onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand]}>
-            {line}
+        {reducedMotion ? (
+          <Text
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            numberOfLines={1}
+            style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}
+          >
+            {items.slice(0, 2).join(SEP)}
           </Text>
-          <Text numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand]}>
-            {line}
-          </Text>
-        </Animated.View>
+        ) : (
+          <Animated.View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.row, { transform: [{ translateX: translate }] }]}
+          >
+            <Text onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
+              {line}
+            </Text>
+            <Text numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
+              {line}
+            </Text>
+          </Animated.View>
+        )}
       </View>
     </View>
   );
@@ -93,6 +115,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
+  wrapHome: {
+    minHeight: 42,
+    marginHorizontal: -20,
+    marginTop: 18,
+    paddingHorizontal: 20,
+    backgroundColor: '#171411',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#302A24',
+    gap: 11,
+  },
   livePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -104,12 +137,14 @@ const styles = StyleSheet.create({
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
   paperDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: ed.orange },
+  homeLabel: { color: ed.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 8.5, letterSpacing: 1 },
   liveText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 9.5, letterSpacing: 1 },
   track: { flex: 1, overflow: 'hidden' },
   row: { flexDirection: 'row' },
   text: { color: 'rgba(255,255,255,0.62)', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
   textPaper: { color: ed.ink, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   textNightBand: { color: '#fff8ed', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
+  textHome: { color: '#D7CFC4', fontFamily: pluggdFonts.satoshiBold, fontSize: 11.5, letterSpacing: 0.15 },
 });
 
 export default LiveTicker;

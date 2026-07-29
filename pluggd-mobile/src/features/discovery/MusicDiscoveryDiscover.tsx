@@ -18,6 +18,7 @@ const FILTERS = ['For you', 'Scenes', 'Genres', 'Cities', 'Charts'] as const;
 export function MusicDiscoveryDiscover() {
   const router = useRouter();
   const params = useLocalSearchParams<{ scene?: string }>();
+  const selectedScene = typeof params.scene === 'string' ? decodeURIComponent(params.scene).trim() : '';
   const feed = useHomeFeed();
   const { playQueue } = usePlayback();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>(params.scene ? 'Scenes' : 'For you');
@@ -27,9 +28,29 @@ export function MusicDiscoveryDiscover() {
     if (filter === 'For you' || filter === 'Charts') return allItems;
     if (filter === 'Cities') return allItems.filter((item) => item.city);
     if (filter === 'Genres') return allItems.filter((item) => item.genre);
+    if (selectedScene) {
+      const target = selectedScene.toLowerCase();
+      const targetRoot = target.split(',')[0]?.trim() || target;
+      return allItems.filter((item) => {
+        const city = item.city?.trim().toLowerCase() || '';
+        const genre = item.genre?.trim().toLowerCase() || '';
+        return (
+          (Boolean(city) && (
+            city === target ||
+            city === targetRoot ||
+            target.includes(city) ||
+            city.includes(targetRoot)
+          )) ||
+          (Boolean(genre) && (genre === target || genre === targetRoot))
+        );
+      });
+    }
     return allItems.filter((item) => item.kind === 'mix');
-  }, [allItems, filter]);
-  const visible = items.length ? items : allItems;
+  }, [allItems, filter, selectedScene]);
+  const hasSelectedSceneMatches = filter === 'Scenes' && Boolean(selectedScene) && items.length > 0;
+  const visible = filter === 'Scenes' && selectedScene
+    ? (hasSelectedSceneMatches ? items : allItems)
+    : (items.length ? items : allItems);
   const worlds = useMemo(() => [
     { title: 'Mixes', meta: `${feed.data?.mixes.length || 0} selector worlds`, route: '/mixes', image: feed.data?.mixes.find((item) => item.cover_url)?.cover_url || null, icon: 'album' as const, index: '01' },
     { title: 'Soundboards', meta: `${feed.data?.soundboards.length || 0} ideas in progress`, route: '/soundboards', image: feed.data?.soundboards.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'dashboard-customize' as const, index: '02' },
@@ -68,7 +89,18 @@ export function MusicDiscoveryDiscover() {
         {visible.length ? (
           <>
             <View style={styles.sectionHeader}>
-              <View><Text style={styles.sectionEyebrow}>{filter === 'For you' ? 'YOUR FREQUENCY' : filter.toUpperCase()}</Text><Text style={styles.sectionTitle}>{filter === 'For you' ? 'Start somewhere unexpected' : `Inside ${filter.toLowerCase()}`}</Text></View>
+              <View>
+                <Text style={styles.sectionEyebrow}>{filter === 'For you' ? 'YOUR FREQUENCY' : filter.toUpperCase()}</Text>
+                <Text style={styles.sectionTitle}>
+                  {filter === 'For you'
+                    ? 'Start somewhere unexpected'
+                    : hasSelectedSceneMatches
+                      ? `Inside ${selectedScene}`
+                      : selectedScene && filter === 'Scenes'
+                        ? 'More signals to explore'
+                        : `Inside ${filter.toLowerCase()}`}
+                </Text>
+              </View>
               <Text style={styles.liveCount}>{visible.length} PLAYABLE</Text>
             </View>
             <View style={styles.mosaic}>

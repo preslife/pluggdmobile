@@ -31,6 +31,7 @@ export type ReleaseItem = {
   download_price: number | null;
   minimum_price: number | null;
   release_date?: string | null;
+  is_featured?: boolean | null;
   approved?: boolean | null;
   status?: string | null;
   catalogue_mode?: string | null;
@@ -233,7 +234,7 @@ export type FeedBundle = {
 };
 
 export const RELEASE_LIST_SELECT =
-  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,release_date,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
+  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,release_date,is_featured,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
 
 export function formatGBP(value?: number | null, options?: { cents?: boolean }) {
   const numeric = Number(value ?? 0);

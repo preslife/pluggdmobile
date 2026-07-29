@@ -1,85 +1,84 @@
-# PLUGGD Music-Discovery Redesign — Design QA
+# PLUGGD Home Design QA
 
-## Source truth
+## Scope
 
-- Selected hybrid concept: `/Users/apple/.codex/generated_images/019f8932-7bd6-7460-abd1-20fed208cc10/exec-e2d7d685-013e-4e31-a1a0-a629dd12b306.png`
-- Concept dimensions: 853 × 1844 px (390 × 844pt design intent)
-- Fixed anchors: PLUGGD logo, orange `#ff6600`, warm black canvas
-- Chosen system: Curator's Bazaar / Daily Plug hierarchy with Signal Deck's modern grotesk typography and compact interaction density
+- Surface: signed-out Home, iPhone 17 Pro Max simulator
+- Captured viewport: 368 × 800
+- Visual direction: selected PLUGGD music-discovery system, strengthened with the live web product's signal ticker, editorial storytelling and Next Wave hierarchy
+- Comparison: `artifacts/qa/home-redesign-2026-07-29/home-before-after.jpg`
+- Final captures:
+  - `artifacts/qa/home-redesign-2026-07-29/after-home-top.jpg`
+  - `artifacts/qa/home-redesign-2026-07-29/after-home-middle.jpg`
+  - `artifacts/qa/home-redesign-2026-07-29/after-home-bottom.jpg`
+  - `artifacts/qa/home-redesign-2026-07-29/after-home-player.jpg`
 
-## Implementation captures
+## Mandatory comparison
 
-- Home: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home.jpg`
-- Corrected Home: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-v2.png`
-- Corrected Discover: `artifacts/screenshots/music-discovery-redesign-2026-07-22/discover-v2.png`
-- Discover with persistent mini-player: `artifacts/screenshots/music-discovery-redesign-2026-07-22/discover-mini-player.jpg`
-- Full player: `artifacts/screenshots/music-discovery-redesign-2026-07-22/full-player.jpg`
-- Community: `artifacts/screenshots/music-discovery-redesign-2026-07-22/community.jpg`
-- Library: `artifacts/screenshots/music-discovery-redesign-2026-07-22/library.jpg`
-- Direct source/implementation comparison: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-comparison.png`
-- Corrected direct comparison: `artifacts/screenshots/music-discovery-redesign-2026-07-22/home-comparison-v2.png`
+### Typography
 
-## Capture conditions
+- Sora remains the display face and Satoshi the supporting copy face throughout.
+- Daily Plug, section headings, metadata and CTA hierarchy are consistent with the selected mobile system.
+- The featured CTA was shortened and rebuilt as one inline action so its icon no longer wrapped onto a second line.
+- No legacy display typography is visible.
 
-- Device: iPhone 17 Pro Max simulator, iOS 26.2, portrait
-- Native viewport: 430 × 932pt; optimized screenshot: 368 × 800px
-- State: public feed loaded from the existing Supabase data; signed-out library empty state; real playback queue active for mini/full-player captures
-- Accessibility inspection: runtime semantic snapshot with labelled Home, Discover, Community and Library tabs and labelled playable controls
+### Spacing and layout
 
-## Full-screen comparison
+- The first viewport contains a featured playable release plus four additional choices.
+- Artwork remains square and fills its frame without blurred sidebars or destructive zooming.
+- Section rhythm is compact enough for discovery while preserving 44pt primary targets.
+- The single market gateway was moved onto a fixed 180pt visual surface after simulator QA exposed flex shrink.
+- Event artwork and event information now occupy separate, intentional surfaces; poster text is not duplicated by an overlay.
+- The live room is a complete bordered signal card rather than a collapsed row.
+- The persistent player and dock remain separate layers and do not restart playback during navigation.
 
-The corrected implementation preserves the selected hierarchy: compact brand header, Daily Plug lead, immediate playable artwork, four choices, scene strip and four-item dock. Below the opening viewport it now continues into New Releases, Soundboards, a real Featured Event, creator discovery and contextual live access. Real production data changes the exact artwork and copy, by design.
+### Color and surfaces
 
-## Focused comparison
+- The fixed PLUGGD anchors remain black, warm cream and orange.
+- Borders and dark-brown surfaces create grouping without generic nested cards.
+- Orange is reserved for play, selected state, live signal and primary conversion actions.
+- Text and actionable controls maintain readable contrast against artwork and night surfaces.
 
-| Area | Result | Notes |
-| --- | --- | --- |
-| Header and typography | Pass | Sora/Satoshi modern grotesk replaces the rejected serif direction. |
-| First playable | Pass | Orange 44pt play control is visible on the lead artwork and starts the shared queue in one tap. |
-| Opening density | Pass | Lead plus four distinct music choices appear before the dock. |
-| Discovery rationale | Pass | Every row exposes a real-data reason such as producer signal, city movement or genre selection. |
-| Player continuity | Pass | Do Better continued from Home into Discover; mini and full player use the same PlaybackProvider queue. |
-| Navigation | Pass | Home, Discover, Community and Library are fixed; Events and Market remain reachable contextually. |
-| Honest states | Pass | Missing collections use an explicit empty state; unavailable audio keeps the existing honest alert. |
-| Touch/accessibility | Pass | Primary controls are 44pt or larger and carry descriptive accessibility labels. |
+### Imagery
 
-## Iteration history
+- Release artwork uses the release-specific fitting component and displays edge-to-edge in square slots.
+- Editorial, event, soundboard, scene and market imagery use their actual source assets.
+- No placeholder artwork, synthetic illustration, custom SVG or CSS-art substitute was introduced.
+- Tall poster copy is preserved inside the image while UI copy sits in a separate information panel.
 
-1. Initial native pass exposed an invisible lead play affordance and compact cards that collapsed into an unintended three-column arrangement.
-2. Replaced the lead action with a visible 44pt orange artwork control and rendered the four picks as two explicit two-column rows.
-3. Discover rows initially lost their horizontal layout through callback-based press styling; changed layout-critical pressables to stable direct styles.
-4. Rebuilt and captured again. Home, Discover, playback and navigation passed the simulator interaction check.
-5. User review correctly identified that the first pass still diverged from the mockup and had removed too much platform depth. Home was rebuilt with stronger artwork scale and restored Releases, Soundboards, Featured Event and creator modules.
-6. Discover's ranked-list opening was removed and replaced with a three-part playable mosaic, surfaced-reason line, Scene Dial, Release Radar and independent chart. The corrected simulator captures were compared again.
+### Copy and content
 
-## Outstanding visual issues
+- The live ticker, editorial story, releases, events and market counts are source-backed.
+- Imported catalogue metadata is not used as a pretend playable release.
+- Registration is secondary and appears only after the music, scenes, editorial, live and commerce gateways.
+- Internal status values and architecture language are not exposed.
 
-- None at P0, P1 or P2 for the approved discovery loop.
-- Existing Community content retains its richer glass treatment; it now participates in the selected navigation and persistent player but can receive a deeper editorial-density pass in the next public-surface sweep.
+### States and interactions
 
-## Final result: passed
+- Featured and grid play actions have distinct accessible targets from their detail routes.
+- One-tap playback opens the persistent player; an unavailable remote file reaches the existing honest “Audio unavailable” state.
+- Home-to-Discover scene deep links apply city/genre matching; when no exact playable match exists, Discover offers wider real signals instead of a dead end or fabricated scene content.
+- Reduce Motion disables ticker movement and featured parallax.
+- Loading, empty, signed-out and unavailable-audio states remain represented.
 
-The approved Home direction, intentional Discover surface, persistent mini-player, modern full player, four-part navigation and redesigned Library are implemented and verified against the selected concept.
+### Accessibility and resilience
 
-## Release artwork correction — 29 July 2026
+- Simulator runtime snapshot exposes labelled play, open, search, account, scene, event, market, registration, player and dock controls.
+- Primary controls use at least 44pt targets.
+- The ticker has a static VoiceOver summary and a non-moving Reduce Motion treatment.
+- Longer titles are constrained deliberately and supporting copy can wrap without breaking the grid.
 
-- Source visual truth: the live `Still ah Link` 3000 × 3000px release cover and the existing square-cover presentation used throughout PLUGGD.
-- Defective implementation capture: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-before.jpg` at 368 × 800px.
-- Corrected implementation captures:
-  - Home: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-after.jpg`
-  - Release detail: `artifacts/screenshots/release-artwork-correction-2026-07-29/release-detail-after.jpg`
-  - Home comparison: `artifacts/screenshots/release-artwork-correction-2026-07-29/home-comparison.jpg`
-  - Release detail comparison: `artifacts/screenshots/release-artwork-correction-2026-07-29/release-detail-comparison.jpg`
-- Viewport: iPhone 17 Pro Max simulator, optimized 368 × 800px capture.
-- State: live public feed, `Still ah Link` featured on Home and opened on its public release route.
-- Root cause: the Supabase derivative request supplied `width` without an explicit resize strategy, returning a distorted 520 × 3000px derivative from the square 3000 × 3000px source.
-- Fix: derivative requests now use `resize=contain`, preserving the source ratio before React Native applies the card's edge-to-edge `cover` fit. Release hero, Home lead, release tiles, Listening Floor wall, ledger, chart and support cards use consistent artwork frames.
-- Full-view comparison: the corrected Home shows complete, correctly proportioned square covers while rectangular cards remain edge-to-edge with a modest centred crop. No blurred bars or narrow poster strips remain.
-- Focused comparison: Home lead and release detail hero both preserve the full square composition; typography, spacing, orange controls, copy and card hierarchy are unchanged.
-- Accessibility and interaction: existing labelled press targets and one-tap playback remain unchanged.
-- Comparison history:
-  1. The original rendering showed severe zoom caused by the malformed derivative.
-  2. A contain-plus-blurred-backdrop treatment exposed the malformed derivative as a narrow strip and was rejected.
-  3. Inspecting the live source and derivative proved the data was correct and the resize response was not.
-  4. The derivative was corrected, the app rebuilt, and Home plus release detail were recaptured on the same simulator.
-- Final result: passed.
+## Findings resolved
+
+- P1 — single market gateway collapsed to a narrow strip: fixed with an explicit inner visual surface and verified in the bottom capture.
+- P1 — primary registration button lost its fill: fixed with an inner button surface and verified in the bottom capture.
+- P1 — scheduled live room exposed an internal status and lacked hierarchy: replaced with human date/creator metadata and a full signal card.
+- P2 — featured CTA icon wrapped onto a separate line: rebuilt as a single inline action.
+- P2 — event poster and overlay repeated the same title: separated poster media from the event information panel.
+- P2 — scene deep link could become an immediate empty dead end: retained honest matching and added a real-content fallback.
+
+## Remaining follow-up
+
+- P3 — validate the same hierarchy at the largest accessibility text setting during the broader accessibility submission pass.
+- P3 — replace any remotely unavailable creator audio at its source; the client already presents the correct unavailable state.
+
+final result: passed
