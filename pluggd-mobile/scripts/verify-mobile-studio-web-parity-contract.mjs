@@ -23,6 +23,10 @@ assert.match(studioScreens, /Plug modules into your workspace\./, 'Studio Apps m
 assert.match(studioScreens, /ModuleTileGrid/, 'Studio More must render modules as premium tiles, not a plain text list');
 assert.match(studioScreens, /More Studio/, 'Studio More must keep its module-surface hero');
 assert.doesNotMatch(studioScreens, /function StudioMoreContent[\s\S]*?<ComplianceNote \/>/, 'Studio More must not expose implementation/compliance note copy as the first public surface');
+assert.match(studioScreens, /function PublishingActivity/, 'Studio Analytics must visualize honest publishing activity');
+assert.match(studioScreens, /Based on releases, beats, mixes, soundboards and events added to your Studio\./, 'Studio Analytics must explain the source of its publishing activity');
+assert.match(studioScreens, /SectionTitle title="Catalog Mix"/, 'Studio Analytics must show the real catalog composition');
+assert.doesNotMatch(studioScreens, /Math\.min\(100, 22 \+ data\.stats\.(?:release|beat|mix|soundboard)Count \* 12\)/, 'Studio Analytics must not use decorative fake catalog percentages');
 assert.match(studioData, /id:\s*'my_pluggd'[\s\S]*title:\s*'My PLUGGD'/, 'Studio module catalog must preserve My PLUGGD from the web source');
 
 console.log('mobile Studio web-parity contract verified');

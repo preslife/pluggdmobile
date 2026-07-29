@@ -949,10 +949,10 @@ export function createStudioPreviewData(): StudioData {
   const enabledModuleIds: StudioModuleId[] = ['events', 'soundboards', 'analytics_audience', 'memberships'];
   const modules = buildModuleStates(primaryRole, enabledModuleIds);
   const catalogItems: StudioCatalogItem[] = [
-    { id: 'preview-release', title: 'Afterimage', subtitle: 'Release · 18 Jul', route: '/releases', kind: 'release' },
-    { id: 'preview-mix', title: 'Night Signal 004', subtitle: 'Mix · 11 Jul', route: '/mixes', kind: 'mix' },
-    { id: 'preview-board', title: 'Warehouse Heat', subtitle: '12 items', route: '/soundboards', kind: 'soundboard' },
-    { id: 'preview-event', title: 'Signal Room: London', subtitle: '2 Aug · Dalston', route: '/events', kind: 'event' },
+    { id: 'preview-release', title: 'Afterimage', subtitle: 'Release · 18 Jul', route: '/releases', kind: 'release', createdAt: '2026-07-18T12:00:00Z' },
+    { id: 'preview-mix', title: 'Night Signal 004', subtitle: 'Mix · 11 Jul', route: '/mixes', kind: 'mix', createdAt: '2026-07-11T12:00:00Z' },
+    { id: 'preview-board', title: 'Warehouse Heat', subtitle: '12 items', route: '/soundboards', kind: 'soundboard', createdAt: '2026-06-21T12:00:00Z' },
+    { id: 'preview-event', title: 'Signal Room: London', subtitle: '2 Aug · Dalston', route: '/events', kind: 'event', createdAt: '2026-05-09T12:00:00Z' },
   ];
   const connectProfile: StudioConnectProfile = {
     id: 'preview-connect',

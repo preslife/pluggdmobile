@@ -600,8 +600,13 @@ export function ListeningFloorScreen() {
         (supabase as any)
           .from('releases')
           .select(
-            'id,title,artist,cover_art_url,preview_url,download_url,genre,release_type,release_date,price,download_price,minimum_price,total_plays,is_featured,created_at',
+            'id,title,artist,cover_art_url,preview_url,download_url,genre,release_type,release_date,price,download_price,minimum_price,total_plays,is_featured,approved,status,catalogue_mode,visibility_status,created_at',
           )
+          .eq('approved', true)
+          .eq('status', 'live')
+          .eq('catalogue_mode', 'pluggd')
+          .eq('visibility_status', 'visible')
+          .order('release_date', { ascending: false, nullsFirst: false })
           .order('created_at', { ascending: false })
           .limit(30),
       ),

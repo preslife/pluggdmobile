@@ -30,6 +30,12 @@ export type ReleaseItem = {
   price: number | null;
   download_price: number | null;
   minimum_price: number | null;
+  release_date?: string | null;
+  approved?: boolean | null;
+  status?: string | null;
+  catalogue_mode?: string | null;
+  visibility_status?: string | null;
+  catalogue_import_job_id?: string | null;
   created_at: string | null;
 };
 
@@ -227,7 +233,7 @@ export type FeedBundle = {
 };
 
 export const RELEASE_LIST_SELECT =
-  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,created_at';
+  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,release_date,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
 
 export function formatGBP(value?: number | null, options?: { cents?: boolean }) {
   const numeric = Number(value ?? 0);
@@ -444,6 +450,11 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
       supabase
         .from('releases')
         .select(RELEASE_LIST_SELECT)
+        .eq('approved', true)
+        .eq('status', 'live')
+        .eq('catalogue_mode', 'pluggd')
+        .eq('visibility_status', 'visible')
+        .order('release_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(limit),
     ),

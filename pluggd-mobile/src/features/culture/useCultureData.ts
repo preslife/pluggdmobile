@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import {
+  RELEASE_LIST_SELECT,
   loadFeedBundle,
   type BeatItem,
   type EventItem,
@@ -162,8 +163,13 @@ export function useUniversalSearch(term: string) {
         safeList<ReleaseItem>(
           supabase
             .from('releases')
-            .select('id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,created_at')
+            .select(RELEASE_LIST_SELECT)
+            .eq('approved', true)
+            .eq('status', 'live')
+            .eq('catalogue_mode', 'pluggd')
+            .eq('visibility_status', 'visible')
             .or(`title.ilike.${pattern},artist.ilike.${pattern},genre.ilike.${pattern}`)
+            .order('release_date', { ascending: false, nullsFirst: false })
             .order('created_at', { ascending: false })
             .limit(12),
         ),

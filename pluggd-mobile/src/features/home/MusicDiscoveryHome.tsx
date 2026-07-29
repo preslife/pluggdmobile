@@ -5,12 +5,24 @@ import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
 import { PluggdImage } from '../../components/PluggdImage';
 import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
-import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from '../discovery/discoveryModel';
+import {
+  buildBalancedHomePicks,
+  buildDiscoveryItems,
+  buildDiscoveryScenes,
+  type DiscoveryItem,
+} from '../discovery/discoveryModel';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
 const INK = '#F7F2E9';
 const MUTED = '#A69F95';
 const ORANGE = '#FF6600';
+
+function featuredActionLabel(item: DiscoveryItem) {
+  if (item.kind === 'release') return 'Support this release';
+  if (item.kind === 'beat') return 'Explore beat licences';
+  if (item.kind === 'mix') return 'Enter this mix';
+  return 'Open this soundboard';
+}
 
 export function MusicDiscoveryHome() {
   const router = useRouter();
@@ -21,9 +33,9 @@ export function MusicDiscoveryHome() {
   const items = buildDiscoveryItems(feed.data);
   const scenes = buildDiscoveryScenes(feed.data);
   const featured = items[0];
-  const picks = items.slice(1, 5);
+  const picks = buildBalancedHomePicks(items, featured?.id);
   const newReleases = feed.data?.releases.slice(0, 6) ?? [];
-  const mixes = items.filter((item) => item.kind === 'mix').slice(0, 5);
+  const mixes = feed.data?.mixes.slice(0, 5) ?? [];
   const liveRooms = live.data?.slice(0, 4) ?? [];
   const communities = backstage.data?.communities?.slice(0, 4) ?? [];
 
@@ -76,7 +88,7 @@ export function MusicDiscoveryHome() {
                   onPress={() => router.push((featured.supportRoute || featured.destinationRoute) as any)}
                   style={styles.supportButton}
                 >
-                  <Text style={styles.supportText}>Support this release</Text>
+                  <Text style={styles.supportText}>{featuredActionLabel(featured)}</Text>
                 </Pressable>
               </View>
             </View>
@@ -103,6 +115,9 @@ export function MusicDiscoveryHome() {
                       style={styles.pick}
                     >
                       <Artwork item={item} style={styles.pickArt} iconSize={24} />
+                      <View style={styles.pickKind}>
+                        <Text style={styles.pickKindText}>{item.kind.toUpperCase()}</Text>
+                      </View>
                       <View style={styles.pickCopy}>
                         <Text style={styles.pickTitle} numberOfLines={1}>{item.title}</Text>
                         <Text style={styles.pickCreator} numberOfLines={1}>{item.creator}</Text>
@@ -140,11 +155,32 @@ export function MusicDiscoveryHome() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mixRail}>
               {mixes.map((mix, index) => (
-                <Pressable key={mix.id} accessibilityRole="button" accessibilityLabel={`Play mix ${mix.title}`} onPress={() => play(mix)} style={[styles.mixCard, index === 0 && styles.mixCardLead]}>
-                  <Artwork item={mix} style={styles.mixArt} iconSize={34} />
+                <Pressable
+                  key={mix.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${mix.audio_url ? 'Play' : 'Open'} mix ${mix.title || 'Untitled mix'}`}
+                  onPress={() => {
+                    const playable = items.find((item) => item.kind === 'mix' && item.track.mixId === mix.id);
+                    if (playable) play(playable);
+                    else router.push(`/mixes/${mix.slug || mix.id}` as any);
+                  }}
+                  style={[styles.mixCard, index === 0 && styles.mixCardLead]}
+                >
+                  {mix.cover_url ? (
+                    <PluggdImage uri={mix.cover_url} style={styles.mixArt} displayWidth={640} />
+                  ) : (
+                    <View style={[styles.mixArt, styles.artFallback]}><MaterialIcons name="album" size={34} color={ORANGE} /></View>
+                  )}
                   <View style={styles.mixShade} />
-                  <View style={styles.mixTop}><Text style={styles.mixNumber}>{String(index + 1).padStart(2, '0')}</Text><View style={styles.mixPlay}><MaterialIcons name="play-arrow" size={20} color="#100B07" /></View></View>
-                  <View style={styles.mixCopy}><Text style={styles.mixKicker}>{mix.city || mix.genre || 'SELECTOR MIX'}</Text><Text style={styles.mixTitle} numberOfLines={2}>{mix.title}</Text><Text style={styles.mixCreator} numberOfLines={1}>{mix.creator}</Text></View>
+                  <View style={styles.mixTop}>
+                    <Text style={styles.mixNumber}>{String(index + 1).padStart(2, '0')}</Text>
+                    <View style={styles.mixPlay}><MaterialIcons name={mix.audio_url ? 'play-arrow' : 'arrow-forward'} size={20} color="#100B07" /></View>
+                  </View>
+                  <View style={styles.mixCopy}>
+                    <Text style={styles.mixKicker}>{mix.city || mix.genre_tags?.[0] || 'SELECTOR MIX'}</Text>
+                    <Text style={styles.mixTitle} numberOfLines={2}>{mix.title || 'Untitled mix'}</Text>
+                    <Text style={styles.mixCreator} numberOfLines={1}>{mix.event_name || mix.city || 'PLUGGD selector'}</Text>
+                  </View>
                 </Pressable>
               ))}
             </ScrollView>
@@ -317,13 +353,23 @@ const styles = StyleSheet.create({
   supportButton: { minHeight: 44, flexShrink: 0, justifyContent: 'center', borderBottomWidth: 1, borderColor: '#756E64' },
   supportText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   sectionHeader: { minHeight: 54, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 10 },
-  sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, letterSpacing: -0.35 },
+  sectionTitle: { flexShrink: 1, color: INK, fontFamily: 'Sora-Bold', fontSize: 17, letterSpacing: -0.35 },
   sectionSubtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 10.5, marginTop: 3 },
-  seeAll: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  seeAll: { marginLeft: 12, color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   pickGrid: { gap: 10 },
   pickRow: { flexDirection: 'row', gap: 10 },
   pick: { flex: 1, minWidth: 0, minHeight: 154, borderRadius: 5, overflow: 'hidden' },
   pickArt: { width: '100%', height: 108, borderRadius: 4, backgroundColor: '#211C17' },
+  pickKind: {
+    position: 'absolute',
+    left: 7,
+    top: 7,
+    borderRadius: 3,
+    backgroundColor: 'rgba(9,7,5,0.76)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  pickKindText: { color: '#E8E0D5', fontFamily: 'Satoshi-Black', fontSize: 7.5, letterSpacing: 0.9 },
   pickCopy: { minWidth: 0, paddingTop: 7, paddingRight: 30 },
   pickTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
   pickCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 9.5, lineHeight: 13, marginTop: 2 },

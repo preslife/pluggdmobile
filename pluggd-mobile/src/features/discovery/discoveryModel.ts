@@ -142,6 +142,37 @@ export function buildDiscoveryItems(bundle?: FeedBundle | null): DiscoveryItem[]
   return ordered;
 }
 
+/**
+ * Selects the compact Home grid deliberately instead of inheriting whichever
+ * content table happens to contain the most rows. When the catalogue supports
+ * it, the first four choices span releases, mixes, and beats.
+ */
+export function buildBalancedHomePicks(
+  items: DiscoveryItem[],
+  featuredId?: string,
+  limit = 4,
+): DiscoveryItem[] {
+  const available = items.filter((item) => item.id !== featuredId);
+  const selected: DiscoveryItem[] = [];
+  const selectedIds = new Set<string>();
+
+  for (const kind of ['release', 'mix', 'beat'] as const) {
+    const match = available.find((item) => item.kind === kind && !selectedIds.has(item.id));
+    if (!match) continue;
+    selected.push(match);
+    selectedIds.add(match.id);
+  }
+
+  for (const item of available) {
+    if (selected.length >= limit) break;
+    if (selectedIds.has(item.id)) continue;
+    selected.push(item);
+    selectedIds.add(item.id);
+  }
+
+  return selected.slice(0, limit);
+}
+
 export type DiscoveryScene = {
   label: string;
   detail: string;

@@ -875,41 +875,67 @@ function ProgressRow({ label, detail, value, icon, route }: { label: string; det
   );
 }
 
-function StudioPulse({ data }: { data: StudioData }) {
-  const theme = usePluggdTheme();
-  const rows = [
-    {
-      label: 'Catalog',
-      detail: data.stats.catalogCount > 0 ? `${formatCompact(data.stats.catalogCount)} visible assets` : 'No catalog assets yet',
-      value: data.stats.catalogCount > 0 ? Math.min(100, 24 + data.stats.catalogCount * 9) : 8,
-      icon: 'inventory-2',
-      route: '/releases',
-    },
-    {
-      label: 'Audience',
-      detail: data.stats.audienceCount > 0 ? `${formatCompact(data.stats.audienceCount)} followers` : 'Waiting for fan movement',
-      value: data.stats.audienceCount > 0 ? Math.min(100, 28 + Math.log10(data.stats.audienceCount + 1) * 24) : 8,
-      icon: 'groups',
-      route: '/studio/analytics',
-    },
-    {
-      label: 'Setup',
-      detail: `${data.stats.completedTasks} of ${data.stats.totalTasks} complete`,
-      value: data.stats.healthPercent,
-      icon: 'task-alt',
-      route: '/studio/my-pluggd',
-    },
-  ];
+function PublishingActivity({ data }: { data: StudioData }) {
+  const months = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        label: date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase(),
+        count: 0,
+      };
+    });
+  }, []);
+
+  const activity = useMemo(() => {
+    const byMonth = new Map(months.map((month) => [month.key, { ...month }]));
+    data.catalogItems.forEach((item) => {
+      if (!item.createdAt) return;
+      const date = new Date(item.createdAt);
+      if (Number.isNaN(date.getTime())) return;
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const month = byMonth.get(key);
+      if (month) month.count += 1;
+    });
+    return months.map((month) => byMonth.get(month.key) || month);
+  }, [data.catalogItems, months]);
+
+  const maximum = Math.max(1, ...activity.map((month) => month.count));
+  const total = activity.reduce((sum, month) => sum + month.count, 0);
   return (
-    <View style={styles.pulseCard}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionRule} />
-        <Text style={styles.sectionKicker}>Studio Pulse</Text>
+    <LinearGradient
+      colors={['rgba(255,106,0,0.16)', 'rgba(22,22,27,0.96)', 'rgba(5,5,7,0.98)']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.activityCard}
+    >
+      <View style={styles.activityHead}>
+        <View>
+          <Text style={styles.activityKicker}>Publishing activity</Text>
+          <Text style={styles.activityTitle}>{total ? `${total} items in six months` : 'Your cadence starts here'}</Text>
+        </View>
+        <View style={styles.activityBadge}>
+          <MaterialIcons name="insights" size={16} color={STUDIO.orangeSoft} />
+          <Text style={styles.activityBadgeText}>REAL DATA</Text>
+        </View>
       </View>
-      {rows.map((row) => (
-        <ProgressRow key={row.label} {...row} />
-      ))}
-    </View>
+      <View style={styles.activityChart}>
+        {activity.map((month) => (
+          <View key={month.key} style={styles.activityColumn}>
+            <Text style={styles.activityValue}>{month.count || '–'}</Text>
+            <View style={styles.activityTrack}>
+              <LinearGradient
+                colors={month.count ? [STUDIO.orangeSoft, STUDIO.orange] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)']}
+                style={[styles.activityBar, { height: month.count ? Math.max(12, Math.round((month.count / maximum) * 74)) : 5 }]}
+              />
+            </View>
+            <Text style={styles.activityMonth}>{month.label}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.activityNote}>Based on releases, beats, mixes, soundboards and events added to your Studio.</Text>
+    </LinearGradient>
   );
 }
 
@@ -1081,7 +1107,6 @@ export function StudioHomeScreen() {
       <CommandCard data={data} />
       <KpiGrid data={data} />
       <ZoneGrid data={data} />
-      <StudioPulse data={data} />
       <View>
         <SectionTitle title="Recent Studio Rows" actionLabel="Apps" actionRoute="/studio/apps" />
         <CatalogStrip items={data.catalogItems} />
@@ -1193,28 +1218,31 @@ export function StudioActionScreen() {
 }
 
 export function StudioAnalyticsScreen() {
-  return withStudioData('analytics', 'Analytics', (data, query) => (
-    <StudioShell active="analytics" title="Analytics" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <KpiGrid data={data} />
-      <StudioPulse data={data} />
-      <View>
-        <SectionTitle title="Catalog Breakdown" />
-        <View style={styles.stack}>
-          <ProgressRow label="Releases" detail={`${formatCompact(data.stats.releaseCount)} rows`} value={data.stats.releaseCount ? Math.min(100, 22 + data.stats.releaseCount * 12) : 6} icon="library-music" route="/releases" />
-          <ProgressRow label="Beats" detail={`${formatCompact(data.stats.beatCount)} rows`} value={data.stats.beatCount ? Math.min(100, 22 + data.stats.beatCount * 12) : 6} icon="headset" route="/market/beats" />
-          <ProgressRow label="Mixes" detail={`${formatCompact(data.stats.mixCount)} rows`} value={data.stats.mixCount ? Math.min(100, 22 + data.stats.mixCount * 12) : 6} icon="album" route="/mixes" />
-          <ProgressRow label="Soundboards" detail={`${formatCompact(data.stats.soundboardCount)} boards`} value={data.stats.soundboardCount ? Math.min(100, 22 + data.stats.soundboardCount * 12) : 6} icon="view-list" route="/soundboards" />
+  return withStudioData('analytics', 'Analytics', (data, query) => {
+    const total = Math.max(1, data.stats.catalogCount);
+    return (
+      <StudioShell active="analytics" title="Analytics" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
+        <KpiGrid data={data} />
+        <PublishingActivity data={data} />
+        <View>
+          <SectionTitle title="Catalog Mix" />
+          <View style={styles.stack}>
+            <ProgressRow label="Releases" detail={`${formatCompact(data.stats.releaseCount)} published`} value={(data.stats.releaseCount / total) * 100} icon="library-music" route="/releases" />
+            <ProgressRow label="Beats" detail={`${formatCompact(data.stats.beatCount)} listed`} value={(data.stats.beatCount / total) * 100} icon="headset" route="/market/beats" />
+            <ProgressRow label="Mixes" detail={`${formatCompact(data.stats.mixCount)} published`} value={(data.stats.mixCount / total) * 100} icon="album" route="/mixes" />
+            <ProgressRow label="Soundboards" detail={`${formatCompact(data.stats.soundboardCount)} boards`} value={(data.stats.soundboardCount / total) * 100} icon="view-list" route="/soundboards" />
+          </View>
         </View>
-      </View>
-      <View>
-        <SectionTitle title="Business Signals" />
-        <View style={styles.stack}>
-          <ActionRow action={{ id: 'wallet', title: 'Wallet and credits', detail: 'Review credits, balance, and wallet activity.', route: '/wallet', icon: 'account-balance-wallet', status: 'limited' }} />
-          <ActionRow action={{ id: 'payouts', title: 'Payouts and exports', detail: 'Manage statements, tax, cash-out operations, and exports in desktop Studio.', icon: 'receipt-long', status: 'web_only' }} />
+        <View>
+          <SectionTitle title="Business Signals" />
+          <View style={styles.stack}>
+            <ActionRow action={{ id: 'wallet', title: 'Wallet and credits', detail: 'Review credits, balance, and wallet activity.', route: '/wallet', icon: 'account-balance-wallet', status: 'limited' }} />
+            <ActionRow action={{ id: 'payouts', title: 'Payouts and exports', detail: 'Manage statements, tax, cash-out operations, and exports in desktop Studio.', icon: 'receipt-long', status: 'web_only' }} />
+          </View>
         </View>
-      </View>
-    </StudioShell>
-  ));
+      </StudioShell>
+    );
+  });
 }
 
 function StudioIdentityContent({
@@ -2175,6 +2203,107 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
+  activityCard: {
+    minHeight: 250,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.28)',
+    padding: 16,
+    overflow: 'hidden',
+  },
+  activityHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  activityKicker: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    color: STUDIO.orangeSoft,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  activityTitle: {
+    fontFamily: pluggdFonts.displayBold,
+    color: STUDIO.text,
+    fontSize: 19,
+    lineHeight: 23,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  activityBadge: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.26)',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  activityBadgeText: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    color: STUDIO.textMid,
+    fontSize: 8.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  activityChart: {
+    height: 118,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 7,
+  },
+  activityColumn: {
+    flex: 1,
+    height: 118,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  activityValue: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    color: STUDIO.textMid,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+    marginBottom: 5,
+    fontVariant: ['tabular-nums'],
+  },
+  activityTrack: {
+    width: '72%',
+    height: 74,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  activityBar: {
+    width: '100%',
+    borderRadius: 7,
+  },
+  activityMonth: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    color: STUDIO.textSubtle,
+    fontSize: 8.5,
+    lineHeight: 10,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  activityNote: {
+    fontFamily: pluggdFonts.satoshiBold,
+    color: STUDIO.textSubtle,
+    fontSize: 10.5,
+    lineHeight: 14,
+    fontWeight: '700',
+    marginTop: 8,
+  },
   zoneGrid: {
     alignSelf: 'stretch',
     width: '100%',
@@ -2243,15 +2372,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0,
   },
-  pulseCard: {
-    marginTop: 28,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: STUDIO.line,
-    backgroundColor: STUDIO.panelDeep,
-    padding: 14,
-    gap: 12,
-  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2264,11 +2384,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0,
-  },
-  sectionRule: {
-    width: 20,
-    height: 1,
-    backgroundColor: STUDIO.orange,
   },
   progressRow: {
     minHeight: 46,

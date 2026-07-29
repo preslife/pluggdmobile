@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ import { supabase } from '../../lib/supabase';
 import { formatGBP, type EventItem } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 
 const CATEGORY_CHIPS = ['All events', 'Live Music', 'Culture', 'Meet-ups', 'Festivals', 'Clubbing', 'Comedy'] as const;
 
@@ -209,27 +211,32 @@ function EventSpotlight({ event }: { event?: EventItem }) {
   if (!event) return null;
   return (
     <View style={styles.spotlightCard}>
-      {event.cover_image_url ? (
-        <PluggdImage uri={event.cover_image_url} style={StyleSheet.absoluteFillObject as any} />
-      ) : null}
-      <LinearGradient colors={['rgba(16,8,4,0.55)', 'rgba(16,8,4,0.94)']} style={StyleSheet.absoluteFillObject} />
-      <View style={styles.spotlightBody}>
+      <View style={styles.spotlightArtwork}>
+        {event.cover_image_url ? (
+          <PluggdImage uri={event.cover_image_url} style={StyleSheet.absoluteFillObject as any} />
+        ) : (
+          <Image source={WEB_PARITY_ASSETS.eventsHero} style={styles.spotlightArtworkFallback} resizeMode="cover" />
+        )}
+        <LinearGradient
+          colors={['rgba(8,5,3,0.06)', 'rgba(8,5,3,0.76)']}
+          locations={[0.3, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
         <View style={styles.spotlightPill}>
           <Text style={styles.spotlightPillText}>Event Spotlight</Text>
         </View>
-        <Text style={styles.spotlightTitle}>{event.title || 'Underground event'}</Text>
-        {event.description ? (
-          <Text style={styles.spotlightDescription} numberOfLines={3}>{event.description}</Text>
-        ) : null}
-        <View style={styles.spotlightMetaRow}>
-          <MaterialIcons name="schedule" size={14} color="rgba(255,248,237,0.75)" />
-          <Text style={styles.spotlightMeta}>{fullDateLine(event)}</Text>
-          <MaterialIcons name="place" size={14} color="rgba(255,248,237,0.75)" />
-          <Text style={styles.spotlightMeta} numberOfLines={1}>{cityLine(event)}</Text>
+        <View style={styles.spotlightDateTicket}>
+          <DateBlock event={event} size={44} />
         </View>
+      </View>
+      <View style={styles.spotlightBody}>
+        <Text style={styles.spotlightTitle} numberOfLines={2}>{event.title || 'Underground event'}</Text>
         <View style={styles.spotlightMetaRow}>
-          <MaterialIcons name="groups" size={14} color="rgba(255,248,237,0.75)" />
-          <Text style={styles.spotlightMeta} numberOfLines={1}>{venueLine(event)}</Text>
+          <MaterialIcons name="schedule" size={15} color={ed.orange} />
+          <Text style={styles.spotlightMeta} numberOfLines={1}>{fullDateLine(event)}</Text>
+          <View style={styles.spotlightMetaDivider} />
+          <MaterialIcons name="place" size={15} color={ed.orange} />
+          <Text style={[styles.spotlightMeta, styles.spotlightMetaVenue]} numberOfLines={1}>{venueLine(event)}</Text>
         </View>
         <View style={styles.spotlightCtaRow}>
           <EdPressable
@@ -678,21 +685,45 @@ const styles = StyleSheet.create({
   },
   viewPillText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: ed.orange },
 
-  spotlightCard: { borderRadius: 7, overflow: 'hidden', minHeight: 310 },
-  spotlightBody: { flex: 1, justifyContent: 'flex-end', padding: 18, gap: 9 },
+  spotlightCard: {
+    borderRadius: 7,
+    overflow: 'hidden',
+    backgroundColor: '#15100C',
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.10)',
+  },
+  spotlightArtwork: { height: 176, overflow: 'hidden', backgroundColor: '#26170F' },
+  spotlightArtworkFallback: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  spotlightBody: { padding: 15, gap: 10 },
   spotlightPill: {
-    alignSelf: 'flex-start',
+    position: 'absolute',
+    left: 14,
+    top: 14,
     backgroundColor: ed.orange,
     borderRadius: 4,
     paddingHorizontal: 13,
     paddingVertical: 7,
   },
   spotlightPillText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: '#3a1c04' },
-  spotlightTitle: { fontFamily: edFonts.displayExtraBold, fontSize: 26, lineHeight: 31, color: '#ffffff', letterSpacing: -0.5 },
-  spotlightDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.78)' },
-  spotlightMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  spotlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.75)', marginRight: 8 },
-  spotlightCtaRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  spotlightDateTicket: {
+    position: 'absolute',
+    right: 14,
+    bottom: 13,
+    width: 54,
+    height: 54,
+    borderRadius: 5,
+    backgroundColor: 'rgba(12,7,4,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.2)',
+  },
+  spotlightTitle: { fontFamily: edFonts.displayExtraBold, fontSize: 24, lineHeight: 28, color: '#ffffff', letterSpacing: -0.5 },
+  spotlightMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+  spotlightMetaDivider: { width: 1, height: 13, backgroundColor: 'rgba(255,248,237,0.18)', marginHorizontal: 3 },
+  spotlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.72)' },
+  spotlightMetaVenue: { flex: 1, minWidth: 0 },
+  spotlightCtaRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
   spotlightPrimaryPressable: { flexGrow: 0, flexShrink: 0, flexBasis: 132, width: 132, maxWidth: 132 },
   spotlightSecondaryPressable: { flexGrow: 0, flexShrink: 0, flexBasis: 108, width: 108, maxWidth: 108 },
   openEventCta: {
