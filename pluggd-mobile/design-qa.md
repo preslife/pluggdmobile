@@ -85,6 +85,27 @@ final result: passed
 
 ---
 
+# PLUGGD Home Geometry Correction
+
+## Findings resolved
+
+- Moved the live signal ticker directly beneath the Daily Plug masthead so it establishes realtime context before the featured music.
+- Rebuilt scene gateways as fixed 176×136pt visual frames; artwork, gradient and copy now fill the complete card instead of collapsing inside an empty frame.
+- Rebuilt mix cards as fixed 176pt artwork frames with separate 48pt detail actions; artwork now fills the surface without the blank lower panel seen in the simulator.
+- Added explicit non-shrinking widths to horizontal scene and mix rails so card density cannot collapse at runtime.
+- Preserved independent play/open accessibility targets and selection haptics.
+
+## Verification
+
+- Compared against the user-supplied iPhone 17 Pro Max capture.
+- Inspected the ticker, scene rail and mix rail in the running simulator after hot reload.
+- TypeScript: passed.
+- Evidence: `artifacts/qa/home-page-polish-2026-07-30/`.
+
+final result: passed
+
+---
+
 # PLUGGD Fan Experience Design QA
 
 ## Scope

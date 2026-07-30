@@ -118,7 +118,8 @@ const styles = StyleSheet.create({
   wrapHome: {
     minHeight: 42,
     marginHorizontal: -20,
-    marginTop: 18,
+    marginTop: 0,
+    marginBottom: 8,
     paddingHorizontal: 20,
     backgroundColor: '#171411',
     borderTopWidth: 1,

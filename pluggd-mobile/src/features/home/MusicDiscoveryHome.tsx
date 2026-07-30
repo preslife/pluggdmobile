@@ -204,6 +204,8 @@ export function MusicDiscoveryHome() {
           </View>
         </Enter>
 
+        {signals.length ? <LiveTicker items={signals.map((signal) => signal.label)} variant="home" speed={34} /> : null}
+
         {feed.isLoading ? <HomeLoading /> : null}
         {!feed.isLoading && !featured ? (
           <View style={styles.empty}>
@@ -299,8 +301,6 @@ export function MusicDiscoveryHome() {
           </Enter>
         ) : null}
 
-        {signals.length ? <LiveTicker items={signals.map((signal) => signal.label)} variant="home" speed={34} /> : null}
-
         {user && recent.data?.length ? (
           <>
             <SectionHeader
@@ -352,21 +352,26 @@ export function MusicDiscoveryHome() {
 
         {scenes.length ? (
           <>
-            <SectionHeader title="From the scenes" />
+            <SectionHeader title="From the scenes" subtitle="Cities and sounds moving right now." />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRow}>
               {scenes.map((scene) => (
-                <EdPressable
-                  key={scene.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Explore ${scene.label}`}
-                  onPress={() => router.push(scene.route as any)}
-                  style={styles.scene}
-                >
+                <View key={scene.label} style={styles.sceneFrame}>
                   {scene.image ? <PluggdImage uri={scene.image} style={styles.sceneImage} resizeMode="cover" displayWidth={360} /> : <View style={styles.sceneFallback} />}
                   <LinearGradient colors={['rgba(5,4,3,0.05)', 'rgba(5,4,3,0.82)']} style={StyleSheet.absoluteFillObject} />
-                  <Text style={styles.sceneLabel}>{scene.label}</Text>
-                  <Text style={styles.sceneDetail}>{scene.detail}</Text>
-                </EdPressable>
+                  <View style={styles.sceneCopy}>
+                    <Text style={styles.sceneLabel}>{scene.label}</Text>
+                    <Text style={styles.sceneDetail}>{scene.detail}</Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Explore ${scene.label}`}
+                    onPress={() => {
+                      selectionHaptic();
+                      router.push(scene.route as any);
+                    }}
+                    style={styles.sceneHit}
+                  />
+                </View>
               ))}
             </ScrollView>
           </>
@@ -386,13 +391,7 @@ export function MusicDiscoveryHome() {
                 const route = `/mixes/${mix.slug || mix.id}`;
                 return (
                   <View key={mix.id} style={[styles.mixCard, index === 0 && styles.mixCardLead]}>
-                    <EdPressable
-                      haptic={false}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${playable ? 'Play' : 'Open'} mix ${mix.title || 'Untitled mix'}`}
-                      onPress={() => playable ? void play(playable) : router.push(route as any)}
-                      style={styles.mixSurface}
-                    >
+                    <View style={styles.mixSurfaceFrame}>
                       {mix.cover_url ? (
                         <PluggdImage uri={mix.cover_url} style={styles.mixArt} resizeMode="cover" displayWidth={640} />
                       ) : (
@@ -408,7 +407,19 @@ export function MusicDiscoveryHome() {
                       <View style={styles.mixPlay}>
                         <MaterialIcons name={playable ? 'play-arrow' : 'arrow-forward'} size={20} color="#100B07" />
                       </View>
-                    </EdPressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${playable ? 'Play' : 'Open'} mix ${mix.title || 'Untitled mix'}`}
+                        onPress={() => {
+                          if (playable) void play(playable);
+                          else {
+                            selectionHaptic();
+                            router.push(route as any);
+                          }
+                        }}
+                        style={styles.mixSurfaceHit}
+                      />
+                    </View>
                     <EdPressable
                       accessibilityRole="button"
                       accessibilityLabel={`Open details for ${mix.title || 'mix'}`}
@@ -896,22 +907,53 @@ const styles = StyleSheet.create({
   recentCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, marginTop: 2 },
   recentPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   recentOpen: { width: 44, height: 82, borderLeftWidth: 1, borderLeftColor: '#312B25', alignItems: 'center', justifyContent: 'center' },
-  sceneRow: { gap: 10, paddingRight: 20 },
-  scene: { width: 132, height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end', padding: 10 },
+  sceneRow: { gap: 12, paddingRight: 20 },
+  sceneFrame: {
+    width: 176,
+    minWidth: 176,
+    maxWidth: 176,
+    height: 136,
+    minHeight: 136,
+    maxHeight: 136,
+    flexShrink: 0,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  sceneCopy: { position: 'absolute', zIndex: 2, left: 12, right: 12, bottom: 12 },
+  sceneHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   sceneImage: { ...StyleSheet.absoluteFillObject },
   sceneFallback: { ...StyleSheet.absoluteFillObject, backgroundColor: '#26170F' },
-  sceneLabel: { color: INK, fontFamily: 'Sora-Bold', fontSize: 15 },
-  sceneDetail: { color: '#D5CEC3', fontFamily: 'Satoshi-Medium', fontSize: 10, marginTop: 2 },
-  mixRail: { gap: 11, paddingRight: 20 },
-  mixCard: { width: 178, height: 266, borderRadius: 5, overflow: 'hidden', backgroundColor: '#171411' },
-  mixCardLead: { width: 252 },
-  mixSurface: { height: 222, justifyContent: 'space-between', padding: 12, position: 'relative' },
+  sceneLabel: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, lineHeight: 21 },
+  sceneDetail: { color: '#D5CEC3', fontFamily: 'Satoshi-Bold', fontSize: 10.5, lineHeight: 14, marginTop: 3 },
+  mixRail: { gap: 12, paddingRight: 20, alignItems: 'flex-start' },
+  mixCard: {
+    width: 208,
+    minWidth: 208,
+    maxWidth: 208,
+    height: 224,
+    minHeight: 224,
+    maxHeight: 224,
+    flexShrink: 0,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#171411',
+  },
+  mixCardLead: { width: 252, minWidth: 252, maxWidth: 252 },
+  mixSurfaceFrame: {
+    width: '100%',
+    height: 176,
+    minHeight: 176,
+    maxHeight: 176,
+    flexShrink: 0,
+    overflow: 'hidden',
+  },
+  mixSurfaceHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   mixArt: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
-  mixNumber: { color: INK, fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 1.2 },
+  mixNumber: { position: 'absolute', left: 12, top: 12, zIndex: 2, color: INK, fontFamily: 'Satoshi-Black', fontSize: 10, letterSpacing: 1.2 },
   mixPlay: { position: 'absolute', right: 10, top: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
-  mixOpen: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+  mixOpen: { height: 48, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
   mixOpenText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 10.5 },
-  mixCopy: { zIndex: 2 },
+  mixCopy: { position: 'absolute', zIndex: 2, left: 12, right: 12, bottom: 12 },
   mixKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.1, textTransform: 'uppercase' },
   mixTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 18, lineHeight: 21, marginTop: 4 },
   mixCreator: { color: '#DED7CC', fontFamily: 'Satoshi-Medium', fontSize: 10.5, marginTop: 4 },
