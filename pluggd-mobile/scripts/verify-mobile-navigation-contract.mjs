@@ -7,6 +7,8 @@ const dockSource = read('components/PluggdDock.tsx');
 const glassDockSource = read('components/liquid-glass/GlassDock.tsx');
 const tabsSource = read('app/(tabs)/_layout.tsx');
 const chromeSource = read('components/AppChrome.tsx');
+const profileSource = read('src/features/profile/my-profile-screen.tsx');
+const studioSource = read('src/features/studio/StudioScreens.tsx');
 const tabDiscoverSource = read('app/(tabs)/discover.tsx');
 const tabCommunitySource = read('app/(tabs)/community.tsx');
 const tabEventsSource = read('app/(tabs)/events.tsx');
@@ -58,7 +60,9 @@ for (const label of ['Home', 'Discover', 'Community', 'Events']) {
   assert.match(tabsSource, new RegExp(`title:\\s*"${label}"`), `${label} must be a visible tab title`);
 }
 assert.doesNotMatch(tabsSource, /title:\s*"(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)"/, 'tab titles must use the web-parity dock labels');
-assert.match(chromeSource, /CreateActionSheet/, 'Create must be mounted through the role-aware floating action sheet');
+assert.doesNotMatch(chromeSource, /CreateActionSheet/, 'Create must not float over the public discovery dock');
+assert.match(profileSource, /accessibilityLabel="Create post"/, 'profile must retain a contextual Create Post action');
+assert.match(studioSource, /dockCreateButton/, 'creator Studio must retain its dedicated Create action');
 assert.match(tabDiscoverSource, /MusicDiscoveryDiscover/, 'Discover tab must render the intentional mobile exploration screen');
 assert.match(tabCommunitySource, /CommunityFeedScreen/, 'Community tab must render the feed-first Community screen');
 assert.doesNotMatch(tabCommunitySource, /CommunityParityScreen/, 'Community tab must not render the generic parity screen');

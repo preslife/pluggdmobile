@@ -556,14 +556,15 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'splits',
     title: 'Split Engine',
+    route: '/studio/splits',
     icon: 'account-tree',
     section: 'money',
-    status: 'web_only',
+    status: 'limited',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer', 'manager'],
     description: 'Create split sheets, payout shares, and collaborator rights records.',
     addsToStudio: 'Adds split planning to Studio.',
-    unavailableReason: 'Use desktop Studio for split sheets and legal details.',
+    unavailableReason: 'Start and review secure split sheets from the mobile gateway.',
   },
   {
     id: 'connect_card',

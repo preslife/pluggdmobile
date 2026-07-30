@@ -195,12 +195,15 @@ export function MyProfileScreen() {
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 154 }]}
       >
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Create post" onPress={() => go('/create-post')} style={styles.topIcon}>
-            <MaterialIcons name="add" size={31} color={theme.colors.text} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={() => go('/settings')} style={styles.topIcon}>
-            <MaterialIcons name="menu" size={30} color={theme.colors.text} />
-          </Pressable>
+          <BrandLogo width={86} height={28} variant={theme.scheme === 'dark' ? 'dark' : 'light'} />
+          <View style={styles.topActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Create post" onPress={() => go('/create-post')} style={[styles.topIcon, { borderColor: theme.colors.border }]}>
+              <MaterialIcons name="add" size={23} color={theme.colors.accent} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={() => go('/settings')} style={[styles.topIcon, { borderColor: theme.colors.border }]}>
+              <MaterialIcons name="menu" size={23} color={theme.colors.text} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.identityBlock}>
@@ -298,7 +301,8 @@ export function MyProfileScreen() {
                 }}
               >
                 <MaterialIcons name={tab.icon} size={22} color={active ? theme.colors.text : theme.colors.inactive} />
-                {active ? <View style={[styles.profileTabIndicator, { backgroundColor: theme.colors.text }]} /> : null}
+                <Text style={[styles.profileTabLabel, { color: active ? theme.colors.text : theme.colors.inactive }]}>{tab.label}</Text>
+                {active ? <View style={[styles.profileTabIndicator, { backgroundColor: theme.colors.accent }]} /> : null}
               </Pressable>
             );
           })}
@@ -403,36 +407,38 @@ const styles = StyleSheet.create({
   signedOutBenefitCopy: { flex: 1 },
   signedOutBenefitTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
   signedOutBenefitDetail: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, marginTop: 2 },
-  topBar: { height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  topIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  identityBlock: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 6, paddingBottom: 18 },
+  topBar: { minHeight: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topIcon: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  identityBlock: { paddingHorizontal: 20, alignItems: 'flex-start', paddingTop: 6, paddingBottom: 18 },
   profilePremiumHeader: { width: '100%', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 14 },
   profileHero: { width: '100%', marginBottom: 18 },
-  profileCover: { width: '100%', height: 158, borderRadius: 6, borderWidth: 1, overflow: 'hidden', marginBottom: -50 },
+  profileCover: { width: '100%', height: 122, borderRadius: 18, borderWidth: 1, overflow: 'hidden', marginBottom: -39 },
   profileCoverFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   profileCoverText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
-  avatarWrap: { width: 120, height: 120, marginBottom: 10 },
-  avatar: { width: 116, height: 116, borderRadius: 58, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  avatarPlus: { position: 'absolute', right: 2, bottom: 4, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 36 },
-  profileBadgeRow: { minHeight: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  avatarWrap: { width: 94, height: 94, marginLeft: 14, marginBottom: 8 },
+  avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  avatarPlus: { position: 'absolute', right: 0, bottom: 3, width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 29 },
+  profileBadgeRow: { minHeight: 26, alignItems: 'flex-start', justifyContent: 'center', marginBottom: 5 },
   profileBadge: { borderBottomWidth: 2, paddingHorizontal: 4, paddingVertical: 5, overflow: 'hidden', fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, textTransform: 'uppercase' },
-  profileName: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 29, lineHeight: 34, letterSpacing: -0.6 },
-  profileHandle: { marginTop: 2, fontSize: 16, lineHeight: 21 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 34, marginTop: 22 },
-  statItem: { alignItems: 'center', minWidth: 68 },
-  statValue: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 23, lineHeight: 27 },
-  statLabel: { fontSize: 14, lineHeight: 18, marginTop: 2 },
-  bio: { marginTop: 18, fontSize: 16, lineHeight: 22, textAlign: 'center' },
-  actionRow: { flexDirection: 'row', gap: 12, marginTop: 22 },
+  profileName: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 31, lineHeight: 35, letterSpacing: -0.8 },
+  profileHandle: { marginTop: 2, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20 },
+  statsRow: { width: '100%', minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 17, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#2B2723' },
+  statItem: { alignItems: 'flex-start', minWidth: 68 },
+  statValue: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 20, lineHeight: 24 },
+  statLabel: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, lineHeight: 15, marginTop: 2 },
+  bio: { marginTop: 15, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, textAlign: 'left' },
+  actionRow: { width: '100%', flexDirection: 'row', gap: 9, marginTop: 17 },
   actionButton: { flex: 1, minWidth: 146, minHeight: 48, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   actionButtonText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
-  accountRail: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
-  accountRailButton: { width: '50%', minHeight: 58, borderBottomWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  accountRailText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12, lineHeight: 16 },
-  tabBar: { height: 58, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  profileTab: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' },
-  profileTabIndicator: { position: 'absolute', bottom: 0, width: 44, height: 2, borderRadius: 1 },
+  accountRail: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 13 },
+  accountRailButton: { width: '48.5%', minHeight: 72, borderWidth: StyleSheet.hairlineWidth, borderRadius: 15, paddingHorizontal: 13, alignItems: 'flex-start', justifyContent: 'center', gap: 5 },
+  accountRailText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, lineHeight: 16 },
+  tabBar: { minHeight: 66, marginHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  profileTab: { flex: 1, minHeight: 66, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  profileTabLabel: { fontFamily: pluggdFonts.satoshiBold, fontSize: 8.5, lineHeight: 11 },
+  profileTabIndicator: { position: 'absolute', bottom: 0, left: 8, right: 8, height: 2, borderRadius: 1 },
   postList: { gap: 12, paddingTop: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 16 },
   gridItem: { width: '48.5%', paddingBottom: 8 },
@@ -441,7 +447,7 @@ const styles = StyleSheet.create({
   gridMeta: { marginTop: 3, fontSize: 12 },
   emptyPanel: { margin: 16, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 24, gap: 7 },
   emptyTitle: { fontFamily: pluggdFonts.displayBold, fontSize: 16, textAlign: 'left' },
-  emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'left' },
   primaryButton: { alignSelf: 'flex-start', minHeight: 48, marginTop: 20, borderRadius: 5, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14, color: '#0a0806' },
 });

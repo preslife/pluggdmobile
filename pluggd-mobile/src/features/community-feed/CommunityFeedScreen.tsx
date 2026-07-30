@@ -164,6 +164,7 @@ export function CommunityFeedScreen() {
           <>
             <MobileSocialPostCard post={item} onMutated={() => void query.refetch()} />
             {index === 0 ? <MobileStoriesRail title="Scene stories" compact /> : null}
+            {index === 1 && bundle ? <CommunityFeedInterstitial kind="the_plug" bundle={bundle} /> : null}
             {index === 5 ? (
               <View style={styles.lowerShortcuts}>
                 <Text style={styles.lowerShortcutsTitle}>More ways in</Text>

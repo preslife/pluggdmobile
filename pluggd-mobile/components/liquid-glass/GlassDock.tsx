@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   dockShell: {
-    height: 68,
+    height: 60,
   },
   dock: {
     width: '100%',
@@ -107,9 +107,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 22 },
   },
   tabRow: {
-    height: 68,
+    height: 60,
     paddingHorizontal: 7,
-    paddingVertical: 5,
+    paddingVertical: 3,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -117,22 +117,22 @@ const styles = StyleSheet.create({
   },
   tabPressable: {
     flex: 1,
-    height: 58,
+    height: 54,
   },
   tabPressed: {
     transform: [{ scale: 0.985 }],
     opacity: 0.86,
   },
   tabItem: {
-    height: 58,
-    borderRadius: 18,
+    height: 54,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   iconShell: {
-    width: 38,
-    height: 34,
+    width: 36,
+    height: 30,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   activeOrbDot: {
     position: 'absolute',
-    top: 36,
+    top: 32,
     width: 4,
     height: 4,
     borderRadius: 2,
@@ -174,8 +174,8 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: 'Satoshi-Bold',
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10.5,
+    lineHeight: 13,
   },
   activeIndicator: {
     width: 0,

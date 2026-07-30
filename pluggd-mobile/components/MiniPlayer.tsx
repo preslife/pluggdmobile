@@ -143,6 +143,7 @@ export default function MiniPlayer() {
       favoriteTarget ? { text: savedLocally ? 'Remove saved' : 'Save track', onPress: saveCurrentTrack } : undefined,
       backstageRoute ? { text: backstageLabel, onPress: () => router.push(backstageRoute as any) } : undefined,
       hasLockedPurchaseRoute ? { text: 'Unlock details', onPress: () => router.push(activeTrack.purchaseRoute as any) } : undefined,
+      { text: 'Collapse player', onPress: () => setCollapsed(true) },
       { text: 'Cancel', style: 'cancel' },
     ].filter(Boolean) as any);
   };
@@ -163,8 +164,6 @@ export default function MiniPlayer() {
         onOpen={openPlayer}
         onToggleCollapse={() => setCollapsed((value) => !value)}
         onLikePress={saveCurrentTrack}
-        onLyricsPress={openLyrics}
-        onQueuePress={openQueue}
         onMorePress={openMore}
         onPrevious={isQaTrack ? undefined : skipToPrevious}
         onNext={isQaTrack ? undefined : skipToNext}

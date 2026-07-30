@@ -1,6 +1,7 @@
 import { loadCommunityBoards, loadMobileSocialFeed } from '../culture/mobileSocial';
 import type { MobileSocialPost } from '../culture/mobileTypes';
 import { loadCommunityParity, type ParityCard, type ParityPayload } from '../parity/appWideParityServices';
+import { loadHomeEditorialStories } from '../home/homeDiscoveryData';
 import type { CommunityFeedBundle, CommunityFeedFilterKey } from './communityFeedTypes';
 
 function hasMedia(post: MobileSocialPost) {
@@ -53,18 +54,29 @@ function uniqueCards(cards: ParityCard[]) {
 }
 
 export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
-  const [posts, boards, parity] = await Promise.all([
+  const [posts, boards, parity, stories] = await Promise.all([
     loadMobileSocialFeed({ mode: 'for-you', limit: 36 }),
     loadCommunityBoards(),
     loadCommunityParity(),
+    loadHomeEditorialStories(8),
   ]);
 
   const liveNow = bySection(parity, 'events').filter((item) => /live|room|event/i.test(`${item.eyebrow} ${item.title} ${item.subtitle}`));
   const nearbyEvents = bySection(parity, 'events');
   const whoToFollow = bySection(parity, 'creators');
   const radio = bySection(parity, 'radio');
+  const editorials: ParityCard[] = stories.map((story) => ({
+    id: story.id,
+    title: story.title || 'THE PLUG dispatch',
+    subtitle: story.excerpt || 'Independent music, culture and scene reporting.',
+    eyebrow: story.tags?.[0] || 'THE PLUG',
+    route: `/plug/${story.id}`,
+    imageUrl: story.featured_image_url,
+    metric: story.created_at ? new Date(story.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : null,
+    kind: 'editorial',
+  }));
   const communities = uniqueCards([...bySection(parity, 'hubs'), ...matchingSections(parity, ['community', 'hub'])]).slice(0, 18);
-  const exploreCards = uniqueCards(parity.sections.flatMap((section) => section.items)).slice(0, 30);
+  const exploreCards = uniqueCards([...editorials, ...parity.sections.flatMap((section) => section.items)]).slice(0, 30);
 
   return {
     posts,
@@ -75,6 +87,7 @@ export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
     nearbyEvents,
     whoToFollow,
     radio,
+    editorials,
     prompt: {
       id: 'community-prompt',
       title: 'What are you listening to?',

@@ -1,6 +1,5 @@
 import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { CreateActionSheet } from './CreateActionSheet';
 import MiniPlayer from './MiniPlayer';
 import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
@@ -36,6 +35,7 @@ export function AppChrome() {
     normalized === '/my-pluggd' ||
     normalized === '/search' ||
     normalized === '/membership' ||
+    normalized === '/plug' ||
     normalized.startsWith('/membership/') ||
     normalized.startsWith('/events/') ||
     normalized.startsWith('/release/') ||
@@ -59,6 +59,7 @@ export function AppChrome() {
   const hidden =
     HIDDEN_EXACT.has(normalized) ||
     normalized.startsWith('/story/') ||
+    normalized.startsWith('/plug/') ||
     normalized.startsWith('/mixes/') ||
     HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 
@@ -67,7 +68,6 @@ export function AppChrome() {
   return (
     <>
       {ownsHeader ? null : <MobileHeader />}
-      <CreateActionSheet />
       <View pointerEvents="box-none" style={styles.bottomWrap}>
         <MiniPlayer />
         <PluggdDock />
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 80,
-    gap: 9,
+    gap: 5,
   },
 });

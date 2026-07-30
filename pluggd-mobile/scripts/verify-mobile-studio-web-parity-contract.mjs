@@ -35,5 +35,19 @@ assert.match(studioScreens, /Based on releases, beats, mixes, soundboards and ev
 assert.match(studioScreens, /SectionTitle title="Catalog Mix"/, 'Studio Analytics must show the real catalog composition');
 assert.doesNotMatch(studioScreens, /Math\.min\(100, 22 \+ data\.stats\.(?:release|beat|mix|soundboard)Count \* 12\)/, 'Studio Analytics must not use decorative fake catalog percentages');
 assert.match(studioData, /id:\s*'my_pluggd'[\s\S]*title:\s*'My PLUGGD'/, 'Studio module catalog must preserve My PLUGGD from the web source');
+assert.match(studioData, /id:\s*'splits'[\s\S]*route:\s*'\/studio\/splits'[\s\S]*status:\s*'limited'/, 'Split Engine must have an honest native gateway instead of a dead desktop-only tile');
+for (const token of [
+  'Choose what you need',
+  'Work With Me',
+  'Collaborate',
+  'Advanced',
+  'Start a split sheet',
+  'StudioSplitGatewayScreen',
+  'Three steps. One record.',
+  'Preview collaborator card',
+]) {
+  assert.match(studioScreens, new RegExp(token), `Connect Card and Split Engine must preserve ${token}`);
+}
+assert.doesNotMatch(studioScreens, /const readyCount = data\.connectProfile \? 3 : 0/, 'Connect Card must not invent view-completion progress');
 
 console.log('mobile Studio web-parity contract verified');

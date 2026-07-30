@@ -46,6 +46,7 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
   const router = useRouter();
   const controls = [
     { id: 'stories', label: 'Stories', icon: 'auto-stories', action: () => onChange('feed') },
+    { id: 'the-plug', label: 'THE PLUG', icon: 'newspaper', action: () => router.push('/plug' as any) },
     { id: 'create', label: 'Create Post', icon: 'post-add', action: () => router.push('/create-post' as any) },
     { id: 'boards', label: 'Boards', icon: 'forum', action: () => onChange('boards') },
     { id: 'nearby', label: 'Nearby', icon: 'place', action: () => router.push('/events' as any) },
@@ -71,17 +72,21 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
 const styles = StyleSheet.create({
   row: {
     paddingHorizontal: 20,
-    paddingVertical: 3,
-    gap: 20,
+    paddingVertical: 5,
+    gap: 8,
   },
   pill: {
     minHeight: 44,
-    paddingHorizontal: 0,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: 'rgba(23,19,16,0.72)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  pillActive: {},
+  pillActive: { borderColor: 'rgba(255,102,0,0.5)', backgroundColor: 'rgba(255,102,0,0.10)' },
   label: {
     color: COLORS.muted,
     fontSize: 11,
@@ -91,7 +96,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
-  activeLine: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, backgroundColor: COLORS.orange },
+  activeLine: { position: 'absolute', left: 14, right: 14, bottom: 4, height: 2, borderRadius: 1, backgroundColor: COLORS.orange },
   quickRow: {
     paddingHorizontal: 20,
     paddingTop: 2,

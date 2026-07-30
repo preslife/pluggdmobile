@@ -1552,7 +1552,7 @@ function StudioConnectCardContent({
       id: 'public',
       label: 'Connect',
       eyebrow: 'PUBLIC',
-      detail: 'Fans, networking and instant contact exchange.',
+      detail: 'Your public identity for fans, rooms and instant contact exchange.',
       icon: 'language',
       route: slug ? `/connect/${slug}${previewQuery}` : '/edit-profile',
       image: WEB_PARITY_ASSETS.intimateVocalist,
@@ -1561,45 +1561,35 @@ function StudioConnectCardContent({
     {
       id: 'business',
       label: 'Work With Me',
-      eyebrow: 'BOOKINGS',
-      detail: 'Business contact, availability, portfolio and EPK.',
+      eyebrow: 'BUSINESS + RATES',
+      detail: 'Bookings, availability, services, rates and your portfolio.',
       icon: 'business-center',
       route: slug ? `/connect/${slug}/business${previewQuery}` : '/edit-profile',
       image: WEB_PARITY_ASSETS.bedroomStudio,
       tone: ['rgba(52,28,14,0.18)', 'rgba(4,4,5,0.96)'] as [string, string],
     },
     {
-      id: 'rates',
-      label: 'Rates',
-      eyebrow: 'SERVICES',
-      detail: 'Premium services, starting prices and enquiry.',
-      icon: 'sell',
-      route: slug ? `/connect/${slug}/rates${previewQuery}` : '/edit-profile',
-      image: WEB_PARITY_ASSETS.marketBeatStore,
-      tone: ['rgba(255,106,0,0.12)', 'rgba(4,4,5,0.96)'] as [string, string],
-    },
-    {
       id: 'collab',
-      label: 'Collaborator',
-      eyebrow: 'PRIVATE',
-      detail: 'Split-ready identity for trusted collaborators.',
+      label: 'Collaborate',
+      eyebrow: 'SPLIT-READY',
+      detail: 'Share the right identity, then start a split sheet together.',
       icon: 'group-work',
-      route: slug ? `/connect/${slug}/collab${previewQuery}` : '/edit-profile',
+      route: '/studio/splits',
       image: WEB_PARITY_ASSETS.warmListeningRoom,
       tone: ['rgba(31,75,61,0.20)', 'rgba(4,4,5,0.96)'] as [string, string],
     },
     {
       id: 'contract',
-      label: 'Legal Share',
+      label: 'Advanced',
       eyebrow: 'SECURE',
-      detail: 'Token-protected company and legal details.',
+      detail: 'Protected company, representative and legal details.',
       icon: 'verified-user',
       route: slug ? `/connect/${slug}/contract${previewQuery}` : '/edit-profile',
       image: WEB_PARITY_ASSETS.brickRoomShow,
       tone: ['rgba(43,45,71,0.22)', 'rgba(4,4,5,0.96)'] as [string, string],
     },
   ];
-  const readyCount = data.connectProfile ? 3 : 0;
+  const identityIsLive = Boolean(data.connectProfile?.slug);
 
   return (
     <StudioShell active="more" title="Connect Card" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
@@ -1690,21 +1680,20 @@ function StudioConnectCardContent({
       <View style={styles.connectHealth}>
         <View style={styles.connectHealthCopy}>
           <Text style={styles.connectHealthEyebrow}>CARD SYSTEM</Text>
-          <Text style={styles.connectHealthTitle}>{readyCount}/5 views ready</Text>
+          <Text style={styles.connectHealthTitle}>{identityIsLive ? 'Core identity live' : 'Build your core identity'}</Text>
           <Text style={styles.connectHealthText}>
-            One identity, shaped for fans, clients, collaborators and legal teams.
+            One permanent profile, shaped into the right view for every introduction.
           </Text>
         </View>
         <View style={styles.connectHealthRing}>
-          <Text style={styles.connectHealthRingValue}>{readyCount ? '60' : '0'}</Text>
-          <Text style={styles.connectHealthRingUnit}>%</Text>
+          <MaterialIcons name={identityIsLive ? 'verified' : 'person-add-alt-1'} size={28} color={STUDIO.orangeSoft} />
         </View>
       </View>
 
       <View>
-        <SectionTitle title="Five cards. One identity." />
+        <SectionTitle title="Choose what you need" />
         <Text style={styles.privateViewsIntro}>
-          Every share is focused for its audience. Private details stay protected.
+          Each mode reveals only what that moment requires. Private details stay protected.
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectViewRail}>
           {cardViews.map((view) => (
@@ -1733,7 +1722,7 @@ function StudioConnectCardContent({
                 <Text style={styles.connectViewLabel}>{view.label}</Text>
                 <Text style={styles.connectViewDetail}>{view.detail}</Text>
                 <View style={styles.connectViewFooter}>
-                  <Text style={styles.connectViewOpen}>{view.id === 'collab' || view.id === 'contract' ? 'Secure preview' : 'Open preview'}</Text>
+                  <Text style={styles.connectViewOpen}>{view.id === 'collab' ? 'Start together' : view.id === 'contract' ? 'Secure preview' : 'Open preview'}</Text>
                   <MaterialIcons name="north-east" size={17} color={STUDIO.orangeSoft} />
                 </View>
               </View>
@@ -1741,6 +1730,47 @@ function StudioConnectCardContent({
           ))}
         </ScrollView>
       </View>
+
+      <LinearGradient
+        colors={['rgba(255,106,0,0.24)', 'rgba(255,106,0,0.07)', 'rgba(9,9,12,0.98)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.connectSplitPanel}
+      >
+        <View style={styles.connectSplitTop}>
+          <View style={styles.connectSplitIcon}>
+            <MaterialIcons name="account-tree" size={24} color="#170A03" />
+          </View>
+          <View style={styles.connectSplitBadge}>
+            <Text style={styles.connectSplitBadgeText}>COLLABORATOR MODE</Text>
+          </View>
+        </View>
+        <Text style={styles.connectSplitTitle}>From introduction to agreed splits.</Text>
+        <Text style={styles.connectSplitText}>
+          Share your collaborator card, invite everyone on the work, agree percentages and keep one signed record.
+        </Text>
+        <View style={styles.connectSplitActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start a split sheet"
+            onPress={() => routePush(router, '/studio/splits')}
+            style={styles.connectSplitPrimary}
+          >
+            <Text style={styles.connectSplitPrimaryText}>Start a split sheet</Text>
+            <MaterialIcons name="arrow-forward" size={18} color="#170A03" />
+          </Pressable>
+          {slug ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Preview collaborator card"
+              onPress={() => routePush(router, `/connect/${slug}/collab${previewQuery}`)}
+              style={styles.connectSplitSecondary}
+            >
+              <MaterialIcons name="badge" size={20} color="#FFFFFF" />
+            </Pressable>
+          ) : null}
+        </View>
+      </LinearGradient>
 
       <View>
         <SectionTitle title="Exchange tools" />
@@ -1798,6 +1828,148 @@ function StudioConnectCardContent({
 
 export function StudioConnectCardScreen() {
   return withStudioData('more', 'Connect Card', (data, query) => <StudioConnectCardContent data={data} query={query} />);
+}
+
+function StudioSplitGatewayContent({
+  data,
+  query,
+}: {
+  data: StudioData;
+  query: ReturnType<typeof useStudioQuery>;
+}) {
+  const router = useRouter();
+  const slug = data.connectProfile?.slug || '';
+  const creatorName = data.connectProfile?.display_name || studioCreatorName(data);
+  const steps = [
+    {
+      number: '01',
+      icon: 'library-music',
+      title: 'Choose the work',
+      detail: 'Start with the release, beat or session everyone contributed to.',
+    },
+    {
+      number: '02',
+      icon: 'group-add',
+      title: 'Invite collaborators',
+      detail: 'Use verified Connect identities so names and contact details stay consistent.',
+    },
+    {
+      number: '03',
+      icon: 'draw',
+      title: 'Agree and lock',
+      detail: 'Confirm percentages, collect approvals and preserve the signed record.',
+    },
+  ];
+
+  return (
+    <StudioShell active="more" title="Split Engine" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
+      <LinearGradient
+        colors={['rgba(255,106,0,0.30)', 'rgba(42,20,8,0.38)', 'rgba(5,5,7,0.99)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.splitHero}
+      >
+        <View style={styles.splitHeroTop}>
+          <View style={styles.splitHeroIcon}>
+            <MaterialIcons name="account-tree" size={27} color="#170A03" />
+          </View>
+          <StatusChip label="Secure workflow" tone="native" />
+        </View>
+        <Text style={styles.splitEyebrow}>PLUGGD SPLIT ENGINE</Text>
+        <Text style={styles.splitHeroTitle}>Clear credits before the release moves.</Text>
+        <Text style={styles.splitHeroText}>
+          Create one shared source of truth for collaborators, percentages, approvals and signatures.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open secure Split Engine"
+          onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
+          style={styles.splitHeroButton}
+        >
+          <Text style={styles.splitHeroButtonText}>Open Split Engine</Text>
+          <MaterialIcons name="open-in-new" size={18} color="#170A03" />
+        </Pressable>
+      </LinearGradient>
+
+      <View>
+        <SectionTitle title="Three steps. One record." />
+        <View style={styles.splitStepStack}>
+          {steps.map((step) => (
+            <View key={step.number} style={styles.splitStep}>
+              <View style={styles.splitStepNumber}>
+                <Text style={styles.splitStepNumberText}>{step.number}</Text>
+              </View>
+              <View style={styles.splitStepCopy}>
+                <View style={styles.splitStepTitleRow}>
+                  <MaterialIcons name={iconName(step.icon)} size={19} color={STUDIO.orangeSoft} />
+                  <Text style={styles.splitStepTitle}>{step.title}</Text>
+                </View>
+                <Text style={styles.splitStepText}>{step.detail}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.splitIdentityPanel}>
+        <View style={styles.splitIdentityTop}>
+          <View style={styles.splitIdentityAvatar}>
+            {data.profile?.avatar_url ? (
+              <PluggdImage uri={data.profile.avatar_url} style={StyleSheet.absoluteFill} accessibilityLabel={creatorName} />
+            ) : (
+              <Text style={styles.splitIdentityInitials}>{initials(creatorName)}</Text>
+            )}
+          </View>
+          <View style={styles.splitIdentityCopy}>
+            <Text style={styles.splitIdentityEyebrow}>YOUR COLLABORATOR IDENTITY</Text>
+            <Text style={styles.splitIdentityName}>{creatorName}</Text>
+            <Text style={styles.splitIdentityStatus}>{slug ? 'Ready to share' : 'Complete Connect Card setup first'}</Text>
+          </View>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={slug ? 'Preview collaborator identity' : 'Set up collaborator identity'}
+          onPress={() => routePush(router, slug ? `/connect/${slug}/collab` : '/studio/connect-card')}
+          style={styles.splitIdentityButton}
+        >
+          <Text style={styles.splitIdentityButtonText}>{slug ? 'Preview collaborator card' : 'Set up Connect Card'}</Text>
+          <MaterialIcons name="arrow-forward" size={17} color="#FFFFFF" />
+        </Pressable>
+      </View>
+
+      <View>
+        <SectionTitle title="Keep every decision close" />
+        <View style={styles.splitToolGrid}>
+          {[
+            { icon: 'pending-actions', title: 'Approvals', detail: 'See who has agreed and who still needs to respond.' },
+            { icon: 'history-edu', title: 'Agreements', detail: 'Return to signed records without hunting through messages.' },
+            { icon: 'groups', title: 'Participants', detail: 'Reuse trusted collaborator identities on the next work.' },
+          ].map((tool) => (
+            <Pressable
+              key={tool.title}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${tool.title}`}
+              onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
+              style={styles.splitTool}
+            >
+              <View style={styles.splitToolIcon}>
+                <MaterialIcons name={iconName(tool.icon)} size={21} color={STUDIO.orangeSoft} />
+              </View>
+              <View style={styles.splitToolCopy}>
+                <Text style={styles.splitToolTitle}>{tool.title}</Text>
+                <Text style={styles.splitToolText}>{tool.detail}</Text>
+              </View>
+              <MaterialIcons name="north-east" size={17} color={STUDIO.textSubtle} />
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </StudioShell>
+  );
+}
+
+export function StudioSplitGatewayScreen() {
+  return withStudioData('more', 'Split Engine', (data, query) => <StudioSplitGatewayContent data={data} query={query} />);
 }
 
 function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
@@ -3870,6 +4042,294 @@ const styles = StyleSheet.create({
     color: '#170A03',
     fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 11,
+  },
+  connectSplitPanel: {
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.42)',
+    padding: 17,
+    gap: 10,
+    overflow: 'hidden',
+  },
+  connectSplitTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectSplitIcon: {
+    width: 47,
+    height: 47,
+    borderRadius: 15,
+    backgroundColor: STUDIO.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectSplitBadge: {
+    minHeight: 30,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,176,111,0.42)',
+    backgroundColor: 'rgba(4,4,5,0.52)',
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectSplitBadgeText: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 8.5,
+    letterSpacing: 1.1,
+  },
+  connectSplitTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 25,
+    lineHeight: 29,
+    maxWidth: 320,
+  },
+  connectSplitText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  connectSplitActions: {
+    marginTop: 3,
+    flexDirection: 'row',
+    gap: 9,
+  },
+  connectSplitPrimary: {
+    minHeight: 49,
+    flex: 1,
+    borderRadius: 15,
+    backgroundColor: STUDIO.orange,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  connectSplitPrimaryText: {
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 12,
+  },
+  connectSplitSecondary: {
+    width: 49,
+    height: 49,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: 'rgba(4,4,5,0.58)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitHero: {
+    minHeight: 348,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,106,0,0.42)',
+    padding: 18,
+    justifyContent: 'flex-end',
+    gap: 10,
+    overflow: 'hidden',
+  },
+  splitHeroTop: {
+    position: 'absolute',
+    top: 18,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  splitHeroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 17,
+    backgroundColor: STUDIO.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitEyebrow: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1.5,
+  },
+  splitHeroTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 32,
+    lineHeight: 35,
+    maxWidth: 330,
+  },
+  splitHeroText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 12.5,
+    lineHeight: 19,
+  },
+  splitHeroButton: {
+    minHeight: 51,
+    marginTop: 3,
+    borderRadius: 16,
+    backgroundColor: STUDIO.orange,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  splitHeroButtonText: {
+    color: '#170A03',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 13,
+  },
+  splitStepStack: {
+    gap: 8,
+  },
+  splitStep: {
+    minHeight: 92,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panelDeep,
+    padding: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  splitStepNumber: {
+    width: 45,
+    height: 45,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitStepNumberText: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 16,
+  },
+  splitStepCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  splitStepTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  splitStepTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 15,
+  },
+  splitStepText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiRegular,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  splitIdentityPanel: {
+    borderRadius: 23,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.lineHot,
+    backgroundColor: 'rgba(255,106,0,0.065)',
+    padding: 15,
+    gap: 14,
+  },
+  splitIdentityTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  splitIdentityAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
+    borderColor: STUDIO.orange,
+    backgroundColor: STUDIO.panelDeep,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitIdentityInitials: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 17,
+  },
+  splitIdentityCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  splitIdentityEyebrow: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 8.5,
+    letterSpacing: 1.15,
+  },
+  splitIdentityName: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 18,
+  },
+  splitIdentityStatus: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 10.5,
+  },
+  splitIdentityButton: {
+    minHeight: 45,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  splitIdentityButtonText: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 11,
+  },
+  splitToolGrid: {
+    gap: 8,
+  },
+  splitTool: {
+    minHeight: 82,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDIO.line,
+    backgroundColor: STUDIO.panelDeep,
+    padding: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  splitToolIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,106,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splitToolCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  splitToolTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 14,
+  },
+  splitToolText: {
+    color: STUDIO.textMid,
+    fontFamily: pluggdFonts.satoshiRegular,
+    fontSize: 10.5,
+    lineHeight: 15,
   },
   connectHero: {
     borderRadius: 26,

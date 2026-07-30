@@ -50,15 +50,26 @@ export type HomeNextWaveItem = {
 };
 
 export async function loadHomeEditorialStories(limit = 2): Promise<HomeEditorialStory[]> {
-  return safeList<HomeEditorialStory>(
-    (supabase as any)
-      .from('blog_posts')
-      .select('id,title,excerpt,featured_image_url,tags,created_at')
-      .eq('is_published', true)
-      .not('featured_image_url', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(limit),
-  );
+  const db = supabase as any;
+  const editorial = await db
+    .from('blog_posts')
+    .select('id,title,excerpt,featured_image_url,tags,created_at')
+    .eq('is_published', true)
+    .eq('is_global_editorial', true)
+    .eq('global_feature_status', 'approved')
+    .not('featured_image_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (!editorial.error) return (editorial.data ?? []) as HomeEditorialStory[];
+
+  const schemaFallback = await db
+    .from('blog_posts')
+    .select('id,title,excerpt,featured_image_url,tags,created_at')
+    .eq('is_published', true)
+    .not('featured_image_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return schemaFallback.error ? [] : ((schemaFallback.data ?? []) as HomeEditorialStory[]);
 }
 
 export async function loadHomeMarketSignals(releaseIds: string[]): Promise<Map<string, HomeMarketSignal>> {

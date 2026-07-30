@@ -11,6 +11,8 @@ const content = read('src/lib/mobileContent.ts');
 const releaseFloor = read('src/features/editorial/ListeningFloorScreen.tsx');
 const search = read('src/features/culture/useCultureData.ts');
 const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
+const plugRoute = read('app/plug/index.tsx');
+const plug = read('src/features/editorial/ThePlugIndexScreen.tsx');
 
 assert.match(homeRoute, /MusicDiscoveryHome/, 'Home tab must use the mobile discovery-first Home');
 for (const token of ['The Daily Plug', 'Four worth your time', 'LiveTicker', 'Pick up where you left off', 'From the scenes', 'Mixes in rotation', 'New releases', 'From THE PLUG', 'The next wave', 'Soundboards', 'Happening now', 'Drops & tools', 'featuredPlayBadge', 'featuredActionLabel']) {
@@ -60,7 +62,14 @@ for (const source of [content, releaseFloor, search]) {
 for (const token of ['Start somewhere unexpected', 'SignalTile', 'WorldGateway', 'worldImage', 'Soundboards', 'SCENE DIAL', 'RELEASE RADAR', 'PLUGGD CHART', 'Creator market']) {
   assert.match(discover, new RegExp(token), `Discover must preserve the visual exploration module ${token}`);
 }
+assert.match(discover, /title:\s*'THE PLUG'[\s\S]*route:\s*'\/plug'/, 'Discover must expose THE PLUG as an artwork-led exploration gateway');
 assert.doesNotMatch(discover, /Fresh signals[\s\S]*items\.slice\(0, 10\)/, 'Discover must not regress to a generic ranked list as its primary experience');
+
+assert.match(plugRoute, /ThePlugIndexScreen/, 'THE PLUG index route must render the dedicated editorial surface');
+for (const token of ['THE PLUG', 'THE LEAD STORY', 'Latest dispatches', 'Read dispatch', 'loadHomeEditorialStories']) {
+  assert.match(plug, new RegExp(token), `THE PLUG must preserve ${token}`);
+}
+assert.match(homeData, /\.eq\('is_global_editorial', true\)[\s\S]*\.eq\('global_feature_status', 'approved'\)/, 'THE PLUG must prefer globally approved editorial stories');
 
 const events = read('src/features/editorial/EventsBoardScreen.tsx');
 for (const token of ['Go where the sound is.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'Open Opportunities', 'For Promoters']) {

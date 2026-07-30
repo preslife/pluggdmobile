@@ -8,6 +8,8 @@ const plan = read('docs/superpowers/plans/2026-05-28-pluggd-ios-web-parity-rebui
 const dock = read('components/PluggdDock.tsx');
 const tabs = read('app/(tabs)/_layout.tsx');
 const chrome = read('components/AppChrome.tsx');
+const profile = read('src/features/profile/my-profile-screen.tsx');
+const studio = read('src/features/studio/StudioScreens.tsx');
 const services = read('src/features/parity/appWideParityServices.ts');
 const screens = read('src/features/parity/AppWideParityScreens.tsx');
 const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
@@ -30,7 +32,9 @@ for (const [label, route] of [
 }
 assert.doesNotMatch(dock, /label:\s*'(Library|Market)'/, 'mobile discovery IA must surface Library and Market contextually');
 assert.doesNotMatch(dock, /label:\s*'(Explore|Create|Profile|MyPLUGGD|Backstage|Stage|Live)'/, 'Dock must not expose old native-tab or compatibility labels as primary tabs');
-assert.match(chrome, /CreateActionSheet/, 'Create must be exposed through the role-aware floating action sheet');
+assert.doesNotMatch(chrome, /CreateActionSheet/, 'Create must not obscure public discovery content');
+assert.match(profile, /accessibilityLabel="Create post"/, 'contextual profile creation must remain available');
+assert.match(studio, /dockCreateButton/, 'creator creation must remain primary inside Studio');
 
 for (const name of ['index', 'discover', 'community', 'events', 'market']) {
   assert.match(tabs, new RegExp(`name="${name}"`), `${name} must be registered as a tab route`);

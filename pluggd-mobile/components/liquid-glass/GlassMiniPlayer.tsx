@@ -21,8 +21,6 @@ type GlassMiniPlayerProps = {
   onOpen?: () => void;
   onToggleCollapse?: () => void;
   onLikePress?: () => void;
-  onLyricsPress?: () => void;
-  onQueuePress?: () => void;
   onMorePress?: () => void;
   onTogglePlay?: () => void;
   onPrevious?: () => void;
@@ -43,8 +41,6 @@ export function GlassMiniPlayer({
   onOpen,
   onToggleCollapse,
   onLikePress,
-  onLyricsPress,
-  onQueuePress,
   onMorePress,
   onTogglePlay,
   onPrevious,
@@ -81,7 +77,7 @@ export function GlassMiniPlayer({
           style={styles.card}
           contentStyle={styles.cardContent}
         >
-          <View style={styles.topRow}>
+          <View style={styles.playerRow}>
             <Pressable
               accessible
               focusable
@@ -92,7 +88,7 @@ export function GlassMiniPlayer({
               onPress={onOpen}
               style={({ pressed }) => [styles.trackTapOverlay, pressed && styles.trackTapPressed]}
             />
-            <View pointerEvents="none" style={styles.trackTapTarget}>
+            <View pointerEvents="none" style={styles.trackIdentity}>
               <LiftSurface depth="low" style={styles.discLift}>
                 <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} />
               </LiftSurface>
@@ -103,42 +99,24 @@ export function GlassMiniPlayer({
               </View>
             </View>
 
-            <View style={styles.collapseSlot}>
-              <PlayerIconButton
-                accessibilityLabel="Collapse mini player"
-                icon="keyboard-arrow-down"
-                onPress={onToggleCollapse}
-              />
-            </View>
-          </View>
-
-          <View style={styles.actionRow}>
-            <View style={styles.workflowActions}>
-              <PlayerIconButton
-                accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
-                icon={liked ? 'favorite' : 'favorite-border'}
-                active={liked}
-                disabled={!canLike}
-                onPress={onLikePress}
-              />
-              <PlayerIconButton accessibilityLabel="Open lyrics and BarFlow" icon="lyrics" onPress={onLyricsPress} />
-              <PlayerIconButton accessibilityLabel="Open queue and playlist" icon="queue-music" onPress={onQueuePress} />
-            </View>
-
-            <View style={styles.transportActions}>
-              <PlayerIconButton accessibilityLabel="Previous track" icon="skip-previous" quiet onPress={onPrevious} />
-              <PlayerIconButton
-                accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
-                icon={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
-                prominent
-                onPress={() => {
-                  impactHaptic();
-                  onTogglePlay?.();
-                }}
-              />
-              <PlayerIconButton accessibilityLabel="Next track" icon="skip-next" quiet onPress={onNext} />
-            </View>
-
+            <PlayerIconButton
+              accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
+              icon={liked ? 'favorite' : 'favorite-border'}
+              active={liked}
+              disabled={!canLike}
+              onPress={onLikePress}
+            />
+            <PlayerIconButton accessibilityLabel="Previous track" icon="skip-previous" quiet compact onPress={onPrevious} />
+            <PlayerIconButton
+              accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
+              icon={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
+              prominent
+              onPress={() => {
+                impactHaptic();
+                onTogglePlay?.();
+              }}
+            />
+            <PlayerIconButton accessibilityLabel="Next track" icon="skip-next" quiet compact onPress={onNext} />
             <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" onPress={onMorePress} />
           </View>
 
@@ -208,6 +186,7 @@ function PlayerIconButton({
   active,
   prominent,
   quiet,
+  compact,
   disabled,
 }: {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -216,6 +195,7 @@ function PlayerIconButton({
   active?: boolean;
   prominent?: boolean;
   quiet?: boolean;
+  compact?: boolean;
   disabled?: boolean;
 }) {
   const isDisabled = disabled || !onPress;
@@ -234,6 +214,7 @@ function PlayerIconButton({
       style={({ pressed }) => [
         styles.iconButton,
         quiet && styles.iconButtonQuiet,
+        compact && styles.iconButtonCompact,
         prominent && styles.iconButtonProminent,
         active && styles.iconButtonActive,
         isDisabled && styles.iconButtonDisabled,
@@ -275,7 +256,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    minHeight: 104,
+    height: 72,
     shadowColor: '#000',
     shadowOpacity: 0.74,
     shadowRadius: 46,
@@ -283,57 +264,36 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     width: '100%',
-    minHeight: 104,
+    height: 72,
   },
-  topRow: {
-    minHeight: 58,
+  playerRow: {
+    height: 72,
     paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 3,
     position: 'relative',
-    justifyContent: 'center',
-  },
-  trackTapTarget: {
-    width: '100%',
-    minHeight: 46,
-    paddingRight: 44,
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   trackTapOverlay: {
     position: 'absolute',
     left: 10,
-    right: 54,
+    right: 184,
     top: 8,
-    height: 46,
+    bottom: 8,
     zIndex: 2,
-    borderRadius: 16,
-  },
-  collapseSlot: {
-    position: 'absolute',
-    right: 10,
-    top: 12,
+    borderRadius: 14,
   },
   trackTapPressed: {
     opacity: 0.86,
   },
-  actionRow: {
-    paddingHorizontal: 10,
-    paddingBottom: 9,
-    minHeight: 46,
+  trackIdentity: {
+    flex: 1,
+    minWidth: 0,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  workflowActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  transportActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+    paddingRight: 3,
   },
   discLift: {
     position: 'absolute',
@@ -399,10 +359,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   trackInfo: {
-    position: 'absolute',
-    left: 52,
-    right: 0,
-    top: 7,
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 52,
     gap: 2,
   },
   title: {
@@ -434,6 +393,10 @@ const styles = StyleSheet.create({
   iconButtonQuiet: {
     borderColor: 'transparent',
     backgroundColor: 'transparent',
+  },
+  iconButtonCompact: {
+    width: 30,
+    height: 34,
   },
   iconButtonProminent: {
     width: 40,

@@ -22,6 +22,7 @@ function titleForKind(kind: CommunityInterstitialKind) {
   if (kind === 'who_to_follow') return 'Who To Follow';
   if (kind === 'trending_boards') return 'Trending Boards';
   if (kind === 'nearby_events') return 'Nearby Events';
+  if (kind === 'the_plug') return 'From THE PLUG';
   return 'Community Radio';
 }
 
@@ -31,6 +32,7 @@ function subtitleForKind(kind: CommunityInterstitialKind) {
   if (kind === 'trending_boards') return 'Threads and boards moving across the community.';
   if (kind === 'nearby_events') return 'Shows, meetups and sessions connected to the scene.';
   if (kind === 'community_radio') return 'Mixes and sounds being passed around.';
+  if (kind === 'the_plug') return 'Interviews, reports and ideas shaping independent music.';
   return 'Start a thread, share a release, or post what you are hearing.';
 }
 
@@ -49,6 +51,7 @@ function itemsForKind(kind: CommunityInterstitialKind, bundle: CommunityFeedBund
   }));
   if (kind === 'nearby_events') return bundle.nearbyEvents;
   if (kind === 'community_radio') return bundle.radio;
+  if (kind === 'the_plug') return bundle.editorials;
   return [];
 }
 
@@ -82,10 +85,16 @@ export function CommunityFeedInterstitial({
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerCopy}>
           <Text style={styles.kicker}>{titleForKind(kind)}</Text>
           <Text style={styles.subtitle}>{subtitleForKind(kind)}</Text>
         </View>
+        {kind === 'the_plug' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Open all THE PLUG stories" onPress={() => router.push('/plug' as any)} style={styles.headerAction}>
+            <Text style={styles.headerActionText}>Read all</Text>
+            <MaterialIcons name="arrow-forward" size={15} color={COLORS.orange} />
+          </Pressable>
+        ) : null}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
         {items.map((item) => (
@@ -137,7 +146,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
   },
+  headerCopy: { flex: 1, minWidth: 0 },
+  headerAction: { minHeight: 44, flexDirection: 'row', alignItems: 'flex-end', gap: 4, paddingBottom: 2 },
+  headerActionText: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBold, fontSize: 11.5 },
   kicker: {
     color: COLORS.orange,
     fontSize: 11,

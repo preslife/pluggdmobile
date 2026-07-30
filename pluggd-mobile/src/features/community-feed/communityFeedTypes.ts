@@ -17,7 +17,8 @@ export type CommunityInterstitialKind =
   | 'who_to_follow'
   | 'trending_boards'
   | 'nearby_events'
-  | 'community_radio';
+  | 'community_radio'
+  | 'the_plug';
 
 export type CommunityFeedBundle = {
   posts: MobileSocialPost[];
@@ -28,6 +29,7 @@ export type CommunityFeedBundle = {
   nearbyEvents: ParityCard[];
   whoToFollow: ParityCard[];
   radio: ParityCard[];
+  editorials: ParityCard[];
   prompt: {
     id: string;
     title: string;

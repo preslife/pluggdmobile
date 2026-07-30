@@ -33,6 +33,7 @@ for (const route of requiredNativeRoutes) {
 const serviceSource = read('src/features/parity/appWideParityServices.ts');
 const screenSource = read('src/features/parity/AppWideParityScreens.tsx');
 const studioScreenSource = read('src/features/studio/StudioScreens.tsx');
+const profileSource = read('src/features/profile/my-profile-screen.tsx');
 const studioDataSource = read('src/features/studio/studio-data.ts');
 const sharedContentSource = read('src/lib/mobileContent.ts');
 const dockSource = read('components/PluggdDock.tsx');
@@ -122,7 +123,9 @@ assert.doesNotMatch(
 
 const chromeSource = read('components/AppChrome.tsx');
 assert.match(chromeSource, /'\/studio'/, 'AppChrome must hide public chrome for native Studio routes');
-assert.match(chromeSource, /CreateActionSheet/, 'AppChrome must mount the role-aware floating Create sheet');
+assert.doesNotMatch(chromeSource, /CreateActionSheet/, 'public chrome must not float a creator action over music, editorial, event or community content');
+assert.match(studioScreenSource, /dockCreateButton/, 'creator creation must remain first-class in the dedicated Studio dock');
+assert.match(profileSource, /accessibilityLabel="Create post"/, 'fans and creators must retain a contextual Create Post action on their profile');
 for (const [label, route] of [
   ['Home', '/'],
   ['Discover', '/discover'],

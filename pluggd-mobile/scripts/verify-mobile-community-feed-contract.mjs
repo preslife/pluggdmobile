@@ -50,13 +50,18 @@ for (const token of [
   'Trending Boards',
   'Nearby Events',
   'Community Radio',
+  'THE PLUG',
+  'Read all',
 ]) {
   assert.match(interstitials, new RegExp(escapeRegExp(token)), `Community feed interstitials must include ${token}`);
 }
 
-for (const token of ['Feed', 'Communities', 'Boards', 'Explore', 'Stories', 'Create Post', 'Nearby']) {
+for (const token of ['Feed', 'Communities', 'Boards', 'Explore', 'Stories', 'Create Post', 'Nearby', 'THE PLUG']) {
   assert.match(switcher + types, new RegExp(escapeRegExp(token)), `Community internal controls must include ${token}`);
 }
+
+assert.match(service, /loadHomeEditorialStories/, 'Community must load the same approved editorial source as THE PLUG');
+assert.match(screen, /kind="the_plug"/, 'Community must place THE PLUG inside the social discovery sequence');
 
 for (const token of [
   'loadMobileSocialFeed',
