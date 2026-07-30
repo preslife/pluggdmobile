@@ -17,7 +17,8 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
+  Text as NativeText,
+  type TextProps,
   TextInput,
   View,
 } from 'react-native';
@@ -70,6 +71,10 @@ const KINDS: Array<{ id: UploadKind; label: string; icon: keyof typeof MaterialI
   { id: 'beat', label: 'Beat', icon: 'graphic-eq', line: 'Preview and licence draft' },
   { id: 'mix', label: 'Mix', icon: 'headphones', line: 'DJ mix or live set' },
 ];
+
+function Text({ maxFontSizeMultiplier = 1.3, ...props }: TextProps) {
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
+}
 
 function normalizedKind(value: string | string[] | undefined): UploadKind {
   const candidate = Array.isArray(value) ? value[0] : value;
@@ -526,6 +531,7 @@ function Field({
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         {...props}
+        maxFontSizeMultiplier={1.4}
         multiline={multiline}
         placeholderTextColor="rgba(255,248,237,0.34)"
         style={[styles.input, multiline && styles.inputMultiline]}

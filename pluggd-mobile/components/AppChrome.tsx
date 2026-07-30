@@ -14,6 +14,10 @@ const HIDDEN_EXACT = new Set([
   '/creator/upload',
   '/creator/onboarding',
 ]);
+const BOTTOM_HIDDEN_EXACT = new Set([
+  '/wallet',
+  '/creator/events',
+]);
 
 export function AppChrome() {
   const pathname = usePathname() || '/';
@@ -47,8 +51,7 @@ export function AppChrome() {
     normalized === '/following' ||
     normalized === '/settings' ||
     normalized.startsWith('/settings/') ||
-    normalized === '/commerce/checkout' ||
-    normalized === '/commerce/success' ||
+    normalized.startsWith('/commerce/') ||
     normalized.startsWith('/genre/') ||
     normalized.startsWith('/u/') ||
     normalized.startsWith('/user/') ||
@@ -62,16 +65,23 @@ export function AppChrome() {
     normalized.startsWith('/plug/') ||
     normalized.startsWith('/mixes/') ||
     HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+  const bottomHidden =
+    hidden ||
+    BOTTOM_HIDDEN_EXACT.has(normalized) ||
+    normalized.startsWith('/commerce/') ||
+    (normalized.startsWith('/membership/') && normalized !== '/membership');
 
   if (hidden) return null;
 
   return (
     <>
       {ownsHeader ? null : <MobileHeader />}
-      <View pointerEvents="box-none" style={styles.bottomWrap}>
-        <MiniPlayer />
-        <PluggdDock />
-      </View>
+      {bottomHidden ? null : (
+        <View pointerEvents="box-none" style={styles.bottomWrap}>
+          <MiniPlayer />
+          <PluggdDock />
+        </View>
+      )}
     </>
   );
 }

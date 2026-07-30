@@ -5,6 +5,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 const dockSource = read('components/PluggdDock.tsx');
 const headerSource = read('components/MobileHeader.tsx');
+const chromeSource = read('components/AppChrome.tsx');
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');
 
@@ -17,6 +18,7 @@ assert.match(headerSource, /Wallet \/ Credits|Wallet \/ Earnings/, 'wallet must 
 assert.match(headerSource, /Memberships/, 'memberships must be available from avatar menu');
 assert.match(headerSource, /Tickets/, 'tickets must be available from avatar menu');
 assert.match(walletSource, /100 credits = £1/, 'wallet must preserve credit conversion copy');
+assert.match(chromeSource, /BOTTOM_HIDDEN_EXACT[\s\S]*'\/wallet'/, 'the public dock must not cover Wallet purchase controls');
 
 for (const sku of ['pluggd_credits_starter', 'pluggd_credits_popular', 'pluggd_credits_value', 'pluggd_credits_premium', 'pluggd_credits_ultimate']) {
   assert.match(creditsSource, new RegExp(sku), `${sku} must remain in IAP catalog`);

@@ -185,7 +185,7 @@ export default function SignUp() {
               onPress={() => router.back()}
             >
               <MaterialIcons name="chevron-left" size={22} color={theme.colors.text} />
-              <Text style={[styles.topButtonText, { color: theme.colors.text }]}>Back</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.topButtonText, { color: theme.colors.text }]}>Back</Text>
             </Pressable>
             <View style={styles.progressTrack}>
               <View style={styles.progressActive} />
@@ -203,7 +203,7 @@ export default function SignUp() {
                 size={19}
                 color={theme.colors.accent}
               />
-              <Text style={[styles.modeText, { color: theme.colors.textMuted }]}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.modeText, { color: theme.colors.textMuted }]}>
                 {mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}
               </Text>
             </Pressable>
@@ -211,9 +211,9 @@ export default function SignUp() {
 
           <View style={styles.brandBlock}>
             <BrandLogo variant="auto" width={116} height={47} />
-            <Text style={[styles.kicker, { color: theme.colors.accent }]}>CREATE ACCOUNT</Text>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Start building your PLUGGD identity.</Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.kicker, { color: theme.colors.accent }]}>CREATE ACCOUNT</Text>
+            <Text maxFontSizeMultiplier={1.35} style={[styles.title, { color: theme.colors.text }]}>Start building your PLUGGD identity.</Text>
+            <Text maxFontSizeMultiplier={1.6} style={[styles.subtitle, { color: theme.colors.textMuted }]}>
               Set up your account first, then choose every role that applies to you.
             </Text>
           </View>
@@ -364,11 +364,12 @@ function InputField({
   const theme = usePluggdTheme();
   return (
     <View style={styles.inputGroup}>
-      <Text style={[styles.inputLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.inputLabel, { color: theme.colors.textMuted }]}>{label}</Text>
       <View style={[styles.inputShell, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <MaterialIcons name={icon} size={20} color={theme.colors.accent} />
         <TextInput
           {...inputProps}
+          maxFontSizeMultiplier={1.5}
           placeholderTextColor={theme.colors.textSubtle}
           style={[styles.input, { color: theme.colors.text }]}
         />
@@ -471,7 +472,6 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 8,
     fontSize: 32,
-    lineHeight: 35,
     letterSpacing: -0.5,
     fontFamily: pluggdFonts.displayExtraBold,
   },

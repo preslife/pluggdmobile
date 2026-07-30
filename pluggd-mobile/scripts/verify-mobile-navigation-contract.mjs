@@ -61,6 +61,8 @@ for (const label of ['Home', 'Discover', 'Community', 'Events']) {
 }
 assert.doesNotMatch(tabsSource, /title:\s*"(Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)"/, 'tab titles must use the web-parity dock labels');
 assert.doesNotMatch(chromeSource, /CreateActionSheet/, 'Create must not float over the public discovery dock');
+assert.match(chromeSource, /normalized\.startsWith\('\/commerce\/'\)/, 'transactional commerce screens must suppress the public dock');
+assert.match(chromeSource, /'\/creator\/events'/, 'creator event operations must not compete with the public dock');
 assert.match(profileSource, /accessibilityLabel="Create post"/, 'profile must retain a contextual Create Post action');
 assert.match(studioSource, /dockCreateButton/, 'creator Studio must retain its dedicated Create action');
 assert.match(tabDiscoverSource, /MusicDiscoveryDiscover/, 'Discover tab must render the intentional mobile exploration screen');

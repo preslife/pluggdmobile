@@ -57,7 +57,7 @@ export const COMMUNITY_TABS: Array<{ key: CommunityTabKey; label: string; icon: 
 ];
 
 export const FEED_FILTERS: CommunityFeedFilter[] = [
-  { key: 'all', label: 'All Feed', description: 'Every community post' },
+  { key: 'all', label: 'Latest', description: 'Newest community posts first' },
   { key: 'threads', label: 'Threads', description: 'Discussions and questions' },
   { key: 'media', label: 'Media', description: 'Posts with images, video, audio or shared cards' },
   { key: 'reposts', label: 'Reposts', description: 'Shared posts and quotes' },

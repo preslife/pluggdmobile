@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -188,6 +189,8 @@ function PluggdWordmark() {
 
 export default function RoleSelection() {
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
+  const usesAccessibilityLayout = fontScale >= 1.5;
   const [primaryRole, setPrimaryRole] = useState<EcosystemRole | null>(null);
   const [secondaryRoles, setSecondaryRoles] = useState<EcosystemRole[]>([]);
   const [loading, setLoading] = useState(false);
@@ -282,7 +285,10 @@ export default function RoleSelection() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          usesAccessibilityLayout && styles.scrollContentAccessibility,
+        ]}
       >
         <View style={styles.logoWrap}>
           <PluggdWordmark />
@@ -295,15 +301,21 @@ export default function RoleSelection() {
             <View style={[styles.progressDot, { left: '50%', marginLeft: -6 }]} />
             <View style={[styles.progressDot, { right: 0 }]} />
           </View>
-          <Text style={styles.stepText}>Step 1 of 3</Text>
+          <Text style={styles.stepText} maxFontSizeMultiplier={1.35}>
+            Step 1 of 3
+          </Text>
         </View>
 
-        <Text style={styles.title}>What do you do on PLUGGD?</Text>
-        <Text style={styles.subtitle}>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>
+          What do you do on PLUGGD?
+        </Text>
+        <Text style={styles.subtitle} maxFontSizeMultiplier={1.45}>
           Pick one primary role, then add any secondary roles you also operate as.
         </Text>
 
-        <Text style={styles.sectionTitle}>Primary role</Text>
+        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.35}>
+          Primary role
+        </Text>
 
         <View style={styles.primaryList}>
           {ROLE_OPTIONS.map((role) => {
@@ -313,7 +325,11 @@ export default function RoleSelection() {
               <Pressable
                 key={role.value}
                 onPress={() => choosePrimaryRole(role.value)}
-                style={[styles.roleCard, selected && styles.roleCardSelected]}
+                style={[
+                  styles.roleCard,
+                  usesAccessibilityLayout && styles.roleCardAccessibility,
+                  selected && styles.roleCardSelected,
+                ]}
               >
                 <View style={styles.roleIconBox}>
                   <MaterialIcons
@@ -324,15 +340,26 @@ export default function RoleSelection() {
                 </View>
 
                 <View style={styles.roleTextWrap}>
-                  <Text style={styles.roleName}>{role.label}</Text>
-                  <Text style={styles.roleDescription} numberOfLines={1}>
+                  <Text style={styles.roleName} maxFontSizeMultiplier={1.3}>
+                    {role.label}
+                  </Text>
+                  <Text
+                    style={styles.roleDescription}
+                    maxFontSizeMultiplier={1.4}
+                    numberOfLines={usesAccessibilityLayout ? 2 : 1}
+                  >
                     {role.description}
                   </Text>
                 </View>
 
                 <View style={styles.roleRight}>
                   <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryBadgeText}>{role.category}</Text>
+                    <Text
+                      style={styles.categoryBadgeText}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      {role.category}
+                    </Text>
                   </View>
 
                   <View style={[styles.radio, selected && styles.radioSelected]}>
@@ -349,8 +376,10 @@ export default function RoleSelection() {
         {primaryRole && (
           <>
             <View style={styles.secondaryHeader}>
-              <Text style={styles.sectionTitle}>Secondary roles</Text>
-              <Text style={styles.helperText}>
+              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.35}>
+                Secondary roles
+              </Text>
+              <Text style={styles.helperText} maxFontSizeMultiplier={1.4}>
                 Optional. These unlock extra profile and studio areas after setup.
               </Text>
             </View>
@@ -378,6 +407,7 @@ export default function RoleSelection() {
                         styles.secondaryChipText,
                         selected && styles.secondaryChipTextSelected,
                       ]}
+                      maxFontSizeMultiplier={1.3}
                       numberOfLines={1}
                     >
                       {role.label}
@@ -405,7 +435,15 @@ export default function RoleSelection() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Continue</Text>
+            <Text
+              style={[
+                styles.ctaText,
+                (!primaryRole || loading) && styles.ctaTextDisabled,
+              ]}
+              maxFontSizeMultiplier={1.35}
+            >
+              Continue
+            </Text>
           )}
         </Pressable>
       </View>
@@ -422,6 +460,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 116,
+  },
+  scrollContentAccessibility: {
+    paddingBottom: 132,
   },
   logoWrap: {
     alignItems: 'center',
@@ -482,14 +523,12 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 28,
-    lineHeight: 34,
     fontFamily: pluggdFonts.displayExtraBold,
     textAlign: 'center',
   },
   subtitle: {
     color: '#B8B8B8',
     fontSize: 15,
-    lineHeight: 21,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 22,
@@ -519,6 +558,10 @@ const styles = StyleSheet.create({
     borderColor: PLUGGD_ORANGE,
     backgroundColor: 'rgba(255,102,0,0.06)',
   },
+  roleCardAccessibility: {
+    minHeight: 74,
+    alignItems: 'flex-start',
+  },
   roleIconBox: {
     width: 38,
     height: 38,
@@ -541,7 +584,6 @@ const styles = StyleSheet.create({
   roleDescription: {
     color: '#B8B8B8',
     fontSize: 13,
-    lineHeight: 17,
   },
   roleRight: {
     alignItems: 'center',
@@ -586,7 +628,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#9A9A9A',
     fontSize: 12,
-    lineHeight: 16,
     textAlign: 'right',
   },
   secondaryGrid: {
@@ -660,5 +701,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.8,
     fontFamily: pluggdFonts.satoshiBlack,
+  },
+  ctaTextDisabled: {
+    color: '#A8A29E',
   },
 });

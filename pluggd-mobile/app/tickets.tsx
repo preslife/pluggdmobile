@@ -64,8 +64,8 @@ export default function TicketsScreen() {
             <MaterialIcons name="confirmation-number" size={16} color={theme.colors.accent} />
             <Text style={[styles.kicker, { color: theme.colors.accent }]}>Tickets</Text>
           </View>
-          <Text style={[styles.heroTitle, { color: theme.colors.text }]}>Event entry, RSVP status, and ticket codes.</Text>
-          <Text style={[styles.heroBody, { color: theme.colors.textSecondary }]}>
+          <Text maxFontSizeMultiplier={1.35} style={[styles.heroTitle, { color: theme.colors.text }]}>Event entry, RSVP status, and ticket codes.</Text>
+          <Text maxFontSizeMultiplier={1.6} style={[styles.heroBody, { color: theme.colors.textSecondary }]}>
             Keep verified event access close, open event details, and generate entry codes when a real ticket supports it.
           </Text>
           <View style={styles.heroStats}>
@@ -173,8 +173,8 @@ function StatPill({ label, value }: { label: string; value: string }) {
   const theme = usePluggdTheme();
   return (
     <View style={[styles.statPill, { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.border }]}>
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.statLabel, { color: theme.colors.textMuted }]}>{label}</Text>
     </View>
   );
 }
@@ -194,14 +194,14 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 18 },
   topBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 44, height: 44, borderRadius: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
-  hero: { borderRadius: 6, borderWidth: 1, padding: 18, gap: 13, overflow: 'hidden' },
+  hero: { borderRadius: 6, borderWidth: 1, padding: 16, gap: 9, overflow: 'hidden' },
   heroKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   kicker: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0 },
-  heroTitle: { fontSize: 33, lineHeight: 36, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', letterSpacing: -0.8 },
-  heroBody: { fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  heroStats: { flexDirection: 'row', gap: 10, marginTop: 2 },
-  statPill: { minWidth: 104, borderTopWidth: 1, paddingVertical: 10, paddingHorizontal: 2, marginRight: 16 },
-  statValue: { fontSize: 22, lineHeight: 25, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  heroTitle: { fontSize: 28, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', letterSpacing: -0.65 },
+  heroBody: { fontSize: 13.5, lineHeight: 19, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', maxWidth: 338 },
+  heroStats: { flexDirection: 'row', gap: 10, marginTop: 1 },
+  statPill: { minWidth: 96, borderTopWidth: 1, paddingVertical: 8, paddingHorizontal: 2, marginRight: 12 },
+  statValue: { fontSize: 20, lineHeight: 23, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   statLabel: { marginTop: 1, fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   section: { gap: 11 },

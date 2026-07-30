@@ -22,6 +22,8 @@ assert.match(home, /buildBalancedHomePicks\(items, featured\?\.id\)/, 'Home must
 assert.match(home, /selectDailyFeature\(items\)/, 'Home must select the daily lead deliberately instead of always taking the first release');
 assert.match(home, /playQueue/, 'Home music choices must start the shared playback queue');
 assert.match(home, /minHeight: 44/, 'Home primary controls must preserve 44pt touch targets');
+assert.match(home, /maxFontSizeMultiplier=\{1\.35\}[\s\S]*The Daily Plug/, 'Home display type must stay composed at accessibility sizes');
+assert.match(read('components/LiveTicker.tsx'), /maxFontSizeMultiplier=\{1\.3\}/, 'the fixed-height live ticker must remain legible without clipping at accessibility sizes');
 assert.ok(
   home.indexOf('{signals.length ? <LiveTicker') > 0 &&
     home.indexOf('{signals.length ? <LiveTicker') < home.indexOf('{featured ? ('),

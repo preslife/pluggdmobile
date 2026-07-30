@@ -64,16 +64,17 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
       ) : (
         <View style={[styles.livePill, { borderColor: accent }]}>
           <View style={[styles.dot, { backgroundColor: accent }]} />
-          <Text style={[styles.liveText, { color: accent }]}>LIVE</Text>
+          <Text maxFontSizeMultiplier={1.3} style={[styles.liveText, { color: accent }]}>LIVE</Text>
         </View>
       )}
-      {home ? <Text style={styles.homeLabel}>LIVE SIGNAL</Text> : null}
+      {home ? <Text maxFontSizeMultiplier={1.3} style={styles.homeLabel}>LIVE SIGNAL</Text> : null}
       <View style={styles.track}>
         {reducedMotion ? (
           <Text
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
             numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
             style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}
           >
             {items.slice(0, 2).join(SEP)}
@@ -84,10 +85,10 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
             importantForAccessibility="no-hide-descendants"
             style={[styles.row, { transform: [{ translateX: translate }] }]}
           >
-            <Text onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
+            <Text maxFontSizeMultiplier={1.3} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
               {line}
             </Text>
-            <Text numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
+            <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
               {line}
             </Text>
           </Animated.View>

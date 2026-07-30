@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -77,6 +78,8 @@ function sectionLabelForRecent(count: number) {
 
 export function MusicDiscoveryHome() {
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
+  const accessibilityLayout = fontScale >= 1.5;
   const { user, loading: authLoading } = useAuth();
   const feed = useHomeFeed();
   const live = useLiveRooms();
@@ -187,17 +190,17 @@ export function MusicDiscoveryHome() {
         scrollEventThrottle={16}
       >
         <Enter delay={0}>
-          <View style={styles.titleRow}>
-            <View>
-              <Text style={styles.eyebrow}>
+          <View style={[styles.titleRow, accessibilityLayout && styles.titleRowAccessibility]}>
+            <View style={[styles.titleGroup, accessibilityLayout && styles.titleGroupAccessibility]}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.eyebrow}>
                 {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: '2-digit', month: 'long' })
                   .format(new Date())
                   .toUpperCase()
                   .replace(',', ' ·')}
               </Text>
-              <Text style={styles.title}>The Daily Plug</Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.title}>The Daily Plug</Text>
             </View>
-            <Text style={styles.editorNote}>
+            <Text maxFontSizeMultiplier={1.4} numberOfLines={2} style={[styles.editorNote, accessibilityLayout && styles.editorNoteAccessibility]}>
               {featured?.isEditorialPick ? 'Featured by' : 'Your daily'}{`\n`}
               {featured?.isEditorialPick ? 'PLUGGD editors' : 'PLUGGD selection'}
             </Text>
@@ -235,10 +238,10 @@ export function MusicDiscoveryHome() {
                 </RNAnimated.View>
               </View>
               <View style={styles.featuredCopy}>
-                <Text style={styles.reason}>{featured.discoveryReason.toUpperCase()}</Text>
-                <Text style={styles.featuredTitle} numberOfLines={2}>{featured.title}</Text>
-                <Text style={styles.featuredCreator} numberOfLines={1}>{featured.creator}</Text>
-                <Text style={styles.featuredDescription} numberOfLines={3}>{featured.description}</Text>
+                <Text maxFontSizeMultiplier={1.45} style={styles.reason}>{featured.discoveryReason.toUpperCase()}</Text>
+                <Text maxFontSizeMultiplier={1.35} style={styles.featuredTitle} numberOfLines={2}>{featured.title}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.featuredCreator} numberOfLines={1}>{featured.creator}</Text>
+                <Text maxFontSizeMultiplier={1.55} style={styles.featuredDescription} numberOfLines={3}>{featured.description}</Text>
                 <EdPressable
                   accessibilityRole="button"
                   accessibilityLabel={`${featuredActionLabel(featured)} by ${featured.creator}`}
@@ -246,7 +249,7 @@ export function MusicDiscoveryHome() {
                   style={styles.supportButton}
                 >
                   <View style={styles.supportButtonInner}>
-                    <Text style={styles.supportText}>{featuredActionLabel(featured)}</Text>
+                    <Text maxFontSizeMultiplier={1.45} style={styles.supportText}>{featuredActionLabel(featured)}</Text>
                     <MaterialIcons name="arrow-forward" size={15} color={INK} />
                   </View>
                 </EdPressable>
@@ -700,15 +703,17 @@ function SectionHeader({
   action?: string;
   onAction?: () => void;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const accessibilityLayout = fontScale >= 1.5;
   return (
-    <View style={styles.sectionHeader}>
+    <View style={[styles.sectionHeader, accessibilityLayout && styles.sectionHeaderAccessibility]}>
       <View style={styles.sectionHeading}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        <Text maxFontSizeMultiplier={1.45} style={styles.sectionTitle}>{title}</Text>
+        {subtitle ? <Text maxFontSizeMultiplier={1.55} style={styles.sectionSubtitle}>{subtitle}</Text> : null}
       </View>
       {action && onAction ? (
-        <EdPressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} style={styles.seeAllButton}>
-          <Text style={styles.seeAll}>{action}</Text>
+        <EdPressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} style={[styles.seeAllButton, accessibilityLayout && styles.seeAllButtonAccessibility]}>
+          <Text maxFontSizeMultiplier={1.45} style={styles.seeAll}>{action}</Text>
         </EdPressable>
       ) : null}
     </View>
@@ -856,10 +861,14 @@ function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; i
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' },
   content: { paddingHorizontal: 20, paddingBottom: 190 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 18 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 18, gap: 14 },
+  titleRowAccessibility: { flexDirection: 'column', alignItems: 'flex-start', gap: 6 },
+  titleGroup: { flex: 1, minWidth: 0 },
+  titleGroupAccessibility: { flex: 0 },
   eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.6, marginBottom: 5 },
-  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 30, lineHeight: 34, letterSpacing: -1.1 },
-  editorNote: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, lineHeight: 14, textAlign: 'right' },
+  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 30, letterSpacing: -1.1 },
+  editorNote: { flexShrink: 1, maxWidth: 96, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, lineHeight: 14, textAlign: 'right' },
+  editorNoteAccessibility: { maxWidth: 220, textAlign: 'left' },
   loadingStack: { gap: 12, paddingBottom: 12 },
   heroSkeleton: { minHeight: 174, borderRadius: 5 },
   loadingRow: { flexDirection: 'row', gap: 10 },
@@ -877,17 +886,19 @@ const styles = StyleSheet.create({
   featuredPlayBadge: { position: 'absolute', zIndex: 5, elevation: 5, right: 8, bottom: 8, width: 44, height: 44, borderRadius: 22, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   featuredCopy: { flex: 1, paddingVertical: 2, justifyContent: 'center' },
   reason: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 9, lineHeight: 12, letterSpacing: 1.1, marginBottom: 7 },
-  featuredTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 19, lineHeight: 22, letterSpacing: -0.45 },
+  featuredTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 19, letterSpacing: -0.45 },
   featuredCreator: { color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13, marginTop: 5 },
   featuredDescription: { color: '#C5BDB2', fontFamily: 'Satoshi-Regular', fontSize: 10.5, lineHeight: 14, marginTop: 8 },
   supportButton: { alignSelf: 'flex-start' },
   supportButtonInner: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, borderBottomWidth: 1, borderColor: '#756E64' },
   supportText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 11.5 },
   sectionHeader: { minHeight: 62, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 11, gap: 10 },
+  sectionHeaderAccessibility: { minHeight: 72, alignItems: 'center', paddingBottom: 8 },
   sectionHeading: { flex: 1, minWidth: 0 },
-  sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, lineHeight: 21, letterSpacing: -0.35 },
+  sectionTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, letterSpacing: -0.35 },
   sectionSubtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 10.5, lineHeight: 14, marginTop: 3 },
   seeAllButton: { minHeight: 44, justifyContent: 'flex-end', paddingBottom: 1 },
+  seeAllButtonAccessibility: { justifyContent: 'center', paddingBottom: 0 },
   seeAll: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   pickGrid: { gap: 10 },
   pickRow: { flexDirection: 'row', gap: 10 },

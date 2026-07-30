@@ -261,21 +261,21 @@ export default function FanSetup() {
               <MaterialIcons name="check" size={13} color={PLUGGD_ORANGE} />
             </View>
             <View style={[styles.progressStep, styles.progressActive]}>
-              <Text style={styles.progressActiveText}>2</Text>
+              <Text style={styles.progressActiveText} maxFontSizeMultiplier={1.25}>2</Text>
             </View>
             <View style={[styles.progressStep, styles.progressFuture]}>
-              <Text style={styles.progressFutureText}>3</Text>
+              <Text style={styles.progressFutureText} maxFontSizeMultiplier={1.25}>3</Text>
             </View>
           </View>
-          <Text style={styles.stepText}>Step 2 of 3</Text>
+          <Text style={styles.stepText} maxFontSizeMultiplier={1.35}>Step 2 of 3</Text>
         </View>
 
-        <Text style={styles.title}>Shape your feed</Text>
-        <Text style={styles.subtitle}>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>Shape your feed</Text>
+        <Text style={styles.subtitle} maxFontSizeMultiplier={1.45}>
           Choose sounds, scenes, and creators you want to follow.
         </Text>
 
-        <Text style={styles.sectionTitle}>Pick your genres</Text>
+        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.35}>Pick your genres</Text>
 
         <View style={styles.genreGrid}>
           {GENRES.map((genre) => {
@@ -295,6 +295,7 @@ export default function FanSetup() {
                     styles.genreChipText,
                     selected && styles.genreChipTextSelected,
                   ]}
+                  maxFontSizeMultiplier={1.3}
                 >
                   {genre}
                 </Text>
@@ -313,9 +314,9 @@ export default function FanSetup() {
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Suggested creators</Text>
+              <Text style={styles.cardTitle} maxFontSizeMultiplier={1.35}>Suggested creators</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="See all suggested creators" style={styles.seeAllButton} onPress={() => router.push('/search' as any)}>
-              <Text style={styles.seeAllText}>See all</Text>
+              <Text style={styles.seeAllText} maxFontSizeMultiplier={1.3}>See all</Text>
               <MaterialIcons name="chevron-right" size={22} color={PLUGGD_ORANGE} />
             </Pressable>
           </View>
@@ -324,12 +325,12 @@ export default function FanSetup() {
             {creatorsLoading ? (
               <View style={styles.creatorLoading}>
                 <ActivityIndicator color={PLUGGD_ORANGE} />
-                <Text style={styles.creatorEmptyText}>Loading creators from PLUGGD...</Text>
+                <Text style={styles.creatorEmptyText} maxFontSizeMultiplier={1.4}>Loading creators from PLUGGD...</Text>
               </View>
             ) : null}
 
             {!creatorsLoading && suggestedCreators.length === 0 ? (
-              <Text style={styles.creatorEmptyText}>Creators will appear here once your account can access the live directory.</Text>
+              <Text style={styles.creatorEmptyText} maxFontSizeMultiplier={1.4}>Creators will appear here once your account can access the live directory.</Text>
             ) : null}
 
             {suggestedCreators.map((creator, index) => {
@@ -345,12 +346,12 @@ export default function FanSetup() {
                 >
                   <View style={styles.avatar}>
                     {creator.avatarUrl ? <Image source={{ uri: creator.avatarUrl }} style={styles.avatarImage} /> : null}
-                    {!creator.avatarUrl ? <Text style={styles.avatarText}>{creator.initials}</Text> : null}
+                    {!creator.avatarUrl ? <Text style={styles.avatarText} maxFontSizeMultiplier={1.25}>{creator.initials}</Text> : null}
                   </View>
 
                   <View style={styles.creatorInfo}>
-                    <Text style={styles.creatorName}>{creator.name}</Text>
-                    <Text style={styles.creatorRole}>{creator.role}</Text>
+                    <Text style={styles.creatorName} maxFontSizeMultiplier={1.3}>{creator.name}</Text>
+                    <Text style={styles.creatorRole} maxFontSizeMultiplier={1.35}>{creator.role}</Text>
                   </View>
 
                   <Pressable
@@ -368,6 +369,7 @@ export default function FanSetup() {
                         styles.followButtonText,
                         isFollowing && styles.followButtonTextActive,
                       ]}
+                      maxFontSizeMultiplier={1.3}
                     >
                       {isFollowing ? 'Following' : 'Follow'}
                     </Text>
@@ -398,7 +400,7 @@ export default function FanSetup() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Finish setup</Text>
+            <Text style={styles.ctaText} maxFontSizeMultiplier={1.35}>Finish setup</Text>
           )}
         </Pressable>
       </View>
@@ -428,8 +430,8 @@ function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) 
       </View>
 
       <View style={styles.toggleTextWrap}>
-        <Text style={styles.toggleTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.toggleSubtitle}>{subtitle}</Text> : null}
+        <Text style={styles.toggleTitle} maxFontSizeMultiplier={1.35}>{title}</Text>
+        {subtitle ? <Text style={styles.toggleSubtitle} maxFontSizeMultiplier={1.4}>{subtitle}</Text> : null}
       </View>
 
       <View style={[styles.switchTrack, enabled && styles.switchTrackOn]}>
@@ -531,13 +533,11 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 40,
-    lineHeight: 46,
     fontFamily: pluggdFonts.displayExtraBold,
   },
   subtitle: {
     color: '#B3B3B3',
     fontSize: 20,
-    lineHeight: 28,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
     marginTop: 14,
     marginBottom: 30,
@@ -607,12 +607,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-    lineHeight: 23,
   },
   toggleSubtitle: {
     color: '#9F9F9F',
     fontSize: 14,
-    lineHeight: 19,
     marginTop: 3,
   },
   switchTrack: {
@@ -708,7 +706,6 @@ const styles = StyleSheet.create({
   creatorEmptyText: {
     color: '#AFAFAF',
     fontSize: 14,
-    lineHeight: 20,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   creatorInfo: {

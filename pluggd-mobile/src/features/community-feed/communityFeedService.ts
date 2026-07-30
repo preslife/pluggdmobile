@@ -16,6 +16,18 @@ function hasActivity(post: MobileSocialPost) {
   return post.destinations.some((destination) => destination.destination_type !== 'global_feed');
 }
 
+function createdAtMs(post: MobileSocialPost) {
+  const value = Date.parse(post.created_at);
+  return Number.isFinite(value) ? value : 0;
+}
+
+export function orderCommunityPostsNewestFirst(posts: MobileSocialPost[]) {
+  return [...posts].sort((left, right) => {
+    const timestampDifference = createdAtMs(right) - createdAtMs(left);
+    return timestampDifference || right.id.localeCompare(left.id);
+  });
+}
+
 export function filterCommunityPosts(posts: MobileSocialPost[], filter: CommunityFeedFilterKey, hashtag?: string | null) {
   const scoped = hashtag
     ? posts.filter((post) => post.hashtags.some((tag) => tag.toLowerCase() === hashtag.toLowerCase().replace(/^#/, '')))
@@ -55,7 +67,7 @@ function uniqueCards(cards: ParityCard[]) {
 
 export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
   const [posts, boards, parity, stories] = await Promise.all([
-    loadMobileSocialFeed({ mode: 'for-you', limit: 36 }),
+    loadMobileSocialFeed({ mode: 'latest', limit: 36 }),
     loadCommunityBoards(),
     loadCommunityParity(),
     loadHomeEditorialStories(8),
@@ -79,7 +91,7 @@ export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
   const exploreCards = uniqueCards([...editorials, ...parity.sections.flatMap((section) => section.items)]).slice(0, 30);
 
   return {
-    posts,
+    posts: orderCommunityPostsNewestFirst(posts),
     boards,
     communities,
     exploreCards,

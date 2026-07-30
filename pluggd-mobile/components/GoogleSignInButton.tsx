@@ -29,7 +29,7 @@ export function GoogleSignInButton({
         <View style={styles.iconShell}>
           <FontAwesome name="google" size={18} color="#181818" />
         </View>
-        <Text style={styles.label}>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>
           {mode === 'sign-up' ? 'Sign up with Google' : 'Sign in with Google'}
         </Text>
         <View style={styles.trailingSpace} />
@@ -74,7 +74,6 @@ const styles = StyleSheet.create({
     color: '#111111',
     fontFamily: pluggdFonts.satoshiBold,
     fontSize: 15,
-    lineHeight: 19,
   },
   trailingSpace: {
     width: 28,

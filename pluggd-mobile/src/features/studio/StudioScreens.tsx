@@ -14,7 +14,8 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
+  Text as NativeText,
+  type TextProps,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -79,6 +80,15 @@ const STUDIO = {
   chip: 'rgba(255,255,255,0.075)',
   dock: 'rgba(7,7,10,0.985)',
 };
+
+/**
+ * Studio is intentionally information-dense. Keep Dynamic Type useful without
+ * allowing one label to consume an entire operational surface at the largest
+ * accessibility settings.
+ */
+function Text({ maxFontSizeMultiplier = 1.25, ...props }: TextProps) {
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
+}
 
 const SECTION_LABELS: Record<StudioModuleSection, string> = {
   create: 'Create',

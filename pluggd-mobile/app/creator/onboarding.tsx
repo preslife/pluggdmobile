@@ -389,15 +389,15 @@ export default function CreatorOnboarding() {
             </View>
 
             <View style={[styles.progressStep, styles.progressActive, { right: 0 }]}>
-              <Text style={styles.progressActiveText}>3</Text>
+              <Text style={styles.progressActiveText} maxFontSizeMultiplier={1.25}>3</Text>
             </View>
           </View>
 
-          <Text style={styles.stepText}>Step 3 of 3</Text>
+          <Text style={styles.stepText} maxFontSizeMultiplier={1.35}>Step 3 of 3</Text>
         </View>
 
-        <Text style={styles.title}>Set up your PLUGGD space</Text>
-        <Text style={styles.subtitle}>Complete the basics for your primary role.</Text>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>Set up your PLUGGD space</Text>
+        <Text style={styles.subtitle} maxFontSizeMultiplier={1.45}>Complete the basics for your primary role.</Text>
 
         <Pressable
           style={styles.roleSummaryCard}
@@ -412,17 +412,17 @@ export default function CreatorOnboarding() {
           </View>
 
           <View style={styles.roleSummaryContent}>
-            <Text style={styles.overline}>Your roles</Text>
+            <Text style={styles.overline} maxFontSizeMultiplier={1.3}>Your roles</Text>
 
             <View style={styles.roleSummaryRow}>
               <View style={styles.roleSummaryBlock}>
-                <Text style={styles.roleSummaryLabel}>Primary role</Text>
-                <Text style={styles.primaryRole}>{primaryRoleLabel}</Text>
+                <Text style={styles.roleSummaryLabel} maxFontSizeMultiplier={1.3}>Primary role</Text>
+                <Text style={styles.primaryRole} maxFontSizeMultiplier={1.3}>{primaryRoleLabel}</Text>
               </View>
 
               <View style={styles.roleSummaryBlock}>
-                <Text style={styles.roleSummaryLabel}>Secondary roles</Text>
-                <Text style={styles.secondaryRoles}>
+                <Text style={styles.roleSummaryLabel} maxFontSizeMultiplier={1.3}>Secondary roles</Text>
+                <Text style={styles.secondaryRoles} maxFontSizeMultiplier={1.35}>
                   {secondaryRoleLabels || 'None yet'}
                 </Text>
               </View>
@@ -432,7 +432,7 @@ export default function CreatorOnboarding() {
           <MaterialIcons name="chevron-right" size={25} color="#8E8E8E" />
         </Pressable>
 
-        <Text style={styles.sectionTitle}>Setup checklist</Text>
+        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.35}>Setup checklist</Text>
 
         <View style={styles.checklist}>
           {items.map((item, index) => (
@@ -457,9 +457,9 @@ export default function CreatorOnboarding() {
           <View style={styles.helperIcon}>
             <MaterialIcons name="info-outline" size={22} color={PLUGGD_ORANGE} />
           </View>
-          <Text style={styles.helperText}>
+          <Text style={styles.helperText} maxFontSizeMultiplier={1.4}>
             You can update roles, profile fields, and tools later in{' '}
-            <Text style={styles.helperLink}>Settings.</Text>
+            <Text style={styles.helperLink} maxFontSizeMultiplier={1.4}>Settings.</Text>
           </Text>
         </View>
       </ScrollView>
@@ -469,7 +469,7 @@ export default function CreatorOnboarding() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Continue setup</Text>
+            <Text style={styles.ctaText} maxFontSizeMultiplier={1.35}>Continue setup</Text>
           )}
         </Pressable>
       </View>
@@ -517,13 +517,13 @@ function ChecklistRow({
       </View>
 
       <View style={styles.checklistTextWrap}>
-        <Text style={styles.checklistTitle}>{item.title}</Text>
-        <Text style={styles.checklistDescription}>{item.subtitle}</Text>
+        <Text style={styles.checklistTitle} maxFontSizeMultiplier={1.3}>{item.title}</Text>
+        <Text style={styles.checklistDescription} maxFontSizeMultiplier={1.4}>{item.subtitle}</Text>
       </View>
 
       <View style={styles.checklistRight}>
         <View style={[styles.statusPill, statusStyle]}>
-          <Text style={[styles.statusText, statusTextStyle]}>{item.status}</Text>
+          <Text style={[styles.statusText, statusTextStyle]} maxFontSizeMultiplier={1.25}>{item.status}</Text>
         </View>
 
         <MaterialIcons name="chevron-right" size={24} color="#737373" />
@@ -620,14 +620,12 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 36,
-    lineHeight: 40,
     letterSpacing: -1.2,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   subtitle: {
     color: '#B3B3B3',
     fontSize: 15,
-    lineHeight: 22,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 10,
     marginBottom: 24,
@@ -688,7 +686,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
-    lineHeight: 22,
   },
   sectionTitle: {
     color: '#FFFFFF',
@@ -730,7 +727,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
-    lineHeight: 21,
   },
   checklistDescription: {
     color: '#A8A8A8',
@@ -796,7 +792,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#B9B9B9',
     fontSize: 15,
-    lineHeight: 22,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   helperLink: {

@@ -34,7 +34,7 @@ for (const token of [
   'FlatList',
   'loadCommunityFeedBundle',
   'FEED_FILTERS',
-  'All',
+  'Latest',
   'Threads',
   'Media',
   'Reposts',
@@ -62,6 +62,9 @@ for (const token of ['Feed', 'Communities', 'Boards', 'Explore', 'Stories', 'Cre
 
 assert.match(service, /loadHomeEditorialStories/, 'Community must load the same approved editorial source as THE PLUG');
 assert.match(screen, /kind="the_plug"/, 'Community must place THE PLUG inside the social discovery sequence');
+assert.match(service, /loadMobileSocialFeed\(\{ mode: 'latest'/, 'Community must request the latest social feed instead of an opaque ranked order');
+assert.match(service, /orderCommunityPostsNewestFirst/, 'Community must defensively keep posts newest-first after enrichment');
+assert.match(service, /createdAtMs\(right\) - createdAtMs\(left\)/, 'Community ordering must compare post timestamps in descending order');
 
 for (const token of [
   'loadMobileSocialFeed',

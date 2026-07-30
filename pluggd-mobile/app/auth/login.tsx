@@ -184,7 +184,7 @@ export default function Login() {
               onPress={() => router.replace('/' as any)}
             >
               <MaterialIcons name="home" size={21} color={theme.colors.text} />
-              <Text style={[styles.topButtonText, { color: theme.colors.text }]}>Home</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.topButtonText, { color: theme.colors.text }]}>Home</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -197,7 +197,7 @@ export default function Login() {
                 size={18}
                 color={theme.colors.accent}
               />
-              <Text style={[styles.modeText, { color: theme.colors.textMuted }]}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.modeText, { color: theme.colors.textMuted }]}>
                 {mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}
               </Text>
             </Pressable>
@@ -205,16 +205,16 @@ export default function Login() {
 
           <View style={styles.brandBlock}>
             <BrandLogo variant="auto" width={116} height={47} />
-            <Text style={[styles.kicker, { color: theme.colors.accent }]}>PLUGGD MOBILE</Text>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Sign in to your music ecosystem.</Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.kicker, { color: theme.colors.accent }]}>PLUGGD MOBILE</Text>
+            <Text maxFontSizeMultiplier={1.35} style={[styles.title, { color: theme.colors.text }]}>Sign in to your music ecosystem.</Text>
+            <Text maxFontSizeMultiplier={1.6} style={[styles.subtitle, { color: theme.colors.textMuted }]}>
               Access your feed, creator tools, wallet, live sessions and saved content.
             </Text>
           </View>
 
           <View style={[styles.formCard, { borderColor: theme.colors.border }]}>
             <View style={styles.appleAuthBlock}>
-              <Text style={[styles.appleAuthEyebrow, { color: theme.colors.textMuted }]}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.appleAuthEyebrow, { color: theme.colors.textMuted }]}>
                 FAST, PRIVATE SIGN-IN
               </Text>
               <AppleSignInButton
@@ -230,7 +230,7 @@ export default function Login() {
 
             <View style={styles.authDivider}>
               <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
-              <Text style={[styles.authDividerText, { color: theme.colors.textSubtle }]}>OR CONTINUE WITH EMAIL</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.authDividerText, { color: theme.colors.textSubtle }]}>OR CONTINUE WITH EMAIL</Text>
               <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />
             </View>
 
@@ -323,7 +323,7 @@ function InputRow({
   const theme = usePluggdTheme();
   return (
     <View style={styles.inputGroup}>
-      <Text style={[styles.inputLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.inputLabel, { color: theme.colors.textMuted }]}>{label}</Text>
       <View
         style={[
           styles.inputShell,
@@ -336,6 +336,7 @@ function InputRow({
         <MaterialIcons name={icon} size={21} color={theme.colors.accent} />
         <TextInput
           {...inputProps}
+          maxFontSizeMultiplier={1.5}
           placeholderTextColor={theme.colors.textSubtle}
           style={[styles.input, { color: theme.colors.text }]}
         />
@@ -431,7 +432,6 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 8,
     fontSize: 32,
-    lineHeight: 35,
     letterSpacing: -0.5,
     fontFamily: pluggdFonts.displayExtraBold,
   },

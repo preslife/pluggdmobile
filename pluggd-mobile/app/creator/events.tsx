@@ -10,14 +10,24 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
+  Text as NativeText,
+  type TextProps,
+  TextInput as NativeTextInput,
+  type TextInputProps,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
 
 const PLUGGD_ORANGE = '#ff6600';
+
+function Text({ maxFontSizeMultiplier = 1.3, ...props }: TextProps) {
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
+}
+
+function TextInput({ maxFontSizeMultiplier = 1.4, ...props }: TextInputProps) {
+  return <NativeTextInput maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
+}
 
 type EventRow = {
   id: string;

@@ -157,8 +157,8 @@ export default function MyMembershipsScreen() {
             <MaterialIcons name="workspace-premium" size={16} color={theme.colors.accent} />
             <Text style={[styles.kicker, { color: theme.colors.accent }]}>Memberships</Text>
           </View>
-          <Text style={[styles.heroTitle, { color: theme.colors.text }]}>Creator access, billed through Apple.</Text>
-          <Text style={[styles.heroBody, { color: theme.colors.textSecondary }]}>
+          <Text maxFontSizeMultiplier={1.35} style={[styles.heroTitle, { color: theme.colors.text }]}>Creator access, billed through Apple.</Text>
+          <Text maxFontSizeMultiplier={1.6} style={[styles.heroBody, { color: theme.colors.textSecondary }]}>
             Subscribe to creators, restore purchases, and manage active memberships without leaving your account hub.
           </Text>
           <View style={styles.heroStats}>
@@ -223,8 +223,8 @@ function StatPill({ label, value }: { label: string; value: string }) {
   const theme = usePluggdTheme();
   return (
     <View style={[styles.statPill, { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.border }]}>
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={[styles.statLabel, { color: theme.colors.textMuted }]}>{label}</Text>
     </View>
   );
 }
@@ -280,14 +280,14 @@ const styles = StyleSheet.create({
   benefit: { flex: 1, gap: 4, paddingRight: 5 },
   benefitNumber: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 10 },
   benefitLabel: { fontFamily: pluggdFonts.satoshiBold, fontSize: 9.5, lineHeight: 13 },
-  hero: { borderRadius: 5, borderWidth: 1, padding: 18, gap: 13, overflow: 'hidden' },
+  hero: { borderRadius: 5, borderWidth: 1, padding: 16, gap: 9, overflow: 'hidden' },
   heroKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   kicker: { fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0 },
-  heroTitle: { fontSize: 34, lineHeight: 37, fontFamily: pluggdFonts.displayExtraBold, letterSpacing: 0 },
-  heroBody: { fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  heroStats: { flexDirection: 'row', gap: 10, marginTop: 2 },
-  statPill: { minWidth: 108, borderRadius: 5, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12 },
-  statValue: { fontSize: 22, lineHeight: 25, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  heroTitle: { fontSize: 28, fontFamily: pluggdFonts.displayExtraBold, letterSpacing: -0.5 },
+  heroBody: { fontSize: 13.5, lineHeight: 19, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', maxWidth: 338 },
+  heroStats: { flexDirection: 'row', gap: 10, marginTop: 1 },
+  statPill: { minWidth: 100, borderRadius: 5, borderWidth: 1, paddingVertical: 8, paddingHorizontal: 10 },
+  statValue: { fontSize: 20, lineHeight: 23, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   statLabel: { marginTop: 1, fontSize: 11, lineHeight: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   errorCard: { borderWidth: 1, borderRadius: 5, padding: 12 },
   errorText: { fontSize: 12, lineHeight: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
