@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RecoveryState } from '../../components/ContentUI';
 import { useAuth } from '../../src/context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobileContent';
@@ -173,10 +174,16 @@ export default function SocialPostDetailRoute() {
         ) : null}
 
         {!query.isLoading && !post ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Post unavailable</Text>
-            <Text style={styles.emptyBody}>This post is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="THREAD ENDED"
+            title="This post is no longer in the feed"
+            body="It may have been removed by its author or moderators. The wider community conversation is still moving."
+            icon="forum"
+            primaryLabel="Open community"
+            onPrimary={() => router.replace('/community' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {post ? (

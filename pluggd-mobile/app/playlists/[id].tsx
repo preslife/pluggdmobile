@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { RecoveryState } from '../../components/ContentUI';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { impactHaptic } from '../../src/design/haptics';
@@ -69,10 +70,16 @@ export default function PlaylistDetailRoute() {
         ) : null}
 
         {!query.isLoading && !playlist ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Playlist unavailable</Text>
-            <Text style={styles.emptyText}>This playlist is private, removed, or unavailable.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="PLAYLIST OFFLINE"
+            title="This sequence is out of rotation"
+            body="It may be private, archived or available under a new link. Keep listening with another hand-picked selection."
+            icon="playlist-play"
+            primaryLabel="Open library"
+            onPrimary={() => router.replace('/library' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {playlist ? (

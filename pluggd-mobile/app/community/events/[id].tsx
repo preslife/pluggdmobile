@@ -6,6 +6,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RecoveryState } from '../../../components/ContentUI';
 import { selectionHaptic } from '../../../src/design/haptics';
 import { supabase } from '../../../src/lib/supabase';
 import { formatDate } from '../../../src/lib/mobileContent';
@@ -117,10 +118,16 @@ export default function CommunityEventRoute() {
         ) : null}
 
         {!query.isLoading && !event ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Community event unavailable</Text>
-            <Text style={styles.emptyBody}>This event is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="COMMUNITY DATE CLOSED"
+            title="This gathering is no longer listed"
+            body="The host may have changed the plan or moved the conversation. Browse the current community calendar."
+            icon="diversity-3"
+            primaryLabel="Explore events"
+            onPrimary={() => router.replace('/events' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {event ? (

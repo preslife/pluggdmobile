@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { DetailTitle } from '../../components/DetailTitle';
+import { RecoveryState } from '../../components/ContentUI';
 import { PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 import { addEventComment, loadEventCultureContext, loadEventDetail, setEventRsvp } from '../../src/features/culture/mobileServices';
 import { MobileStoriesRail } from '../../src/features/culture/MobileStoriesRail';
@@ -256,9 +257,16 @@ export default function EventDetailScreen() {
             )}
           </>
         ) : !detail.isLoading ? (
-          <View style={styles.empty}>
-            <Text style={styles.title}>Event unavailable</Text>
-          </View>
+          <RecoveryState
+            eyebrow="LISTING CLOSED"
+            title="This event is no longer on the bill"
+            body="The organiser may have updated or removed it. Browse the live calendar for what is happening next."
+            icon="event"
+            primaryLabel="Explore events"
+            onPrimary={() => router.replace('/events' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
       </ScrollView>
     </PremiumScreenBackdrop>

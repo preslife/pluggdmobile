@@ -259,6 +259,74 @@ export function EmptyState({ title, body }: { title: string; body?: string }) {
   );
 }
 
+export function RecoveryState({
+  eyebrow = 'SIGNAL INTERRUPTED',
+  title,
+  body,
+  icon = 'graphic-eq',
+  primaryLabel,
+  onPrimary,
+  secondaryLabel,
+  onSecondary,
+}: {
+  eyebrow?: string;
+  title: string;
+  body: string;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  primaryLabel: string;
+  onPrimary: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+}) {
+  const theme = usePluggdTheme();
+  return (
+    <View
+      style={[
+        styles.recovery,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.shadow,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.recoveryIcon,
+          {
+            backgroundColor: theme.colors.surfaceStrong,
+            borderColor: theme.colors.borderAccent,
+          },
+        ]}
+      >
+        <MaterialIcons name={icon} size={28} color={theme.colors.accent} />
+      </View>
+      <Text style={[styles.recoveryEyebrow, { color: theme.colors.accent }]}>{eyebrow}</Text>
+      <Text style={[styles.recoveryTitle, { color: theme.colors.text }]}>{title}</Text>
+      <Text style={[styles.recoveryBody, { color: theme.colors.textMuted }]}>{body}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={primaryLabel}
+        onPress={onPrimary}
+        style={[styles.recoveryPrimary, { backgroundColor: theme.colors.accent }]}
+      >
+        <Text style={styles.recoveryPrimaryText}>{primaryLabel}</Text>
+        <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
+      </Pressable>
+      {secondaryLabel && onSecondary ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={secondaryLabel}
+          onPress={onSecondary}
+          style={[styles.recoverySecondary, { borderColor: theme.colors.border }]}
+        >
+          <Text style={[styles.recoverySecondaryText, { color: theme.colors.text }]}>{secondaryLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -453,5 +521,76 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginTop: 6,
     maxWidth: 340,
+  },
+  recovery: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: pluggdRadii.card,
+    padding: 20,
+    marginTop: 18,
+    alignItems: 'flex-start',
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  recoveryIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  recoveryEyebrow: {
+    fontSize: 10,
+    letterSpacing: 1.6,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontWeight: '900',
+  },
+  recoveryTitle: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontFamily: pluggdFonts.displayBold,
+    fontWeight: pluggdTypography.weights.heavy,
+    marginTop: 8,
+  },
+  recoveryBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontWeight: pluggdTypography.weights.semibold,
+    marginTop: 9,
+    maxWidth: 330,
+  },
+  recoveryPrimary: {
+    minHeight: 48,
+    borderRadius: pluggdRadii.control,
+    paddingHorizontal: 16,
+    marginTop: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  recoveryPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontWeight: '900',
+  },
+  recoverySecondary: {
+    minHeight: 44,
+    borderRadius: pluggdRadii.control,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recoverySecondaryText: {
+    fontSize: 13,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontWeight: pluggdTypography.weights.heavy,
   },
 });

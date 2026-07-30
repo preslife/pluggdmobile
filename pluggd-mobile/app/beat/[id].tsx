@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { EditorialTitle, type EditorialSegment } from '../../components/EditorialTitle';
+import { RecoveryState } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
@@ -91,9 +92,16 @@ export default function BeatDetailScreen() {
         ) : null}
 
         {!loading && !beat ? (
-          <View style={styles.empty}>
-            <Text style={styles.title}>Beat unavailable</Text>
-          </View>
+          <RecoveryState
+            eyebrow="BEAT NOT FOUND"
+            title="This beat has left the market"
+            body="It may have been sold, archived or moved. Explore the current catalogue for another sound that fits."
+            icon="queue-music"
+            primaryLabel="Explore beats"
+            onPrimary={() => router.replace('/market' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {beat ? (

@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ListCard } from '../../components/ContentUI';
+import { ListCard, RecoveryState } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import {
@@ -12,6 +12,7 @@ import {
   addSoundboardItemComment,
   loadSoundboardItemDetails,
   logSoundboardItemPlay,
+  resolveSoundboardPlaybackUrl,
   toggleSavedContent,
   toggleSoundboardItemReaction,
 } from '../../src/features/culture/mobileServices';
@@ -23,6 +24,8 @@ import {
   formatCompact,
   toTrack,
 } from '../../src/lib/mobileContent';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default function SoundboardDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,11 +43,11 @@ export default function SoundboardDetailScreen() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      const boardRes = await (supabase as any)
+      const lookup = String(id || '').trim();
+      const boardQuery = (supabase as any)
         .from('soundboards')
-        .select('id,creator_id,slug,title,description,cover_image_url,item_count,like_count,comment_count,follower_count,last_activity_at,created_at')
-        .or(`id.eq.${id},slug.eq.${id}`)
-        .maybeSingle();
+        .select('id,creator_id,slug,title,description,cover_image_url,item_count,like_count,comment_count,follower_count,last_activity_at,created_at');
+      const boardRes = await (UUID_PATTERN.test(lookup) ? boardQuery.eq('id', lookup) : boardQuery.eq('slug', lookup)).maybeSingle();
       const nextBoard = boardRes.error ? null : (boardRes.data as SoundboardItem | null);
       const detail = nextBoard ? await loadSoundboardItemDetails(nextBoard.id) : { items: [], boardComments: [] };
 
@@ -97,8 +100,18 @@ export default function SoundboardDetailScreen() {
 
   const audioItems = items.filter((item) => item.item_type === 'audio' && item.media_url);
 
-  const playAll = () => {
-    const tracks = audioItems.map((item) => toTrack(item, 'soundboard')).filter(Boolean);
+  const playAll = async () => {
+    const playableItems = await Promise.all(
+      audioItems.map(async (item) => {
+        const playableUrl = await resolveSoundboardPlaybackUrl(item.id, item.media_url);
+        return playableUrl ? { ...item, media_url: playableUrl } : null;
+      }),
+    );
+    const tracks = playableItems.flatMap((item) => {
+      if (!item) return [];
+      const track = toTrack(item, 'soundboard');
+      return track ? [track] : [];
+    });
     if (tracks.length) {
       playQueue(tracks as any);
       return;
@@ -202,7 +215,7 @@ export default function SoundboardDetailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -226,11 +239,18 @@ export default function SoundboardDetailScreen() {
             {board.description ? <Text style={styles.description}>{board.description}</Text> : null}
 
             <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={playAll}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Play audio from ${board.title || 'this soundboard'}`} style={styles.primaryButton} onPress={playAll}>
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Play audio</Text>
               </Pressable>
-              <Pressable style={[styles.secondaryButton, followLoading && styles.disabledButton]} onPress={toggleCreatorFollow} disabled={followLoading}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isFollowingCreator ? 'Unfollow creator' : 'Follow creator'}
+                accessibilityState={{ disabled: followLoading }}
+                style={[styles.secondaryButton, followLoading && styles.disabledButton]}
+                onPress={toggleCreatorFollow}
+                disabled={followLoading}
+              >
                 {followLoading ? (
                   <ActivityIndicator color={PLUGGD_ORANGE} />
                 ) : (
@@ -241,15 +261,15 @@ export default function SoundboardDetailScreen() {
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={saveSoundboard} disabled={saving}>
+              <Pressable accessibilityRole="button" accessibilityLabel={saving ? 'Saving soundboard' : 'Save soundboard'} style={styles.quickActionButton} onPress={saveSoundboard} disabled={saving}>
                 <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Post soundboard to community" style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={shareSoundboard}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share soundboard" style={styles.quickActionButton} onPress={shareSoundboard}>
                 <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
@@ -270,27 +290,30 @@ export default function SoundboardDetailScreen() {
                   }}
                   onPlay={
                     item.item_type === 'audio' && item.media_url
-                      ? () => {
-                          const track = toTrack(item, 'soundboard');
+                      ? async () => {
+                          const playableUrl = await resolveSoundboardPlaybackUrl(item.id, item.media_url);
+                          const track = playableUrl ? toTrack({ ...item, media_url: playableUrl }, 'soundboard') : null;
                           if (track) {
                             void logSoundboardItemPlay(item.id);
                             playTrack(track);
+                            return;
                           }
+                          Alert.alert('Audio unavailable', 'This soundboard preview cannot be reached right now.');
                         }
                       : undefined
                   }
                 />
                 <View style={styles.itemActions}>
-                  <Pressable style={styles.itemAction} onPress={() => reactToItem(item)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`React to ${item.title || 'soundboard item'}`} style={styles.itemAction} onPress={() => reactToItem(item)}>
                     <MaterialIcons name="local-fire-department" size={16} color={PLUGGD_ORANGE} />
                     <Text style={styles.itemActionText}>React</Text>
                   </Pressable>
-                  <Pressable style={styles.itemAction} onPress={() => commentOnItem(item)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Comment on ${item.title || 'soundboard item'}`} style={styles.itemAction} onPress={() => commentOnItem(item)}>
                     <MaterialIcons name="chat-bubble-outline" size={16} color={PLUGGD_ORANGE} />
                     <Text style={styles.itemActionText}>Comment</Text>
                   </Pressable>
                   {item.external_url || item.media_url ? (
-                    <Pressable style={styles.itemAction} onPress={() => Linking.openURL(item.external_url || item.media_url || '')}>
+                    <Pressable accessibilityRole="link" accessibilityLabel={`Open ${item.title || 'soundboard item'}`} style={styles.itemAction} onPress={() => Linking.openURL(item.external_url || item.media_url || '')}>
                       <MaterialIcons name="open-in-new" size={16} color={PLUGGD_ORANGE} />
                       <Text style={styles.itemActionText}>Open</Text>
                     </Pressable>
@@ -309,7 +332,7 @@ export default function SoundboardDetailScreen() {
                 style={styles.commentInput}
                 multiline
               />
-              <Pressable style={styles.commentButton} onPress={submitBoardComment}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Post soundboard comment" style={styles.commentButton} onPress={submitBoardComment}>
                 <Text style={styles.commentButtonText}>Post</Text>
               </Pressable>
             </View>
@@ -322,14 +345,21 @@ export default function SoundboardDetailScreen() {
               ))
             ) : (
               <View style={styles.commentCard}>
-                <Text style={styles.commentBody}>No board comments yet. Reactions and comments from the web-backed soundboard tables appear here.</Text>
+                <Text style={styles.commentBody}>No board comments yet. Start the conversation around this work in progress.</Text>
               </View>
             )}
           </>
         ) : !loading ? (
-          <View style={styles.empty}>
-            <Text style={styles.title}>Soundboard unavailable</Text>
-          </View>
+          <RecoveryState
+            eyebrow="BOARD OFFLINE"
+            title="This soundboard is out of reach"
+            body="It may be private, archived or shared under a new link. Explore active boards and works in progress."
+            icon="dashboard-customize"
+            primaryLabel="Explore soundboards"
+            onPrimary={() => router.replace('/soundboards' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
       </ScrollView>
     </View>

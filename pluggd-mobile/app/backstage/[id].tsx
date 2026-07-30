@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RecoveryState } from '../../components/ContentUI';
 import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { pluggdFonts } from '../../src/design/typography';
 import { contentInitials, formatCompact, formatDate } from '../../src/lib/mobileContent';
@@ -84,10 +85,16 @@ export default function BackstageCommunityDetail() {
         ) : null}
 
         {!detail.isLoading && !community ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Community unavailable</Text>
-            <Text style={styles.emptyBody}>This community is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="BACKSTAGE CLOSED"
+            title="This community has gone quiet"
+            body="The space may be private, archived or shared under a new link. Find another room built around the music you follow."
+            icon="groups"
+            primaryLabel="Explore community"
+            onPrimary={() => router.replace('/community' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {community ? (

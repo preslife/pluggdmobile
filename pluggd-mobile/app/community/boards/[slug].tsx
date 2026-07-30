@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RecoveryState } from '../../../components/ContentUI';
 import { MobileSocialPostCard } from '../../../src/features/culture/MobileSocialPostCard';
 import {
   joinCommunityBoard,
@@ -136,10 +137,16 @@ export default function CommunityBoardRoute() {
         ) : null}
 
         {!boardQuery.isLoading && !board ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Board unavailable</Text>
-            <Text style={styles.emptyBody}>This community board is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="BOARD CLOSED"
+            title="This conversation has moved on"
+            body="The board may be private, archived or living under a new name. Find an active scene and join in."
+            icon="dynamic-feed"
+            primaryLabel="Open community"
+            onPrimary={() => router.replace('/community' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {board ? (

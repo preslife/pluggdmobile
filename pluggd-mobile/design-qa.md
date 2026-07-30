@@ -82,3 +82,45 @@
 - P3 — replace any remotely unavailable creator audio at its source; the client already presents the correct unavailable state.
 
 final result: passed
+
+---
+
+# PLUGGD Remaining-Surfaces Design QA
+
+## Scope
+
+- Surfaces audited on the iPhone 17 Pro Max simulator: Discover, Community, Events, Releases, Mixes, Soundboards, Market, Studio access, Connect Card, Login, Purchases, Wallet, Memberships, Tickets, Library, Settings, release detail, mix detail, event detail, beat detail, beat licensing and soundboard detail.
+- Local product reference: `/Users/apple/PLUGGD_NEW`, including the production soundboard playback resolver and current public experience.
+- Evidence:
+  - `artifacts/qa/remaining-pages-2026-07-30/soundboard-playing.jpg`
+  - `artifacts/qa/remaining-pages-2026-07-30/recovery-beat.jpg`
+  - `artifacts/qa/remaining-pages-2026-07-30/licence-signed-out.jpg`
+
+## Visual-system findings
+
+- Sora display typography, Satoshi supporting typography, warm-black surfaces and restrained PLUGGD orange remain consistent across the audited screens.
+- Existing catalogue, discovery, creator, community and commerce surfaces already use the selected mobile system; no legacy web-parity redesign was reintroduced.
+- Purchases now uses four image-led gateways rather than an underdesigned empty panel.
+- Public-profile, missing-content and restricted-commerce states now retain the same hierarchy and polish as populated screens.
+- Valid detail pages preserve artwork-first presentation, readable metadata, 44pt actions and the persistent player/dock separation.
+
+## Functional findings resolved
+
+- Soundboard slugs no longer enter the UUID query path.
+- Relative soundboard media paths now use the same secure playback resolver as the live web app.
+- Play-all resolves every playable soundboard item before building the queue.
+- Soundboard play, follow, save, post, share, react and comment actions expose clear VoiceOver labels.
+- Signed-out licence review no longer leaks a backend response; it explains the authentication step and links directly to sign-in.
+- Missing beats, mixes, soundboards, events, posts, communities, boards, playlists, videos, products and sample packs now use a shared premium recovery treatment with real onward navigation.
+- The recovery primary action was exercised in the simulator and reached the live market catalogue.
+
+## Verification
+
+- TypeScript: passed.
+- Mobile contract suite: passed through all product contracts and TypeScript.
+- Expo Doctor: 18/18 passed.
+- Native iOS simulator build and launch: passed.
+- Runtime accessibility snapshot: recovery and licence actions are labelled and actionable.
+- One pre-existing Hermes dependency-analysis warning remains; it is a CocoaPods build-script warning and does not affect runtime or submission behavior.
+
+final result: passed

@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { ListCard } from '../../components/ContentUI';
+import { ListCard, RecoveryState } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { useListeningRoomOrientation } from '../../src/lib/orientation';
@@ -259,9 +259,16 @@ export default function MixDetailScreen() {
             ))}
           </>
         ) : !loading ? (
-          <View style={styles.empty}>
-            <Text style={styles.title}>Mix unavailable</Text>
-          </View>
+          <RecoveryState
+            eyebrow="ROOM CLOSED"
+            title="This mix is off the air"
+            body="The session may have moved or returned to the archive. Step into another listening room without losing your place."
+            icon="headphones"
+            primaryLabel="Explore mixes"
+            onPrimary={() => router.replace('/mixes' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
       </ScrollView>
     </View>

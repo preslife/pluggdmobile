@@ -458,10 +458,55 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
             <Text style={[styles.stateText, { color: theme.colors.textMuted }]}>Loading profile...</Text>
           </View>
         ) : error || !profile ? (
-          <View style={styles.centerState}>
-            <MaterialIcons name="person-search" size={34} color={theme.colors.textSubtle} />
-            <Text style={[styles.stateTitle, { color: theme.colors.text }]}>Profile unavailable</Text>
-            <Text style={[styles.stateText, { color: theme.colors.textMuted }]}>{error ?? 'This profile could not be loaded.'}</Text>
+          <View style={styles.unavailableScreen}>
+            <View style={styles.unavailableCopy}>
+              <Text style={styles.unavailableEyebrow}>OFF THE AIR</Text>
+              <Text style={[styles.unavailableTitle, { color: theme.colors.text }]}>
+                This profile isn’t in the signal.
+              </Text>
+              <Text style={[styles.unavailableBody, { color: theme.colors.textMuted }]}>
+                It may have moved, changed handle or not be public yet. There is still plenty worth hearing.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.unavailableSignal,
+                { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+              ]}
+            >
+              <View style={styles.unavailableSignalIcon}>
+                <MaterialIcons name="graphic-eq" size={27} color="#0A0806" />
+              </View>
+              <View style={styles.unavailableSignalCopy}>
+                <Text style={[styles.unavailableSignalTitle, { color: theme.colors.text }]}>
+                  Find your next artist
+                </Text>
+                <Text style={[styles.unavailableSignalBody, { color: theme.colors.textMuted }]}>
+                  Explore releases, scenes and creators selected for discovery.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.unavailableActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Explore creators"
+                onPress={() => router.replace('/discover' as any)}
+                style={styles.unavailablePrimary}
+              >
+                <Text style={styles.unavailablePrimaryText}>Explore creators</Text>
+                <MaterialIcons name="arrow-forward" size={20} color="#0A0806" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Go to home"
+                onPress={() => router.replace('/(tabs)' as any)}
+                style={[styles.unavailableSecondary, { borderColor: theme.colors.border }]}
+              >
+                <Text style={[styles.unavailableSecondaryText, { color: theme.colors.text }]}>Back home</Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <>
@@ -706,6 +751,105 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     textAlign: 'center',
     fontWeight: '600',
+  },
+  unavailableScreen: {
+    minHeight: 710,
+    paddingHorizontal: 20,
+    paddingTop: 100,
+    paddingBottom: 44,
+  },
+  unavailableCopy: {
+    maxWidth: 335,
+  },
+  unavailableEyebrow: {
+    color: PLUGGD_ORANGE,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.8,
+    fontWeight: '800',
+  },
+  unavailableTitle: {
+    marginTop: 9,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 36,
+    lineHeight: 41,
+    fontWeight: '900',
+    letterSpacing: -1.25,
+  },
+  unavailableBody: {
+    marginTop: 13,
+    maxWidth: 325,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  unavailableSignal: {
+    minHeight: 106,
+    marginTop: 34,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  unavailableSignalIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 5,
+    backgroundColor: PLUGGD_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableSignalCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  unavailableSignalTitle: {
+    fontFamily: pluggdFonts.displayBold,
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '800',
+  },
+  unavailableSignalBody: {
+    marginTop: 4,
+    fontFamily: pluggdFonts.satoshiMedium,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  unavailableActions: {
+    marginTop: 24,
+    gap: 10,
+  },
+  unavailablePrimary: {
+    minHeight: 52,
+    borderRadius: 5,
+    paddingHorizontal: 17,
+    backgroundColor: PLUGGD_ORANGE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  unavailablePrimaryText: {
+    color: '#0A0806',
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  unavailableSecondary: {
+    minHeight: 48,
+    borderRadius: 5,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableSecondaryText: {
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 14,
+    fontWeight: '800',
   },
   cover: {
     height: 190,

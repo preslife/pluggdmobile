@@ -187,7 +187,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
           >
             <View style={styles.heroGhost}>
               <MaterialIcons name="album" size={16} color={ed.cream} />
-              <Text style={styles.heroGhostText}>Enter Listening Room</Text>
+              <Text style={styles.heroGhostText}>Enter room</Text>
             </View>
           </EdPressable>
           <EdPressable

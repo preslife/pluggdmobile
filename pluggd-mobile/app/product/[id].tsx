@@ -6,6 +6,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { RecoveryState } from '../../components/ContentUI';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { impactHaptic } from '../../src/design/haptics';
 import { supabase } from '../../src/lib/supabase';
@@ -141,10 +142,16 @@ export default function ProductDetailRoute() {
         ) : null}
 
         {!query.isLoading && !product ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Product unavailable</Text>
-            <Text style={styles.emptyText}>This store item is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="SOLD OUT OR ARCHIVED"
+            title="This item has left the store"
+            body="The creator may have sold through, paused the listing or replaced it. Browse what is currently available."
+            icon="storefront"
+            primaryLabel="Explore market"
+            onPrimary={() => router.replace('/market' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {product ? (

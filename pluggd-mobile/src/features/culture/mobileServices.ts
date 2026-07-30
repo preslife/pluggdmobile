@@ -2032,6 +2032,31 @@ export async function loadSoundboardItemDetails(soundboardId: string): Promise<{
   };
 }
 
+export async function resolveSoundboardPlaybackUrl(
+  soundboardItemId: string,
+  fallbackUrl?: string | null,
+): Promise<string | null> {
+  const itemId = soundboardItemId.trim();
+  if (!itemId) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('resolve-soundboard-playback-url', {
+      body: {
+        soundboardItemId: itemId,
+        intent: 'stream',
+      },
+    });
+    if (!error && typeof data?.signedUrl === 'string' && data.signedUrl.trim()) {
+      return data.signedUrl.trim();
+    }
+  } catch {
+    // A public absolute URL remains a safe fallback for legacy soundboard rows.
+  }
+
+  const fallback = fallbackUrl?.trim() || '';
+  return /^https?:\/\//i.test(fallback) ? fallback : null;
+}
+
 export async function addSoundboardComment(soundboardId: string, body: string) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: 'Sign in to comment.' };

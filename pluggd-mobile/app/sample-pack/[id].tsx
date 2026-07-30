@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { ListCard } from '../../components/ContentUI';
+import { ListCard, RecoveryState } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
@@ -198,9 +198,16 @@ export default function SamplePackDetailScreen() {
             ))}
           </>
         ) : !loading ? (
-          <View style={styles.empty}>
-            <Text style={styles.title}>Pack unavailable</Text>
-          </View>
+          <RecoveryState
+            eyebrow="PACK ARCHIVED"
+            title="This sound pack is off the shelf"
+            body="It may have been retired or moved by its creator. Explore the market for fresh samples and tools."
+            icon="library-music"
+            primaryLabel="Explore market"
+            onPrimary={() => router.replace('/market' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
       </ScrollView>
     </View>

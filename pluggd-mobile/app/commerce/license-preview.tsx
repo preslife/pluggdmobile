@@ -88,6 +88,7 @@ export default function LicencePreviewScreen() {
   const [prepared, setPrepared] = useState<PreparedLicence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [legalName, setLegalName] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -107,11 +108,19 @@ export default function LicencePreviewScreen() {
     }
     setLoading(true);
     setError(null);
+    setNeedsSignIn(false);
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      setNeedsSignIn(true);
+      setError('Sign in to review verified licence terms and continue to checkout.');
+      setLoading(false);
+      return;
+    }
     const { data, error: requestError } = await supabase.functions.invoke('prepare-beat-license', {
       body: { beatId, licenseOptionId },
     });
     if (requestError) {
-      setError(requestError.message || 'Licence details are unavailable.');
+      setError('We could not load the verified licence terms right now. No payment has been started.');
       setLoading(false);
       return;
     }
@@ -207,11 +216,16 @@ export default function LicencePreviewScreen() {
         {loading || policy.loading ? <ActivityIndicator color={ORANGE} style={styles.loader} /> : null}
         {error ? (
           <View style={styles.unavailable}>
-            <MaterialIcons name="verified-user" size={30} color={ORANGE} />
-            <Text style={styles.title}>Terms not available.</Text>
+            <MaterialIcons name={needsSignIn ? 'lock-person' : 'verified-user'} size={30} color={ORANGE} />
+            <Text style={styles.title}>{needsSignIn ? 'Sign in to review the terms.' : 'Terms temporarily unavailable.'}</Text>
             <Text style={styles.body}>{error}</Text>
-            <Pressable accessibilityRole="button" style={styles.secondary} onPress={prepare}>
-              <Text style={styles.secondaryText}>Try again</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={needsSignIn ? 'Sign in to review licence' : 'Try loading licence terms again'}
+              style={styles.secondary}
+              onPress={needsSignIn ? () => router.push('/auth/login' as any) : prepare}
+            >
+              <Text style={styles.secondaryText}>{needsSignIn ? 'Sign in' : 'Try again'}</Text>
             </Pressable>
           </View>
         ) : null}

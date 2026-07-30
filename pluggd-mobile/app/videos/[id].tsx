@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { RecoveryState } from '../../components/ContentUI';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { impactHaptic } from '../../src/design/haptics';
 import { supabase } from '../../src/lib/supabase';
@@ -78,10 +79,16 @@ export default function VideoDetailRoute() {
         ) : null}
 
         {!query.isLoading && !video ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Video unavailable</Text>
-            <Text style={styles.emptyText}>This video is unavailable or has been removed.</Text>
-          </View>
+          <RecoveryState
+            eyebrow="SCREEN DARK"
+            title="This video is no longer showing"
+            body="The creator may have removed or replaced it. Discover another visual from the PLUGGD scene."
+            icon="smart-display"
+            primaryLabel="Open Discover"
+            onPrimary={() => router.replace('/discover' as any)}
+            secondaryLabel="Go back"
+            onSecondary={() => router.back()}
+          />
         ) : null}
 
         {video ? (
