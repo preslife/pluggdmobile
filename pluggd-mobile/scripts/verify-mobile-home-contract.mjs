@@ -27,6 +27,11 @@ assert.ok(
 );
 assert.match(home, /style=\{styles\.sceneFrame\}[\s\S]*style=\{styles\.sceneHit\}/, 'Home scene artwork must use a fixed visual frame with a full-frame hit target');
 assert.match(home, /style=\{styles\.mixSurfaceFrame\}[\s\S]*style=\{styles\.mixSurfaceHit\}/, 'Home mix artwork must use a fixed visual frame with a full-frame hit target');
+assert.match(home, /style=\{\[styles\.waveFrame, style\]\}[\s\S]*style=\{styles\.waveHit\}/, 'Home Next Wave cards must use fixed editorial frames with full-frame hit targets');
+assert.match(home, /style=\{styles\.soundboardFrame\}[\s\S]*style=\{styles\.soundboardHit\}/, 'Home soundboards must use fixed artwork frames with full-frame hit targets');
+assert.match(home, /style=\{\[styles\.eventFrame[\s\S]*style=\{\(\{ pressed \}\) => \[styles\.eventHit/, 'Home event media and details must live in a fixed frame independent of interaction');
+assert.match(home, /style=\{styles\.signalFrame\}[\s\S]*style=\{\(\{ pressed \}\) => \[styles\.signalHit/, 'Home live room must use a stable complete-row frame');
+assert.match(home, /styles\.worldFrame[\s\S]*styles\.worldHit/, 'Home market gateways must use fixed visual frames with full-frame hit targets');
 assert.match(home, /\/auth\/signup[\s\S]*\/auth\/login/, 'signed-out Home must provide working Join and Sign in routes');
 assert.match(home, /pathname:\s*'\/live\/session'[\s\S]*roomId/, 'Home live rooms must use the real session route');
 assert.doesNotMatch(home, /pulseRow|Platform pulse|Backstage communities|Creators to know/, 'Home must not regress to low-value platform stats or duplicated people rails');

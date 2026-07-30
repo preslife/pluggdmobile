@@ -93,14 +93,24 @@ final result: passed
 - Rebuilt scene gateways as fixed 176×136pt visual frames; artwork, gradient and copy now fill the complete card instead of collapsing inside an empty frame.
 - Rebuilt mix cards as fixed 176pt artwork frames with separate 48pt detail actions; artwork now fills the surface without the blank lower panel seen in the simulator.
 - Added explicit non-shrinking widths to horizontal scene and mix rails so card density cannot collapse at runtime.
+- Rebuilt the complete lower Home sequence rather than stopping at the first affected rails:
+  - Next Wave uses a fixed 224pt editorial mosaic plus fixed 132pt supporting cards.
+  - Soundboards use non-shrinking 224×158pt artwork frames with copy and interaction layered independently.
+  - The featured event preserves its complete poster, information and RSVP treatment inside a fixed frame.
+  - The live-room row is fixed at 88pt with an independent full-row target.
+  - Market gateways use fixed 180pt visual frames and cannot collapse when only one gateway is available.
 - Preserved independent play/open accessibility targets and selection haptics.
 
 ## Verification
 
 - Compared against the user-supplied iPhone 17 Pro Max capture.
-- Inspected the ticker, scene rail and mix rail in the running simulator after hot reload.
+- Inspected the ticker, scene rail, mix rail, Next Wave mosaic, Soundboards rail, event, live room and market gateway in the running simulator after hot reload.
 - TypeScript: passed.
-- Evidence: `artifacts/qa/home-page-polish-2026-07-30/`.
+- Evidence:
+  - `artifacts/qa/home-page-polish-2026-07-30/01-home-top-ticker.jpg`
+  - `artifacts/qa/home-page-polish-2026-07-30/02-scenes-mixes-fixed.jpg`
+  - `artifacts/qa/home-page-polish-2026-07-30/03-next-wave-soundboards-fixed.jpg`
+  - `artifacts/qa/home-page-polish-2026-07-30/04-events-market-fixed.jpg`
 
 final result: passed
 

@@ -519,25 +519,28 @@ export function MusicDiscoveryHome() {
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.soundboardRail}>
               {feed.data.soundboards.slice(0, 5).map((board) => (
-                <EdPressable
-                  key={board.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open soundboard ${board.title || 'Untitled soundboard'}`}
-                  onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)}
-                  style={styles.soundboardCard}
-                >
+                <View key={board.id} style={styles.soundboardFrame}>
                   {board.cover_image_url ? (
                     <PluggdImage uri={board.cover_image_url} style={styles.soundboardImage} resizeMode="cover" displayWidth={520} />
                   ) : (
                     <View style={[styles.soundboardImage, styles.artFallback]}><MaterialIcons name="dashboard-customize" size={32} color={ORANGE} /></View>
                   )}
                   <LinearGradient colors={['rgba(5,4,3,0.03)', 'rgba(5,4,3,0.88)']} style={StyleSheet.absoluteFillObject} />
-                  <Text style={styles.soundboardKicker}>
-                    {board.item_count || 0} PIECES · {board.comment_count || 0} COMMENTS
-                  </Text>
-                  <Text style={styles.soundboardTitle} numberOfLines={2}>{board.title || 'Untitled soundboard'}</Text>
-                  <Text style={styles.soundboardAction}>Open board <MaterialIcons name="arrow-forward" size={12} color={ORANGE} /></Text>
-                </EdPressable>
+                  <View style={styles.soundboardCopy}>
+                    <Text style={styles.soundboardKicker}>
+                      {board.item_count || 0} PIECES · {board.comment_count || 0} COMMENTS
+                    </Text>
+                    <Text style={styles.soundboardTitle} numberOfLines={2}>{board.title || 'Untitled soundboard'}</Text>
+                    <Text style={styles.soundboardAction}>Open board <MaterialIcons name="arrow-forward" size={12} color={ORANGE} /></Text>
+                  </View>
+                  <EdPressable
+                    haptic={false}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open soundboard ${board.title || 'Untitled soundboard'}`}
+                    onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)}
+                    style={styles.soundboardHit}
+                  />
+                </View>
               ))}
             </ScrollView>
           </>
@@ -552,15 +555,7 @@ export function MusicDiscoveryHome() {
               onAction={() => router.push('/events' as any)}
             />
             {featuredEvent ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open event ${featuredEvent.title || 'PLUGGD event'}`}
-                onPress={() => {
-                  selectionHaptic();
-                  router.push(`/events/${featuredEvent.id}` as any);
-                }}
-                style={({ pressed }) => [styles.eventCard, !featuredEvent.cover_image_url && styles.eventCardCompact, pressed && styles.pressed]}
-              >
+              <View style={[styles.eventFrame, !featuredEvent.cover_image_url && styles.eventFrameCompact]}>
                 {featuredEvent.cover_image_url ? (
                   <View style={styles.eventMedia}>
                     <PluggdImage uri={featuredEvent.cover_image_url} style={styles.eventImage} resizeMode="cover" displayWidth={900} />
@@ -579,36 +574,44 @@ export function MusicDiscoveryHome() {
                     <MaterialIcons name="arrow-forward" size={15} color="#100B07" />
                   </View>
                 </View>
-              </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open event ${featuredEvent.title || 'PLUGGD event'}`}
+                  onPress={() => {
+                    selectionHaptic();
+                    router.push(`/events/${featuredEvent.id}` as any);
+                  }}
+                  style={({ pressed }) => [styles.eventHit, pressed && styles.pressed]}
+                />
+              </View>
             ) : null}
             {featuredRoom ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Join ${featuredRoom.title || 'PLUGGD room'}`}
-                onPress={() => {
-                  selectionHaptic();
-                  router.push({ pathname: '/live/session', params: { roomId: featuredRoom.id } } as any);
-                }}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <View style={styles.signalRow}>
-                  <View style={styles.liveDot} />
-                  {featuredRoom.thumbnail_url ? (
-                    <PluggdImage uri={featuredRoom.thumbnail_url} style={styles.signalThumb} resizeMode="cover" displayWidth={180} />
-                  ) : (
-                    <View style={[styles.signalThumb, styles.artFallback]}><MaterialIcons name="mic" size={20} color={ORANGE} /></View>
-                  )}
-                  <View style={styles.signalCopy}>
-                    <Text style={styles.signalKicker}>{featuredRoom.status === 'live' ? 'LIVE NOW' : 'UPCOMING ROOM'}</Text>
-                    <Text style={styles.signalTitle} numberOfLines={1}>{featuredRoom.title || 'Live room'}</Text>
-                    <Text style={styles.signalMeta} numberOfLines={1}>{roomMeta(featuredRoom)}</Text>
-                  </View>
-                  <View style={styles.joinRoomAction}>
-                    <Text style={styles.joinRoomText}>Join</Text>
-                    <MaterialIcons name="arrow-forward" size={18} color={ORANGE} />
-                  </View>
+              <View style={styles.signalFrame}>
+                <View style={styles.liveDot} />
+                {featuredRoom.thumbnail_url ? (
+                  <PluggdImage uri={featuredRoom.thumbnail_url} style={styles.signalThumb} resizeMode="cover" displayWidth={180} />
+                ) : (
+                  <View style={[styles.signalThumb, styles.artFallback]}><MaterialIcons name="mic" size={20} color={ORANGE} /></View>
+                )}
+                <View style={styles.signalCopy}>
+                  <Text style={styles.signalKicker}>{featuredRoom.status === 'live' ? 'LIVE NOW' : 'UPCOMING ROOM'}</Text>
+                  <Text style={styles.signalTitle} numberOfLines={1}>{featuredRoom.title || 'Live room'}</Text>
+                  <Text style={styles.signalMeta} numberOfLines={1}>{roomMeta(featuredRoom)}</Text>
                 </View>
-              </Pressable>
+                <View style={styles.joinRoomAction}>
+                  <Text style={styles.joinRoomText}>Join</Text>
+                  <MaterialIcons name="arrow-forward" size={18} color={ORANGE} />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Join ${featuredRoom.title || 'PLUGGD room'}`}
+                  onPress={() => {
+                    selectionHaptic();
+                    router.push({ pathname: '/live/session', params: { roomId: featuredRoom.id } } as any);
+                  }}
+                  style={({ pressed }) => [styles.signalHit, pressed && styles.pressed]}
+                />
+              </View>
             ) : null}
           </>
         ) : null}
@@ -777,12 +780,7 @@ function WaveCard({
   lead?: boolean;
 }) {
   return (
-    <EdPressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${item.title}, ${item.label.toLowerCase()}`}
-      onPress={onPress}
-      style={[styles.waveCard, style]}
-    >
+    <View style={[styles.waveFrame, style]}>
       <PluggdImage uri={item.imageUrl} style={styles.waveImage} resizeMode="cover" displayWidth={lead ? 620 : 360} />
       <LinearGradient colors={['rgba(5,4,3,0.04)', 'rgba(5,4,3,0.92)']} style={StyleSheet.absoluteFillObject} />
       <View style={styles.waveCopy}>
@@ -790,7 +788,14 @@ function WaveCard({
         <Text style={[styles.waveTitle, lead && styles.waveTitleLead]} numberOfLines={1}>{item.title}</Text>
         <Text style={styles.waveSubtitle} numberOfLines={lead ? 2 : 1}>{item.subtitle}</Text>
       </View>
-    </EdPressable>
+      <EdPressable
+        haptic={false}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${item.title}, ${item.label.toLowerCase()}`}
+        onPress={onPress}
+        style={styles.waveHit}
+      />
+    </View>
   );
 }
 
@@ -812,29 +817,28 @@ function MarketGateway({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={action}
-      onPress={() => {
-        selectionHaptic();
-        onPress();
-      }}
-      style={({ pressed }) => [{ width: wide ? '100%' : '48.5%' }, pressed && styles.pressed]}
-    >
-      <View style={styles.worldCard}>
-        <PluggdImage uri={image} style={styles.worldImage} resizeMode="cover" displayWidth={480} />
-        <LinearGradient colors={['rgba(5,4,3,0.08)', 'rgba(5,4,3,0.94)']} style={StyleSheet.absoluteFillObject} />
-        <Text style={styles.worldIndex}>{index}</Text>
-        <View>
-          <Text style={styles.worldTitle}>{title}</Text>
-          <Text style={styles.worldMeta}>{meta}</Text>
-          <View style={styles.worldAction}>
-            <Text style={styles.worldActionText}>{action}</Text>
-            <MaterialIcons name="arrow-forward" size={14} color={ORANGE} />
-          </View>
+    <View style={[styles.worldFrame, { width: wide ? '100%' : '48.5%' }]}>
+      <PluggdImage uri={image} style={styles.worldImage} resizeMode="cover" displayWidth={480} />
+      <LinearGradient colors={['rgba(5,4,3,0.08)', 'rgba(5,4,3,0.94)']} style={StyleSheet.absoluteFillObject} />
+      <Text style={styles.worldIndex}>{index}</Text>
+      <View>
+        <Text style={styles.worldTitle}>{title}</Text>
+        <Text style={styles.worldMeta}>{meta}</Text>
+        <View style={styles.worldAction}>
+          <Text style={styles.worldActionText}>{action}</Text>
+          <MaterialIcons name="arrow-forward" size={14} color={ORANGE} />
         </View>
       </View>
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={action}
+        onPress={() => {
+          selectionHaptic();
+          onPress();
+        }}
+        style={({ pressed }) => [styles.worldHit, pressed && styles.pressed]}
+      />
+    </View>
   );
 }
 
@@ -974,27 +978,31 @@ const styles = StyleSheet.create({
   storyExcerpt: { color: '#D6CFC5', fontFamily: 'Satoshi-Regular', fontSize: 11.5, lineHeight: 16, marginTop: 7 },
   storyAction: { minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 },
   storyActionText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12 },
-  waveMosaic: { flexDirection: 'row', gap: 8, minHeight: 224 },
-  waveStack: { flex: 0.78, gap: 8 },
-  waveCard: { borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end' },
-  waveLead: { flex: 1.22, minHeight: 224 },
-  waveSmall: { flex: 1, minHeight: 108 },
+  waveMosaic: { height: 224, minHeight: 224, maxHeight: 224, flexDirection: 'row', gap: 8 },
+  waveStack: { flex: 0.78, height: 224, minHeight: 224, maxHeight: 224, gap: 8 },
+  waveFrame: { position: 'relative', borderRadius: 5, overflow: 'hidden' },
+  waveLead: { flex: 1.22, height: 224, minHeight: 224, maxHeight: 224 },
+  waveSmall: { flex: 1, height: 108, minHeight: 108, maxHeight: 108 },
   waveFoot: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  waveFootCard: { flex: 1, minHeight: 132 },
+  waveFootCard: { flex: 1, height: 132, minHeight: 132, maxHeight: 132 },
   waveImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
-  waveCopy: { padding: 10 },
+  waveCopy: { position: 'absolute', zIndex: 2, left: 10, right: 10, bottom: 10 },
+  waveHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   waveLabel: { alignSelf: 'flex-start', color: '#100B07', backgroundColor: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 7.5, letterSpacing: 0.8, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 2, overflow: 'hidden' },
   waveTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 12.5, lineHeight: 16, marginTop: 6 },
   waveTitleLead: { fontSize: 17, lineHeight: 21 },
   waveSubtitle: { color: '#D6CFC5', fontFamily: 'Satoshi-Medium', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
-  soundboardRail: { gap: 12, paddingRight: 20 },
-  soundboardCard: { width: 224, height: 158, borderRadius: 5, overflow: 'hidden', justifyContent: 'flex-end', padding: 13 },
+  soundboardRail: { gap: 12, paddingRight: 20, alignItems: 'flex-start' },
+  soundboardFrame: { width: 224, minWidth: 224, maxWidth: 224, height: 158, minHeight: 158, maxHeight: 158, flexShrink: 0, position: 'relative', borderRadius: 5, overflow: 'hidden' },
   soundboardImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
+  soundboardCopy: { position: 'absolute', zIndex: 2, left: 13, right: 13, bottom: 13 },
+  soundboardHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   soundboardKicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1 },
   soundboardTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 17, lineHeight: 21, marginTop: 4 },
   soundboardAction: { color: '#E8E0D5', fontFamily: 'Satoshi-Bold', fontSize: 10, lineHeight: 16, marginTop: 4 },
-  eventCard: { minHeight: 244, borderRadius: 5, overflow: 'hidden', backgroundColor: '#171411', borderWidth: 1, borderColor: '#302A24' },
-  eventCardCompact: { minHeight: 150, borderWidth: 1, borderColor: '#332D26' },
+  eventFrame: { height: 244, minHeight: 244, maxHeight: 244, position: 'relative', borderRadius: 5, overflow: 'hidden', backgroundColor: '#171411', borderWidth: 1, borderColor: '#302A24' },
+  eventFrameCompact: { height: 150, minHeight: 150, maxHeight: 150, borderColor: '#332D26' },
+  eventHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   eventMedia: { height: 134, overflow: 'hidden' },
   eventImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
   eventDate: { position: 'absolute', left: 12, top: 12, backgroundColor: ORANGE, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 3 },
@@ -1005,7 +1013,8 @@ const styles = StyleSheet.create({
   eventMeta: { color: '#E2DBD1', fontFamily: 'Satoshi-Medium', fontSize: 11, marginTop: 5 },
   eventCta: { minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ORANGE, borderRadius: 22, paddingHorizontal: 14, marginTop: 10 },
   eventCtaText: { color: '#100B07', fontFamily: 'Satoshi-Black', fontSize: 11 },
-  signalRow: { minHeight: 88, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingHorizontal: 11, paddingVertical: 10, borderWidth: 1, borderColor: '#302A24', borderRadius: 5, backgroundColor: '#12100E' },
+  signalFrame: { height: 88, minHeight: 88, maxHeight: 88, position: 'relative', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingHorizontal: 11, paddingVertical: 10, borderWidth: 1, borderColor: '#302A24', borderRadius: 5, backgroundColor: '#12100E' },
+  signalHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   liveDot: { position: 'absolute', left: -1, top: 18, width: 3, height: 28, borderTopRightRadius: 3, borderBottomRightRadius: 3, backgroundColor: ORANGE },
   signalThumb: { width: 52, height: 52, borderRadius: 4, backgroundColor: '#211C17' },
   signalCopy: { flex: 1, minWidth: 0 },
@@ -1016,7 +1025,8 @@ const styles = StyleSheet.create({
   joinRoomAction: { minWidth: 54, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 },
   contextGrid: { width: '100%', flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   contextGridSingle: { flexDirection: 'column' },
-  worldCard: { height: 180, borderRadius: 5, padding: 13, justifyContent: 'space-between', overflow: 'hidden', backgroundColor: '#171411' },
+  worldFrame: { height: 180, minHeight: 180, maxHeight: 180, position: 'relative', flexShrink: 0, borderRadius: 5, padding: 13, justifyContent: 'space-between', overflow: 'hidden', backgroundColor: '#171411' },
+  worldHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
   worldImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#211C17' },
   worldIndex: { color: '#DED7CC', fontFamily: 'Satoshi-Black', fontSize: 9, letterSpacing: 1 },
   worldTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 16 },
