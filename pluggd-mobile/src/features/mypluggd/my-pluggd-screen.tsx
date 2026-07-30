@@ -284,9 +284,9 @@ export function MyPluggdScreen() {
         ]}
       >
         <PremiumScreenHeader
-          eyebrow="COMMUNITY"
-          title="Community"
-          subtitle="Feed, Circles, Library and Activity for your culture graph."
+          eyebrow="YOUR WORLD"
+          title="My PLUGGD"
+          subtitle="Your feed, circles, collection and activity—kept in one place."
           tone="community"
           style={styles.communityHeaderTitle}
         />
@@ -623,7 +623,7 @@ function AvatarMenuModal({
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" accessibilityLabel="Close profile menu" style={styles.menuOverlay} onPress={onClose}>
         <Pressable style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
-          <Text style={[styles.menuTitle, { color: theme.colors.text }]}>COMMUNITY</Text>
+          <Text style={[styles.menuTitle, { color: theme.colors.text }]}>MY PLUGGD</Text>
           {menu.map((item) => (
             <Pressable
               key={item.label}
@@ -882,7 +882,7 @@ function BuildFeedPanel({ onFind, onCircles }: { onFind: () => void; onCircles: 
   return (
     <View style={[styles.buildPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Build your feed</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Follow creators, join circles, and save music to make Community yours.</Text>
+      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Follow creators, join circles, and save music to make My PLUGGD yours.</Text>
       <View style={styles.emptyActions}>
         <Pressable accessibilityRole="button" accessibilityLabel="Find creators" style={[styles.primarySmall, { backgroundColor: theme.colors.accent }]} onPress={onFind}>
           <Text style={styles.primarySmallText}>Find creators</Text>

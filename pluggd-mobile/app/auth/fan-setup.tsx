@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
+import { registerMobilePushToken } from '../../src/lib/localNotifications';
 
 const PLUGGD_ORANGE = '#ff6600';
 
@@ -222,6 +223,13 @@ export default function FanSetup() {
         }
       }
 
+      if (notifications) {
+        const registration = await registerMobilePushToken({ requestPermission: true });
+        if (!registration.success) {
+          console.warn('Fan setup completed without push registration:', registration.error);
+        }
+      }
+
       router.replace('/');
     } catch (error: any) {
       console.error('Failed to save fan setup:', error);
@@ -276,6 +284,9 @@ export default function FanSetup() {
             return (
               <Pressable
                 key={genre}
+                accessibilityRole="checkbox"
+                accessibilityLabel={`${genre} genre`}
+                accessibilityState={{ checked: selected }}
                 onPress={() => toggleGenre(genre)}
                 style={[styles.genreChip, selected && styles.genreChipSelected]}
               >
@@ -303,7 +314,7 @@ export default function FanSetup() {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Suggested creators</Text>
-            <Pressable style={styles.seeAllButton} onPress={() => router.push('/search' as any)}>
+            <Pressable accessibilityRole="button" accessibilityLabel="See all suggested creators" style={styles.seeAllButton} onPress={() => router.push('/search' as any)}>
               <Text style={styles.seeAllText}>See all</Text>
               <MaterialIcons name="chevron-right" size={22} color={PLUGGD_ORANGE} />
             </Pressable>
@@ -343,6 +354,9 @@ export default function FanSetup() {
                   </View>
 
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isFollowing ? 'Unfollow' : 'Follow'} ${creator.name}`}
+                    accessibilityState={{ selected: isFollowing }}
                     onPress={() => toggleFollow(creator.id)}
                     style={[
                       styles.followButton,
@@ -373,7 +387,14 @@ export default function FanSetup() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={handleFinish} disabled={saving}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Finish fan setup"
+          accessibilityState={{ disabled: saving }}
+          style={styles.cta}
+          onPress={handleFinish}
+          disabled={saving}
+        >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -395,7 +416,13 @@ type ToggleRowProps = {
 
 function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) {
   return (
-    <Pressable style={styles.toggleRow} onPress={onPress}>
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={title}
+      accessibilityState={{ checked: enabled }}
+      style={styles.toggleRow}
+      onPress={onPress}
+    >
       <View style={styles.toggleIconBox}>
         <MaterialIcons name={icon} size={25} color={PLUGGD_ORANGE} />
       </View>

@@ -156,9 +156,9 @@ for (const token of [
 }
 
 assert.doesNotMatch(
-  `${dock}\n${header}\n${communityRoute}\n${communityTabRoute}\n${discover}\n${parityScreens}`,
+  `${dock}\n${communityRoute}\n${communityTabRoute}\n${discover}\n${parityScreens}`,
   /MyPLUGGD|My PLUGGD|MY PLUGGD|label:\s*'Backstage'|Open Backstage|Find your Backstage/,
-  'visible Community/nav surfaces must not reintroduce MyPLUGGD or Backstage branding',
+  'visible Community and dock surfaces must not reintroduce MyPLUGGD or Backstage branding',
 );
 
 assert.doesNotMatch(

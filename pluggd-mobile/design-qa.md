@@ -85,6 +85,41 @@ final result: passed
 
 ---
 
+# PLUGGD Fan Experience Design QA
+
+## Scope
+
+- Audited fan entry, onboarding, My PLUGGD, personal profile, Library, playlists, tickets, purchases, memberships and the account navigation model.
+- Compared the mobile collection model with the local live-web implementation in `/Users/apple/PLUGGD_NEW`.
+- Evidence and detailed flow report: `artifacts/qa/fan-experience-audit-2026-07-30/`.
+
+## Findings resolved
+
+- Activated the existing rich My PLUGGD fan hub instead of redirecting it to Profile.
+- Made My PLUGGD the signed-in fan account entry while keeping Studio as the creator entry.
+- Split Library and Purchases & Access into clear account destinations.
+- Added owned and followed playlists to the unified Library data and deduplicated saved content.
+- Reframed Library around Music, Playlists, Events and Access, with a clear first-playlist action and ownership gateway.
+- Connected the onboarding notification choice to real mobile push registration.
+- Added explicit accessible roles, labels and states to onboarding choices and actions.
+- Updated stale contracts so they protect the intentional fan information architecture rather than the retired redirect.
+
+## Verification
+
+- TypeScript: passed.
+- Full mobile verification suite: passed.
+- Expo Doctor: passed.
+- Native iOS simulator build and launch: passed.
+- iPhone 17 Pro Max visual inspection: passed for signed-out and empty states.
+
+## Evidence limitation
+
+- The current simulator is signed out. Populated playlists, purchases, memberships, activity and ticket history still require one signed-in fan test-account pass before App Store sign-off.
+
+final result: passed with signed-in populated-state QA remaining
+
+---
+
 # PLUGGD Remaining-Surfaces Design QA
 
 ## Scope

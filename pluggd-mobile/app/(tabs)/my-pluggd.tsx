@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { MyPluggdScreen } from '../../src/features/mypluggd/my-pluggd-screen';
 
-export default function MyPluggdCompatibilityRedirect() {
-  return <Redirect href="/profile" />;
+export default function MyPluggdTabRoute() {
+  return <MyPluggdScreen />;
 }

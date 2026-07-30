@@ -27,9 +27,9 @@ export function DiscoveryHeader() {
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open account"
+          accessibilityLabel="Open My PLUGGD"
           style={[styles.action, styles.account]}
-          onPress={() => router.push('/profile' as any)}
+          onPress={() => router.push('/my-pluggd' as any)}
         >
           <MaterialIcons name="person-outline" size={20} color="#F7F2E9" />
         </Pressable>

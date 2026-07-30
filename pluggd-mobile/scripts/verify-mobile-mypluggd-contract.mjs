@@ -9,13 +9,22 @@ const dockSource = read('components/PluggdDock.tsx');
 const communityRoute = read('app/community.tsx');
 const communityTabRoute = read('app/(tabs)/community.tsx');
 const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
-const tabCompatibilityRoute = read('app/(tabs)/my-pluggd.tsx');
-const topLevelCompatibilityRoute = exists('app/my-pluggd.tsx') ? read('app/my-pluggd.tsx') : '';
+const tabFanRoute = read('app/(tabs)/my-pluggd.tsx');
+const topLevelFanRoute = exists('app/my-pluggd.tsx') ? read('app/my-pluggd.tsx') : '';
+const fanHub = read('src/features/mypluggd/my-pluggd-screen.tsx');
 const studioData = read('src/features/studio/studio-data.ts');
 const studioScreens = read('src/features/studio/StudioScreens.tsx');
 
-assert.doesNotMatch(headerSource, /MyPLUGGD|route:\s*'\/my-pluggd'/, 'Account menu must not expose MyPLUGGD or route to it');
+assert.match(headerSource, /label:\s*'My PLUGGD'[\s\S]*route:\s*'\/my-pluggd'/, 'Fan account menu must expose My PLUGGD');
 assert.doesNotMatch(dockSource, /label:\s*'MyPLUGGD'|route:\s*'\/my-pluggd'/, 'Dock must not expose MyPLUGGD');
+assert.match(tabFanRoute, /MyPluggdScreen/, 'Tab My PLUGGD route must render the fan hub');
+assert.match(topLevelFanRoute, /MyPluggdScreen/, 'Top-level My PLUGGD route must render the fan hub');
+for (const label of ['Feed', 'Circles', 'Library', 'Activity']) {
+  assert.match(fanHub, new RegExp(`'${label}'|>${label}<|${label}`), `Fan My PLUGGD must include the ${label} area`);
+}
+for (const fanCollection of ['Recently Played', 'My Playlists', 'Saved Music', 'Saved Events', 'Tickets', 'Purchases / Unlocks']) {
+  assert.match(fanHub, new RegExp(fanCollection.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Fan My PLUGGD must expose ${fanCollection}`);
+}
 assert.match(studioData, /title:\s*'My PLUGGD'/, 'Studio app catalog must expose the web-source My PLUGGD module');
 assert.match(studioScreens, /Creator setup hub/, 'Native My PLUGGD must use the web-source creator setup hub framing');
 assert.match(studioScreens, /My PLUGGD status/, 'Native My PLUGGD must include the web-source readiness card');
@@ -29,7 +38,5 @@ assert.match(communityRoute, /CommunityFeedScreen/, 'Top-level Community must ow
 assert.match(communityTabRoute, /CommunityFeedScreen/, 'Tab Community must own the social/culture feed surface');
 assert.match(communityFeed, /CommunityComposer[\s\S]*MobileSocialPostCard|MobileSocialPostCard[\s\S]*CommunityComposer/, 'Community must expose the real feed and composer');
 assert.doesNotMatch(communityRoute + communityTabRoute, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
-assert.match(tabCompatibilityRoute, /Redirect[\s\S]*href="\/profile"/, 'Old tab MyPLUGGD route must redirect to Profile');
-assert.match(topLevelCompatibilityRoute, /Redirect[\s\S]*href="\/profile"/, 'Old top-level MyPLUGGD route must redirect to Profile');
 
-console.log('mobile My PLUGGD web-source contract verified');
+console.log('mobile fan and creator My PLUGGD contract verified');

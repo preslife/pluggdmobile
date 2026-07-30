@@ -342,6 +342,8 @@ export type SavedContentItem = {
     | 'event_rsvps'
     | 'community_members'
     | 'user_follows'
+    | 'playlists'
+    | 'playlist_follows'
     | 'release_purchases'
     | 'release_plays'
     | 'sample_pack_purchases'

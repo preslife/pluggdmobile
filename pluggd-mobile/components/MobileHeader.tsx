@@ -97,13 +97,14 @@ export function MobileHeader() {
   const accountItems: AccountItem[] = [
     creatorAccess
       ? { label: 'Studio', route: '/studio', icon: 'space-dashboard' }
-      : { label: 'Account hub', route: '/profile', icon: 'space-dashboard' },
+      : { label: 'My PLUGGD', route: '/my-pluggd', icon: 'space-dashboard' },
     { label: profile?.username ? 'Public page' : 'Edit profile', route: publicProfileRoute, icon: 'person' },
     { label: 'PLUGGD Progress', route: '/badges', icon: 'workspace-premium' },
     creatorAccess
       ? { label: 'Wallet / Earnings', route: '/creator/payouts', icon: 'account-balance-wallet' }
       : { label: 'Wallet / Credits', route: '/wallet', icon: 'account-balance-wallet' },
-    { label: 'Library / Purchases', route: '/purchases', icon: 'inventory-2' },
+    { label: 'Library', route: '/library', icon: 'library-music' },
+    { label: 'Purchases & Access', route: '/purchases', icon: 'inventory-2' },
     { label: 'Memberships', route: '/membership', icon: 'card-membership' },
     { label: 'Tickets', route: '/tickets', icon: 'confirmation-number' },
     { label: 'Restore Purchases', route: '/wallet', icon: 'restore' },
@@ -198,7 +199,7 @@ export function MobileHeader() {
           <Pressable onPress={(event) => event.stopPropagation()}>
             <GlassSheet
               title="Account"
-              subtitle={creatorAccess ? 'Studio, public profile, earnings, analytics and settings.' : 'Dashboard, public profile, credits, progress and settings.'}
+              subtitle={creatorAccess ? 'Studio, public profile, earnings, analytics and settings.' : 'Your world, collection, access, activity and settings.'}
             >
               <View style={styles.accountHeader}>
                 <GlassAvatar

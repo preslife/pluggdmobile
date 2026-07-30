@@ -481,7 +481,7 @@ function mapPlaylist(row: any, owner?: ProfileItem | null, tracks?: PlaylistTrac
     slug: row.slug || row.share_slug || null,
     name: row.name || row.title || 'Untitled playlist',
     description: row.description || null,
-    cover_url: row.cover_url || row.cover_image_url || row.image_url || null,
+    cover_url: row.cover_url || row.cover_image_url || row.cover_image || row.cover_art_url || row.image_url || null,
     owner_id: row.user_id || row.owner_id || row.creator_id || null,
     owner_name: owner?.display_name || owner?.full_name || owner?.username || row.owner_name || null,
     is_public: row.is_public ?? (row.visibility ? row.visibility === 'public' : null),
@@ -2224,6 +2224,49 @@ export async function toggleSavedContent(kind: SavedContentKind, id: string) {
 export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const userId = await getCurrentUserId();
   if (!userId) return { saved: [], purchases: [], tickets: [], entitlements: [] };
+  const [ownedPlaylistRows, playlistFollowRows] = await Promise.all([
+    safeList<any>(
+      (supabase as any)
+        .from('playlists')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(50),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('playlist_follows')
+        .select('id,playlist_id,followed_at')
+        .eq('user_id', userId)
+        .order('followed_at', { ascending: false })
+        .limit(50),
+    ),
+  ]);
+  const followedPlaylistIds = playlistFollowRows.map((row) => row.playlist_id).filter(Boolean);
+  const followedPlaylistRows = followedPlaylistIds.length
+    ? await safeList<any>(
+        (supabase as any)
+          .from('playlists')
+          .select('*')
+          .in('id', followedPlaylistIds)
+          .limit(50),
+      )
+    : [];
+  const ownedPlaylistIds = new Set(ownedPlaylistRows.map((row) => row.id));
+  const playlistItems = [...ownedPlaylistRows, ...followedPlaylistRows.filter((row) => !ownedPlaylistIds.has(row.id))]
+    .map<SavedContentItem>((row) => {
+      const playlist = mapPlaylist(row, null, []);
+      const owned = row.user_id === userId || row.owner_id === userId;
+      return {
+        id: `playlist:${playlist.id}`,
+        kind: 'playlist',
+        title: playlist.name,
+        subtitle: owned ? 'Your playlist' : 'Followed playlist',
+        imageUrl: playlist.cover_url,
+        route: playlist.route,
+        source: owned ? 'playlists' : 'playlist_follows',
+      };
+    });
   const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, tickets] = await Promise.all([
     safeList<any>((supabase as any).from('favorites').select('id,beat_id,release_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('saved_content').select('id,content_type,content_id,metadata,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100)),
@@ -2330,6 +2373,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   );
 
   const saved = [
+    ...playlistItems,
     ...favorites
     .map<SavedContentItem | null>((favorite) => {
       if (favorite.beat_id) {
@@ -2629,7 +2673,10 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     })),
   ];
 
-  return { saved, purchases, tickets, entitlements };
+  const uniqueSaved = Array.from(
+    new Map(saved.map((item) => [`${item.kind}:${item.route}`, item] as const)).values(),
+  );
+  return { saved: uniqueSaved, purchases, tickets, entitlements };
 }
 
 export async function loadRecentlyPlayedLibraryItems(limit = 12): Promise<SavedContentItem[]> {

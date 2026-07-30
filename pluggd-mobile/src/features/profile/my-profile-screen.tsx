@@ -263,17 +263,17 @@ export function MyProfileScreen() {
           </View>
 
           <View style={styles.accountRail}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open My PLUGGD" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/my-pluggd')}>
+              <MaterialIcons name="space-dashboard" size={21} color={theme.colors.accent} />
+              <Text style={[styles.accountRailText, { color: theme.colors.text }]}>My PLUGGD</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Open library" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/library')}>
               <MaterialIcons name="library-music" size={21} color={theme.colors.accent} />
               <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Library</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/wallet')}>
-              <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.accent} />
-              <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Wallet</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open tickets" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/tickets')}>
-              <MaterialIcons name="confirmation-number" size={21} color={theme.colors.accent} />
-              <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Tickets</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open purchases and access" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/purchases')}>
+              <MaterialIcons name="verified-user" size={21} color={theme.colors.accent} />
+              <Text style={[styles.accountRailText, { color: theme.colors.text }]}>Access</Text>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Open settings" style={[styles.accountRailButton, { borderColor: theme.colors.border }]} onPress={() => go('/settings')}>
               <MaterialIcons name="settings" size={21} color={theme.colors.accent} />

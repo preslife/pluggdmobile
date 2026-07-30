@@ -9,12 +9,16 @@ for (const token of [
   "`/u/${profile.username}`",
   "    : '/edit-profile';",
   "label: 'Studio'",
-  "label: 'Account hub'",
+  "label: 'My PLUGGD'",
+  "route: '/my-pluggd'",
   "label: profile?.username ? 'Public page' : 'Edit profile'",
   "label: 'PLUGGD Progress'",
   "label: 'Wallet / Earnings'",
   "label: 'Wallet / Credits'",
-  "label: 'Library / Purchases'",
+  "label: 'Library'",
+  "route: '/library'",
+  "label: 'Purchases & Access'",
+  "route: '/purchases'",
   "label: 'Memberships'",
   "label: 'Tickets'",
   "label: 'Restore Purchases'",
@@ -27,7 +31,6 @@ for (const token of [
   assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Account menu must include ${token}`);
 }
 
-assert.doesNotMatch(source, /MyPLUGGD|route:\s*'\/my-pluggd'/, 'Account menu must not expose MyPLUGGD');
 assert.doesNotMatch(source, /label:\s*'My Profile'[\s\S]*route:\s*'\/profile'/, 'Account menu must not show My Profile when it would duplicate the private profile route');
 assert.doesNotMatch(source, /label:\s*'Wallet'[,}]/, 'Wallet label must follow web AccountMenu copy: Wallet / Credits or Wallet / Earnings');
 assert.doesNotMatch(source, /label:\s*'Badges \/ Rewards'/, 'Progress should use web AccountMenu copy: PLUGGD Progress');
