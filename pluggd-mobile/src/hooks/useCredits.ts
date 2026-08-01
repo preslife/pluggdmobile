@@ -48,9 +48,9 @@ export interface CreditPackDefinition {
   popular?: boolean;
 }
 
-// Approved iOS credit packs. The production PLUGGD packs are GBP-priced;
-// sandbox/simulator storefronts can report another localized currency, so UI
-// copy falls back to the approved GBP label unless StoreKit also returns GBP.
+// Approved iOS credit packs. App Store Connect owns customer-facing prices;
+// fallback GBP values are retained only as catalogue reference data and must
+// never be shown in place of StoreKit's storefront-localized price.
 export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition> = {
   pluggd_credits_starter: {
     sku: 'pluggd_credits_starter',
@@ -123,14 +123,8 @@ export interface CreditPack {
   popular?: boolean;
 }
 
-function formatExpectedPrice(fallbackPriceGBP: number) {
-  return `£${fallbackPriceGBP.toFixed(2)}`;
-}
-
-function displayPriceForProduct(product: Product | null, fallbackPriceGBP: number) {
-  const expectedPrice = formatExpectedPrice(fallbackPriceGBP);
-  if (!product?.localizedPrice) return expectedPrice;
-  return product.localizedPrice;
+function displayPriceForProduct(product: Product | null) {
+  return product?.localizedPrice ?? '';
 }
 
 const SESSION_REFRESH_WINDOW_SECONDS = 60;
@@ -170,7 +164,7 @@ function buildCreditPacks(prods: Product[] = []): CreditPack[] {
       bonusPercent: definition.bonusPercent,
       fallbackPriceGBP: definition.fallbackPriceGBP,
       product,
-      localizedPrice: displayPriceForProduct(product, definition.fallbackPriceGBP),
+      localizedPrice: displayPriceForProduct(product),
       label: definition.label,
       bonus:
         definition.bonusPercent > 0

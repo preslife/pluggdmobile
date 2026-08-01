@@ -2,7 +2,8 @@ export type AppEnvironment = 'development' | 'preview' | 'production';
 
 function normalizeEnvironment(value?: string): AppEnvironment {
   if (value === 'production' || value === 'preview') return value;
-  return 'development';
+  if (value === 'development') return value;
+  return __DEV__ ? 'development' : 'production';
 }
 
 export const APP_ENVIRONMENT = normalizeEnvironment(process.env.EXPO_PUBLIC_APP_ENV);

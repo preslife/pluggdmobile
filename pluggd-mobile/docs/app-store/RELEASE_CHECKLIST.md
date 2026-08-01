@@ -67,6 +67,9 @@
   build on the registered iPhone, with Apple-supplied product names and prices;
   the physical-device Wallet capture is
   `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.12.48.png`.
+- [x] Wallet displays only StoreKit's storefront-localized prices, never a
+  hard-coded GBP fallback or fixed currency-conversion claim. The final US
+  sandbox capture is `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.44.30.png`.
 - [x] Every currently active sellable creator membership tier has a unique
   Apple product ID and the expected creator subscription group.
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
@@ -223,6 +226,10 @@ verification remain required.
   flow; the device capture is
   `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.02.04.png`.
 - [x] Fan onboarding no longer writes the nonexistent `profiles.genres` field;
-  genre preferences remain versioned inside `onboarding_progress`, and the
-  corrected signed build was installed and returned the authenticated user to
-  Home on 2 August 2026.
+  genre preferences remain versioned inside `onboarding_progress`, the mobile
+  regression contract passes, and the corrected signed build was installed on
+  2 August 2026.
+- [x] Complete Fan onboarding in the corrected signed build. The final device
+  run saved genre preferences without writing `profiles.genres`, returned to
+  Home without an error, and retained the completed profile across the final
+  signed-build installation on 2 August 2026.

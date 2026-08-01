@@ -45,6 +45,7 @@ const LEDGER_LABELS: Record<string, string> = {
 };
 
 function formatPriceLabel(price: string) {
+  if (!price) return 'Checking…';
   return price.replace(/\.00$/, '');
 }
 
@@ -123,7 +124,7 @@ export default function WalletScreen() {
   }, [library, refreshBalance, refreshLedger]);
 
   const handlePurchase = () => {
-    if (!selectedPack) return;
+    if (!selectedPack?.product || !selectedPack.localizedPrice) return;
 
     Alert.alert(
       'Buy credits',
@@ -167,7 +168,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'PLUGGD credits',
-                '100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.',
+                'Apple displays the final price in your App Store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.',
               )
             }
           >
@@ -331,10 +332,10 @@ export default function WalletScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={selectedPack ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : 'Buy credits'}
-          style={[styles.cta, (!selectedPack || purchasing) && styles.ctaDisabled]}
+          accessibilityLabel={selectedPack?.product && selectedPack.localizedPrice ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : 'Credit pack price is not yet available'}
+          style={[styles.cta, (!selectedPack?.product || !selectedPack.localizedPrice || purchasing) && styles.ctaDisabled]}
           onPress={handlePurchase}
-          disabled={!selectedPack || purchasing}
+          disabled={!selectedPack?.product || !selectedPack.localizedPrice || purchasing}
         >
           {purchasing ? (
             <ActivityIndicator color="#fff" />
@@ -362,8 +363,10 @@ export default function WalletScreen() {
           ]}
         >
           <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
-          <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
-            100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
+          <Text
+            style={[styles.noteText, { color: theme.colors.textMuted }]}
+          >
+            Apple displays the final price in your App Store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
           </Text>
         </View>
 

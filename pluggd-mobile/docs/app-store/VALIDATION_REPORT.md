@@ -49,12 +49,19 @@ unchecked in the release checklist.
 - The first physical onboarding attempt exposed an invalid duplicate write to
   the nonexistent `profiles.genres` field. The app now keeps those preferences
   in the existing versioned `onboarding_progress` payload only; a regression
-  contract protects that schema boundary, and the corrected signed build
-  installed successfully without losing the authenticated session.
+  contract protects that schema boundary. The corrected flow completed on the
+  physical device, returned to Home without an error and remained complete
+  after the final signed-build installation.
 - All five production credit consumables resolve from StoreKit in the corrected
   signed Release build on the registered iPhone, including Apple-supplied names
   and prices. The Wallet evidence is retained at
   `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.12.48.png`.
+- Wallet pricing now uses only StoreKit's storefront-localized price. The UI no
+  longer mixes a US sandbox dollar price with a fixed GBP conversion claim and
+  no longer substitutes a hard-coded GBP price while StoreKit is unavailable;
+  purchase remains disabled until the localized product is loaded. The final
+  signed-device evidence is
+  `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.44.30.png`.
 
 ## Final product, visual and accessibility verification
 
@@ -75,9 +82,9 @@ unchecked in the release checklist.
 - Xcode device captures from the signed iPhone build verified the final Home
   hierarchy, artwork sizing, playable first viewport, persistent dock spacing,
   and the production sign-in screen with native Apple, Google and email paths.
-  This proves the controls render on hardware; completing the Apple/Google
-  authorization callbacks still requires the device owner to approve the
-  provider consent UI.
+  Native Apple authorization and the corrected fan onboarding callback are now
+  complete; Google authorization still requires its final device-owner consent
+  pass.
 - Remote-image failure now falls back through the original source and then a
   branded local asset rather than leaving a blank or distorted card.
 - Ticket scanning now accepts only PLUGGD's rotating signed ticket payload and

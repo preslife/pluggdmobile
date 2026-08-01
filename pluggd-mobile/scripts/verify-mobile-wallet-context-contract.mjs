@@ -17,7 +17,10 @@ assert.doesNotMatch(dockSource, /label:\s*'(Wallet|Marketplace|Explore|Create|Pr
 assert.match(headerSource, /Wallet \/ Credits|Wallet \/ Earnings/, 'wallet must be available from avatar menu with web account copy');
 assert.match(headerSource, /Memberships/, 'memberships must be available from avatar menu');
 assert.match(headerSource, /Tickets/, 'tickets must be available from avatar menu');
-assert.match(walletSource, /100 credits = £1/, 'wallet must preserve credit conversion copy');
+assert.match(walletSource, /App Store currency/, 'wallet must explain that Apple localizes the final price');
+assert.doesNotMatch(walletSource, /100 credits = £1/, 'wallet must not mix a fixed GBP value with localized StoreKit prices');
+assert.match(creditsSource, /product\?\.localizedPrice \?\? ''/, 'credit packs must display only StoreKit-localized prices');
+assert.doesNotMatch(creditsSource, /return `£\$\{fallbackPriceGBP/, 'credit packs must not display a hard-coded GBP fallback');
 assert.match(chromeSource, /BOTTOM_HIDDEN_EXACT[\s\S]*'\/wallet'/, 'the public dock must not cover Wallet purchase controls');
 
 for (const sku of ['pluggd_credits_starter', 'pluggd_credits_popular', 'pluggd_credits_value', 'pluggd_credits_premium', 'pluggd_credits_ultimate']) {
