@@ -237,7 +237,6 @@ export const createTestLocalizationValue = (
   };
 
   return {
-    settings: baseSettings,
     updateSettings: async () => Promise.resolve(),
     getLocaleConfig: (locale?: LocaleCode) => SUPPORTED_LOCALES[locale ?? baseSettings.locale],
     detectUserLocale: () => baseSettings.locale,

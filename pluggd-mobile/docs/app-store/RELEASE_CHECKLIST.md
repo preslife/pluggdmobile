@@ -27,7 +27,9 @@
 - [x] `APPLE_ROOT_CA_G2_BASE64` and `APPLE_ROOT_CA_G3_BASE64` use current certificates from Apple PKI.
 - [x] `ACCOUNT_DELETION_AUDIT_SALT` is a strong production secret.
 - [x] Stripe production key and signed webhook secret are configured only in Supabase.
-- [ ] Hosted checkout success/cancel return URLs use the approved PLUGGD app/web allowlist.
+- [x] iOS hosted checkout success/cancel return URLs are restricted to
+  `pluggd://commerce/success` for releases, beats, physical tickets and
+  physical merchandise; hostile return URLs are rejected by contract tests.
 - [x] Commerce policy defaults to restricted for an unknown storefront or failed policy request.
 - [x] External release checkout is US-only until another storefront entitlement is explicitly approved.
 - [ ] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
@@ -36,6 +38,8 @@
   CRM, private-demographic, creator-pool and operational views are service-role
   only. Supabase security advisors report no remaining ERROR-level findings.
 - [x] Account/safety, Apple verification, commerce policy, beat checkout, event checkout and Stripe webhook functions deployed and active.
+- [ ] Add the production `SUPABASE_DB_URL` repository secret so migration
+  validation can run in GitHub instead of stopping before database checks.
 
 ## StoreKit and server notifications
 
@@ -45,10 +49,14 @@
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
   no fallback purchase CTA.
 - [ ] Products are approved or submitted with the app version and available in required storefronts.
-- [ ] Review screenshots are attached to all five credit consumables and the
-  Kxngdom monthly membership before they are added for review.
+- [x] Review screenshots are attached to all five credit consumables; the live
+  App Store Connect audit reports `COMPLETE` for each consumable.
+- [ ] Attach an accurate review screenshot to the Kxngdom monthly membership;
+  App Store Connect currently reports `MISSING_METADATA` and no review image.
 - [x] App Store Server Notification V2 production and sandbox URLs point to
   `apple-server-notification`.
+- [ ] Remove the unnecessary credential query parameter from both notification
+  URLs, leaving authentication and verification to the notification handler.
 - [ ] Test notification succeeds and appears once in `apple_notification_log`.
 - [ ] Sandbox credit purchase grants exactly once.
 - [ ] Interrupted consumable completes after server verification.
@@ -103,7 +111,9 @@
 - [x] Export compliance is represented by
   `ITSAppUsesNonExemptEncryption=false`; Apple build metadata reports “App Uses
   Non-Exempt Encryption: No.”
-- [ ] Screenshots captured from the final build and uploaded.
+- [x] Thirteen matched 1320×2868 screenshots captured from the final Release
+  simulator build, including Live, Go Live and membership review surfaces.
+- [ ] Select only rights-cleared screenshots and upload the final App Store set.
 - [x] Processed build `1.0.0 (1)` selected for App Store version 1.0.
 - [x] Version release mode set to manual so approval cannot trigger an
   unintended public launch.
@@ -122,6 +132,9 @@ sandbox verification remain required.
 - [ ] Signed out, signup, email confirmation, sign in and sign out.
 - [x] Signed-out Home, Discover, Community and Events; mini-player persists without restart.
 - [x] Release, mix, beat-marketplace, soundboard and event routes in the signed-out simulator.
+- [x] Live is globally reachable from the public header, Home and Discover;
+  lobby, replay, creator broadcast setup and authenticated server creation are
+  present in the Release simulator build.
 - [ ] Signed-in creator profile, creator membership and role-specific Studio routes.
 - [ ] Restricted, US and approved-entitlement storefront commerce matrix.
 - [ ] Hosted beat and ticket checkout return, cancel, pending, refund and unavailable states.

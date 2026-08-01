@@ -353,6 +353,15 @@ function LiveHeader() {
     >
       <Text style={[styles.headerTitle, { color: theme.colors.text }]}>LIVE</Text>
       <View style={styles.headerActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go Live"
+          onPress={() => go(user ? '/live/create' : '/auth/login')}
+          style={styles.goLiveButton}
+        >
+          <MaterialIcons name="sensors" size={17} color={COLORS.canvas} />
+          <Text style={styles.goLiveLabel}>GO LIVE</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Search PLUGGD" onPress={() => go('/search')} style={styles.headerIcon}>
           <MaterialIcons name="search" size={22} color={theme.colors.textSecondary} />
         </Pressable>
@@ -1174,6 +1183,8 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  goLiveButton: { minWidth: 84, height: 44, borderRadius: 22, paddingHorizontal: 13, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.orange, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  goLiveLabel: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 0.7 },
   headerIcon: {
     width: 44,
     height: 44,

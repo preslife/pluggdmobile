@@ -552,7 +552,6 @@ export const LiveModule: React.FC = () => {
       const { error } = await supabase.functions.invoke("manage-live-session", {
         body: {
           action,
-          userId: user.id,
           session: payload,
         },
       });
@@ -583,7 +582,6 @@ export const LiveModule: React.FC = () => {
       const { error } = await supabase.functions.invoke("manage-live-session", {
         body: {
           action: "delete",
-          userId: user.id,
           session: { id: session.id },
         },
       });

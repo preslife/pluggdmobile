@@ -96,6 +96,12 @@ export function MobileHeader() {
 
   const accountItems: AccountItem[] = [
     creatorAccess
+      ? { label: 'Go Live', route: '/live/create', icon: 'sensors' }
+      : { label: 'Live', route: '/live', icon: 'sensors' },
+    ...(creatorAccess
+      ? [{ label: 'Create', route: '/create', icon: 'add-circle-outline' as const }]
+      : []),
+    creatorAccess
       ? { label: 'Studio', route: '/studio', icon: 'space-dashboard' }
       : { label: 'My PLUGGD', route: '/my-pluggd', icon: 'space-dashboard' },
     { label: profile?.username ? 'Public page' : 'Edit profile', route: publicProfileRoute, icon: 'person' },
@@ -161,6 +167,18 @@ export function MobileHeader() {
           </Pressable>
 
           <View style={styles.headerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open PLUGGD Live"
+              onPress={() => {
+                selectionHaptic();
+                router.push('/live' as any);
+              }}
+              style={({ pressed }) => [styles.livePill, pressed && styles.livePillPressed]}
+            >
+              <View style={styles.livePillDot} />
+              <Text style={styles.livePillText}>LIVE</Text>
+            </Pressable>
             <GlassIconButton quiet icon="search" accessibilityLabel="Search PLUGGD" size={34} onPress={() => router.push('/search' as any)} />
             <View>
               <GlassIconButton
@@ -290,6 +308,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
+  livePill: {
+    minWidth: 56,
+    height: 44,
+    paddingHorizontal: 9,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,71,87,0.38)',
+    backgroundColor: 'rgba(255,71,87,0.09)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  livePillPressed: { transform: [{ scale: 0.96 }], opacity: 0.86 },
+  livePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF4757' },
+  livePillText: { color: '#FF8B93', fontFamily: 'Satoshi-Black', fontSize: 8.5, letterSpacing: 1 },
   avatarTap: {
     width: 44,
     height: 44,

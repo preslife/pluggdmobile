@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
-import { useHomeFeed } from '../culture/useCultureData';
+import { useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from './discoveryModel';
 import { DiscoveryHeader } from './DiscoveryHeader';
 
@@ -20,6 +20,7 @@ export function MusicDiscoveryDiscover() {
   const params = useLocalSearchParams<{ scene?: string }>();
   const selectedScene = typeof params.scene === 'string' ? decodeURIComponent(params.scene).trim() : '';
   const feed = useHomeFeed();
+  const live = useLiveRooms();
   const { playQueue } = usePlayback();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>(params.scene ? 'Scenes' : 'For you');
   const allItems = buildDiscoveryItems(feed.data);
@@ -51,13 +52,14 @@ export function MusicDiscoveryDiscover() {
   const visible = filter === 'Scenes' && selectedScene
     ? (hasSelectedSceneMatches ? items : allItems)
     : (items.length ? items : allItems);
+  const liveRoom = live.data?.find((room) => room.status === 'live') ?? live.data?.[0];
   const worlds = useMemo(() => [
     { title: 'Mixes', meta: `${feed.data?.mixes.length || 0} selector worlds`, route: '/mixes', image: feed.data?.mixes.find((item) => item.cover_url)?.cover_url || null, icon: 'album' as const, index: '01' },
     { title: 'Soundboards', meta: `${feed.data?.soundboards.length || 0} ideas in progress`, route: '/soundboards', image: feed.data?.soundboards.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'dashboard-customize' as const, index: '02' },
     { title: 'Releases', meta: `${feed.data?.releases.length || 0} fresh pressings`, route: '/releases', image: feed.data?.releases.find((item) => item.cover_art_url)?.cover_art_url || null, icon: 'music-note' as const, index: '03' },
-    { title: 'Events', meta: `${feed.data?.events.length || 0} live moments`, route: '/events', image: feed.data?.events.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'event' as const, index: '04' },
+    { title: 'Live', meta: liveRoom?.status === 'live' ? 'Creators broadcasting now' : 'Rooms, parties and replays', route: '/live', image: liveRoom?.thumbnail_url || liveRoom?.creator_avatar_url || null, icon: 'sensors' as const, index: '04' },
     { title: 'THE PLUG', meta: 'Interviews, editorials and scene reports', route: '/plug', image: null, icon: 'auto-stories' as const, index: '05', wide: true },
-  ], [feed.data]);
+  ], [feed.data, liveRoom?.creator_avatar_url, liveRoom?.status, liveRoom?.thumbnail_url]);
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
@@ -70,7 +72,18 @@ export function MusicDiscoveryDiscover() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headingRow}>
           <View style={styles.headingCopy}><Text style={styles.kicker}>FOLLOW THE SIGNAL</Text><Text style={styles.title}>Discover</Text><Text style={styles.subtitle}>Find the next sound through scenes, cities and independent tastemakers.</Text></View>
-          <View style={styles.signalMark}><MaterialIcons name="graphic-eq" size={24} color={ORANGE} /></View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open PLUGGD Live"
+            onPress={() => {
+              selectionHaptic();
+              router.push('/live' as any);
+            }}
+            style={({ pressed }) => [styles.signalMark, pressed && styles.signalMarkPressed]}
+          >
+            <View style={styles.signalLiveDot} />
+            <MaterialIcons name="graphic-eq" size={24} color={ORANGE} />
+          </Pressable>
         </View>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Search music and scenes" onPress={() => router.push('/search' as any)} style={styles.search}>
@@ -158,7 +171,7 @@ export function MusicDiscoveryDiscover() {
         ) : null}
 
         <View style={styles.contextGrid}>
-          <Pressable onPress={() => router.push('/events' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="event" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Events in the signal</Text><Text style={styles.contextMeta}>Rooms, nights and stages</Text></Pressable>
+          <Pressable onPress={() => router.push('/live' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="sensors" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Enter the room</Text><Text style={styles.contextMeta}>Broadcasts, parties and replays</Text></Pressable>
           <Pressable onPress={() => router.push('/market' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>SUPPORT</Text><MaterialIcons name="storefront" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Creator market</Text><Text style={styles.contextMeta}>Beats, packs and releases</Text></Pressable>
         </View>
       </ScrollView>
@@ -190,7 +203,9 @@ const styles = StyleSheet.create({
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 5 }, headingCopy: { flex: 1 },
   kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 }, title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.3, marginTop: 3 },
   subtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, maxWidth: 310, marginTop: 6 },
-  signalMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#3A332B', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  signalMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#5B3B25', backgroundColor: '#18120E', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  signalMarkPressed: { transform: [{ scale: 0.96 }], opacity: 0.88 },
+  signalLiveDot: { position: 'absolute', right: 5, top: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF4757', borderWidth: 1, borderColor: '#0A0908' },
   search: { minHeight: 48, marginTop: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
   searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 }, searchHint: { color: '#756E64', fontFamily: 'Satoshi-Bold', fontSize: 10 },
   filters: { gap: 8, paddingVertical: 14 }, filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#181512' }, filterActive: { backgroundColor: ORANGE }, filterText: { color: '#CBC4B9', fontFamily: 'Satoshi-Bold', fontSize: 12 }, filterTextActive: { color: '#110B07' },

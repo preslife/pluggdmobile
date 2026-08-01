@@ -549,13 +549,12 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
-        {featuredEvent || featuredRoom ? (
-          <>
+        <>
             <SectionHeader
               title="Happening now"
-              subtitle="Events and rooms moving through the scene."
-              action="All events"
-              onAction={() => router.push('/events' as any)}
+              subtitle="Live rooms and events moving through the scene."
+              action="Enter Live"
+              onAction={() => router.push('/live' as any)}
             />
             {featuredEvent ? (
               <View style={[styles.eventFrame, !featuredEvent.cover_image_url && styles.eventFrameCompact]}>
@@ -615,9 +614,42 @@ export function MusicDiscoveryHome() {
                   style={({ pressed }) => [styles.signalHit, pressed && styles.pressed]}
                 />
               </View>
-            ) : null}
+            ) : (
+              <View style={styles.liveGateway}>
+                <LinearGradient
+                  colors={['#3B140F', '#18100D', '#0B0907']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.liveGatewayPulseOuter}>
+                  <View style={styles.liveGatewayPulseInner}>
+                    <MaterialIcons name="sensors" size={26} color={INK} />
+                  </View>
+                </View>
+                <View style={styles.liveGatewayCopy}>
+                  <View style={styles.liveGatewayKickerRow}>
+                    <View style={styles.liveGatewayDot} />
+                    <Text style={styles.liveGatewayKicker}>PLUGGD LIVE</Text>
+                  </View>
+                  <Text style={styles.liveGatewayTitle}>Step into the room.</Text>
+                  <Text style={styles.liveGatewayMeta}>Watch creators, join the chat, send gifts or start a session.</Text>
+                </View>
+                <View style={styles.liveGatewayAction}>
+                  <MaterialIcons name="arrow-forward" size={18} color={INK} />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter PLUGGD Live"
+                  onPress={() => {
+                    selectionHaptic();
+                    router.push('/live' as any);
+                  }}
+                  style={({ pressed }) => [styles.signalHit, pressed && styles.pressed]}
+                />
+              </View>
+            )}
           </>
-        ) : null}
 
         {beatGateway || packGateway ? (
           <>
@@ -1026,6 +1058,16 @@ const styles = StyleSheet.create({
   eventCtaText: { color: '#100B07', fontFamily: 'Satoshi-Black', fontSize: 11 },
   signalFrame: { height: 88, minHeight: 88, maxHeight: 88, position: 'relative', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingHorizontal: 11, paddingVertical: 10, borderWidth: 1, borderColor: '#302A24', borderRadius: 5, backgroundColor: '#12100E' },
   signalHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
+  liveGateway: { minHeight: 136, borderRadius: 7, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 18, borderWidth: 1, borderColor: '#4A261B' },
+  liveGatewayPulseOuter: { width: 74, height: 74, borderRadius: 37, borderWidth: 1, borderColor: 'rgba(255,71,87,0.32)', backgroundColor: 'rgba(255,71,87,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  liveGatewayPulseInner: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF4757', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF4757', shadowOpacity: 0.38, shadowRadius: 14, shadowOffset: { width: 0, height: 5 } },
+  liveGatewayCopy: { flex: 1, minWidth: 0, zIndex: 2 },
+  liveGatewayKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+  liveGatewayDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF4757' },
+  liveGatewayKicker: { color: '#FF8B93', fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.35 },
+  liveGatewayTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22, letterSpacing: -0.35 },
+  liveGatewayMeta: { color: '#BDB3A8', fontFamily: 'Satoshi-Regular', fontSize: 10.5, lineHeight: 14, marginTop: 4, maxWidth: 205 },
+  liveGatewayAction: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(247,242,233,0.24)', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   liveDot: { position: 'absolute', left: -1, top: 18, width: 3, height: 28, borderTopRightRadius: 3, borderBottomRightRadius: 3, backgroundColor: ORANGE },
   signalThumb: { width: 52, height: 52, borderRadius: 4, backgroundColor: '#211C17' },
   signalCopy: { flex: 1, minWidth: 0 },
