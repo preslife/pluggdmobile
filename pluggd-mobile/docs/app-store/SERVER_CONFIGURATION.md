@@ -1,6 +1,13 @@
 # App Store and Hybrid Commerce Server Configuration
 
-The IAP functions use Apple’s official `@apple/app-store-server-library` verifier. They fail closed: an entitlement is never granted if signed-data verification, bundle matching, App Apple ID matching, product allowlisting, transaction matching or app-account-token matching fails.
+The IAP functions use Apple App Store Server API payload types and a
+Supabase-Edge-compatible WebCrypto verifier built on `@peculiar/x509` and
+`jose`. It validates the same Apple trust boundary directly: ES256, the full
+x5c chain, pinned Apple G2/G3 roots, Apple leaf/intermediate purpose OIDs,
+certificate dates and signatures, JWS signature, bundle ID, numeric Apple App
+ID and environment. The functions fail closed: an entitlement is never granted
+if signed-data verification, app identity matching, product allowlisting,
+transaction matching or app-account-token matching fails.
 
 Store these as Supabase function secrets:
 

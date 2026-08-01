@@ -145,6 +145,35 @@ serve(async (req) => {
       });
     }
 
+    // Apple's TEST notification intentionally contains no transaction or
+    // renewal payload. It still passes the same certificate-chain, signature,
+    // bundle-ID and App-Apple-ID verification above, so record it as delivery
+    // evidence and acknowledge it without weakening the transaction checks
+    // required for every commerce notification below.
+    if (notificationType === "TEST") {
+      const { error: testLogError } = await supabaseClient
+        .from("apple_notification_log")
+        .insert({
+          notification_uuid: notificationUUID,
+          notification_type: notificationType,
+          subtype: subtype ?? null,
+          environment: notification.data?.environment ?? null,
+          payload: notification,
+          processed_at: new Date().toISOString(),
+        });
+
+      if (testLogError) {
+        throw new Error(
+          `Failed to log verified Apple test notification: ${testLogError.message}`,
+        );
+      }
+
+      return new Response(JSON.stringify({ received: true, test: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (!notification.data?.signedTransactionInfo) {
       throw new Error("Verified notification is missing signed transaction data");
     }

@@ -8,10 +8,13 @@ The current branch is visually and structurally ready for final TestFlight
 device validation. The production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
-The App Store Connect metadata package is now assembled in one draft, but it is
-not yet safe to press final submission because StoreKit sandbox transactions,
-production notification delivery and signed physical-device testing remain.
-Those gates are listed below and remain unchecked in the release checklist.
+The App Store Connect metadata package is assembled in one draft. A signed
+production-configured Release build now installs and launches on the registered
+iPhone 15 Pro Max, and Apple's sandbox server-notification test is verified
+end-to-end. It is not yet safe to press final submission because the remaining
+StoreKit sandbox transaction and entitlement-lifecycle gates require deliberate
+interaction with a Sandbox Apple Account on the device. Those gates remain
+unchecked in the release checklist.
 
 ## Current verified gates
 
@@ -19,7 +22,7 @@ Those gates are listed below and remain unchecked in the release checklist.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
-- The root suite passes all 51 files and 184 tests. Focused licensing and
+- The root suite passes all 52 files and 186 tests. Focused licensing and
   hybrid-commerce tests pass 5 files / 45 tests.
 - The root Vite production build succeeds. Its existing dependency, browser
   data and large-chunk warnings remain non-blocking technical debt.
@@ -32,6 +35,13 @@ Those gates are listed below and remain unchecked in the release checklist.
 - The processed signed build remains `1.0.0 (1)` with bundle ID
   `com.pluggd.mobile`; Apple previously accepted delivery
   `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation errors.
+- A fresh production-configured Release build was signed with
+  `Apple Distribution: ROWSON GROUP LTD (37X2468U5U)` and the Ad Hoc profile
+  `PLUGGD Ad Hoc Device QA 2026`, passed Xcode's store validation and strict
+  code-signature verification, installed on Ishola's registered iPhone 15 Pro
+  Max (`00008130-000A1D3A046B8D3A`), launched successfully and remained running.
+  Its embedded entitlements include production APNs, Sign in with Apple,
+  `get-task-allow=false` and the expected application identifier.
 
 ## Final product, visual and accessibility verification
 
@@ -49,6 +59,12 @@ Those gates are listed below and remain unchecked in the release checklist.
 - Dynamic Type at the largest accessibility size and increased contrast were
   visually exercised on Home and Edit Profile, then restored to normal. Full
   spoken VoiceOver traversal and Reduce Motion still require a device pass.
+- Xcode device captures from the signed iPhone build verified the final Home
+  hierarchy, artwork sizing, playable first viewport, persistent dock spacing,
+  and the production sign-in screen with native Apple, Google and email paths.
+  This proves the controls render on hardware; completing the Apple/Google
+  authorization callbacks still requires the device owner to approve the
+  provider consent UI.
 - Remote-image failure now falls back through the original source and then a
   branded local asset rather than leaving a blank or distorted card.
 - Ticket scanning now accepts only PLUGGD's rotating signed ticket payload and
@@ -123,6 +139,14 @@ Those gates are listed below and remain unchecked in the release checklist.
   catalogue media; uncleared catalogue imagery remains excluded.
 - Production and sandbox App Store Server Notification URLs now reach the
   correct function without the obsolete query-string credential.
+- Apple's sandbox V2 test notification returned `SUCCESS` and the verified
+  `TEST` payload for `com.pluggd.mobile` was recorded exactly once in
+  `apple_notification_log`. Replaying Apple's same signed payload twice returned
+  the explicit duplicate acknowledgement both times and the database count
+  remained one. The deployed handler verifies ES256 JWS signatures,
+  the complete Apple x5c chain, pinned G2/G3 roots, required Apple certificate
+  OIDs, certificate validity, bundle ID, Apple app ID and environment before
+  processing.
 - iOS 1.0/build 1, all five credit consumables, Kxngdom VIP Monthly and the
   Kxngdom Memberships group are attached together as eight items ready to
   submit. Apple has enabled the final `Submit for Review` control. It has
@@ -132,7 +156,9 @@ Those gates are listed below and remain unchecked in the release checklist.
 
 1. Complete StoreKit sandbox purchase, restore, renewal, refund, revoke and
    duplicate-delivery tests for credits and the creator membership.
-2. Run App Store Server Notification V2 sandbox and production delivery tests.
+2. Exercise transaction-backed server notifications for purchase, renewal,
+   refund and revoke events. The standalone Apple sandbox notification test is
+   already green; a production notification requires a real production event.
 3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
 4. Provision a real organiser-approved physical paid-ticket tier before testing
    ticket checkout; production currently contains none and the app correctly
@@ -140,10 +166,12 @@ Those gates are listed below and remain unchecked in the release checklist.
 5. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-6. Complete signed TestFlight device testing: Apple and Google sign-in,
+6. Complete the remaining signed TestFlight device interactions: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
-   and the storefront commerce matrix.
+   and the storefront commerce matrix. Signed Release installation, launch,
+   hardware Home rendering and sign-in-path rendering are already verified on
+   the registered iPhone 15 Pro Max.
 7. Resolve the Apple Developer membership renewal payment-method warning and
    confirm `support@pluggd.fm` monitoring.
 8. Link the correct EAS project only if EAS remains part of the release

@@ -5,10 +5,14 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`51` files / `184` tests)
+- [x] Root test suite (`52` files / `186` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
+- [x] Production-configured signed Release build installed and launched on the
+  registered iPhone 15 Pro Max using the `PLUGGD Ad Hoc Device QA 2026`
+  profile; strict signature validation, production APNs and Sign in with Apple
+  entitlements were confirmed before installation.
 - [x] Release configuration archive build
 - [x] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
 
@@ -73,7 +77,8 @@
   `apple-server-notification`.
 - [x] Remove the unnecessary credential query parameter from both notification
   URLs, leaving authentication and verification to the notification handler.
-- [ ] Test notification succeeds and appears once in `apple_notification_log`.
+- [x] Apple sandbox test notification succeeds and appears exactly once in
+  `apple_notification_log` (`434e26a3-ca67-4faa-a84c-7c431ecb2387`).
 - [ ] Sandbox credit purchase grants exactly once.
 - [ ] Interrupted consumable completes after server verification.
 - [ ] Membership purchase maps to the intended creator and tier.
@@ -184,8 +189,11 @@ verification remain required.
 
 ## Account and signing observations
 
-- [x] Legacy Apple key `35836M9T34` is absent from the Apple Developer key
-  list; only the replacement Sign in with Apple key remains.
+- [x] The replacement Sign in with Apple key is separate from the active App
+  Store Connect In-App Purchase key `35836M9T34`. The IAP key remains active
+  only for the final server-API and sandbox lifecycle checks; its local private
+  key copy must be securely destroyed after those checks, then the key can be
+  revoked if PLUGGD will not use authenticated App Store Server API requests.
 - [x] Temporary and obsolete Supabase CLI access tokens created during this
   release session were deleted and verified absent.
 - [x] Revoked legacy private-key material was removed from
