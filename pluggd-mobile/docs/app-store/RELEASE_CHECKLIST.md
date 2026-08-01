@@ -112,7 +112,10 @@
 - [x] Data archive downloads through a private 24-hour signed URL.
 - [x] Account deletion requires recent authentication and removes the auth account.
 - [x] Support, privacy, terms and community-guidelines URLs resolve publicly.
-- [ ] `support@pluggd.fm` monitoring is confirmed.
+- [x] `support@pluggd.fm` monitoring is confirmed: the public support route
+  returns HTTP 200, the domain publishes active IONOS MX records, and a live
+  release-test message delivered into the monitored IONOS inbox on 1 August
+  2026.
 
 ## App Store Connect
 

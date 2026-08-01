@@ -134,6 +134,9 @@ unchecked in the release checklist.
   onboarding, safe age defaults and an active Kxngdom StoreKit catalogue entry.
   Its credentials and verified Account Holder contact details are saved only
   in Apple's private review fields.
+- The public support route returns HTTP 200 and `support@pluggd.fm` publishes
+  active IONOS MX records. A live App Review support test sent on 1 August 2026
+  arrived in the monitored IONOS inbox, closing the support-monitoring gate.
 - Apple Content Rights is saved. The public 6.5-inch screenshot requirement is
   satisfied by a 1284×2778 PLUGGD Live Studio capture containing no third-party
   catalogue media; uncleared catalogue imagery remains excluded.
@@ -172,8 +175,7 @@ unchecked in the release checklist.
    and the storefront commerce matrix. Signed Release installation, launch,
    hardware Home rendering and sign-in-path rendering are already verified on
    the registered iPhone 15 Pro Max.
-7. Resolve the Apple Developer membership renewal payment-method warning and
-   confirm `support@pluggd.fm` monitoring.
+7. Resolve the Apple Developer membership renewal payment-method warning.
 8. Link the correct EAS project only if EAS remains part of the release
    pipeline; the submitted build used the verified native archive path.
 
