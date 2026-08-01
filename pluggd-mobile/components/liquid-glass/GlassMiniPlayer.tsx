@@ -79,16 +79,12 @@ export function GlassMiniPlayer({
         >
           <View style={styles.playerRow}>
             <Pressable
-              accessible
-              focusable
-              collapsable={false}
               accessibilityRole="button"
-              accessibilityLabel="Open full player"
+              accessibilityLabel={`Open full player for ${title} by ${artist}`}
               testID="mini-player-open"
               onPress={onOpen}
-              style={({ pressed }) => [styles.trackTapOverlay, pressed && styles.trackTapPressed]}
-            />
-            <View pointerEvents="none" style={styles.trackIdentity}>
+              style={({ pressed }) => [styles.trackIdentity, pressed && styles.trackTapPressed]}
+            >
               <LiftSurface depth="low" style={styles.discLift}>
                 <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} />
               </LiftSurface>
@@ -97,7 +93,7 @@ export function GlassMiniPlayer({
                 <Text style={styles.title} numberOfLines={1}>{title}</Text>
                 <Text style={styles.artist} numberOfLines={1}>{locked ? `${artist} · Locked preview` : artist}</Text>
               </View>
-            </View>
+            </Pressable>
 
             <PlayerIconButton
               accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
@@ -274,15 +270,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  trackTapOverlay: {
-    position: 'absolute',
-    left: 10,
-    right: 184,
-    top: 8,
-    bottom: 8,
-    zIndex: 2,
-    borderRadius: 14,
   },
   trackTapPressed: {
     opacity: 0.86,

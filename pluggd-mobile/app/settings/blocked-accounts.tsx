@@ -60,7 +60,7 @@ export default function BlockedAccountsScreen() {
               <View key={account.blockId} style={[styles.row, { borderBottomColor: theme.colors.border }]}>
                 {account.avatarUrl ? <Image source={{ uri: account.avatarUrl }} style={styles.avatar} /> : <View style={[styles.avatar, styles.fallback, { backgroundColor: theme.colors.surfaceAlt }]}><MaterialIcons name="person" size={22} color={theme.colors.textSubtle} /></View>}
                 <View style={styles.copy}><Text style={[styles.name, { color: theme.colors.text }]}>{account.name}</Text>{account.username ? <Text style={[styles.handle, { color: theme.colors.textMuted }]}>@{account.username}</Text> : null}</View>
-                <Pressable disabled={busyId === account.userId} onPress={() => confirmUnblock(account)} style={[styles.unblock, { borderColor: theme.colors.accent }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Unblock ${account.name}`} disabled={busyId === account.userId} onPress={() => confirmUnblock(account)} style={[styles.unblock, { borderColor: theme.colors.accent }]}>
                   <Text style={[styles.unblockText, { color: theme.colors.accent }]}>{busyId === account.userId ? 'WAIT' : 'UNBLOCK'}</Text>
                 </Pressable>
               </View>

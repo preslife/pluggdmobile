@@ -77,14 +77,29 @@ const asId = (value: unknown) =>
 
 const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 
+/** Convert a trusted catalogue price in major currency units to integer minor units. */
+export function majorUnitsToMinorUnits(value: unknown): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+  return Math.round((numeric + Number.EPSILON) * 100);
+}
+
 function renderLegalText(
   template: string,
   values: Record<string, string>,
 ): string {
   return Object.entries(values).reduce(
     (text, [key, value]) => text.replaceAll(`{${key}}`, value),
-    template,
+    template.replaceAll("\\r\\n", "\n").replaceAll("\\n", "\n"),
   );
+}
+
+export function hasCompleteLicenceTerms(template: string): boolean {
+  const normalized = template.toLowerCase();
+  return template.trim().length >= 500 &&
+    !normalized.includes("additional legal terms continue") &&
+    !normalized.includes("full legal text continues") &&
+    !normalized.includes("[placeholder]");
 }
 
 export async function handlePrepareBeatLicense(
@@ -127,6 +142,12 @@ export async function handlePrepareBeatLicense(
   if (!template || !template.is_active) {
     return json({ error: "Licence terms are unavailable" }, 409);
   }
+  if (!hasCompleteLicenceTerms(template.legal_text)) {
+    return json({
+      error: "This licence agreement is still being finalized",
+      code: "LICENCE_TERMS_INCOMPLETE",
+    }, 409);
+  }
 
   const existing = await deps.findPendingContract({
     beatId,
@@ -157,7 +178,6 @@ export async function handlePrepareBeatLicense(
     artist_id: user.id,
     template_type: template.template_type,
     license_fee: option.price_pence / 100,
-    license_fee_pence: option.price_pence,
     amount_cents: option.price_pence,
     currency: "GBP",
     permitted_rail: "stripe_checkout",
@@ -208,8 +228,8 @@ export async function handlePrepareBeatLicense(
       features: list(template.features),
       restrictions: list(template.restrictions),
       deliverables: list(template.deliverables),
-      territory: "As defined in the licence contract",
-      term: "As defined in the licence contract",
+      territory: "As defined in the licence agreement",
+      term: "As defined in the licence agreement",
     },
     contract: {
       id: contract.id,

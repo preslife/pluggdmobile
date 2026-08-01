@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 import {
   handlePrepareBeatLicense,
+  majorUnitsToMinorUnits,
   type PrepareBeatLicenseDependencies,
 } from "./handler.ts";
 
@@ -46,11 +47,21 @@ const deps: PrepareBeatLicenseDependencies = {
   async loadLicenseOption(beatId, optionId) {
     const { data } = await service
       .from("licensing_options")
-      .select("id,beat_id,license_type,price_pence,is_available")
+      .select("id,beat_id,license_type,price,is_available")
       .eq("id", optionId)
       .eq("beat_id", beatId)
       .maybeSingle();
-    return data;
+    if (!data) return null;
+    return {
+      id: data.id,
+      beat_id: data.beat_id,
+      license_type: data.license_type,
+      // The catalogue stores trusted prices as decimal pounds. Commerce
+      // functions use integer minor units so no client amount ever reaches
+      // agreement creation or checkout.
+      price_pence: majorUnitsToMinorUnits(data.price),
+      is_available: data.is_available,
+    };
   },
   async loadContractTemplate(templateType) {
     const { data } = await service

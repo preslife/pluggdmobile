@@ -17,7 +17,7 @@ import {
 import { PremiumScreenHeader } from '../components/PluggdPrimitives';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
-import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
+import { useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
 const PLUGGD_ORANGE = '#ff6600';
@@ -158,6 +158,8 @@ export default function WalletScreen() {
             style={styles.walletHeader}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="About PLUGGD credits"
             style={[
               styles.infoButton,
               { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border },
@@ -201,6 +203,9 @@ export default function WalletScreen() {
             </Text>
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showActivity ? 'Hide wallet activity' : 'View wallet activity'}
+              accessibilityState={{ expanded: showActivity }}
               style={styles.activityLink}
               onPress={() => setShowActivity((current) => !current)}
             >
@@ -241,7 +246,7 @@ export default function WalletScreen() {
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Buy credits</Text>
           <Text style={[styles.balanceValue, { color: theme.colors.textSubtle }]}>
-            ~£{creditsToGBP(balance.available_credits).toFixed(2)}
+            Non-expiring
           </Text>
         </View>
 
@@ -254,6 +259,9 @@ export default function WalletScreen() {
             return (
               <Pressable
                 key={pack.sku}
+                accessibilityRole="radio"
+                accessibilityLabel={`${pack.label}, ${pack.credits.toLocaleString()} credits, ${formatPriceLabel(pack.localizedPrice)}${subtext ? `, ${subtext}` : ''}`}
+                accessibilityState={{ selected }}
                 onPress={() => setSelectedSku(pack.sku)}
                 style={[
                   styles.packCard,
@@ -322,6 +330,8 @@ export default function WalletScreen() {
         </View>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={selectedPack ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : 'Buy credits'}
           style={[styles.cta, (!selectedPack || purchasing) && styles.ctaDisabled]}
           onPress={handlePurchase}
           disabled={!selectedPack || purchasing}
@@ -333,7 +343,13 @@ export default function WalletScreen() {
           )}
         </Pressable>
 
-        <Pressable onPress={restorePurchases} disabled={restoring} style={styles.restoreButton}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={restoring ? 'Restoring purchases' : 'Restore purchases'}
+          onPress={restorePurchases}
+          disabled={restoring}
+          style={styles.restoreButton}
+        >
           <Text style={[styles.restoreText, { color: theme.colors.textSubtle }]}>
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>

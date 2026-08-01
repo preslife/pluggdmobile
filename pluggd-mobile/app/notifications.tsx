@@ -52,7 +52,7 @@ export default function NotificationsRoute() {
       subtitle="Likes, comments, follows, tickets, unlocks and community updates."
       action={
         unreadCount > 0 ? (
-          <Pressable style={styles.markAllButton} onPress={markAllRead} disabled={markingAll}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Mark all notifications as read" style={styles.markAllButton} onPress={markAllRead} disabled={markingAll}>
             <Text style={styles.markAllText}>{markingAll ? 'Marking...' : 'Mark all read'}</Text>
           </Pressable>
         ) : null
@@ -73,7 +73,7 @@ export default function NotificationsRoute() {
       ) : null}
       {items.length > 0 ? <SectionTitle title={unreadCount > 0 ? `${unreadCount} unread` : 'Recent activity'} /> : null}
       {items.map((item) => (
-        <Pressable key={item.id} style={styles.card} onPress={() => markRead(item)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open notification: ${item.title || 'PLUGGD update'}`} key={item.id} style={styles.card} onPress={() => markRead(item)}>
           <View style={[styles.iconWrap, !item.read_at && styles.iconWrapUnread]}>
             <MaterialIcons name={iconForType(item.type)} size={22} color={!item.read_at ? '#0a0806' : '#FFFFFF'} />
           </View>

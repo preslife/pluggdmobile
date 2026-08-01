@@ -324,6 +324,9 @@ export default function RoleSelection() {
             return (
               <Pressable
                 key={role.value}
+                accessibilityRole="radio"
+                accessibilityLabel={`${role.label}, ${role.description}`}
+                accessibilityState={{ selected }}
                 onPress={() => choosePrimaryRole(role.value)}
                 style={[
                   styles.roleCard,
@@ -391,6 +394,9 @@ export default function RoleSelection() {
                 return (
                   <Pressable
                     key={role.value}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={role.label}
+                    accessibilityState={{ checked: selected }}
                     onPress={() => toggleSecondaryRole(role.value)}
                     style={[
                       styles.secondaryChip,
@@ -428,6 +434,8 @@ export default function RoleSelection() {
 
       <View style={styles.footer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={loading ? 'Saving roles' : 'Continue with selected roles'}
           style={[styles.cta, (!primaryRole || loading) && styles.ctaDisabled]}
           onPress={handleContinue}
           disabled={!primaryRole || loading}

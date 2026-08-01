@@ -168,7 +168,7 @@ export default function MyMembershipsScreen() {
         </View>
 
         {error ? (
-          <Pressable style={[styles.errorCard, { borderColor: theme.colors.danger }]} onPress={clearError}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss membership error" style={[styles.errorCard, { borderColor: theme.colors.danger }]} onPress={clearError}>
             <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text>
           </Pressable>
         ) : null}

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
+import { PluggdImage } from '../src/components/PluggdImage';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { MobileFeedAttachmentCard } from '../src/features/community-feed/MobileFeedAttachmentCard';
 import type { MobileFeedAttachment } from '../src/features/community-feed/communityFeedTypes';
@@ -20,6 +21,7 @@ import {
   uploadSocialMediaAsset,
 } from '../src/features/culture/mobileServices';
 import { contentInitials } from '../src/lib/mobileContent';
+import { supabase } from '../src/lib/supabase';
 
 const CANVAS = '#0a0806';
 const SURFACE = '#171310';
@@ -66,6 +68,19 @@ export default function CreatePostRoute() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const profile = useQuery({
+    queryKey: ['profile', 'composer', user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('full_name,username,avatar_url')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { full_name?: string | null; username?: string | null; avatar_url?: string | null } | null;
+    },
+  });
   const params = useLocalSearchParams<{
     type?: string;
     communityId?: string;
@@ -108,6 +123,7 @@ export default function CreatePostRoute() {
   const destinationLabel = destinations.length
     ? destinations.map((destination) => destination.destination_type.replace(/_/g, ' ')).join(' + ')
     : 'Community feed + profile';
+  const authorName = profile.data?.full_name || profile.data?.username || user?.email || 'PLUGGD member';
   const validPollOptions = useMemo(() => pollOptions.map((option) => option.trim()).filter(Boolean), [pollOptions]);
   const pollPayload = useMemo(() => {
     if (!isPoll || !pollQuestion.trim() || validPollOptions.length < 2) return null;
@@ -314,10 +330,10 @@ export default function CreatePostRoute() {
         <View style={styles.card}>
           <View style={styles.authorRow}>
             <View style={styles.authorAvatar}>
-              <Text style={styles.authorInitial}>{contentInitials(user?.email || 'P')}</Text>
+              {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Text style={styles.authorInitial}>{contentInitials(authorName)}</Text>}
             </View>
             <View style={styles.authorCopy}>
-              <Text style={styles.authorName} numberOfLines={1}>{user?.email || 'PLUGGD member'}</Text>
+              <Text style={styles.authorName} numberOfLines={1}>{authorName}</Text>
               <View style={styles.destinationPill}>
                 <MaterialIcons name="public" size={14} color={ORANGE} />
                 <Text style={styles.destinationPillText} numberOfLines={1}>{destinationLabel}</Text>
@@ -478,7 +494,7 @@ const styles = StyleSheet.create({
   publishMiniText: { color: CANVAS, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
   card: { marginHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: BORDER, paddingVertical: 16, gap: 12 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 4 },
-  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#241d15', borderWidth: 1, borderColor: '#2C2C3E', alignItems: 'center', justifyContent: 'center' },
+  authorAvatar: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#241d15', borderWidth: 1, borderColor: '#2C2C3E', alignItems: 'center', justifyContent: 'center' },
   authorInitial: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
   authorCopy: { flex: 1, minWidth: 0, gap: 5 },
   authorName: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },

@@ -667,6 +667,8 @@ export function PublicCreatorProfileScreen({ username, userId }: Props) {
                         {section.items.map((item) => (
                           <Pressable
                             key={item.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Open ${item.title}`}
                             onPress={() => router.push(item.route as any)}
                             style={styles.contentCard}
                           >

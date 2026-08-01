@@ -119,7 +119,7 @@ export function CommunityFeedScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Community could not load</Text>
           <Text style={styles.emptyBody}>Pull to refresh or try again in a moment.</Text>
-          <Pressable style={styles.retry} onPress={() => void query.refetch()}>
+          <Pressable accessibilityRole="button" style={styles.retry} onPress={() => void query.refetch()}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>

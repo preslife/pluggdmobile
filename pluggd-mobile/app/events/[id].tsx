@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { DetailTitle } from '../../components/DetailTitle';
 import { RecoveryState } from '../../components/ContentUI';
+import { PluggdImage } from '../../src/components/PluggdImage';
 import { PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 import { addEventComment, loadEventCultureContext, loadEventDetail, setEventRsvp } from '../../src/features/culture/mobileServices';
 import { MobileStoriesRail } from '../../src/features/culture/MobileStoriesRail';
@@ -89,8 +90,14 @@ export default function EventDetailScreen() {
         {event ? (
           <>
             <View style={styles.hero}>
-              {event.cover_image_url ? <Image source={{ uri: event.cover_image_url }} style={styles.heroImage} /> : null}
-              {!event.cover_image_url ? <MaterialIcons name="event" size={58} color={PLUGGD_ORANGE} /> : null}
+              <PluggdImage
+                uri={event.cover_image_url ?? ''}
+                fallbackSource={require('../../assets/web-parity/home/intimate-crowd-hero.png')}
+                style={styles.heroImage}
+                displayWidth={800}
+                resizeMode="cover"
+                accessibilityLabel={`${event.title || 'PLUGGD event'} artwork`}
+              />
             </View>
             <Text style={styles.eyebrow}>Event</Text>
             <DetailTitle title={event.title || 'Untitled event'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />

@@ -38,6 +38,19 @@ type PreparedLicence = {
   contract: { id: string; legalText: string; acceptanceRequired: boolean };
 };
 
+type PrepareBlock = 'sign_in' | 'terms_incomplete' | 'unavailable' | null;
+
+async function functionErrorCode(error: unknown): Promise<string | null> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (!(context instanceof Response)) return null;
+  try {
+    const body = await context.clone().json() as { code?: unknown };
+    return typeof body.code === 'string' ? body.code : null;
+  } catch {
+    return null;
+  }
+}
+
 function list(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
   if (value && typeof value === 'object') {
@@ -88,7 +101,7 @@ export default function LicencePreviewScreen() {
   const [prepared, setPrepared] = useState<PreparedLicence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [prepareBlock, setPrepareBlock] = useState<PrepareBlock>(null);
   const [legalName, setLegalName] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -108,10 +121,10 @@ export default function LicencePreviewScreen() {
     }
     setLoading(true);
     setError(null);
-    setNeedsSignIn(false);
+    setPrepareBlock(null);
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setNeedsSignIn(true);
+      setPrepareBlock('sign_in');
       setError('Sign in to review verified licence terms and continue to checkout.');
       setLoading(false);
       return;
@@ -120,7 +133,14 @@ export default function LicencePreviewScreen() {
       body: { beatId, licenseOptionId },
     });
     if (requestError) {
-      setError('We could not load the verified licence terms right now. No payment has been started.');
+      const code = await functionErrorCode(requestError);
+      if (code === 'LICENCE_TERMS_INCOMPLETE') {
+        setPrepareBlock('terms_incomplete');
+        setError('This producer’s licence agreement is still being finalized. This tier is not available to buy yet, and no payment has been started.');
+      } else {
+        setPrepareBlock('unavailable');
+        setError('We could not load the verified licence terms right now. No payment has been started.');
+      }
       setLoading(false);
       return;
     }
@@ -216,16 +236,16 @@ export default function LicencePreviewScreen() {
         {loading || policy.loading ? <ActivityIndicator color={ORANGE} style={styles.loader} /> : null}
         {error ? (
           <View style={styles.unavailable}>
-            <MaterialIcons name={needsSignIn ? 'lock-person' : 'verified-user'} size={30} color={ORANGE} />
-            <Text style={styles.title}>{needsSignIn ? 'Sign in to review the terms.' : 'Terms temporarily unavailable.'}</Text>
+            <MaterialIcons name={prepareBlock === 'sign_in' ? 'lock-person' : prepareBlock === 'terms_incomplete' ? 'edit-note' : 'verified-user'} size={30} color={ORANGE} />
+            <Text style={styles.title}>{prepareBlock === 'sign_in' ? 'Sign in to review the terms.' : prepareBlock === 'terms_incomplete' ? 'Licence agreement coming soon.' : 'Terms temporarily unavailable.'}</Text>
             <Text style={styles.body}>{error}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={needsSignIn ? 'Sign in to review licence' : 'Try loading licence terms again'}
+              accessibilityLabel={prepareBlock === 'sign_in' ? 'Sign in to review licence' : prepareBlock === 'terms_incomplete' ? 'Go back to licence choices' : 'Try loading licence terms again'}
               style={styles.secondary}
-              onPress={needsSignIn ? () => router.push('/auth/login' as any) : prepare}
+              onPress={prepareBlock === 'sign_in' ? () => router.push('/auth/login' as any) : prepareBlock === 'terms_incomplete' ? () => router.back() : prepare}
             >
-              <Text style={styles.secondaryText}>{needsSignIn ? 'Sign in' : 'Try again'}</Text>
+              <Text style={styles.secondaryText}>{prepareBlock === 'sign_in' ? 'Sign in' : prepareBlock === 'terms_incomplete' ? 'Back to licences' : 'Try again'}</Text>
             </Pressable>
           </View>
         ) : null}

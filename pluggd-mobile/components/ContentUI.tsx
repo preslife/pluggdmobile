@@ -61,7 +61,7 @@ export function SectionTitle({
     <View style={styles.sectionHeader}>
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
       {actionLabel ? (
-        <Pressable style={styles.sectionAction} onPress={onAction}>
+        <Pressable accessibilityRole="button" style={styles.sectionAction} onPress={onAction}>
           <Text style={[styles.sectionActionText, { color: theme.colors.accent }]}>{actionLabel}</Text>
           <MaterialIcons name="chevron-right" size={18} color={theme.colors.accent} />
         </Pressable>
@@ -115,6 +115,8 @@ export function PosterCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${title}`}
       onPress={onPress}
       style={[
         styles.posterCard,
@@ -195,6 +197,8 @@ export function ListCard({
   const theme = usePluggdTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${title}`}
       onPress={onPress}
       style={[
         styles.listCard,

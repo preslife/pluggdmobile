@@ -85,10 +85,10 @@ assert.match(creatorMode, /\/upload-clip/, 'Creator Mode clip upload must route 
 assert.match(creatorMode, /\/ticket-scan/, 'Creator Mode ticket scanning must route to the real ticket scan/check-in surface');
 assert.match(mobileHeader, /route:\s*'\/ticket-scan'/, 'Promoter/venue avatar menu must route ticket scanning to the real scanner');
 assert.doesNotMatch(mobileHeader, /mode=scan/, 'Avatar menu must not use stale ticket-scan query routes');
-assert.match(ticketScan, /from\('ticket_orders'\)/, 'Ticket scan route must validate real ticket_orders');
-assert.match(ticketScan, /qr_code_data/, 'Ticket scan route must verify real QR payload data');
-assert.match(ticketScan, /verifyTicketEntryToken/, 'Ticket scan route must verify dynamic rotating ticket payloads');
-assert.match(ticketScan, /checked_in_at/, 'Ticket scan route must attempt real check-in state updates');
+assert.match(ticketScan, /verifyTicketEntryToken/, 'Ticket scan route must verify rotating payloads through the hardened server contract');
+assert.match(ticketScan, /pluggd-ticket-v1:/, 'Ticket scan route must accept only rotating PLUGGD entry payloads');
+assert.doesNotMatch(ticketScan, /from\(['\"]ticket_orders['\"]\).*update|from\(['\"]ticket_orders['\"]\)\s*\n?\s*\.update/s, 'Ticket scan route must never update ticket orders directly from the mobile client');
+assert.doesNotMatch(ticketScan, /from\(['\"]ticket_orders['\"]\)/, 'Ticket scan route must not bypass server authorization by querying ticket orders directly');
 assert.match(ticketScan, /CameraView/, 'Ticket scan route must expose native camera scanning once expo-camera is installed');
 assert.match(ticketScan, /barcodeScannerSettings=\{\{ barcodeTypes: \['qr'\] \}\}/, 'Ticket scan route must scan QR payloads only');
 assert.match(ticketScan, /Apple Wallet passes are not available until pass signing is connected/, 'Ticket scan route must keep unsupported Apple Wallet pass features explicit');

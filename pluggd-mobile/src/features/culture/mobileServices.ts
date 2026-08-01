@@ -277,11 +277,11 @@ export async function resolveMobileFeedAttachment(input: {
     const profile = await safeMaybe<any>(
       (supabase as any)
         .from('profiles')
-        .select('user_id,username,slug,full_name,display_name,custom_url')
+        .select('user_id,username,slug,full_name,custom_url')
         .eq('user_id', gallery.user_id)
         .maybeSingle(),
     );
-    const creatorName = profile?.display_name || profile?.full_name || profile?.username || 'Creator';
+    const creatorName = profile?.full_name || profile?.username || 'Creator';
     return {
       type: 'gallery_item',
       id: gallery.id,

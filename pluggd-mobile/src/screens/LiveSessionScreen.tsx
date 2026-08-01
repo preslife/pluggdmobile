@@ -1138,18 +1138,18 @@ export default function LiveSessionScreen() {
 
             <View style={styles.primaryActions}>
               {streamRole === 'host' ? (
-                <Pressable style={styles.primaryActionButton} onPress={endLive}>
+                <Pressable accessibilityRole="button" accessibilityLabel="End live session" style={styles.primaryActionButton} onPress={endLive}>
                   <MaterialIcons name="stop-circle" size={18} color="#FFFFFF" />
                   <Text style={styles.primaryActionText}>End live</Text>
                 </Pressable>
               ) : (
-                <Pressable style={styles.primaryActionButton} onPress={() => sendReaction('heart')}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Send heart reaction" style={styles.primaryActionButton} onPress={() => sendReaction('heart')}>
                   <MaterialIcons name="favorite" size={18} color="#FFFFFF" />
                   <Text style={styles.primaryActionText}>Support</Text>
                 </Pressable>
               )}
 
-              <Pressable style={styles.secondaryActionButton} onPress={sendGift}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Send live gift" style={styles.secondaryActionButton} onPress={sendGift}>
                 <MaterialIcons name="card-giftcard" size={18} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryActionText}>
                   {giftCatalog[0] ? `Gift ${giftCatalog[0].credit_cost} cr` : 'Send gift'}
@@ -1174,7 +1174,7 @@ export default function LiveSessionScreen() {
                         : 'The host will review your request.'}
                     </Text>
                     {stageRequest.status === 'pending' ? (
-                      <Pressable style={styles.stageRequestButton} onPress={withdrawStageRequest} disabled={withdrawingStage}>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Withdraw stage request" style={styles.stageRequestButton} onPress={withdrawStageRequest} disabled={withdrawingStage}>
                         {withdrawingStage ? (
                           <ActivityIndicator color="#FFFFFF" />
                         ) : (
@@ -1192,7 +1192,7 @@ export default function LiveSessionScreen() {
                       placeholderTextColor="#8A8A8A"
                       style={styles.stageRequestInput}
                     />
-                    <Pressable style={styles.stageRequestButton} onPress={requestStageAccess} disabled={requestingStage}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Request stage access" style={styles.stageRequestButton} onPress={requestStageAccess} disabled={requestingStage}>
                       {requestingStage ? (
                         <ActivityIndicator color="#FFFFFF" />
                       ) : (
@@ -1265,12 +1265,16 @@ export default function LiveSessionScreen() {
                       </Text>
                     </View>
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Approve stage request from user ${request.requester_id.slice(0, 6)}`}
                       style={styles.approveButton}
                       onPress={() => reviewStageRequest(request.id, true)}
                     >
                       <MaterialIcons name="check" size={16} color="#0a0806" />
                     </Pressable>
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Decline stage request from user ${request.requester_id.slice(0, 6)}`}
                       style={styles.declineButton}
                       onPress={() => reviewStageRequest(request.id, false)}
                     >
@@ -1291,6 +1295,9 @@ export default function LiveSessionScreen() {
                       <Text style={styles.hostRequestNote} numberOfLines={1}>{participant.role || 'Collaborator'}</Text>
                     </View>
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove user ${participant.user_id.slice(0, 6)} from stage`}
+                      accessibilityState={{ disabled: removingStageUserId === participant.user_id }}
                       style={styles.declineButton}
                       disabled={removingStageUserId === participant.user_id}
                       onPress={() => removeStageParticipant(participant.user_id)}
@@ -1358,12 +1365,12 @@ export default function LiveSessionScreen() {
                     editable={session?.status !== 'ended'}
                     style={styles.input}
                   />
-                  <Pressable style={styles.emojiButton} onPress={() => sendReaction('boost')}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Send boost reaction" style={styles.emojiButton} onPress={() => sendReaction('boost')}>
                     <MaterialIcons name="bolt" size={22} color="#BDBDBD" />
                   </Pressable>
                 </PluggdGlassSurface>
 
-                <Pressable style={styles.sendButton} onPress={sendMessage}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Send chat message" style={styles.sendButton} onPress={sendMessage}>
                   <MaterialIcons name="send" size={20} color="#FFFFFF" />
                 </Pressable>
               </View>

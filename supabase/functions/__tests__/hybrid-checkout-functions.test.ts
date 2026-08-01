@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   handlePrepareBeatLicense,
+  hasCompleteLicenceTerms,
+  majorUnitsToMinorUnits,
   type PrepareBeatLicenseDependencies,
 } from "../prepare-beat-license/handler.ts";
 import {
@@ -96,7 +98,8 @@ function prepareDeps(
     loadContractTemplate: async () => ({
       template_type: "premium_lease",
       title: "Premium licence",
-      legal_text: "{artist_name} licenses {beat_title} for £{amount}",
+      legal_text: ("{artist_name} licenses {beat_title} for £{amount}. " +
+        "The parties agree to the published usage rights, restrictions, deliverables, term, territory, credit, payment, warranty, liability, termination and governing-law clauses. ").repeat(5),
       features: ["100,000 streams"],
       restrictions: ["Non-exclusive"],
       deliverables: ["WAV", "Stems"],
@@ -223,6 +226,30 @@ function eventDeps(
 }
 
 describe("prepare-beat-license", () => {
+  it("converts the deployed decimal catalogue price into trusted minor units", () => {
+    expect(majorUnitsToMinorUnits(34.99)).toBe(3499);
+    expect(majorUnitsToMinorUnits("79.99")).toBe(7999);
+    expect(majorUnitsToMinorUnits(null)).toBe(0);
+  });
+
+  it("fails closed when a catalogue agreement still contains placeholder terms", async () => {
+    expect(hasCompleteLicenceTerms("[Full legal text continues...]"))
+      .toBe(false);
+    const response = await handlePrepareBeatLicense(
+      request({ beatId: "beat", licenseOptionId: "option" }),
+      prepareDeps({
+        loadContractTemplate: async () => ({
+          template_type: "premium_lease",
+          title: "Premium licence",
+          legal_text: "[Full legal text continues...]",
+          is_active: true,
+        }),
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("LICENCE_TERMS_INCOMPLETE");
+  });
+
   it("requires authentication and blocks self-purchase", async () => {
     const unauthenticated = await handlePrepareBeatLicense(
       request({ beatId: "beat", licenseOptionId: "option" }),
@@ -411,6 +438,49 @@ describe("create-event-checkout", () => {
         },
       }),
     )).status).toBe(409);
+  });
+
+  it("validates tier ownership, sale windows, trusted pricing and the policy kill switch", async () => {
+    const source = (await eventDeps().loadSource("event", "tier"))!;
+
+    expect((await handleCreateEventCheckout(
+      request(body),
+      eventDeps({
+        loadSource: async () => ({
+          ...source,
+          tier: { ...source.tier, event_id: "different-event" },
+        }),
+      }),
+    )).status).toBe(400);
+
+    expect((await handleCreateEventCheckout(
+      request(body),
+      eventDeps({
+        loadSource: async () => ({
+          ...source,
+          tier: { ...source.tier, sale_starts_at: "2026-01-02T00:00:00.000Z" },
+        }),
+        now: () => new Date("2026-01-01T00:00:00.000Z"),
+      }),
+    )).status).toBe(409);
+
+    expect((await handleCreateEventCheckout(
+      request(body),
+      eventDeps({
+        loadSource: async () => ({
+          ...source,
+          tier: { ...source.tier, price_cents: 24.5 },
+        }),
+      }),
+    )).status).toBe(409);
+
+    expect((await handleCreateEventCheckout(
+      request(body),
+      eventDeps({
+        loadPolicy: async () =>
+          policy("event_ticket", { server_flags: { kill_switch: true } }),
+      }),
+    )).status).toBe(403);
   });
 
   it("rejects bad return URLs and reuses an existing session", async () => {

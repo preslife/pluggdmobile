@@ -90,7 +90,7 @@ export function MusicDiscoveryDiscover() {
           <MaterialIcons name="search" size={21} color={MUTED} /><Text style={styles.searchText}>Artists, tracks, scenes, cities</Text><Text style={styles.searchHint}>⌘K</Text>
         </Pressable>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {FILTERS.map((item) => <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
+          {FILTERS.map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: filter === item }} key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
         </ScrollView>
 
         <View style={styles.worldsGrid}>
@@ -129,10 +129,10 @@ export function MusicDiscoveryDiscover() {
 
         {scenes.length ? (
           <>
-            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>SCENE DIAL</Text><Text style={styles.sectionTitle}>Tune into a world</Text></View><Pressable onPress={() => setFilter('Scenes')}><Text style={styles.seeAll}>Browse all</Text></Pressable></View>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>SCENE DIAL</Text><Text style={styles.sectionTitle}>Tune into a world</Text></View><Pressable accessibilityRole="button" onPress={() => setFilter('Scenes')}><Text style={styles.seeAll}>Browse all</Text></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRail}>
               {scenes.map((scene, index) => (
-                <Pressable key={scene.label} onPress={() => router.push(scene.route as any)} style={[styles.sceneCard, index % 2 === 1 && styles.sceneCardTall]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Open ${scene.label}`} key={scene.label} onPress={() => router.push(scene.route as any)} style={[styles.sceneCard, index % 2 === 1 && styles.sceneCardTall]}>
                   {scene.image ? <PluggdImage uri={scene.image} style={styles.fill} displayWidth={480} /> : <View style={[styles.fill, styles.fallback]} />}
                   <View style={styles.sceneShade} /><Text style={styles.sceneNumber}>0{index + 1}</Text><View><Text style={styles.sceneLabel}>{scene.label}</Text><Text style={styles.sceneDetail}>{scene.detail} · enter</Text></View>
                 </Pressable>
@@ -143,10 +143,10 @@ export function MusicDiscoveryDiscover() {
 
         {allItems.length > 3 ? (
           <>
-            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>RELEASE RADAR</Text><Text style={styles.sectionTitle}>New on the platform</Text></View><Pressable onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable></View>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>RELEASE RADAR</Text><Text style={styles.sectionTitle}>New on the platform</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable></View>
             <View style={styles.radarGrid}>
               {allItems.slice(3, 7).map((item) => (
-                <Pressable key={item.id} onPress={() => play(item)} style={styles.radarCard}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={item.id} onPress={() => play(item)} style={styles.radarCard}>
                   {item.artwork ? <PluggdImage uri={item.artwork} style={styles.radarArt} displayWidth={420} /> : <View style={[styles.radarArt, styles.fallback]}><MaterialIcons name="graphic-eq" size={30} color={ORANGE} /></View>}
                   <View style={styles.radarPlay}><MaterialIcons name="play-arrow" size={18} color="#100B07" /></View>
                   <Text style={styles.radarTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.radarMeta} numberOfLines={1}>{item.creator} · {item.kind}</Text>
@@ -160,7 +160,7 @@ export function MusicDiscoveryDiscover() {
           <>
             <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>PLUGGD CHART</Text><Text style={styles.sectionTitle}>Moving without the machine</Text></View></View>
             {allItems.slice(0, 6).map((item, index) => (
-              <Pressable key={`chart-${item.id}`} onPress={() => play(item)} style={styles.chartRow}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={`chart-${item.id}`} onPress={() => play(item)} style={styles.chartRow}>
                 <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
                 {item.artwork ? <PluggdImage uri={item.artwork} style={styles.chartArt} displayWidth={180} /> : <View style={[styles.chartArt, styles.fallback]} />}
                 <View style={styles.chartCopy}><Text style={styles.chartTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.chartMeta} numberOfLines={1}>{item.creator} · {item.discoveryReason}</Text></View>
@@ -171,8 +171,8 @@ export function MusicDiscoveryDiscover() {
         ) : null}
 
         <View style={styles.contextGrid}>
-          <Pressable onPress={() => router.push('/live' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="sensors" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Enter the room</Text><Text style={styles.contextMeta}>Broadcasts, parties and replays</Text></Pressable>
-          <Pressable onPress={() => router.push('/market' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>SUPPORT</Text><MaterialIcons name="storefront" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Creator market</Text><Text style={styles.contextMeta}>Beats, packs and releases</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/live' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="sensors" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Enter the room</Text><Text style={styles.contextMeta}>Broadcasts, parties and replays</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/market' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>SUPPORT</Text><MaterialIcons name="storefront" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Creator market</Text><Text style={styles.contextMeta}>Beats, packs and releases</Text></Pressable>
         </View>
       </ScrollView>
     </View>

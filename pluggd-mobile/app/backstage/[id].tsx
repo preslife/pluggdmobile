@@ -63,10 +63,13 @@ export default function BackstageCommunityDetail() {
         contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 54), paddingBottom: 190 }}
       >
         <View style={styles.headerRow}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.backButton} onPress={() => router.back()}>
             <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
           </Pressable>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isJoined ? `Leave ${community?.title || 'community'}` : `Join ${community?.title || 'community'}`}
+            accessibilityState={{ selected: isJoined, disabled: !community || joinMutation.isPending }}
             style={[styles.joinButton, isJoined && styles.joinButtonActive]}
             onPress={() => joinMutation.mutate()}
             disabled={!community || joinMutation.isPending}
@@ -144,7 +147,7 @@ export default function BackstageCommunityDetail() {
                 )) : detail.data?.posts.length ? detail.data.posts.map((post) => {
                   const postBody = post.body || (post as any).content || '';
                   return (
-                    <Pressable key={post.id} style={styles.threadCard} onPress={() => router.push(`/post/${post.id}` as any)}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${post.title || 'post'}`} key={post.id} style={styles.threadCard} onPress={() => router.push(`/post/${post.id}` as any)}>
                       <Text style={styles.threadTag}>{post.post_type?.replace(/_/g, ' ') || 'Post'}</Text>
                       <Text style={styles.threadTitle}>{post.title || postBody}</Text>
                       <Text style={styles.threadBody} numberOfLines={2}>{postBody}</Text>
@@ -158,7 +161,7 @@ export default function BackstageCommunityDetail() {
             {activeTab === 'Threads' ? (
               <View style={styles.section}>
                 {detail.data?.boards.length ? detail.data.boards.slice(0, 6).map((board) => (
-                  <Pressable key={board.id} style={styles.boardCard} onPress={() => router.push(board.route as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open ${board.name || 'board'}`} key={board.id} style={styles.boardCard} onPress={() => router.push(board.route as any)}>
                     <Text style={styles.threadTag}>Board</Text>
                     <Text style={styles.threadTitle}>{board.name}</Text>
                     {board.description ? <Text style={styles.threadBody} numberOfLines={2}>{board.description}</Text> : null}
@@ -166,7 +169,7 @@ export default function BackstageCommunityDetail() {
                   </Pressable>
                 )) : null}
                 {detail.data?.threads.length ? detail.data.threads.map((thread) => (
-                  <Pressable key={thread.id} style={styles.threadCard} onPress={() => router.push((thread.route || `/post/${thread.id}`) as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open ${thread.title || 'thread'}`} key={thread.id} style={styles.threadCard} onPress={() => router.push((thread.route || `/post/${thread.id}`) as any)}>
                     <Text style={styles.threadTag}>{thread.category || 'Thread'}</Text>
                     <Text style={styles.threadTitle}>{thread.title}</Text>
                     {thread.body ? <Text style={styles.threadBody} numberOfLines={2}>{thread.body}</Text> : null}
@@ -181,6 +184,8 @@ export default function BackstageCommunityDetail() {
                 {detail.data?.rooms.length ? detail.data.rooms.map((room) => (
                   <Pressable
                     key={room.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Join ${room.title}`}
                     style={styles.roomCard}
                     onPress={() => router.push(routeForRoom(room, community) as any)}
                   >
@@ -200,6 +205,8 @@ export default function BackstageCommunityDetail() {
                 {detail.data?.events.length ? detail.data.events.map((event) => (
                   <Pressable
                     key={event.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${event.title}`}
                     style={styles.threadCard}
                     onPress={() => router.push(`/community/events/${event.id}` as any)}
                   >
@@ -215,7 +222,7 @@ export default function BackstageCommunityDetail() {
             {activeTab === 'Soundboards' ? (
               <View style={styles.section}>
                 {detail.data?.soundboards.length ? detail.data.soundboards.map((soundboard) => (
-                  <Pressable key={soundboard.id} style={styles.soundboardCard} onPress={() => router.push(`/soundboards/${soundboard.id}` as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open ${soundboard.title || 'soundboard'}`} key={soundboard.id} style={styles.soundboardCard} onPress={() => router.push(`/soundboards/${soundboard.id}` as any)}>
                     <View style={styles.soundboardArt}>
                       {soundboard.cover_image_url ? <Image source={{ uri: soundboard.cover_image_url }} style={styles.fill} /> : <Text style={styles.avatarText}>{contentInitials(soundboard.title)}</Text>}
                     </View>
@@ -232,7 +239,7 @@ export default function BackstageCommunityDetail() {
             {activeTab === 'Drops' ? (
               <View style={styles.section}>
                 {detail.data?.drops.length ? detail.data.drops.map((drop: any) => (
-                  <Pressable key={drop.id} style={styles.dropRow} onPress={() => router.push(routeForDrop(drop) as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open ${drop.title || 'drop'}`} key={drop.id} style={styles.dropRow} onPress={() => router.push(routeForDrop(drop) as any)}>
                     <View style={styles.dropArt}>
                       {drop.cover_art_url || drop.image_url || drop.cover_url ? <Image source={{ uri: drop.cover_art_url || drop.image_url || drop.cover_url }} style={styles.fill} /> : <Text style={styles.avatarText}>{contentInitials(drop.title)}</Text>}
                     </View>

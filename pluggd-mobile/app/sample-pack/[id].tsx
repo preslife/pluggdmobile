@@ -133,7 +133,7 @@ export default function SamplePackDetailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -157,26 +157,26 @@ export default function SamplePackDetailScreen() {
             {pack.description ? <Text style={styles.description}>{pack.description}</Text> : null}
 
             <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={playPreview}>
+              <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={playPreview}>
                 <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Preview pack</Text>
               </Pressable>
-              <Pressable style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
+              <Pressable accessibilityRole="button" style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
                 {claiming ? <ActivityIndicator color={PLUGGD_ORANGE} /> : <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />}
                 <Text style={styles.secondaryButtonText}>{pack.price ? 'Preview only' : 'Claim free pack'}</Text>
               </Pressable>
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={savePack} disabled={saving}>
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={savePack} disabled={saving}>
                 <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
                 <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={sharePack}>
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={sharePack}>
                 <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>

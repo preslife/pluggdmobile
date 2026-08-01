@@ -21,10 +21,28 @@ export default function InboxRoute() {
       <Stack.Screen options={{ headerShown: false }} />
       {query.data?.length ? <SectionTitle title="Recent conversations" /> : null}
       {!query.isLoading && !query.data?.length ? (
-        <EmptyState title="No conversations yet" body="Creator DMs, support threads, and community replies will appear here." />
+        <>
+          <EmptyState title="No conversations yet" body="Creator DMs, support threads, and community replies will appear here." />
+          <View style={styles.gatewayGrid}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Find creators to follow" style={styles.gateway} onPress={() => router.push('/discover' as any)}>
+              <View style={styles.gatewayIcon}><MaterialIcons name="person-search" size={23} color={PLUGGD_ORANGE} /></View>
+              <Text style={styles.gatewayKicker}>DISCOVER</Text>
+              <Text style={styles.gatewayTitle}>Find your next creator</Text>
+              <Text style={styles.gatewayBody}>Follow artists and producers so replies and supporter updates have somewhere to land.</Text>
+              <MaterialIcons name="arrow-forward" size={20} color={PLUGGD_ORANGE} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open community conversations" style={styles.gateway} onPress={() => router.push('/community' as any)}>
+              <View style={styles.gatewayIcon}><MaterialIcons name="forum" size={23} color={PLUGGD_ORANGE} /></View>
+              <Text style={styles.gatewayKicker}>COMMUNITY</Text>
+              <Text style={styles.gatewayTitle}>Join the conversation</Text>
+              <Text style={styles.gatewayBody}>Move from a public thread into the circles, feedback rooms and people shaping your scene.</Text>
+              <MaterialIcons name="arrow-forward" size={20} color={PLUGGD_ORANGE} />
+            </Pressable>
+          </View>
+        </>
       ) : null}
       {(query.data || []).map((thread) => (
-        <Pressable key={thread.id} style={styles.threadCard} onPress={() => router.push(thread.route as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${thread.title}`} key={thread.id} style={styles.threadCard} onPress={() => router.push(thread.route as any)}>
           <View style={styles.iconWrap}>
             <MaterialIcons name="mail-outline" size={22} color={PLUGGD_ORANGE} />
           </View>
@@ -44,6 +62,12 @@ export default function InboxRoute() {
 }
 
 const styles = StyleSheet.create({
+  gatewayGrid: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  gateway: { flex: 1, minHeight: 230, borderTopWidth: 2, borderBottomWidth: 1, borderColor: '#4A2D1D', backgroundColor: '#14110F', padding: 15, alignItems: 'flex-start' },
+  gatewayIcon: { width: 44, height: 44, borderRadius: 4, backgroundColor: 'rgba(255,102,0,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  gatewayKicker: { color: PLUGGD_ORANGE, fontSize: 9, letterSpacing: 1.4, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  gatewayTitle: { color: '#FFFFFF', fontSize: 19, lineHeight: 23, fontFamily: pluggdFonts.displayBold, fontWeight: '700', marginTop: 7 },
+  gatewayBody: { flex: 1, color: '#A9A19A', fontSize: 12, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 8, marginBottom: 12 },
   threadCard: { minHeight: 92, borderBottomWidth: 1, borderColor: '#302A26', paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 44, height: 44, borderRadius: 4, backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0 },

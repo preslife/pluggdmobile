@@ -147,7 +147,7 @@ export function ThePlugIndexScreen() {
             <MaterialIcons name="auto-stories" size={31} color={ORANGE} />
             <Text style={styles.emptyTitle}>The next dispatch is being written.</Text>
             <Text style={styles.emptyBody}>Return soon for interviews, reports and stories from across independent music.</Text>
-            <Pressable onPress={() => router.push('/discover' as any)} style={styles.emptyAction}><Text style={styles.emptyActionText}>Keep discovering</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/discover' as any)} style={styles.emptyAction}><Text style={styles.emptyActionText}>Keep discovering</Text></Pressable>
           </View>
         ) : null}
       </ScrollView>

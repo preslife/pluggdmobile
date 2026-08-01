@@ -309,6 +309,8 @@ export default function SignUp() {
             ) : null}
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={loading ? 'Creating account' : 'Create account'}
               onPress={handleSignUp}
               disabled={loading}
               style={[styles.cta, { opacity: loading ? 0.62 : 1 }]}

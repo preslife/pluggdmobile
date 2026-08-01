@@ -328,7 +328,7 @@ export default function CreatorEventsScreen() {
         }
       >
         <View style={styles.topBar}>
-          <Pressable style={styles.iconButton} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.iconButton} onPress={() => router.back()}>
             <MaterialIcons name="chevron-left" size={27} color="#FFFFFF" />
           </Pressable>
 
@@ -337,7 +337,7 @@ export default function CreatorEventsScreen() {
             <Text style={styles.pageTitle}>Events</Text>
           </View>
 
-          <Pressable style={styles.iconButton} onPress={startCreate}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Create event" style={styles.iconButton} onPress={startCreate}>
             <MaterialIcons name="add" size={24} color={PLUGGD_ORANGE} />
           </Pressable>
         </View>
@@ -352,7 +352,7 @@ export default function CreatorEventsScreen() {
           <View style={styles.formCard}>
             <View style={styles.formHeader}>
               <Text style={styles.formTitle}>{editingId ? 'Edit event' : 'New event'}</Text>
-              <Pressable style={styles.closeButton} onPress={closeForm}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close event form" style={styles.closeButton} onPress={closeForm}>
                 <MaterialIcons name="close" size={20} color="#FFFFFF" />
               </Pressable>
             </View>
@@ -445,7 +445,7 @@ export default function CreatorEventsScreen() {
               style={styles.input}
             />
 
-            <Pressable style={styles.saveButton} onPress={saveEvent} disabled={saving}>
+            <Pressable accessibilityRole="button" accessibilityLabel={saving ? 'Saving event' : 'Save event'} style={styles.saveButton} onPress={saveEvent} disabled={saving}>
               {saving ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -492,7 +492,7 @@ export default function CreatorEventsScreen() {
                 : 'Completed events will appear here after they end.'}
             </Text>
             {tab === 'upcoming' ? (
-              <Pressable style={styles.emptyButton} onPress={startCreate}>
+              <Pressable accessibilityRole="button" style={styles.emptyButton} onPress={startCreate}>
                 <Text style={styles.emptyButtonText}>Create event</Text>
               </Pressable>
             ) : null}
@@ -517,7 +517,7 @@ function SegmentButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.segmentButton, active && styles.segmentButtonActive]} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.segmentButton, active && styles.segmentButtonActive]} onPress={onPress}>
       <Text style={[styles.segmentButtonText, active && styles.segmentButtonTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -566,10 +566,10 @@ function EventCard({
         <View style={styles.eventTitleRow}>
           <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
           <View style={styles.eventActions}>
-            <Pressable style={styles.smallIconButton} onPress={onEdit}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit event" style={styles.smallIconButton} onPress={onEdit}>
               <MaterialIcons name="edit" size={17} color="#FFFFFF" />
             </Pressable>
-            <Pressable style={styles.smallIconButton} onPress={onDelete}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Delete event" style={styles.smallIconButton} onPress={onDelete}>
               <MaterialIcons name="delete-outline" size={17} color="#FF5C5C" />
             </Pressable>
           </View>

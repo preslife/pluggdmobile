@@ -56,6 +56,7 @@ export const ED_PRESSED = { opacity: 0.86, transform: [{ scale: 0.985 }] } as co
 export function EdPressable({ style, onPress, haptic = true, ...props }: PressableProps & { haptic?: boolean }) {
   return (
     <Pressable
+      accessibilityRole="button"
       {...props}
       onPress={(event: GestureResponderEvent) => {
         if (haptic) selectionHaptic();

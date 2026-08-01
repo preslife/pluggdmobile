@@ -131,43 +131,55 @@ export default function PlayerScreen() {
           </Pressable>
         </View>
         <View style={styles.roomPane}>
-          <Text style={styles.topTitle}>NOW PLAYING</Text>
-          <Text style={styles.roomTitle} numberOfLines={2}>{title}</Text>
-          <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Seek playback" style={styles.progressWrap} onPress={handleScrub}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+          {!currentTrack ? (
+            <View style={styles.roomEmpty}>
+              <Text style={styles.topTitle}>PLUGGD LISTENING ROOM</Text>
+              <Text style={styles.roomTitle}>Choose the next signal.</Text>
+              <Text style={styles.roomEmptyBody}>Start a release, beat or mix. The player keeps your place as you move through PLUGGD.</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Discover music to play" onPress={() => router.replace('/discover' as any)} style={styles.roomEmptyPrimary}>
+                <Text style={styles.emptyPrimaryText}>Discover music</Text>
+                <MaterialIcons name="arrow-forward" size={19} color="#0A0806" />
+              </Pressable>
             </View>
-          </Pressable>
-          <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatDuration(progress.position)}</Text>
-            <Text style={styles.timeText}>{formatDuration(progress.duration)}</Text>
-          </View>
-          <View style={styles.controls}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Toggle shuffle" accessibilityState={{ selected: shuffleMode === 'on' }} onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
-              <MaterialIcons name="shuffle" size={22} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
+          ) : <>
+            <Text style={styles.topTitle}>NOW PLAYING</Text>
+            <Text style={styles.roomTitle} numberOfLines={2}>{title}</Text>
+            <Text style={styles.trackArtist} numberOfLines={1}>{artist}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Seek playback" style={styles.progressWrap} onPress={handleScrub}>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+              </View>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Previous track" onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
-              <MaterialIcons name="skip-previous" size={34} color="#FFFFFF" />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
-              onPress={() => {
-                impactHaptic();
-                togglePlayPause();
-              }}
-              style={({ pressed }) => [styles.roomPlayButton, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}
-            >
-              <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={40} color="#FFFFFF" />
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Next track" onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
-              <MaterialIcons name="skip-next" size={34} color="#FFFFFF" />
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Toggle repeat" accessibilityState={{ selected: repeatMode !== RepeatMode.Off }} onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
-              <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={22} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
-            </Pressable>
-          </View>
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>{formatDuration(progress.position)}</Text>
+              <Text style={styles.timeText}>{formatDuration(progress.duration)}</Text>
+            </View>
+            <View style={styles.controls}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Toggle shuffle" accessibilityState={{ selected: shuffleMode === 'on' }} onPress={toggleShuffle} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+                <MaterialIcons name="shuffle" size={22} color={shuffleMode === 'on' ? ORANGE : '#B3B3B3'} />
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Previous track" onPress={skipToPrevious} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+                <MaterialIcons name="skip-previous" size={34} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'Pause media' : 'Play media'}
+                onPress={() => {
+                  impactHaptic();
+                  togglePlayPause();
+                }}
+                style={({ pressed }) => [styles.roomPlayButton, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}
+              >
+                <MaterialIcons name={isBuffering ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'} size={40} color="#FFFFFF" />
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Next track" onPress={skipToNext} style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.86 }]}>
+                <MaterialIcons name="skip-next" size={34} color="#FFFFFF" />
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Toggle repeat" accessibilityState={{ selected: repeatMode !== RepeatMode.Off }} onPress={toggleRepeat} style={({ pressed }) => [styles.controlButton, pressed && { opacity: 0.86 }]}>
+                <MaterialIcons name={repeatMode === RepeatMode.Track ? 'repeat-one' : 'repeat'} size={22} color={repeatMode !== RepeatMode.Off ? ORANGE : '#B3B3B3'} />
+              </Pressable>
+            </View>
+          </>}
         </View>
       </View>
     );
@@ -191,11 +203,30 @@ export default function PlayerScreen() {
             <MaterialIcons name="expand-more" size={30} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.topTitle}>Now Playing</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Share current track" style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleShare}>
-            <MaterialIcons name="ios-share" size={21} color="#FFFFFF" />
-          </Pressable>
+          {currentTrack ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Share current track" style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleShare}>
+              <MaterialIcons name="ios-share" size={21} color="#FFFFFF" />
+            </Pressable>
+          ) : <View style={styles.topButtonSpacer} />}
         </View>
 
+        {!currentTrack ? (
+          <View style={styles.emptyPlayer}>
+            <View style={styles.emptyArtwork}>
+              <MaterialIcons name="headphones" size={68} color={ORANGE} />
+              <Text style={styles.emptyArtKicker}>PLUGGD LISTENING ROOM</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Choose the next signal.</Text>
+            <Text style={styles.emptyBody}>Start a release, beat or mix and the player will carry it across every part of PLUGGD without losing your place.</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Discover music to play" onPress={() => router.replace('/discover' as any)} style={styles.emptyPrimary}>
+              <Text style={styles.emptyPrimaryText}>Discover music</Text>
+              <MaterialIcons name="arrow-forward" size={19} color="#0A0806" />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Return to previous screen" onPress={() => router.back()} style={styles.emptySecondary}>
+              <Text style={styles.emptySecondaryText}>Return to PLUGGD</Text>
+            </Pressable>
+          </View>
+        ) : <>
         <View style={styles.heroArt}>
           {cover ? <Image source={{ uri: cover }} style={styles.fill} /> : <MaterialIcons name="music-note" size={78} color="#3F2417" />}
         </View>
@@ -282,6 +313,7 @@ export default function PlayerScreen() {
         </View>
 
         {sourceRoute ? <Pressable accessibilityRole="button" accessibilityLabel={`Open source for ${title}`} onPress={() => router.push(sourceRoute as any)} style={styles.sourceCard}>{cover ? <Image source={{ uri: cover }} style={styles.sourceImage} /> : null}<LinearGradient colors={['rgba(6,5,4,0.25)', 'rgba(6,5,4,0.94)']} style={StyleSheet.absoluteFill} /><Text style={styles.sourceKicker}>FROM THE CATALOGUE</Text><View><Text style={styles.sourceTitle}>Go deeper into this {sourceLabel}</Text><Text style={styles.sourceMeta}>Support, track context and creator details →</Text></View></Pressable> : null}
+        </>}
       </ScrollView>
     </View>
   );
@@ -321,6 +353,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   roomPane: { flex: 1, paddingHorizontal: 26, paddingVertical: 18, justifyContent: 'center', gap: 6 },
+  roomEmpty: { maxWidth: 460, gap: 12 },
+  roomEmptyBody: { color: '#A9A099', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', maxWidth: 420 },
+  roomEmptyPrimary: { minHeight: 52, borderRadius: 5, backgroundColor: ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 10, maxWidth: 260 },
   roomPlayButton: {
     width: 70,
     height: 70,
@@ -333,7 +368,17 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   topButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  topButtonSpacer: { width: 42, height: 42 },
   topTitle: { color: 'rgba(255,248,237,0.72)', fontSize: 10.5, fontFamily: edFonts.mono, letterSpacing: 2, textTransform: 'uppercase' },
+  emptyPlayer: { minHeight: 660, justifyContent: 'center', paddingBottom: 54 },
+  emptyArtwork: { height: 248, borderRadius: 6, backgroundColor: '#171310', borderWidth: 1, borderColor: '#2E251F', alignItems: 'center', justifyContent: 'center', gap: 20 },
+  emptyArtKicker: { color: '#8E8178', fontSize: 9, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1.5 },
+  emptyTitle: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, letterSpacing: -1, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 26 },
+  emptyBody: { color: '#A9A099', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 10 },
+  emptyPrimary: { minHeight: 56, borderRadius: 5, backgroundColor: ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 26 },
+  emptyPrimaryText: { color: '#0A0806', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  emptySecondary: { minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  emptySecondaryText: { color: '#D8D0C9', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
   heroArt: { aspectRatio: 1, borderRadius: 6, backgroundColor: '#171310', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   fill: { width: '100%', height: '100%' },
   trackHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 22 },

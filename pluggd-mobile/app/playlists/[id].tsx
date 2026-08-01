@@ -59,7 +59,7 @@ export default function PlaylistDetailRoute() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.backButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
           <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
         </Pressable>
 
@@ -103,15 +103,15 @@ export default function PlaylistDetailRoute() {
             {playlist.description ? <Text style={styles.description}>{playlist.description}</Text> : null}
 
             <View style={styles.actions}>
-              <Pressable style={styles.primaryButton} onPress={playAll}>
+              <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={playAll}>
                 <MaterialIcons name="play-arrow" size={22} color="#0a0806" />
                 <Text style={styles.primaryText}>Play</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={follow}>
+              <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={follow}>
                 <MaterialIcons name={playlist.followed ? 'check' : 'add'} size={20} color={PLUGGD_ORANGE} />
                 <Text style={styles.secondaryText}>{playlist.followed ? 'Following' : 'Follow'}</Text>
               </Pressable>
-              <Pressable style={styles.iconButton} onPress={() => Share.share({ message: `PLUGGD playlist: ${playlist.name}` })}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share playlist" style={styles.iconButton} onPress={() => Share.share({ message: `PLUGGD playlist: ${playlist.name}` })}>
                 <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
               </Pressable>
             </View>
@@ -119,7 +119,7 @@ export default function PlaylistDetailRoute() {
             <Text style={styles.sectionTitle}>Tracks</Text>
             {playlist.tracks?.length ? (
               playlist.tracks.map((track, index) => (
-                <Pressable key={track.id} style={styles.trackRow} onPress={() => router.push(track.route as any)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Open ${track.title}`} key={track.id} style={styles.trackRow} onPress={() => router.push(track.route as any)}>
                   <Text style={styles.trackIndex}>{index + 1}</Text>
                   <View style={styles.trackArtwork}>
                     {track.image_url ? <PluggdImage uri={track.image_url} style={styles.trackImage} /> : <MaterialIcons name="music-note" size={22} color={PLUGGD_ORANGE} />}

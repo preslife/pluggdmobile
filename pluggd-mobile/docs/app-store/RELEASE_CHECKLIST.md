@@ -5,7 +5,7 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`50` files / `167` tests)
+- [x] Root test suite (`50` files / `173` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
@@ -32,7 +32,7 @@
   physical merchandise; hostile return URLs are rejected by contract tests.
 - [x] Commerce policy defaults to restricted for an unknown storefront or failed policy request.
 - [x] External release checkout is US-only until another storefront entitlement is explicitly approved.
-- [ ] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
+- [x] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
 - [x] Account/safety and hybrid-commerce migrations deployed to production.
 - [x] Public database views execute as the caller and retain underlying RLS;
   CRM, private-demographic, creator-pool and operational views are service-role
@@ -69,9 +69,9 @@
 
 - [x] Credits can fund only releases, tips and live gifts; they cannot fund beats, memberships, tickets or merchandise.
 - [x] Beat checkout accepts trusted beat/licence/agreement identifiers and rejects client price or creator tampering.
-- [ ] A beat contract requiring signature cannot enter checkout until its required acceptance is valid.
+- [x] A beat licence agreement requiring signature cannot enter checkout until its required acceptance is valid.
 - [ ] Beat webhook replay is idempotent; success, cancellation, delayed completion, refund and revocation reconcile correctly.
-- [ ] Real-world event checkout validates event classification, tier, quantity, price, sales window and inventory server-side.
+- [x] Real-world event checkout validates event classification, tier, quantity, price, sales window and inventory server-side.
 - [x] Paid virtual events are rejected by external checkout.
 - [ ] Concurrent ticket purchases cannot oversell; abandoned reservations expire and refunds return inventory correctly.
 - [ ] Hosted Stripe Checkout offers Apple Pay/card only where the Stripe account and customer device support them.
@@ -135,7 +135,7 @@ sandbox verification remain required.
 - [x] Live is globally reachable from the public header, Home and Discover;
   lobby, replay, creator broadcast setup and authenticated server creation are
   present in the Release simulator build.
-- [ ] Signed-in creator profile, creator membership and role-specific Studio routes.
+- [x] Signed-in creator profile, creator membership and role-specific Studio routes.
 - [ ] Restricted, US and approved-entitlement storefront commerce matrix.
 - [ ] Hosted beat and ticket checkout return, cancel, pending, refund and unavailable states.
 - [ ] Offline images, unavailable audio, empty and loading states.

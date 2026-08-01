@@ -267,7 +267,7 @@ function EventCultureCard({ event, compact = false }: { event: EventItem; compac
   const price = formatGBP(event.price_cents, { cents: true });
 
   return (
-    <Pressable style={[styles.eventCard, compact && styles.eventCardCompact]} onPress={() => router.push(`/events/${event.id}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${event.title || 'event'}`} style={[styles.eventCard, compact && styles.eventCardCompact]} onPress={() => router.push(`/events/${event.id}` as any)}>
       <Artwork uri={event.cover_image_url} fallback={event.title || 'Event'} size={compact ? 62 : 86} />
       <View style={styles.eventCopy}>
         <View style={styles.eventBadge}>
@@ -289,7 +289,7 @@ function EventTile({ event }: { event: EventItem }) {
   const price = formatGBP(event.price_cents, { cents: true });
 
   return (
-    <Pressable style={styles.eventTile} onPress={() => router.push(`/events/${event.id}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${event.title || 'event'}`} style={styles.eventTile} onPress={() => router.push(`/events/${event.id}` as any)}>
       <View style={styles.eventTileImage}>
         {event.cover_image_url ? <Image source={{ uri: event.cover_image_url }} style={styles.fill} /> : null}
         <LinearGradient colors={['rgba(0,0,0,0.04)', 'rgba(0,0,0,0.82)']} style={StyleSheet.absoluteFill} />
@@ -353,7 +353,7 @@ function ReleaseTile({ release }: { release: ReleaseItem }) {
   const playable = releasePlayableUrl(release);
 
   return (
-    <Pressable style={styles.releaseTile} onPress={() => router.push(`/release/${release.id}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${release.title || 'release'}`} style={styles.releaseTile} onPress={() => router.push(`/release/${release.id}` as any)}>
       <View style={styles.releaseTileArt}>
         {release.cover_art_url ? <Image source={{ uri: release.cover_art_url }} style={styles.fill} /> : <Text style={styles.artworkInitials}>{initials(release.title || 'Release')}</Text>}
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={StyleSheet.absoluteFill} />
@@ -436,7 +436,7 @@ function FeedPostCard({ post, release, event }: { post: SocialPostItem; release?
 
 function SocialAction({ icon, label, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; onPress: () => void }) {
   return (
-    <Pressable style={styles.socialAction} onPress={onPress}>
+    <Pressable accessibilityRole="button" style={styles.socialAction} onPress={onPress}>
       <MaterialIcons name={icon} size={18} color="#B3B3B3" />
       <Text style={styles.socialLabel}>{label}</Text>
     </Pressable>
@@ -450,7 +450,7 @@ function StageMediaCard({ item, event }: { item: StageMediaItem; event?: EventIt
   const visualHeight = Math.min(560, Math.max(500, width * 1.42));
 
   return (
-    <Pressable style={[styles.stageCard, { minHeight: visualHeight + 132 }]} onPress={() => router.push(item.route as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={[styles.stageCard, { minHeight: visualHeight + 132 }]} onPress={() => router.push(item.route as any)}>
       <View style={[styles.stageVisual, { height: visualHeight }]}>
         {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.fill} /> : null}
         <LinearGradient colors={['rgba(13,13,17,0.1)', 'rgba(13,13,17,0.15)', 'rgba(13,13,17,0.96)']} style={StyleSheet.absoluteFill} />
@@ -472,6 +472,8 @@ function StageMediaCard({ item, event }: { item: StageMediaItem; event?: EventIt
       </View>
       <View style={styles.stageActions}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Play ${item.title}`}
           style={styles.primaryAction}
           onPress={() => {
             const track = item.release ? toTrack(item.release, 'release') : item.mix ? toTrack(item.mix, 'mix') : null;
@@ -483,13 +485,13 @@ function StageMediaCard({ item, event }: { item: StageMediaItem; event?: EventIt
           <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
           <Text style={styles.primaryActionText}>Play</Text>
         </Pressable>
-        <Pressable style={styles.secondaryAction} onPress={() => router.push(item.route as any)}>
+        <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => router.push(item.route as any)}>
           <MaterialIcons name="bookmark-border" size={19} color="#FFFFFF" />
         </Pressable>
-        <Pressable style={styles.secondaryAction} onPress={() => router.push('/search' as any)}>
+        <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => router.push('/search' as any)}>
           <MaterialIcons name="ios-share" size={19} color="#FFFFFF" />
         </Pressable>
-        <Pressable style={styles.backstageButton} onPress={() => router.push('/community' as any)}>
+        <Pressable accessibilityRole="button" style={styles.backstageButton} onPress={() => router.push('/community' as any)}>
           <Text style={styles.backstageButtonText}>Community</Text>
         </Pressable>
       </View>
@@ -511,7 +513,7 @@ function StageTile({ item }: { item: StageMediaItem }) {
   const track = item.release ? toTrack(item.release, 'release') : item.mix ? toTrack(item.mix, 'mix') : null;
 
   return (
-    <Pressable style={styles.stageTile} onPress={() => router.push(item.route as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={styles.stageTile} onPress={() => router.push(item.route as any)}>
       <View style={styles.stageTileVisual}>
         {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.fill} /> : null}
         <LinearGradient colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
@@ -519,6 +521,9 @@ function StageTile({ item }: { item: StageMediaItem }) {
           <Text style={styles.stageTileKindText}>{item.kind}</Text>
         </View>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={track ? `Play ${item.title}` : `${item.title} is unavailable`}
+          accessibilityState={{ disabled: !track }}
           disabled={!track}
           style={[styles.tilePlay, !track && styles.disabledAction]}
           onPress={(event) => {
@@ -558,7 +563,7 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
         <Text style={styles.stageTopText}>STAGE</Text>
       </View>
       <View style={styles.stageControlChain}>
-        <Pressable style={styles.creatorPortal} onPress={() => router.push('/backstage' as any)}>
+        <Pressable accessibilityRole="button" style={styles.creatorPortal} onPress={() => router.push('/backstage' as any)}>
           <View style={styles.creatorPortalRing}>
             <Artwork uri={item.image_url} fallback={item.creator} size={48} />
           </View>
@@ -568,7 +573,7 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
         </Pressable>
         <StageControl icon="favorite-border" label="12K" onPress={() => impactHaptic()} />
         <StageControl icon="playlist-add" label="Save" onPress={() => selectionHaptic()} />
-        <Pressable style={styles.cartBadge} onPress={() => router.push(event ? `/events/${event.id}` as any : '/wallet' as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={event ? 'Open featured event' : 'Open wallet'} style={styles.cartBadge} onPress={() => router.push(event ? `/events/${event.id}` as any : '/wallet' as any)}>
           <MaterialIcons name="shopping-cart" size={22} color={NOIR_DEEP} />
         </Pressable>
       </View>
@@ -582,11 +587,11 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
         </Text>
         <Waveform active />
         <View style={styles.stageBottomActions}>
-          <Pressable style={styles.stagePlayCta} onPress={play} disabled={!track}>
+          <Pressable accessibilityRole="button" accessibilityLabel={track ? 'Play featured signal' : 'Audio unavailable'} style={styles.stagePlayCta} onPress={play} disabled={!track}>
             <MaterialIcons name="play-arrow" size={22} color={NOIR_DEEP} />
             <Text style={styles.stagePlayText}>Play hook</Text>
           </Pressable>
-          <Pressable style={styles.stageBackstageCta} onPress={() => router.push('/community' as any)}>
+          <Pressable accessibilityRole="button" style={styles.stageBackstageCta} onPress={() => router.push('/community' as any)}>
             <Text style={styles.stageBackstageText}>Community</Text>
           </Pressable>
         </View>
@@ -605,7 +610,7 @@ function StageControl({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.stageControl} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.stageControl} onPress={onPress}>
       <MaterialIcons name={icon} size={28} color="#FFFFFF" />
       <Text style={styles.stageControlLabel}>{label}</Text>
     </Pressable>
@@ -618,6 +623,8 @@ function LiveCultureCard({ room }: { room: LiveRoomItem }) {
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${isLive ? 'Join' : 'Open'} ${room.title || 'live session'}`}
       style={styles.liveCard}
       onPress={() => router.push({ pathname: '/live/session', params: { roomId: room.id } } as any)}
     >
@@ -645,6 +652,8 @@ function LiveMomentTile({ room }: { room: LiveRoomItem }) {
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${isLive ? 'Join' : 'Open'} ${room.title || 'live session'}`}
       style={styles.liveTile}
       onPress={() => router.push({ pathname: '/live/session', params: { roomId: room.id } } as any)}
     >
@@ -668,7 +677,7 @@ function CommunityCard({ community }: { community: BackstageCommunity }) {
   const router = useRouter();
 
   return (
-    <Pressable style={styles.communityCard} onPress={() => router.push(`/backstage/${community.id}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${community.title || 'community'}`} style={styles.communityCard} onPress={() => router.push(`/backstage/${community.id}` as any)}>
       <View style={styles.communityBanner}>
         {community.cover_image_url ? <Image source={{ uri: community.cover_image_url }} style={styles.fill} /> : null}
         <LinearGradient colors={['rgba(255,102,0,0.18)', 'rgba(0,0,0,0.82)']} style={StyleSheet.absoluteFill} />
@@ -697,7 +706,7 @@ function CommunityTile({ community }: { community: BackstageCommunity }) {
   const router = useRouter();
 
   return (
-    <Pressable style={styles.communityTile} onPress={() => router.push(`/backstage/${community.id}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${community.title || 'community'}`} style={styles.communityTile} onPress={() => router.push(`/backstage/${community.id}` as any)}>
       <View style={styles.communityTileImage}>
         {community.cover_image_url ? <Image source={{ uri: community.cover_image_url }} style={styles.fill} /> : null}
         <LinearGradient colors={['rgba(255,102,0,0.12)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
@@ -724,7 +733,7 @@ function CreatorTile({ profile }: { profile: ProfileItem }) {
   const username = profile.username || profile.user_id || profile.id;
 
   return (
-    <Pressable style={styles.creatorTile} onPress={() => username && router.push(`/creator/${username}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${profile.display_name || profile.full_name || profile.username || 'creator'}`} style={styles.creatorTile} onPress={() => username && router.push(`/creator/${username}` as any)}>
       <Artwork uri={profile.avatar_url} fallback={profile.display_name || profile.full_name || profile.username || 'Creator'} size={68} />
       <Text style={styles.tileTitle} numberOfLines={1}>{profile.display_name || profile.full_name || profile.username || 'PLUGGD creator'}</Text>
       <Text style={styles.tileMeta} numberOfLines={1}>@{profile.username || 'pluggd'}</Text>
@@ -759,7 +768,7 @@ function CreatorRow({ profile }: { profile: ProfileItem }) {
   const router = useRouter();
   const username = profile.username || profile.user_id || profile.id;
   return (
-    <Pressable style={styles.resultRow} onPress={() => username && router.push(`/creator/${username}` as any)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${profile.display_name || profile.full_name || profile.username || 'creator'}`} style={styles.resultRow} onPress={() => username && router.push(`/creator/${username}` as any)}>
       <Artwork uri={profile.avatar_url} fallback={profile.display_name || profile.full_name || profile.username || 'Creator'} size={48} />
       <View style={styles.resultCopy}>
         <Text style={styles.cardTitle} numberOfLines={1}>{profile.display_name || profile.full_name || profile.username || 'PLUGGD creator'}</Text>
@@ -792,6 +801,8 @@ function HomeSubHeader({
         return (
           <Pressable
             key={tab.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
             style={styles.homeTab}
             onPress={() => {
               selectionHaptic();
@@ -813,6 +824,9 @@ function InlineMediaWidget({ release }: { release: ReleaseItem }) {
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={playable ? `Play ${release.title || 'release'}` : `${release.title || 'Release'} is unavailable`}
+      accessibilityState={{ disabled: !playable }}
       style={styles.inlinePlayer}
       disabled={!playable}
       onPress={() => {
@@ -868,14 +882,14 @@ function TimelinePostCard({
           </Text>
           <Text style={styles.timelineTime}>• {formatDate(post?.created_at || release?.created_at || event?.created_at, 'Now')}</Text>
         </View>
-        <Pressable style={styles.timelineMore} onPress={() => router.push('/search' as any)}>
+        <Pressable accessibilityRole="button" style={styles.timelineMore} onPress={() => router.push('/search' as any)}>
           <MaterialIcons name="more-horiz" size={22} color="#8E8E9F" />
         </Pressable>
       </View>
       <Text style={styles.timelineBody}>{body}</Text>
       {release ? <InlineMediaWidget release={release} /> : null}
       {event ? (
-        <Pressable style={styles.inlineEventWidget} onPress={() => router.push(`/events/${event.id}` as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${event.title || 'event'}`} style={styles.inlineEventWidget} onPress={() => router.push(`/events/${event.id}` as any)}>
           <Text style={styles.inlineEventKicker}>ENTRY GATE</Text>
           <Text style={styles.inlineEventTitle} numberOfLines={1}>{event.title}</Text>
           <Text style={styles.inlineCreatorName} numberOfLines={1}>{formatDate(event.starts_at)} · {event.location || 'Location TBA'}</Text>
@@ -1219,7 +1233,7 @@ export function SearchScreen() {
       {(category === 'top' || category === 'tracks') && results?.tracks.slice(0, 6).map((release) => <ReleaseEmbed key={release.id} release={release} />)}
       {(category === 'top' || category === 'mixes') && results?.mixes.length ? <SectionHeader title="Mixes" /> : null}
       {(category === 'top' || category === 'mixes') && results?.mixes.slice(0, 6).map((mix: any) => (
-        <Pressable key={mix.id} style={styles.resultRow} onPress={() => router.push(`/mixes/${mix.slug || mix.id}` as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${mix.title || 'mix'}`} key={mix.id} style={styles.resultRow} onPress={() => router.push(`/mixes/${mix.slug || mix.id}` as any)}>
           <Artwork uri={mix.cover_url} fallback={mix.title || 'Mix'} size={48} />
           <View style={styles.resultCopy}>
             <Text style={styles.cardTitle} numberOfLines={1}>{mix.title || 'Untitled mix'}</Text>
@@ -1230,7 +1244,7 @@ export function SearchScreen() {
       ))}
       {(category === 'top' || category === 'beats') && results?.beats.length ? <SectionHeader title="Beats / Producers" /> : null}
       {(category === 'top' || category === 'beats') && results?.beats.slice(0, 6).map((beat) => (
-        <Pressable key={beat.id} style={styles.resultRow} onPress={() => router.push(`/beat/${beat.id}` as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${beat.title || 'beat'}`} key={beat.id} style={styles.resultRow} onPress={() => router.push(`/beat/${beat.id}` as any)}>
           <Artwork uri={beat.image_url} fallback={beat.title || 'Beat'} size={48} />
           <View style={styles.resultCopy}>
             <Text style={styles.cardTitle} numberOfLines={1}>{beat.title || 'Untitled beat'}</Text>
@@ -1243,6 +1257,9 @@ export function SearchScreen() {
       {(category === 'top' || category === 'videos') && results?.videos.slice(0, 6).map((video: VideoItem) => (
         <Pressable
           key={video.id}
+          accessibilityRole="link"
+          accessibilityLabel={`Watch ${video.title || 'video'}`}
+          accessibilityState={{ disabled: !video.youtube_url }}
           style={styles.resultRow}
           onPress={() => {
             if (video.youtube_url) void Linking.openURL(video.youtube_url);
@@ -1269,6 +1286,8 @@ export function SearchScreen() {
       {(category === 'top' || category === 'live') && results?.liveStreams.slice(0, 6).map((room) => (
         <Pressable
           key={room.id}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${room.title || 'live stream'}`}
           style={styles.resultRow}
           onPress={() => router.push({ pathname: '/live/session', params: { roomId: room.id } } as any)}
         >
@@ -1346,6 +1365,8 @@ export function CreatorModeScreen() {
         {quickActions.map((action) => (
           <Pressable
             key={action.label}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
             style={styles.creatorAction}
             onPress={() => {
               router.push(action.route as any);
@@ -1417,7 +1438,7 @@ export function CreateHubScreen() {
       </View>
       <View style={styles.createActionList}>
         {actions.map((action, index) => (
-          <Pressable key={action.label} style={styles.createAction} onPress={() => router.push(action.route as any)}>
+          <Pressable accessibilityRole="button" key={action.label} style={styles.createAction} onPress={() => router.push(action.route as any)}>
             <Text style={styles.createActionIndex}>{String(index + 1).padStart(2, '0')}</Text>
             <View style={styles.createActionIcon}><MaterialIcons name={action.icon} size={22} color={action.accent} /></View>
             <View style={styles.createActionCopy}>
@@ -1453,7 +1474,7 @@ export function ProfileHubScreen() {
       </View>
       <View style={styles.profileGrid}>
         {items.map((item) => (
-          <Pressable key={item.label} style={styles.profileTile} onPress={() => router.push(item.route as any)}>
+          <Pressable accessibilityRole="button" key={item.label} style={styles.profileTile} onPress={() => router.push(item.route as any)}>
             <MaterialIcons name={item.icon} size={24} color={item.accent} />
             <Text style={styles.profileTileText}>{item.label}</Text>
           </Pressable>

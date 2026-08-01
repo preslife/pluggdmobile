@@ -622,7 +622,7 @@ function AvatarMenuModal({
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" accessibilityLabel="Close profile menu" style={styles.menuOverlay} onPress={onClose}>
-        <Pressable style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
+        <Pressable accessible={false} style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
           <Text style={[styles.menuTitle, { color: theme.colors.text }]}>MY PLUGGD</Text>
           {menu.map((item) => (
             <Pressable

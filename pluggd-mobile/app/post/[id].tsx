@@ -158,11 +158,11 @@ export default function SocialPostDetailRoute() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 54), paddingBottom: insets.bottom + 42 }}>
         <View style={styles.headerRow}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.backButton} onPress={() => router.back()}>
             <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.headerTitle}>Post</Text>
-          <Pressable style={styles.backButton} onPress={() => router.push('/backstage' as any)}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open Community" style={styles.backButton} onPress={() => router.push('/backstage' as any)}>
             <MaterialIcons name="forum" size={21} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -202,7 +202,7 @@ export default function SocialPostDetailRoute() {
               <>
                 <Text style={styles.sectionTitle}>Thread</Text>
                 {threadPosts.filter((item) => item.id !== post.id).map((item) => (
-                  <Pressable key={item.id} style={styles.threadItem} onPress={() => router.push(`/post/${item.id}` as any)}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open post by ${item.display_name || item.username || 'PLUGGD user'}`} key={item.id} style={styles.threadItem} onPress={() => router.push(`/post/${item.id}` as any)}>
                     <Text style={styles.commentAuthor}>{item.display_name || item.username || 'PLUGGD user'}</Text>
                     <Text style={styles.commentBody}>{item.content}</Text>
                     <Text style={styles.postTime}>{formatDate(item.created_at)}</Text>
@@ -221,6 +221,9 @@ export default function SocialPostDetailRoute() {
                 multiline
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={commentMutation.isPending ? 'Posting comment' : 'Post comment'}
+                accessibilityState={{ disabled: commentMutation.isPending }}
                 style={styles.sendButton}
                 onPress={() => {
                   if (!user?.id) {
@@ -245,10 +248,10 @@ export default function SocialPostDetailRoute() {
                 </View>
                 {row.user_id !== user?.id ? (
                   <Pressable
-                    style={styles.commentMenu}
-                    onPress={() => openCommentSafety(row)}
                     accessibilityRole="button"
                     accessibilityLabel={`Safety options for comment by ${row.display_name || row.username || 'PLUGGD user'}`}
+                    style={styles.commentMenu}
+                    onPress={() => openCommentSafety(row)}
                   >
                     <MaterialIcons name="more-horiz" size={21} color={MUTED} />
                   </Pressable>

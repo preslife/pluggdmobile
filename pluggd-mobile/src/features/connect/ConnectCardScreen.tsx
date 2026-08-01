@@ -398,7 +398,7 @@ function BusinessCardBody({ fields }: { fields: ConnectCardFields }) {
             {portfolios.slice(0, 4).map((item, index) => {
               const url = normalizeUrl(item.url);
               return (
-                <Pressable key={`${item.label}-${index}`} onPress={() => url && void NativeLinking.openURL(url)} style={styles.linkRow}>
+                <Pressable accessibilityRole="link" accessibilityLabel={`Open ${item.label}`} key={`${item.label}-${index}`} onPress={() => url && void NativeLinking.openURL(url)} style={styles.linkRow}>
                   <View style={styles.linkIcon}><MaterialIcons name="north-east" size={18} color={ORANGE_SOFT} /></View>
                   <Text style={styles.linkText}>{readString(item.label) || readString(item.title) || 'View work'}</Text>
                   <MaterialIcons name="chevron-right" size={20} color={MUTED} />
@@ -555,7 +555,7 @@ function QRPanel({
         <Text style={styles.qrEyebrow}>SCAN TO CONNECT</Text>
         <Text style={styles.qrTitle}>{displayName}</Text>
         <Text style={styles.qrUrl} numberOfLines={2}>{shareUrl.replace(/^https?:\/\//, '')}</Text>
-        <Pressable onPress={() => void Share.share({ title: 'PLUGGD Connect Card', message: shareUrl, url: shareUrl })} style={styles.qrShare}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Share Connect Card" onPress={() => void Share.share({ title: 'PLUGGD Connect Card', message: shareUrl, url: shareUrl })} style={styles.qrShare}>
           <MaterialIcons name="ios-share" size={17} color={ORANGE_SOFT} />
           <Text style={styles.qrShareText}>Share card</Text>
         </Pressable>

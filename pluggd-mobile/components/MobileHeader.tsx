@@ -213,8 +213,8 @@ export function MobileHeader() {
       </View>
 
       <Modal visible={accountOpen} transparent animationType="slide" onRequestClose={() => setAccountOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setAccountOpen(false)}>
-          <Pressable onPress={(event) => event.stopPropagation()}>
+        <Pressable accessible={false} style={styles.modalBackdrop} onPress={() => setAccountOpen(false)}>
+          <Pressable accessible={false} onPress={(event) => event.stopPropagation()}>
             <GlassSheet
               title="Account"
               subtitle={creatorAccess ? 'Studio, public profile, earnings, analytics and settings.' : 'Your world, collection, access, activity and settings.'}
@@ -240,6 +240,8 @@ export function MobileHeader() {
                 {accountItems.map((item) => (
                   <Pressable
                     key={`${item.label}-${item.route ?? 'action'}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
                     style={[
                       styles.sheetRow,
                       {

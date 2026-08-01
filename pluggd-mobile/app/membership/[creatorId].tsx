@@ -378,10 +378,10 @@ export default function CreatorMembershipScreen() {
               return (
                 <Pressable
                   key={tier.id}
-                  onPress={() => setSelectedTier(isSelected ? null : tier.id)}
-                  accessibilityRole="button"
+                  accessibilityRole="radio"
                   accessibilityLabel={`${tier.name}, ${priceLabel} per month`}
-                  accessibilityState={{ expanded: isSelected }}
+                  accessibilityState={{ selected: isSelected, disabled: isFull }}
+                  onPress={() => setSelectedTier(isSelected ? null : tier.id)}
                   style={({ pressed }) => [
                     styles.tierCard,
                     {
@@ -441,10 +441,11 @@ export default function CreatorMembershipScreen() {
 
                       {!existingMembership && !isFull && appleProduct?.provisioned && (
                         <Pressable
-                          onPress={() => handleSubscribe(tier)}
-                          disabled={purchasing}
                           accessibilityRole="button"
                           accessibilityLabel={`Join ${tier.name} for ${priceLabel} per month`}
+                          accessibilityState={{ disabled: purchasing }}
+                          onPress={() => handleSubscribe(tier)}
+                          disabled={purchasing}
                           style={({ pressed }) => [
                             styles.joinButton,
                             { backgroundColor: accentColor },

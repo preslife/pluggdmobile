@@ -128,8 +128,8 @@ export function CreateActionSheet() {
       </LiftSurface>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable onPress={(event) => event.stopPropagation()}>
+        <Pressable accessible={false} style={styles.backdrop} onPress={() => setOpen(false)}>
+          <Pressable accessible={false} onPress={(event) => event.stopPropagation()}>
             <GlassSheet title="Create" subtitle="Start posts, uploads, live sessions and Studio tools.">
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
                 {actions.map((action) => (

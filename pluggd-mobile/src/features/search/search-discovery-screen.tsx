@@ -779,7 +779,7 @@ export function SearchDiscoveryScreen() {
               <ResultSection title="Trending Hashtags" count={results.hashtags.length}>
                 <View style={styles.hashtagWrap}>
                   {results.hashtags.slice(0, 12).map((tag) => (
-                    <Pressable key={tag} style={styles.hashtagPill} onPress={() => setTerm(`#${tag}`)}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Search hashtag ${tag}`} key={tag} style={styles.hashtagPill} onPress={() => setTerm(`#${tag}`)}>
                       <Text style={styles.hashtagText}>#{tag}</Text>
                     </Pressable>
                   ))}

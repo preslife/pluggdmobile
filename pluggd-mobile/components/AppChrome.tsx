@@ -13,6 +13,7 @@ const HIDDEN_EXACT = new Set([
   '/swipe-beats',
   '/creator/upload',
   '/creator/onboarding',
+  '/edit-profile',
 ]);
 const BOTTOM_HIDDEN_EXACT = new Set([
   '/wallet',

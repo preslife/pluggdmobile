@@ -302,15 +302,15 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
             </View>
 
             <View style={styles.pickGrid}>
-              <Pressable style={styles.pickButton} onPress={() => pickVisual('image')} disabled={picking}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose a story photo" style={styles.pickButton} onPress={() => pickVisual('image')} disabled={picking}>
                 <MaterialIcons name="image" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Photo</Text>
               </Pressable>
-              <Pressable style={styles.pickButton} onPress={() => pickVisual('video')} disabled={picking}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose a story video" style={styles.pickButton} onPress={() => pickVisual('video')} disabled={picking}>
                 <MaterialIcons name="videocam" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Video</Text>
               </Pressable>
-              <Pressable style={styles.pickButton} onPress={pickAudio} disabled={picking}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose story audio" style={styles.pickButton} onPress={pickAudio} disabled={picking}>
                 <MaterialIcons name="graphic-eq" size={24} color="#ff6600" />
                 <Text style={styles.pickText}>Audio</Text>
               </Pressable>
