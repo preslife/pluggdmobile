@@ -18,8 +18,10 @@
 
 ## Production configuration
 
-- [ ] EAS project linked to the correct Expo organisation. The local CLI is not
-  signed in and `app.config.ts` has no EAS project ID.
+- [x] EAS is intentionally outside the v1 release path. The accepted App Store
+  build and the signed physical-device QA build use the verified native Xcode
+  archive/export pipeline, so no unused EAS project ID is being added for
+  submission.
 - [x] Apple team and bundle ID `com.pluggd.mobile` confirmed in the signed
   archive. Apple Distribution certificate `59DCV9XJQ8` and App Store profile
   `PLUGGD App Store 2026` are installed and valid through 28 July 2027.
@@ -61,6 +63,10 @@
 ## StoreKit and server notifications
 
 - [x] Credit product IDs exactly match the five App Store Connect consumable drafts.
+- [x] All five credit consumables resolve from StoreKit in the signed Release
+  build on the registered iPhone, with Apple-supplied product names and prices;
+  the physical-device Wallet capture is
+  `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.12.48.png`.
 - [x] Every currently active sellable creator membership tier has a unique
   Apple product ID and the expected creator subscription group.
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
@@ -211,6 +217,12 @@ verification remain required.
   errors on 28 July 2026.
 - [x] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
   as a TestFlight build. App Store Connect reports `Ready to Submit`.
-- [ ] Re-test native Sign in with Apple in a signed development or TestFlight
-  build on a device with an Apple account. The unsigned simulator build reaches
-  Apple’s consent flow but fails at the native authorization layer.
+- [x] Native Sign in with Apple completed successfully in the signed Release
+  build on the registered iPhone 15 Pro Max on 2 August 2026. Apple returned to
+  PLUGGD and the authenticated account reached the real three-step onboarding
+  flow; the device capture is
+  `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.02.04.png`.
+- [x] Fan onboarding no longer writes the nonexistent `profiles.genres` field;
+  genre preferences remain versioned inside `onboarding_progress`, and the
+  corrected signed build was installed and returned the authenticated user to
+  Home on 2 August 2026.

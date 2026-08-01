@@ -58,6 +58,21 @@ const fanSetup = read('app/auth/fan-setup.tsx');
 assert.match(fanSetup, /from\('profiles'\)/, 'fan setup suggested creators must load from profiles');
 assert.match(fanSetup, /from\('user_follows'\)/, 'fan setup follows must write to user_follows');
 assert.doesNotMatch(fanSetup, /SUGGESTED_CREATORS|Maya Sol|Kairo Beats|Selecta Nia/, 'fan setup must not ship hardcoded fake creators');
+assert.doesNotMatch(
+  fanSetup,
+  /genres:\s*selectedGenres\.length/,
+  'fan setup must keep genre preferences inside onboarding_progress instead of writing the nonexistent profiles.genres column',
+);
+
+const credits = read('src/hooks/useCredits.ts');
+assert.match(credits, /auth\.getSession\(\)/, 'credit purchases must use the persisted authenticated session');
+assert.match(credits, /auth\.refreshSession\(\)/, 'credit purchases must refresh an expiring session before StoreKit');
+assert.match(
+  credits,
+  /validate-iap-receipt[\s\S]*Authorization:\s*`Bearer \$\{session\.access_token\}`/,
+  'receipt validation must explicitly forward the current bearer token',
+);
+assert.doesNotMatch(credits, /throw new Error\('Not authenticated'\)/, 'credit purchase UX must not expose a false generic auth error');
 
 const login = read('app/auth/login.tsx');
 const signup = read('app/auth/signup.tsx');

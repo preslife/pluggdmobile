@@ -42,6 +42,19 @@ unchecked in the release checklist.
   Max (`00008130-000A1D3A046B8D3A`), launched successfully and remained running.
   Its embedded entitlements include production APNs, Sign in with Apple,
   `get-task-allow=false` and the expected application identifier.
+- Native Sign in with Apple completed successfully in that signed device build
+  on 2 August 2026. Apple returned to PLUGGD with an authenticated account and
+  presented the production three-step onboarding flow. Evidence is retained at
+  `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.02.04.png`.
+- The first physical onboarding attempt exposed an invalid duplicate write to
+  the nonexistent `profiles.genres` field. The app now keeps those preferences
+  in the existing versioned `onboarding_progress` payload only; a regression
+  contract protects that schema boundary, and the corrected signed build
+  installed successfully without losing the authenticated session.
+- All five production credit consumables resolve from StoreKit in the corrected
+  signed Release build on the registered iPhone, including Apple-supplied names
+  and prices. The Wallet evidence is retained at
+  `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.12.48.png`.
 
 ## Final product, visual and accessibility verification
 
@@ -173,11 +186,9 @@ unchecked in the release checklist.
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix. Signed Release installation, launch,
-   hardware Home rendering and sign-in-path rendering are already verified on
-   the registered iPhone 15 Pro Max.
+   hardware Home rendering and native Apple authentication are already verified
+   on the registered iPhone 15 Pro Max.
 7. Resolve the Apple Developer membership renewal payment-method warning.
-8. Link the correct EAS project only if EAS remains part of the release
-   pipeline; the submitted build used the verified native archive path.
 
 The 1 August Safari audit authenticated the ROWSON GROUP LTD account and
 verified PLUGGD's live version, build and complete review draft. Apple pages

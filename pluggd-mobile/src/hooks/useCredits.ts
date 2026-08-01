@@ -133,6 +133,30 @@ function displayPriceForProduct(product: Product | null, fallbackPriceGBP: numbe
   return product.localizedPrice;
 }
 
+const SESSION_REFRESH_WINDOW_SECONDS = 60;
+
+async function requireAuthenticatedSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+
+  let session = data.session;
+  const expiresSoon =
+    typeof session?.expires_at === 'number' &&
+    session.expires_at <= Math.floor(Date.now() / 1000) + SESSION_REFRESH_WINDOW_SECONDS;
+
+  if (session && expiresSoon) {
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error) throw refreshed.error;
+    session = refreshed.data.session;
+  }
+
+  if (!session?.user?.id || !session.access_token) {
+    throw new Error('Please sign in again to continue.');
+  }
+
+  return session;
+}
+
 function buildCreditPacks(prods: Product[] = []): CreditPack[] {
   return CREDIT_PACK_SKUS.map((sku) => {
     const definition = CREDIT_PACK_DEFINITIONS[sku];
@@ -241,12 +265,14 @@ export function useCredits() {
 
   // ── Validate receipt with Supabase ──
   async function validateReceipt(purchase: Purchase) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const session = await requireAuthenticatedSession();
 
     const { data, error: fnError } = await supabase.functions.invoke(
       'validate-iap-receipt',
       {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           receipt_data: purchase.transactionReceipt,
           product_id: purchase.productId,
@@ -278,8 +304,7 @@ export function useCredits() {
       setError(null);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        const session = await requireAuthenticatedSession();
 
         const policy = await resolveCommercePolicy({
           kind: 'credit_pack',
@@ -292,7 +317,7 @@ export function useCredits() {
 
         await requestPurchase({
           sku,
-          appAccountToken: user.id,
+          appAccountToken: session.user.id,
           andDangerouslyFinishTransactionAutomaticallyIOS: false,
         });
         // Purchase listener handles the rest

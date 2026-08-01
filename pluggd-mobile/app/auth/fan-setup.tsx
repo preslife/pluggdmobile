@@ -189,7 +189,6 @@ export default function FanSetup() {
       const { error } = await (supabase.from('profiles').upsert(
         {
           user_id: user.id,
-          genres: selectedGenres.length > 0 ? selectedGenres : null,
           onboarding_progress: nextProgress,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
