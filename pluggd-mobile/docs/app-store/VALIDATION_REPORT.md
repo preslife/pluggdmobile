@@ -6,11 +6,12 @@ Validated on 1 August 2026 from branch `codex/app-store-submission-final`.
 
 The current branch is visually and structurally ready for final TestFlight
 device validation. The production beat agreements and their formation controls
-are now implemented and deployed. It is not yet safe to submit for App Review
-because the remaining blockers require product/legal approval, App Store Connect
-metadata, StoreKit sandbox transactions, production notification delivery and
-physical-device testing. Those blockers are listed below and remain unchecked
-in the release checklist.
+are implemented and deployed, and the product owner approved the default
+composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
+It is not yet safe to submit for App Review because the remaining blockers
+require App Store Connect assets and reviewer details, StoreKit sandbox
+transactions, production notification delivery and physical-device testing.
+Those blockers are listed below and remain unchecked in the release checklist.
 
 ## Current verified gates
 
@@ -85,8 +86,11 @@ in the release checklist.
 - Generic web cart, mobile and backend routes now enforce Stripe-only beat
   licensing. Completed contracts receive an immutable, hash-addressed licence
   PDF; secure beat-file delivery is limited to verified completed purchases.
-- UK counsel review is still required for the default 50/50 composition split
-  and PLUGGD's marketplace/intermediary role before material transaction volume.
+- The product owner approved the default 50/50 producer-side/artist-side
+  composition split and PLUGGD's marketplace/intermediary role as the launch
+  commercial baseline on 1 August 2026. Independent UK music/consumer counsel
+  review remains recommended before material transaction volume; it is not
+  represented here as having occurred.
 
 ## Live production and App Store Connect state
 
@@ -107,41 +111,45 @@ in the release checklist.
   screenshot, one localisation and 200 price points.
 - Kxngdom monthly membership `6795673482` remains `MISSING_METADATA` because
   its review screenshot is absent.
-- App Review contact/demo-account configuration and the content-rights
-  declaration remain incomplete. No App Store screenshot set is uploaded yet.
-- Production and sandbox App Store Server Notification URLs reach the correct
-  function but still contain an unnecessary query-string credential.
+- App Review contact/demo-account configuration remains incomplete. The Apple
+  Content Rights declaration is now complete, but the internal screenshot
+  rights register is not; no App Store screenshot set is uploaded yet.
+- Production and sandbox App Store Server Notification URLs now reach the
+  correct function without the obsolete query-string credential.
+- Starter, Plus, Premium and Ultimate credit consumables were added to Apple's
+  active draft submission and each reports `Ready for Review`. Value Credits
+  and the Kxngdom membership still need to be added after their remaining
+  metadata is available.
 
 ## Submission blockers still open
 
-1. Record UK product/legal sign-off on the supplied agreements, especially the
-   default composition split and PLUGGD marketplace/intermediary role.
-2. Complete the content-rights register and approve an upload set containing
+1. Complete the content-rights register and approve an upload set containing
    only material with retrievable marketing rights.
-3. Add App Review contact details and a dedicated reviewer account with the
+2. Add App Review contact details and a dedicated reviewer account with the
    required membership, professional beat and real-world ticket fixtures.
-4. Upload the Kxngdom membership review screenshot, add the five consumables
-   and membership to the version submission, then complete StoreKit sandbox
+3. Upload the Kxngdom membership review screenshot, add Value Credits and the
+   membership to the active submission, then complete StoreKit sandbox
    purchase, restore, renewal, refund, revoke and duplicate-delivery tests.
-5. Remove the notification query credential and run App Store Server
-   Notification V2 sandbox and production delivery tests.
-6. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
-7. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
+4. Run App Store Server Notification V2 sandbox and production delivery tests.
+5. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
+6. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-8. Complete signed TestFlight device testing: Apple and Google sign-in,
+7. Complete signed TestFlight device testing: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix.
-9. Resolve the Apple Developer membership renewal payment-method warning and
+8. Resolve the Apple Developer membership renewal payment-method warning and
    confirm `support@pluggd.fm` monitoring.
-10. Link the correct EAS project if EAS remains part of the release pipeline.
+9. Link the correct EAS project if EAS remains part of the release pipeline.
 
-The 1 August Chrome audit could authenticate the ROWSON GROUP LTD account and
-identify PLUGGD, but App Store Connect rendered only its navigation shell and no
-record body in both the existing and a clean tab. No metadata was changed in
-that state. Resume the remaining App Store Connect items only after its content
-module renders normally.
+The 1 August Chrome audit authenticated the ROWSON GROUP LTD account and
+verified PLUGGD's live version, build and catalogue. The content module remains
+intermittent: it rendered normally long enough to complete Content Rights,
+remove both notification query credentials and add four consumables to the
+active submission, then returned to a navigation-only shell on other catalogue
+routes. Resume Value Credits and subscription metadata from a normally rendered
+catalogue page rather than treating the blank shell as a completed action.
 
 Do not submit or add the version for review until these unchecked release gates
 are complete. Do not upload the screenshot set until the rights register

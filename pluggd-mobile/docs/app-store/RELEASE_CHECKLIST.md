@@ -65,7 +65,7 @@
   App Store Connect currently reports `MISSING_METADATA` and no review image.
 - [x] App Store Server Notification V2 production and sandbox URLs point to
   `apple-server-notification`.
-- [ ] Remove the unnecessary credential query parameter from both notification
+- [x] Remove the unnecessary credential query parameter from both notification
   URLs, leaving authentication and verification to the notification handler.
 - [ ] Test notification succeeds and appears once in `apple_notification_log`.
 - [ ] Sandbox credit purchase grants exactly once.
@@ -109,6 +109,9 @@
   marketing URL and copyright are saved in App Store Connect.
 - [x] App Information subtitle and Music / Social Networking categories are
   saved and verified after a clean reload.
+- [x] Apple Content Rights is declared as third-party content for which PLUGGD
+  has the necessary rights, consistent with the uploader rights assertion and
+  service licence in the production Terms.
 - [ ] App Review account added securely in App Store Connect.
 - [x] Review notes saved with the hybrid-commerce rails, account-deletion path,
   restore path and intentional browse-only behaviour.
@@ -135,9 +138,11 @@
   all 175 App Store countries or regions.
 
 Current catalogue state: five credit consumables exist as App Store Connect
-drafts in every storefront. Their review copy now describes only release
-unlocks, tips and live gifts. Draft existence is not approval; submission and
-sandbox verification remain required.
+drafts in every storefront. Starter, Plus, Premium and Ultimate are attached to
+Apple's active draft submission and report `Ready for Review`; Value remains to
+be attached. Their review copy describes only release unlocks, tips and live
+gifts. Draft existence or attachment is not approval; submission and sandbox
+verification remain required.
 
 ## Final human smoke test
 
@@ -155,7 +160,10 @@ sandbox verification remain required.
 - [ ] Portrait flow and player rotation.
 - [ ] Camera, microphone, photos and notifications each ask only at point of use.
 - [ ] No placeholder copy, false claims, debug controls or nonfunctional buttons.
-- [ ] Product/legal sign-off recorded for professional beat licensing and real-world event classification.
+- [x] Product-owner sign-off recorded for the production beat agreements,
+  default 50/50 producer-side/artist-side composition split and PLUGGD's
+  marketplace/intermediary role. This is an owner-approved commercial baseline,
+  not a representation that independent UK music counsel reviewed it.
 
 ## Account and signing observations
 

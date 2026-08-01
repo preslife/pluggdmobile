@@ -93,9 +93,12 @@ access, refunds and creator settlement.
   stores the immutable licence PDF and enables the web delivery route. The mobile
   record exposes the retained agreement but does not present the professional file
   as an in-app digital unlock.
-- The default 50/50 composition assumption and PLUGGD's precise marketplace role
-  still require UK music/consumer counsel approval before material transaction
-  volume or any marketing claim based on those terms.
+- On 1 August 2026 the product owner approved the default 50/50
+  producer-side/artist-side composition assumption and PLUGGD's precise
+  marketplace/intermediary role as the launch commercial baseline.
+  Independent UK music/consumer counsel review remains recommended before
+  material transaction volume or any marketing claim based on those terms and
+  is not represented as having occurred.
 
 ## App Review posture
 
