@@ -47,7 +47,7 @@ const deps: PrepareBeatLicenseDependencies = {
   async loadLicenseOption(beatId, optionId) {
     const { data } = await service
       .from("licensing_options")
-      .select("id,beat_id,license_type,price,is_available")
+      .select("id,beat_id,license_type,price,is_available,producer_authorization_text,producer_authorization_version,producer_authorized_by,producer_authorized_at")
       .eq("id", optionId)
       .eq("beat_id", beatId)
       .maybeSingle();
@@ -61,6 +61,10 @@ const deps: PrepareBeatLicenseDependencies = {
       // agreement creation or checkout.
       price_pence: majorUnitsToMinorUnits(data.price),
       is_available: data.is_available,
+      producer_authorization_text: data.producer_authorization_text,
+      producer_authorization_version: data.producer_authorization_version,
+      producer_authorized_by: data.producer_authorized_by,
+      producer_authorized_at: data.producer_authorized_at,
     };
   },
   async loadContractTemplate(templateType) {
@@ -85,7 +89,7 @@ const deps: PrepareBeatLicenseDependencies = {
     const { data } = await service
       .from("licensing_contracts")
       .select(
-        "id,status,legal_text,amount_cents,currency,producer_signature,artist_signature,contract_data",
+        "id,status,legal_text,amount_cents,currency,producer_signature,artist_signature,contract_data,producer_authorization_snapshot",
       )
       .eq("beat_id", beatId)
       .eq("artist_id", artistId)
@@ -101,7 +105,7 @@ const deps: PrepareBeatLicenseDependencies = {
       .from("licensing_contracts")
       .insert(input)
       .select(
-        "id,status,legal_text,amount_cents,currency,producer_signature,artist_signature",
+        "id,status,legal_text,amount_cents,currency,producer_signature,artist_signature,producer_authorization_snapshot",
       )
       .single();
     if (error || !data) throw new Error(error?.message ?? "Contract creation failed");

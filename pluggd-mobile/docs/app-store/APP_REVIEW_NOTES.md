@@ -48,7 +48,10 @@ PLUGGD uses a category-specific hybrid commerce model:
   creator tier maps to its own App Store product.
 - Professional beat licences use hosted Stripe Checkout. The purchase grants
   usage rights and professional files for creative work outside the app; credits
-  cannot purchase beat licences.
+  cannot purchase beat licences. The buyer separately accepts the licence and
+  requests immediate digital delivery using two unticked controls. Exclusive
+  offers appear only after the authenticated producer has expressly authorised
+  that specific offer; prior non-exclusive licences continue to be honoured.
 - Eligible ticket checkout is limited to verified real-world events. Paid
   virtual events are not routed through Stripe.
 - Physical merchandise may use hosted checkout. Paid digital sample packs and

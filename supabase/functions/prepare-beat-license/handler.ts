@@ -21,6 +21,10 @@ export type LicenseOptionRecord = {
   license_type: string;
   price_pence: number;
   is_available: boolean;
+  producer_authorization_text?: string | null;
+  producer_authorization_version?: string | null;
+  producer_authorized_by?: string | null;
+  producer_authorized_at?: string | null;
 };
 
 export type ContractTemplateRecord = {
@@ -42,6 +46,7 @@ export type ContractRecord = {
   currency: string;
   producer_signature?: string | null;
   artist_signature?: string | null;
+  producer_authorization_snapshot?: Record<string, unknown> | null;
 };
 
 export interface PrepareBeatLicenseDependencies {
@@ -138,6 +143,20 @@ export async function handlePrepareBeatLicense(
     return json({ error: "Licence option is unavailable" }, 404);
   }
 
+  const isExclusive = option.license_type === "exclusive_rights";
+  const hasExclusiveAuthorization = Boolean(
+    option.producer_authorization_text &&
+      option.producer_authorization_version &&
+      option.producer_authorized_by === beat.user_id &&
+      option.producer_authorized_at,
+  );
+  if (isExclusive && !hasExclusiveAuthorization) {
+    return json({
+      error: "The producer must review and authorize this Exclusive licence before it can be offered",
+      code: "PRODUCER_AUTHORIZATION_REQUIRED",
+    }, 409);
+  }
+
   const template = await deps.loadContractTemplate(option.license_type);
   if (!template || !template.is_active) {
     return json({ error: "Licence terms are unavailable" }, 409);
@@ -167,11 +186,31 @@ export async function handlePrepareBeatLicense(
     amount,
   });
 
+  const existingAuthorizationVersion =
+    existing?.producer_authorization_snapshot?.version;
   const reusable = existing &&
       existing.amount_cents === option.price_pence &&
-      existing.currency === "GBP"
+      existing.currency === "GBP" &&
+      hasCompleteLicenceTerms(existing.legal_text) &&
+      (!isExclusive ||
+        existingAuthorizationVersion === option.producer_authorization_version)
     ? existing
     : null;
+  const producerAuthorizationSnapshot = isExclusive
+    ? {
+      option_id: option.id,
+      text: option.producer_authorization_text,
+      version: option.producer_authorization_version,
+      producer_id: option.producer_authorized_by,
+      authorized_at: option.producer_authorized_at,
+    }
+    : {
+      option_id: option.id,
+      text: "Producer publication of this licence option authorises PLUGGD to generate the published agreement.",
+      version: "2026-08-01.1",
+      producer_id: beat.user_id,
+      authorized_at: deps.now().toISOString(),
+    };
   const contract = reusable ?? await deps.createContract({
     beat_id: beat.id,
     producer_id: beat.user_id,
@@ -184,7 +223,10 @@ export async function handlePrepareBeatLicense(
     policy_version: "2026-07-27.1",
     legal_text: legalText,
     status: "pending",
-    producer_signature: `catalogue-offer:${option.id}`,
+    producer_signature: isExclusive
+      ? `exclusive-option-authorization:${option.id}:${option.producer_authorization_version}`
+      : `catalogue-offer:${option.id}:2026-08-01.1`,
+    producer_authorization_snapshot: producerAuthorizationSnapshot,
     contract_data: {
       license_option_id: option.id,
       template_id: template.template_type,
@@ -193,6 +235,7 @@ export async function handlePrepareBeatLicense(
         option_id: option.id,
         price_cents: option.price_pence,
         currency: "GBP",
+        authorization: producerAuthorizationSnapshot,
       },
     },
     pricing_snapshot: {

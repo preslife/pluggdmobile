@@ -5,7 +5,7 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`50` files / `173` tests)
+- [x] Root test suite (`51` files / `184` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
@@ -38,6 +38,16 @@
   CRM, private-demographic, creator-pool and operational views are service-role
   only. Supabase security advisors report no remaining ERROR-level findings.
 - [x] Account/safety, Apple verification, commerce policy, beat checkout, event checkout and Stripe webhook functions deployed and active.
+- [x] Production beat agreements replaced with complete Basic, Premium,
+  Unlimited and Exclusive wording; placeholder and beat-credit clauses are
+  rejected by the migration guard.
+- [x] Exclusive offers require fresh authenticated producer authorisation;
+  every legacy Exclusive offer without it is disabled.
+- [x] Licence acceptance and immediate digital-delivery consent are separate,
+  versioned and immutable in the completed contract/PDF.
+- [x] Internal commerce allocation, Exclusive-grant, catalogue-seeding and
+  certificate functions are service-role only; anonymous/authenticated execute
+  grants were removed and the targeted Supabase advisor findings cleared.
 - [ ] Add the production `SUPABASE_DB_URL` repository secret so migration
   validation can run in GitHub instead of stopping before database checks.
 
@@ -70,6 +80,8 @@
 - [x] Credits can fund only releases, tips and live gifts; they cannot fund beats, memberships, tickets or merchandise.
 - [x] Beat checkout accepts trusted beat/licence/agreement identifiers and rejects client price or creator tampering.
 - [x] A beat licence agreement requiring signature cannot enter checkout until its required acceptance is valid.
+- [x] Generic cart and credit services reject beat licences; web and iOS both
+  route buyers through the trusted licence-selection/agreement flow.
 - [ ] Beat webhook replay is idempotent; success, cancellation, delayed completion, refund and revocation reconcile correctly.
 - [x] Real-world event checkout validates event classification, tier, quantity, price, sales window and inventory server-side.
 - [x] Paid virtual events are rejected by external checkout.

@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
   creditSystem,
+  isCreditPurchaseItem,
   type PurchaseItem,
   type PurchaseItemType,
   type WalletBalanceSummary,
@@ -335,17 +336,21 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
   useEffect(() => {
     if (!balanceSummary || !isOpen) return;
 
+    const creditEligibleTotal = checkoutItems
+      .filter(isCreditPurchaseItem)
+      .reduce((sum, item) => sum + item.price, 0);
+
     const cap = Math.max(
       Math.min(
         Math.floor(totalCost * maxCartPercent),
         balanceSummary.available_credits,
-        totalCost,
+        creditEligibleTotal,
       ),
       0,
     );
 
     setCreditsToApply(cap > 0 ? cap : 0);
-  }, [balanceSummary, totalCost, isOpen, maxCartPercent]);
+  }, [balanceSummary, checkoutItems, totalCost, isOpen, maxCartPercent]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -443,15 +448,18 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
 
   const creditCap = useMemo(() => {
     if (!balanceSummary) return 0;
+    const creditEligibleTotal = checkoutItems
+      .filter(isCreditPurchaseItem)
+      .reduce((sum, item) => sum + item.price, 0);
     return Math.max(
       Math.min(
         Math.floor(totalCost * maxCartPercent),
         balanceSummary.available_credits,
-        totalCost,
+        creditEligibleTotal,
       ),
       0,
     );
-  }, [balanceSummary, totalCost, maxCartPercent]);
+  }, [balanceSummary, checkoutItems, totalCost, maxCartPercent]);
 
   useEffect(() => {
     setCreditsToApply((current) => Math.min(current, creditCap));
@@ -969,6 +977,47 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
     return null;
   }
 
+  const beatItem = checkoutItems.find((item) => item.type === 'beat');
+
+  if (beatItem) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AudioWaveform className="h-5 w-5" aria-hidden="true" />
+              Choose your beat licence
+            </DialogTitle>
+            <DialogDescription>
+              Beat licences include usage rights and a licence agreement, so they are reviewed and
+              purchased from the beat page rather than this cart.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border bg-muted/40 p-4">
+            <Badge variant="secondary" className="mb-2">Beat</Badge>
+            <p className="font-semibold">{beatItem.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Compare licence tiers, permitted uses, restrictions and deliverables before payment.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              className="flex-1"
+              onClick={() => {
+                window.location.href = `/beat/${encodeURIComponent(beatItem.id)}`;
+              }}
+            >
+              Review licences
+            </Button>
+            <Button variant="outline" onClick={handleClose} className="sm:w-auto">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   const checkoutButtonLabel = () => {
     if (totalCost === 0) {
       return (
@@ -1115,8 +1164,10 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                         <div className="text-right">
                           {item.price === 0 ? (
                             <Badge variant="secondary">Free</Badge>
-                          ) : (
+                          ) : isCreditPurchaseItem(item) ? (
                             <div className="font-semibold">{item.price} credits</div>
+                          ) : (
+                            <div className="font-semibold">{formatCurrency(item.price / CREDITS_PER_GBP, taxCurrency)}</div>
                           )}
                         </div>
                       </div>
@@ -1201,7 +1252,7 @@ export const CheckoutModal = ({ isOpen, onClose, items, onSuccess }: CheckoutMod
                       {policyLoading
                         ? 'Checking credit policy...'
                         : creditCap > 0
-                        ? `You can apply up to ${creditCap} credits (${policyPercentDisplay}% cap).`
+                        ? `You can apply up to ${creditCap} credits to eligible release unlocks (${policyPercentDisplay}% cart cap).`
                         : 'Add more credits to reduce the card payment.'}
                     </span>
                   </div>

@@ -59,8 +59,9 @@ the behaviour is mandatory:
 - Unknown storefront, missing configuration or policy failure resolves to
   `unavailable`.
 - External release checkout is US-first.
-- Beat checkout requires a published professional licence and trusted contract
-  state.
+- Beat checkout requires a published professional licence, complete immutable
+  legal text, buyer signature, separate versioned immediate-delivery consent
+  and—when Exclusive—fresh authenticated producer authorisation.
 - Ticket checkout requires a verified real-world event classification.
 - Digital merchandise and paid virtual-event checkout remain unavailable.
 - Every externally enabled rail has an independent remote kill switch.

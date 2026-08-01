@@ -72,6 +72,31 @@ access, refunds and creator settlement.
 - Previously acquired access works across web and app, regardless of whether its
   source was Apple, credits, Stripe or an approved administrative grant.
 
+## Beat agreement formation and delivery
+
+- The four platform catalogue agreements are `basic_lease`, `premium_lease`,
+  `unlimited_lease` and `exclusive_rights`. Their production wording is held in
+  `contract_templates`; an executed contract keeps an immutable legal snapshot.
+- Accepting licence terms and requesting immediate digital delivery are separate
+  affirmative actions. The delivery control is unticked by default and records
+  its exact wording, version, timestamp, client address and user agent.
+- An Exclusive offer is disabled until the authenticated beat owner deliberately
+  records the versioned producer authorisation. A generic pre-authorised string
+  is not sufficient.
+- Exclusive means an exclusive licence for future Beat use. Prior valid leases
+  survive. It does not silently assign the Beat copyright, composition interest
+  or moral rights. Any copyright assignment requires a separate signed instrument.
+- Checkout begins only after the server has resolved the trusted option, complete
+  agreement, buyer signature, delivery consent and current producer authorisation.
+  Credits and generic cart checkout are rejected for beat licences.
+- Verified Stripe webhook completion creates the purchase and settlement record,
+  stores the immutable licence PDF and enables the web delivery route. The mobile
+  record exposes the retained agreement but does not present the professional file
+  as an in-app digital unlock.
+- The default 50/50 composition assumption and PLUGGD's precise marketplace role
+  still require UK music/consumer counsel approval before material transaction
+  volume or any marketing claim based on those terms.
+
 ## App Review posture
 
 The implementation follows the current Apple App Review categories: Apple IAP
@@ -97,4 +122,3 @@ Do not submit or enable a rail in production until:
    tests pass.
 6. Storefront default-deny and all remote kill switches are tested.
 7. Product/legal has approved the beat-licensing and event-classification stance.
-

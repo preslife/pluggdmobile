@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+import {
+  clientIp,
+  DIGITAL_DELIVERY_CONSENT_TEXT,
+  DIGITAL_DELIVERY_CONSENT_VERSION,
+} from "../_shared/beatLicenseCompliance.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,26 +16,15 @@ interface ContractExecutionBody {
   contractId?: string;
   signature?: string;
   signerType?: SignerType;
+  digitalDeliveryConsent?: {
+    accepted?: unknown;
+    version?: unknown;
+  };
 }
 
 export interface ContractExecutionContext {
   supabase: Pick<SupabaseClient, "auth" | "from">;
 }
-
-const getClientIp = (req: Request) => {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-
-  const cf = req.headers.get("cf-connecting-ip");
-  if (cf) return cf;
-
-  const real = req.headers.get("x-real-ip");
-  if (real) return real;
-
-  return "unknown";
-};
 
 export async function handleContractExecution(
   req: Request,
@@ -63,7 +57,7 @@ export async function handleContractExecution(
     }
 
     const body = (await req.json()) as ContractExecutionBody;
-    const { contractId, signature, signerType } = body;
+    const { contractId, signature, signerType, digitalDeliveryConsent } = body;
 
     const normalizedSignature = signature?.trim();
     if (
@@ -79,7 +73,7 @@ export async function handleContractExecution(
 
     const { data: contract, error: contractError } = await supabase
       .from("licensing_contracts")
-      .select("id, producer_id, artist_id, producer_signature, artist_signature, signed_at, status")
+      .select("id, producer_id, artist_id, producer_signature, artist_signature, signed_at, status, digital_delivery_requested, digital_delivery_consent_version")
       .eq("id", contractId)
       .single();
 
@@ -104,6 +98,18 @@ export async function handleContractExecution(
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (signerType === "artist" && (
+      digitalDeliveryConsent?.accepted !== true ||
+      digitalDeliveryConsent?.version !== DIGITAL_DELIVERY_CONSENT_VERSION
+    )) {
+      return new Response(JSON.stringify({
+        error: "Separate consent for immediate digital delivery is required",
+        code: "DIGITAL_DELIVERY_CONSENT_REQUIRED",
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!["pending", "signed"].includes(contract.status)) {
       return new Response(JSON.stringify({
         error: "This contract can no longer be signed",
@@ -113,7 +119,7 @@ export async function handleContractExecution(
       });
     }
 
-    const ipAddress = getClientIp(req);
+    const ipAddress = clientIp(req);
     const userAgent = req.headers.get("user-agent") ?? "unknown";
     const signedAt = new Date().toISOString();
 
@@ -177,6 +183,14 @@ export async function handleContractExecution(
     } else {
       updatePayload.artist_signature = normalizedSignature;
       updatePayload.artist_ip_address = ipAddress;
+      updatePayload.digital_delivery_requested = true;
+      updatePayload.digital_delivery_consent_text =
+        DIGITAL_DELIVERY_CONSENT_TEXT;
+      updatePayload.digital_delivery_consent_version =
+        DIGITAL_DELIVERY_CONSENT_VERSION;
+      updatePayload.digital_delivery_consented_at = signedAt;
+      updatePayload.digital_delivery_consent_ip = ipAddress;
+      updatePayload.digital_delivery_consent_user_agent = userAgent;
     }
 
     const {
@@ -186,7 +200,7 @@ export async function handleContractExecution(
       .from("licensing_contracts")
       .update(updatePayload)
       .eq("id", contractId)
-      .select("id, producer_signature, artist_signature, signed_at, status");
+      .select("id, producer_signature, artist_signature, signed_at, status, digital_delivery_requested, digital_delivery_consent_version");
 
     if (updateError || !updatedContracts || updatedContracts.length === 0) {
       return new Response(JSON.stringify({ error: "Failed to update contract" }), {
@@ -199,8 +213,16 @@ export async function handleContractExecution(
 
     const producerSigned = Boolean(updatedContract.producer_signature);
     const artistSigned = Boolean(updatedContract.artist_signature);
+    const deliveryConsentRecorded = Boolean(
+      updatedContract.digital_delivery_requested &&
+        updatedContract.digital_delivery_consent_version ===
+          DIGITAL_DELIVERY_CONSENT_VERSION,
+    );
 
-    if (producerSigned && artistSigned && updatedContract.status !== "signed") {
+    if (
+      producerSigned && artistSigned && deliveryConsentRecorded &&
+      updatedContract.status !== "signed"
+    ) {
       const contractSignedAt = updatedContract.signed_at ?? signedAt;
       const { error: finalizeError } = await supabase
         .from("licensing_contracts")
@@ -227,6 +249,9 @@ export async function handleContractExecution(
           userAgent,
           signedAt,
           signerType,
+          digitalDeliveryConsentVersion: signerType === "artist"
+            ? DIGITAL_DELIVERY_CONSENT_VERSION
+            : null,
         },
       }),
       {

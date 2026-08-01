@@ -388,7 +388,7 @@ serve(async (req) => {
       case "beat": {
         const { data: purchase, error } = await supabaseService
           .from("purchases")
-          .select(`id, beat_id, buyer_id, license_pdf_url, beats:beat_id (audio_url, user_id)`)
+          .select(`id, beat_id, buyer_id, status, license_pdf_url, beats:beat_id (audio_url, user_id)`)
           .eq("id", purchaseId)
           .maybeSingle();
 
@@ -396,6 +396,18 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ error: "Beat purchase not found" }),
             { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        if (purchase.status !== "completed") {
+          await logger.warn("beat_purchase_not_completed", {
+            ...metadata,
+            beatId: purchase.beat_id,
+            purchaseStatus: purchase.status,
+          });
+          return new Response(
+            JSON.stringify({ error: "Beat files are available after verified payment" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
 
@@ -492,7 +504,9 @@ serve(async (req) => {
           ownershipSource = 'direct_purchase';
         }
 
-        storage = parseStorageLocation(purchase.download_url || purchase.sample_packs?.download_url ?? null);
+        storage = parseStorageLocation(
+          purchase.download_url || (purchase.sample_packs?.download_url ?? null),
+        );
         limit = 3;
         downloadCount = await countDownloadEvents(supabaseService, purchaseId, purchaseType);
 

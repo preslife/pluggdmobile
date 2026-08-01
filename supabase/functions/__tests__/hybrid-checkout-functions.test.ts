@@ -37,6 +37,24 @@ const hybridMigration = readFileSync(
   ),
   "utf8",
 );
+const productionLicenceMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/20260801164449_production_beat_licence_compliance.sql",
+  ),
+  "utf8",
+);
+const restrictedCommerceFunctionsMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/20260801171605_restrict_internal_commerce_functions.sql",
+  ),
+  "utf8",
+);
+const secureDownloadFunction = readFileSync(
+  resolve(process.cwd(), "supabase/functions/download-signed-url/index.ts"),
+  "utf8",
+);
 
 describe("hybrid commerce migration compatibility", () => {
   it("upgrades the deployed legacy ticket order schema without replacing it", () => {
@@ -56,6 +74,39 @@ describe("hybrid commerce migration compatibility", () => {
       "alter table public.releases\n  add column if not exists credits_price numeric",
     );
     expect(hybridMigration).not.toContain("drop table public.ticket_orders");
+  });
+
+  it("ships complete Stripe-only production licence terms and consent evidence", () => {
+    const templateSection = productionLicenceMigration.split("-- Preserve any producer-written terms")[0];
+    expect(productionLicenceMigration).toContain("PLUGGD BASIC BEAT LICENCE AGREEMENT — v1.0");
+    expect(productionLicenceMigration).toContain("PLUGGD EXCLUSIVE BEAT LICENCE AGREEMENT — v1.0");
+    expect(productionLicenceMigration).toContain("digital_delivery_consent_text");
+    expect(productionLicenceMigration).toContain("producer_authorization_snapshot");
+    expect(templateSection).not.toMatch(/valid PLUGGD credits/i);
+    expect(templateSection).not.toMatch(/\[Full legal text continues|\[Additional legal terms continue/i);
+  });
+
+  it("keeps internal commerce primitives off the public PostgREST surface", () => {
+    expect(restrictedCommerceFunctionsMigration).toContain(
+      "fn_enforce_exclusive_license_grant(uuid, uuid, uuid)",
+    );
+    expect(restrictedCommerceFunctionsMigration).toContain(
+      "fn_resolve_sale_allocations",
+    );
+    expect(restrictedCommerceFunctionsMigration).toContain(
+      "fn_build_license_certificate(text)",
+    );
+    expect(restrictedCommerceFunctionsMigration).toContain(
+      "from public, anon, authenticated",
+    );
+    expect(restrictedCommerceFunctionsMigration).toContain("to service_role");
+  });
+
+  it("delivers beat files only after verified payment completion", () => {
+    expect(secureDownloadFunction).toContain('purchase.status !== "completed"');
+    expect(secureDownloadFunction).toContain(
+      "Beat files are available after verified payment",
+    );
   });
 });
 
@@ -152,6 +203,10 @@ function beatDeps(
         currency: "GBP",
         producer_signature: "catalogue-offer:option",
         artist_signature: "signed",
+        digital_delivery_requested: true,
+        digital_delivery_consent_text: "I request immediate access to the licensed digital files and understand the cancellation consequences.",
+        digital_delivery_consent_version: "2026-08-01.1",
+        digital_delivery_consented_at: "2026-07-27T11:55:00Z",
         pricing_snapshot: { license_option_id: "option" },
       },
     }),
@@ -271,6 +326,23 @@ describe("prepare-beat-license", () => {
     expect(self.status).toBe(403);
   });
 
+  it("requires explicit producer authorization before offering an Exclusive licence", async () => {
+    const response = await handlePrepareBeatLicense(
+      request({ beatId: "beat", licenseOptionId: "option" }),
+      prepareDeps({
+        loadLicenseOption: async () => ({
+          id: "option",
+          beat_id: "beat",
+          license_type: "exclusive_rights",
+          price_pence: 50000,
+          is_available: true,
+        }),
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("PRODUCER_AUTHORIZATION_REQUIRED");
+  });
+
   it("uses server price/legal terms and reuses a pending contract", async () => {
     const createContract = vi.fn();
     const response = await handlePrepareBeatLicense(
@@ -279,7 +351,7 @@ describe("prepare-beat-license", () => {
         findPendingContract: async () => ({
           id: "existing",
           status: "pending",
-          legal_text: "Trusted snapshot",
+          legal_text: ("Trusted immutable licence snapshot with complete rights, restrictions, delivery, payment, warranty, termination and governing law. ").repeat(6),
           amount_cents: 4900,
           currency: "GBP",
           producer_signature: "catalogue",
@@ -349,6 +421,57 @@ describe("create-beat-purchase", () => {
       }),
     );
     expect(mismatch.status).toBe(403);
+  });
+
+  it("requires the separate immediate-delivery consent before checkout", async () => {
+    const response = await handleCreateBeatPurchase(
+      request(body),
+      beatDeps({
+        loadSource: async () => {
+          const source = (await beatDeps().loadSource({
+            beatId: "beat",
+            licenseOptionId: "option",
+            contractId: "contract",
+          }))!;
+          return {
+            ...source,
+            contract: {
+              ...source.contract,
+              digital_delivery_requested: false,
+              digital_delivery_consent_text: null,
+              digital_delivery_consent_version: null,
+              digital_delivery_consented_at: null,
+            },
+          };
+        },
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("DIGITAL_DELIVERY_CONSENT_REQUIRED");
+  });
+
+  it("allows only same-origin web returns from the configured site", async () => {
+    const response = await handleCreateBeatPurchase(
+      request({
+        ...body,
+        platform: "web",
+        storefront: "GB",
+        returnUrl: "https://pluggd.fm/beat/beat",
+      }),
+      beatDeps({ allowedWebOrigins: ["https://pluggd.fm"] }),
+    );
+    expect(response.status).toBe(200);
+
+    const denied = await handleCreateBeatPurchase(
+      request({
+        ...body,
+        platform: "web",
+        storefront: "GB",
+        returnUrl: "https://evil.test/beat/beat",
+      }),
+      beatDeps({ allowedWebOrigins: ["https://pluggd.fm"] }),
+    );
+    expect(denied.status).toBe(400);
   });
 
   it("defaults closed for unknown storefront and honours the kill switch", async () => {

@@ -5,11 +5,12 @@ Validated on 1 August 2026 from branch `codex/app-store-submission-final`.
 ## Release verdict
 
 The current branch is visually and structurally ready for final TestFlight
-device validation. It is not yet safe to submit for App Review because the
-remaining blockers require legal content, App Store Connect metadata, StoreKit
-sandbox transactions, production notification delivery and physical-device
-testing. Those blockers are listed below and remain unchecked in the release
-checklist.
+device validation. The production beat agreements and their formation controls
+are now implemented and deployed. It is not yet safe to submit for App Review
+because the remaining blockers require product/legal approval, App Store Connect
+metadata, StoreKit sandbox transactions, production notification delivery and
+physical-device testing. Those blockers are listed below and remain unchecked
+in the release checklist.
 
 ## Current verified gates
 
@@ -17,8 +18,8 @@ checklist.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
-- The root suite passes all 50 files and 173 tests. Focused hybrid-commerce
-  tests pass 2 files / 28 tests.
+- The root suite passes all 51 files and 184 tests. Focused licensing and
+  hybrid-commerce tests pass 5 files / 45 tests.
 - The root Vite production build succeeds. Its existing dependency, browser
   data and large-chunk warnings remain non-blocking technical debt.
 - A production-configured Release build installs and launches on the iPhone 17
@@ -74,10 +75,18 @@ checklist.
   unavailable inventory, closed sale windows, malformed trusted pricing,
   hostile return URLs and active kill switches. A failed Stripe session
   releases its reservation.
-- The production licence templates are deliberately fail-closed. `basic_lease`,
-  `premium`, `unlimited` and `exclusive` still require final counsel-approved
-  complete wording before professional beat checkout can be enabled. No legal
-  terms were fabricated in this engineering pass.
+- The production catalogue now contains complete `basic_lease`, `premium_lease`,
+  `unlimited_lease` and `exclusive_rights` agreements. Production verification
+  reports 10,964–11,860 characters per template, no placeholder fragments and
+  no beat-credit language.
+- Licence acceptance and the unticked immediate-delivery request are recorded
+  independently. Exclusive options require versioned producer authorisation;
+  all seven legacy Exclusive options were disabled because none had it.
+- Generic web cart, mobile and backend routes now enforce Stripe-only beat
+  licensing. Completed contracts receive an immutable, hash-addressed licence
+  PDF; secure beat-file delivery is limited to verified completed purchases.
+- UK counsel review is still required for the default 50/50 composition split
+  and PLUGGD's marketplace/intermediary role before material transaction volume.
 
 ## Live production and App Store Connect state
 
@@ -89,6 +98,9 @@ checklist.
   security-definer execution grants, unindexed foreign keys and a PostgreSQL
   version upgrade recommendation. These should be scheduled as a controlled
   database-hardening programme, not mass-edited immediately before submission.
+- Four directly callable `SECURITY DEFINER` commerce functions identified in the
+  final advisor pass were restricted to `service_role`; their targeted advisor
+  findings are now zero.
 - App `6765738727`, version 1.0, is `PREPARE_FOR_SUBMISSION` with manual release.
   Build 1 is valid, minimum iOS is 15.1 and non-exempt encryption is false.
 - Five credit consumables are `READY_TO_SUBMIT`; each has a complete review
@@ -102,8 +114,8 @@ checklist.
 
 ## Submission blockers still open
 
-1. Replace all incomplete production beat licence templates with
-   counsel-approved final agreements and record product/legal sign-off.
+1. Record UK product/legal sign-off on the supplied agreements, especially the
+   default composition split and PLUGGD marketplace/intermediary role.
 2. Complete the content-rights register and approve an upload set containing
    only material with retrievable marketing rights.
 3. Add App Review contact details and a dedicated reviewer account with the
@@ -124,6 +136,12 @@ checklist.
 9. Resolve the Apple Developer membership renewal payment-method warning and
    confirm `support@pluggd.fm` monitoring.
 10. Link the correct EAS project if EAS remains part of the release pipeline.
+
+The 1 August Chrome audit could authenticate the ROWSON GROUP LTD account and
+identify PLUGGD, but App Store Connect rendered only its navigation shell and no
+record body in both the existing and a clean tab. No metadata was changed in
+that state. Resume the remaining App Store Connect items only after its content
+module renders normally.
 
 Do not submit or add the version for review until these unchecked release gates
 are complete. Do not upload the screenshot set until the rights register
