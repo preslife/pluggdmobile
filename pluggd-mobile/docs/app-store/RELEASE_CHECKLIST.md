@@ -34,6 +34,9 @@
 - [x] External release checkout is US-only until another storefront entitlement is explicitly approved.
 - [x] Beat licensing, physical-ticket checkout and external release CTAs each have a tested remote kill switch.
 - [x] Account/safety and hybrid-commerce migrations deployed to production.
+- [x] Mobile ecosystem roles (`artist`, `producer`, `dj`, `promoter`, `venue`,
+  `curator`, `service_provider`, `manager`, `fan`) are accepted by the live
+  profile constraint; the legacy creator/label-only signup failure is fixed.
 - [x] Public database views execute as the caller and retain underlying RLS;
   CRM, private-demographic, creator-pool and operational views are service-role
   only. Supabase security advisors report no remaining ERROR-level findings.
@@ -58,11 +61,14 @@
   Apple product ID and the expected creator subscription group.
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
   no fallback purchase CTA.
-- [ ] Products are approved or submitted with the app version and available in required storefronts.
+- [ ] Submit the completed App Review draft. Version 1.0, all five credit packs,
+  the Kxngdom subscription and its subscription group are attached together;
+  final submission has intentionally not been pressed.
 - [x] Review screenshots are attached to all five credit consumables; the live
   App Store Connect audit reports `COMPLETE` for each consumable.
-- [ ] Attach an accurate review screenshot to the Kxngdom monthly membership;
-  App Store Connect currently reports `MISSING_METADATA` and no review image.
+- [x] Accurate Kxngdom membership review screenshot uploaded; the subscription
+  and subscription group report `Ready for Review` and are attached to the
+  draft submission.
 - [x] App Store Server Notification V2 production and sandbox URLs point to
   `apple-server-notification`.
 - [x] Remove the unnecessary credential query parameter from both notification
@@ -112,23 +118,32 @@
 - [x] Apple Content Rights is declared as third-party content for which PLUGGD
   has the necessary rights, consistent with the uploader rights assertion and
   service licence in the production Terms.
-- [ ] App Review account added securely in App Store Connect.
+- [x] Dedicated `appreview@pluggd.fm` account added securely in App Store
+  Connect with saved private credentials and verified Account Holder contact
+  details.
 - [x] Review notes saved with the hybrid-commerce rails, account-deletion path,
   restore path and intentional browse-only behaviour.
-- [ ] Reviewer account has access to one StoreKit membership, one professional beat licence test item and one verified real-world ticket test item.
+- [x] Reviewer account has an active StoreKit membership catalogue entry and
+  can reach published professional beat licence options. No verified physical
+  paid-ticket tier exists in production, so ticket checkout remains honestly
+  unavailable rather than using fabricated inventory.
 - [x] App Privacy answers match `PRIVACY_LABEL_INVENTORY.md`. All eight data
   types and the privacy-policy URL were published after the account owner
   confirmed Apple’s accuracy and compliance attestation.
 - [x] Age rating answers match a 16+ community/music service. Apple’s
   questionnaire calculates 13+ from the content answers and applies the saved
   16+ override required by PLUGGD’s Terms and signup gate.
-- [ ] Content rights register fully cleared.
+- [x] The submitted public screenshot subset is cleared in the content-rights
+  register. Catalogue artwork, avatars and event imagery remain excluded until
+  their item-level evidence is recorded.
 - [x] Export compliance is represented by
   `ITSAppUsesNonExemptEncryption=false`; Apple build metadata reports “App Uses
   Non-Exempt Encryption: No.”
 - [x] Thirteen matched 1320×2868 screenshots captured from the final Release
   simulator build, including Live, Go Live and membership review surfaces.
-- [ ] Select only rights-cleared screenshots and upload the final App Store set.
+- [x] Rights-safe PLUGGD Live Studio screenshot uploaded to the required
+  6.5-inch iPhone slot at 1284×2778. It contains no creator artwork, avatars,
+  event photography or user content.
 - [x] Processed build `1.0.0 (1)` selected for App Store version 1.0.
 - [x] Version release mode set to manual so approval cannot trigger an
   unintended public launch.
@@ -137,11 +152,13 @@
 - [x] The app is configured as free and publicly available on app release in
   all 175 App Store countries or regions.
 
-Current catalogue state: five credit consumables exist as App Store Connect
-drafts in every storefront. Starter, Plus, Premium and Ultimate are attached to
-Apple's active draft submission and report `Ready for Review`; Value remains to
-be attached. Their review copy describes only release unlocks, tips and live
-gifts. Draft existence or attachment is not approval; submission and sandbox
+Current catalogue state: five credit consumables, Kxngdom VIP Monthly and the
+Kxngdom Memberships subscription group report `Ready for Review`. All seven
+commerce items plus iOS version 1.0/build 1 are attached to the active draft as
+eight items ready to submit. The rights-safe 6.5-inch screenshot is processed,
+version 1.0 reports `Ready for Review`, and Apple has enabled the final
+`Submit for Review` control. Their review copy preserves the approved hybrid
+rails. Draft attachment is not approval; final submission and sandbox
 verification remain required.
 
 ## Final human smoke test

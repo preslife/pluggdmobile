@@ -8,10 +8,10 @@ The current branch is visually and structurally ready for final TestFlight
 device validation. The production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
-It is not yet safe to submit for App Review because the remaining blockers
-require App Store Connect assets and reviewer details, StoreKit sandbox
-transactions, production notification delivery and physical-device testing.
-Those blockers are listed below and remain unchecked in the release checklist.
+The App Store Connect metadata package is now assembled in one draft, but it is
+not yet safe to press final submission because StoreKit sandbox transactions,
+production notification delivery and signed physical-device testing remain.
+Those gates are listed below and remain unchecked in the release checklist.
 
 ## Current verified gates
 
@@ -26,6 +26,9 @@ Those blockers are listed below and remain unchecked in the release checklist.
 - A production-configured Release build installs and launches on the iPhone 17
   Pro Max simulator after the final accessibility and image-fallback changes.
 - `git diff --check` passes.
+- Production's legacy creator/label-only profile constraint was found during
+  reviewer provisioning, expanded to the mobile ecosystem-role set and guarded
+  by `verify-mobile-role-schema-contract.mjs`.
 - The processed signed build remains `1.0.0 (1)` with bundle ID
   `com.pluggd.mobile`; Apple previously accepted delivery
   `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation errors.
@@ -105,52 +108,51 @@ Those blockers are listed below and remain unchecked in the release checklist.
 - Four directly callable `SECURITY DEFINER` commerce functions identified in the
   final advisor pass were restricted to `service_role`; their targeted advisor
   findings are now zero.
-- App `6765738727`, version 1.0, is `PREPARE_FOR_SUBMISSION` with manual release.
+- App `6765738727`, version 1.0, reports `Ready for Review` with manual release.
   Build 1 is valid, minimum iOS is 15.1 and non-exempt encryption is false.
 - Five credit consumables are `READY_TO_SUBMIT`; each has a complete review
   screenshot, one localisation and 200 price points.
-- Kxngdom monthly membership `6795673482` remains `MISSING_METADATA` because
-  its review screenshot is absent.
-- App Review contact/demo-account configuration remains incomplete. The Apple
-  Content Rights declaration is now complete, but the internal screenshot
-  rights register is not; no App Store screenshot set is uploaded yet.
+- Kxngdom monthly membership `6795673482` has its private review screenshot,
+  reports `Ready for Review`, and is attached with its subscription group.
+- A dedicated `appreview@pluggd.fm` fan account is provisioned with completed
+  onboarding, safe age defaults and an active Kxngdom StoreKit catalogue entry.
+  Its credentials and verified Account Holder contact details are saved only
+  in Apple's private review fields.
+- Apple Content Rights is saved. The public 6.5-inch screenshot requirement is
+  satisfied by a 1284×2778 PLUGGD Live Studio capture containing no third-party
+  catalogue media; uncleared catalogue imagery remains excluded.
 - Production and sandbox App Store Server Notification URLs now reach the
   correct function without the obsolete query-string credential.
-- Starter, Plus, Premium and Ultimate credit consumables were added to Apple's
-  active draft submission and each reports `Ready for Review`. Value Credits
-  and the Kxngdom membership still need to be added after their remaining
-  metadata is available.
+- iOS 1.0/build 1, all five credit consumables, Kxngdom VIP Monthly and the
+  Kxngdom Memberships group are attached together as eight items ready to
+  submit. Apple has enabled the final `Submit for Review` control. It has
+  intentionally not been pressed.
 
 ## Submission blockers still open
 
-1. Complete the content-rights register and approve an upload set containing
-   only material with retrievable marketing rights.
-2. Add App Review contact details and a dedicated reviewer account with the
-   required membership, professional beat and real-world ticket fixtures.
-3. Upload the Kxngdom membership review screenshot, add Value Credits and the
-   membership to the active submission, then complete StoreKit sandbox
-   purchase, restore, renewal, refund, revoke and duplicate-delivery tests.
-4. Run App Store Server Notification V2 sandbox and production delivery tests.
-5. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
-6. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
+1. Complete StoreKit sandbox purchase, restore, renewal, refund, revoke and
+   duplicate-delivery tests for credits and the creator membership.
+2. Run App Store Server Notification V2 sandbox and production delivery tests.
+3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
+4. Provision a real organiser-approved physical paid-ticket tier before testing
+   ticket checkout; production currently contains none and the app correctly
+   fails closed.
+5. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-7. Complete signed TestFlight device testing: Apple and Google sign-in,
+6. Complete signed TestFlight device testing: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix.
-8. Resolve the Apple Developer membership renewal payment-method warning and
+7. Resolve the Apple Developer membership renewal payment-method warning and
    confirm `support@pluggd.fm` monitoring.
-9. Link the correct EAS project if EAS remains part of the release pipeline.
+8. Link the correct EAS project only if EAS remains part of the release
+   pipeline; the submitted build used the verified native archive path.
 
-The 1 August Chrome audit authenticated the ROWSON GROUP LTD account and
-verified PLUGGD's live version, build and catalogue. The content module remains
-intermittent: it rendered normally long enough to complete Content Rights,
-remove both notification query credentials and add four consumables to the
-active submission, then returned to a navigation-only shell on other catalogue
-routes. Resume Value Credits and subscription metadata from a normally rendered
-catalogue page rather than treating the blank shell as a completed action.
+The 1 August Safari audit authenticated the ROWSON GROUP LTD account and
+verified PLUGGD's live version, build and complete review draft. Apple pages
+occasionally rendered only the navigation shell; two or three reloads and a
+short wait restored the content without changing state.
 
-Do not submit or add the version for review until these unchecked release gates
-are complete. Do not upload the screenshot set until the rights register
-identifies the approved subset.
+Do not press final `Submit for Review` until the unchecked transaction,
+notification and physical-device gates are complete.
