@@ -15,7 +15,10 @@
  * the fan_subscriptions table in Supabase.
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   verifyAppleNotification,
   verifyAppleRenewalInfo,
@@ -99,7 +102,16 @@ function resolveStatus(
   }
 }
 
-type SupabaseServiceClient = ReturnType<typeof createClient>;
+type SupabaseServiceClient = SupabaseClient<any, "public", any>;
+
+function relatedTierName(value: unknown): string | null {
+  const relation = Array.isArray(value) ? value[0] : value;
+  if (!relation || typeof relation !== "object" || !("name" in relation)) {
+    return null;
+  }
+  const name = (relation as { name?: unknown }).name;
+  return typeof name === "string" && name.trim() ? name : null;
+}
 
 async function getWalletBalance(
   supabaseClient: SupabaseServiceClient,
@@ -245,20 +257,23 @@ serve(async (req) => {
       .eq("notification_uuid", notificationUUID)
       .maybeSingle();
 
-    if (existing && notificationType !== "ONE_TIME_CHARGE") {
-      console.log(`[apple-notification] Duplicate ${notificationUUID}, skipping`);
-      return new Response(JSON.stringify({ received: true, duplicate: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     // Apple's TEST notification intentionally contains no transaction or
     // renewal payload. It still passes the same certificate-chain, signature,
     // bundle-ID and App-Apple-ID verification above, so record it as delivery
     // evidence and acknowledge it without weakening the transaction checks
     // required for every commerce notification below.
     if (notificationType === "TEST") {
+      if (existing) {
+        console.log(`[apple-notification] Duplicate TEST ${notificationUUID}, skipping`);
+        return new Response(
+          JSON.stringify({ received: true, duplicate: true, test: true }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
       const { error: testLogError } = await supabaseClient
         .from("apple_notification_log")
         .insert({
@@ -401,7 +416,7 @@ serve(async (req) => {
     }
 
     if (!subscriptionRecord && catalogueProduct && appAccountToken) {
-      const tierName = catalogueProduct.membership_tiers?.name ??
+      const tierName = relatedTierName(catalogueProduct.membership_tiers) ??
         "Creator membership";
       const { data: created, error: createError } = await supabaseClient
         .from("fan_subscriptions")
@@ -460,7 +475,31 @@ serve(async (req) => {
       );
     }
 
-    const tierName = catalogueProduct?.membership_tiers?.name ??
+    // The delivery log is intentionally written before entitlement mutation so
+    // every verified Apple callback is auditable. A log row alone must never be
+    // treated as successful processing: the first attempt may have failed after
+    // logging but before creating/updating the membership. Skip a retry only
+    // when the downstream membership itself proves this exact notification was
+    // already applied.
+    const alreadyApplied = Boolean(
+      existing &&
+        subscriptionRecord.metadata?.apple_transaction_id === transactionId &&
+        subscriptionRecord.metadata?.last_notification_type === notificationType &&
+        (subscriptionRecord.metadata?.last_notification_subtype ?? null) ===
+          (subtype ?? null),
+    );
+    if (alreadyApplied) {
+      console.log(
+        `[apple-notification] Duplicate ${notificationUUID} already applied to ` +
+          `subscription ${subscriptionRecord.id}`,
+      );
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const tierName = relatedTierName(catalogueProduct?.membership_tiers) ??
       subscriptionRecord.metadata?.tier_name ??
       "Creator membership";
     console.log(

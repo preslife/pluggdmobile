@@ -12,6 +12,7 @@ const studio = read('src/features/studio/StudioScreens.tsx');
 
 assert.match(discoveryHeader, /AccountMenuButton/, 'Discovery header avatar must open the shared account menu');
 assert.match(fanHub, /AccountMenuButton/, 'My PLUGGD avatar must open the shared account menu');
+assert.doesNotMatch(accountMenu, /\.select\([^\n]*display_name/, 'Account identity must not query the nonexistent production profiles.display_name column');
 assert.match(accountMenu, /if \(creatorAccess\)[\s\S]*label: 'Studio'/, 'Studio account action must be creator-only');
 assert.match(accountMenu, /else \{[\s\S]*label: 'Become a Creator'[\s\S]*route: '\/auth\/role'/, 'Fans must be routed into role setup instead of Studio');
 

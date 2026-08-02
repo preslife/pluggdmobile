@@ -104,9 +104,16 @@
   Apple's verified `ONE_TIME_CHARGE` notification without another purchase,
   and the deployed notification handler now provides idempotent crash-safe
   fulfilment for all five credit packs.
-- [ ] Membership purchase maps to the intended creator and tier.
+- [x] Sandbox membership purchase maps to the intended creator and tier.
+  Product `com.pluggd.membership.kxngdom.vip.monthly` created the Kxngdom
+  `VIP supporters` entitlement with Apple's verified account token and unique
+  original transaction identity.
 - [ ] Restore Purchases restores memberships and never duplicates consumable credits.
-- [ ] Renewal, billing retry, expiry, refund and revoke notifications update entitlement status.
+- [x] Sandbox renewal and expiry notifications update entitlement status.
+  Apple's accelerated lifecycle delivered eleven verified `DID_RENEW` events
+  followed by `EXPIRED / VOLUNTARY`; production advanced the same entitlement
+  from active renewals to expired at the verified Apple period end.
+- [ ] Billing retry, refund and revoke notifications update entitlement status.
 - [ ] Two creators with the same membership price can both be subscribed to and restored without identity collision.
 - [x] Signed Release build containing the final visible membership CTA built,
   installed and launched on the registered iPhone 15 Pro Max on 2 August 2026;
@@ -204,6 +211,10 @@ verification remain required.
   lobby, replay, creator broadcast setup and authenticated server creation are
   present in the Release simulator build.
 - [x] Signed-in creator profile, creator membership and role-specific Studio routes.
+- [x] Fan account avatar opens the account menu directly; creator tools are
+  role-gated, and every Studio shell has a deterministic exit plus a working
+  account menu. The connected iPhone fan account's obsolete Artist role row
+  was removed after its authoritative Fan selection was verified.
 - [ ] Restricted, US and approved-entitlement storefront commerce matrix.
 - [ ] Hosted beat and ticket checkout return, cancel, pending, refund and unavailable states.
 - [ ] Offline images, unavailable audio, empty and loading states.

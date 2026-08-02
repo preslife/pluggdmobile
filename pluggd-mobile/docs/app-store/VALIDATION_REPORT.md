@@ -12,10 +12,11 @@ The App Store Connect metadata package is assembled in one draft. A signed
 production-configured Release build now installs and launches on the registered
 iPhone 15 Pro Max. Apple's sandbox server-notification test and the first
 physical-device consumable purchase are verified end-to-end. It is not yet safe
-to press final submission because membership purchase/restore and subscription
-entitlement-lifecycle gates still require deliberate Sandbox Apple Account
-interaction on the device. Those gates remain unchecked in the release
-checklist.
+to press final submission. A physical creator-membership purchase, its initial
+creator/tier mapping, eleven accelerated sandbox renewals and normal expiry are
+now verified end-to-end. Restore Purchases, billing retry, refund and revoke
+remain deliberate Sandbox Apple Account gates, alongside the other unchecked
+items in the release checklist.
 
 ## Current verified gates
 
@@ -73,11 +74,19 @@ checklist.
   exactly one transaction row and one `topup_iap` ledger row for transaction
   `…5801`; the resulting wallet balance is 1,050 available credits, zero
   pending credits and zero duplicate grants.
-- `apple-server-notification` v15 and `validate-iap-receipt` v11 are active.
+- `apple-server-notification` v18 and `validate-iap-receipt` v11 are active.
   The notification handler now fulfils all five server-owned credit SKUs as a
   crash-safe backup, using the same unique Apple transaction idempotency key as
   client validation. Apple IAP top-ups use `topup_iap`, so they are available
-  immediately rather than entering the web top-up hold.
+  immediately rather than entering the web top-up hold. Membership retries are
+  skipped only when the exact notification is already reflected on the
+  entitlement, so a callback logged before a failed mutation cannot strand a
+  verified purchase.
+- A physical sandbox purchase of Kxngdom VIP Monthly mapped to the intended
+  Kxngdom creator and `VIP supporters` tier. Production then processed eleven
+  verified `DID_RENEW` callbacks and `EXPIRED / VOLUNTARY`, advancing the same
+  entitlement through Apple's accelerated sandbox lifecycle without an
+  identity collision.
 
 ## Final product, visual and accessibility verification
 
@@ -113,6 +122,10 @@ checklist.
   Live, THE PLUG, Market, Community creation/boards, Library, Wallet,
   purchases, memberships, tickets, Studio, Connect Cards and split sheets from
   being silently hidden by future navigation changes.
+- Account avatars now open the canonical account menu directly. Fan accounts
+  are not offered Studio, creator routes fail closed behind role validation,
+  and Studio provides both a working account menu and a deterministic
+  `Back to PLUGGD` exit so no user can become trapped in the creator shell.
 - Mobile room creation fails closed through authenticated
   `manage-live-sessions` server validation and no longer inserts directly into
   `session_rooms`.
@@ -208,13 +221,12 @@ checklist.
 
 ## Submission blockers still open
 
-1. Complete creator-membership sandbox purchase and restore, then exercise
-   renewal, billing retry, expiry, refund and revoke lifecycle events. The
-   consumable credit purchase and interrupted-fulfilment path are green.
-2. Exercise transaction-backed subscription notifications for renewal, refund
-   and revoke events. The standalone Apple sandbox test and a signed sandbox
-   `ONE_TIME_CHARGE` notification are already green; a production notification
-   requires a real production event.
+1. Complete creator-membership Restore Purchases on the signed device without
+   duplicating the existing entitlement. Initial purchase, creator/tier mapping,
+   eleven renewals and expiry are green.
+2. Exercise transaction-backed billing-retry, refund and revoke subscription
+   notifications. The standalone Apple sandbox test, initial purchase,
+   renewals and voluntary expiry are already green.
 3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
 4. Provision a real organiser-approved physical paid-ticket tier before testing
    ticket checkout; production currently contains none and the app correctly

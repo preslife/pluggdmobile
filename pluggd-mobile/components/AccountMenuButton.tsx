@@ -53,7 +53,7 @@ async function loadAccountIdentity(userId: string) {
   const [profileRes, rolesRes] = await Promise.all([
     (supabase as any)
       .from('profiles')
-      .select('user_id,full_name,display_name,username,avatar_url,user_type,profile_type,is_creator,is_label,onboarding_progress')
+      .select('user_id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_label,onboarding_progress')
       .eq('user_id', userId)
       .maybeSingle(),
     (supabase as any).from('profile_roles').select('role,is_primary').eq('user_id', userId),

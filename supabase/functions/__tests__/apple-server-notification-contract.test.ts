@@ -61,4 +61,21 @@ describe("Apple server notification contract", () => {
     expect(source).toContain("await fulfilCreditPack(supabaseClient, txInfo, creditPack)");
     expect(source).not.toContain('kind: "topup",\n        ref_type: "apple_iap"');
   });
+
+  it("retries a pre-logged membership notification until its entitlement mutation is applied", () => {
+    expect(source).not.toContain(
+      'if (existing && notificationType !== "ONE_TIME_CHARGE")',
+    );
+    expect(source).toContain(
+      'subscriptionRecord.metadata?.apple_transaction_id === transactionId',
+    );
+    expect(source).toContain(
+      'subscriptionRecord.metadata?.last_notification_type === notificationType',
+    );
+    expect(source).toContain(
+      '(subscriptionRecord.metadata?.last_notification_subtype ?? null)',
+    );
+    expect(source).toContain('if (alreadyApplied)');
+    expect(source).toContain('Duplicate TEST ${notificationUUID}, skipping');
+  });
 });
