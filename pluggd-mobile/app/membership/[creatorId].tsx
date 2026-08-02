@@ -115,6 +115,21 @@ export default function CreatorMembershipScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    const username = creator?.username?.trim();
+    if (username) {
+      router.replace(`/creator/${encodeURIComponent(username)}` as any);
+      return;
+    }
+
+    router.replace(`/user/${creatorUserId ?? creatorId}` as any);
+  }, [creator?.username, creatorId, creatorUserId, router]);
+
   // Check if fan already subscribes to this creator
   const existingMembership = activeMemberships.find(
     (m) => m.creator_id === creatorUserId
@@ -245,21 +260,27 @@ export default function CreatorMembershipScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
       >
         <View style={styles.hero}>
-          {creator?.cover_image_url ? (
-            <Image
-              source={{ uri: creator.cover_image_url }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-            />
-          ) : (
-            <LinearGradient
-              colors={['#2b1608', '#120d08', '#070605']}
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
           <LinearGradient
-            colors={['rgba(7,6,5,0.12)', 'rgba(7,6,5,0.45)', '#070605']}
-            locations={[0, 0.48, 1]}
+            colors={['#301505', '#130b07', '#070605']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {(creator?.cover_image_url || creator?.avatar_url) ? (
+            <Image
+              source={{ uri: creator.cover_image_url ?? creator.avatar_url ?? '' }}
+              style={[
+                StyleSheet.absoluteFillObject,
+                !creator.cover_image_url && styles.heroAvatarBackdrop,
+              ]}
+              resizeMode="cover"
+              blurRadius={creator.cover_image_url ? 0 : 18}
+            />
+          ) : null}
+          <View pointerEvents="none" style={styles.heroGlow} />
+          <LinearGradient
+            colors={['rgba(7,6,5,0.16)', 'rgba(7,6,5,0.32)', '#070605']}
+            locations={[0, 0.42, 1]}
             style={StyleSheet.absoluteFillObject}
           />
 
@@ -267,7 +288,7 @@ export default function CreatorMembershipScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Go back"
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
             >
               <SymbolIcon name="arrow_back" style={styles.backIcon} />
@@ -563,7 +584,20 @@ export default function CreatorMembershipScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-  hero: { height: 330, overflow: 'hidden' },
+  hero: { height: 220, overflow: 'hidden' },
+  heroAvatarBackdrop: {
+    opacity: 0.56,
+    transform: [{ scale: 1.16 }],
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    right: -74,
+    bottom: -88,
+    backgroundColor: 'rgba(255,102,0,0.16)',
+  },
   heroTop: {
     position: 'absolute',
     left: 18,
@@ -595,7 +629,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 24,
+    bottom: 20,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 14,

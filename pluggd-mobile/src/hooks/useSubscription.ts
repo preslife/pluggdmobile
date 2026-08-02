@@ -71,10 +71,34 @@ function localizedPrice(product: Subscription | null): string | null {
 }
 
 const PRODUCT_LOAD_DELAYS_MS = [0, 700, 1400, 2400] as const;
+const SERVER_RECONCILIATION_DELAYS_MS = [0, 700, 1400, 2400, 4000] as const;
+const SESSION_REFRESH_WINDOW_SECONDS = 60;
 
 function waitForProductRetry(delayMs: number) {
   if (delayMs <= 0) return Promise.resolve();
   return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function requireAuthenticatedSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+
+  let session = data.session;
+  const expiresSoon =
+    typeof session?.expires_at === 'number' &&
+    session.expires_at <= Math.floor(Date.now() / 1000) + SESSION_REFRESH_WINDOW_SECONDS;
+
+  if (session && expiresSoon) {
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error) throw refreshed.error;
+    session = refreshed.data.session;
+  }
+
+  if (!session?.user?.id || !session.access_token) {
+    throw new Error('Please sign in again to continue.');
+  }
+
+  return session;
 }
 
 export function useSubscription(options?: { creatorId?: string | null }) {
@@ -233,18 +257,69 @@ export function useSubscription(options?: { creatorId?: string | null }) {
   }, [refreshMemberships]);
 
   const validateReceipt = useCallback(async (purchase: Purchase) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Sign in to validate this membership.');
+    const session = await requireAuthenticatedSession();
     const signedTransaction = purchase.verificationResultIOS;
+
+    async function recoverServerVerifiedMembership() {
+      for (const delayMs of SERVER_RECONCILIATION_DELAYS_MS) {
+        await waitForProductRetry(delayMs);
+
+        const { data: subscription, error: lookupError } = await (supabase as any)
+          .from('fan_subscriptions')
+          .select('id,status,current_period_end,apple_sku,metadata')
+          .eq('fan_id', session.user.id)
+          .eq('apple_sku', purchase.productId)
+          .in('status', ['active', 'past_due', 'cancelled'])
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lookupError) {
+          console.warn(
+            '[useSubscription] server-verified membership lookup failed:',
+            lookupError.message,
+          );
+          return null;
+        }
+
+        const periodEnd = subscription?.current_period_end
+          ? new Date(subscription.current_period_end).getTime()
+          : null;
+        const remainsEntitled =
+          subscription?.status === 'active' ||
+          subscription?.status === 'past_due' ||
+          (subscription?.status === 'cancelled' &&
+            periodEnd !== null &&
+            Number.isFinite(periodEnd) &&
+            periodEnd > Date.now());
+
+        if (subscription && remainsEntitled) {
+          return {
+            success: true,
+            recovered: true,
+            type: 'subscription',
+            subscription_id: subscription.id,
+          };
+        }
+      }
+
+      return null;
+    }
+
     if (
       typeof signedTransaction !== 'string' ||
       signedTransaction.split('.').length !== 3
     ) {
+      const recovered = await recoverServerVerifiedMembership();
+      if (recovered) return recovered;
       throw new Error(
-        'Apple confirmed this membership, but verification is still pending. Reopen this page or restore purchases to try again.',
+        'Apple confirmed this membership and PLUGGD is still syncing it. Do not subscribe again—reopen this page in a moment.',
       );
     }
     const { error: validationError } = await supabase.functions.invoke('validate-iap-receipt', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
       body: {
         receipt_data: signedTransaction,
         product_id: purchase.productId,
@@ -254,6 +329,8 @@ export function useSubscription(options?: { creatorId?: string | null }) {
       },
     });
     if (validationError) {
+      const recovered = await recoverServerVerifiedMembership();
+      if (recovered) return recovered;
       console.error('[useSubscription] receipt verification request failed:', {
         name: validationError.name,
         message: validationError.message,
@@ -264,6 +341,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
         'Apple confirmed this membership, but PLUGGD is still verifying it. Do not subscribe again—reopen this page in a moment.',
       );
     }
+    return { success: true, type: 'subscription' };
   }, []);
 
   useEffect(() => {
