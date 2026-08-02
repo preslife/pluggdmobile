@@ -175,6 +175,10 @@ items in the release checklist.
   findings are now zero.
 - App `6765738727`, version 1.0, reports `Ready for Review` with manual release.
   Build 1 is valid, minimum iOS is 15.1 and non-exempt encryption is false.
+- Safari live verification on 2 August attached validated build `1.0.0 (1)` to
+  the internal `PLUGGD Submission QA` group and invited the Account Holder.
+  App Store Connect now reports `1 Tester · 1 Build` with tester status
+  `Invited`; accepting and installing that build on the iPhone remains open.
 - Five credit consumables are `READY_TO_SUBMIT`; each has a complete review
   screenshot, one localisation and 200 price points.
 - Kxngdom monthly membership `6795673482` has its private review screenshot,
@@ -234,7 +238,8 @@ items in the release checklist.
 5. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-6. Complete the remaining signed TestFlight device interactions: Apple and Google sign-in,
+6. Accept the internal TestFlight invitation, install build `1.0.0 (1)`, and
+   complete the remaining signed TestFlight device interactions: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix. Signed Release installation, launch,

@@ -248,6 +248,9 @@ verification remain required.
   errors on 28 July 2026.
 - [x] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
   as a TestFlight build. App Store Connect reports `Ready to Submit`.
+- [x] Attach build `1.0.0 (1)` to the internal `PLUGGD Submission QA` group
+  and invite the Account Holder as an internal tester. Safari live verification
+  on 2 August 2026 reports `1 Tester · 1 Build`; the tester status is `Invited`.
 - [x] Native Sign in with Apple completed successfully in the signed Release
   build on the registered iPhone 15 Pro Max on 2 August 2026. Apple returned to
   PLUGGD and the authenticated account reached the real three-step onboarding
