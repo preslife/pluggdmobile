@@ -5,7 +5,7 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`52` files / `186` tests)
+- [x] Root test suite (`52` files / `187` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
@@ -88,8 +88,14 @@
   URLs, leaving authentication and verification to the notification handler.
 - [x] Apple sandbox test notification succeeds and appears exactly once in
   `apple_notification_log` (`434e26a3-ca67-4faa-a84c-7c431ecb2387`).
-- [ ] Sandbox credit purchase grants exactly once.
-- [ ] Interrupted consumable completes after server verification.
+- [x] Sandbox Plus Credits purchase grants exactly once. Apple transaction
+  `…5801` produced one `iap_transactions` row and one `topup_iap` ledger row;
+  the verified balance is 1,050 available credits with zero pending credits.
+- [x] Interrupted consumable completes after server verification. The physical
+  purchase exposed the StoreKit 2 legacy-receipt mismatch, was recovered from
+  Apple's verified `ONE_TIME_CHARGE` notification without another purchase,
+  and the deployed notification handler now provides idempotent crash-safe
+  fulfilment for all five credit packs.
 - [ ] Membership purchase maps to the intended creator and tier.
 - [ ] Restore Purchases restores memberships and never duplicates consumable credits.
 - [ ] Renewal, billing retry, expiry, refund and revoke notifications update entitlement status.

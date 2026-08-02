@@ -1,6 +1,6 @@
 # App Store Submission Validation Report
 
-Validated on 1 August 2026 from branch `codex/app-store-submission-final`.
+Validated on 2 August 2026 from branch `codex/app-store-submission-final`.
 
 ## Release verdict
 
@@ -10,11 +10,12 @@ are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
 The App Store Connect metadata package is assembled in one draft. A signed
 production-configured Release build now installs and launches on the registered
-iPhone 15 Pro Max, and Apple's sandbox server-notification test is verified
-end-to-end. It is not yet safe to press final submission because the remaining
-StoreKit sandbox transaction and entitlement-lifecycle gates require deliberate
-interaction with a Sandbox Apple Account on the device. Those gates remain
-unchecked in the release checklist.
+iPhone 15 Pro Max. Apple's sandbox server-notification test and the first
+physical-device consumable purchase are verified end-to-end. It is not yet safe
+to press final submission because membership purchase/restore and subscription
+entitlement-lifecycle gates still require deliberate Sandbox Apple Account
+interaction on the device. Those gates remain unchecked in the release
+checklist.
 
 ## Current verified gates
 
@@ -22,7 +23,7 @@ unchecked in the release checklist.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
-- The root suite passes all 52 files and 186 tests. Focused licensing and
+- The root suite passes all 52 files and 187 tests. Focused licensing and
   hybrid-commerce tests pass 5 files / 45 tests.
 - The root Vite production build succeeds. Its existing dependency, browser
   data and large-chunk warnings remain non-blocking technical debt.
@@ -62,6 +63,21 @@ unchecked in the release checklist.
   purchase remains disabled until the localized product is loaded. The final
   signed-device evidence is
   `/Users/apple/Desktop/Screenshot 2026-08-02 at 00.44.30.png`.
+- A physical sandbox purchase of Plus Credits completed in Apple's sheet. The
+  run exposed that `react-native-iap` StoreKit 2 supplies the signed JWS in
+  `verificationResultIOS` while intentionally leaving `transactionReceipt`
+  empty. Credits and memberships now submit the signed JWS, and a regression
+  contract forbids the legacy field.
+- The interrupted purchase was reconciled from Apple's already verified
+  `ONE_TIME_CHARGE` notification without charging again. Production contains
+  exactly one transaction row and one `topup_iap` ledger row for transaction
+  `…5801`; the resulting wallet balance is 1,050 available credits, zero
+  pending credits and zero duplicate grants.
+- `apple-server-notification` v15 and `validate-iap-receipt` v11 are active.
+  The notification handler now fulfils all five server-owned credit SKUs as a
+  crash-safe backup, using the same unique Apple transaction idempotency key as
+  client validation. Apple IAP top-ups use `topup_iap`, so they are available
+  immediately rather than entering the web top-up hold.
 
 ## Final product, visual and accessibility verification
 
@@ -177,11 +193,13 @@ unchecked in the release checklist.
 
 ## Submission blockers still open
 
-1. Complete StoreKit sandbox purchase, restore, renewal, refund, revoke and
-   duplicate-delivery tests for credits and the creator membership.
-2. Exercise transaction-backed server notifications for purchase, renewal,
-   refund and revoke events. The standalone Apple sandbox notification test is
-   already green; a production notification requires a real production event.
+1. Complete creator-membership sandbox purchase and restore, then exercise
+   renewal, billing retry, expiry, refund and revoke lifecycle events. The
+   consumable credit purchase and interrupted-fulfilment path are green.
+2. Exercise transaction-backed subscription notifications for renewal, refund
+   and revoke events. The standalone Apple sandbox test and a signed sandbox
+   `ONE_TIME_CHARGE` notification are already green; a production notification
+   requires a real production event.
 3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
 4. Provision a real organiser-approved physical paid-ticket tier before testing
    ticket checkout; production currently contains none and the app correctly

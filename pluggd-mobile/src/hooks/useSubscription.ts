@@ -215,16 +215,35 @@ export function useSubscription(options?: { creatorId?: string | null }) {
   const validateReceipt = useCallback(async (purchase: Purchase) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Sign in to validate this membership.');
+    const signedTransaction = purchase.verificationResultIOS;
+    if (
+      typeof signedTransaction !== 'string' ||
+      signedTransaction.split('.').length !== 3
+    ) {
+      throw new Error(
+        'Apple confirmed this membership, but verification is still pending. Reopen this page or restore purchases to try again.',
+      );
+    }
     const { error: validationError } = await supabase.functions.invoke('validate-iap-receipt', {
       body: {
-        receipt_data: purchase.transactionReceipt,
+        receipt_data: signedTransaction,
         product_id: purchase.productId,
         transaction_id: purchase.transactionId,
         platform: 'ios',
         type: 'subscription',
       },
     });
-    if (validationError) throw validationError;
+    if (validationError) {
+      console.error('[useSubscription] receipt verification request failed:', {
+        name: validationError.name,
+        message: validationError.message,
+        productId: purchase.productId,
+        transactionId: purchase.transactionId,
+      });
+      throw new Error(
+        'Apple confirmed this membership, but PLUGGD is still verifying it. Do not subscribe again—reopen this page in a moment.',
+      );
+    }
   }, []);
 
   useEffect(() => {

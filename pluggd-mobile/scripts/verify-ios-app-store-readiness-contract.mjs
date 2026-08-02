@@ -16,6 +16,8 @@ const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
 const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
 const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
 const notifications = read('../supabase/functions/apple-server-notification/index.ts');
+const creditPacks = read('../supabase/functions/_shared/appleCreditPacks.ts');
+const subscriptions = read('src/hooks/useSubscription.ts');
 const policy = read('src/commerce/policy.ts');
 const environment = read('src/config/environment.ts');
 
@@ -63,8 +65,14 @@ assert.match(verifier, /bundle identifier mismatch/, 'verified signed data must 
 assert.match(verifier, /environment mismatch/, 'verified signed data must be bound to the expected App Store environment');
 assert.match(receipt, /verifyAppleTransaction/, 'client transaction must be cryptographically verified');
 assert.doesNotMatch(receipt, /proceeding with basic validation|decodeJWSPayload/, 'unverified receipt fallback is forbidden');
+assert.match(subscriptions, /const signedTransaction = purchase\.verificationResultIOS;/, 'StoreKit 2 membership validation must use Apple\'s signed transaction JWS');
+assert.doesNotMatch(subscriptions, /receipt_data:\s*purchase\.transactionReceipt/, 'StoreKit 2 membership validation must not submit the empty legacy receipt field');
 assert.match(notifications, /verifyAppleNotification/, 'server notification must be cryptographically verified');
 assert.doesNotMatch(notifications, /without cryptographic verification|decodeJWSPayload/, 'unverified notification decoding is forbidden');
+assert.match(notifications, /notificationType === "ONE_TIME_CHARGE"/, 'Apple one-time charge notifications must recover credit fulfilment');
+assert.match(notifications, /idempotencyKey = `apple-iap:\$\{txInfo\.transactionId\}`/, 'server notification credit fulfilment must be replay safe');
+assert.match(notifications, /kind: "topup_iap"/, 'Apple credit packs must be immediately available instead of entering the web top-up hold');
+assert.match(creditPacks, /pluggd_credits_popular:[\s\S]*totalCredits: 1050/, 'server-owned Apple credit catalogue must preserve the Plus pack amount');
 assert.match(manifest, /NSPrivacyCollectedDataTypeEmailAddress/, 'privacy manifest must declare linked email');
 assert.match(manifest, /NSPrivacyCollectedDataTypeOtherUserContent/, 'privacy manifest must declare UGC');
 assert.equal(existsSync(new URL('../app/auth/biometric.tsx', import.meta.url)), false, 'decorative biometric route must not ship');

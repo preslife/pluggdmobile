@@ -42,4 +42,23 @@ describe("Apple server notification contract", () => {
     expect(verifierSource).toContain("Apple signed data environment mismatch");
     expect(verifierSource).not.toContain("node:crypto");
   });
+
+  it("fulfils verified one-time credit charges exactly once", () => {
+    const nestedVerificationIndex = source.indexOf(
+      "verifyAppleTransaction(\n      notification.data.signedTransactionInfo",
+    );
+    const creditBranchIndex = source.indexOf(
+      'notificationType === "ONE_TIME_CHARGE"',
+    );
+
+    expect(nestedVerificationIndex).toBeGreaterThan(-1);
+    expect(creditBranchIndex).toBeGreaterThan(nestedVerificationIndex);
+    expect(source).toContain(
+      'const idempotencyKey = `apple-iap:${txInfo.transactionId}`',
+    );
+    expect(source).toContain('kind: "topup_iap"');
+    expect(source).toContain('type: "credits"');
+    expect(source).toContain("await fulfilCreditPack(supabaseClient, txInfo, creditPack)");
+    expect(source).not.toContain('kind: "topup",\n        ref_type: "apple_iap"');
+  });
 });
