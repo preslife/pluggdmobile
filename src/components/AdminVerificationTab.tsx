@@ -81,7 +81,7 @@ export const AdminVerificationTab = () => {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          verification_status: 'verified',
+          verification_status: 'approved',
           is_verified: true,
           verification_note: 'Approved by admin'
         })

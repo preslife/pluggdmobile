@@ -55,6 +55,15 @@ access, refunds and creator settlement.
   not a fallback purchase button.
 - Existing shared-price SKU subscriptions retain access during migration and
   must not be charged again.
+- Creator catalogue provisioning is queued only after PLUGGD approval. The
+  scheduled server worker creates or reconciles the creator's subscription
+  group, unique tier products, localisations, approved price point,
+  availability and App Review screenshot, then polls Apple for approval before
+  activating the mobile purchase control.
+- Fan purchases do not create subscription groups or products. A fan may hold
+  one product from each of many creator groups, which allows simultaneous
+  memberships to different creators at the same price without identity
+  collision.
 
 ## Hosted checkout and entitlement rules
 

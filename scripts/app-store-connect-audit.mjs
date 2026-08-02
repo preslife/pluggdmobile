@@ -224,11 +224,12 @@ const subscriptionsByGroup = await Promise.all(
       resources(
         await get(`/v1/subscriptionGroups/${group.id}/subscriptions?limit=200`),
       ).map(async (subscription) => {
-        const [localizations, prices, availability, reviewScreenshot] =
+        const [localizations, prices, availability, planAvailabilities, reviewScreenshot] =
           await Promise.all([
             get(`/v1/subscriptions/${subscription.id}/subscriptionLocalizations?limit=200`),
             get(`/v1/subscriptions/${subscription.id}/prices?limit=200`),
             getOptional(`/v1/subscriptions/${subscription.id}/subscriptionAvailability`),
+            getOptionalWithRole(`/v1/subscriptions/${subscription.id}/planAvailabilities?limit=200`),
             getOptional(`/v1/subscriptions/${subscription.id}/appStoreReviewScreenshot`),
           ]);
         const availableTerritories = availability?.data?.id
@@ -254,6 +255,11 @@ const subscriptionsByGroup = await Promise.all(
           })),
           configuredPrices: resources(prices).length,
           availability: availability?.data?.attributes || null,
+          planAvailabilities: resources(planAvailabilities).map((entry) => ({
+            id: entry.id,
+            planType: entry.planType,
+            availableInNewTerritories: entry.availableInNewTerritories,
+          })),
           availableTerritories: availableTerritories
             ? resources(availableTerritories).length
             : null,

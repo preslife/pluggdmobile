@@ -126,16 +126,38 @@ Product IDs and group IDs are generated/provisioned operational data and must be
 exported from App Store Connect into the server catalogue. Do not maintain a
 global source allowlist of creator membership product IDs in the mobile bundle.
 
-Provisioned production catalogue as of 28 July 2026:
+Provisioning is automatic after PLUGGD approves a creator for sellable
+memberships. `approve_creator_membership_iap` queues that creator's active
+tiers; the scheduled `provision-membership-iap` worker creates or reconciles one
+App Store Connect subscription group for the creator and one unique product for
+each tier/billing period. It also supplies localisation, price, territory
+availability and the private App Review screenshot, then polls Apple until the
+product is approved. A fan subscription never creates catalogue objects: it
+only purchases an already approved product and produces a verified entitlement.
+
+The scale arithmetic is therefore per creator, not per fan. For example, 500
+approved creators with two monthly tiers require 500 subscription groups and
+1,000 products. The same 500 creators can serve any number of fans without
+creating additional App Store Connect products. Creators remain browse-only
+until Apple has approved their products, and a fan may hold one tier from each
+of many creator groups at the same time.
+
+Provisioned production catalogue as of 2 August 2026:
 
 - subscription group `Kxngdom Memberships` (`22271259`);
 - monthly product `com.pluggd.membership.kxngdom.vip.monthly` (Apple ID
   `6795673482`) for the `VIP supporters` tier at USD 2.99;
 - English (U.K.) display metadata, worldwide availability and App Review notes
   are saved in App Store Connect;
-- the server catalogue row is intentionally `provisioned`, not `active`, until
-  an accurate review screenshot and signed StoreKit sandbox verification are
-  complete. The app therefore keeps this tier browse-only.
+- the server catalogue row is active, resolves through StoreKit with Apple's
+  storefront-localised price, and renders a visible purchase action in the
+  signed Release build;
+- migrations `20260802160000_membership_iap_provisioning.sql` and
+  `20260802170000_schedule_membership_iap_provisioner.sql` plus the deployed
+  `provision-membership-iap` function provide the production provisioning
+  queue. Its one-minute cron invocation returned HTTP 200 in the production
+  smoke test, and a read-only 500-creator/1,000-product simulation produced no
+  identifier collisions.
 
 ## StoreKit / App Store Server API setup
 

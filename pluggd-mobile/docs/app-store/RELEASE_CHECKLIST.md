@@ -74,6 +74,10 @@
   Apple product ID and the expected creator subscription group.
 - [x] Unprovisioned or non-active creator products remain browse-only and expose
   no fallback purchase CTA.
+- [x] Verified-creator membership catalogues are provisioned through a durable
+  server queue: one Apple subscription group per creator and one unique product
+  per tier/billing period. The production cron smoke returned HTTP 200, and a
+  500-creator/1,000-product uniqueness simulation passed without collisions.
 - [ ] Submit the completed App Review draft. Version 1.0, all five credit packs,
   the Kxngdom subscription and its subscription group are attached together;
   final submission has intentionally not been pressed.
@@ -100,6 +104,9 @@
 - [ ] Restore Purchases restores memberships and never duplicates consumable credits.
 - [ ] Renewal, billing retry, expiry, refund and revoke notifications update entitlement status.
 - [ ] Two creators with the same membership price can both be subscribed to and restored without identity collision.
+- [x] Signed Release build containing the final visible membership CTA built,
+  installed and launched on the registered iPhone 15 Pro Max on 2 August 2026;
+  the installed `com.pluggd.mobile` process remained running after launch.
 
 ## Hybrid commerce
 

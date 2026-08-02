@@ -30,6 +30,7 @@ export type SubscriptionTier = MembershipProduct;
 export interface ActiveMembership {
   id: string;
   creator_id: string;
+  tier_id: string | null;
   creator_name: string;
   tier_name: string;
   apple_sku: string;
@@ -49,6 +50,7 @@ type CatalogRow = {
 type FanSubscriptionRow = {
   id: string;
   creator_id: string;
+  tier_id?: string | null;
   apple_sku?: string | null;
   status: ActiveMembership['status'];
   current_period_end: string | null;
@@ -66,6 +68,13 @@ function localizedPrice(product: Subscription | null): string | null {
     return product.localizedPrice;
   }
   return null;
+}
+
+const PRODUCT_LOAD_DELAYS_MS = [0, 700, 1400, 2400] as const;
+
+function waitForProductRetry(delayMs: number) {
+  if (delayMs <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 }
 
 export function useSubscription(options?: { creatorId?: string | null }) {
@@ -127,7 +136,17 @@ export function useSubscription(options?: { creatorId?: string | null }) {
     void (async () => {
       setLoading(true);
       try {
-        const subscriptions = await getSubscriptions({ skus: productIds });
+        let subscriptions: Subscription[] = [];
+        for (let attempt = 0; attempt < PRODUCT_LOAD_DELAYS_MS.length; attempt += 1) {
+          await waitForProductRetry(PRODUCT_LOAD_DELAYS_MS[attempt]);
+          subscriptions = await getSubscriptions({ skus: productIds });
+          console.info('[useSubscription] App Store catalogue response', {
+            attempt: attempt + 1,
+            requested: productIds,
+            returned: subscriptions.map((item) => item.productId),
+          });
+          if (subscriptions.length > 0 || !mounted) break;
+        }
         if (!mounted) return;
         setTiers(catalog.map((row) => {
           const product = subscriptions.find((item) => item.productId === row.product_id) ?? null;
@@ -179,7 +198,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
       }
       const { data, error: fetchError } = await (supabase as any)
         .from('fan_subscriptions')
-        .select('id,creator_id,apple_sku,status,current_period_end,metadata,membership_tiers(name)')
+        .select('id,creator_id,tier_id,apple_sku,status,current_period_end,metadata,membership_tiers(name)')
         .eq('fan_id', user.id)
         .in('status', ['active', 'past_due'])
         .order('created_at', { ascending: false });
@@ -196,6 +215,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
         return {
           id: row.id,
           creator_id: row.creator_id,
+          tier_id: row.tier_id ?? metadata.tier_id ?? null,
           creator_name: creator?.full_name ?? creator?.username ?? 'Creator',
           tier_name: relatedName(row.membership_tiers) ?? metadata.tier_name ?? 'Membership',
           apple_sku: row.apple_sku ?? metadata.apple_sku ?? '',

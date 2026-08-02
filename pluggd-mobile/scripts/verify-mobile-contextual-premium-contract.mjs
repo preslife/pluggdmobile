@@ -69,6 +69,18 @@ for (const sku of [
 assert.match(membership, /Apple[\s\S]*Settings[\s\S]*Subscriptions/, 'membership screen must keep Apple subscription cancel/manage guidance');
 assert.match(membership, /membership_iap_products/, 'membership screen must load unique creator-tier Apple product mappings');
 assert.doesNotMatch(membership, /pluggd_tier_(?:299|499|999|1999|4999)/, 'membership screen must not use shared price SKUs as creator identity');
+assert.match(
+  membership,
+  /<View\s+key=\{tier\.id\}[\s\S]*?<Pressable[\s\S]*?accessibilityRole="radio"/,
+  'tier expansion and purchase actions must be sibling controls rather than nested Pressables',
+);
+assert.match(
+  membership,
+  /joinButton:\s*\{[\s\S]*?backgroundColor:\s*'#ff6600'/,
+  'the membership purchase CTA must render with an explicit visible PLUGGD-orange surface',
+);
+assert.match(membership, /SWITCH TO/, 'membership screen must support same-creator tier changes');
+assert.match(membership, /isCurrentTier/, 'membership screen must identify the active creator tier');
 
 assert.match(tickets, /Entry codes appear only for eligible tickets/, 'tickets must keep honest QR/pass limitations');
 assert.match(tickets, /issueTicketEntryToken/, 'tickets must keep rotating entry token integration');

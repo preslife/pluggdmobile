@@ -105,6 +105,7 @@ export default function CreatorMembershipScreen() {
     activeMemberships,
     subscribe,
     purchasing,
+    loading: subscriptionLoading,
     error: subscriptionError,
     clearError,
   } = useSubscription({ creatorId: creatorUserId ?? '__creator_pending__' });
@@ -175,14 +176,6 @@ export default function CreatorMembershipScreen() {
         return;
       }
 
-      if (existingMembership) {
-        Alert.alert(
-          'Already subscribed',
-          `You're already a ${existingMembership.tier_name} member of this creator.`
-        );
-        return;
-      }
-
       if (Platform.OS !== 'ios') {
         Alert.alert('iOS only', 'Subscriptions are currently available on iOS only.');
         return;
@@ -207,13 +200,16 @@ export default function CreatorMembershipScreen() {
 
       const priceLabel = appleProduct.localizedPrice;
 
+      const isChangingTier = Boolean(existingMembership);
       Alert.alert(
-        `Subscribe to ${tier.name}`,
-        `You'll be charged ${priceLabel} monthly through Apple. You can cancel anytime in Settings.`,
+        isChangingTier ? `Switch to ${tier.name}?` : `Join ${tier.name}?`,
+        isChangingTier
+          ? `Apple will show the timing and any price adjustment before you confirm the change to ${priceLabel} per month.`
+          : `You'll be charged ${priceLabel} monthly through Apple. You can cancel anytime in Settings.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Subscribe',
+            text: isChangingTier ? 'Continue' : 'Subscribe',
             onPress: () => subscribe(appleProduct.sku),
           },
         ]
@@ -371,51 +367,82 @@ export default function CreatorMembershipScreen() {
               const fallbackPrice = formatTierPrice(tier.price_monthly, tier.currency);
               const priceLabel = appleProduct?.localizedPrice ?? fallbackPrice ?? 'Coming soon';
               const isSelected = selectedTier === tier.id;
+              const isCurrentTier = existingMembership?.tier_id === tier.id ||
+                existingMembership?.apple_sku === appleProduct?.sku;
               const isFull =
                 tier.max_members !== null &&
                 tier.current_members >= tier.max_members;
 
               return (
-                <Pressable
+                <View
                   key={tier.id}
-                  accessibilityRole="radio"
-                  accessibilityLabel={`${tier.name}, ${priceLabel} per month`}
-                  accessibilityState={{ selected: isSelected, disabled: isFull }}
-                  onPress={() => setSelectedTier(isSelected ? null : tier.id)}
-                  style={({ pressed }) => [
+                  style={[
                     styles.tierCard,
                     {
-                      borderColor: isSelected ? accentColor : theme.colors.border,
-                      backgroundColor: theme.colors.surface,
+                      borderColor: isSelected ? `${accentColor}8f` : theme.colors.border,
+                      backgroundColor: isSelected ? `${accentColor}0d` : theme.colors.surface,
                     },
-                    pressed && styles.pressed,
                   ]}
                 >
-                  <LinearGradient
-                    colors={[`${accentColor}24`, 'rgba(10,8,6,0)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0.8, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <View style={styles.tierHeader}>
-                    <View style={styles.tierIdentity}>
-                      <View
-                        style={[styles.tierIcon, { backgroundColor: `${accentColor}1f` }]}
-                      >
-                        <SymbolIcon name={icon} style={[styles.tierIconGlyph, { color: accentColor }]} />
+                  {isSelected && (
+                    <View pointerEvents="none" style={[styles.selectedRail, { backgroundColor: accentColor }]} />
+                  )}
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${tier.name}, ${priceLabel} per month`}
+                    accessibilityHint={isSelected ? 'Collapses membership details' : 'Shows membership details'}
+                    accessibilityState={{ selected: isSelected, disabled: isFull }}
+                    disabled={isFull}
+                    onPress={() => setSelectedTier(isSelected ? null : tier.id)}
+                    style={({ pressed }) => [styles.tierHeader, pressed && styles.pressed]}
+                  >
+                      <View style={styles.tierIdentity}>
+                        <View
+                          style={[styles.tierIcon, { backgroundColor: `${accentColor}1f` }]}
+                        >
+                          <SymbolIcon name={icon} style={[styles.tierIconGlyph, { color: accentColor }]} />
+                        </View>
+                        <View style={styles.tierCopy}>
+                          <Text
+                            numberOfLines={1}
+                            maxFontSizeMultiplier={1.2}
+                            style={[styles.tierName, { color: theme.colors.text }]}
+                          >
+                            {tier.name}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            maxFontSizeMultiplier={1.2}
+                            style={[styles.tierSupporters, { color: theme.colors.textSubtle }]}
+                          >
+                            {tier.current_members} supporter{tier.current_members !== 1 ? 's' : ''}
+                          </Text>
+                        </View>
                       </View>
-                      <View>
-                        <Text style={[styles.tierName, { color: theme.colors.text }]}>{tier.name}</Text>
-                        <Text style={[styles.tierSupporters, { color: theme.colors.textSubtle }]}>
-                          {tier.current_members} supporter{tier.current_members !== 1 ? 's' : ''}
-                        </Text>
+                      <View style={styles.tierHeaderEnd}>
+                        <View style={styles.priceBlock}>
+                          <Text
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            maxFontSizeMultiplier={1.15}
+                            style={[styles.price, { color: theme.colors.text }]}
+                          >
+                            {priceLabel}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            maxFontSizeMultiplier={1.1}
+                            style={[styles.priceTerm, { color: theme.colors.textSubtle }]}
+                          >
+                            PER MONTH
+                          </Text>
+                        </View>
+                        <SymbolIcon
+                          name={isSelected ? 'expand_less' : 'expand_more'}
+                          style={[styles.expandIcon, { color: theme.colors.textMuted }]}
+                        />
                       </View>
-                    </View>
-                    <View style={styles.priceBlock}>
-                      <Text style={[styles.price, { color: theme.colors.text }]}>{priceLabel}</Text>
-                      <Text style={[styles.priceTerm, { color: theme.colors.textSubtle }]}>PER MONTH</Text>
-                    </View>
-                  </View>
+                  </Pressable>
 
                   {isSelected && (
                     <View style={[styles.tierBody, { borderTopColor: theme.colors.border }]}>
@@ -432,59 +459,90 @@ export default function CreatorMembershipScreen() {
                         ).map((feature, i) => (
                             <View key={`${tier.id}-${i}`} style={styles.featureRow}>
                               <View style={[styles.featureDot, { backgroundColor: accentColor }]} />
-                              <Text style={[styles.featureText, { color: theme.colors.textSecondary }]}>
-                                {feature}
+                              <Text maxFontSizeMultiplier={1.35} style={[styles.featureText, { color: theme.colors.textSecondary }]}>
+                                {feature
+                                  .replace(/monthy/gi, 'Monthly')
+                                  .replace(/Q\s*&\s*A/gi, 'Q&A')
+                                  .replace(/^\w/, (letter) => letter.toUpperCase())}
                               </Text>
                             </View>
                         ))}
                       </View>
 
-                      {!existingMembership && !isFull && appleProduct?.provisioned && (
+                      {!isFull && appleProduct?.provisioned && !isCurrentTier && (
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`Join ${tier.name} for ${priceLabel} per month`}
+                          accessibilityLabel={`${existingMembership ? 'Switch to' : 'Join'} ${tier.name} for ${priceLabel} per month`}
                           accessibilityState={{ disabled: purchasing }}
                           onPress={() => handleSubscribe(tier)}
                           disabled={purchasing}
                           style={({ pressed }) => [
                             styles.joinButton,
-                            { backgroundColor: accentColor },
                             pressed && styles.pressed,
                           ]}
                         >
+                          <View pointerEvents="none" style={styles.joinButtonSurface} />
                           {purchasing ? (
-                            <ActivityIndicator color="#fff" size="small" />
+                            <ActivityIndicator color="#0a0806" size="small" />
                           ) : (
-                            <>
-                              <Text style={styles.joinButtonText}>JOIN {tier.name.toUpperCase()}</Text>
+                            <View pointerEvents="none" style={styles.joinButtonContent}>
+                              <Text
+                                numberOfLines={1}
+                                maxFontSizeMultiplier={1.15}
+                                style={styles.joinButtonText}
+                              >
+                                {existingMembership ? 'SWITCH TO' : 'JOIN'} {tier.name.toUpperCase()}
+                              </Text>
                               <SymbolIcon name="arrow_forward" style={styles.joinButtonIcon} />
-                            </>
+                            </View>
                           )}
                         </Pressable>
                       )}
 
-                      {!existingMembership && !isFull && !appleProduct?.provisioned && (
-                        <View style={[styles.pendingCard, { borderColor: theme.colors.border }]}>
-                          <View style={styles.pendingTop}>
-                            <Text style={[styles.pendingTitle, { color: theme.colors.text }]}>
-                              App Store release pending
-                            </Text>
-                            <SymbolIcon name="schedule" style={styles.pendingIcon} />
+                      {!isFull && subscriptionLoading && !appleProduct?.provisioned && (
+                        <View style={[styles.storeStatusButton, { borderColor: theme.colors.border }]}>
+                          <ActivityIndicator color="#ff6600" size="small" />
+                          <Text style={[styles.storeStatusLabel, { color: theme.colors.text }]}>
+                            CONNECTING TO APP STORE
+                          </Text>
+                        </View>
+                      )}
+
+                      {!isFull && !subscriptionLoading && !appleProduct?.provisioned && (
+                        <View>
+                          <View
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: true }}
+                            accessibilityLabel={`${tier.name} membership is coming soon`}
+                            style={[styles.storeStatusButton, styles.storeStatusUnavailable, { borderColor: `${accentColor}66` }]}
+                          >
+                            <Text style={[styles.storeStatusLabel, { color: theme.colors.text }]}>JOINING OPENS SOON</Text>
+                            <SymbolIcon name="schedule" style={styles.storeStatusIcon} />
                           </View>
                           <Text style={[styles.pendingText, { color: theme.colors.textMuted }]}>
-                            Explore the tier now. Apple subscription access will appear here when approved.
+                            This tier is ready to explore. Apple billing will appear here as soon as availability is confirmed.
                           </Text>
                         </View>
                       )}
 
                       {isFull && (
-                        <View style={[styles.pendingCard, { borderColor: theme.colors.border }]}>
-                          <Text style={[styles.pendingTitle, { color: theme.colors.textMuted }]}>Tier full</Text>
+                        <View style={[styles.storeStatusButton, { borderColor: theme.colors.border }]}>
+                          <Text style={[styles.storeStatusLabel, { color: theme.colors.textMuted }]}>TIER CURRENTLY FULL</Text>
+                          <SymbolIcon name="group" style={[styles.storeStatusIcon, { color: theme.colors.textMuted }]} />
+                        </View>
+                      )}
+
+                      {isCurrentTier && (
+                        <View style={[styles.currentTierButton, { borderColor: `${accentColor}66` }]}>
+                          <SymbolIcon name="check_circle" style={[styles.currentTierIcon, { color: accentColor }]} />
+                          <Text maxFontSizeMultiplier={1.2} style={[styles.storeStatusLabel, { color: theme.colors.text }]}>
+                            CURRENT MEMBERSHIP
+                          </Text>
                         </View>
                       )}
                     </View>
                   )}
-                </Pressable>
+                </View>
               );
             })}
           </View>
@@ -660,53 +718,101 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 20,
+  },
+  selectedRail: {
+    position: 'absolute',
+    zIndex: 2,
+    left: 0,
+    top: 18,
+    bottom: 18,
+    width: 3,
+    borderTopRightRadius: 3,
+    borderBottomRightRadius: 3,
   },
   tierHeader: {
-    minHeight: 88,
-    paddingHorizontal: 15,
-    paddingVertical: 16,
+    position: 'relative',
+    zIndex: 1,
+    minHeight: 78,
+    paddingLeft: 14,
+    paddingRight: 116,
+    paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
-  tierIdentity: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tierIdentity: { flexGrow: 1, flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  tierCopy: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   tierIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tierIconGlyph: { fontSize: 24 },
+  tierIconGlyph: { fontSize: 22 },
   tierName: { fontFamily: pluggdFonts.displaySemiBold, fontSize: 16, lineHeight: 20 },
-  tierSupporters: { marginTop: 4, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11 },
-  priceBlock: { alignItems: 'flex-end' },
-  price: { fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 22 },
-  priceTerm: {
-    marginTop: 3,
-    fontFamily: pluggdFonts.satoshiBold,
-    fontSize: 8,
-    letterSpacing: 1.05,
+  tierSupporters: { marginTop: 2, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11 },
+  tierHeaderEnd: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
+  priceBlock: { width: 74, alignItems: 'flex-end' },
+  price: { fontFamily: pluggdFonts.displayBold, fontSize: 17, lineHeight: 21 },
+  priceTerm: {
+    marginTop: 1,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 7,
+    letterSpacing: 0.95,
+  },
+  expandIcon: { fontSize: 19 },
   tierBody: {
-    padding: 16,
+    position: 'relative',
+    zIndex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
     borderTopWidth: 1,
   },
   tierDescription: {
-    marginBottom: 14,
+    marginBottom: 12,
     fontFamily: pluggdFonts.satoshiRegular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  featureStack: { gap: 9, marginBottom: 17 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureDot: { width: 6, height: 6, borderRadius: 3 },
-  featureText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 18 },
+  featureStack: { gap: 8, marginBottom: 15 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  featureDot: { width: 5, height: 5, borderRadius: 3 },
+  featureText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
   joinButton: {
-    minHeight: 52,
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 54,
     borderRadius: 14,
+    borderWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ff6600',
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  joinButtonSurface: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#ff6600',
+  },
+  joinButtonContent: {
+    position: 'relative',
+    zIndex: 1,
+    width: '100%',
+    minHeight: 54,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -719,22 +825,42 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
   },
   joinButtonIcon: { color: '#0a0806', fontSize: 20 },
-  pendingCard: {
-    minHeight: 70,
+  storeStatusButton: {
+    minHeight: 52,
     borderWidth: 1,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(7,6,5,0.34)',
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(7,6,5,0.48)',
   },
-  pendingTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pendingTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
-  pendingIcon: { color: '#ff6600', fontSize: 18 },
+  storeStatusUnavailable: { justifyContent: 'space-between' },
+  storeStatusLabel: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 11,
+    letterSpacing: 0.85,
+  },
+  storeStatusIcon: { color: '#ff6600', fontSize: 19 },
+  currentTierButton: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    backgroundColor: 'rgba(255,102,0,0.08)',
+  },
+  currentTierIcon: { fontSize: 19 },
   pendingText: {
-    marginTop: 5,
+    marginTop: 8,
+    paddingHorizontal: 2,
     fontFamily: pluggdFonts.satoshiRegular,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 16,
   },
   appleNote: {
     marginTop: 28,
