@@ -68,6 +68,16 @@ async function getOptional(path) {
   }
 }
 
+async function getOptionalWithRole(path) {
+  try {
+    return await get(path);
+  } catch (error) {
+    const message = String(error?.message || '');
+    if (message.startsWith('403 ') || message.startsWith('404 ')) return null;
+    throw error;
+  }
+}
+
 function resources(document) {
   return (document?.data || []).map((resource) => ({
     id: resource.id,
@@ -102,17 +112,29 @@ const [
   iapsDocument,
   subscriptionGroupsDocument,
   betaGroupsDocument,
+  reviewSubmissionsDocument,
 ] = await Promise.all([
   get(`/v1/apps/${app.id}/appStoreVersions?limit=20`),
   get(`/v1/builds?filter[app]=${app.id}&limit=20&sort=-uploadedDate`),
   get(`/v1/apps/${app.id}/inAppPurchasesV2?limit=200`),
   get(`/v1/apps/${app.id}/subscriptionGroups?limit=200`),
   get(`/v1/betaGroups?filter[app]=${app.id}&limit=200`),
+  get(`/v1/apps/${app.id}/reviewSubmissions?limit=20`),
 ]);
 
 const subscriptionGroups = resources(subscriptionGroupsDocument);
 const appStoreVersions = resources(versionsDocument);
 const inAppPurchases = resources(iapsDocument);
+const reviewSubmissions = resources(reviewSubmissionsDocument);
+
+const reviewSubmissionDetails = await Promise.all(
+  reviewSubmissions.map(async (submission) => ({
+    id: submission.id,
+    items: resources(
+      await get(`/v1/reviewSubmissions/${submission.id}/items?limit=200`),
+    ),
+  })),
+);
 
 const versionDetails = await Promise.all(
   appStoreVersions.map(async (version) => {
@@ -209,6 +231,11 @@ const subscriptionsByGroup = await Promise.all(
             getOptional(`/v1/subscriptions/${subscription.id}/subscriptionAvailability`),
             getOptional(`/v1/subscriptions/${subscription.id}/appStoreReviewScreenshot`),
           ]);
+        const availableTerritories = availability?.data?.id
+          ? await getOptionalWithRole(
+              `/v1/subscriptionAvailabilities/${availability.data.id}/availableTerritories?limit=200`,
+            )
+          : null;
         return {
           id: subscription.id,
           name: subscription.name,
@@ -227,6 +254,9 @@ const subscriptionsByGroup = await Promise.all(
           })),
           configuredPrices: resources(prices).length,
           availability: availability?.data?.attributes || null,
+          availableTerritories: availableTerritories
+            ? resources(availableTerritories).length
+            : null,
           reviewScreenshot: reviewScreenshot?.data?.id
             ? {
                 id: reviewScreenshot.data?.id,
@@ -307,6 +337,14 @@ const result = {
     isInternalGroup: group.isInternalGroup,
     hasAccessToAllBuilds: group.hasAccessToAllBuilds,
     publicLinkEnabled: group.publicLinkEnabled,
+  })),
+  reviewSubmissions: reviewSubmissions.map((submission) => ({
+    id: submission.id,
+    state: submission.state,
+    submittedDate: submission.submittedDate,
+    platform: submission.platform,
+    items:
+      reviewSubmissionDetails.find((entry) => entry.id === submission.id)?.items || [],
   })),
 };
 

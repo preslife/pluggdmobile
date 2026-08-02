@@ -98,6 +98,21 @@ assert.match(
   /membership_iap_products[\s\S]*(apple_product_id|product_id)[\s\S]*(unique|UNIQUE)/i,
   'Apple membership catalogue must enforce unique product identity',
 );
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+public/i,
+  'the membership catalogue must not inherit public table access',
+);
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+anon/i,
+  'anonymous users must not read the membership product catalogue',
+);
+assert.match(
+  migrationSource,
+  /grant\s+select\s+on\s+table\s+public\.membership_iap_products\s+to\s+authenticated/i,
+  'authenticated users need explicit read access before the active-product RLS policy can apply',
+);
 
 assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'native Stripe SDK must not ship');
 assert.ok(packageJson.dependencies['expo-web-browser'], 'hosted checkout must use expo-web-browser');
