@@ -172,6 +172,11 @@ checklist.
   metadata and the review screenshot, and reconciles approval before exposing
   purchase controls. Its production invocation returned HTTP 200; a read-only
   500-creator/1,000-product scale simulation produced no collisions.
+- The dedicated App Manager team key `PLUGGD IAP Worker` (`SVJYMDCFUC`) is
+  installed in Supabase. The authenticated 2 August audit successfully returned
+  Kxngdom's plan availability, 175 configured prices and territories,
+  localisation and complete review screenshot, resolving the previous
+  Developer-role HTTP 403.
 - The final signed Release build with the rebuilt visible membership CTA was
   built, installed and launched on the registered iPhone 15 Pro Max on 2 August
   2026. Xcode confirmed the installed `com.pluggd.mobile` process remained
@@ -224,10 +229,6 @@ checklist.
    hardware Home rendering and native Apple authentication are already verified
    on the registered iPhone 15 Pro Max.
 7. Resolve the Apple Developer membership renewal payment-method warning.
-8. Replace the current Developer-role App Store Connect API key used by the
-   catalogue worker with an App Manager-role key, then confirm the subscription
-   plan-availability endpoint no longer returns HTTP 403. The production worker
-   is deliberately fail-closed until this credential is installed.
 
 The 1 August Safari audit authenticated the ROWSON GROUP LTD account and
 verified PLUGGD's live version, build and complete review draft. Apple pages

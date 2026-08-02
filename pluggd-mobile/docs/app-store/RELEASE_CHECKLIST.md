@@ -78,6 +78,10 @@
   server queue: one Apple subscription group per creator and one unique product
   per tier/billing period. The production cron smoke returned HTTP 200, and a
   500-creator/1,000-product uniqueness simulation passed without collisions.
+- [x] Dedicated App Manager key `PLUGGD IAP Worker` is installed in production
+  Supabase. A live App Store Connect audit with that key returned the Kxngdom
+  subscription plan, 175 prices/territories and its complete review asset; the
+  prior Developer-role HTTP 403 is resolved.
 - [ ] Submit the completed App Review draft. Version 1.0, all five credit packs,
   the Kxngdom subscription and its subscription group are attached together;
   final submission has intentionally not been pressed.

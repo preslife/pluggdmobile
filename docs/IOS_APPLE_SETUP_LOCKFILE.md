@@ -167,6 +167,12 @@ Provisioned production catalogue as of 2 August 2026:
 - App Store Server API key material is configured in Supabase. Confirm the key
   remains active in App Store Connect before TestFlight testing.
 - Expected Supabase secret names only:
+  - `ASC_APP_ID`
+  - `ASC_ISSUER_ID`
+  - `ASC_KEY_ID`
+  - `ASC_PRIVATE_KEY`
+  - `MEMBERSHIP_IAP_PROVISIONER_SECRET`
+  - `MEMBERSHIP_IAP_PRICE_BATCH_SIZE`
   - `APPLE_BUNDLE_ID`
   - `APPLE_APP_ID`
   - `APPLE_IAP_ENVIRONMENT`
@@ -175,6 +181,14 @@ Provisioned production catalogue as of 2 August 2026:
   - `ACCOUNT_DELETION_AUDIT_SALT`
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
+
+The membership provisioner uses the App Manager team key `PLUGGD IAP Worker`
+(`SVJYMDCFUC`). Its private key is stored locally only at
+`/Users/apple/.private_keys/appstoreconnect/AuthKey_SVJYMDCFUC.p8` with mode
+`0600` and in Supabase as an encrypted secret. The 2 August 2026 audit proved
+that this key can read subscription plan availability, prices, territories,
+localisations and review assets; the previous Developer key returned HTTP 403
+for plan availability and is not used by this worker.
 
 The native app intentionally has no Stripe secret and no native Stripe SDK.
 Eligible professional licence, real-world ticket and physical merchandise flows
