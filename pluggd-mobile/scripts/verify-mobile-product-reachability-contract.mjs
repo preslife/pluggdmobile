@@ -29,7 +29,7 @@ for (const route of requiredRoutes) {
   assert.equal(existsSync(new URL(route, root)), true, `${route} must remain routable after navigation redesigns`);
 }
 
-const header = read('components/MobileHeader.tsx');
+const header = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 const discoveryHeader = read('src/features/discovery/DiscoveryHeader.tsx');
 const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
 const community = read('src/features/community-feed/CommunityInternalSwitcher.tsx');

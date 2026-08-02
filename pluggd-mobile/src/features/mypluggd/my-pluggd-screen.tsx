@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
@@ -152,12 +153,11 @@ export function MyPluggdScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = usePluggdTheme();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MyPluggdTab>('feed');
   const [feedMode, setFeedMode] = useState<MobileSocialFeedMode>('for-you');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('All');
   const [fanMapOpen, setFanMapOpen] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const profile = useQuery({
@@ -294,11 +294,13 @@ export function MyPluggdScreen() {
           <HeaderAction icon="search" label="Search PLUGGD" onPress={() => go('/search')} />
           <HeaderAction icon="mail-outline" label="Open inbox" onPress={() => go('/inbox')} badge={Boolean(inbox.data?.some((item) => item.unread_count))} />
           <HeaderAction icon="notifications-none" label="Open notifications" onPress={() => go('/notifications')} badge={unreadCount} />
-          <Pressable accessibilityRole="button" accessibilityLabel="Open profile menu" style={styles.avatarTap} onPress={() => (user ? setAvatarMenuOpen(true) : go('/auth/login'))}>
+          <AccountMenuButton accessibilityLabel="Open account menu" style={styles.avatarTap}>
+            {() => (
             <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.divider }]}>
               {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
             </View>
-          </Pressable>
+            )}
+          </AccountMenuButton>
         </View>
       </View>
 
@@ -406,19 +408,6 @@ export function MyPluggdScreen() {
         onOpenProfile={(plug) => {
           setFanMapOpen(false);
           go(profileRoute(plug.user_id || plug.creator_id, plug.profile_slug || plug.username));
-        }}
-      />
-      <AvatarMenuModal
-        open={avatarMenuOpen}
-        onClose={() => setAvatarMenuOpen(false)}
-        onRoute={(route) => {
-          setAvatarMenuOpen(false);
-          go(route);
-        }}
-        onSignOut={async () => {
-          setAvatarMenuOpen(false);
-          await signOut();
-          router.replace('/auth/login' as any);
         }}
       />
     </PremiumScreenBackdrop>
@@ -593,56 +582,6 @@ function ActivityFilterPill({ label, selected, onPress }: { label: string; selec
     <Pressable accessibilityRole="button" accessibilityLabel={`${label} activity`} accessibilityState={{ selected }} style={[styles.filterPill, { backgroundColor: selected ? theme.colors.accent : theme.colors.surface, borderColor: selected ? theme.colors.accent : theme.colors.border }]} onPress={onPress}>
       <Text style={[styles.filterPillText, { color: selected ? '#0a0806' : theme.colors.textMuted }]}>{label}</Text>
     </Pressable>
-  );
-}
-
-function AvatarMenuModal({
-  open,
-  onClose,
-  onRoute,
-  onSignOut,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onRoute: (route: string) => void;
-  onSignOut: () => Promise<void>;
-}) {
-  const theme = usePluggdTheme();
-  const menu: Array<{ label: string; icon: keyof typeof MaterialIcons.glyphMap; route?: string; destructive?: boolean }> = [
-    { label: 'View Profile', icon: 'person-outline', route: '/profile' },
-    { label: 'Edit Profile', icon: 'edit', route: '/edit-profile' },
-    { label: 'Inbox', icon: 'mail-outline', route: '/inbox' },
-    { label: 'Wallet', icon: 'account-balance-wallet', route: '/wallet' },
-    { label: 'Tickets', icon: 'confirmation-number', route: '/tickets' },
-    { label: 'Saved', icon: 'bookmark-border', route: '/favorites' },
-    { label: 'Settings', icon: 'settings', route: '/settings' },
-    { label: 'Creator Mode', icon: 'auto-awesome', route: '/creator-mode' },
-    { label: 'Sign Out', icon: 'logout', destructive: true },
-  ];
-  return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close profile menu" style={styles.menuOverlay} onPress={onClose}>
-        <Pressable accessible={false} style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
-          <Text style={[styles.menuTitle, { color: theme.colors.text }]}>MY PLUGGD</Text>
-          {menu.map((item) => (
-            <Pressable
-              key={item.label}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              style={[styles.menuItem, { borderBottomColor: theme.colors.divider }]}
-              onPress={() => {
-                if (item.destructive) void onSignOut();
-                else if (item.route) onRoute(item.route);
-              }}
-            >
-              <MaterialIcons name={item.icon} size={21} color={item.destructive ? theme.colors.live : theme.colors.text} />
-              <Text style={[styles.menuItemText, { color: item.destructive ? theme.colors.live : theme.colors.text }]}>{item.label}</Text>
-              {!item.destructive ? <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSubtle} /> : null}
-            </Pressable>
-          ))}
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 

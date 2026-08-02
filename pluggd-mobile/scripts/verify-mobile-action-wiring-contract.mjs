@@ -93,7 +93,7 @@ assert.match(soundboard, /from\('user_follows'\)/, 'soundboard follow button mus
 
 assert.match(read('app/social/notifications.tsx'), /href="\/notifications"/, 'legacy social notifications route must go directly to Activity');
 assert.match(read('app/social/inbox.tsx'), /href="\/inbox"/, 'legacy inbox route must go directly to the backed mobile Inbox surface');
-assert.match(read('app/settings/index.tsx'), /\/creator-mode/, 'Settings must route creator tools to mobile Creator Mode, not desktop dashboard');
+assert.match(read('app/settings/index.tsx'), /account\.creatorAccess[\s\S]*route: '\/studio'[\s\S]*route: '\/auth\/role'/, 'Settings must route creators to Studio and fans to role onboarding');
 
 for (const legacyTabRoute of [
   'app/(tabs)/drops.tsx',

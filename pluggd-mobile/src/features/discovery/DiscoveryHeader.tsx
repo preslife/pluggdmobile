@@ -2,7 +2,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { BrandLogo } from '../../../components/BrandLogo';
+import { GlassAvatar } from '../../../components/liquid-glass';
 import { selectionHaptic } from '../../design/haptics';
 
 export function DiscoveryHeader() {
@@ -37,14 +39,11 @@ export function DiscoveryHeader() {
         >
           <MaterialIcons name="search" size={23} color="#F7F2E9" />
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open My PLUGGD"
-          style={[styles.action, styles.account]}
-          onPress={() => router.push('/my-pluggd' as any)}
-        >
-          <MaterialIcons name="person-outline" size={20} color="#F7F2E9" />
-        </Pressable>
+        <AccountMenuButton accessibilityLabel="Open account menu" style={[styles.action, styles.account]}>
+          {(identity) => (
+            <GlassAvatar imageUrl={identity.profile?.avatar_url} name={identity.displayName} size={32} tone="accent" />
+          )}
+        </AccountMenuButton>
       </View>
     </View>
   );

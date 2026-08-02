@@ -19,7 +19,7 @@ const mobileServices = read('src/features/culture/mobileServices.ts');
 const creatorMode = read('src/features/culture/CultureScreens.tsx');
 const rootLayout = read('app/_layout.tsx');
 const localNotifications = read('src/lib/localNotifications.ts');
-const mobileHeader = read('components/MobileHeader.tsx');
+const mobileHeader = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 
 assert.match(backstageDetail, /loadBackstageDetail/, 'Backstage detail route must load a selected community detail, not reuse only overview data');
 assert.match(backstageDetail, /joinBackstage|leaveBackstage/, 'Backstage detail must expose persisted join or leave actions');

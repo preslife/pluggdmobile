@@ -9,7 +9,7 @@ const home = read('src/features/home/MusicDiscoveryHome.tsx');
 const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
 const parityScreens = read('src/features/parity/AppWideParityScreens.tsx');
 const createSheet = read('components/CreateActionSheet.tsx');
-const accountHeader = read('components/MobileHeader.tsx');
+const accountHeader = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 const dock = read('components/PluggdDock.tsx');
 const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
 

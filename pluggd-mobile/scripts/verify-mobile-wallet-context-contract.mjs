@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const dockSource = read('components/PluggdDock.tsx');
-const headerSource = read('components/MobileHeader.tsx');
+const headerSource = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 const chromeSource = read('components/AppChrome.tsx');
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');

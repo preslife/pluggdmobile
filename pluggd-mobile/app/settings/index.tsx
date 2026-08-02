@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAccountMenuIdentity } from '../../components/AccountMenuButton';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 const SETTINGS = [
@@ -23,18 +24,24 @@ const SETTINGS = [
       { id: 'data-export', label: 'Data export', detail: 'Request your PLUGGD archive', route: '/settings/data-export', icon: 'download' },
     ],
   },
-  {
-    title: 'CREATOR & SUPPORT',
-    items: [
-      { id: 'creator-tools', label: 'Creator tools', detail: 'Open your studio workspace', route: '/creator-mode', icon: 'space-dashboard' },
-      { id: 'restore-purchases', label: 'Restore purchases', detail: 'Recover eligible App Store access', route: '/wallet', icon: 'restore' },
-    ],
-  },
 ] as const;
 
 export default function SettingsIndex() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const account = useAccountMenuIdentity();
+  const settingsSections = [
+    ...SETTINGS,
+    {
+      title: 'CREATOR & SUPPORT',
+      items: [
+        account.creatorAccess
+          ? { id: 'creator-tools', label: 'Creator Studio', detail: 'Open your creator workspace', route: '/studio', icon: 'space-dashboard' as const }
+          : { id: 'creator-tools', label: 'Become a creator', detail: 'Add a creator role when you are ready', route: '/auth/role', icon: 'auto-awesome' as const },
+        { id: 'restore-purchases', label: 'Restore purchases', detail: 'Recover eligible App Store access', route: '/wallet', icon: 'restore' as const },
+      ],
+    },
+  ] as const;
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
@@ -56,7 +63,7 @@ export default function SettingsIndex() {
           </View>
         </View>
 
-        {SETTINGS.map((section) => (
+        {settingsSections.map((section) => (
           <View key={section.title} style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textSubtle }]}>{section.title}</Text>
             <View style={[styles.list, { borderTopColor: theme.colors.border }]}>

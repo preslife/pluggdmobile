@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdGlassSurface } from '../../../components/PluggdPrimitives';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
@@ -335,23 +336,39 @@ function HeaderAvatar({ data }: { data: StudioData }) {
   );
 }
 
-function StudioMenuButton({ signedIn }: { signedIn: boolean }) {
+function StudioExitButton() {
   const router = useRouter();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={signedIn ? 'Open Studio apps' : 'Back to PLUGGD'}
+      accessibilityLabel="Exit Studio"
+      accessibilityHint="Returns to the PLUGGD home screen"
       onPress={() => {
         selectionHaptic();
-        if (signedIn) router.push('/studio/apps' as any);
-        else router.replace('/' as any);
+        router.replace('/' as any);
+      }}
+      style={({ pressed }) => [styles.studioExitButton, pressed && { backgroundColor: STUDIO.panelPressed }]}
+    >
+      <MaterialIcons name="arrow-back" size={20} color={STUDIO.text} />
+    </Pressable>
+  );
+}
+
+function StudioMenuButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open Studio apps"
+      onPress={() => {
+        selectionHaptic();
+        router.push('/studio/apps' as any);
       }}
       style={styles.studioMenuTap}
     >
       {({ pressed }) => (
         <View style={[styles.studioMenuButton, pressed && { backgroundColor: STUDIO.panelPressed }]}>
-          <MaterialIcons name={signedIn ? 'view-sidebar' : 'arrow-back'} size={17} color={STUDIO.text} />
-          <Text style={styles.studioMenuText}>{signedIn ? 'Menu' : 'Back'}</Text>
+          <MaterialIcons name="view-sidebar" size={19} color={STUDIO.text} />
         </View>
       )}
     </Pressable>
@@ -361,18 +378,25 @@ function StudioMenuButton({ signedIn }: { signedIn: boolean }) {
 function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
   return (
     <View style={styles.topBar}>
-      <StudioMenuButton signedIn={data.signedIn} />
+      <View style={styles.studioTopLeft}>
+        <StudioExitButton />
+        {data.creatorAccess ? <StudioMenuButton /> : null}
+      </View>
       <View style={styles.studioBrand}>
         <Text style={styles.studioBrandPlug}>PLUGGD</Text>
         <Text style={styles.studioBrandTitle} numberOfLines={1}>STUDIO</Text>
       </View>
-      <View style={styles.studioAccountPill}>
-        <HeaderAvatar data={data} />
-        <Text style={styles.studioAccountText} numberOfLines={1}>
-          {data.profile?.username ? `@${data.profile.username}` : data.signedIn ? 'Personal' : 'Guest'}
-        </Text>
-        <MaterialIcons name="expand-more" size={15} color={STUDIO.textMid} />
-      </View>
+      <AccountMenuButton context="studio" accessibilityLabel="Open Studio account menu" style={styles.studioAccountPill}>
+        {() => (
+          <>
+            <HeaderAvatar data={data} />
+            <Text style={styles.studioAccountText} numberOfLines={1}>
+              {data.profile?.username ? `@${data.profile.username}` : data.signedIn ? 'Account' : 'Guest'}
+            </Text>
+            <MaterialIcons name="expand-more" size={15} color={STUDIO.textMid} />
+          </>
+        )}
+      </AccountMenuButton>
     </View>
   );
 }
@@ -2118,30 +2142,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4,4,5,0.92)',
   },
   studioMenuTap: {
-    width: 92,
+    width: 44,
     height: 42,
     flexShrink: 0,
   },
   studioMenuButton: {
-    width: 92,
+    width: 44,
     height: 42,
     borderRadius: 999,
     borderWidth: 1.2,
     borderColor: 'rgba(255,106,0,0.62)',
     backgroundColor: 'rgba(255,106,0,0.11)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
     flexDirection: 'row',
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
     overflow: 'hidden',
   },
-  studioMenuText: { fontFamily: pluggdFonts.satoshiBlack,
-    color: STUDIO.text,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '900',
+  studioTopLeft: {
+    width: 96,
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  studioExitButton: {
+    width: 44,
+    height: 42,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: STUDIO.line,
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   studioBrand: {
     flex: 1,
@@ -2166,14 +2200,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   studioAccountPill: {
-    maxWidth: 144,
+    width: 116,
     height: 44,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: STUDIO.line,
     backgroundColor: 'rgba(255,255,255,0.07)',
     paddingLeft: 6,
-    paddingRight: 10,
+    paddingRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

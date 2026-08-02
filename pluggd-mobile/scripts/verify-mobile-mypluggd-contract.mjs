@@ -4,7 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const exists = (path) => existsSync(new URL(`../${path}`, import.meta.url));
 
-const headerSource = read('components/MobileHeader.tsx');
+const headerSource = read('components/AccountMenuButton.tsx');
+const discoveryHeader = read('src/features/discovery/DiscoveryHeader.tsx');
 const dockSource = read('components/PluggdDock.tsx');
 const communityRoute = read('app/community.tsx');
 const communityTabRoute = read('app/(tabs)/community.tsx');
@@ -16,6 +17,8 @@ const studioData = read('src/features/studio/studio-data.ts');
 const studioScreens = read('src/features/studio/StudioScreens.tsx');
 
 assert.match(headerSource, /label:\s*'My PLUGGD'[\s\S]*route:\s*'\/my-pluggd'/, 'Fan account menu must expose My PLUGGD');
+assert.match(discoveryHeader, /AccountMenuButton/, 'Public discovery avatars must open the account menu directly');
+assert.doesNotMatch(discoveryHeader, /router\.push\('\/my-pluggd'/, 'Public discovery avatars must not detour through My PLUGGD');
 assert.doesNotMatch(dockSource, /label:\s*'MyPLUGGD'|route:\s*'\/my-pluggd'/, 'Dock must not expose MyPLUGGD');
 assert.match(tabFanRoute, /MyPluggdScreen/, 'Tab My PLUGGD route must render the fan hub');
 assert.match(topLevelFanRoute, /MyPluggdScreen/, 'Top-level My PLUGGD route must render the fan hub');
@@ -38,5 +41,7 @@ assert.match(communityRoute, /CommunityFeedScreen/, 'Top-level Community must ow
 assert.match(communityTabRoute, /CommunityFeedScreen/, 'Tab Community must own the social/culture feed surface');
 assert.match(communityFeed, /CommunityComposer[\s\S]*MobileSocialPostCard|MobileSocialPostCard[\s\S]*CommunityComposer/, 'Community must expose the real feed and composer');
 assert.doesNotMatch(communityRoute + communityTabRoute, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
+assert.match(fanHub, /AccountMenuButton/, 'My PLUGGD must reuse the canonical role-aware account menu');
+assert.doesNotMatch(fanHub, /Creator Mode[\s\S]*\/creator-mode/, 'My PLUGGD must not expose an unconditional creator shortcut to fans');
 
 console.log('mobile fan and creator My PLUGGD contract verified');
