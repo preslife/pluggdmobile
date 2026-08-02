@@ -74,7 +74,7 @@ items in the release checklist.
   exactly one transaction row and one `topup_iap` ledger row for transaction
   `…5801`; the resulting wallet balance is 1,050 available credits, zero
   pending credits and zero duplicate grants.
-- `apple-server-notification` v18 and `validate-iap-receipt` v11 are active.
+- `apple-server-notification` v18 and `validate-iap-receipt` v13 are active.
   The notification handler now fulfils all five server-owned credit SKUs as a
   crash-safe backup, using the same unique Apple transaction idempotency key as
   client validation. Apple IAP top-ups use `topup_iap`, so they are available
