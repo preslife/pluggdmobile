@@ -226,11 +226,13 @@ Font is deliberately last — design and features first.
 
 Commerce checked while doing the Store work: `/product/[id]` and `/sample-pack/[id]` already gate correctly — digital products degrade to "BROWSE ONLY", paid packs answer with "Preview only on iPhone". The rails were sound; only the listing was over-promising.
 
+- `f353a35` Home edition line (`EDITION №217 — …`, day-of-year, matches web) and a full-width search field
+- `06d6121` Listening Floor no longer renders `--:--` on both sides of the scrubber
+
 **Next:**
-1. Home — Edition masthead and the search field (not the marketing sections).
-2. Discover — Live Now / Near You / Creators to Watch / Community Pulse.
-3. Empty and loading states (§3.7) — `--:--` on the Listening Floor is the visible one.
-4. Shared eyebrow/title/subtitle block (§3.3).
+1. Discover — Live Now / Near You / Creators to Watch / Community Pulse.
+2. Remaining empty and loading states (§3.7) — Live's empty room state, Studio's zero-count stat bars.
+3. Shared eyebrow/title/subtitle block (§3.3).
 5. Retired-concept cleanup (§3.9) — **needs a call**: deleting `stage-discovery-screen.tsx` loses the only full Charts implementation.
 6. Studio hero legibility — **needs a fresh capture first**; the 1 Aug screenshot predates `5787b0f`.
 7. Violet, the rest of it (§3.5) — **needs a call**: real secondary, or gone.
