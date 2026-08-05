@@ -939,7 +939,7 @@ function ZoneGrid({ data }: { data: StudioData }) {
     },
     {
       title: 'Collect',
-      detail: 'Payouts and wallet',
+      detail: 'Payouts',
       tag: 'Money',
       route: '/wallet',
       icon: 'account-balance-wallet',
