@@ -87,7 +87,7 @@ These matter more than any single screen. Fix them first; several pages stop nee
    | `mobileServices.ts:357` | activity-row fallback | Create hub |
 
    Tapping "Comment" on a post takes you to the Create screen. Fix the destinations first, then delete `src/features/backstage/backstage-world-screen.tsx` (1,023 lines) and `src/features/stage/stage-discovery-screen.tsx` (984 lines), and drop `/stage` and `/backstage` from the alias lists in `components/PluggdDock.tsx:29,45` and `components/AppChrome.tsx:38-39`. `/stage` has no live callers, so it's a clean delete. The `/backstage/[id]` detail route is fine and stays — 28 call sites use it correctly.
-6. **Verify the dock at 375pt.** The QA captures are 368px wide and the 5th tab (Market) clips. The styles look correct (`flex: 1` per tab) so this is likely a capture artifact — but 375pt is a real device width (SE, mini), so confirm before shipping.
+6. ~~**Verify the dock at 375pt.**~~ **Resolved.** Confirmed in the running app at 375pt: all five tabs (including the restored Store) render without clipping. The 368px QA captures were the artifact, as suspected — the dock styles were always correct.
 7. **Empty and loading states need the same care as full ones.** `--:--`, `0 TRACKS`, `40% HEALTH`, `CATALOG 1` with an empty progress bar all currently read as broken rather than new.
 8. **Never full-bleed a photo behind body copy.** See Studio below.
 
@@ -121,10 +121,33 @@ The screen itself (`03-discover.jpg`) is strong: numbered world cards 01–05, w
 - The Event Spotlight card has a large empty dark area above the title where the poster image should be — either fill it or collapse the card height when there's no image.
 - Two control rows stacked (`All events / Live Music / Culture…` then `Filters / Map / Reset`) is one row too many, and `Map` appears twice (once as the top toggle, once in the filter row). Remove the duplicate.
 
-**Market / Store** — *good, needs the web's filtering*
-`12-market.jpg`. "THE CULTURE SHOP." eyebrow, big title, Shop all / BeatPlug, trust chips, Worldwide Lookbook.
-- Uses the glass pill header while its sibling hubs use the flat one — unify (§3.2).
+**Market / Store** — *restored to the dock; now needs the checkout rails wired per product*
+
+**Store is a primary tab again** (done — `14edaa2`). It had been dropped when the dock was simplified to four items for submission, which hid a catalogue that was already ported from web on 27 Jul. Nothing in App Review required that: `PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md` is marked canonical, `src/commerce/policy.ts` already resolves all five rails, and `react-native-iap` plus the StoreKit provider are already installed. This was a navigation regression, not a product decision.
+
+The catalogue ships on both web and iOS; **the CTA is chosen per product type**, server-side:
+
+| Product | iOS rail | CTA |
+|---|---|---|
+| Physical merch | `stripe_checkout` | `Buy £35` |
+| Event tickets | `stripe_checkout` | `Get tickets` |
+| Bookings / real-world services | `stripe_checkout` | `Enquire` / `Book` |
+| Beat licences | `stripe_checkout` (professional licence for work off-platform) | `License beat` |
+| Release unlock | `credits` (credits bought via IAP) | `Unlock 100 credits` |
+| Tips / live gifts | `credits` | `Send tip` |
+| Creator memberships | `apple_subscription` | `Join £4.99/month` |
+| Paid sample packs / digital downloads | `unavailable` on iOS v1 | browse and save, **no purchase CTA** |
+| Already bought on web | entitlement only | appears in Library |
+
+Two constraints to hold to, both already in the architecture:
+
+- **Paid digital downloads must not use ordinary hosted checkout on iOS.** Physical goods can; digital packs cannot. iOS v1 shows them without a purchase CTA.
+- **Direct external cash purchase of releases was scoped US-storefront-first.** Everywhere else, including the UK, the safe default is the Apple-backed credit unlock unless the external-purchase entitlement applies.
+
+Remaining design work on the screen itself:
+- Uses the glass pill header while its sibling hubs use the flat one — unify (§3.2). Confirmed in the rendered app: Home shows the flat header, Store shows the pill with an extra bell.
 - Missing the web's **Filter panel** (Collections / Product types / Sellers) and the **Bundles** shelf. A store without faceted browse stops working past ~30 products.
+- Every product card and detail CTA must read its label and rail from `useCommercePolicy` rather than hardcoding — so a product that resolves to `unavailable` degrades to browse-and-save instead of showing a dead button.
 
 ### Tier 2 — content worlds
 
@@ -188,14 +211,25 @@ Retired, but still referenced in old docs and live code: **Stage**, **Backstage*
 
 ## 6. Order of work
 
-1. Restore the type system (§2) — one change, lifts every screen.
-2. Fix the retired-concept dead ends (§3.9) — seven broken buttons, including two on the player.
-3. Cross-cutting fixes 3.2–3.4 (one header, one title block, dock inset).
-4. Decide violet's role (§3.5), then apply it everywhere at once.
-5. Home — the Edition masthead, the search field, and The Pledge.
-6. Studio hero legibility.
-7. My PLUGGD hierarchy.
-8. Discover — re-add Live Now / Near You / Creators to Watch / Community Pulse.
-9. Everything else in §4 as polish.
+Font is deliberately last — design and features first.
+
+**Done on `claude/pluggd-aaa-pass`:**
+- `a3eaf96` Codex's uncommitted work preserved as the base
+- `bf18188` bottom-chrome inset — every scrolling screen now reserves the right space
+- `f046a48` web build restored (the track-player shim was missing `Event` / `useTrackPlayerEvents`, which blanked the whole tree — this is the harness QA screenshots come from)
+- `14edaa2` Store restored as the fifth dock tab
+
+**Next:**
+1. Store checkout rails — every card and CTA reads from `useCommercePolicy` (§4, Market/Store).
+2. Retired-concept dead ends (§3.9) — Codex fixed the seven `/backstage` callers; still to do: delete the two dead screens and drop the alias entries.
+3. One header across the public tier (§3.2) — confirmed live: Home flat vs Store pill.
+4. Shared eyebrow/title/subtitle block (§3.3).
+5. Home — Edition masthead and the search field (not the marketing sections).
+6. My PLUGGD hierarchy — the two stacked tab rows.
+7. Discover — Live Now / Near You / Creators to Watch / Community Pulse.
+8. Studio hero legibility — **needs a fresh capture first**; the 1 Aug screenshot predates `5787b0f`.
+9. Decide violet's role (§3.5), then apply it in one pass.
+10. Empty and loading states (§3.7).
+11. **Last:** the type system (§2).
 
 Then repoint the 10 contract scripts listed in `WEB_VS_MOBILE_GAP_REPORT_2026-08-04.md` §4, so this class of regression can't pass review again.
