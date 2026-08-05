@@ -8,6 +8,7 @@ import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { buildHomeSignals } from '../home/homeDiscoveryData';
+import type { EventItem } from '../../lib/mobileContent';
 import { useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from './discoveryModel';
 import { DiscoveryHeader } from './DiscoveryHeader';
@@ -69,10 +70,24 @@ export function MusicDiscoveryDiscover() {
     const rooms = live.data ?? [];
     return [...rooms].sort((a, b) => Number(b.status === 'live') - Number(a.status === 'live')).slice(0, 4);
   }, [live.data]);
-  const nearYou = useMemo(
-    () => (feed.data?.events ?? []).filter((event) => Boolean(event.location)).slice(0, 6),
-    [feed.data?.events],
-  );
+  // A recurring series is stored as one row per date, so an unfiltered list
+  // shows the same night four or five times. Collapse to the soonest instance
+  // per title+venue and carry a count, so the series reads as one card.
+  const nearYou = useMemo(() => {
+    const bySeries = new Map<string, { event: EventItem; upcoming: number }>();
+    const dated = (feed.data?.events ?? [])
+      .filter((event) => Boolean(event.location))
+      .slice()
+      .sort((a, b) => new Date(a.starts_at ?? 0).getTime() - new Date(b.starts_at ?? 0).getTime());
+
+    for (const event of dated) {
+      const key = `${(event.title || '').trim().toLowerCase()}|${(event.location || '').trim().toLowerCase()}`;
+      const existing = bySeries.get(key);
+      if (existing) existing.upcoming += 1;
+      else bySeries.set(key, { event, upcoming: 1 });
+    }
+    return [...bySeries.values()].slice(0, 6);
+  }, [feed.data?.events]);
   // Derived from the people behind the content rather than the profiles table:
   // profiles is empty for signed-out readers, and the web builds this section
   // from release/beat/mix owners for the same reason. Genre doubles as the meta
@@ -253,10 +268,14 @@ export function MusicDiscoveryDiscover() {
               <Pressable accessibilityRole="button" onPress={() => router.push('/events' as any)}><Text style={styles.seeAll}>All events</Text></Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRail}>
-              {nearYou.map((event) => (
+              {nearYou.map(({ event, upcoming }) => (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Open ${event.title || 'event'}`}
+                  accessibilityLabel={
+                    upcoming > 1
+                      ? `Open ${event.title || 'event'}, next of ${upcoming} dates`
+                      : `Open ${event.title || 'event'}`
+                  }
                   key={`near-${event.id}`}
                   onPress={() => router.push(`/events/${event.id}` as any)}
                   style={styles.nearCard}
@@ -266,7 +285,10 @@ export function MusicDiscoveryDiscover() {
                   ) : (
                     <View style={[styles.nearArt, styles.fallback]} />
                   )}
-                  <Text style={styles.nearDate}>{formatEventDate(event.starts_at)}</Text>
+                  <Text style={styles.nearDate}>
+                    {formatEventDate(event.starts_at)}
+                    {upcoming > 1 ? `  ·  +${upcoming - 1} MORE DATES` : ''}
+                  </Text>
                   <Text style={styles.chartTitle} numberOfLines={2}>{event.title || 'Untitled event'}</Text>
                   <Text style={styles.chartMeta} numberOfLines={1}>{event.location || 'Location TBA'}</Text>
                 </Pressable>

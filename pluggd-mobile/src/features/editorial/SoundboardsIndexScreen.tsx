@@ -19,15 +19,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
-import { formatCompact, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
+import { formatCompact, formatDate, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 
@@ -44,7 +44,7 @@ function boardDate(board: SoundboardItem) {
 }
 
 export function SoundboardsIndexScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const { user } = useAuth();
   const theme = usePluggdTheme();
@@ -163,7 +163,7 @@ export function SoundboardsIndexScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
           paddingTop: 4,
-          paddingBottom: insets.bottom + 210,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 18,
         }}
@@ -216,7 +216,13 @@ export function SoundboardsIndexScreen() {
               <View key={`board-row-${rowIndex}`} style={styles.boardGridRow}>
                 {filtered.slice(rowIndex * 2, rowIndex * 2 + 2).map((board) => {
                   const creator = creatorFor(board.creator_id);
-                  const creatorName = creator ? creator.full_name || creator.username || 'Creator' : 'Creator';
+                  // profiles is unreadable for signed-out readers (RLS allows
+                  // SELECT only when auth.uid() is not null), so the lookup
+                  // returns nothing and every card used to print the literal
+                  // word "Creator". Show the real name when we have it, and the
+                  // board's own activity when we don't, rather than a
+                  // placeholder that reads like a missing name.
+                  const creatorName = creator?.full_name || creator?.username || null;
                   return (
                     <EdPressable key={board.id} accessibilityRole="button" accessibilityLabel={`Open ${board.title || 'soundboard'}`} onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)} style={styles.boardTilePressable}>
                       <View style={styles.boardTile}>
@@ -225,7 +231,9 @@ export function SoundboardsIndexScreen() {
                           <View style={styles.boardTileBadge}><Text style={styles.boardTileBadgeText}>{formatCompact(board.item_count)} PIECES</Text></View>
                         </View>
                         <Text style={[styles.boardTileTitle, { color: pal.title }]} numberOfLines={2}>{board.title || 'Untitled board'}</Text>
-                        <Text style={[styles.boardTileCreator, { color: pal.body }]} numberOfLines={1}>{creatorName}</Text>
+                        <Text style={[styles.boardTileCreator, { color: pal.body }]} numberOfLines={1}>
+                          {creatorName || (board.last_activity_at ? `Updated ${formatDate(board.last_activity_at, 'recently')}` : 'Building in public')}
+                        </Text>
                         <View style={styles.boardTileStats}><MaterialIcons name="favorite-border" size={14} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text><MaterialIcons name="chat-bubble-outline" size={13} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text></View>
                       </View>
                     </EdPressable>
