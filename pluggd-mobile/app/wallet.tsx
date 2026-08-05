@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { PremiumScreenHeader } from '../components/PluggdPrimitives';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { PurchaseLegalLinks } from '../src/components/PurchaseLegalLinks';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
 import { useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
@@ -355,6 +356,8 @@ export default function WalletScreen() {
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>
         </Pressable>
+
+        <PurchaseLegalLinks note="Credits are purchased through your Apple ID and are non-refundable except where required by law." />
 
         <View
           style={[

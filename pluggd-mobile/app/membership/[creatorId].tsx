@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolIcon } from '../../components/SymbolIcon';
 import { pluggdFonts } from '../../src/design/typography';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { PurchaseLegalLinks } from '../../src/components/PurchaseLegalLinks';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useSubscription } from '../../src/hooks/useSubscription';
@@ -571,10 +572,12 @@ export default function CreatorMembershipScreen() {
           <View style={[styles.appleNote, { borderTopColor: theme.colors.border }]}>
             <SymbolIcon name="verified_user" style={styles.appleNoteIcon} />
             <Text style={[styles.legal, { color: theme.colors.textSubtle }]}>
-              Subscriptions are billed monthly through Apple. Manage or cancel anytime
-              in iPhone Settings.
+              Subscriptions are billed monthly through Apple and renew automatically
+              until cancelled. Manage or cancel anytime in iPhone Settings.
           </Text>
         </View>
+
+          <PurchaseLegalLinks />
         </View>
       </ScrollView>
     </View>

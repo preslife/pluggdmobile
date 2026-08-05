@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthProvider';
 import { selectionHaptic } from '../../src/design/haptics';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { PurchaseLegalLinks } from '../../src/components/PurchaseLegalLinks';
 import {
   useSubscription,
   type ActiveMembership,
@@ -180,6 +181,7 @@ export default function MyMembershipsScreen() {
           <Pressable accessibilityRole="button" disabled={restoring} style={[styles.secondaryButton, { borderColor: theme.colors.border }]} onPress={handleRestore}>
             {restoring ? <ActivityIndicator color={theme.colors.text} /> : <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Restore</Text>}
           </Pressable>
+          <PurchaseLegalLinks note="Memberships renew automatically until cancelled. Manage or cancel any time in your Apple ID subscription settings." />
         </View>
 
         <View style={styles.section}>
