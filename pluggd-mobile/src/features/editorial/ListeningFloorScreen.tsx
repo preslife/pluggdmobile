@@ -208,10 +208,16 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
           );
         })}
       </View>
-      <View style={styles.deckTimesRow}>
-        <Text style={styles.deckTime}>{formatDuration(position)}</Text>
-        <Text style={styles.deckTime}>{duration > 0 ? formatDuration(duration) : '--:--'}</Text>
-      </View>
+      {/* Until a duration resolves, both sides of this row render "--:--",
+          which reads as broken rather than as not-yet-started. The waveform
+          already communicates the idle state, so the row waits for real
+          numbers instead of showing placeholders. */}
+      {duration > 0 ? (
+        <View style={styles.deckTimesRow}>
+          <Text style={styles.deckTime}>{formatDuration(position)}</Text>
+          <Text style={styles.deckTime}>{formatDuration(duration)}</Text>
+        </View>
+      ) : null}
       <View style={styles.deckTransportRow}>
         <View style={styles.deckTransportLeft}>
           <EdPressable
