@@ -866,6 +866,7 @@ export async function loadMyPluggdHub(): Promise<MyPluggdHub> {
       (supabase as any)
         .from('events')
         .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('starts_at', { ascending: true })
         .limit(12),
@@ -1235,6 +1236,7 @@ async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]
         (supabase as any)
           .from('events')
           .select(selects)
+          .eq('discoverable', true)
           .eq(column, ownerId)
           .order('starts_at', { ascending: true })
           .limit(12),

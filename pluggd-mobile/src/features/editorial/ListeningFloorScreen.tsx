@@ -656,6 +656,7 @@ export function ListeningFloorScreen() {
         (supabase as any)
           .from('events')
           .select('id,title,location,starts_at,price_cents')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(6),

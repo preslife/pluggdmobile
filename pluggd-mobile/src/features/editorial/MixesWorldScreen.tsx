@@ -150,7 +150,7 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
           <Text style={styles.heroKicker}>
             {`${selectorName(hero)}${hero.city ? ` - ${hero.city}` : ''}`.toUpperCase()}
           </Text>
-          <Text style={styles.heroTitle}>The sound{'\n'}of tomorrow</Text>
+          <Text style={styles.heroTitle}>The sound of tomorrow</Text>
           <Text style={styles.heroMixName} numberOfLines={1}>{hero.title || 'Featured mix'}</Text>
           {hero.description ? (
             <Text style={styles.heroDescription} numberOfLines={2}>{hero.description}</Text>
@@ -843,6 +843,7 @@ export function MixesWorldScreen() {
         (supabase as any)
           .from('events')
           .select('id,title,location,cover_image_url,starts_at')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(4),
@@ -1027,7 +1028,7 @@ const styles = StyleSheet.create({
   heroPoster: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroPosterBody: { padding: 18, gap: 8 },
   heroKicker: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: MIX_YELLOW },
-  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 35, color: ed.cream, letterSpacing: -1.1 },
+  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, color: ed.cream, letterSpacing: -1.1 },
   heroMixName: { fontFamily: edFonts.bodyBold, fontSize: 14, color: 'rgba(255,248,237,0.85)', marginTop: 2 },
   heroDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.8)' },
   heroCtas: { gap: 10, marginTop: 14 },

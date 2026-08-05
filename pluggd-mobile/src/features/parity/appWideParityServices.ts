@@ -671,6 +671,7 @@ export async function loadEventsParity(): Promise<ParityPayload> {
     (supabase as any)
       .from('events')
       .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+      .eq('discoverable', true)
       .gte('starts_at', nowIso)
       .order('starts_at', { ascending: true })
       .limit(30),
@@ -760,6 +761,7 @@ export async function loadMapSignalsParity(): Promise<ParityPayload> {
       (supabase as any)
         .from('events')
         .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true })
         .limit(30),

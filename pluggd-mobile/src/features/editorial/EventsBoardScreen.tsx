@@ -431,6 +431,7 @@ export function EventsBoardScreen() {
         (supabase as any)
           .from('events')
           .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(30),
@@ -604,7 +605,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 12, letterSpacing: 1.6, color: ed.orange },
   eventHeadingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   calendarMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: 'rgba(255,248,237,0.2)', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  pageTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 29, lineHeight: 34, letterSpacing: -1.1, color: '#fff8ed' },
+  pageTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: '#fff8ed' },
   pageSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.66)' },
 
   toggleRow: { flexDirection: 'row', gap: 10 },
