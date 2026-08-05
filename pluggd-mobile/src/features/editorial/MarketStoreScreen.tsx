@@ -19,7 +19,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
@@ -27,6 +26,7 @@ import { ed, edFonts } from '../../design/editorial';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type SamplePackItem } from '../../lib/mobileContent';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 import { Enter, EdPressable } from './EditorialBits';
 
 type StoreProductRow = {
@@ -126,7 +126,6 @@ function ProductCard({ product, wide = false }: { product: StoreProductRow; wide
 }
 
 export function MarketStoreScreen() {
-  const insets = useSafeAreaInsets();
   const bottomInset = useBottomChromeInset();
   const router = useRouter();
 
@@ -186,13 +185,14 @@ export function MarketStoreScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
+          paddingTop: 8,
           paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,

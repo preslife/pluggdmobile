@@ -22,12 +22,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList, toggleSavedContent } from '../culture/mobileServices';
 import { showQuickActions } from '../../lib/quickActions';
@@ -587,7 +587,6 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
 /* ------------------------------------------------------------------ */
 
 export function ListeningFloorScreen() {
-  const insets = useSafeAreaInsets();
   const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -702,13 +701,14 @@ export function ListeningFloorScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
+          paddingTop: 8,
           paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,

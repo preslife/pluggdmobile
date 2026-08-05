@@ -20,6 +20,11 @@ export function AppChrome() {
     normalized === '/mixes' ||
     normalized === '/soundboards' ||
     normalized === '/library' ||
+    // Market and Releases render DiscoveryHeader themselves, like the other
+    // public hubs. Without these, AppChrome would stack a second header on top.
+    normalized === '/market' ||
+    normalized === '/store' ||
+    normalized === '/releases' ||
     normalized === '/create' ||
     normalized === '/create-post' ||
     normalized === '/profile' ||
