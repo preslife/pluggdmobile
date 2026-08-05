@@ -17,7 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { EventsMap } from '../../../components/EventsMap';
@@ -398,7 +398,7 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
 /* ------------------------------------------------------------------ */
 
 export function EventsBoardScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const theme = usePluggdTheme();
   // The web /events page is hybrid in light mode: the header block stays a
   // dark card while the list, filters and panels go light.
@@ -480,7 +480,7 @@ export function EventsBoardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
           paddingTop: 4,
-          paddingBottom: insets.bottom + 210,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 24,
         }}

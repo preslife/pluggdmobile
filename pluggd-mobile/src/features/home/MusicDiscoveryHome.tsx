@@ -21,6 +21,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { selectionHaptic } from '../../design/haptics';
 import { useReducedMotion } from '../../design/useReducedMotion';
 import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
@@ -78,6 +79,7 @@ function sectionLabelForRecent(count: number) {
 
 export function MusicDiscoveryHome() {
   const router = useRouter();
+  const bottomInset = useBottomChromeInset();
   const { fontScale } = useWindowDimensions();
   const accessibilityLayout = fontScale >= 1.5;
   const { user, loading: authLoading } = useAuth();
@@ -183,7 +185,7 @@ export function MusicDiscoveryHome() {
     <View style={styles.screen}>
       <DiscoveryHeader />
       <RNAnimated.ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ORANGE} />}
         onScroll={RNAnimated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from './discoveryModel';
 import { DiscoveryHeader } from './DiscoveryHeader';
@@ -17,6 +18,7 @@ const FILTERS = ['For you', 'Scenes', 'Genres', 'Cities', 'Charts'] as const;
 
 export function MusicDiscoveryDiscover() {
   const router = useRouter();
+  const bottomInset = useBottomChromeInset();
   const params = useLocalSearchParams<{ scene?: string }>();
   const selectedScene = typeof params.scene === 'string' ? decodeURIComponent(params.scene).trim() : '';
   const feed = useHomeFeed();
@@ -69,7 +71,7 @@ export function MusicDiscoveryDiscover() {
   return (
     <View style={styles.screen}>
       <DiscoveryHeader />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headingRow}>
           <View style={styles.headingCopy}><Text style={styles.kicker}>FOLLOW THE SIGNAL</Text><Text style={styles.title}>Discover</Text><Text style={styles.subtitle}>Find the next sound through scenes, cities and independent tastemakers.</Text></View>
           <Pressable

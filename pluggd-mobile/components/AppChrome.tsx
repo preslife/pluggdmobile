@@ -1,28 +1,17 @@
 import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import {
+  isAppChromeHidden,
+  isBottomChromeHidden,
+  normalizeChromePath,
+} from '../src/lib/appChromeVisibility';
 import MiniPlayer from './MiniPlayer';
 import { MobileHeader } from './MobileHeader';
 import { PluggdDock } from './PluggdDock';
 
-const HIDDEN_PREFIXES = ['/auth', '/player', '/studio', '/connect'];
-const HIDDEN_EXACT = new Set([
-  '/live/session',
-  '/live/feed',
-  '/live/create',
-  '/ticket-scan',
-  '/swipe-beats',
-  '/creator/upload',
-  '/creator/onboarding',
-  '/edit-profile',
-]);
-const BOTTOM_HIDDEN_EXACT = new Set([
-  '/wallet',
-  '/creator/events',
-]);
-
 export function AppChrome() {
   const pathname = usePathname() || '/';
-  const normalized = pathname.replace('/(tabs)', '') || '/';
+  const normalized = normalizeChromePath(pathname);
   const ownsHeader =
     normalized === '/' ||
     normalized === '/discover' ||
@@ -60,17 +49,8 @@ export function AppChrome() {
     normalized === '/creator/events' ||
     normalized === '/creator/onboarding' ||
     normalized === '/playlists/new';
-  const hidden =
-    HIDDEN_EXACT.has(normalized) ||
-    normalized.startsWith('/story/') ||
-    normalized.startsWith('/plug/') ||
-    normalized.startsWith('/mixes/') ||
-    HIDDEN_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
-  const bottomHidden =
-    hidden ||
-    BOTTOM_HIDDEN_EXACT.has(normalized) ||
-    normalized.startsWith('/commerce/') ||
-    (normalized.startsWith('/membership/') && normalized !== '/membership');
+  const hidden = isAppChromeHidden(normalized);
+  const bottomHidden = isBottomChromeHidden(normalized);
 
   if (hidden) return null;
 

@@ -5,7 +5,9 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 const dockSource = read('components/PluggdDock.tsx');
 const headerSource = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
-const chromeSource = read('components/AppChrome.tsx');
+// Chrome visibility rules live in src/lib/appChromeVisibility.ts so AppChrome
+// and useBottomChromeInset cannot disagree. Assert against that source.
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');
 

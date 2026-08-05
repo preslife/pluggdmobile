@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
 import { CommunityComposer } from './CommunityComposer';
@@ -53,7 +53,7 @@ function SecondaryRow({
 }
 
 export function CommunityFeedScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; filter?: string; hashtag?: string }>();
   const [tab, setTab] = useState<CommunityTabKey>(normalizedTab(params.tab));
@@ -144,7 +144,7 @@ export function CommunityFeedScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={feedHeader}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 220 }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
           renderItem={({ item }) => <SecondaryRow item={item} onPress={() => item.route && router.push(item.route as any)} />}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>Nothing here yet</Text><Text style={styles.emptyBody}>Check Feed for the latest community activity.</Text></View>}
@@ -160,7 +160,7 @@ export function CommunityFeedScreen() {
         data={posts}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={feedHeader}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 226, gap: 14 }}
+        contentContainerStyle={{ paddingBottom: bottomInset, gap: 14 }}
         refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
         renderItem={({ item, index }) => (
           <>

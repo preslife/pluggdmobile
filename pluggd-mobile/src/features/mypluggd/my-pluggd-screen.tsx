@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
@@ -152,6 +153,7 @@ function MyPluggdTabRow({ active, onChange }: { active: MyPluggdTab; onChange: (
 export function MyPluggdScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const theme = usePluggdTheme();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MyPluggdTab>('feed');
@@ -308,7 +310,7 @@ export function MyPluggdScreen() {
         stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={theme.colors.accent} />}
-        contentContainerStyle={{ paddingBottom: 148 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
       >
         <MyPluggdTabRow active={activeTab} onChange={setActiveTab} />
 

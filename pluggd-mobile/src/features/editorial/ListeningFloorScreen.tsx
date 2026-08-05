@@ -23,6 +23,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
@@ -587,6 +588,7 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
 
 export function ListeningFloorScreen() {
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_CHIPS)[number]>('All Types');
@@ -707,7 +709,7 @@ export function ListeningFloorScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
           paddingTop: Math.max(insets.top + 76, 96),
-          paddingBottom: insets.bottom + 210,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,
         }}

@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
@@ -126,6 +127,7 @@ function ProductCard({ product, wide = false }: { product: StoreProductRow; wide
 
 export function MarketStoreScreen() {
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
 
   const productsQuery = useQuery({
@@ -191,7 +193,7 @@ export function MarketStoreScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
           paddingTop: Math.max(insets.top + 76, 96),
-          paddingBottom: insets.bottom + 210,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,
         }}
