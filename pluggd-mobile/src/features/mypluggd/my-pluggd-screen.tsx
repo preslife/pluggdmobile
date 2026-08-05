@@ -419,13 +419,36 @@ export function MyPluggdScreen() {
 function FeedSwitch({ active, onChange }: { active: MobileSocialFeedMode; onChange: (mode: MobileSocialFeedMode) => void }) {
   const theme = usePluggdTheme();
   return (
-    <View style={[styles.feedSwitch, { borderBottomColor: theme.colors.divider }]}>
+    // Pills, not a second underlined tab row. This switch sits directly below
+    // the primary Feed/Circles/Library/Activity tabs, so it has to read as
+    // subordinate to them — same treatment at a larger size made the two rows
+    // look like peers and left it ambiguous which one a tap would change.
+    <View style={styles.feedSwitch}>
       {FEED_SWITCH.map((mode) => {
         const selected = active === mode.key;
         return (
-          <Pressable key={mode.key} accessibilityRole="button" accessibilityLabel={`${mode.label} feed`} accessibilityState={{ selected }} style={styles.feedSwitchButton} onPress={() => onChange(mode.key)}>
-            <Text style={[styles.feedSwitchLabel, { color: selected ? theme.colors.text : theme.colors.textMuted }]}>{mode.label}</Text>
-            <View style={[styles.feedUnderline, { backgroundColor: selected ? theme.colors.accent : 'transparent' }]} />
+          <Pressable
+            key={mode.key}
+            accessibilityRole="button"
+            accessibilityLabel={`${mode.label} feed`}
+            accessibilityState={{ selected }}
+            style={[
+              styles.feedSwitchButton,
+              {
+                backgroundColor: selected ? theme.colors.accent : 'transparent',
+                borderColor: selected ? theme.colors.accent : theme.colors.divider,
+              },
+            ]}
+            onPress={() => onChange(mode.key)}
+          >
+            <Text
+              style={[
+                styles.feedSwitchLabel,
+                { color: selected ? theme.colors.background : theme.colors.textMuted },
+              ]}
+            >
+              {mode.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -888,10 +911,9 @@ const styles = StyleSheet.create({
   composerAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   composerPlaceholder: { flex: 1, fontSize: 15, fontFamily: 'Satoshi-Medium' },
   quickAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  feedSwitch: { height: 44, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', paddingHorizontal: 16, marginTop: 4 },
-  feedSwitchButton: { minHeight: 44, marginRight: 28, justifyContent: 'center' },
-  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  feedUnderline: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, borderRadius: 2 },
+  feedSwitch: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 },
+  feedSwitchButton: { minHeight: 32, paddingHorizontal: 14, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 12.5, letterSpacing: 0.2 },
   pageStack: { padding: 16, gap: 12 },
   sectionHeader: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22 },
