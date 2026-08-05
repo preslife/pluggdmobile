@@ -346,7 +346,12 @@ export function MarketStoreScreen() {
                     <Text style={styles.productTitle} numberOfLines={1}>{pack.title || 'Sample pack'}</Text>
                     <View style={styles.productFootRow}>
                       <Text style={styles.productOwner} numberOfLines={1}>{pack.genre || 'Digital goods'}</Text>
-                      <Text style={styles.productPrice}>{formatGBP(pack.price)}</Text>
+                      {/* Paid digital packs cannot be bought in the iOS app, so the card
+                          must not show a bare price — that reads as a buy affordance and
+                          dead-ends at the "Preview only on iPhone" notice. */}
+                      <Text style={Number(pack.price ?? 0) > 0 ? styles.productPreviewOnly : styles.productPrice}>
+                        {Number(pack.price ?? 0) > 0 ? 'Preview only' : 'Free'}
+                      </Text>
                     </View>
                   </View>
                 </EdPressable>
@@ -509,6 +514,7 @@ const styles = StyleSheet.create({
   productFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
   productOwner: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.55)' },
   productPrice: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.cream },
+  productPreviewOnly: { fontFamily: edFonts.bodyBlack, fontSize: 11, letterSpacing: 0.4, color: ed.creamMuted },
 
   packArtWrap: { borderRadius: 10, overflow: 'hidden' },
   packArt: { width: '100%', height: 130 },
