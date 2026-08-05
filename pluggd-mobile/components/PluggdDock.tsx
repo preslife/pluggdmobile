@@ -65,6 +65,23 @@ const CORE_TABS: TabItem[] = [
       '/creator/events',
     ],
   },
+  {
+    label: 'Store',
+    route: '/market',
+    icon: 'storefront',
+    aliases: [
+      '/(tabs)/market',
+      '/store',
+      '/marketplace',
+      '/beat-marketplace',
+      '/beat',
+      '/beats',
+      '/product',
+      '/sample-packs',
+      '/sample-pack',
+      '/drops',
+    ],
+  },
 ];
 
 function normalize(pathname: string | null) {

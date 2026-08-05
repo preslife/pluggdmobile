@@ -11,7 +11,11 @@ const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeV
 const walletSource = read('app/wallet.tsx');
 const creditsSource = read('src/hooks/useCredits.ts');
 
-for (const label of ['Home', 'Discover', 'Community', 'Events']) {
+// Store is a primary tab. It was dropped to a four-item dock during submission
+// simplification, but the hybrid commerce architecture always intended the
+// catalogue to ship on iOS with a per-product payment rail — physical goods and
+// real-world services on hosted checkout, digital unlocks on credits/IAP.
+for (const label of ['Home', 'Discover', 'Community', 'Events', 'Store']) {
   assert.match(dockSource, new RegExp(`label:\\s*'${label}'`), `${label} must be in the locked primary nav`);
 }
 assert.doesNotMatch(dockSource, /label:\s*'Search'/, 'Search must stay in top/header access, not bottom nav');
