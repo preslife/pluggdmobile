@@ -219,17 +219,22 @@ Font is deliberately last — design and features first.
 - `f046a48` web build restored (the track-player shim was missing `Event` / `useTrackPlayerEvents`, which blanked the whole tree — this is the harness QA screenshots come from)
 - `14edaa2` Store restored as the fifth dock tab
 
+- `1f0a20e` digital shelf no longer prices packs that can't be bought on iOS
+- `f80ccf9` one header across the public hubs — Market and Releases were falling through to the pill
+- `d75970e` My PLUGGD tab hierarchy — the subordinate switch was outranking the primary tabs
+- `a8ead46` `tone="community"` no longer resolves to the retired Backstage violet
+
+Commerce checked while doing the Store work: `/product/[id]` and `/sample-pack/[id]` already gate correctly — digital products degrade to "BROWSE ONLY", paid packs answer with "Preview only on iPhone". The rails were sound; only the listing was over-promising.
+
 **Next:**
-1. Store checkout rails — every card and CTA reads from `useCommercePolicy` (§4, Market/Store).
-2. Retired-concept dead ends (§3.9) — Codex fixed the seven `/backstage` callers; still to do: delete the two dead screens and drop the alias entries.
-3. One header across the public tier (§3.2) — confirmed live: Home flat vs Store pill.
+1. Home — Edition masthead and the search field (not the marketing sections).
+2. Discover — Live Now / Near You / Creators to Watch / Community Pulse.
+3. Empty and loading states (§3.7) — `--:--` on the Listening Floor is the visible one.
 4. Shared eyebrow/title/subtitle block (§3.3).
-5. Home — Edition masthead and the search field (not the marketing sections).
-6. My PLUGGD hierarchy — the two stacked tab rows.
-7. Discover — Live Now / Near You / Creators to Watch / Community Pulse.
-8. Studio hero legibility — **needs a fresh capture first**; the 1 Aug screenshot predates `5787b0f`.
-9. Decide violet's role (§3.5), then apply it in one pass.
-10. Empty and loading states (§3.7).
-11. **Last:** the type system (§2).
+5. Retired-concept cleanup (§3.9) — **needs a call**: deleting `stage-discovery-screen.tsx` loses the only full Charts implementation.
+6. Studio hero legibility — **needs a fresh capture first**; the 1 Aug screenshot predates `5787b0f`.
+7. Violet, the rest of it (§3.5) — **needs a call**: real secondary, or gone.
+8. Store faceted filters + Bundles shelf.
+9. **Last:** the type system (§2).
 
 Then repoint the 10 contract scripts listed in `WEB_VS_MOBILE_GAP_REPORT_2026-08-04.md` §4, so this class of regression can't pass review again.
