@@ -1223,7 +1223,7 @@ const styles = StyleSheet.create({
   freshChipWhiteText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: ed.ink },
   freshChipYellow: { backgroundColor: MIX_YELLOW, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
   freshChipYellowText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: '#3a2f04' },
-  freshChipPurple: { backgroundColor: '#7c5cff', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
+  freshChipPurple: { backgroundColor: '#FF6600', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
   freshChipPurpleText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: '#ffffff' },
   freshTitle: { fontFamily: edFonts.bodyBold, fontSize: 14, lineHeight: 18, color: ed.cream },
   freshMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.6)' },

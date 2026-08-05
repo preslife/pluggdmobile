@@ -60,7 +60,9 @@ const NOIR_CARD = '#15151D';
 const NOIR_CARD_STRONG = '#1A1A25';
 const NOIR_BORDER = '#241d15';
 const EMERALD = '#ff6600';
-const VIOLET = '#6C5CE7';
+// Retired: this file carried a second violet that never matched tokens.ts.
+// PLUGGD is a single-orange brand, so these accents take the brand colour.
+const VIOLET = '#FF6600';
 const TEXT = '#FFFFFF';
 const MUTED = '#A5A7B4';
 const SUBTLE = '#6F7280';
@@ -1722,7 +1724,7 @@ const styles = StyleSheet.create({
   stageBottomActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
   stagePlayCta: { height: 42, borderRadius: 999, backgroundColor: EMERALD, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 16 },
   stagePlayText: { color: NOIR_DEEP, fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  stageBackstageCta: { height: 42, borderRadius: 999, borderWidth: 1, borderColor: VIOLET, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(124,58,237,0.16)' },
+  stageBackstageCta: { height: 42, borderRadius: 999, borderWidth: 1, borderColor: VIOLET, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(255,102,0,0.16)' },
   stageBackstageText: { color: TEXT, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   waveform: {
     height: 24,
