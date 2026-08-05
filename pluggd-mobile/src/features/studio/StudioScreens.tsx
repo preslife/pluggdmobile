@@ -711,8 +711,13 @@ function CommandCard({ data }: { data: StudioData }) {
       )}
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(0,0,0,0.06)', 'rgba(3,3,5,0.68)', 'rgba(2,2,3,0.98)']}
-        locations={[0, 0.54, 1]}
+        // The quick-action row (Check cash / Go live / Apps) sits around the
+        // midpoint of this card, where the old ramp was still only ~68% opaque.
+        // Over a bright cover — a pale sky, a light building — those small
+        // labels were unreadable. Ramping earlier and harder keeps the artwork
+        // present at the top while every label below it stays legible.
+        colors={['rgba(0,0,0,0.30)', 'rgba(3,3,5,0.86)', 'rgba(2,2,3,0.98)']}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
