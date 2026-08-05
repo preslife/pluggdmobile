@@ -202,7 +202,7 @@ export function MarketStoreScreen() {
         <Enter delay={0}>
         <View style={{ gap: 12 }}>
           <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
-          <Text style={styles.heroTitle}>PLUGGD{'\n'}Store</Text>
+          <Text style={styles.heroTitle}>PLUGGD Store</Text>
           <Text style={styles.heroCopy}>
             Official merch. Creator goods. Exclusive drops. Digital products. Services. Built for the culture.
           </Text>
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
 
   heroKicker: { fontFamily: edFonts.mono, fontSize: 11, letterSpacing: 2.2, color: ed.orange },
-  heroTitle: { fontFamily: edFonts.serif, fontSize: 62, lineHeight: 56, letterSpacing: -2, color: ed.paper },
+  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: ed.paper },
   heroCopy: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: 'rgba(255,248,237,0.68)' },
   heroCtaRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   heroPrimary: {

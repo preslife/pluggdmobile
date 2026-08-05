@@ -370,7 +370,7 @@ function SignalTile({ item, variant, onPlay }: { item: DiscoveryItem; variant: '
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' }, content: { paddingHorizontal: 20, paddingBottom: 184 },
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 5 }, headingCopy: { flex: 1 },
-  kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 }, title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.3, marginTop: 3 },
+  kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 }, title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, marginTop: 3 },
   subtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, maxWidth: 310, marginTop: 6 },
   signalMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#5B3B25', backgroundColor: '#18120E', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   signalMarkPressed: { transform: [{ scale: 0.96 }], opacity: 0.88 },

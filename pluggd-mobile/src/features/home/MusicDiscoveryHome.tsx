@@ -933,7 +933,7 @@ const styles = StyleSheet.create({
   titleGroup: { flex: 1, minWidth: 0 },
   titleGroupAccessibility: { flex: 0 },
   eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.35, marginTop: 4, marginBottom: 5 },
-  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 30, letterSpacing: -1.1 },
+  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1 },
   editorNote: { flexShrink: 1, maxWidth: 96, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, lineHeight: 14, textAlign: 'right' },
   editorNoteAccessibility: { maxWidth: 220, textAlign: 'left' },
   loadingStack: { gap: 12, paddingBottom: 12 },
