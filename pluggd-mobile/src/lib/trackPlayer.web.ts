@@ -86,4 +86,29 @@ export function useActiveTrack() {
   return activeIndex >= 0 ? queue[activeIndex] : undefined;
 }
 
+export const Event = {
+  PlaybackState: 'playback-state',
+  PlaybackError: 'playback-error',
+  PlaybackActiveTrackChanged: 'playback-active-track-changed',
+  PlaybackQueueEnded: 'playback-queue-ended',
+  RemotePlay: 'remote-play',
+  RemotePause: 'remote-pause',
+  RemoteNext: 'remote-next',
+  RemotePrevious: 'remote-previous',
+  RemoteSeek: 'remote-seek',
+  RemoteStop: 'remote-stop',
+} as const;
+
+/**
+ * No-op on web: this shim has no native event source to subscribe to.
+ * It must still exist and be callable — consumers call it unconditionally at
+ * the top of a component, so returning undefined here crashes the whole tree.
+ */
+export function useTrackPlayerEvents(
+  _events: readonly (typeof Event)[keyof typeof Event][],
+  _handler: (event: unknown) => void,
+) {
+  return undefined;
+}
+
 export default TrackPlayer;
