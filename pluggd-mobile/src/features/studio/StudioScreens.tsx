@@ -3135,6 +3135,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: pluggdFonts.displayBold,
+    // Had no colour, so it fell back to the platform default — black text on
+    // the Studio's dark ground. "Close to the work." was rendering invisible.
+    color: STUDIO.text,
     fontSize: 22,
     lineHeight: 26,
     letterSpacing: 0,
