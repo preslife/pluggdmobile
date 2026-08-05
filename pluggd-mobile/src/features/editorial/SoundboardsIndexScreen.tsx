@@ -107,7 +107,7 @@ export function SoundboardsIndexScreen() {
     queryFn: () =>
       safeList<ProfileItem>(
         (supabase as any)
-          .from('profiles')
+          .from('public_profiles')
           .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
           .in('user_id', creatorIds),
       ),
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   headEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, letterSpacing: 1.6, color: ed.orange },
-  headTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 31, lineHeight: 36, letterSpacing: -1.1, color: '#ffffff', marginTop: 3 },
+  headTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: '#ffffff', marginTop: 3 },
   headSub: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.55)' },
 
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

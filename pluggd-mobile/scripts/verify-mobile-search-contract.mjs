@@ -33,7 +33,10 @@ for (const hook of ['useUniversalSearch', 'useHomeFeed', 'useEventLayer', 'useBa
   assert.match(searchSource, new RegExp(hook), `${hook} must power Search`);
 }
 
-for (const table of ["from('profiles')", "from('releases')", "from('mixes')", "from('beats')", "from('videos')", "from('events')", "from('hubs')", "from('session_rooms')"]) {
+// Public creator lookups read public_profiles, a view exposing only the fields
+// already public on the web creator page. public.profiles itself denies SELECT
+// to anon, so reading it directly returned no names for signed-out users.
+for (const table of ["from('public_profiles')", "from('releases')", "from('mixes')", "from('beats')", "from('videos')", "from('events')", "from('hubs')", "from('session_rooms')"]) {
   assert.match(dataSource, new RegExp(table.replace(/[()']/g, '\\$&')), `${table} must be in universal search data map`);
 }
 

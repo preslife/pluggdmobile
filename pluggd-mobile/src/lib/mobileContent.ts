@@ -487,6 +487,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
       supabase
         .from('events')
         .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true })
         .limit(limit),
@@ -502,7 +503,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     ),
     list<ProfileItem>(
       (supabase as any)
-        .from('profiles')
+        .from('public_profiles')
         .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
         .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
         .limit(limit),
