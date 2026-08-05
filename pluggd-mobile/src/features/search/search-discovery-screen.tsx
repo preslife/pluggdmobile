@@ -739,7 +739,7 @@ export function SearchDiscoveryScreen() {
             <ResultSection title="Communities And Creators">
               <View style={styles.resultList}>
                 {discoveryCommunities.slice(0, 3).map((community) => <CommunityRow key={`community-${community.id}`} community={community} />)}
-                {discoveryCreators.slice(0, 4).map((profile) => <ProfileRow key={`profile-${profile.user_id || profile.id || profile.username}`} profile={profile} />)}
+                {discoveryCreators.slice(0, 4).map((profile, index) => <ProfileRow key={`profile-${profile.user_id || profile.id || profile.username || index}`} profile={profile} />)}
               </View>
               {discoveryCommunities.length === 0 && discoveryCreators.length === 0 ? (
                 <EmptyBlock title="No communities surfaced yet." body="Creator communities and profiles will appear here as they become active." />
@@ -795,8 +795,8 @@ export function SearchDiscoveryScreen() {
 
             {show('Creators', results.creators.length) && results.creators.length > 0 ? (
               <ResultSection title="Creators" count={results.creators.length}>
-                {results.creators.slice(0, activeFilter === 'Creators' ? 12 : 4).map((profile) => (
-                  <ProfileRow key={`creator-${profile.user_id || profile.id || profile.username}`} profile={profile} />
+                {results.creators.slice(0, activeFilter === 'Creators' ? 12 : 4).map((profile, index) => (
+                  <ProfileRow key={`creator-${profile.user_id || profile.id || profile.username || index}`} profile={profile} />
                 ))}
               </ResultSection>
             ) : null}
@@ -865,8 +865,8 @@ export function SearchDiscoveryScreen() {
 
             {show('Users', results.users.length) && results.users.length > 0 ? (
               <ResultSection title="Users" count={results.users.length}>
-                {results.users.slice(0, activeFilter === 'Users' ? 12 : 4).map((profile) => (
-                  <ProfileRow key={`user-${profile.user_id || profile.id || profile.username}`} profile={profile} userMode />
+                {results.users.slice(0, activeFilter === 'Users' ? 12 : 4).map((profile, index) => (
+                  <ProfileRow key={`user-${profile.user_id || profile.id || profile.username || index}`} profile={profile} userMode />
                 ))}
               </ResultSection>
             ) : null}

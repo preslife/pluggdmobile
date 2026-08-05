@@ -473,15 +473,21 @@ function CompactComposer({
 }) {
   const theme = usePluggdTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={onOpen}>
-      <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
-        {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
-      </View>
-      <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+    // The three quick actions are siblings of the open-composer target, not
+    // children of it. Nesting them inside a Pressable made every action a
+    // button within a button — ambiguous for VoiceOver, and invalid markup on
+    // web — and needed stopPropagation to behave.
+    <View style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={styles.composerOpen} onPress={onOpen}>
+        <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
+          {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
+        </View>
+        <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+      </Pressable>
       <QuickComposerAction icon="image" label="Add image or video" onPress={onImage} />
       <QuickComposerAction icon="graphic-eq" label="Share music or audio" onPress={onMusic} />
       <QuickComposerAction icon="forum" label="Start event or thread" onPress={onThread} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -909,6 +915,7 @@ const styles = StyleSheet.create({
   feedStack: { paddingBottom: 10 },
   compactComposer: { marginHorizontal: 16, height: 54, borderRadius: 16, borderWidth: 1, paddingLeft: 10, paddingRight: 2, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  composerOpen: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerPlaceholder: { flex: 1, fontSize: 15, fontFamily: 'Satoshi-Medium' },
   quickAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   feedSwitch: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 },

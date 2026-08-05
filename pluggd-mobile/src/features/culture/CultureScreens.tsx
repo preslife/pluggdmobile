@@ -1227,7 +1227,7 @@ export function SearchScreen() {
           ) : null}
           {discovery.data?.profiles.length ? (
             <HorizontalRail title="Creators to know">
-              {discovery.data.profiles.slice(0, 10).map((profile) => <CreatorTile key={profile.user_id || profile.id || profile.username} profile={profile} />)}
+              {discovery.data.profiles.slice(0, 10).map((profile, index) => <CreatorTile key={profile.user_id || profile.id || profile.username || index} profile={profile} />)}
             </HorizontalRail>
           ) : null}
         </>
@@ -1235,7 +1235,7 @@ export function SearchScreen() {
       {search.isLoading ? <LoadingState label="Searching PLUGGD..." /> : null}
       {emptyResults ? <EmptyState icon="search-off" title="No results yet" body="Try another artist, track, city, event, community or fan handle." /> : null}
       {(category === 'top' || category === 'creators') && results?.creators.length ? <SectionHeader title="Creators" /> : null}
-      {(category === 'top' || category === 'creators') && results?.creators.slice(0, 6).map((profile) => <CreatorRow key={`creator-${profile.user_id || profile.id || profile.username}`} profile={profile} />)}
+      {(category === 'top' || category === 'creators') && results?.creators.slice(0, 6).map((profile, index) => <CreatorRow key={`creator-${profile.user_id || profile.id || profile.username || index}`} profile={profile} />)}
       {(category === 'top' || category === 'tracks') && results?.tracks.length ? <SectionHeader title="Tracks" /> : null}
       {(category === 'top' || category === 'tracks') && results?.tracks.slice(0, 6).map((release) => <ReleaseEmbed key={release.id} release={release} />)}
       {(category === 'top' || category === 'mixes') && results?.mixes.length ? <SectionHeader title="Mixes" /> : null}
