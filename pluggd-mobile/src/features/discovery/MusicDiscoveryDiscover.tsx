@@ -89,7 +89,7 @@ export function MusicDiscoveryDiscover() {
         </View>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Search music and scenes" onPress={() => router.push('/search' as any)} style={styles.search}>
-          <MaterialIcons name="search" size={21} color={MUTED} /><Text style={styles.searchText}>Artists, tracks, scenes, cities</Text><Text style={styles.searchHint}>⌘K</Text>
+          <MaterialIcons name="search" size={21} color={MUTED} /><Text style={styles.searchText}>Artists, tracks, scenes, cities</Text>
         </Pressable>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
           {FILTERS.map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: filter === item }} key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   signalMarkPressed: { transform: [{ scale: 0.96 }], opacity: 0.88 },
   signalLiveDot: { position: 'absolute', right: 5, top: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF4757', borderWidth: 1, borderColor: '#0A0908' },
   search: { minHeight: 48, marginTop: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
-  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 }, searchHint: { color: '#756E64', fontFamily: 'Satoshi-Bold', fontSize: 10 },
+  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 },
   filters: { gap: 8, paddingVertical: 14 }, filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#181512' }, filterActive: { backgroundColor: ORANGE }, filterText: { color: '#CBC4B9', fontFamily: 'Satoshi-Bold', fontSize: 12 }, filterTextActive: { color: '#110B07' },
   worldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   worldLink: { width: '48.8%', height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'space-between', padding: 10, backgroundColor: '#151310' },

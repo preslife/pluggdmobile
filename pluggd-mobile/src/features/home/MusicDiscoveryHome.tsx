@@ -81,6 +81,19 @@ export function MusicDiscoveryHome() {
   const router = useRouter();
   const bottomInset = useBottomChromeInset();
   const { fontScale } = useWindowDimensions();
+  // Masthead edition line. The number is days since the current volume opened
+  // on 1 January — the same day-of-year calculation the web home uses, so the
+  // app and pluggd.fm always show the same issue number on the same day.
+  const editionLine = useMemo(() => {
+    const now = new Date();
+    const volumeEpoch = new Date(now.getFullYear(), 0, 1);
+    const number = Math.max(1, Math.floor((now.getTime() - volumeEpoch.getTime()) / 86_400_000) + 1);
+    const date = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: '2-digit', month: 'long' })
+      .format(now)
+      .toUpperCase()
+      .replace(',', ' ·');
+    return `EDITION №${number} — ${date}`;
+  }, []);
   const accessibilityLayout = fontScale >= 1.5;
   const { user, loading: authLoading } = useAuth();
   const feed = useHomeFeed();
@@ -192,14 +205,14 @@ export function MusicDiscoveryHome() {
         scrollEventThrottle={16}
       >
         <Enter delay={0}>
+          {/* The edition line runs full width above the masthead rather than
+              inside the title group — beside the editor note it had roughly
+              210pt to work with and wrapped mid-date. */}
+          <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={styles.eyebrow}>
+            {editionLine}
+          </Text>
           <View style={[styles.titleRow, accessibilityLayout && styles.titleRowAccessibility]}>
             <View style={[styles.titleGroup, accessibilityLayout && styles.titleGroupAccessibility]}>
-              <Text maxFontSizeMultiplier={1.4} style={styles.eyebrow}>
-                {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: '2-digit', month: 'long' })
-                  .format(new Date())
-                  .toUpperCase()
-                  .replace(',', ' ·')}
-              </Text>
               <Text maxFontSizeMultiplier={1.35} style={styles.title}>The Daily Plug</Text>
             </View>
             <Text maxFontSizeMultiplier={1.4} numberOfLines={2} style={[styles.editorNote, accessibilityLayout && styles.editorNoteAccessibility]}>
@@ -207,6 +220,24 @@ export function MusicDiscoveryHome() {
               {featured?.isEditorialPick ? 'PLUGGD editors' : 'PLUGGD selection'}
             </Text>
           </View>
+        </Enter>
+
+        {/* Search is the primary discovery gesture on a phone. The header icon
+            alone was too weak an affordance for it, and the web home puts a
+            full-width field at the top for the same reason. */}
+        <Enter delay={40}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search creators, scenes and live rooms"
+            onPress={() => {
+              selectionHaptic();
+              router.push('/search' as any);
+            }}
+            style={styles.search}
+          >
+            <MaterialIcons name="search" size={21} color={MUTED} />
+            <Text style={styles.searchText}>Creators, scenes, live rooms…</Text>
+          </Pressable>
         </Enter>
 
         {signals.length ? <LiveTicker items={signals.map((signal) => signal.label)} variant="home" speed={34} /> : null}
@@ -895,11 +926,13 @@ function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; i
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' },
   content: { paddingHorizontal: 20, paddingBottom: 190 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 18, gap: 14 },
+  search: { minHeight: 48, marginBottom: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
+  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18, gap: 14 },
   titleRowAccessibility: { flexDirection: 'column', alignItems: 'flex-start', gap: 6 },
   titleGroup: { flex: 1, minWidth: 0 },
   titleGroupAccessibility: { flex: 0 },
-  eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.6, marginBottom: 5 },
+  eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.35, marginTop: 4, marginBottom: 5 },
   title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 30, letterSpacing: -1.1 },
   editorNote: { flexShrink: 1, maxWidth: 96, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, lineHeight: 14, textAlign: 'right' },
   editorNoteAccessibility: { maxWidth: 220, textAlign: 'left' },
