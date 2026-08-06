@@ -889,7 +889,7 @@ function ActionBoard({ data }: { data: StudioData }) {
                 <LinearGradient
                   colors={rowIndex === 0 && columnIndex === 0 ? ['rgba(255,106,0,0.24)', 'rgba(19,19,23,0.98)'] : ['rgba(255,255,255,0.09)', 'rgba(14,14,18,0.98)']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  end={{ x: 0, y: 1 }}
                   style={styles.actionBoardTileInner}
                 >
                   <View style={styles.actionBoardTileTop}>
@@ -944,7 +944,7 @@ function KpiCard({
       <LinearGradient
         colors={['rgba(255,255,255,0.115)', 'rgba(17,17,21,0.92)', 'rgba(2,2,3,0.95)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={[styles.kpiCard, cardWidth ? { width: cardWidth } : null]}
       >
         <View style={styles.kpiHead}>
@@ -1032,7 +1032,7 @@ function ZoneGrid({ data }: { data: StudioData }) {
               <LinearGradient
                 colors={['rgba(255,255,255,0.13)', 'rgba(25,25,29,0.94)', 'rgba(5,5,7,0.95)']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 0, y: 1 }}
                 style={[styles.zoneCard, { width: zoneCardWidth }]}
               >
                 <View style={styles.zoneIcon}>
@@ -1789,6 +1789,16 @@ function StudioConnectCardContent({
                 accessibilityLabel=""
               />
               <LinearGradient colors={view.tone} style={StyleSheet.absoluteFill} />
+              {/* view.tone starts near-transparent at the top, so the eyebrow and
+                  icon sat straight on the photography — "PUBLIC" was barely
+                  readable over a bright frame. This scrim only darkens the band
+                  they occupy and leaves the image itself alone. */}
+              <LinearGradient
+                colors={['rgba(0,0,0,0.58)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0)']}
+                locations={[0, 0.34, 0.62]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
               <View style={styles.connectViewCardTop}>
                 <View style={styles.connectViewIcon}>
                   <MaterialIcons name={iconName(view.icon)} size={20} color="#FFFFFF" />
@@ -1977,7 +1987,7 @@ function MoreModuleTile({ module }: { module: StudioModuleState }) {
       <LinearGradient
         colors={module.plugged || module.alwaysVisible ? ['rgba(255,106,0,0.16)', 'rgba(22,22,27,0.94)', 'rgba(5,5,7,0.98)'] : ['rgba(255,255,255,0.11)', 'rgba(18,18,23,0.93)', 'rgba(4,4,6,0.98)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={styles.moduleTile}
       >
         <View style={styles.moduleTileTop}>
