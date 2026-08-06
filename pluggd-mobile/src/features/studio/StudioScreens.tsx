@@ -787,6 +787,35 @@ function CommandCard({ data }: { data: StudioData }) {
 }
 
 /**
+ * The creator's own artwork, keyed by the module it belongs to.
+ *
+ * Studio's launcher surfaces were entirely icons and gradients — the one place a
+ * creator's work never appeared. Where a module maps to something they have
+ * actually published, the newest cover backs its tile. Modules with no content
+ * behind them keep the plain treatment rather than borrowing someone's art, so
+ * the presence of a cover is itself information: that shelf has something on it.
+ *
+ * `catalogItems` arrives newest-first, so the first hit per module wins.
+ */
+const CATALOG_KIND_MODULE: Record<StudioCatalogItem['kind'], string> = {
+  release: 'releases',
+  beat: 'beats',
+  mix: 'mixes',
+  soundboard: 'soundboards',
+  event: 'events',
+};
+
+function artworkByModule(items: StudioCatalogItem[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const item of items) {
+    const moduleId = CATALOG_KIND_MODULE[item.kind];
+    if (!moduleId || map[moduleId] || !item.imageUrl) continue;
+    map[moduleId] = item.imageUrl;
+  }
+  return map;
+}
+
+/**
  * Module copy is written as "Adds X. Use desktop Studio for Y." — a full
  * desktop-parity explanation. At half-screen tile width the second sentence
  * cannot fit and gets clipped mid-word, which is the loudest unfinished-looking
@@ -864,6 +893,7 @@ function StudioPageHeader({
 
 function ActionBoard({ data }: { data: StudioData }) {
   const router = useRouter();
+  const artwork = useMemo(() => artworkByModule(data.catalogItems), [data.catalogItems]);
   const actionRows = Array.from({ length: Math.ceil(data.nativeActions.length / 2) }, (_, index) =>
     data.nativeActions.slice(index * 2, index * 2 + 2),
   );
@@ -892,6 +922,22 @@ function ActionBoard({ data }: { data: StudioData }) {
                   end={{ x: 0, y: 1 }}
                   style={styles.actionBoardTileInner}
                 >
+                  {artwork[action.id] ? (
+                    <>
+                      <PluggdImage
+                        uri={artwork[action.id]}
+                        style={styles.tileArtwork}
+                        resizeMode="cover"
+                        accessibilityLabel=""
+                      />
+                      <LinearGradient
+                        colors={['rgba(6,6,8,0.30)', 'rgba(6,6,8,0.80)', 'rgba(6,6,8,0.96)']}
+                        locations={[0, 0.52, 1]}
+                        style={styles.tileArtwork}
+                        pointerEvents="none"
+                      />
+                    </>
+                  ) : null}
                   <View style={styles.actionBoardTileTop}>
                     <View style={styles.actionBoardIcon}>
                       <MaterialIcons name={iconName(action.icon)} size={22} color={STUDIO.orangeSoft} />
@@ -1352,7 +1398,7 @@ export function StudioAppsScreen() {
         <StudioPageHeader
           icon="widgets"
           kicker="Your creator toolkit"
-          title="Build the Studio around your work."
+          title="Pick the tools you actually use."
           meta={`${formatCompact(pluggedCount)} plugged in · ${formatCompact(recommendedCount)} suggested for ${ROLE_LABELS[data.primaryRole] ?? 'you'}`}
         />
 
@@ -1418,8 +1464,7 @@ export function StudioAnalyticsScreen() {
         <StudioPageHeader
           icon="insights"
           kicker="Studio insights"
-          title="Where your catalogue stands."
-          meta="Counts come from what you have actually published."
+          title="How your catalogue is doing."
         />
         <KpiGrid data={data} />
         <PublishingActivity data={data} />
@@ -1942,7 +1987,7 @@ export function StudioSplitGatewayScreen() {
   return withStudioData('more', 'Split Engine', (data, query) => <StudioSplitGatewayContent data={data} query={query} />);
 }
 
-function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
+function ModuleTileGrid({ modules, artwork }: { modules: StudioModuleState[]; artwork: Record<string, string> }) {
   const rows: StudioModuleState[][] = [];
   for (let index = 0; index < modules.length; index += 2) {
     rows.push(modules.slice(index, index + 2));
@@ -1955,7 +2000,7 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
   if (soleModule) {
     return (
       <View style={styles.moduleTileGrid}>
-        <MoreModuleTile module={soleModule} />
+        <MoreModuleTile module={soleModule} artwork={artwork[soleModule.id]} />
       </View>
     );
   }
@@ -1964,7 +2009,7 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
       {rows.map((row, index) => (
         <View key={`module-tile-row-${index}`} style={styles.moduleTileRow}>
           {row.map((module) => (
-            <MoreModuleTile key={module.id} module={module} />
+            <MoreModuleTile key={module.id} module={module} artwork={artwork[module.id]} />
           ))}
           {row.length === 1 ? <View style={styles.moduleTileSpacer} /> : null}
         </View>
@@ -1973,7 +2018,7 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
   );
 }
 
-function MoreModuleTile({ module }: { module: StudioModuleState }) {
+function MoreModuleTile({ module, artwork }: { module: StudioModuleState; artwork?: string }) {
   const router = useRouter();
   const canOpen = Boolean(module.route);
   const chip = moduleChip(module);
@@ -1990,6 +2035,17 @@ function MoreModuleTile({ module }: { module: StudioModuleState }) {
         end={{ x: 0, y: 1 }}
         style={styles.moduleTile}
       >
+        {artwork ? (
+          <>
+            <PluggdImage uri={artwork} style={styles.tileArtwork} resizeMode="cover" accessibilityLabel="" />
+            <LinearGradient
+              colors={['rgba(5,5,7,0.34)', 'rgba(5,5,7,0.82)', 'rgba(5,5,7,0.96)']}
+              locations={[0, 0.5, 1]}
+              style={styles.tileArtwork}
+              pointerEvents="none"
+            />
+          </>
+        ) : null}
         <View style={styles.moduleTileTop}>
           <View style={styles.moduleTileIcon}>
             <MaterialIcons name={iconName(module.icon)} size={21} color={module.plugged || module.alwaysVisible ? STUDIO.orange : STUDIO.textMid} />
@@ -2023,18 +2079,19 @@ function StudioMoreContent({
   })).filter((group) => group.modules.length > 0);
   const pluggedCount = data.modules.filter((module) => module.plugged || module.alwaysVisible).length;
   const desktopCount = data.modules.filter((module) => module.status === 'web_only' && (module.plugged || module.recommendedForRole)).length;
+  const artwork = artworkByModule(data.catalogItems);
   return (
     <StudioShell active="more" title="More" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
       <StudioPageHeader
         icon="more-horiz"
         kicker="More Studio"
-        title="Modules, account surfaces, and business tools."
+        title="Everything else in your Studio."
         meta={`${pluggedCount} active · ${desktopCount} desktop tools`}
       />
       {sections.map((group) => (
         <View key={group.section}>
           <SectionTitle title={SECTION_LABELS[group.section]} />
-          <ModuleTileGrid modules={group.modules} />
+          <ModuleTileGrid modules={group.modules} artwork={artwork} />
         </View>
       ))}
     </StudioShell>
@@ -2084,7 +2141,10 @@ const styles = StyleSheet.create({
   studioMenuButton: {
     width: 44,
     height: 42,
-    borderRadius: 999,
+    // Sat beside the back button as a second 44pt circle, separated only by ring
+    // colour — two near-identical controls doing unrelated jobs. A rounded square
+    // reads as a tile, which is what it opens, and tells them apart at a glance.
+    borderRadius: 14,
     borderWidth: 1.2,
     borderColor: 'rgba(255,106,0,0.62)',
     backgroundColor: 'rgba(255,106,0,0.11)',
@@ -4579,6 +4639,15 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 8,
     overflow: 'hidden',
+  },
+  // Sits under the tile's padding so artwork bleeds to the rounded edge. Both
+  // the image and its scrim use it, so they stay in register.
+  tileArtwork: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   moduleTileTop: {
     flexDirection: 'row',

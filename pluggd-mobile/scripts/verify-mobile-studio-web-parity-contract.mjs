@@ -23,7 +23,13 @@ assert.match(studioScreens, /dockCreateButton/, 'Studio dock must keep a distinc
 assert.match(studioScreens, /PluggdGlassSurface[\s\S]*dockGlass/, 'Studio dock must use the native glass-capable surface');
 assert.match(studioScreens, /accessibilityState=\{\{ selected: isActive \}\}/, 'Studio dock tabs must expose their selected state');
 assert.match(studioScreens, /studioMenuButton/, 'Studio topbar must keep the web-style Menu pill');
-assert.match(studioScreens, /Build the Studio around your work\./, 'Studio Apps must frame modules as a purposeful creator toolkit');
+assert.match(studioScreens, /Pick the tools you actually use\./, 'Studio Apps must frame modules as a purposeful creator toolkit');
+// Studio page titles address the creator about their own work. "Modules,
+// account surfaces, and business tools" and "Build the Studio around your work"
+// were product-team language pointed at a creator.
+for (const internalCopy of ['account surfaces', 'Build the Studio around']) {
+  assert.ok(!studioScreens.includes(internalCopy), `Studio page titles must not use internal product language: ${internalCopy}`);
+}
 assert.match(studioScreens, /function ActionBoard/, 'Studio Create must use a purpose-built action board rather than repeat the Home hero');
 assert.match(studioScreens, /actionBoardRow/, 'Studio Create actions must render in intentional two-column rows');
 assert.match(studioScreens, /const tabWidth = Math\.floor\(\(contentWidth - 16\) [/] 3\)/, 'My PLUGGD setup destinations must render as a stable 3-column grid');
