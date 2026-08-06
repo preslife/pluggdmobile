@@ -783,6 +783,48 @@ function CommandCard({ data }: { data: StudioData }) {
 }
 
 /**
+ * Module copy is written as "Adds X. Use desktop Studio for Y." — a full
+ * desktop-parity explanation. At half-screen tile width the second sentence
+ * cannot fit and gets clipped mid-word, which is the loudest unfinished-looking
+ * thing in the Studio. The status chip already says where the rest of the work
+ * happens, so a tile shows the first sentence and stops.
+ */
+function leadSentence(text?: string | null): string {
+  const value = (text ?? '').trim();
+  if (!value) return '';
+  const end = value.search(/\.\s/);
+  return end === -1 ? value : value.slice(0, end + 1);
+}
+
+/**
+ * Tile-width copy: lead sentence, then clipped on a word boundary if it is
+ * still too long. Some descriptions are a single comma-spliced sentence with no
+ * full stop to cut at, and React Native's own ellipsis breaks mid-word — which
+ * is what produced "links, rates, services, a…".
+ */
+function tileCopy(text?: string | null, maxChars = 58): string {
+  const value = leadSentence(text);
+  if (value.length <= maxChars) return value;
+  const clipped = value.slice(0, maxChars);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return `${(lastSpace > 20 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:]$/, '')}…`;
+}
+
+/**
+ * One chip per card, and only when it says something the card does not already
+ * show. "Ready" was on almost every tile and carried no information; plugged-in
+ * state is already visible in the icon tint and the tile's accent gradient.
+ * Precedence matters: where a module is both suggested and desktop-only, the
+ * fact that it is not here yet is what a creator needs first.
+ */
+function moduleChip(module: StudioModuleState): { label: string; tone: 'native' | 'limited' | 'web' | 'neutral' } | null {
+  if (module.status === 'web_only') return { label: 'Desktop', tone: 'web' };
+  if (module.status === 'limited') return { label: 'Preview', tone: 'limited' };
+  if (module.recommendedForRole && !module.plugged && !module.alwaysVisible) return { label: 'Suggested', tone: 'limited' };
+  return null;
+}
+
+/**
  * Compact page header for Studio surfaces whose opening block was pure copy.
  *
  * Studio is a workspace: the first screenful belongs to the tools, not to a
@@ -853,11 +895,14 @@ function ActionBoard({ data }: { data: StudioData }) {
                     <MaterialIcons name="north-east" size={18} color={STUDIO.textSubtle} />
                   </View>
                   <Text style={styles.actionBoardTileTitle} numberOfLines={2}>{action.title}</Text>
-                  <Text style={styles.actionBoardTileBody} numberOfLines={2}>{action.detail}</Text>
-                  <StatusChip
-                    label={action.status === 'web_only' ? 'Desktop' : action.status === 'limited' ? 'Preview' : 'Ready'}
-                    tone={action.status === 'native' ? 'native' : 'limited'}
-                  />
+                  <Text style={styles.actionBoardTileBody} numberOfLines={2}>{tileCopy(action.detail)}</Text>
+                  {/* Only flag what is not fully here. "Ready" was on most tiles
+                      and told a creator nothing they could act on. */}
+                  {action.status === 'web_only' ? (
+                    <StatusChip label="Desktop" tone="web" />
+                  ) : action.status === 'limited' ? (
+                    <StatusChip label="Preview" tone="limited" />
+                  ) : null}
                 </LinearGradient>
               </Pressable>
             ))}
@@ -1185,33 +1230,34 @@ function ModuleCard({
   const theme = usePluggdTheme();
   const router = useRouter();
   const canToggle = !module.defaultForRole && !module.alwaysVisible;
-  const statusTone = module.status === 'web_only' ? 'web' : module.status;
-  const statusLabel = module.status === 'web_only' ? 'Desktop' : module.status === 'limited' ? 'Preview' : 'Ready';
+  const chip = moduleChip(module);
   return (
     <View style={[styles.moduleCard, { backgroundColor: theme.colors.surface, borderColor: module.plugged ? theme.colors.borderAccent : theme.colors.border }]}>
       <View style={styles.moduleTop}>
         <View style={[styles.moduleIcon, { backgroundColor: theme.colors.surfaceAlt, borderColor: module.plugged ? theme.colors.borderAccent : theme.colors.border }]}>
           <MaterialIcons name={iconName(module.icon)} size={22} color={module.plugged ? theme.colors.accent : theme.colors.textSecondary} />
+          {/* Apps exists to answer "what is in my Studio", so plugged state needs
+              an affirmative mark — but as an affordance on the icon rather than
+              another chip competing with Preview/Desktop. */}
+          {module.plugged ? (
+            <View style={[styles.modulePluggedMark, { borderColor: theme.colors.surface }]}>
+              <MaterialIcons name="check" size={10} color="#140A03" />
+            </View>
+          ) : null}
         </View>
         <View style={styles.moduleCopy}>
           <View style={styles.moduleTitleRow}>
             <Text style={[styles.moduleTitle, { color: theme.colors.text }]} numberOfLines={1}>{module.title}</Text>
-            {module.recommendedForRole ? <StatusChip label="Recommended" tone="limited" /> : null}
+            {chip ? <StatusChip label={chip.label} tone={chip.tone} /> : null}
           </View>
-          <Text style={[styles.moduleDetail, { color: theme.colors.textMuted }]} numberOfLines={2}>
+          {/* description says what the tool is; addsToStudio restated it in
+              desktop-parity terms, so the card carried two paragraphs saying
+              nearly the same thing. The chip covers the parity half. */}
+          <Text style={[styles.moduleDetail, { color: theme.colors.textMuted }]} numberOfLines={3}>
             {module.description}
           </Text>
         </View>
       </View>
-
-      <View style={styles.moduleMetaRow}>
-        <StatusChip label={module.plugged ? 'Plugged in' : 'Available'} tone={module.plugged ? 'native' : 'neutral'} />
-        <StatusChip label={statusLabel} tone={statusTone} />
-      </View>
-
-      <Text style={[styles.moduleAdds, { color: theme.colors.textSecondary }]} numberOfLines={2}>
-        {module.addsToStudio}
-      </Text>
 
       <View style={styles.moduleButtons}>
         {module.route ? (
@@ -1894,8 +1940,7 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
 function MoreModuleTile({ module }: { module: StudioModuleState }) {
   const router = useRouter();
   const canOpen = Boolean(module.route);
-  const statusTone = module.status === 'web_only' ? 'web' : module.status;
-  const statusLabel = module.status === 'web_only' ? 'Desktop' : module.status === 'limited' ? 'Preview' : 'Ready';
+  const chip = moduleChip(module);
   return (
     <Pressable
       accessibilityRole={canOpen ? 'button' : 'text'}
@@ -1915,14 +1960,15 @@ function MoreModuleTile({ module }: { module: StudioModuleState }) {
           </View>
           {canOpen ? <MaterialIcons name="arrow-outward" size={18} color={STUDIO.textMid} /> : null}
         </View>
-        <Text style={styles.moduleTileTitle} numberOfLines={1}>{module.title}</Text>
+        <Text style={styles.moduleTileTitle} numberOfLines={2}>{module.title}</Text>
         <Text style={styles.moduleTileDetail} numberOfLines={2}>
-          {module.status === 'web_only' ? module.unavailableReason || module.addsToStudio : module.addsToStudio}
+          {tileCopy(module.status === 'web_only' ? module.unavailableReason || module.addsToStudio : module.addsToStudio)}
         </Text>
-        <View style={styles.moduleTileChips}>
-          <StatusChip label={module.plugged || module.alwaysVisible ? 'Active' : 'Suggested'} tone={module.plugged || module.alwaysVisible ? 'native' : 'limited'} />
-          <StatusChip label={statusLabel} tone={statusTone} />
-        </View>
+        {chip ? (
+          <View style={styles.moduleTileChips}>
+            <StatusChip label={chip.label} tone={chip.tone} />
+          </View>
+        ) : null}
       </LinearGradient>
     </Pressable>
   );
@@ -3258,6 +3304,18 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 15,
     borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modulePluggedMark: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    backgroundColor: STUDIO.orange,
     alignItems: 'center',
     justifyContent: 'center',
   },
