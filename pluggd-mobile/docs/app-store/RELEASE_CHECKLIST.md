@@ -5,7 +5,7 @@
 - [x] `npm run verify:mobile`
 - [x] `npx tsc --noEmit`
 - [x] `npx expo-doctor`
-- [x] Root test suite (`52` files / `187` tests)
+- [x] Root test suite (`52` files / `188` tests)
 - [x] Root `npm run build`
 - [x] Supabase edge-function unit tests
 - [x] Production-configured iPhone simulator Release build
@@ -15,6 +15,10 @@
   entitlements were confirmed before installation.
 - [x] Release configuration archive build
 - [x] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
+- [x] Final integrated native Debug build compiles, installs and launches on the
+  iOS 26.2 simulator with the consolidated workspace Metro server.
+- [ ] Archive, upload and process a new signed App Store candidate from the
+  final 6 August commit; processed build `1.0.0 (1)` predates this pass.
 
 ## Production configuration
 
@@ -185,7 +189,10 @@
 - [x] Rights-safe PLUGGD Live Studio screenshot uploaded to the required
   6.5-inch iPhone slot at 1284×2778. It contains no creator artwork, avatars,
   event photography or user content.
-- [x] Processed build `1.0.0 (1)` selected for App Store version 1.0.
+- [x] Processed build `1.0.0 (1)` is currently selected for App Store version
+  1.0 as historical state.
+- [ ] Replace build 1 with the newly processed signed candidate containing the
+  final integrated design, player, Studio and physical-merchandise restrictions.
 - [x] Version release mode set to manual so approval cannot trigger an
   unintended public launch.
 - [x] Free Apps and Paid Apps agreements, bank account, tax forms and Digital

@@ -70,8 +70,8 @@ export default function ProductDetailRoute() {
   const productType = String(product?.product_type || '').toLowerCase();
   const isPhysical = Boolean(product) && (
     product?.source === 'creator_merchandise'
-      ? product.requires_shipping !== false
-      : ['physical', 'merchandise'].includes(productType)
+      ? product.requires_shipping === true
+      : ['physical', 'merchandise', 'physical_merch'].includes(productType)
   );
   const policy = useCommercePolicy(product ? {
     kind: 'physical_merch',

@@ -26,6 +26,8 @@ const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
 const release = read('app/release/[id].tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const store = read('src/features/editorial/MarketStoreScreen.tsx');
+const product = read('app/product/[id].tsx');
 const mobileServices = read('src/features/culture/mobileServices.ts');
 const packageJson = JSON.parse(read('package.json'));
 const adr = read('docs/PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md');
@@ -123,6 +125,23 @@ assert.doesNotMatch(
   hostedCheckout,
   /STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET/,
   'mobile hosted-checkout code must never contain Stripe secrets',
+);
+
+assert.match(
+  store,
+  /\.in\('product_type', \['physical', 'merchandise', 'physical_merch'\]\)/,
+  'iOS Store must exclude legacy digital store products',
+);
+assert.match(
+  store,
+  /\.eq\('requires_shipping', true\)/,
+  'creator merchandise must be explicitly classified for shipping before appearing in the iOS Store',
+);
+assert.doesNotMatch(store, /Shop all/, 'iOS Store must not route a generic purchase CTA into BeatPlug');
+assert.match(
+  product,
+  /product\.requires_shipping === true/,
+  'creator merchandise checkout must fail closed unless physical shipping is explicit',
 );
 
 assert.match(beat, /licenseOptionId/, 'beat detail must route a trusted licence-option identifier');

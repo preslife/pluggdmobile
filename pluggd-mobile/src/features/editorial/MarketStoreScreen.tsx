@@ -40,6 +40,7 @@ type StoreProductRow = {
   price?: number | null;
   product_type?: string | null;
   category?: string | null;
+  requires_shipping?: boolean | null;
   created_at?: string | null;
   source: 'store_products' | 'creator_merchandise';
 };
@@ -138,14 +139,16 @@ export function MarketStoreScreen() {
             .from('store_products')
             .select('id,title,description,image_url,price,product_type,created_at,is_active,stock_quantity')
             .eq('is_active', true)
+            .in('product_type', ['physical', 'merchandise', 'physical_merch'])
             .order('created_at', { ascending: false })
             .limit(12),
         ),
         safeList<any>(
           (supabase as any)
             .from('creator_merchandise')
-            .select('id,title,description,image_url,gallery_images,price,product_type,category,status,created_at,stock_quantity')
+            .select('id,title,description,image_url,gallery_images,price,product_type,category,requires_shipping,status,created_at,stock_quantity')
             .in('status', ['approved', 'active', 'published', 'live'])
+            .eq('requires_shipping', true)
             .order('created_at', { ascending: false })
             .limit(12),
         ),
@@ -204,17 +207,17 @@ export function MarketStoreScreen() {
           <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
           <Text style={styles.heroTitle}>PLUGGD Store</Text>
           <Text style={styles.heroCopy}>
-            Official merch. Creator goods. Exclusive drops. Digital products. Services. Built for the culture.
+            Official merch. Creator goods. Physical drops. Professional services. Built for the culture.
           </Text>
           <View style={styles.heroCtaRow}>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Shop all" onPress={() => router.push('/marketplace' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Explore BeatPlug" onPress={() => router.push('/market/beats' as any)}>
               <View style={styles.heroPrimary}>
-                <Text style={styles.heroPrimaryText}>Shop all</Text>
+                <Text style={styles.heroPrimaryText}>BeatPlug</Text>
               </View>
             </EdPressable>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Browse sample packs" onPress={() => router.push('/sample-packs' as any)}>
               <View style={styles.heroSecondary}>
-                <Text style={styles.heroSecondaryText}>BeatPlug</Text>
+                <Text style={styles.heroSecondaryText}>Sample packs</Text>
               </View>
             </EdPressable>
           </View>

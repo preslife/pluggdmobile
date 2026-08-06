@@ -1,11 +1,13 @@
 # App Store Submission Validation Report
 
-Validated on 2 August 2026 from branch `codex/app-store-submission-final`.
+Validated on 6 August 2026 from branch `codex/app-store-submission-final`.
 
 ## Release verdict
 
-The current branch is visually and structurally ready for final TestFlight
-device validation. The production beat agreements and their formation controls
+The current branch is visually and structurally ready to become the next signed
+TestFlight candidate. The processed App Store build `1.0.0 (1)` predates the
+6 August integrated design and compliance pass and must be replaced before
+submission. The production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
 The App Store Connect metadata package is assembled in one draft. A signed
@@ -16,7 +18,8 @@ to press final submission. A physical creator-membership purchase, its initial
 creator/tier mapping, eleven accelerated sandbox renewals and normal expiry are
 now verified end-to-end. Restore Purchases, billing retry, refund and revoke
 remain deliberate Sandbox Apple Account gates, alongside the other unchecked
-items in the release checklist.
+items in the release checklist. Those gates must be exercised against the new
+candidate build.
 
 ## Current verified gates
 
@@ -24,13 +27,16 @@ items in the release checklist.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
-- The root suite passes all 52 files and 187 tests. Focused licensing and
+- The root suite passes all 52 files and 188 tests. Focused licensing and
   hybrid-commerce tests pass 5 files / 45 tests.
 - The root Vite production build succeeds. Its existing dependency, browser
   data and large-chunk warnings remain non-blocking technical debt.
 - A production-configured Release build installs and launches on the iPhone 17
   Pro Max simulator after the final accessibility and image-fallback changes.
 - `git diff --check` passes.
+- The complete Claude visual sequence (`claude/pluggd-aaa-pass` followed by
+  `claude/studio-compact-headers`) is integrated after the existing submission
+  fixes, with no merge into `main`.
 - Production's legacy creator/label-only profile constraint was found during
   reviewer provisioning, expanded to the mobile ecosystem-role set and guarded
   by `verify-mobile-role-schema-contract.mjs`.
@@ -90,6 +96,17 @@ items in the release checklist.
 
 ## Final product, visual and accessibility verification
 
+- A fresh 6 August native simulator audit in
+  `artifacts/qa/final-aaa-2026-08-06/` covers Home, Discover, Community,
+  Events, Store, account, Studio Home/Create, Split Engine, mini-player, full
+  player, THE PLUG and the Listening Floor. The simulator initially exposed a
+  stale Metro server from Claude's worktree; it was replaced with the
+  consolidated branch before the final Store capture and release verification.
+- The iOS Store now lists only official products explicitly typed as physical
+  merchandise and creator merchandise explicitly marked for shipping. Legacy
+  digital catalogue rows remain excluded, paid digital sample packs remain
+  browse-only, and product detail checkout fails closed unless physical
+  classification is explicit.
 - 110 simulator captures in `artifacts/qa/final-aaa-pass-2026-08-01/` cover
   public discovery, media detail, fan account, creator Studio, commerce,
   editorial, Community, Connect Card, Live, auth, safety and recovery states.
@@ -225,27 +242,31 @@ items in the release checklist.
 
 ## Submission blockers still open
 
-1. Complete creator-membership Restore Purchases on the signed device without
+1. Produce, upload and process a new signed App Store build from the final
+   6 August commit, then replace build `1.0.0 (1)` on the version draft. Build 1
+   is valid historical evidence but does not contain the integrated AAA pass or
+   the final physical-merchandise Store restriction.
+2. Complete creator-membership Restore Purchases on the signed device without
    duplicating the existing entitlement. Initial purchase, creator/tier mapping,
    eleven renewals and expiry are green.
-2. Exercise transaction-backed billing-retry, refund and revoke subscription
+3. Exercise transaction-backed billing-retry, refund and revoke subscription
    notifications. The standalone Apple sandbox test, initial purchase,
    renewals and voluntary expiry are already green.
-3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
-4. Provision a real organiser-approved physical paid-ticket tier before testing
+4. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
+5. Provision a real organiser-approved physical paid-ticket tier before testing
    ticket checkout; production currently contains none and the app correctly
    fails closed.
-5. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
+6. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-6. Accept the internal TestFlight invitation, install build `1.0.0 (1)`, and
+7. Accept the internal TestFlight invitation, install the new candidate, and
    complete the remaining signed TestFlight device interactions: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix. Signed Release installation, launch,
    hardware Home rendering and native Apple authentication are already verified
    on the registered iPhone 15 Pro Max.
-7. Resolve the Apple Developer membership renewal payment-method warning.
+8. Resolve the Apple Developer membership renewal payment-method warning.
 
 The 1 August Safari audit authenticated the ROWSON GROUP LTD account and
 verified PLUGGD's live version, build and complete review draft. Apple pages
