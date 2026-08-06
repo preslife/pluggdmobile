@@ -193,42 +193,56 @@ export function buildHomeSignals(
   communities: BackstageCommunity[],
 ): HomeSignalItem[] {
   const signals: HomeSignalItem[] = [];
-  liveRooms
-    .filter((room) => room.status === 'live')
-    .slice(0, 2)
-    .forEach((room) => signals.push({ id: `live:${room.id}`, label: `${room.title || 'A PLUGGD room'} is live now` }));
-  (bundle?.releases ?? []).slice(0, 3).forEach((release) => {
+
+  // Match the live web home: one current signal from each PLUGGD world,
+  // rather than letting the first few releases consume the entire marquee.
+  // FeedBundle is backed by the same production content tables, while keeping
+  // the mobile safeguard that excludes metadata-only catalogue releases.
+  const release = bundle?.releases?.[0];
+  if (release) {
     signals.push({
       id: `release:${release.id}`,
       label: `${release.artist || 'A creator'} released ${release.title || 'new music'}`,
     });
-  });
-  (bundle?.beats ?? []).slice(0, 1).forEach((beat) => {
-    signals.push({
-      id: `beat:${beat.id}`,
-      label: `${beat.producer_name || 'A producer'} shared ${beat.title || 'a new beat'}`,
-    });
-  });
-  (bundle?.soundboards ?? []).slice(0, 1).forEach((board) => {
+  }
+
+  const liveRoom = liveRooms.find((room) => room.status === 'live');
+  if (liveRoom) {
+    signals.push({ id: `live:${liveRoom.id}`, label: `${liveRoom.title || 'A PLUGGD room'} is live now` });
+  }
+
+  const board = bundle?.soundboards?.[0];
+  if (board) {
     signals.push({
       id: `soundboard:${board.id}`,
       label: `${board.title || 'A soundboard'} is building in public`,
     });
-  });
-  (bundle?.events ?? []).slice(0, 2).forEach((event) => {
+  }
+
+  const event = bundle?.events?.[0];
+  if (event) {
     const timing = startsInLabel(event.starts_at);
     signals.push({
       id: `event:${event.id}`,
       label: timing ? `${event.title || 'A PLUGGD event'} ${timing}` : `${event.title || 'A PLUGGD event'} is upcoming`,
     });
-  });
-  communities
-    .filter((community) => community.cover_image_url || community.avatar_url)
-    .slice(0, 1)
-    .forEach((community) => signals.push({ id: `community:${community.id}`, label: `${community.title} room is open` }));
+  }
+
+  const community = communities.find((item) => item.cover_image_url || item.avatar_url) ?? communities[0];
+  if (community) {
+    signals.push({ id: `community:${community.id}`, label: `${community.title} room is open` });
+  }
+
+  const beat = bundle?.beats?.[0];
+  if (beat) {
+    signals.push({
+      id: `beat:${beat.id}`,
+      label: `${beat.producer_name || 'A producer'} shared ${beat.title || 'a new beat'}`,
+    });
+  }
 
   const unique = new Map(signals.map((signal) => [signal.label.toLowerCase(), signal]));
-  return [...unique.values()].slice(0, 8);
+  return [...unique.values()].slice(0, 6);
 }
 
 export function buildNextWaveItems(

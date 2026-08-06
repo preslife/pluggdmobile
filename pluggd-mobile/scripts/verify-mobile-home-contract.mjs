@@ -24,6 +24,8 @@ assert.match(home, /playQueue/, 'Home music choices must start the shared playba
 assert.match(home, /minHeight: 44/, 'Home primary controls must preserve 44pt touch targets');
 assert.match(home, /maxFontSizeMultiplier=\{1\.35\}[\s\S]*The Daily Plug/, 'Home display type must stay composed at accessibility sizes');
 assert.match(read('components/LiveTicker.tsx'), /maxFontSizeMultiplier=\{1\.3\}/, 'the fixed-height live ticker must remain legible without clipping at accessibility sizes');
+assert.match(read('components/LiveTicker.tsx'), /styles\.tickerSet[\s\S]*setWidth\(event\.nativeEvent\.layout\.width\)[\s\S]*<TickerSet items=\{visibleItems\} hidden/, 'ticker loop must measure and repeat the complete signal set rather than a constrained text fragment');
+assert.match(read('src/features/home/homeDiscoveryData.ts'), /const release = bundle\?\.releases\?\.\[0\][\s\S]*const liveRoom[\s\S]*const board[\s\S]*const event[\s\S]*const community[\s\S]*const beat/, 'home ticker must mirror the web signal mix instead of being dominated by releases');
 assert.ok(
   home.indexOf('{signals.length ? <LiveTicker') > 0 &&
     home.indexOf('{signals.length ? <LiveTicker') < home.indexOf('{featured ? ('),
