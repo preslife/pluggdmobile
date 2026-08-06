@@ -55,9 +55,9 @@ export function isBottomChromeHidden(pathname: string | null | undefined): boole
  * Keep in sync with GlassDock and GlassMiniPlayer.
  */
 export const BOTTOM_CHROME = {
-  /** GlassDock: wrap paddingTop (5) + dockShell height (60). */
+  /** GlassDock controls: wrap paddingTop (5) + tab row height (60). */
   dock: 65,
-  /** GlassDock bottomInset floor when the device reports no safe area. */
+  /** GlassDock material extends through this safe-area inset to the screen edge. */
   dockInsetFloor: 18,
   /** GlassMiniPlayer expanded card height. */
   miniPlayer: 122,

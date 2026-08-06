@@ -45,7 +45,11 @@ type StoreProductRow = {
   source: 'store_products' | 'creator_merchandise';
 };
 
-const TRUST_CHIPS = ['Worldwide shipping', 'Secure payments', 'Support creators'] as const;
+const STORE_PROMISES = [
+  { label: 'Worldwide', icon: 'public' },
+  { label: 'Secure checkout', icon: 'lock-outline' },
+  { label: 'Creator-led', icon: 'favorite-border' },
+] as const;
 
 const SERVICES = [
   { key: 'production', icon: 'multitrack-audio', title: 'Music Production', copy: 'Custom tracks, beat edits and session-ready production.', price: 'From £250' },
@@ -207,7 +211,7 @@ export function MarketStoreScreen() {
           <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
           <Text style={styles.heroTitle}>PLUGGD Store</Text>
           <Text style={styles.heroCopy}>
-            Official merch. Creator goods. Physical drops. Professional services. Built for the culture.
+            Official merch, creator drops and professional services—built for the culture.
           </Text>
           <View style={styles.heroCtaRow}>
             <EdPressable accessibilityRole="button" accessibilityLabel="Explore BeatPlug" onPress={() => router.push('/market/beats' as any)}>
@@ -221,15 +225,12 @@ export function MarketStoreScreen() {
               </View>
             </EdPressable>
           </View>
-          <View style={styles.trustRow}>
-            {TRUST_CHIPS.map((chip) => (
-              <View key={chip} style={styles.trustChip}>
-                <MaterialIcons
-                  name={chip === 'Worldwide shipping' ? 'public' : chip === 'Secure payments' ? 'lock-outline' : 'favorite-border'}
-                  size={12.5}
-                  color="rgba(255,248,237,0.7)"
-                />
-                <Text style={styles.trustChipText}>{chip}</Text>
+          <View style={styles.trustBar}>
+            {STORE_PROMISES.map((promise, index) => (
+              <View key={promise.label} style={styles.trustItem}>
+                {index > 0 ? <View style={styles.trustDivider} /> : null}
+                <MaterialIcons name={promise.icon} size={13} color={ed.orange} />
+                <Text style={styles.trustItemText} numberOfLines={1} maxFontSizeMultiplier={1}>{promise.label}</Text>
               </View>
             ))}
           </View>
@@ -268,7 +269,7 @@ export function MarketStoreScreen() {
               </View>
             </EdPressable>
           ) : (
-            <EmptyPanel title="No featured merch yet" copy="Approved merch will appear here once it is published." />
+            <EmptyPanel title="New merch is on the way" copy="Fresh official drops will land here as they go live." />
           )}
         </View>
 
@@ -300,7 +301,7 @@ export function MarketStoreScreen() {
               </View>
             </EdPressable>
           ) : (
-            <EmptyPanel title="Drops coming soon" copy="Limited Store drops will be curated here." />
+            <EmptyPanel title="Drops coming soon" copy="Limited editions and new releases will land here." />
           )}
         </View>
 
@@ -319,8 +320,8 @@ export function MarketStoreScreen() {
             </ScrollView>
           ) : (
             <EmptyPanel
-              title="Creator shops are being approved"
-              copy="Approved creator merchandise will appear here without duplicating releases or BeatPlug."
+              title="Creator shops are opening soon"
+              copy="Fresh creator-made goods and limited drops will land here."
             />
           )}
         </View>
@@ -445,18 +446,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroSecondaryText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.cream },
-  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  trustChip: {
+  trustBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
+    minHeight: 42,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,248,237,0.25)',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    borderColor: 'rgba(255,248,237,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    paddingHorizontal: 9,
+    marginTop: 5,
   },
-  trustChipText: { fontFamily: edFonts.bodyBold, fontSize: 11, color: 'rgba(255,248,237,0.75)' },
+  trustItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, position: 'relative' },
+  trustDivider: { position: 'absolute', left: 0, width: StyleSheet.hairlineWidth, height: 18, backgroundColor: 'rgba(255,248,237,0.15)' },
+  trustItemText: { flexShrink: 1, fontFamily: edFonts.bodyBold, fontSize: 10.5, color: 'rgba(255,248,237,0.76)' },
 
   sectionEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: ed.orange },
   sectionTitle: { fontFamily: edFonts.serif, fontSize: 27, lineHeight: 30, color: ed.cream },

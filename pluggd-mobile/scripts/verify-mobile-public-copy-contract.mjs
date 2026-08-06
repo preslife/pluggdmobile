@@ -29,6 +29,14 @@ const banned = [
   /\bcontract\b/i,
   /\bfaked\b/i,
   /\bweb app\b/i,
+  /\binternal\b/i,
+  /\bimplementation\b/i,
+  /\bmigration\b/i,
+  /\bdebug(?:ging)?\b/i,
+  /\bsandbox\b/i,
+  /\btest mode\b/i,
+  /\bpolicy resolution\b/i,
+  /\bfail(?:s|ed|ing)? closed\b/i,
 ];
 
 const ignoredFiles = new Set([

@@ -23,7 +23,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { EventsMap } from '../../../components/EventsMap';
 import { ed, edFonts } from '../../design/editorial';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
-import { geocodeMany, type MapPoint } from '../../lib/mapbox';
+import { geocodeMany, type EventMapPoint } from '../../lib/mapbox';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type EventItem } from '../../lib/mobileContent';
@@ -399,6 +399,7 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
 
 export function EventsBoardScreen() {
   const bottomInset = useBottomChromeInset();
+  const router = useRouter();
   const theme = usePluggdTheme();
   // The web /events page is hybrid in light mode: the header block stays a
   // dark card while the list, filters and panels go light.
@@ -446,14 +447,24 @@ export function EventsBoardScreen() {
   );
 
   const mapQuery = useQuery({
-    queryKey: ['events-board', 'map-points', events.length],
-    enabled: mode === 'map' && events.length > 0,
-    queryFn: async (): Promise<MapPoint[]> => {
-      const geo = await geocodeMany(events.map((event) => (event.location || '').trim()).filter(Boolean));
-      return events
-        .map((event) => (event.location ? geo.get(event.location.trim()) : null))
-        .filter((hit): hit is NonNullable<typeof hit> => Boolean(hit))
-        .map((hit) => ({ lat: hit.lat, lng: hit.lng }));
+    queryKey: ['events-board', 'map-points', category, filtered.map((event) => event.id).join(',')],
+    enabled: mode === 'map' && filtered.length > 0,
+    queryFn: async (): Promise<EventMapPoint[]> => {
+      const geo = await geocodeMany(filtered.map((event) => (event.location || '').trim()).filter(Boolean));
+      return filtered.flatMap((event) => {
+        const hit = event.location ? geo.get(event.location.trim()) : null;
+        if (!hit) return [];
+        return [{
+          id: event.id,
+          title: event.title || 'Upcoming event',
+          coverImage: event.cover_image_url,
+          location: event.location,
+          startsAt: event.starts_at,
+          priceCents: event.price_cents,
+          lat: hit.lat,
+          lng: hit.lng,
+        }];
+      });
     },
     staleTime: 1000 * 60 * 10,
   });
@@ -489,13 +500,13 @@ export function EventsBoardScreen() {
         {/* Header — stays a dark board card in light mode, like the web */}
         <Enter delay={0}>
         <View style={light ? styles.headerBoardLight : null}>
-        <View style={styles.eventHeadingRow}>
-          <View style={{ flex: 1, gap: 5 }}>
+        <View style={{ gap: 7 }}>
+          <View style={styles.eventHeadingRow}>
             <Text style={styles.eyebrow}>LIVE CULTURE · EVENTS</Text>
-            <Text style={styles.pageTitle}>Go where the sound is.</Text>
-            <Text style={styles.pageSub}>Shows, sessions and scene-defining nights near you.</Text>
+            <View style={styles.calendarMark}><MaterialIcons name="event" size={20} color={ed.orange} /></View>
           </View>
-          <View style={styles.calendarMark}><MaterialIcons name="event" size={23} color={ed.orange} /></View>
+          <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.84}>Find your next night.</Text>
+          <Text style={styles.pageSub}>Live shows, sessions and scene-defining nights near you.</Text>
         </View>
 
         {/* Browse / Map toggle */}
@@ -538,7 +549,12 @@ export function EventsBoardScreen() {
         </ScrollView>
 
         {mode === 'map' ? (
-          <EventsMap points={mapQuery.data ?? []} count={filtered.length} />
+          <EventsMap
+            points={mapQuery.data ?? []}
+            count={filtered.length}
+            loading={mapQuery.isLoading}
+            onSelectEvent={(id) => router.push(`/events/${id}` as any)}
+          />
         ) : eventsQuery.isLoading ? (
           <PremiumSkeleton compact label="Loading events..." />
         ) : filtered.length ? (
@@ -603,9 +619,9 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 12, letterSpacing: 1.6, color: ed.orange },
-  eventHeadingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  calendarMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: 'rgba(255,248,237,0.2)', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  pageTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: '#fff8ed' },
+  eventHeadingRow: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14 },
+  calendarMark: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: 'rgba(255,248,237,0.2)', alignItems: 'center', justifyContent: 'center' },
+  pageTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 31, lineHeight: 35, letterSpacing: -1.05, color: '#fff8ed' },
   pageSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.66)' },
 
   toggleRow: { flexDirection: 'row', gap: 10 },

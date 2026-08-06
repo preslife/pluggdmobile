@@ -3,18 +3,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { selectionHaptic } from '../src/design/haptics';
 import { pluggdFonts } from '../src/design/typography';
-import { staticMapUrl, type MapPoint } from '../src/lib/mapbox';
+import { staticMapUrl, type EventMapPoint, type MapPoint } from '../src/lib/mapbox';
 
-/**
- * EVT-02 events map (first pass). Renders a real branded Mapbox dark-v11 map with
- * orange pins via the Static Images API — a plain <Image>, so it works on web and
- * native with no native module. Falls back to a branded placeholder when there is
- * no Mapbox token or no geocoded points yet. An interactive @rnmapbox MapView is
- * the later upgrade for pan/zoom + tappable pins.
- */
-export function EventsMap({ points, count, onPress }: { points: MapPoint[]; count?: number; onPress?: () => void }) {
+/** Browser fallback for the interactive native Events map. */
+export function EventsMap({
+  points,
+  count,
+  loading = false,
+  onSelectEvent,
+  onPress,
+}: {
+  points: Array<EventMapPoint | MapPoint>;
+  count?: number;
+  loading?: boolean;
+  onSelectEvent?: (id: string) => void;
+  onPress?: () => void;
+}) {
   const url = staticMapUrl(points, { width: 680, height: 320 });
   const pinCount = count ?? points.length;
+  const firstEvent = points[0] && 'id' in points[0] ? points[0] : null;
+  const canOpen = Boolean(onPress || (firstEvent && onSelectEvent));
 
   const body = url ? (
     <>
@@ -31,9 +39,9 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
           <MaterialIcons name="place" size={14} color="#FFFFFF" />
           <Text style={styles.chipText}>{pinCount} pinned by location</Text>
         </View>
-        {onPress ? (
+        {canOpen ? (
           <View style={styles.openChip}>
-            <Text style={styles.openText}>Browse</Text>
+            <Text style={styles.openText}>View first event</Text>
             <MaterialIcons name="arrow-forward" size={14} color="#0E0E12" />
           </View>
         ) : null}
@@ -48,13 +56,13 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
         <MaterialIcons name="map" size={26} color="#ff6600" />
         <Text style={styles.fallbackTitle}>Events map</Text>
         <Text style={styles.fallbackCopy} numberOfLines={2}>
-          {pinCount > 0 ? `${pinCount} upcoming events across the scene` : 'Upcoming events will pin here by location'}
+          {loading ? 'Pinning venues and locations…' : pinCount > 0 ? `${pinCount} upcoming events across the scene` : 'Events with confirmed locations will appear here'}
         </Text>
       </View>
     </>
   );
 
-  if (!onPress) {
+  if (!canOpen) {
     return (
       <View accessible accessibilityRole="image" accessibilityLabel="Map of upcoming events" style={styles.card}>
         {body}
@@ -65,10 +73,11 @@ export function EventsMap({ points, count, onPress }: { points: MapPoint[]; coun
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Open the events map"
+      accessibilityLabel={firstEvent ? `View ${firstEvent.title}` : 'Browse events'}
       onPress={() => {
         selectionHaptic();
-        onPress();
+        if (firstEvent && onSelectEvent) onSelectEvent(firstEvent.id);
+        else onPress?.();
       }}
       style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >

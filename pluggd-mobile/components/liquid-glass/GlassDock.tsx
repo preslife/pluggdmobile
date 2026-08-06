@@ -20,9 +20,9 @@ type GlassDockProps = {
 
 export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
   return (
-    <View style={[styles.wrap, { paddingBottom: bottomInset }]}>
+    <View style={styles.wrap}>
       <LiftSurface depth="normal">
-        <View style={styles.dockShell}>
+        <View style={[styles.dockShell, { height: 60 + bottomInset }]}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <GlassPanel intensity="subtle" radius={liquidGlassRadii.xxl} style={styles.dock} />
           </View>
@@ -93,7 +93,7 @@ const webOrbLift = Platform.select({
 const styles = StyleSheet.create({
   wrap: {
     paddingTop: 5,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   dockShell: {
     height: 60,
