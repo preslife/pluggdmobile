@@ -425,7 +425,7 @@ function FeedPostCard({ post, release, event }: { post: SocialPostItem; release?
       {release ? <ReleaseEmbed release={release} /> : null}
       {event ? <EventCultureCard event={event} compact /> : null}
       <View style={styles.socialActions}>
-        <SocialAction icon="chat-bubble-outline" label="Comment" onPress={() => router.push('/backstage' as any)} />
+        <SocialAction icon="chat-bubble-outline" label="Comment" onPress={() => router.push(`/post/${post.id}` as any)} />
         <SocialAction icon="repeat" label="Repost" onPress={impactHaptic} />
         <SocialAction icon="favorite-border" label="Like" onPress={impactHaptic} />
         <SocialAction icon="ios-share" label="Share" onPress={sharePost} />
@@ -548,6 +548,11 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
   const router = useRouter();
   const { playTrack } = usePlayback();
   const track = item.release ? toTrack(item.release, 'release') : item.mix ? toTrack(item.mix, 'mix') : null;
+  const creatorRoute = item.release
+    ? `/release/${item.release.id}`
+    : item.mix
+      ? `/mixes/${item.mix.id}`
+      : '/community';
 
   const play = () => {
     if (!track) return;
@@ -563,7 +568,7 @@ function StageLoopPane({ item, event, height }: { item: StageMediaItem; event?: 
         <Text style={styles.stageTopText}>STAGE</Text>
       </View>
       <View style={styles.stageControlChain}>
-        <Pressable accessibilityRole="button" style={styles.creatorPortal} onPress={() => router.push('/backstage' as any)}>
+        <Pressable accessibilityRole="button" style={styles.creatorPortal} onPress={() => router.push(creatorRoute as any)}>
           <View style={styles.creatorPortalRing}>
             <Artwork uri={item.image_url} fallback={item.creator} size={48} />
           </View>
@@ -896,7 +901,7 @@ function TimelinePostCard({
         </Pressable>
       ) : null}
       <View style={styles.timelineFooter}>
-        <SocialAction icon="chat-bubble-outline" label="48" onPress={() => router.push('/backstage' as any)} />
+        <SocialAction icon="chat-bubble-outline" label="48" onPress={() => router.push(post?.id ? `/post/${post.id}` as any : '/community' as any)} />
         <SocialAction icon="repeat" label="18" onPress={impactHaptic} />
         <SocialAction icon="favorite-border" label="512" onPress={impactHaptic} />
         <SocialAction

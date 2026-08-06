@@ -162,7 +162,7 @@ export default function SocialPostDetailRoute() {
             <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.headerTitle}>Post</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open Community" style={styles.backButton} onPress={() => router.push('/backstage' as any)}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open Community" style={styles.backButton} onPress={() => router.push('/community' as any)}>
             <MaterialIcons name="forum" size={21} color="#FFFFFF" />
           </Pressable>
         </View>

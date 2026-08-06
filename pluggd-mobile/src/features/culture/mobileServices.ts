@@ -354,7 +354,7 @@ function mapThread(row: any): BackstageThread {
     attached_release_id: row.attached_release_id ?? null,
     attached_event_id: row.attached_event_id ?? null,
     community_id: row.community_id ?? null,
-    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/backstage',
+    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/community',
   };
 }
 

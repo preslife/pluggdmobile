@@ -434,11 +434,17 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
 function EmptyInline({ title, body, primary, onPrimary }: { title: string; body: string; primary?: string; onPrimary?: () => void }) {
   return (
     <View style={styles.emptyInline}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
+      <View style={styles.emptyInlineIcon}>
+        <MaterialIcons name="graphic-eq" size={20} color={COLORS.orange} />
+      </View>
+      <View style={styles.emptyInlineCopy}>
+        <Text style={styles.emptyTitle}>{title}</Text>
+        <Text style={styles.emptyBody}>{body}</Text>
+      </View>
       {primary && onPrimary ? (
         <Pressable accessibilityRole="button" onPress={onPrimary} style={styles.emptyAction}>
           <Text style={styles.emptyActionText}>{primary}</Text>
+          <MaterialIcons name="arrow-forward" size={17} color={COLORS.canvas} />
         </Pressable>
       ) : null}
     </View>
@@ -500,6 +506,17 @@ function FocusCard({
         : "See what's coming up or replay recent sessions.";
     return (
       <View style={styles.focusEmpty}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(255,102,0,0.19)', 'rgba(255,102,0,0.025)', 'rgba(255,255,255,0.015)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.focusEmptySignal}>
+          <MaterialIcons name="sensors" size={26} color={COLORS.orange} />
+        </View>
+        <Text style={styles.focusEmptyEyebrow}>YOUR LIVE SIGNAL</Text>
         <Text style={styles.focusEmptyTitle}>{emptyTitle}</Text>
         <Text style={styles.focusEmptyBody}>{emptyBody}</Text>
         <View style={styles.focusEmptyActions}>
@@ -894,7 +911,7 @@ export function LiveCultureScreen() {
   );
   const loading = roomsQuery.isLoading || eventsQuery.isLoading || backstageQuery.isLoading || homeQuery.isLoading;
   const refreshing = roomsQuery.isRefetching || eventsQuery.isRefetching || backstageQuery.isRefetching || homeQuery.isRefetching || remindersQuery.isRefetching;
-  const focusHeight = Math.min(340, Math.max(280, width * 0.78));
+  const focusHeight = focus ? Math.min(340, Math.max(280, width * 0.78)) : 224;
   const bottomPadding = Math.max(insets.bottom + 154, 176);
 
   useEffect(() => {
@@ -1062,24 +1079,26 @@ export function LiveCultureScreen() {
 
         <LiveSwipeEntry rooms={liveNow} onPress={() => router.push('/live/feed' as any)} />
 
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="UPCOMING LIVE SESSIONS" />
-          {upcomingRooms.length === 0 ? (
-            <EmptyInline title="Nothing scheduled yet" body="Follow creators to see their next live sessions here." primary="Find creators" onPrimary={() => router.push('/search' as any)} />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.upcomingShelf}>
-              {upcomingRooms.slice(0, 10).map((room) => (
-                <UpcomingSessionCard
-                  key={room.id}
-                  room={room}
-                  reminded={isRoomReminded(room)}
-                  onToggleReminder={() => { void toggleRoomReminder(room); }}
-                  onOpen={() => openRoom(room)}
-                />
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {upcomingRooms.length > 0 || activeFilter !== 'Upcoming' ? (
+          <View style={styles.sectionBlock}>
+            <SectionHeader title="UPCOMING LIVE SESSIONS" />
+            {upcomingRooms.length === 0 ? (
+              <EmptyInline title="Nothing scheduled yet" body="Follow creators to see their next live sessions here." primary="Find creators" onPrimary={() => router.push('/search' as any)} />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.upcomingShelf}>
+                {upcomingRooms.slice(0, 10).map((room) => (
+                  <UpcomingSessionCard
+                    key={room.id}
+                    room={room}
+                    reminded={isRoomReminded(room)}
+                    onToggleReminder={() => { void toggleRoomReminder(room); }}
+                    onOpen={() => openRoom(room)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        ) : null}
 
         <View style={styles.sectionBlock}>
           <SectionHeader title="COMMUNITY ROOMS" />
@@ -1320,8 +1339,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 22,
+    padding: 20,
+    overflow: 'hidden',
   },
+  focusEmptySignal: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,102,0,0.42)', backgroundColor: 'rgba(255,102,0,0.12)' },
+  focusEmptyEyebrow: { marginTop: 12, color: COLORS.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, lineHeight: 13, letterSpacing: 1.8 },
   focusEmptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 22, lineHeight: 26, textAlign: 'center' },
   focusEmptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 8, color: COLORS.muted, fontSize: 14, lineHeight: 20, fontWeight: '600', textAlign: 'center' },
   focusEmptyActions: { marginTop: 18, flexDirection: 'row', gap: 10 },
@@ -1480,17 +1502,21 @@ const styles = StyleSheet.create({
   followTextOn: { color: COLORS.orange },
   emptyInline: {
     marginHorizontal: 16,
-    minHeight: 104,
+    minHeight: 92,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.surface2,
     backgroundColor: COLORS.surface,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    gap: 12,
   },
-  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
-  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 6, color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600', textAlign: 'center' },
-  emptyAction: { marginTop: 12, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, backgroundColor: COLORS.orange },
+  emptyInlineIcon: { width: 42, height: 42, borderRadius: 13, flexShrink: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,102,0,0.11)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.24)' },
+  emptyInlineCopy: { flex: 1, minWidth: 0 },
+  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19 },
+  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 4, color: COLORS.muted, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  emptyAction: { minHeight: 44, borderRadius: 22, flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 15, backgroundColor: COLORS.orange },
   emptyActionText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 13 },
 });

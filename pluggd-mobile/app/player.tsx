@@ -55,6 +55,11 @@ export default function PlayerScreen() {
         ? `/beat/${currentTrack.beatId}`
         : null;
   const sourceLabel = currentTrack?.mixId ? 'mix' : currentTrack?.beatId ? 'beat' : 'release';
+  const sceneRoute = currentTrack?.backstageRoute
+    || (currentTrack?.backstageId ? `/backstage/${currentTrack.backstageId}` : '/community');
+  const talkRoute = currentTrack?.releaseId
+    ? `/release/${currentTrack.releaseId}?focus=comments`
+    : '/community?filter=threads';
 
   const handleScrub = (event: any) => {
     if (!progress.duration) return;
@@ -280,8 +285,8 @@ export default function PlayerScreen() {
         </View>
 
         <View style={styles.actionRow}>
-          <PlayerAction icon="forum" label="Scene" accessibilityLabel="Community" onPress={() => router.push('/backstage' as any)} />
-          <PlayerAction icon="chat-bubble-outline" label="Talk" accessibilityLabel="Comments" onPress={() => router.push('/backstage' as any)} />
+          <PlayerAction icon="groups" label="Scene" accessibilityLabel="Open track community" onPress={() => router.push(sceneRoute as any)} />
+          <PlayerAction icon="chat-bubble-outline" label="Talk" accessibilityLabel="Open track comments" onPress={() => router.push(talkRoute as any)} />
           <PlayerAction icon="playlist-add" label="Queue" onPress={() => scrollRef.current?.scrollTo({ y: queueOffset.current, animated: true })} />
         </View>
 

@@ -32,6 +32,8 @@ export default function MiniPlayer() {
   } = usePlayback();
   const [collapsed, setCollapsed] = useState(false);
   const [savedLocally, setSavedLocally] = useState(false);
+  // Native builds must never invent a current track. The fixture remains
+  // opt-in on web for screenshot QA via ?qaPlayer=1/localStorage only.
   const [qaPlayerEnabled, setQaPlayerEnabled] = useState(false);
   const [qaPlaying, setQaPlaying] = useState(true);
 

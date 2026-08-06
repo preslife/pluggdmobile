@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
 import { selectionHaptic } from '../src/design/haptics';
 import { pluggdTextStyles } from '../src/design/typography';
@@ -98,6 +99,7 @@ export function AccountMenuButton({
   context = 'app',
 }: AccountMenuButtonProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const theme = usePluggdTheme();
   const [open, setOpen] = useState(false);
@@ -197,13 +199,27 @@ export function AccountMenuButton({
         {children(identity)}
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        presentationStyle="overFullScreen"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable accessible={false} style={styles.modalBackdrop} onPress={() => setOpen(false)}>
-          <Pressable accessible={false} onPress={(event) => event.stopPropagation()}>
+          <Pressable
+            accessible={false}
+            style={[styles.sheetFrame, { paddingTop: Math.max(insets.top + 8, 18) }]}
+            onPress={(event) => event.stopPropagation()}
+          >
             <GlassSheet
               title="Account"
               subtitle={creatorAccess ? 'Your creator tools, public presence and account.' : 'Your profile, collection, access and account.'}
               scroll
+              fullHeight
+              onClose={() => setOpen(false)}
             >
               <View style={styles.accountHeader}>
                 <GlassAvatar imageUrl={profile?.avatar_url} name={displayName || avatarInitial} size={50} tone="accent" />
@@ -250,6 +266,7 @@ export function AccountMenuButton({
 
 const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' },
+  sheetFrame: { flex: 1, width: '100%' },
   accountHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   accountCopy: { flex: 1, minWidth: 0 },
   accountName: { ...pluggdTextStyles.secondaryHeading, fontSize: 18 },

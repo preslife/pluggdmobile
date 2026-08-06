@@ -65,6 +65,12 @@ assert.match(screen, /kind="the_plug"/, 'Community must place THE PLUG inside th
 assert.match(service, /loadMobileSocialFeed\(\{ mode: 'latest'/, 'Community must request the latest social feed instead of an opaque ranked order');
 assert.match(service, /orderCommunityPostsNewestFirst/, 'Community must defensively keep posts newest-first after enrichment');
 assert.match(service, /createdAtMs\(right\) - createdAtMs\(left\)/, 'Community ordering must compare post timestamps in descending order');
+assert.ok(
+  screen.indexOf('<MobileStoriesRail') > 0 &&
+    screen.indexOf('<MobileStoriesRail') < screen.indexOf('<CommunityComposer') &&
+    screen.indexOf('<CommunityComposer') < screen.indexOf('<MobileSocialPostCard'),
+  'Community must lead with stories, then the composer, before the social feed',
+);
 
 for (const token of [
   'loadMobileSocialFeed',

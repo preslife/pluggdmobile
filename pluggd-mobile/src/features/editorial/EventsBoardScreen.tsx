@@ -358,23 +358,31 @@ function FullEventCards({ events, lp }: { events: EventItem[]; lp: LightPal }) {
                 accessibilityRole="button"
                 accessibilityLabel={`Get tickets for ${event.title || 'event'}`}
                 onPress={() => router.push(`/events/${event.id}` as any)}
-                style={{ flex: 1 }}
+                style={styles.fullPrimaryPressable}
               >
                 <View style={styles.getTicketsCta}>
-                  <Text style={styles.getTicketsText}>
+                  <View style={styles.getTicketsLabelRow}>
+                    <MaterialIcons
+                      name={Number(event.price_cents ?? 0) > 0 ? 'confirmation-number' : 'event-available'}
+                      size={20}
+                      color="#3a1c04"
+                    />
+                    <Text style={styles.getTicketsText} numberOfLines={1}>
                     {Number(event.price_cents ?? 0) > 0 ? `Get Tickets · ${formatGBP(event.price_cents, { cents: true })}` : 'RSVP'}
-                  </Text>
+                    </Text>
+                  </View>
+                  <MaterialIcons name="arrow-forward" size={21} color="#3a1c04" />
                 </View>
               </EdPressable>
               <EdPressable
                 accessibilityRole="button"
                 accessibilityLabel={`Ticket link for ${event.title || 'event'}`}
                 onPress={() => router.push(`/events/${event.id}` as any)}
-                style={{ flex: 1 }}
+                style={styles.fullSecondaryPressable}
               >
-                <View style={[styles.ticketLinkCta, lp.light && { backgroundColor: '#ffffff', borderColor: 'rgba(91,56,31,0.2)' }]}>
+                <View style={[styles.fullTicketLinkCta, lp.light && { backgroundColor: '#ffffff', borderColor: 'rgba(91,56,31,0.2)' }]}>
                   <MaterialIcons name="confirmation-number" size={15} color={lp.light ? ed.ink : ed.cream} />
-                  <Text style={[styles.ticketLinkText, lp.light && { color: ed.ink }]}>Ticket Link</Text>
+                  <Text style={[styles.ticketLinkText, lp.light && { color: ed.ink }]} numberOfLines={1}>Ticket details</Text>
                 </View>
               </EdPressable>
             </View>
@@ -818,15 +826,34 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   ticketsChipText: { fontFamily: edFonts.bodyBold, fontSize: 11.5, color: '#3ad783' },
-  fullCtaRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  fullCtaRow: { gap: 10, marginTop: 8 },
+  fullPrimaryPressable: { width: '100%', minHeight: 54 },
+  fullSecondaryPressable: { width: '100%', minHeight: 48 },
   getTicketsCta: {
-    minHeight: 48,
+    width: '100%',
+    minHeight: 54,
     borderRadius: 5,
     backgroundColor: ed.orange,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  getTicketsLabelRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  getTicketsText: { flexShrink: 1, fontFamily: edFonts.bodyBlack, fontSize: 14.5, color: '#3a1c04' },
+  fullTicketLinkCta: {
+    width: '100%',
+    minHeight: 48,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.25)',
+    backgroundColor: 'rgba(10,5,2,0.6)',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  getTicketsText: { fontFamily: edFonts.bodyBlack, fontSize: 13.5, color: '#3a1c04' },
 
   emptyPanel: {
     borderRadius: 14,

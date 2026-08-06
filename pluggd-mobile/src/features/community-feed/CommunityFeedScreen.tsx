@@ -76,6 +76,8 @@ export function CommunityFeedScreen() {
         <View style={styles.communityMark}><MaterialIcons name="public" size={23} color={COLORS.orange} /></View>
       </View>
 
+      {tab === 'feed' ? <MobileStoriesRail title="Scene stories" compact /> : null}
+
       {tab !== 'feed' ? (
         <View style={styles.switchWrap}>
           <CommunityInternalSwitcher value={tab} onChange={setTab} />
@@ -163,7 +165,6 @@ export function CommunityFeedScreen() {
         renderItem={({ item, index }) => (
           <>
             <MobileSocialPostCard post={item} onMutated={() => void query.refetch()} />
-            {index === 0 ? <MobileStoriesRail title="Scene stories" compact /> : null}
             {index === 1 && bundle ? <CommunityFeedInterstitial kind="the_plug" bundle={bundle} /> : null}
             {index === 5 ? (
               <View style={styles.lowerShortcuts}>
