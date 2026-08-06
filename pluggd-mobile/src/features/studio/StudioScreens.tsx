@@ -782,6 +782,40 @@ function CommandCard({ data }: { data: StudioData }) {
   );
 }
 
+/**
+ * Compact page header for Studio surfaces whose opening block was pure copy.
+ *
+ * Studio is a workspace: the first screenful belongs to the tools, not to a
+ * restatement of what the page is for. Pages whose hero carries a primary
+ * action (Home, Connect Card, My PLUGGD, Split Engine) keep their hero — the
+ * action earns the space. Pages that only introduced themselves (Apps, Create,
+ * More) use this instead, which costs ~90pt where the hero cost ~190-280.
+ */
+function StudioPageHeader({
+  icon,
+  kicker,
+  title,
+  meta,
+}: {
+  icon: string;
+  kicker: string;
+  title: string;
+  meta?: string;
+}) {
+  return (
+    <View style={styles.pageHeader}>
+      <View style={styles.pageHeaderTop}>
+        <View style={styles.pageHeaderIcon}>
+          <MaterialIcons name={iconName(icon)} size={16} color={STUDIO.orange} />
+        </View>
+        <Text style={styles.pageHeaderKicker}>{kicker}</Text>
+      </View>
+      <Text style={styles.pageHeaderTitle}>{title}</Text>
+      {meta ? <Text style={styles.pageHeaderMeta}>{meta}</Text> : null}
+    </View>
+  );
+}
+
 function ActionBoard({ data }: { data: StudioData }) {
   const router = useRouter();
   const actionRows = Array.from({ length: Math.ceil(data.nativeActions.length / 2) }, (_, index) =>
@@ -789,19 +823,12 @@ function ActionBoard({ data }: { data: StudioData }) {
   );
   return (
     <>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.27)', 'rgba(32,17,10,0.96)', 'rgba(7,7,10,0.98)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.actionBoardHero}
-      >
-        <View style={styles.actionBoardSignal}>
-          <MaterialIcons name="bolt" size={18} color="#160A03" />
-        </View>
-        <Text style={styles.actionBoardKicker}>Creator actions</Text>
-        <Text style={styles.actionBoardTitle}>What are you moving today?</Text>
-        <Text style={styles.actionBoardBody}>Publish, go live, build your audience or prepare the next drop.</Text>
-      </LinearGradient>
+      <StudioPageHeader
+        icon="bolt"
+        kicker="Creator actions"
+        title="What are you moving today?"
+        meta="Publish, go live, build your audience or prepare the next drop."
+      />
       <View style={styles.actionBoardGrid}>
         {actionRows.map((row, rowIndex) => (
           <View key={`action-row-${rowIndex}`} style={styles.actionBoardRow}>
@@ -1268,30 +1295,12 @@ export function StudioAppsScreen() {
     const recommendedCount = data.modules.filter((module) => module.recommendedForRole && !module.plugged).length;
     return (
       <StudioShell active="apps" title="Studio Apps" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-        <LinearGradient
-          colors={['rgba(255,106,0,0.24)', 'rgba(26,15,10,0.96)', 'rgba(8,8,11,0.98)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.appsHero}
-        >
-          <View style={styles.appsHeroIcon}>
-            <MaterialIcons name="widgets" size={22} color="#180B04" />
-          </View>
-          <Text style={styles.appsEyebrow}>Your creator toolkit</Text>
-          <Text style={styles.appsTitle}>Build the Studio around your work.</Text>
-          <Text style={styles.appsBody}>Keep the tools you use daily close. Specialist desktop modules remain visible when a bigger workflow is needed.</Text>
-          <View style={styles.appsStats}>
-            <View style={styles.appsStat}>
-              <Text style={styles.appsStatValue}>{formatCompact(pluggedCount)}</Text>
-              <Text style={styles.appsStatLabel}>Plugged in</Text>
-            </View>
-            <View style={styles.appsStatDivider} />
-            <View style={styles.appsStat}>
-              <Text style={styles.appsStatValue}>{formatCompact(recommendedCount)}</Text>
-              <Text style={styles.appsStatLabel}>Suggested for {ROLE_LABELS[data.primaryRole] ?? 'you'}</Text>
-            </View>
-          </View>
-        </LinearGradient>
+        <StudioPageHeader
+          icon="widgets"
+          kicker="Your creator toolkit"
+          title="Build the Studio around your work."
+          meta={`${formatCompact(pluggedCount)} plugged in · ${formatCompact(recommendedCount)} suggested for ${ROLE_LABELS[data.primaryRole] ?? 'you'}`}
+        />
 
         <View style={styles.segmentStrip}>
           {(['all', ...SECTION_ORDER] as Array<StudioModuleSection | 'all'>).map((item) => {
@@ -1934,25 +1943,12 @@ function StudioMoreContent({
   const desktopCount = data.modules.filter((module) => module.status === 'web_only' && (module.plugged || module.recommendedForRole)).length;
   return (
     <StudioShell active="more" title="More" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.18)', 'rgba(255,255,255,0.075)', 'rgba(7,7,10,0.96)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.moreHero}
-      >
-        <View style={styles.kickerRow}>
-          <MaterialIcons name="more-horiz" size={16} color={STUDIO.orange} />
-          <Text style={styles.kicker}>More Studio</Text>
-        </View>
-        <Text style={styles.moreHeroTitle}>Modules, account surfaces, and business tools.</Text>
-        <Text style={styles.moreHeroBody}>
-          Keep My PLUGGD, wallet, live, settings, and plugged modules close without turning them into primary tabs.
-        </Text>
-        <View style={styles.moreHeroStats}>
-          <StatusChip label={`${pluggedCount} active`} tone="native" />
-          <StatusChip label={`${desktopCount} desktop tools`} tone="web" />
-        </View>
-      </LinearGradient>
+      <StudioPageHeader
+        icon="more-horiz"
+        kicker="More Studio"
+        title="Modules, account surfaces, and business tools."
+        meta={`${pluggedCount} active · ${desktopCount} desktop tools`}
+      />
       {sections.map((group) => (
         <View key={group.section}>
           <SectionTitle title={SECTION_LABELS[group.section]} />
@@ -2611,6 +2607,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pageHeader: {
+    gap: 7,
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+  pageHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pageHeaderIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,106,0,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageHeaderKicker: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  pageHeaderTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 23,
+    lineHeight: 26,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  pageHeaderMeta: {
+    color: STUDIO.textSubtle,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
   actionBoardHero: {
     minHeight: 188,
     borderRadius: 26,
@@ -2995,9 +3033,11 @@ const styles = StyleSheet.create({
     // Had no colour, so it fell back to the platform default — black text on
     // the Studio's dark ground. "Close to the work." was rendering invisible.
     color: STUDIO.text,
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: 0,
+    // Sized to sit clearly under StudioPageHeader's title. At the previous 22 it
+    // matched the page title, so every screen read as two competing headlines.
+    fontSize: 18,
+    lineHeight: 23,
+    letterSpacing: -0.2,
   },
   sectionAction: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
