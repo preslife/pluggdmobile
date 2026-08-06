@@ -362,6 +362,9 @@ function StudioMenuButton() {
 }
 
 function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
+  const accountMenuLabel = data.profile?.username
+    ? `Open Studio account menu for @${data.profile.username}`
+    : 'Open Studio account menu';
   return (
     <View style={styles.topBar}>
       <View style={styles.studioTopLeft}>
@@ -372,14 +375,15 @@ function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
         <Text style={styles.studioBrandPlug}>PLUGGD</Text>
         <Text style={styles.studioBrandTitle} numberOfLines={1}>STUDIO</Text>
       </View>
-      <AccountMenuButton context="studio" accessibilityLabel="Open Studio account menu" style={styles.studioAccountPill}>
+      {/* The handle used to render beside the avatar in a fixed 116pt pill, so
+          even a short username clipped to "@ju…" on every Studio screen. The
+          avatar already identifies the account and the chevron already says it
+          opens; the name lives in the menu itself. */}
+      <AccountMenuButton context="studio" accessibilityLabel={accountMenuLabel} style={styles.studioAccountPill}>
         {() => (
           <>
             <HeaderAvatar data={data} />
-            <Text style={styles.studioAccountText} numberOfLines={1}>
-              {data.profile?.username ? `@${data.profile.username}` : data.signedIn ? 'Account' : 'Guest'}
-            </Text>
-            <MaterialIcons name="expand-more" size={15} color={STUDIO.textMid} />
+            <MaterialIcons name="expand-more" size={16} color={STUDIO.textMid} />
           </>
         )}
       </AccountMenuButton>
@@ -952,7 +956,8 @@ function KpiCard({
         <Text style={styles.kpiValue} numberOfLines={1}>
           {value}
         </Text>
-        <View style={styles.kpiSpark} />
+        {/* A decorative bar sat here. It was bound to nothing, so it implied a
+            measurement against a target that does not exist. */}
         <Text style={styles.kpiDetail} numberOfLines={1}>
           {detail}
         </Text>
@@ -1062,8 +1067,13 @@ function ProgressRow({ label, detail, value, icon, route }: { label: string; det
         <Text style={[styles.progressLabel, { color: theme.colors.text }]} numberOfLines={1}>{label}</Text>
         <Text style={[styles.progressDetail, { color: theme.colors.textMuted }]} numberOfLines={1}>{detail}</Text>
       </View>
+      {/* A 6% floor meant zero rendered as a small orange nub, which reads as a
+          rendering fault rather than "none yet". Zero now shows an empty track;
+          the floor only applies once there is something to show. */}
       <View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceAlt }]}>
-        <View style={[styles.progressFill, { width: `${Math.max(6, Math.min(100, value))}%`, backgroundColor: theme.colors.accent }]} />
+        {value > 0 ? (
+          <View style={[styles.progressFill, { width: `${Math.max(5, Math.min(100, value))}%`, backgroundColor: theme.colors.accent }]} />
+        ) : null}
       </View>
     </Pressable>
   );
@@ -1109,10 +1119,8 @@ function PublishingActivity({ data }: { data: StudioData }) {
           <Text style={styles.activityKicker}>Publishing activity</Text>
           <Text style={styles.activityTitle}>{total ? `${total} items in six months` : 'Your cadence starts here'}</Text>
         </View>
-        <View style={styles.activityBadge}>
-          <MaterialIcons name="insights" size={16} color={STUDIO.orangeSoft} />
-          <Text style={styles.activityBadgeText}>REAL DATA</Text>
-        </View>
+        {/* A "REAL DATA" badge used to sit here. Creators assume the numbers are
+            real; saying so out loud only invites the opposite thought. */}
       </View>
       <View style={styles.activityChart}>
         {activity.map((month) => (
@@ -1120,7 +1128,7 @@ function PublishingActivity({ data }: { data: StudioData }) {
             <Text style={styles.activityValue}>{month.count || '–'}</Text>
             <View style={styles.activityTrack}>
               <LinearGradient
-                colors={month.count ? [STUDIO.orangeSoft, STUDIO.orange] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)']}
+                colors={month.count ? [STUDIO.orangeSoft, STUDIO.orange] : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.10)']}
                 style={[styles.activityBar, { height: month.count ? Math.max(12, Math.round((month.count / maximum) * 74)) : 5 }]}
               />
             </View>
@@ -1407,6 +1415,12 @@ export function StudioAnalyticsScreen() {
     const total = Math.max(1, data.stats.catalogCount);
     return (
       <StudioShell active="analytics" title="Analytics" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
+        <StudioPageHeader
+          icon="insights"
+          kicker="Studio insights"
+          title="Where your catalogue stands."
+          meta="Counts come from what you have actually published."
+        />
         <KpiGrid data={data} />
         <PublishingActivity data={data} />
         <View>
@@ -1923,6 +1937,18 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
   for (let index = 0; index < modules.length; index += 2) {
     rows.push(modules.slice(index, index + 2));
   }
+  // A section holding a single module never establishes a grid rhythm, so the
+  // half-width tile plus a dead half read as a layout fault. Let it run full
+  // width instead. A trailing odd tile in a longer section keeps its gap, which
+  // is ordinary grid behaviour and reads correctly.
+  const soleModule = modules.length === 1 ? modules[0] : null;
+  if (soleModule) {
+    return (
+      <View style={styles.moduleTileGrid}>
+        <MoreModuleTile module={soleModule} />
+      </View>
+    );
+  }
   return (
     <View style={styles.moduleTileGrid}>
       {rows.map((row, index) => (
@@ -2099,7 +2125,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   studioAccountPill: {
-    width: 116,
+    width: 78,
     height: 44,
     borderRadius: 999,
     borderWidth: 1,
@@ -2923,7 +2949,8 @@ const styles = StyleSheet.create({
     width: '72%',
     height: 74,
     borderRadius: 7,
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    // Deliberately unfilled. With a background, a month holding nothing rendered
+    // as a full-height dark bar, so five quiet months read as five real bars.
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
