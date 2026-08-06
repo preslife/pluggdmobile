@@ -17,8 +17,12 @@
 - [x] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
 - [x] Final integrated native Debug build compiles, installs and launches on the
   iOS 26.2 simulator with the consolidated workspace Metro server.
-- [ ] Archive, upload and process a new signed App Store candidate from the
-  final 6 August commit; processed build `1.0.0 (1)` predates this pass.
+- [x] Archive and export signed App Store candidate `1.0.0 (2)` from the final
+  6 August branch; bundle ID, production entitlements, provisioning profile,
+  embedded JavaScript and strict signature verification pass.
+- [ ] Upload and process candidate `1.0.0 (2)`; processed build `1.0.0 (1)`
+  predates this pass. Upload is intentionally deferred pending final owner
+  visual sign-off.
 
 ## Production configuration
 

@@ -5,9 +5,13 @@ Validated on 6 August 2026 from branch `codex/app-store-submission-final`.
 ## Release verdict
 
 The current branch is visually and structurally ready to become the next signed
-TestFlight candidate. The processed App Store build `1.0.0 (1)` predates the
-6 August integrated design and compliance pass and must be replaced before
-submission. The production beat agreements and their formation controls
+TestFlight candidate. A distribution-signed `1.0.0 (2)` App Store archive and
+IPA were produced from the final 6 August branch and passed local signature,
+bundle, provisioning and production-entitlement inspection. It has deliberately
+not been uploaded while the product owner completes the final visual sign-off.
+The processed App Store build `1.0.0 (1)` predates the 6 August integrated
+design and compliance pass and must be replaced before submission. The
+production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
 The App Store Connect metadata package is assembled in one draft. A signed
@@ -33,6 +37,12 @@ candidate build.
   data and large-chunk warnings remain non-blocking technical debt.
 - A production-configured Release build installs and launches on the iPhone 17
   Pro Max simulator after the final accessibility and image-fallback changes.
+- App Store candidate `1.0.0 (2)` archives and exports successfully with the
+  `PLUGGD App Store 2026` profile. The exported IPA is signed by Apple
+  Distribution for team `37X2468U5U`, targets `com.pluggd.mobile`, uses
+  production APNs and Sign in with Apple, has `get-task-allow=false`, contains
+  its production JavaScript bundle and passes strict local code-signature
+  verification. Upload is intentionally deferred pending owner sign-off.
 - `git diff --check` passes.
 - The complete Claude visual sequence (`claude/pluggd-aaa-pass` followed by
   `claude/studio-compact-headers`) is integrated after the existing submission
@@ -242,10 +252,10 @@ candidate build.
 
 ## Submission blockers still open
 
-1. Produce, upload and process a new signed App Store build from the final
-   6 August commit, then replace build `1.0.0 (1)` on the version draft. Build 1
-   is valid historical evidence but does not contain the integrated AAA pass or
-   the final physical-merchandise Store restriction.
+1. Upload and process the completed signed App Store candidate `1.0.0 (2)`,
+   then replace build `1.0.0 (1)` on the version draft. Build 1 is valid
+   historical evidence but does not contain the integrated AAA pass or the
+   final physical-merchandise Store restriction.
 2. Complete creator-membership Restore Purchases on the signed device without
    duplicating the existing entitlement. Initial purchase, creator/tier mapping,
    eleven renewals and expiry are green.
