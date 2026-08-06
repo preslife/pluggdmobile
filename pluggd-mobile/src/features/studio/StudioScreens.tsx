@@ -28,6 +28,8 @@ import { selectionHaptic } from '../../design/haptics';
 import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { formatCompact } from '../../lib/mobileContent';
+import { SplitEngineListPanel } from './SplitEngineScreens';
+import { STUDIO } from './studio-tokens';
 import {
   loadStudioData,
   createStudioPreviewData,
@@ -65,22 +67,6 @@ type MobileCommandAction = {
 };
 
 const QUERY_KEY = ['studio', 'native-command'] as const;
-
-const STUDIO = {
-  bg: '#020202',
-  panel: 'rgba(255,255,255,0.065)',
-  panelDeep: 'rgba(10,10,14,0.92)',
-  panelPressed: 'rgba(255,255,255,0.11)',
-  line: 'rgba(255,255,255,0.13)',
-  lineHot: 'rgba(255,106,0,0.46)',
-  orange: '#ff6a00',
-  orangeSoft: '#ffb06f',
-  text: '#ffffff',
-  textMid: 'rgba(255,255,255,0.70)',
-  textSubtle: 'rgba(255,255,255,0.48)',
-  chip: 'rgba(255,255,255,0.075)',
-  dock: 'rgba(7,7,10,0.985)',
-};
 
 /**
  * Studio is intentionally information-dense. Keep Dynamic Type useful without
@@ -1876,133 +1862,16 @@ function StudioSplitGatewayContent({
   data: StudioData;
   query: ReturnType<typeof useStudioQuery>;
 }) {
-  const router = useRouter();
   const slug = data.connectProfile?.slug || '';
   const creatorName = data.connectProfile?.display_name || studioCreatorName(data);
-  const steps = [
-    {
-      number: '01',
-      icon: 'library-music',
-      title: 'Choose the work',
-      detail: 'Start with the release, beat or session everyone contributed to.',
-    },
-    {
-      number: '02',
-      icon: 'group-add',
-      title: 'Invite collaborators',
-      detail: 'Use verified Connect identities so names and contact details stay consistent.',
-    },
-    {
-      number: '03',
-      icon: 'draw',
-      title: 'Agree and lock',
-      detail: 'Confirm percentages, collect approvals and preserve the signed record.',
-    },
-  ];
 
   return (
     <StudioShell active="more" title="Split Engine" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.30)', 'rgba(42,20,8,0.38)', 'rgba(5,5,7,0.99)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.splitHero}
-      >
-        <View style={styles.splitHeroTop}>
-          <View style={styles.splitHeroIcon}>
-            <MaterialIcons name="account-tree" size={27} color="#170A03" />
-          </View>
-          <StatusChip label="Secure workflow" tone="native" />
-        </View>
-        <Text style={styles.splitEyebrow}>PLUGGD SPLIT ENGINE</Text>
-        <Text style={styles.splitHeroTitle}>Clear credits before the release moves.</Text>
-        <Text style={styles.splitHeroText}>
-          Create one shared source of truth for collaborators, percentages, approvals and signatures.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open secure Split Engine"
-          onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
-          style={styles.splitHeroButton}
-        >
-          <Text style={styles.splitHeroButtonText}>Open Split Engine</Text>
-          <MaterialIcons name="open-in-new" size={18} color="#170A03" />
-        </Pressable>
-      </LinearGradient>
-
-      <View>
-        <SectionTitle title="Three steps. One record." />
-        <View style={styles.splitStepStack}>
-          {steps.map((step) => (
-            <View key={step.number} style={styles.splitStep}>
-              <View style={styles.splitStepNumber}>
-                <Text style={styles.splitStepNumberText}>{step.number}</Text>
-              </View>
-              <View style={styles.splitStepCopy}>
-                <View style={styles.splitStepTitleRow}>
-                  <MaterialIcons name={iconName(step.icon)} size={19} color={STUDIO.orangeSoft} />
-                  <Text style={styles.splitStepTitle}>{step.title}</Text>
-                </View>
-                <Text style={styles.splitStepText}>{step.detail}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.splitIdentityPanel}>
-        <View style={styles.splitIdentityTop}>
-          <View style={styles.splitIdentityAvatar}>
-            {data.profile?.avatar_url ? (
-              <PluggdImage uri={data.profile.avatar_url} style={StyleSheet.absoluteFill} accessibilityLabel={creatorName} />
-            ) : (
-              <Text style={styles.splitIdentityInitials}>{initials(creatorName)}</Text>
-            )}
-          </View>
-          <View style={styles.splitIdentityCopy}>
-            <Text style={styles.splitIdentityEyebrow}>YOUR COLLABORATOR IDENTITY</Text>
-            <Text style={styles.splitIdentityName}>{creatorName}</Text>
-            <Text style={styles.splitIdentityStatus}>{slug ? 'Ready to share' : 'Complete Connect Card setup first'}</Text>
-          </View>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={slug ? 'Preview collaborator identity' : 'Set up collaborator identity'}
-          onPress={() => routePush(router, slug ? `/connect/${slug}/collab` : '/studio/connect-card')}
-          style={styles.splitIdentityButton}
-        >
-          <Text style={styles.splitIdentityButtonText}>{slug ? 'Preview collaborator card' : 'Set up Connect Card'}</Text>
-          <MaterialIcons name="arrow-forward" size={17} color="#FFFFFF" />
-        </Pressable>
-      </View>
-
-      <View>
-        <SectionTitle title="Keep every decision close" />
-        <View style={styles.splitToolGrid}>
-          {[
-            { icon: 'pending-actions', title: 'Approvals', detail: 'See who has agreed and who still needs to respond.' },
-            { icon: 'history-edu', title: 'Agreements', detail: 'Return to signed records without hunting through messages.' },
-            { icon: 'groups', title: 'Participants', detail: 'Reuse trusted collaborator identities on the next work.' },
-          ].map((tool) => (
-            <Pressable
-              key={tool.title}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${tool.title}`}
-              onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
-              style={styles.splitTool}
-            >
-              <View style={styles.splitToolIcon}>
-                <MaterialIcons name={iconName(tool.icon)} size={21} color={STUDIO.orangeSoft} />
-              </View>
-              <View style={styles.splitToolCopy}>
-                <Text style={styles.splitToolTitle}>{tool.title}</Text>
-                <Text style={styles.splitToolText}>{tool.detail}</Text>
-              </View>
-              <MaterialIcons name="north-east" size={17} color={STUDIO.textSubtle} />
-            </Pressable>
-          ))}
-        </View>
-      </View>
+      <SplitEngineListPanel
+        connectSlug={slug}
+        creatorName={creatorName}
+        avatarUrl={data.connectProfile?.avatar_url || data.profile?.avatar_url || null}
+      />
     </StudioShell>
   );
 }

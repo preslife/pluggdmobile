@@ -559,7 +559,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     route: '/studio/splits',
     icon: 'account-tree',
     section: 'money',
-    status: 'limited',
+    status: 'native',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer', 'manager'],
     description: 'Create split sheets, payout shares, and collaborator rights records.',
