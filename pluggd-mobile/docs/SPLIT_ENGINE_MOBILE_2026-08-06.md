@@ -101,12 +101,27 @@ while this works:
 <Pressable style={[styles.row, active && styles.rowActive]} />
 ```
 
-Rows collapse to a column, backgrounds and radii vanish. The codebase already
-uses the plain form at 228 call sites, which is why this went unnoticed — but
-**14 call sites in `StudioScreens.tsx` still use the function form and are
-rendering unstyled today**, including `studioExitButton` (the Studio back button,
-which should be a 44×42 bordered pill and currently renders as a bare arrow).
-Those are outside the scope of this change and were left alone.
+Rows collapse to a column, backgrounds and radii vanish. It fails silently: no
+warning, `tsc` is happy, and the code reads as correct.
+
+**Severity depends entirely on where the styling lives**, which is why this hid
+for so long:
+
+- Where the `Pressable` carries the visual style **itself**, it visibly breaks.
+  That was all 14 call sites in `StudioScreens.tsx` — KPI cards and zone cards
+  lost their backgrounds and borders, rows stacked vertically, and
+  `studioExitButton` (the Studio back button) rendered as a bare arrow instead
+  of a 44×42 bordered pill. **All 14 are fixed here** and verified on device.
+- Where the `Pressable` is only a touch target and the visuals sit on an **inner
+  `View`** — the convention this codebase already documents for the RN-web
+  `<button>` fill problem — nothing looks wrong; only the press feedback is lost.
+  That is the remaining ~75 call sites across 32 files, including
+  `GlassDock`, `GlassMiniPlayer`, `EditorialBits` and `MobileHeader`. Cosmetic,
+  invisible in a screenshot, and **not** touched here.
+
+So the rule for new code: never pass `style` as a function to `Pressable`. Use a
+plain or array style and get feedback from `selectionHaptic()`. If you want the
+inner-View pattern, that is fine — just keep the outer `style` static.
 
 ## Files
 

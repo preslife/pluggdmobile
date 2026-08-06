@@ -333,7 +333,7 @@ function StudioExitButton() {
         selectionHaptic();
         router.replace('/' as any);
       }}
-      style={({ pressed }) => [styles.studioExitButton, pressed && { backgroundColor: STUDIO.panelPressed }]}
+      style={styles.studioExitButton}
     >
       <MaterialIcons name="arrow-back" size={20} color={STUDIO.text} />
     </Pressable>
@@ -447,10 +447,7 @@ function StudioDock({ active }: { active: StudioRouteKey }) {
               accessibilityHint={`Opens the ${item.label} Studio section`}
               accessibilityState={{ selected: isActive }}
               onPress={() => routePush(router, item.route)}
-              style={({ pressed }) => [
-                styles.dockItem,
-                pressed && { opacity: 0.76 },
-              ]}
+              style={styles.dockItem}
             >
               <View style={[styles.dockItemInner, isActive && styles.dockItemActive]}>
                 <View style={[styles.dockIconShell, isActive && styles.dockIconActive]}>
@@ -734,7 +731,7 @@ function CommandCard({ data }: { data: StudioData }) {
               accessibilityRole="button"
               accessibilityLabel={primaryAction.title}
               onPress={() => routePush(router, primaryAction.route)}
-              style={({ pressed }) => [styles.commandPrimaryTap, pressed && { transform: [{ scale: 0.985 }] }]}
+              style={styles.commandPrimaryTap}
             >
               <LinearGradient colors={['#ff9b50', '#ff6500']} style={styles.commandPrimaryAction}>
                 <View style={styles.commandPrimaryIcon}>
@@ -752,7 +749,7 @@ function CommandCard({ data }: { data: StudioData }) {
                 accessibilityRole="button"
                 accessibilityLabel={action.title}
                 onPress={() => routePush(router, action.route)}
-                style={({ pressed }) => [styles.commandQuickAction, pressed && { backgroundColor: 'rgba(255,255,255,0.16)' }]}
+                style={styles.commandQuickAction}
               >
                 <MaterialIcons name={iconName(action.icon)} size={17} color={STUDIO.orangeSoft} />
                 <Text style={styles.commandQuickText} numberOfLines={1}>{action.title}</Text>
@@ -765,7 +762,7 @@ function CommandCard({ data }: { data: StudioData }) {
           accessibilityRole="button"
           accessibilityLabel={`Next move ${data.nextMove.title}`}
           onPress={() => routePush(router, data.nextMove.route)}
-          style={({ pressed }) => [styles.nextMove, { opacity: pressed ? 0.74 : 1 }]}
+          style={styles.nextMove}
         >
           <View style={styles.nextMoveText}>
             <Text style={styles.nextMoveKicker}>Next Move</Text>
@@ -814,7 +811,7 @@ function ActionBoard({ data }: { data: StudioData }) {
                 accessibilityRole="button"
                 accessibilityLabel={action.title}
                 onPress={() => routePush(router, action.route)}
-                style={({ pressed }) => [styles.actionBoardTile, pressed && { transform: [{ scale: 0.985 }] }]}
+                style={styles.actionBoardTile}
               >
                 <LinearGradient
                   colors={rowIndex === 0 && columnIndex === 0 ? ['rgba(255,106,0,0.24)', 'rgba(19,19,23,0.98)'] : ['rgba(255,255,255,0.09)', 'rgba(14,14,18,0.98)']}
@@ -866,11 +863,7 @@ function KpiCard({
       accessibilityRole={route ? 'button' : 'text'}
       disabled={!route}
       onPress={() => routePush(router, route)}
-      style={({ pressed }) => [
-        styles.kpiCardTap,
-        cardWidth ? { flex: 0, width: cardWidth } : null,
-        pressed && { opacity: 0.78 },
-      ]}
+      style={[styles.kpiCardTap, cardWidth ? { flex: 0, width: cardWidth } : null]}
     >
       <LinearGradient
         colors={['rgba(255,255,255,0.115)', 'rgba(17,17,21,0.92)', 'rgba(2,2,3,0.95)']}
@@ -957,11 +950,7 @@ function ZoneGrid({ data }: { data: StudioData }) {
               accessibilityRole="button"
               accessibilityLabel={zone.title}
               onPress={() => routePush(router, zone.route)}
-              style={({ pressed }) => [
-                styles.zoneCardTap,
-                { flex: 0, width: zoneCardWidth },
-                pressed && { opacity: 0.78 },
-              ]}
+              style={[styles.zoneCardTap, { flex: 0, width: zoneCardWidth }]}
             >
               <LinearGradient
                 colors={['rgba(255,255,255,0.13)', 'rgba(25,25,29,0.94)', 'rgba(5,5,7,0.95)']}
@@ -1133,11 +1122,11 @@ function ActionRow({ action, compact = false }: { action: StudioAction; compact?
       accessibilityRole={canOpen ? 'button' : 'text'}
       disabled={!canOpen}
       onPress={() => routePush(router, action.route)}
-      style={({ pressed }) => [
+      style={[
         styles.actionRow,
         compact && styles.actionRowCompact,
         {
-          backgroundColor: pressed ? theme.colors.surfacePressed : theme.colors.surface,
+          backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
           opacity: canOpen ? 1 : 0.7,
         },
@@ -1427,10 +1416,7 @@ function StudioIdentityContent({
             accessibilityRole="button"
             accessibilityLabel="Open share tools"
             onPress={() => routePush(router, '/studio/connect-card')}
-            style={({ pressed }) => [
-              styles.myPluggdPrimaryPill,
-              pressed && { backgroundColor: 'rgba(255,255,255,0.16)' },
-            ]}
+            style={styles.myPluggdPrimaryPill}
           >
             <MaterialIcons name="ios-share" size={16} color={STUDIO.text} />
             <Text style={styles.myPluggdPrimaryText}>Share Tools</Text>
@@ -1475,10 +1461,7 @@ function StudioIdentityContent({
           accessibilityRole="button"
           accessibilityLabel={`Next up ${nextSection.title}`}
           onPress={() => routePush(router, nextSection.route)}
-          style={({ pressed }) => [
-            styles.myPluggdNextCard,
-            pressed && { backgroundColor: 'rgba(255,255,255,0.10)' },
-          ]}
+          style={styles.myPluggdNextCard}
         >
           <View style={styles.myPluggdNextTop}>
             <View style={styles.myPluggdNextIcon}>
@@ -1506,10 +1489,10 @@ function StudioIdentityContent({
             accessibilityRole="button"
             accessibilityLabel={section.title}
             onPress={() => routePush(router, section.route)}
-            style={({ pressed }) => [
+            style={[
               styles.myPluggdSectionCard,
               {
-                backgroundColor: pressed ? STUDIO.panelPressed : 'rgba(255,255,255,0.055)',
+                backgroundColor: 'rgba(255,255,255,0.055)',
                 borderColor: section.complete ? 'rgba(65,209,125,0.25)' : theme.colors.border,
               },
             ]}
@@ -1727,7 +1710,7 @@ function StudioConnectCardContent({
               accessibilityRole="button"
               accessibilityLabel={`Preview ${view.label} card`}
               onPress={() => routePush(router, view.route)}
-              style={({ pressed }) => [styles.connectViewCard, pressed && { opacity: 0.82 }]}
+              style={styles.connectViewCard}
             >
               <PluggdImage
                 uri=""
@@ -1909,7 +1892,7 @@ function MoreModuleTile({ module }: { module: StudioModuleState }) {
       accessibilityRole={canOpen ? 'button' : 'text'}
       disabled={!canOpen}
       onPress={() => routePush(router, module.route)}
-      style={({ pressed }) => [styles.moduleTileTap, pressed && { opacity: 0.78 }]}
+      style={styles.moduleTileTap}
     >
       <LinearGradient
         colors={module.plugged || module.alwaysVisible ? ['rgba(255,106,0,0.16)', 'rgba(22,22,27,0.94)', 'rgba(5,5,7,0.98)'] : ['rgba(255,255,255,0.11)', 'rgba(18,18,23,0.93)', 'rgba(4,4,6,0.98)']}
