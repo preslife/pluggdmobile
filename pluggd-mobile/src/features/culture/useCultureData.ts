@@ -112,7 +112,7 @@ export function useEventLayer(limit = 16) {
       safeList<EventItem>(
         supabase
           .from('events')
-          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
           .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
@@ -201,7 +201,7 @@ export function useUniversalSearch(term: string) {
         safeList<EventItem>(
           supabase
             .from('events')
-            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
             .eq('discoverable', true)
             .or(`title.ilike.${pattern},location.ilike.${pattern},description.ilike.${pattern}`)
             .order('starts_at', { ascending: true })

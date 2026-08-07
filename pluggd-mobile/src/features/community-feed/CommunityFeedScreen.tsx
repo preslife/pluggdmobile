@@ -5,7 +5,6 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Sty
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
-import { CommunityComposer } from './CommunityComposer';
 import { CommunityFeedInterstitial } from './CommunityFeedInterstitials';
 import { CommunityBottomDockControls, CommunityInternalSwitcher } from './CommunityInternalSwitcher';
 import { FEED_FILTERS, type CommunityFeedFilterKey, type CommunityTabKey } from './communityFeedTypes';
@@ -70,32 +69,21 @@ export function CommunityFeedScreen() {
   const posts = useMemo(() => filterCommunityPosts(bundle?.posts ?? [], filter, hashtag), [bundle?.posts, filter, hashtag]);
 
   const feedHeader = (
-    <View style={{ paddingTop: 4, paddingBottom: 10 }}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}><Text style={styles.kicker}>SCENES IN MOTION</Text><Text style={styles.heading}>Community</Text><Text style={styles.headerBody}>Follow the conversations, works in progress and people moving independent music forward.</Text></View>
-        <View style={styles.communityMark}><MaterialIcons name="public" size={23} color={COLORS.orange} /></View>
-      </View>
-
+    <View style={{ paddingTop: 8, paddingBottom: 10 }}>
       {tab === 'feed' ? <MobileStoriesRail title="Scene stories" compact /> : null}
 
-      {tab !== 'feed' ? (
-        <View style={styles.switchWrap}>
-          <CommunityInternalSwitcher value={tab} onChange={setTab} />
-        </View>
-      ) : null}
+      <View style={styles.switchWrap}>
+        <CommunityInternalSwitcher value={tab} onChange={setTab} />
+      </View>
 
       {tab === 'feed' ? (
         <View style={styles.feedLead}>
-          <View style={styles.switchWrap}>
-            <CommunityInternalSwitcher value={tab} onChange={setTab} />
-          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {FEED_FILTERS.map((item) => {
               const active = item.key === filter;
               return <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: active }} style={[styles.filterTab, active && styles.filterTabActive]} onPress={() => setFilter(item.key)}><Text style={[styles.filterText, active && styles.filterTextActive]}>{item.label}</Text></Pressable>;
             })}
           </ScrollView>
-          <CommunityComposer />
         </View>
       ) : null}
     </View>
@@ -185,11 +173,6 @@ export function CommunityFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { paddingHorizontal: 20, paddingBottom: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  kicker: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 },
-  heading: { color: COLORS.white, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.2, marginTop: 3 },
-  headerBody: { color: COLORS.muted, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, marginTop: 6, maxWidth: 300 },
-  communityMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#3A332B', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   feedLead: { gap: 8 },
   switchWrap: { marginTop: 2 },
   filters: { paddingHorizontal: 20, paddingRight: 32, gap: 17 },

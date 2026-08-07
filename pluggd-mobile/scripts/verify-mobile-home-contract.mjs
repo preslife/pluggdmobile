@@ -76,7 +76,7 @@ for (const token of ['THE PLUG', 'THE LEAD STORY', 'Latest dispatches', 'Read di
 assert.match(homeData, /\.eq\('is_global_editorial', true\)[\s\S]*\.eq\('global_feature_status', 'approved'\)/, 'THE PLUG must prefer globally approved editorial stories');
 
 const events = read('src/features/editorial/EventsBoardScreen.tsx');
-for (const token of ['Find your next night.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'Open Opportunities', 'For Promoters']) {
+for (const token of ['Find your next night.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'MapRecommendationRail', 'More nights nearby', 'Open Opportunities', 'For Promoters']) {
   assert.match(events, new RegExp(token), `Events must preserve and redesign ${token}`);
 }
 const nativeEventsMap = read('components/EventsMap.native.tsx');

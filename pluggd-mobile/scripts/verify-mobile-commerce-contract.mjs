@@ -24,6 +24,8 @@ const wallet = read('src/hooks/useWallet.ts');
 const beat = read('app/beat/[id].tsx');
 const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
+const eventBoard = read('src/features/editorial/EventsBoardScreen.tsx');
+const externalEventTickets = read('src/lib/eventTickets.ts');
 const release = read('app/release/[id].tsx');
 const membership = read('app/membership/[creatorId].tsx');
 const store = read('src/features/editorial/MarketStoreScreen.tsx');
@@ -191,6 +193,14 @@ assert.doesNotMatch(
   /price(?:Cents|Pence)\s*=\s*(?:body|request)|const\s*\{\s*[^}]*price(?:Cents|Pence)/i,
   'event checkout must never trust a client-provided ticket price',
 );
+assert.match(externalEventTickets, /commerce_classification === 'physical'/, 'organiser ticket links must require a trusted physical-event classification');
+assert.match(externalEventTickets, /url\.protocol !== 'https:'/, 'organiser ticket links must require HTTPS');
+assert.match(externalEventTickets, /!event\.stream_url[\s\S]*!event\.playback_url/, 'paid virtual access must never use organiser ticket links');
+assert.match(externalEventTickets, /WebBrowser\.openBrowserAsync/, 'eligible organiser ticket links must open in a secure in-app browser');
+assert.match(eventBoard, /ticket_url,commerce_classification/, 'Events discovery must load ticket URLs and trusted classification');
+assert.match(eventBoard, /openExternalEventTickets/, 'Events discovery must provide a working organiser-ticket CTA');
+assert.match(event, /ExternalTicketAccess/, 'event detail must explain and open eligible organiser tickets');
+assert.match(event, /EventTicketPurchase/, 'event detail must retain PLUGGD-hosted ticket-tier checkout');
 
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release unlock must keep the universal credit path');
 assert.match(release, /useCommercePolicy/, 'optional release hosted checkout must be storefront and policy gated');

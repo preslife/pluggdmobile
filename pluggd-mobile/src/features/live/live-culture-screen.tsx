@@ -1103,7 +1103,7 @@ export function LiveCultureScreen() {
         <View style={styles.sectionBlock}>
           <SectionHeader title="COMMUNITY ROOMS" />
           {communityRooms.length === 0 ? (
-            <EmptyInline title="No community rooms active" body="Community rooms appear here when circles open real room data." />
+            <EmptyInline title="No community rooms active" body="Rooms from your circles will appear here when they go live." />
           ) : (
             <View style={styles.roomList}>
               {communityRooms.slice(0, 6).map((room) => (
@@ -1133,7 +1133,7 @@ export function LiveCultureScreen() {
         <View style={styles.sectionBlock}>
           <SectionHeader title="STUDIO / COOK-UP SESSIONS" />
           {studioSessions.length === 0 ? (
-            <EmptyInline title="No studio sessions yet" body="Cook-ups, producer feedback and process rooms will appear here when they are real." />
+            <EmptyInline title="No studio sessions yet" body="Cook-ups, producer feedback and behind-the-scenes rooms will appear here when creators schedule them." />
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wideShelf}>
               {studioSessions.map((room) => (

@@ -12,6 +12,7 @@ const createSheet = read('components/CreateActionSheet.tsx');
 const accountHeader = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 const dock = read('components/PluggdDock.tsx');
 const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
+const communitySwitcher = read('src/features/community-feed/CommunityInternalSwitcher.tsx');
 
 for (const exportName of [
   'PremiumScreenBackdrop',
@@ -42,7 +43,9 @@ assert.match(home + discover, /Sora-ExtraBold[\s\S]*Satoshi-Bold/, 'discovery su
 for (const exportName of ['DiscoverParityScreen', 'EventsParityScreen', 'MarketParityScreen']) {
   assert.match(parityScreens, new RegExp(`export function ${exportName}`), `${exportName} must remain a premium web-parity surface`);
 }
-assert.match(communityFeed, /MobileSocialPostCard[\s\S]*MobileStoriesRail[\s\S]*CommunityComposer|MobileStoriesRail[\s\S]*CommunityComposer[\s\S]*MobileSocialPostCard/, 'Community must use the feed-first premium social surface');
+assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityInternalSwitcher[\s\S]*MobileSocialPostCard/, 'Community must use a stories-first social surface');
+assert.match(communitySwitcher, /Feed[\s\S]*Boards[\s\S]*Post[\s\S]*Explore[\s\S]*Maps/, 'Community must use the approved web-parity internal dock');
+assert.match(communitySwitcher, /\/create-post/, 'Community internal dock must route its primary post action');
 assert.match(createSheet, /hasCreatorAccess[\s\S]*router\.push\('\/create'|Become a Creator|Studio/, 'Create must be exposed through role-aware floating action, not a dock tab');
 for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Memberships', 'Tickets', 'Settings', 'Inbox', 'Activity']) {
   assert.match(accountHeader, new RegExp(escapeRegExp(accountRoute)), `Account menu must retain ${accountRoute}`);

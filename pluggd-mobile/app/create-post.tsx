@@ -95,6 +95,7 @@ export default function CreatePostRoute() {
     challengeId?: string;
     quotePostId?: string;
     attachmentType?: string;
+    returnTo?: string;
   }>();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
@@ -307,7 +308,8 @@ export default function CreatePostRoute() {
             style={styles.iconButton}
             onPress={() => {
               selectionHaptic();
-              router.back();
+              if (params.returnTo === '/community') router.replace('/community' as any);
+              else router.back();
             }}
           >
             <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />

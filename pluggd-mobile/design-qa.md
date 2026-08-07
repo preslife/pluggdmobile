@@ -85,6 +85,32 @@ final result: passed
 
 ---
 
+# PLUGGD Community Internal Dock QA — 7 August 2026
+
+## Scope and source
+
+- Surface: signed-in Community feed on the iPhone Air simulator at 368 × 800.
+- Product reference: the local web implementation in `/Users/apple/PLUGGD_NEW/src/components/community/CommunityBottomDock.tsx` and the supplied mobile-web screenshot `/Users/apple/Downloads/IMG_0771.PNG`.
+- Accepted native capture: `artifacts/qa/community-dock-2026-08-07/02-native-final.jpg`.
+
+## Comparison and findings
+
+- Replaced the scrolling Feed / Communities / Boards / Explore pills with the web-source Community dock: Feed, Boards, a raised central Post action, Explore and Maps.
+- Kept the dock in the former internal-menu position so it does not compete with PLUGGD's persistent app dock or global player.
+- Removed the temporary header create button; Logo, Live, Search and Account have their original spacing again.
+- Preserved the stories-first entry and newest-first feed directly beneath the internal dock.
+- Matched the web hierarchy with five evenly distributed 44pt-or-larger targets, a 48pt orange Post control, selected-state underline and restrained dark surface.
+- Verified Feed, Boards, Post, Explore and Maps in the running native simulator. Post opens the authenticated composer and its back control returns to Community.
+- Runtime accessibility snapshot exposes every dock destination as a separately labelled button with selected state where applicable.
+
+## Remaining limits
+
+- Screenshot comparison confirms visual hierarchy and spacing; VoiceOver speech/order should still be included in the final physical-device accessibility walkthrough.
+
+final result: passed
+
+---
+
 # PLUGGD Home Geometry Correction
 
 ## Findings resolved

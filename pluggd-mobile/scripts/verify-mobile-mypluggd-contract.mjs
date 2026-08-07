@@ -10,6 +10,7 @@ const dockSource = read('components/PluggdDock.tsx');
 const communityRoute = read('app/community.tsx');
 const communityTabRoute = read('app/(tabs)/community.tsx');
 const communityFeed = read('src/features/community-feed/CommunityFeedScreen.tsx');
+const communitySwitcher = read('src/features/community-feed/CommunityInternalSwitcher.tsx');
 const tabFanRoute = read('app/(tabs)/my-pluggd.tsx');
 const topLevelFanRoute = exists('app/my-pluggd.tsx') ? read('app/my-pluggd.tsx') : '';
 const fanHub = read('src/features/mypluggd/my-pluggd-screen.tsx');
@@ -39,7 +40,8 @@ assert.match(studioScreens, /Identity, page, share tools, and settings in one co
 assert.match(studioScreens, /<Text style=\{styles\.studioBrandTitle\} numberOfLines=\{1\}>STUDIO<\/Text>/, 'Studio topbar must stay branded as STUDIO, not shrink page titles into the nav');
 assert.match(communityRoute, /CommunityFeedScreen/, 'Top-level Community must own the social/culture feed surface');
 assert.match(communityTabRoute, /CommunityFeedScreen/, 'Tab Community must own the social/culture feed surface');
-assert.match(communityFeed, /CommunityComposer[\s\S]*MobileSocialPostCard|MobileSocialPostCard[\s\S]*CommunityComposer/, 'Community must expose the real feed and composer');
+assert.match(communityFeed, /MobileSocialPostCard/, 'Community must expose the real social feed');
+assert.match(communitySwitcher, /Post[\s\S]*\/create-post/, 'Community dock must own and route its post action');
 assert.doesNotMatch(communityRoute + communityTabRoute, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
 assert.match(fanHub, /AccountMenuButton/, 'My PLUGGD must reuse the canonical role-aware account menu');
 assert.doesNotMatch(fanHub, /Creator Mode[\s\S]*\/creator-mode/, 'My PLUGGD must not expose an unconditional creator shortcut to fans');

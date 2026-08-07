@@ -56,7 +56,8 @@ for (const marketToken of ['BeatPlug flagship', 'Releases', 'Sample packs', 'Mer
 assert.match(screens, /export function CommunityParityScreen/, 'Community parity screen must be exported');
 assert.match(appCommunity, /CommunityFeedScreen/, 'Top-level Community route must use the feed-first Community screen');
 assert.match(tabCommunity, /CommunityFeedScreen/, 'Tab Community route must use the feed-first Community screen');
-assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityComposer[\s\S]*MobileSocialPostCard/, 'Community feed must render stories, composer, and real social posts');
+assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityInternalSwitcher[\s\S]*MobileSocialPostCard/, 'Community feed must render stories, navigation, and real social posts');
+assert.match(communityFeed, /CommunityInternalSwitcher/, 'Community must render its web-parity internal dock');
 assert.doesNotMatch(appCommunity + tabCommunity, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
 assert.match(explore, /ExploreParityScreen/, 'Explore route must render the primary discovery parity screen');
 assert.match(tabExplore, /ExploreParityScreen/, 'Tab Explore route must render the primary discovery parity screen');

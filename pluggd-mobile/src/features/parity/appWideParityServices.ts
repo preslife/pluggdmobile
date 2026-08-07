@@ -594,13 +594,13 @@ export async function loadMarketParity(section?: string | string[] | null): Prom
       ] },
       { id: 'releases', title: 'Releases', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available.' },
       { id: 'samples', title: 'Sample packs', items: bundle.samplePacks.map(samplePackCard), emptyText: 'No sample packs are available.' },
-      { id: 'merch', title: 'Merch', items: storeProducts.map(storeCard), emptyText: 'Creator merch will appear when approved products exist.' },
+      { id: 'merch', title: 'Merch', items: storeProducts.map(storeCard), emptyText: 'Creator merch will appear here as new physical drops land.' },
       { id: 'licenses', title: 'Licenses', items: bundle.beats.slice(0, 8).map((item) => ({ ...beatCard(item), eyebrow: 'License preview' })), emptyText: 'Beat licensing previews will appear when published beats exist.' },
       { id: 'offers', title: 'Creator Offers', items: [], emptyText: 'Creator offers will appear here soon.' },
       { id: 'trust', title: 'Market trust', items: [
-        staticCard('off-app-safe', 'Off-app safe licensing', 'Keep beat licensing clear without introducing Apple credit wallet routes.', 'Policy'),
-        staticCard('creator-safe', 'Creator-owned storefronts', 'Product details stay tied to creator catalog and approved store data.', 'Trust'),
-        staticCard('studio-ready', 'Studio tools', 'Upload and manage catalog from Studio when creator access is available.', 'Studio', '/studio'),
+        staticCard('off-app-safe', 'Licensing made clear', 'Review usage rights, files and terms before buying a beat licence.', 'Buyer protection'),
+        staticCard('creator-safe', 'Creator-owned storefronts', 'Every product stays connected to the creator who made and supports it.', 'Creator first'),
+        staticCard('studio-ready', 'Studio tools', 'Upload and manage your catalogue from Studio once creator access is active.', 'For creators', '/studio'),
       ] },
     ],
   };
@@ -670,7 +670,7 @@ export async function loadEventsParity(): Promise<ParityPayload> {
   const events = await safeList<EventItem>(
     (supabase as any)
       .from('events')
-      .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+      .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
       .eq('discoverable', true)
       .gte('starts_at', nowIso)
       .order('starts_at', { ascending: true })
@@ -760,7 +760,7 @@ export async function loadMapSignalsParity(): Promise<ParityPayload> {
     safeList<EventItem>(
       (supabase as any)
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
         .eq('discoverable', true)
         .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true })

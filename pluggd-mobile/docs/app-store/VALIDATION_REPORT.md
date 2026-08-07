@@ -1,16 +1,16 @@
 # App Store Submission Validation Report
 
-Validated on 6 August 2026 from branch `codex/app-store-submission-final`.
+Validated on 7 August 2026 from branch `codex/app-store-submission-final`.
 
 ## Release verdict
 
 The current branch is visually and structurally ready to become the next signed
-TestFlight candidate. A distribution-signed `1.0.0 (2)` App Store archive and
-IPA were produced from the final 6 August branch and passed local signature,
-bundle, provisioning and production-entitlement inspection. It has deliberately
-not been uploaded while the product owner completes the final visual sign-off.
-The processed App Store build `1.0.0 (1)` predates the 6 August integrated
-design and compliance pass and must be replaced before submission. The
+TestFlight candidate. The earlier distribution-signed `1.0.0 (2)` archive and
+IPA remain valid historical signing evidence, but they predate the final
+7 August Community dock, Events map, ticket-handoff, playback-boundary and copy
+changes and must not be uploaded. A fresh build number is required after final
+owner sign-off. The processed App Store build `1.0.0 (1)` also predates the
+integrated design and compliance pass and must be replaced before submission. The
 production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
@@ -31,18 +31,20 @@ candidate build.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
-- The root suite passes all 52 files and 188 tests. Focused licensing and
-  hybrid-commerce tests pass 5 files / 45 tests.
+- The root suite passes all 52 files and 188 tests. The focused App Store
+  safety, Apple notification, commerce-policy and hybrid-checkout set passes
+  4 files / 44 tests.
 - The root Vite production build succeeds. Its existing dependency, browser
   data and large-chunk warnings remain non-blocking technical debt.
-- A production-configured Release build installs and launches on the iPhone 17
-  Pro Max simulator after the final accessibility and image-fallback changes.
-- App Store candidate `1.0.0 (2)` archives and exports successfully with the
+- A fresh native Debug build compiled, installed and launched on the iPhone 17
+  Pro Max simulator after the final 7 August changes. The rebuilt binary—not a
+  stale Metro transform—was used for the final rendered checks.
+- Historical App Store candidate `1.0.0 (2)` archives and exports successfully with the
   `PLUGGD App Store 2026` profile. The exported IPA is signed by Apple
   Distribution for team `37X2468U5U`, targets `com.pluggd.mobile`, uses
   production APNs and Sign in with Apple, has `get-task-allow=false`, contains
   its production JavaScript bundle and passes strict local code-signature
-  verification. Upload is intentionally deferred pending owner sign-off.
+  verification. It is superseded and will be replaced by the next candidate.
 - `git diff --check` passes.
 - The complete Claude visual sequence (`claude/pluggd-aaa-pass` followed by
   `claude/studio-compact-headers`) is integrated after the existing submission
@@ -105,6 +107,25 @@ candidate build.
   identity collision.
 
 ## Final product, visual and accessibility verification
+
+- The final Community render removes the redundant page title and composer
+  strip, keeps stories first, and uses an in-page Feed / Boards / create /
+  Explore / Maps dock. The create control is a centred 48pt raised control with
+  a restrained bevel and highlight; it has no visible caption, while its
+  accessible name remains “Create post.” The active treatment is contained in
+  the icon well and cannot cross the label.
+- The native Events map is interactive, fits confirmed locations, exposes
+  date pins and presents the selected event in a separate bordered preview with
+  a 14pt map gap, 112pt artwork, readable date/location/price and a 40pt action.
+  Map mode now continues into a real-data “More nights nearby” rail ranked from
+  the selected event's city, scene tags and date. Empty promoter/opportunity
+  panels remain contextual to Browse and no longer terminate the fan map flow.
+- Imported mainstream catalogue metadata is excluded at both release mapping
+  and playback-provider boundaries unless PLUGGD owns a valid playable URL.
+  Invalid queue entries fail closed instead of opening a silent player.
+- The 7 August source passes `npm run verify:mobile`, TypeScript, Expo Doctor
+  18/18, root tests, root production build, focused commerce tests and
+  `git diff --check` after these visual changes.
 
 - A fresh 6 August native simulator audit in
   `artifacts/qa/final-aaa-2026-08-06/` covers Home, Discover, Community,
@@ -252,10 +273,9 @@ candidate build.
 
 ## Submission blockers still open
 
-1. Upload and process the completed signed App Store candidate `1.0.0 (2)`,
-   then replace build `1.0.0 (1)` on the version draft. Build 1 is valid
-   historical evidence but does not contain the integrated AAA pass or the
-   final physical-merchandise Store restriction.
+1. Archive, upload and process candidate `1.0.0 (3)` after the 7 August fixes, then
+   replace build `1.0.0 (1)` on the version draft. Builds 1 and 2 are valid
+   historical evidence but are not the current submission candidate.
 2. Complete creator-membership Restore Purchases on the signed device without
    duplicating the existing entitlement. Initial purchase, creator/tier mapping,
    eleven renewals and expiry are green.
@@ -263,9 +283,10 @@ candidate build.
    notifications. The standalone Apple sandbox test, initial purchase,
    renewals and voluntary expiry are already green.
 4. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
-5. Provision a real organiser-approved physical paid-ticket tier before testing
-   ticket checkout; production currently contains none and the app correctly
-   fails closed.
+5. Deploy the conservative physical-event classification migration and verify
+   its 26 candidates when Supabase tooling access reopens. Then provision a real
+   organiser-approved paid-ticket tier for transaction testing; production
+   currently has none and the app correctly fails closed.
 6. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.

@@ -199,7 +199,7 @@ export default function CreatorMembershipScreen() {
 
       const appleProduct = appleTiers.find((product) => product.tierId === tier.id);
       if (!appleProduct?.provisioned || !appleProduct.localizedPrice) {
-        Alert.alert('Available soon', 'You can browse this tier, but its Apple subscription is not provisioned yet.');
+        Alert.alert('Joining opens soon', 'You can explore this tier now. We’ll show the join option here as soon as it becomes available.');
         return;
       }
 

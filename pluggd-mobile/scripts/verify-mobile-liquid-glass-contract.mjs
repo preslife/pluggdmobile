@@ -48,6 +48,7 @@ const createSheet = read('components/CreateActionSheet.tsx');
 const accountHeader = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 const parityScreens = read('src/features/parity/AppWideParityScreens.tsx');
 const community = read('src/features/community-feed/CommunityFeedScreen.tsx');
+const communitySwitcher = read('src/features/community-feed/CommunityInternalSwitcher.tsx');
 const composer = read('src/features/community-feed/CommunityComposer.tsx');
 const glassComposer = read('components/liquid-glass/GlassComposer.tsx');
 const stories = read('src/features/culture/MobileStoriesRail.tsx');
@@ -66,13 +67,15 @@ for (const token of ['GlassHeroCard', 'GlassRailCard', 'LiquidBackground', 'Sect
 // Community now uses the flatter editorial discovery system so posts, filters,
 // and scene imagery carry the hierarchy. Glass remains reserved for persistent
 // system chrome (dock, mini-player and sheets), where the material is useful.
-for (const token of ['DiscoveryHeader', 'filterTabActive', 'MobileStoriesRail', 'CommunityComposer', 'MobileSocialPostCard']) {
+for (const token of ['DiscoveryHeader', 'filterTabActive', 'MobileStoriesRail', 'MobileSocialPostCard']) {
   assert.match(community, new RegExp(escapeRegExp(token)), `Community feed must include ${token}`);
 }
+assert.match(communitySwitcher, /postIconShell[\s\S]*Post[\s\S]*\/create-post/, 'Community dock must render and route the raised post action');
 
-assert.match(composer, /ADD TO THE SIGNAL[\s\S]*JOIN THE CONVERSATION/, 'community composer must use the compact editorial entry treatment');
-assert.match(composer + glassComposer, /Sign in to post/, 'community composer must keep signed-out compose gate');
-assert.match(composer + glassComposer, /Start a post/, 'community composer must keep signed-in compose entry');
+assert.match(composer, /name="add"/, 'community composer must use the familiar plus create icon');
+assert.match(composer, /position: 'absolute'/, 'community composer must remain persistent above the global chrome');
+assert.match(composer + glassComposer, /Sign in to create a post|Sign in to post/, 'community composer must keep signed-out compose gate');
+assert.match(composer + glassComposer, /Create post|Start a post/, 'community composer must keep signed-in compose entry');
 assert.match(stories, /GlassStoryRing/, 'stories rail must use GlassStoryRing');
 assert.match(socialCard, /GlassPanel[\s\S]*toggleSocialLike[\s\S]*toggleSocialBookmark[\s\S]*toggleSocialRepost/, 'social post card must use glass and keep social actions');
 

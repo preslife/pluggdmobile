@@ -272,10 +272,10 @@ export default function CreatorUpload() {
           <View style={styles.hero}>
             <View style={styles.heroTop}>
               <View style={styles.heroCopy}>
-                <Text style={styles.eyebrow}>MOBILE CREATOR WORKFLOW</Text>
+                <Text style={styles.eyebrow}>CREATE YOUR NEXT RELEASE</Text>
                 <Text style={styles.heroTitle}>Build the draft.{'\n'}Keep the momentum.</Text>
                 <Text style={styles.heroBody}>
-                  Shape the metadata, media and rights context now. Final publishing stays deliberate.
+                  Add the music, artwork and rights details now, then review everything before it goes live.
                 </Text>
               </View>
               <View style={styles.progressOrb}>

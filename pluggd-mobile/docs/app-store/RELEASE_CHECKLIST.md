@@ -16,13 +16,16 @@
 - [x] Release configuration archive build
 - [x] Inspect archive for iPhone-only target, privacy manifest and no native Stripe SDK
 - [x] Final integrated native Debug build compiles, installs and launches on the
-  iOS 26.2 simulator with the consolidated workspace Metro server.
-- [x] Archive and export signed App Store candidate `1.0.0 (2)` from the final
-  6 August branch; bundle ID, production entitlements, provisioning profile,
-  embedded JavaScript and strict signature verification pass.
-- [ ] Upload and process candidate `1.0.0 (2)`; processed build `1.0.0 (1)`
-  predates this pass. Upload is intentionally deferred pending final owner
-  visual sign-off.
+  iOS 26.2 simulator from the consolidated 7 August source. The rebuilt binary
+  was used for the final Community and Events-map visual inspection, including
+  the contained Community active state, raised create action, separated event
+  preview and real-data nearby-event recommendations.
+- [x] Historical App Store candidate `1.0.0 (2)` archived and exported with the
+  expected bundle ID, production entitlements, provisioning profile, embedded
+  JavaScript and strict signature verification.
+- [ ] Archive and upload candidate `1.0.0 (3)` after the 7 August Community,
+  Events, playback-boundary and public-copy fixes. Build `1.0.0 (2)` is now superseded;
+  processed build `1.0.0 (1)` predates the integrated pass.
 
 ## Production configuration
 
@@ -137,6 +140,13 @@
 - [ ] Beat webhook replay is idempotent; success, cancellation, delayed completion, refund and revocation reconcile correctly.
 - [x] Real-world event checkout validates event classification, tier, quantity, price, sales window and inventory server-side.
 - [x] Paid virtual events are rejected by external checkout.
+- [x] Organiser ticket links are HTTPS-only, reject local/credential-bearing
+  URLs and open only for server-classified physical events. Virtual and
+  unclassified events remain read-only.
+- [ ] Deploy `20260807001657_classify_existing_physical_event_links.sql` and
+  verify the 26 conservative production candidates before enabling their
+  organiser-ticket CTA. Deployment was blocked on 7 August by the Supabase
+  tooling usage window, not by missing app code.
 - [ ] Concurrent ticket purchases cannot oversell; abandoned reservations expire and refunds return inventory correctly.
 - [ ] Hosted Stripe Checkout offers Apple Pay/card only where the Stripe account and customer device support them.
 - [ ] Checkout cancellation and app termination do not grant access; foreground/return reconciliation waits for provider confirmation.

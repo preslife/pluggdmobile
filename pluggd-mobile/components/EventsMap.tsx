@@ -11,12 +11,14 @@ export function EventsMap({
   count,
   loading = false,
   onSelectEvent,
+  onActiveEventChange: _onActiveEventChange,
   onPress,
 }: {
   points: Array<EventMapPoint | MapPoint>;
   count?: number;
   loading?: boolean;
   onSelectEvent?: (id: string) => void;
+  onActiveEventChange?: (id: string | null) => void;
   onPress?: () => void;
 }) {
   const url = staticMapUrl(points, { width: 680, height: 320 });

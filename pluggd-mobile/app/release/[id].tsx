@@ -61,6 +61,8 @@ interface ReleaseDetail {
   apple_music_url?: string | null;
   soundcloud_url?: string | null;
   youtube_url?: string | null;
+  catalogue_mode?: string | null;
+  catalogue_import_job_id?: string | null;
 }
 
 interface ReleaseTrack {
@@ -222,6 +224,12 @@ export default function ReleaseDetailScreen() {
 
   function buildTrackList(): PluggdTrack[] {
     if (!release) return [];
+
+    // Imported catalogue releases are reference metadata only. Their track
+    // records must never be treated as PLUGGD-hosted audio.
+    if (release.catalogue_import_job_id || (release.catalogue_mode && release.catalogue_mode !== 'pluggd')) {
+      return [];
+    }
 
     const freeRelease = getReleaseCreditPrice(release) <= 0;
     if (tracks.length > 0) {

@@ -97,6 +97,7 @@ export type EventMapPoint = MapPoint & {
   location?: string | null;
   startsAt?: string | null;
   priceCents?: number | null;
+  ticketLabel?: string | null;
 };
 
 /**
