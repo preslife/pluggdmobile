@@ -172,43 +172,6 @@ export default function CreateLiveRoomScreen() {
     };
   };
 
-  const createDirectly = async (payload: RoomPayload, userId: string) => {
-    const extendedInsert = {
-      ...payload,
-      host_id: userId,
-      agora_live_started_at: payload.status === 'live' ? new Date().toISOString() : null,
-    };
-
-    const { data, error } = await (supabase as any)
-      .from('session_rooms')
-      .insert(extendedInsert)
-      .select('id')
-      .single();
-
-    if (!error) return data?.id as string;
-
-    if (!/column|schema|live_mode|mode_config|allow_stage_requests|max_stage_participants|participant_count|recording_enabled|captions_enabled|restream/i.test(error.message ?? '')) {
-      throw error;
-    }
-
-    const { data: fallbackData, error: fallbackError } = await (supabase as any)
-      .from('session_rooms')
-      .insert({
-        title: payload.title,
-        description: payload.description,
-        host_id: userId,
-        status: payload.status,
-        is_public: payload.is_public,
-        scheduled_for: payload.scheduled_for,
-        agora_live_started_at: payload.status === 'live' ? new Date().toISOString() : null,
-      })
-      .select('id')
-      .single();
-
-    if (fallbackError) throw fallbackError;
-    return fallbackData?.id as string;
-  };
-
   const createRoom = async () => {
     const payload = buildPayload();
     if (!payload) return;
@@ -234,11 +197,10 @@ export default function CreateLiveRoomScreen() {
         },
       });
 
-      let roomId = data?.room?.id;
+      if (error) throw error;
 
-      if (error || !roomId) {
-        roomId = await createDirectly(payload, user.id);
-      }
+      const roomId = data?.room?.id;
+      if (!roomId) throw new Error('The room could not be confirmed. Please try again.');
 
       if (payload.status === 'live') {
         router.replace({ pathname: '/live/session', params: { roomId, role: 'host' } } as any);
@@ -281,12 +243,25 @@ export default function CreateLiveRoomScreen() {
 
           <View style={styles.headerCenter}>
             <PluggdWordmark />
-            <Text style={styles.pageTitle}>Create room</Text>
+            <Text style={styles.pageTitle}>LIVE STUDIO</Text>
           </View>
 
-          <View style={styles.iconButtonPlaceholder} />
+          <View style={styles.stepMarker}>
+            <Text style={styles.stepMarkerText}>01</Text>
+          </View>
         </View>
 
+        <View style={styles.heroBlock}>
+          <Text style={styles.heroKicker}>BROADCAST SETUP</Text>
+          <Text style={styles.heroTitle}>Set the room in motion.</Text>
+          <Text style={styles.heroBody}>Choose the energy, shape the stage and bring your people into the moment.</Text>
+          <View style={styles.signalStrip}>
+            <View style={styles.signalDot} />
+            <Text style={styles.signalText}>LIVE VIDEO · CHAT · GIFTS · STAGE REQUESTS</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionKicker}>CHOOSE A FORMAT</Text>
         <Text style={styles.sectionTitle}>Room type</Text>
         <View style={styles.modeGrid}>
           {LIVE_MODES.map((item) => {
@@ -522,16 +497,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0806',
   },
   scrollContent: {
-    paddingHorizontal: 14,
-    paddingTop: 100,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 120,
   },
   topBar: {
-    minHeight: 58,
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 22,
   },
   iconButton: {
     width: 44,
@@ -543,12 +518,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconButtonPlaceholder: {
-    width: 40,
-    height: 40,
-  },
   headerCenter: {
     alignItems: 'center',
+  },
+  stepMarker: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepMarkerText: {
+    color: '#5F584F',
+    fontSize: 11,
+    fontFamily: pluggdFonts.satoshiBlack,
+    letterSpacing: 1.4,
   },
   logoTextRow: {
     flexDirection: 'row',
@@ -565,16 +548,79 @@ const styles = StyleSheet.create({
     color: PLUGGD_ORANGE,
   },
   pageTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
-    marginTop: 2,
+    color: PLUGGD_ORANGE,
+    fontSize: 8.5,
+    fontFamily: pluggdFonts.satoshiBlack,
+    letterSpacing: 1.75,
+    marginTop: 1,
+  },
+  heroBlock: {
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#29251F',
+    marginBottom: 21,
+  },
+  heroKicker: {
+    color: PLUGGD_ORANGE,
+    fontSize: 9,
+    fontFamily: pluggdFonts.satoshiBlack,
+    letterSpacing: 1.7,
+  },
+  heroTitle: {
+    color: '#F7F2E9',
+    fontSize: 32,
+    lineHeight: 37,
+    fontFamily: pluggdFonts.displayBold,
+    letterSpacing: -1.1,
+    marginTop: 6,
+    maxWidth: 320,
+  },
+  heroBody: {
+    color: '#A69F95',
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: pluggdFonts.satoshiMedium,
+    marginTop: 9,
+    maxWidth: 330,
+  },
+  signalStrip: {
+    minHeight: 34,
+    marginTop: 15,
+    paddingHorizontal: 11,
+    borderWidth: 1,
+    borderColor: '#3A2A20',
+    backgroundColor: '#130E0A',
+    borderRadius: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  signalDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#FF4757',
+  },
+  signalText: {
+    color: '#D7CFC4',
+    fontSize: 8,
+    fontFamily: pluggdFonts.satoshiBold,
+    letterSpacing: 0.85,
+  },
+  sectionKicker: {
+    color: PLUGGD_ORANGE,
+    fontSize: 8.5,
+    fontFamily: pluggdFonts.satoshiBlack,
+    letterSpacing: 1.55,
+    marginBottom: 4,
   },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
-    marginBottom: 10,
+    color: '#F7F2E9',
+    fontSize: 21,
+    lineHeight: 26,
+    fontFamily: pluggdFonts.displayBold,
+    letterSpacing: -0.5,
+    marginBottom: 12,
   },
   modeGrid: {
     flexDirection: 'row',
@@ -584,16 +630,16 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     width: '48.8%',
-    minHeight: 150,
-    borderRadius: 5,
+    minHeight: 158,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#171310',
-    padding: 12,
+    borderColor: '#2D2823',
+    backgroundColor: '#14110E',
+    padding: 13,
   },
   modeCardSelected: {
     borderColor: PLUGGD_ORANGE,
-    backgroundColor: '#1A120E',
+    backgroundColor: '#241208',
   },
   modeHeader: {
     flexDirection: 'row',
@@ -604,8 +650,8 @@ const styles = StyleSheet.create({
   modeIconBox: {
     width: 42,
     height: 42,
-    borderRadius: 5,
-    backgroundColor: '#222222',
+    borderRadius: 21,
+    backgroundColor: '#211B16',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -623,27 +669,27 @@ const styles = StyleSheet.create({
     borderColor: PLUGGD_ORANGE,
   },
   modeTitle: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    color: '#F7F2E9',
+    fontSize: 16,
     fontFamily: pluggdFonts.displayBold,
   },
   modeDescription: {
-    color: '#AFAFAF',
-    fontSize: 12,
-    lineHeight: 17,
+    color: '#AAA297',
+    fontSize: 11,
+    lineHeight: 15.5,
     fontFamily: pluggdFonts.satoshiMedium,
     marginTop: 7,
   },
   card: {
-    backgroundColor: '#171310',
-    borderRadius: 5,
+    backgroundColor: '#12100E',
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#262626',
     padding: 14,
     marginBottom: 12,
   },
   cardTitle: {
-    color: '#FFFFFF',
+    color: '#F7F2E9',
     fontSize: 19,
     fontFamily: pluggdFonts.displayBold,
     marginBottom: 10,
@@ -797,7 +843,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 22,
     backgroundColor: 'rgba(8,8,8,0.97)',

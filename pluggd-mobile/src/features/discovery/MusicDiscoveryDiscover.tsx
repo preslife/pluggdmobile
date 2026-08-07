@@ -6,7 +6,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { selectionHaptic } from '../../design/haptics';
-import { useHomeFeed } from '../culture/useCultureData';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
+import { buildHomeSignals } from '../home/homeDiscoveryData';
+import type { EventItem } from '../../lib/mobileContent';
+import { useHomeFeed, useLiveRooms } from '../culture/useCultureData';
 import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from './discoveryModel';
 import { DiscoveryHeader } from './DiscoveryHeader';
 
@@ -15,11 +18,20 @@ const MUTED = '#A69F95';
 const ORANGE = '#FF6600';
 const FILTERS = ['For you', 'Scenes', 'Genres', 'Cities', 'Charts'] as const;
 
+function formatEventDate(value?: string | null) {
+  if (!value) return 'DATE TBA';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'DATE TBA';
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase();
+}
+
 export function MusicDiscoveryDiscover() {
   const router = useRouter();
+  const bottomInset = useBottomChromeInset();
   const params = useLocalSearchParams<{ scene?: string }>();
   const selectedScene = typeof params.scene === 'string' ? decodeURIComponent(params.scene).trim() : '';
   const feed = useHomeFeed();
+  const live = useLiveRooms();
   const { playQueue } = usePlayback();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>(params.scene ? 'Scenes' : 'For you');
   const allItems = buildDiscoveryItems(feed.data);
@@ -51,13 +63,56 @@ export function MusicDiscoveryDiscover() {
   const visible = filter === 'Scenes' && selectedScene
     ? (hasSelectedSceneMatches ? items : allItems)
     : (items.length ? items : allItems);
+  const liveRoom = live.data?.find((room) => room.status === 'live') ?? live.data?.[0];
+  // Live rooms come back mixed; surface open rooms before queued ones so the
+  // section leads with something the listener can actually enter.
+  const liveRooms = useMemo(() => {
+    const rooms = live.data ?? [];
+    return [...rooms].sort((a, b) => Number(b.status === 'live') - Number(a.status === 'live')).slice(0, 4);
+  }, [live.data]);
+  // A recurring series is stored as one row per date, so an unfiltered list
+  // shows the same night four or five times. Collapse to the soonest instance
+  // per title+venue and carry a count, so the series reads as one card.
+  const nearYou = useMemo(() => {
+    const bySeries = new Map<string, { event: EventItem; upcoming: number }>();
+    const dated = (feed.data?.events ?? [])
+      .filter((event) => Boolean(event.location))
+      .slice()
+      .sort((a, b) => new Date(a.starts_at ?? 0).getTime() - new Date(b.starts_at ?? 0).getTime());
+
+    for (const event of dated) {
+      const key = `${(event.title || '').trim().toLowerCase()}|${(event.location || '').trim().toLowerCase()}`;
+      const existing = bySeries.get(key);
+      if (existing) existing.upcoming += 1;
+      else bySeries.set(key, { event, upcoming: 1 });
+    }
+    return [...bySeries.values()].slice(0, 6);
+  }, [feed.data?.events]);
+  // Derived from the people behind the content rather than the profiles table:
+  // profiles is empty for signed-out readers, and the web builds this section
+  // from release/beat/mix owners for the same reason. Genre doubles as the meta
+  // line so a creator always carries context.
+  const creators = useMemo(() => {
+    const seen = new Map<string, { name: string; artwork: string | null; meta: string }>();
+    for (const item of allItems) {
+      const name = item.creator?.trim();
+      if (!name || seen.has(name.toLowerCase())) continue;
+      seen.set(name.toLowerCase(), {
+        name,
+        artwork: item.artwork,
+        meta: item.genre || item.city || 'PLUGGD creator',
+      });
+    }
+    return [...seen.values()].slice(0, 8);
+  }, [allItems]);
+  const pulse = useMemo(() => buildHomeSignals(feed.data, live.data ?? [], []).map((signal) => signal.label).slice(0, 5), [feed.data, live.data]);
   const worlds = useMemo(() => [
     { title: 'Mixes', meta: `${feed.data?.mixes.length || 0} selector worlds`, route: '/mixes', image: feed.data?.mixes.find((item) => item.cover_url)?.cover_url || null, icon: 'album' as const, index: '01' },
     { title: 'Soundboards', meta: `${feed.data?.soundboards.length || 0} ideas in progress`, route: '/soundboards', image: feed.data?.soundboards.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'dashboard-customize' as const, index: '02' },
     { title: 'Releases', meta: `${feed.data?.releases.length || 0} fresh pressings`, route: '/releases', image: feed.data?.releases.find((item) => item.cover_art_url)?.cover_art_url || null, icon: 'music-note' as const, index: '03' },
-    { title: 'Events', meta: `${feed.data?.events.length || 0} live moments`, route: '/events', image: feed.data?.events.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'event' as const, index: '04' },
+    { title: 'Live', meta: liveRoom?.status === 'live' ? 'Creators broadcasting now' : 'Rooms, parties and replays', route: '/live', image: liveRoom?.thumbnail_url || liveRoom?.creator_avatar_url || null, icon: 'sensors' as const, index: '04' },
     { title: 'THE PLUG', meta: 'Interviews, editorials and scene reports', route: '/plug', image: null, icon: 'auto-stories' as const, index: '05', wide: true },
-  ], [feed.data]);
+  ], [feed.data, liveRoom?.creator_avatar_url, liveRoom?.status, liveRoom?.thumbnail_url]);
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
@@ -67,17 +122,28 @@ export function MusicDiscoveryDiscover() {
   return (
     <View style={styles.screen}>
       <DiscoveryHeader />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headingRow}>
           <View style={styles.headingCopy}><Text style={styles.kicker}>FOLLOW THE SIGNAL</Text><Text style={styles.title}>Discover</Text><Text style={styles.subtitle}>Find the next sound through scenes, cities and independent tastemakers.</Text></View>
-          <View style={styles.signalMark}><MaterialIcons name="graphic-eq" size={24} color={ORANGE} /></View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open PLUGGD Live"
+            onPress={() => {
+              selectionHaptic();
+              router.push('/live' as any);
+            }}
+            style={({ pressed }) => [styles.signalMark, pressed && styles.signalMarkPressed]}
+          >
+            <View style={styles.signalLiveDot} />
+            <MaterialIcons name="graphic-eq" size={24} color={ORANGE} />
+          </Pressable>
         </View>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Search music and scenes" onPress={() => router.push('/search' as any)} style={styles.search}>
-          <MaterialIcons name="search" size={21} color={MUTED} /><Text style={styles.searchText}>Artists, tracks, scenes, cities</Text><Text style={styles.searchHint}>⌘K</Text>
+          <MaterialIcons name="search" size={21} color={MUTED} /><Text style={styles.searchText}>Artists, tracks, scenes, cities</Text>
         </Pressable>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {FILTERS.map((item) => <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
+          {FILTERS.map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: filter === item }} key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}
         </ScrollView>
 
         <View style={styles.worldsGrid}>
@@ -116,10 +182,10 @@ export function MusicDiscoveryDiscover() {
 
         {scenes.length ? (
           <>
-            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>SCENE DIAL</Text><Text style={styles.sectionTitle}>Tune into a world</Text></View><Pressable onPress={() => setFilter('Scenes')}><Text style={styles.seeAll}>Browse all</Text></Pressable></View>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>SCENE DIAL</Text><Text style={styles.sectionTitle}>Tune into a world</Text></View><Pressable accessibilityRole="button" onPress={() => setFilter('Scenes')}><Text style={styles.seeAll}>Browse all</Text></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRail}>
               {scenes.map((scene, index) => (
-                <Pressable key={scene.label} onPress={() => router.push(scene.route as any)} style={[styles.sceneCard, index % 2 === 1 && styles.sceneCardTall]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Open ${scene.label}`} key={scene.label} onPress={() => router.push(scene.route as any)} style={[styles.sceneCard, index % 2 === 1 && styles.sceneCardTall]}>
                   {scene.image ? <PluggdImage uri={scene.image} style={styles.fill} displayWidth={480} /> : <View style={[styles.fill, styles.fallback]} />}
                   <View style={styles.sceneShade} /><Text style={styles.sceneNumber}>0{index + 1}</Text><View><Text style={styles.sceneLabel}>{scene.label}</Text><Text style={styles.sceneDetail}>{scene.detail} · enter</Text></View>
                 </Pressable>
@@ -130,10 +196,10 @@ export function MusicDiscoveryDiscover() {
 
         {allItems.length > 3 ? (
           <>
-            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>RELEASE RADAR</Text><Text style={styles.sectionTitle}>New on the platform</Text></View><Pressable onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable></View>
+            <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>RELEASE RADAR</Text><Text style={styles.sectionTitle}>New on the platform</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable></View>
             <View style={styles.radarGrid}>
               {allItems.slice(3, 7).map((item) => (
-                <Pressable key={item.id} onPress={() => play(item)} style={styles.radarCard}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={item.id} onPress={() => play(item)} style={styles.radarCard}>
                   {item.artwork ? <PluggdImage uri={item.artwork} style={styles.radarArt} displayWidth={420} /> : <View style={[styles.radarArt, styles.fallback]}><MaterialIcons name="graphic-eq" size={30} color={ORANGE} /></View>}
                   <View style={styles.radarPlay}><MaterialIcons name="play-arrow" size={18} color="#100B07" /></View>
                   <Text style={styles.radarTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.radarMeta} numberOfLines={1}>{item.creator} · {item.kind}</Text>
@@ -147,7 +213,7 @@ export function MusicDiscoveryDiscover() {
           <>
             <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>PLUGGD CHART</Text><Text style={styles.sectionTitle}>Moving without the machine</Text></View></View>
             {allItems.slice(0, 6).map((item, index) => (
-              <Pressable key={`chart-${item.id}`} onPress={() => play(item)} style={styles.chartRow}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={`chart-${item.id}`} onPress={() => play(item)} style={styles.chartRow}>
                 <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
                 {item.artwork ? <PluggdImage uri={item.artwork} style={styles.chartArt} displayWidth={180} /> : <View style={[styles.chartArt, styles.fallback]} />}
                 <View style={styles.chartCopy}><Text style={styles.chartTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.chartMeta} numberOfLines={1}>{item.creator} · {item.discoveryReason}</Text></View>
@@ -157,9 +223,125 @@ export function MusicDiscoveryDiscover() {
           </>
         ) : null}
 
+        {/* Live Now — public rooms first, upcoming events when nothing is live,
+            so the section is never an empty shelf. Mirrors web /discover. */}
+        <View style={styles.sectionHeader}>
+          <View><Text style={styles.sectionEyebrow}>LIVE NOW</Text><Text style={styles.sectionTitle}>Rooms open right now</Text></View>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/live' as any)}><Text style={styles.seeAll}>All rooms</Text></Pressable>
+        </View>
+        {liveRooms.length ? (
+          liveRooms.map((room) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open live room ${room.title || 'PLUGGD Live'}`}
+              key={`live-${room.id}`}
+              onPress={() => router.push('/live' as any)}
+              style={styles.chartRow}
+            >
+              <View style={[styles.liveDot, room.status === 'live' && styles.liveDotOn]} />
+              <View style={styles.chartCopy}>
+                <Text style={styles.chartTitle} numberOfLines={1}>{room.title || 'PLUGGD Live'}</Text>
+                <Text style={styles.chartMeta} numberOfLines={1}>
+                  {room.status === 'live'
+                    ? `${room.creator_name || 'PLUGGD Live'} · ${room.viewer_count || 0} listening`
+                    : `${room.creator_name || 'PLUGGD Live'} · queued`}
+                </Text>
+              </View>
+              <MaterialIcons name="north-east" size={18} color={room.status === 'live' ? ORANGE : MUTED} />
+            </Pressable>
+          ))
+        ) : (
+          <View style={styles.emptyRow}>
+            <Text style={styles.liveEmptyTitle}>No rooms open right now.</Text>
+            <Text style={styles.emptyCopy}>Upcoming events are still moving — jump into one while the next room opens.</Text>
+            <View style={styles.emptyActions}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/events' as any)} style={styles.emptyPrimary}><Text style={styles.emptyPrimaryText}>View events</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/live' as any)} style={styles.emptySecondary}><Text style={styles.emptySecondaryText}>Start a room</Text></Pressable>
+            </View>
+          </View>
+        )}
+
+        {nearYou.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionEyebrow}>NEAR YOU</Text><Text style={styles.sectionTitle}>Happening around the scene</Text></View>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/events' as any)}><Text style={styles.seeAll}>All events</Text></Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRail}>
+              {nearYou.map(({ event, upcoming }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    upcoming > 1
+                      ? `Open ${event.title || 'event'}, next of ${upcoming} dates`
+                      : `Open ${event.title || 'event'}`
+                  }
+                  key={`near-${event.id}`}
+                  onPress={() => router.push(`/events/${event.id}` as any)}
+                  style={styles.nearCard}
+                >
+                  {event.cover_image_url ? (
+                    <PluggdImage uri={event.cover_image_url} style={styles.nearArt} displayWidth={320} />
+                  ) : (
+                    <View style={[styles.nearArt, styles.fallback]} />
+                  )}
+                  <Text style={styles.nearDate}>
+                    {formatEventDate(event.starts_at)}
+                    {upcoming > 1 ? `  ·  +${upcoming - 1} MORE DATES` : ''}
+                  </Text>
+                  <Text style={styles.chartTitle} numberOfLines={2}>{event.title || 'Untitled event'}</Text>
+                  <Text style={styles.chartMeta} numberOfLines={1}>{event.location || 'Location TBA'}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
+
+        {creators.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionEyebrow}>CREATORS TO WATCH</Text><Text style={styles.sectionTitle}>Shaping the feed</Text></View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sceneRail}>
+              {creators.map((creator) => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search for ${creator.name}`}
+                  key={`creator-${creator.name}`}
+                  onPress={() => router.push(`/search?q=${encodeURIComponent(creator.name)}` as any)}
+                  style={styles.creatorCard}
+                >
+                  {creator.artwork ? (
+                    <PluggdImage uri={creator.artwork} style={styles.creatorArt} displayWidth={180} />
+                  ) : (
+                    <View style={[styles.creatorArt, styles.fallback]} />
+                  )}
+                  <Text style={styles.creatorName} numberOfLines={1}>{creator.name}</Text>
+                  <Text style={styles.chartMeta} numberOfLines={1}>{creator.meta}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
+
+        {pulse.length ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionEyebrow}>COMMUNITY PULSE</Text><Text style={styles.sectionTitle}>What is moving</Text></View>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/community' as any)}><Text style={styles.seeAll}>Open community</Text></Pressable>
+            </View>
+            {pulse.map((line, index) => (
+              <View key={`pulse-${index}`} style={styles.pulseRow}>
+                <View style={styles.pulseDot} />
+                <Text style={styles.pulseText} numberOfLines={2}>{line}</Text>
+              </View>
+            ))}
+          </>
+        ) : null}
+
         <View style={styles.contextGrid}>
-          <Pressable onPress={() => router.push('/events' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="event" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Events in the signal</Text><Text style={styles.contextMeta}>Rooms, nights and stages</Text></Pressable>
-          <Pressable onPress={() => router.push('/market' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>SUPPORT</Text><MaterialIcons name="storefront" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Creator market</Text><Text style={styles.contextMeta}>Beats, packs and releases</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/live' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>LIVE</Text><MaterialIcons name="sensors" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Enter the room</Text><Text style={styles.contextMeta}>Broadcasts, parties and replays</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/market' as any)} style={styles.contextCard}><Text style={styles.contextKicker}>SUPPORT</Text><MaterialIcons name="storefront" size={27} color={ORANGE} /><Text style={styles.contextTitle}>Creator market</Text><Text style={styles.contextMeta}>Beats, packs and releases</Text></Pressable>
         </View>
       </ScrollView>
     </View>
@@ -188,11 +370,32 @@ function SignalTile({ item, variant, onPlay }: { item: DiscoveryItem; variant: '
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' }, content: { paddingHorizontal: 20, paddingBottom: 184 },
   headingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 5 }, headingCopy: { flex: 1 },
-  kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 }, title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.3, marginTop: 3 },
+  kicker: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 }, title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, marginTop: 3 },
   subtitle: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, maxWidth: 310, marginTop: 6 },
-  signalMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#3A332B', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  signalMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#5B3B25', backgroundColor: '#18120E', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  signalMarkPressed: { transform: [{ scale: 0.96 }], opacity: 0.88 },
+  signalLiveDot: { position: 'absolute', right: 5, top: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF4757', borderWidth: 1, borderColor: '#0A0908' },
   search: { minHeight: 48, marginTop: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
-  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 }, searchHint: { color: '#756E64', fontFamily: 'Satoshi-Bold', fontSize: 10 },
+  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 },
+  liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#4A443C' },
+  liveDotOn: { backgroundColor: ORANGE },
+  emptyRow: { borderWidth: 1, borderColor: '#29251F', borderRadius: 6, padding: 16, gap: 6 },
+  liveEmptyTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 14 },
+  emptyCopy: { color: MUTED, fontFamily: 'Satoshi-Regular', fontSize: 12.5, lineHeight: 18 },
+  emptyActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  emptyPrimary: { minHeight: 38, paddingHorizontal: 16, borderRadius: 999, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  emptyPrimaryText: { color: '#0A0908', fontFamily: 'Satoshi-Bold', fontSize: 12.5 },
+  emptySecondary: { minHeight: 38, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: '#39332C', alignItems: 'center', justifyContent: 'center' },
+  emptySecondaryText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12.5 },
+  nearCard: { width: 176, gap: 5 },
+  nearArt: { width: 176, height: 108, borderRadius: 6, backgroundColor: '#17130F' },
+  nearDate: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.2, marginTop: 3 },
+  creatorCard: { width: 104, gap: 5 },
+  creatorArt: { width: 104, height: 104, borderRadius: 52, backgroundColor: '#17130F' },
+  creatorName: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12.5, marginTop: 3 },
+  pulseRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#29251F' },
+  pulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ORANGE, marginTop: 6 },
+  pulseText: { flex: 1, color: INK, fontFamily: 'Satoshi-Medium', fontSize: 13, lineHeight: 19 },
   filters: { gap: 8, paddingVertical: 14 }, filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#181512' }, filterActive: { backgroundColor: ORANGE }, filterText: { color: '#CBC4B9', fontFamily: 'Satoshi-Bold', fontSize: 12 }, filterTextActive: { color: '#110B07' },
   worldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   worldLink: { width: '48.8%', height: 112, borderRadius: 5, overflow: 'hidden', justifyContent: 'space-between', padding: 10, backgroundColor: '#151310' },

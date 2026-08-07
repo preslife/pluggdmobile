@@ -112,7 +112,8 @@ export function useEventLayer(limit = 16) {
       safeList<EventItem>(
         supabase
           .from('events')
-          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(limit),
@@ -154,7 +155,7 @@ export function useUniversalSearch(term: string) {
       ] = await Promise.all([
         safeList<any>(
           (supabase as any)
-            .from('profiles')
+            .from('public_profiles')
             .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
             .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
             .eq('is_creator', true)
@@ -200,7 +201,8 @@ export function useUniversalSearch(term: string) {
         safeList<EventItem>(
           supabase
             .from('events')
-            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+            .eq('discoverable', true)
             .or(`title.ilike.${pattern},location.ilike.${pattern},description.ilike.${pattern}`)
             .order('starts_at', { ascending: true })
             .limit(12),
@@ -259,7 +261,7 @@ export function useUniversalSearch(term: string) {
         ),
         safeList<any>(
           (supabase as any)
-            .from('profiles')
+            .from('public_profiles')
             .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
             .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
             .limit(12),

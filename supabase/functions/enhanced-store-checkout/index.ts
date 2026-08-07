@@ -51,6 +51,18 @@ serve(async (req) => {
       throw new Error('User not authenticated');
     }
 
+    const metadataItems = Array.isArray(paymentMetadata?.items)
+      ? paymentMetadata.items
+      : [];
+    if (metadataItems.some((item: any) => item?.type === 'beat')) {
+      return new Response(JSON.stringify({
+        error: 'Beat licences must use the verified professional licensing checkout.',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
     logStep('User authenticated', { userId: user.id, email: user.email });
 
     // Initialize Stripe
@@ -252,6 +264,12 @@ serve(async (req) => {
           .single();
 
         if (beat) {
+          return new Response(JSON.stringify({
+            error: 'Beat licences must use the verified professional licensing checkout.',
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
           productData = {
             id: beat.id,
             title: beat.title,

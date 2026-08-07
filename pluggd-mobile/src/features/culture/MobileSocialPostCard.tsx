@@ -375,6 +375,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   // evenly spread five-icon action row — matching the live web Community feed.
   return (
     <Pressable
+      accessibilityRole="button"
       accessibilityLabel={`Open post by ${displayName}`}
       style={[styles.row, variant === 'thread' && styles.rowThread]}
       onPress={() => router.push(`/post/${post.id}` as any)}

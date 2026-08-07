@@ -9,7 +9,6 @@ const topRoute = read('app/community.tsx');
 const screen = read('src/features/community-feed/CommunityFeedScreen.tsx');
 const service = read('src/features/community-feed/communityFeedService.ts');
 const types = read('src/features/community-feed/communityFeedTypes.ts');
-const composer = read('src/features/community-feed/CommunityComposer.tsx');
 const interstitials = read('src/features/community-feed/CommunityFeedInterstitials.tsx');
 const switcher = read('src/features/community-feed/CommunityInternalSwitcher.tsx');
 const socialCard = read('src/features/culture/MobileSocialPostCard.tsx');
@@ -26,7 +25,6 @@ assert.doesNotMatch(tabRoute + topRoute, /CommunityParityScreen/, 'Community pri
 
 for (const token of [
   'MobileStoriesRail',
-  'CommunityComposer',
   'CommunityInternalSwitcher',
   'CommunityBottomDockControls',
   'MobileSocialPostCard',
@@ -42,6 +40,10 @@ for (const token of [
 ]) {
   assert.match(screen + types, new RegExp(escapeRegExp(token)), `CommunityFeedScreen must include ${token}`);
 }
+for (const token of ['Feed', 'Boards', 'Post', 'Explore', 'Maps', 'postIconShell', '/create-post', '/maps']) {
+  assert.match(switcher, new RegExp(escapeRegExp(token)), `Community dock must include ${token}`);
+}
+assert.match(switcher, /!isPost \? <Text/, 'center Post action must remain icon-only instead of adding an off-centre caption');
 
 for (const token of [
   'Community Prompt',
@@ -65,6 +67,12 @@ assert.match(screen, /kind="the_plug"/, 'Community must place THE PLUG inside th
 assert.match(service, /loadMobileSocialFeed\(\{ mode: 'latest'/, 'Community must request the latest social feed instead of an opaque ranked order');
 assert.match(service, /orderCommunityPostsNewestFirst/, 'Community must defensively keep posts newest-first after enrichment');
 assert.match(service, /createdAtMs\(right\) - createdAtMs\(left\)/, 'Community ordering must compare post timestamps in descending order');
+assert.ok(
+  screen.indexOf('<MobileStoriesRail') > 0 &&
+    screen.indexOf('<MobileStoriesRail') < screen.indexOf('<CommunityInternalSwitcher') &&
+    screen.indexOf('<CommunityInternalSwitcher') < screen.indexOf('<MobileSocialPostCard'),
+  'Community must lead directly with stories and feed navigation before social posts',
+);
 
 for (const token of [
   'loadMobileSocialFeed',
@@ -90,9 +98,7 @@ for (const token of [
   assert.match(socialCard + socialService, new RegExp(escapeRegExp(token)), `Social post card/service must support ${token}`);
 }
 
-for (const token of ['Start a post', 'Sign in to post', '/auth/login', '/create-post']) {
-  assert.match(composer, new RegExp(escapeRegExp(token)), `Community composer must include ${token}`);
-}
+assert.doesNotMatch(screen + switcher, /What's happening in your world|SCENES IN MOTION|Follow the conversations, works in progress/, 'Community must not spend feed space on redundant heading or composer prompt copy');
 
 for (const token of [
   'attachmentType',
@@ -123,7 +129,7 @@ for (const token of ['galleryItems', 'useLocalSearchParams', 'galleryItem', 'cus
 assert.match(hashtagRoute, /loadMobileSocialFeed|CommunityFeedScreen/, 'Hashtag route must use the social feed implementation');
 
 assert.doesNotMatch(
-  screen + composer + interstitials + switcher + socialCard + createPost,
+  screen + interstitials + switcher + socialCard + createPost,
   /backend contract|unsupported payment|native translation|App Review|Apple-backed|web-only|current backend|mobile backend|\bcontract\b|\bbackend\b/i,
   'Community feed public UI must not expose internal implementation copy',
 );

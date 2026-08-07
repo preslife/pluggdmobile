@@ -281,15 +281,17 @@ export default function Login() {
             ) : null}
 
             <View style={styles.formMetaRow}>
-              <Pressable onPress={() => router.push('/auth/magic-link' as any)}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/auth/magic-link' as any)}>
                 <Text style={[styles.linkText, { color: theme.colors.textMuted }]}>Use magic link</Text>
               </Pressable>
-              <Pressable onPress={handleForgotPassword}>
+              <Pressable accessibilityRole="button" onPress={handleForgotPassword}>
                 <Text style={[styles.linkText, { color: theme.colors.accent }]}>Forgot password?</Text>
               </Pressable>
             </View>
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={loading ? 'Logging in' : 'Log in'}
               onPress={handleLogin}
               disabled={loading}
               style={[styles.loginButton, { opacity: loading ? 0.62 : 1 }]}

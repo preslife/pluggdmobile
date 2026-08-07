@@ -1,6 +1,23 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { appleSignInAvailable } from '../src/features/auth/apple-sign-in';
+
+/**
+ * Resolved on demand: a top-level import of expo-apple-authentication throws on
+ * a binary without the native module, and this button renders inside the login
+ * screen — so the whole sign-in screen went blank instead of simply dropping
+ * the Apple option.
+ */
+type AppleAuthenticationModule = typeof import('expo-apple-authentication');
+
+function appleAuth(): AppleAuthenticationModule | null {
+  if (!appleSignInAvailable()) return null;
+  try {
+    return require('expo-apple-authentication') as AppleAuthenticationModule;
+  } catch {
+    return null;
+  }
+}
 
 type Props = {
   onPress: () => void;
@@ -17,9 +34,11 @@ export function AppleSignInButton({
 }: Props) {
   const [available, setAvailable] = useState(false);
 
+  const AppleAuthentication = appleAuth();
+
   useEffect(() => {
     let active = true;
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' || !AppleAuthentication) return;
     AppleAuthentication.isAvailableAsync()
       .then((isAvailable) => {
         if (active) setAvailable(isAvailable);
@@ -32,7 +51,7 @@ export function AppleSignInButton({
     };
   }, []);
 
-  if (!available) return null;
+  if (!available || !AppleAuthentication) return null;
 
   return (
     <View style={{ opacity: disabled ? 0.55 : 1 }} pointerEvents={disabled ? 'none' : 'auto'}>

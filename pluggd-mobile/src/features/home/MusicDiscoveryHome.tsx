@@ -21,6 +21,7 @@ import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { selectionHaptic } from '../../design/haptics';
 import { useReducedMotion } from '../../design/useReducedMotion';
 import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
@@ -78,7 +79,21 @@ function sectionLabelForRecent(count: number) {
 
 export function MusicDiscoveryHome() {
   const router = useRouter();
+  const bottomInset = useBottomChromeInset();
   const { fontScale } = useWindowDimensions();
+  // Masthead edition line. The number is days since the current volume opened
+  // on 1 January — the same day-of-year calculation the web home uses, so the
+  // app and pluggd.fm always show the same issue number on the same day.
+  const editionLine = useMemo(() => {
+    const now = new Date();
+    const volumeEpoch = new Date(now.getFullYear(), 0, 1);
+    const number = Math.max(1, Math.floor((now.getTime() - volumeEpoch.getTime()) / 86_400_000) + 1);
+    const date = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: '2-digit', month: 'long' })
+      .format(now)
+      .toUpperCase()
+      .replace(',', ' ·');
+    return `EDITION №${number} — ${date}`;
+  }, []);
   const accessibilityLayout = fontScale >= 1.5;
   const { user, loading: authLoading } = useAuth();
   const feed = useHomeFeed();
@@ -183,21 +198,21 @@ export function MusicDiscoveryHome() {
     <View style={styles.screen}>
       <DiscoveryHeader />
       <RNAnimated.ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ORANGE} />}
         onScroll={RNAnimated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
       >
         <Enter delay={0}>
+          {/* The edition line runs full width above the masthead rather than
+              inside the title group — beside the editor note it had roughly
+              210pt to work with and wrapped mid-date. */}
+          <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={styles.eyebrow}>
+            {editionLine}
+          </Text>
           <View style={[styles.titleRow, accessibilityLayout && styles.titleRowAccessibility]}>
             <View style={[styles.titleGroup, accessibilityLayout && styles.titleGroupAccessibility]}>
-              <Text maxFontSizeMultiplier={1.4} style={styles.eyebrow}>
-                {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: '2-digit', month: 'long' })
-                  .format(new Date())
-                  .toUpperCase()
-                  .replace(',', ' ·')}
-              </Text>
               <Text maxFontSizeMultiplier={1.35} style={styles.title}>The Daily Plug</Text>
             </View>
             <Text maxFontSizeMultiplier={1.4} numberOfLines={2} style={[styles.editorNote, accessibilityLayout && styles.editorNoteAccessibility]}>
@@ -205,6 +220,24 @@ export function MusicDiscoveryHome() {
               {featured?.isEditorialPick ? 'PLUGGD editors' : 'PLUGGD selection'}
             </Text>
           </View>
+        </Enter>
+
+        {/* Search is the primary discovery gesture on a phone. The header icon
+            alone was too weak an affordance for it, and the web home puts a
+            full-width field at the top for the same reason. */}
+        <Enter delay={40}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search creators, scenes and live rooms"
+            onPress={() => {
+              selectionHaptic();
+              router.push('/search' as any);
+            }}
+            style={styles.search}
+          >
+            <MaterialIcons name="search" size={21} color={MUTED} />
+            <Text style={styles.searchText}>Creators, scenes, live rooms…</Text>
+          </Pressable>
         </Enter>
 
         {signals.length ? <LiveTicker items={signals.map((signal) => signal.label)} variant="home" speed={34} /> : null}
@@ -549,13 +582,12 @@ export function MusicDiscoveryHome() {
           </>
         ) : null}
 
-        {featuredEvent || featuredRoom ? (
-          <>
+        <>
             <SectionHeader
               title="Happening now"
-              subtitle="Events and rooms moving through the scene."
-              action="All events"
-              onAction={() => router.push('/events' as any)}
+              subtitle="Live rooms and events moving through the scene."
+              action="Enter Live"
+              onAction={() => router.push('/live' as any)}
             />
             {featuredEvent ? (
               <View style={[styles.eventFrame, !featuredEvent.cover_image_url && styles.eventFrameCompact]}>
@@ -615,9 +647,42 @@ export function MusicDiscoveryHome() {
                   style={({ pressed }) => [styles.signalHit, pressed && styles.pressed]}
                 />
               </View>
-            ) : null}
+            ) : (
+              <View style={styles.liveGateway}>
+                <LinearGradient
+                  colors={['#3B140F', '#18100D', '#0B0907']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.liveGatewayPulseOuter}>
+                  <View style={styles.liveGatewayPulseInner}>
+                    <MaterialIcons name="sensors" size={26} color={INK} />
+                  </View>
+                </View>
+                <View style={styles.liveGatewayCopy}>
+                  <View style={styles.liveGatewayKickerRow}>
+                    <View style={styles.liveGatewayDot} />
+                    <Text style={styles.liveGatewayKicker}>PLUGGD LIVE</Text>
+                  </View>
+                  <Text style={styles.liveGatewayTitle}>Step into the room.</Text>
+                  <Text style={styles.liveGatewayMeta}>Watch creators, join the chat, send gifts or start a session.</Text>
+                </View>
+                <View style={styles.liveGatewayAction}>
+                  <MaterialIcons name="arrow-forward" size={18} color={INK} />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter PLUGGD Live"
+                  onPress={() => {
+                    selectionHaptic();
+                    router.push('/live' as any);
+                  }}
+                  style={({ pressed }) => [styles.signalHit, pressed && styles.pressed]}
+                />
+              </View>
+            )}
           </>
-        ) : null}
 
         {beatGateway || packGateway ? (
           <>
@@ -861,12 +926,14 @@ function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; i
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0A0908' },
   content: { paddingHorizontal: 20, paddingBottom: 190 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 18, gap: 14 },
+  search: { minHeight: 48, marginBottom: 18, borderWidth: 1, borderColor: '#39332C', borderRadius: 5, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
+  searchText: { flex: 1, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 13 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18, gap: 14 },
   titleRowAccessibility: { flexDirection: 'column', alignItems: 'flex-start', gap: 6 },
   titleGroup: { flex: 1, minWidth: 0 },
   titleGroupAccessibility: { flex: 0 },
-  eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.6, marginBottom: 5 },
-  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 30, letterSpacing: -1.1 },
+  eyebrow: { color: ORANGE, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.35, marginTop: 4, marginBottom: 5 },
+  title: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1 },
   editorNote: { flexShrink: 1, maxWidth: 96, color: MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10, lineHeight: 14, textAlign: 'right' },
   editorNoteAccessibility: { maxWidth: 220, textAlign: 'left' },
   loadingStack: { gap: 12, paddingBottom: 12 },
@@ -1026,6 +1093,16 @@ const styles = StyleSheet.create({
   eventCtaText: { color: '#100B07', fontFamily: 'Satoshi-Black', fontSize: 11 },
   signalFrame: { height: 88, minHeight: 88, maxHeight: 88, position: 'relative', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingHorizontal: 11, paddingVertical: 10, borderWidth: 1, borderColor: '#302A24', borderRadius: 5, backgroundColor: '#12100E' },
   signalHit: { ...StyleSheet.absoluteFillObject, zIndex: 5 },
+  liveGateway: { minHeight: 136, borderRadius: 7, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 18, borderWidth: 1, borderColor: '#4A261B' },
+  liveGatewayPulseOuter: { width: 74, height: 74, borderRadius: 37, borderWidth: 1, borderColor: 'rgba(255,71,87,0.32)', backgroundColor: 'rgba(255,71,87,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  liveGatewayPulseInner: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF4757', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF4757', shadowOpacity: 0.38, shadowRadius: 14, shadowOffset: { width: 0, height: 5 } },
+  liveGatewayCopy: { flex: 1, minWidth: 0, zIndex: 2 },
+  liveGatewayKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+  liveGatewayDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF4757' },
+  liveGatewayKicker: { color: '#FF8B93', fontFamily: 'Satoshi-Bold', fontSize: 8.5, letterSpacing: 1.35 },
+  liveGatewayTitle: { color: INK, fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22, letterSpacing: -0.35 },
+  liveGatewayMeta: { color: '#BDB3A8', fontFamily: 'Satoshi-Regular', fontSize: 10.5, lineHeight: 14, marginTop: 4, maxWidth: 205 },
+  liveGatewayAction: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(247,242,233,0.24)', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   liveDot: { position: 'absolute', left: -1, top: 18, width: 3, height: 28, borderTopRightRadius: 3, borderBottomRightRadius: 3, backgroundColor: ORANGE },
   signalThumb: { width: 52, height: 52, borderRadius: 4, backgroundColor: '#211C17' },
   signalCopy: { flex: 1, minWidth: 0 },

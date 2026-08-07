@@ -122,17 +122,55 @@ async function createLicencePdf(
     size: 9,
   });
   addLine(
+    `Immediate digital delivery requested: ${contract.digital_delivery_requested === true ? "Yes" : "No"}`,
+    { bold: true, size: 9 },
+  );
+  if (contract.digital_delivery_requested === true) {
+    addLine(
+      `Consent version: ${contract.digital_delivery_consent_version ?? "Not recorded"}`,
+      { size: 8.5 },
+    );
+    addLine(
+      `Consent recorded: ${contract.digital_delivery_consented_at ?? "Not recorded"}`,
+      { size: 8.5 },
+    );
+    for (const line of wrapText(pdfSafe(contract.digital_delivery_consent_text))) {
+      addLine(line || " ", { size: 8 });
+    }
+  }
+  const producerAuthorization = contract.producer_authorization_snapshot ?? {};
+  addLine(
+    `Producer authorization version: ${producerAuthorization.version ?? "Published offer"}`,
+    { size: 8.5 },
+  );
+  addLine(
+    `Producer authorization recorded: ${producerAuthorization.authorized_at ?? "Recorded with offer"}`,
+    { size: 8.5 },
+  );
+  addLine(
     "The authoritative contract record and payment verification are retained by PLUGGD.",
     { size: 8 },
   );
 
   const bytes = await pdf.save();
-  const path = `${contract.artist_id}/licences/${contract.id}.pdf`;
+  const documentHash = (await sha256(JSON.stringify({
+    id: contract.id,
+    legalText: contract.legal_text,
+    artistSignature: contract.artist_signature,
+    producerSignature: contract.producer_signature,
+    consentText: contract.digital_delivery_consent_text,
+    consentVersion: contract.digital_delivery_consent_version,
+    consentedAt: contract.digital_delivery_consented_at,
+    producerAuthorization,
+  }))).slice(0, 20);
+  const path = `${contract.artist_id}/licences/${contract.id}-${documentHash}.pdf`;
   const { error } = await client.storage.from("receipts").upload(path, bytes, {
     contentType: "application/pdf",
-    upsert: true,
+    upsert: false,
   });
-  if (error) throw new Error(`Licence PDF upload failed: ${error.message}`);
+  if (error && !/already exists|duplicate/i.test(error.message ?? "")) {
+    throw new Error(`Licence PDF upload failed: ${error.message}`);
+  }
   return `receipts/${path}`;
 }
 
@@ -234,6 +272,14 @@ async function finalizeBeat(
   if (contractError || !contract || !["signed", "completed"].includes(contract.status)) {
     throw new Error("Signed beat licence contract was not found");
   }
+  if (
+    contract.digital_delivery_requested !== true ||
+    !contract.digital_delivery_consent_text ||
+    !contract.digital_delivery_consent_version ||
+    !contract.digital_delivery_consented_at
+  ) {
+    throw new Error("Immediate digital delivery consent was not recorded");
+  }
 
   const platformFeeCents = Number(
     checkout.provider_metadata?.platform_fee_cents ?? 0,
@@ -325,6 +371,27 @@ async function finalizeBeat(
         purchaseUpdate.error?.message ?? contractUpdate.error?.message
       }`,
     );
+  }
+
+  if (contract.template_type === "exclusive_rights") {
+    const [optionsUpdate, beatUpdate] = await Promise.all([
+      client.from("licensing_options").update({
+        is_available: false,
+        updated_at: new Date().toISOString(),
+      }).eq("beat_id", checkout.resource_id),
+      client.from("beats").update({
+        available_licenses: [],
+        license_prices: {},
+        updated_at: new Date().toISOString(),
+      }).eq("id", checkout.resource_id),
+    ]);
+    if (optionsUpdate.error || beatUpdate.error) {
+      throw new Error(
+        `Exclusive licence catalogue withdrawal failed: ${
+          optionsUpdate.error?.message ?? beatUpdate.error?.message
+        }`,
+      );
+    }
   }
 
   await logger.info("hybrid_beat_licence_completed", {

@@ -14,9 +14,10 @@ interface ContractViewerProps {
   userRole: 'producer' | 'artist';
   onSign?: (signature: string) => Promise<void>;
   showSignature?: boolean;
+  onDownload?: () => Promise<void> | void;
 }
 
-const ContractViewer = ({ contract, userRole, onSign, showSignature = true }: ContractViewerProps) => {
+const ContractViewer = ({ contract, userRole, onSign, showSignature = true, onDownload }: ContractViewerProps) => {
   const [isSigningMode, setIsSigningMode] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const signaturePadRef = useRef<any>(null);
@@ -253,17 +254,13 @@ const ContractViewer = ({ contract, userRole, onSign, showSignature = true }: Co
       )}
 
       {/* Actions */}
-      {isFullySigned && (
+      {contract.status === 'completed' && contract.contract_pdf_url && onDownload && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={onDownload}>
                 <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <FileText className="h-4 w-4 mr-2" />
-                Email Copy
+                Open retained PDF
               </Button>
             </div>
           </CardContent>

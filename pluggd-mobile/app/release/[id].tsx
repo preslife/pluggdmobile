@@ -9,7 +9,7 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +61,8 @@ interface ReleaseDetail {
   apple_music_url?: string | null;
   soundcloud_url?: string | null;
   youtube_url?: string | null;
+  catalogue_mode?: string | null;
+  catalogue_import_job_id?: string | null;
 }
 
 interface ReleaseTrack {
@@ -136,8 +138,9 @@ function daysAgoLabel(value?: string | null) {
 }
 
 export default function ReleaseDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { playQueue, currentTrack, isPlaying, togglePlayPause, progress } = usePlayback();
@@ -221,6 +224,12 @@ export default function ReleaseDetailScreen() {
 
   function buildTrackList(): PluggdTrack[] {
     if (!release) return [];
+
+    // Imported catalogue releases are reference metadata only. Their track
+    // records must never be treated as PLUGGD-hosted audio.
+    if (release.catalogue_import_job_id || (release.catalogue_mode && release.catalogue_mode !== 'pluggd')) {
+      return [];
+    }
 
     const freeRelease = getReleaseCreditPrice(release) <= 0;
     if (tracks.length > 0) {
@@ -475,6 +484,7 @@ export default function ReleaseDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 200 }}
@@ -751,7 +761,14 @@ export default function ReleaseDetailScreen() {
           ) : null}
 
           {/* Discussion */}
-          <View style={styles.panel}>
+          <View
+            style={styles.panel}
+            onLayout={(event) => {
+              if (focus !== 'comments') return;
+              const y = event.nativeEvent.layout.y;
+              requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 96), animated: true }));
+            }}
+          >
             <Text style={styles.panelEyebrow}>DISCUSSION</Text>
             <View style={styles.commentsHeadRow}>
               <MaterialIcons name="chat-bubble-outline" size={17} color={ed.cream} />

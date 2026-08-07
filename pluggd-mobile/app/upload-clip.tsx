@@ -123,10 +123,10 @@ export default function UploadClipScreen() {
           <Requirement index="02" title="Real video" body="Upload up to two minutes from your device library." />
           <Requirement index="03" title="Human review" body="Every clip is checked before it reaches public discovery." last />
         </View>
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/auth/login' as any)}>
+        <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.push('/auth/login' as any)}>
           <Text style={styles.primaryButtonText}>Sign in to continue</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push('/auth/signup' as any)}>
+        <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={() => router.push('/auth/signup' as any)}>
           <Text style={styles.secondaryButtonText}>Create a creator account</Text>
           <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
         </Pressable>
@@ -140,7 +140,7 @@ export default function UploadClipScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <WorkflowLabel index="01" title="Media" detail="MP4 · MOV · up to 2 minutes" />
-      <Pressable style={styles.pickCard} onPress={pickClip}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Choose a video clip" style={styles.pickCard} onPress={pickClip}>
         <View style={[styles.mediaMark, clip && styles.mediaMarkSelected]}>
           <MaterialIcons name={clip ? 'movie' : 'add-photo-alternate'} size={30} color={clip ? '#0A0806' : PLUGGD_ORANGE} />
         </View>
@@ -171,7 +171,7 @@ export default function UploadClipScreen() {
         </View>
       </View>
 
-      <Pressable style={[styles.primaryButton, uploading && styles.disabledButton]} onPress={uploadClip} disabled={uploading}>
+      <Pressable accessibilityRole="button" accessibilityLabel={uploading ? 'Uploading clip' : 'Upload clip'} style={[styles.primaryButton, uploading && styles.disabledButton]} onPress={uploadClip} disabled={uploading}>
         {uploading ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.primaryButtonText}>Upload Clip</Text>}
       </Pressable>
 

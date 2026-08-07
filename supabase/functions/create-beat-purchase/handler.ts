@@ -38,6 +38,10 @@ type BeatCheckoutSource = {
     currency: string;
     producer_signature?: string | null;
     artist_signature?: string | null;
+    digital_delivery_requested?: boolean | null;
+    digital_delivery_consent_text?: string | null;
+    digital_delivery_consent_version?: string | null;
+    digital_delivery_consented_at?: string | null;
     contract_data?: Record<string, unknown> | null;
     pricing_snapshot?: Record<string, unknown> | null;
   };
@@ -81,6 +85,7 @@ export interface BeatCheckoutDependencies {
     input: Record<string, unknown>,
   ): Promise<void>;
   now(): Date;
+  allowedWebOrigins?: string[];
 }
 
 type Body = {
@@ -92,6 +97,7 @@ type Body = {
   storefront?: unknown;
   licenseFee?: unknown;
   amount?: unknown;
+  platform?: unknown;
 };
 
 const RETURN_URL = "pluggd://commerce/success";
@@ -114,6 +120,25 @@ function deny(decision: CommercePolicyDecision) {
     error: decision.reason,
     decision,
   }, 403);
+}
+
+function permittedWebReturnUrl(
+  value: string,
+  allowedOrigins: string[],
+): boolean {
+  try {
+    const url = new URL(value);
+    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    return (url.protocol === "https:" || local) &&
+      allowedOrigins.includes(url.origin) &&
+      url.pathname.startsWith("/beat/");
+  } catch {
+    return false;
+  }
+}
+
+function appendQuery(url: string, query: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}${query}`;
 }
 
 export async function handleCreateBeatPurchase(
@@ -143,6 +168,7 @@ export async function handleCreateBeatPurchase(
   const requestId = id(body.requestId);
   const returnUrl = id(body.returnUrl);
   const storefront = id(body.storefront);
+  const platform = body.platform === "web" ? "web" : "ios";
   if (!beatId || !licenseOptionId || !contractId || !returnUrl) {
     return json({
       error:
@@ -152,7 +178,10 @@ export async function handleCreateBeatPurchase(
   if (requestId && !/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) {
     return json({ error: "Request ID is invalid" }, 400);
   }
-  if (returnUrl !== RETURN_URL) {
+  const validReturnUrl = platform === "ios"
+    ? returnUrl === RETURN_URL
+    : permittedWebReturnUrl(returnUrl, deps.allowedWebOrigins ?? []);
+  if (!validReturnUrl) {
     return json({ error: "Return URL is not permitted" }, 400);
   }
 
@@ -183,6 +212,17 @@ export async function handleCreateBeatPurchase(
   ) {
     return json({ error: "The licence contract must be signed first" }, 409);
   }
+  if (
+    contract.digital_delivery_requested !== true ||
+    !contract.digital_delivery_consent_text ||
+    !contract.digital_delivery_consent_version ||
+    !contract.digital_delivery_consented_at
+  ) {
+    return json({
+      error: "Separate consent for immediate digital delivery is required",
+      code: "DIGITAL_DELIVERY_CONSENT_REQUIRED",
+    }, 409);
+  }
 
   const amountCents = Number(contract.amount_cents);
   if (
@@ -194,14 +234,26 @@ export async function handleCreateBeatPurchase(
   }
 
   const rule = await deps.loadPolicy();
-  const decision = rule
+  const decision = platform === "web" && rule?.enabled &&
+      rule.primary_rail === "stripe_checkout" &&
+      rule.server_flags?.kill_switch !== true &&
+      rule.server_flags?.external_checkout_enabled !== false
+    ? {
+      permittedRail: "stripe_checkout" as const,
+      storefront: storefront ?? null,
+      reason: "Professional beat licensing uses hosted checkout.",
+      requiredEntitlement: null,
+      cta: rule.cta ?? "Continue securely",
+      policyVersion: rule.policy_version,
+    }
+    : rule
     ? resolveCommercePolicy({
       purchaseKind: "beat_license",
       itemId: beat.id,
       optionId: option.id,
       classification: "professional_off_app",
       storefront,
-      platform: "ios",
+      platform,
     }, rule)
     : defaultDeny(storefront, "Commerce policy could not be verified.");
   if (decision.permittedRail !== "stripe_checkout") return deny(decision);
@@ -300,10 +352,14 @@ export async function handleCreateBeatPurchase(
       },
       quantity: 1,
     }],
-    success_url:
-      `${RETURN_URL}?status=success&sessionId={CHECKOUT_SESSION_ID}&kind=beat_license&itemId=${beat.id}`,
-    cancel_url:
-      `${RETURN_URL}?status=cancelled&kind=beat_license&itemId=${beat.id}`,
+    success_url: appendQuery(
+      returnUrl,
+      `status=success&sessionId={CHECKOUT_SESSION_ID}&kind=beat_license&itemId=${beat.id}`,
+    ),
+    cancel_url: appendQuery(
+      returnUrl,
+      `status=cancelled&kind=beat_license&itemId=${beat.id}`,
+    ),
     expires_at: Math.floor(
       new Date(deps.now().getTime() + 30 * 60 * 1000).getTime() / 1000,
     ),

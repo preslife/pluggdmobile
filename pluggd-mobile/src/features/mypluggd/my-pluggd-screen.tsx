@@ -16,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
@@ -151,13 +153,13 @@ function MyPluggdTabRow({ active, onChange }: { active: MyPluggdTab; onChange: (
 export function MyPluggdScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const theme = usePluggdTheme();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MyPluggdTab>('feed');
   const [feedMode, setFeedMode] = useState<MobileSocialFeedMode>('for-you');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('All');
   const [fanMapOpen, setFanMapOpen] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const profile = useQuery({
@@ -294,11 +296,13 @@ export function MyPluggdScreen() {
           <HeaderAction icon="search" label="Search PLUGGD" onPress={() => go('/search')} />
           <HeaderAction icon="mail-outline" label="Open inbox" onPress={() => go('/inbox')} badge={Boolean(inbox.data?.some((item) => item.unread_count))} />
           <HeaderAction icon="notifications-none" label="Open notifications" onPress={() => go('/notifications')} badge={unreadCount} />
-          <Pressable accessibilityRole="button" accessibilityLabel="Open profile menu" style={styles.avatarTap} onPress={() => (user ? setAvatarMenuOpen(true) : go('/auth/login'))}>
+          <AccountMenuButton accessibilityLabel="Open account menu" style={styles.avatarTap}>
+            {() => (
             <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.divider }]}>
               {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
             </View>
-          </Pressable>
+            )}
+          </AccountMenuButton>
         </View>
       </View>
 
@@ -306,7 +310,7 @@ export function MyPluggdScreen() {
         stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={theme.colors.accent} />}
-        contentContainerStyle={{ paddingBottom: 148 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
       >
         <MyPluggdTabRow active={activeTab} onChange={setActiveTab} />
 
@@ -408,19 +412,6 @@ export function MyPluggdScreen() {
           go(profileRoute(plug.user_id || plug.creator_id, plug.profile_slug || plug.username));
         }}
       />
-      <AvatarMenuModal
-        open={avatarMenuOpen}
-        onClose={() => setAvatarMenuOpen(false)}
-        onRoute={(route) => {
-          setAvatarMenuOpen(false);
-          go(route);
-        }}
-        onSignOut={async () => {
-          setAvatarMenuOpen(false);
-          await signOut();
-          router.replace('/auth/login' as any);
-        }}
-      />
     </PremiumScreenBackdrop>
   );
 }
@@ -428,13 +419,36 @@ export function MyPluggdScreen() {
 function FeedSwitch({ active, onChange }: { active: MobileSocialFeedMode; onChange: (mode: MobileSocialFeedMode) => void }) {
   const theme = usePluggdTheme();
   return (
-    <View style={[styles.feedSwitch, { borderBottomColor: theme.colors.divider }]}>
+    // Pills, not a second underlined tab row. This switch sits directly below
+    // the primary Feed/Circles/Library/Activity tabs, so it has to read as
+    // subordinate to them — same treatment at a larger size made the two rows
+    // look like peers and left it ambiguous which one a tap would change.
+    <View style={styles.feedSwitch}>
       {FEED_SWITCH.map((mode) => {
         const selected = active === mode.key;
         return (
-          <Pressable key={mode.key} accessibilityRole="button" accessibilityLabel={`${mode.label} feed`} accessibilityState={{ selected }} style={styles.feedSwitchButton} onPress={() => onChange(mode.key)}>
-            <Text style={[styles.feedSwitchLabel, { color: selected ? theme.colors.text : theme.colors.textMuted }]}>{mode.label}</Text>
-            <View style={[styles.feedUnderline, { backgroundColor: selected ? theme.colors.accent : 'transparent' }]} />
+          <Pressable
+            key={mode.key}
+            accessibilityRole="button"
+            accessibilityLabel={`${mode.label} feed`}
+            accessibilityState={{ selected }}
+            style={[
+              styles.feedSwitchButton,
+              {
+                backgroundColor: selected ? theme.colors.accent : 'transparent',
+                borderColor: selected ? theme.colors.accent : theme.colors.divider,
+              },
+            ]}
+            onPress={() => onChange(mode.key)}
+          >
+            <Text
+              style={[
+                styles.feedSwitchLabel,
+                { color: selected ? theme.colors.background : theme.colors.textMuted },
+              ]}
+            >
+              {mode.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -459,15 +473,21 @@ function CompactComposer({
 }) {
   const theme = usePluggdTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={onOpen}>
-      <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
-        {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
-      </View>
-      <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+    // The three quick actions are siblings of the open-composer target, not
+    // children of it. Nesting them inside a Pressable made every action a
+    // button within a button — ambiguous for VoiceOver, and invalid markup on
+    // web — and needed stopPropagation to behave.
+    <View style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={styles.composerOpen} onPress={onOpen}>
+        <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
+          {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
+        </View>
+        <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+      </Pressable>
       <QuickComposerAction icon="image" label="Add image or video" onPress={onImage} />
       <QuickComposerAction icon="graphic-eq" label="Share music or audio" onPress={onMusic} />
       <QuickComposerAction icon="forum" label="Start event or thread" onPress={onThread} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -593,56 +613,6 @@ function ActivityFilterPill({ label, selected, onPress }: { label: string; selec
     <Pressable accessibilityRole="button" accessibilityLabel={`${label} activity`} accessibilityState={{ selected }} style={[styles.filterPill, { backgroundColor: selected ? theme.colors.accent : theme.colors.surface, borderColor: selected ? theme.colors.accent : theme.colors.border }]} onPress={onPress}>
       <Text style={[styles.filterPillText, { color: selected ? '#0a0806' : theme.colors.textMuted }]}>{label}</Text>
     </Pressable>
-  );
-}
-
-function AvatarMenuModal({
-  open,
-  onClose,
-  onRoute,
-  onSignOut,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onRoute: (route: string) => void;
-  onSignOut: () => Promise<void>;
-}) {
-  const theme = usePluggdTheme();
-  const menu: Array<{ label: string; icon: keyof typeof MaterialIcons.glyphMap; route?: string; destructive?: boolean }> = [
-    { label: 'View Profile', icon: 'person-outline', route: '/profile' },
-    { label: 'Edit Profile', icon: 'edit', route: '/edit-profile' },
-    { label: 'Inbox', icon: 'mail-outline', route: '/inbox' },
-    { label: 'Wallet', icon: 'account-balance-wallet', route: '/wallet' },
-    { label: 'Tickets', icon: 'confirmation-number', route: '/tickets' },
-    { label: 'Saved', icon: 'bookmark-border', route: '/favorites' },
-    { label: 'Settings', icon: 'settings', route: '/settings' },
-    { label: 'Creator Mode', icon: 'auto-awesome', route: '/creator-mode' },
-    { label: 'Sign Out', icon: 'logout', destructive: true },
-  ];
-  return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close profile menu" style={styles.menuOverlay} onPress={onClose}>
-        <Pressable style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
-          <Text style={[styles.menuTitle, { color: theme.colors.text }]}>MY PLUGGD</Text>
-          {menu.map((item) => (
-            <Pressable
-              key={item.label}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              style={[styles.menuItem, { borderBottomColor: theme.colors.divider }]}
-              onPress={() => {
-                if (item.destructive) void onSignOut();
-                else if (item.route) onRoute(item.route);
-              }}
-            >
-              <MaterialIcons name={item.icon} size={21} color={item.destructive ? theme.colors.live : theme.colors.text} />
-              <Text style={[styles.menuItemText, { color: item.destructive ? theme.colors.live : theme.colors.text }]}>{item.label}</Text>
-              {!item.destructive ? <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSubtle} /> : null}
-            </Pressable>
-          ))}
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -945,12 +915,12 @@ const styles = StyleSheet.create({
   feedStack: { paddingBottom: 10 },
   compactComposer: { marginHorizontal: 16, height: 54, borderRadius: 16, borderWidth: 1, paddingLeft: 10, paddingRight: 2, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  composerOpen: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerPlaceholder: { flex: 1, fontSize: 15, fontFamily: 'Satoshi-Medium' },
   quickAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  feedSwitch: { height: 44, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', paddingHorizontal: 16, marginTop: 4 },
-  feedSwitchButton: { minHeight: 44, marginRight: 28, justifyContent: 'center' },
-  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  feedUnderline: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, borderRadius: 2 },
+  feedSwitch: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 },
+  feedSwitchButton: { minHeight: 32, paddingHorizontal: 14, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 12.5, letterSpacing: 0.2 },
   pageStack: { padding: 16, gap: 12 },
   sectionHeader: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22 },

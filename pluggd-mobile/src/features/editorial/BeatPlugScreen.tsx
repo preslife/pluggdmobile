@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   heroKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   heroDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ed.orange },
   heroKicker: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.cream },
-  heroTitle: { fontFamily: edFonts.serif, fontSize: 36, lineHeight: 38, letterSpacing: -0.7, color: ed.cream },
+  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: ed.cream },
   heroTitleAccent: { fontFamily: edFonts.serifItalic, color: ed.orange },
   heroLede: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: 'rgba(255,248,237,0.68)' },
 

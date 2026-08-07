@@ -96,10 +96,10 @@ export default function AccessCodeScreen() {
 
             {valid ? (
               <View style={styles.actionRow}>
-                <Pressable onPress={() => router.replace('/auth/signup' as any)} style={styles.secondaryButton}>
+                <Pressable accessibilityRole="button" onPress={() => router.replace('/auth/signup' as any)} style={styles.secondaryButton}>
                   <Text style={styles.secondaryText}>Create account</Text>
                 </Pressable>
-                <Pressable onPress={() => router.replace('/auth/login' as any)} style={styles.secondaryButton}>
+                <Pressable accessibilityRole="button" onPress={() => router.replace('/auth/login' as any)} style={styles.secondaryButton}>
                   <Text style={styles.secondaryText}>Log in</Text>
                 </Pressable>
               </View>

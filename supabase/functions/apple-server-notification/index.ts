@@ -15,12 +15,19 @@
  * the fan_subscriptions table in Supabase.
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   verifyAppleNotification,
   verifyAppleRenewalInfo,
   verifyAppleTransaction,
 } from "../_shared/appleSignedData.ts";
+import {
+  APPLE_CREDIT_PACKS,
+  type AppleCreditPack,
+} from "../_shared/appleCreditPacks.ts";
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface DecodedNotification {
@@ -95,6 +102,119 @@ function resolveStatus(
   }
 }
 
+type SupabaseServiceClient = SupabaseClient<any, "public", any>;
+
+function relatedTierName(value: unknown): string | null {
+  const relation = Array.isArray(value) ? value[0] : value;
+  if (!relation || typeof relation !== "object" || !("name" in relation)) {
+    return null;
+  }
+  const name = (relation as { name?: unknown }).name;
+  return typeof name === "string" && name.trim() ? name : null;
+}
+
+async function getWalletBalance(
+  supabaseClient: SupabaseServiceClient,
+  userId: string,
+) {
+  const { data, error } = await supabaseClient.rpc("get_wallet_balance", {
+    p_user_id: userId,
+  });
+  if (error) throw new Error(`Wallet balance lookup failed: ${error.message}`);
+  return data;
+}
+
+async function fulfilCreditPack(
+  supabaseClient: SupabaseServiceClient,
+  txInfo: TransactionInfo,
+  pack: AppleCreditPack,
+) {
+  const userId = txInfo.appAccountToken;
+  if (!userId) {
+    throw new Error("Verified credit purchase is missing its PLUGGD account token");
+  }
+
+  const idempotencyKey = `apple-iap:${txInfo.transactionId}`;
+  const { data: existingTransaction, error: existingTransactionError } =
+    await supabaseClient
+      .from("iap_transactions")
+      .select("id,user_id")
+      .eq("transaction_id", txInfo.transactionId)
+      .maybeSingle();
+  if (existingTransactionError) {
+    throw new Error(
+      `Apple transaction lookup failed: ${existingTransactionError.message}`,
+    );
+  }
+  if (existingTransaction && existingTransaction.user_id !== userId) {
+    throw new Error("Verified Apple transaction belongs to a different account");
+  }
+
+  if (!existingTransaction) {
+    const { error: transactionError } = await supabaseClient
+      .from("iap_transactions")
+      .insert({
+        user_id: userId,
+        transaction_id: txInfo.transactionId,
+        original_transaction_id:
+          txInfo.originalTransactionId ?? txInfo.transactionId,
+        product_id: txInfo.productId,
+        type: "credits",
+        environment: txInfo.environment,
+        purchase_date: txInfo.purchaseDate
+          ? new Date(txInfo.purchaseDate).toISOString()
+          : new Date().toISOString(),
+        expires_date: null,
+        status: "validated",
+        raw_receipt: null,
+        idempotency_key: idempotencyKey,
+      });
+    if (transactionError && transactionError.code !== "23505") {
+      throw new Error(
+        `Failed to record verified Apple transaction: ${transactionError.message}`,
+      );
+    }
+  }
+
+  const { data: existingLedger, error: existingLedgerError } =
+    await supabaseClient
+      .from("wallet_ledger")
+      .select("id")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+  if (existingLedgerError) {
+    throw new Error(`Credit ledger lookup failed: ${existingLedgerError.message}`);
+  }
+
+  if (!existingLedger) {
+    const { error: ledgerError } = await supabaseClient
+      .from("wallet_ledger")
+      .insert({
+        user_id: userId,
+        amount_credits: pack.totalCredits,
+        kind: "topup_iap",
+        ref_type: "apple_iap",
+        ref_id: null,
+        meta: {
+          product_id: txInfo.productId,
+          transaction_id: txInfo.transactionId,
+          platform: "ios",
+          label: pack.label,
+          price_gbp: pack.priceGBP,
+          base_credits: pack.baseCredits,
+          bonus_credits: pack.bonusCredits,
+          source: "app_store_server_notification",
+        },
+        idempotency_key: idempotencyKey,
+      });
+    if (ledgerError && ledgerError.code !== "23505") {
+      throw new Error(`Failed to add verified credits: ${ledgerError.message}`);
+    }
+  }
+
+  return getWalletBalance(supabaseClient, userId);
+}
+
 // ─── Main handler ────────────────────────────────────────────────────
 serve(async (req) => {
   // Apple sends POST with JSON body
@@ -137,9 +257,41 @@ serve(async (req) => {
       .eq("notification_uuid", notificationUUID)
       .maybeSingle();
 
-    if (existing) {
-      console.log(`[apple-notification] Duplicate ${notificationUUID}, skipping`);
-      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+    // Apple's TEST notification intentionally contains no transaction or
+    // renewal payload. It still passes the same certificate-chain, signature,
+    // bundle-ID and App-Apple-ID verification above, so record it as delivery
+    // evidence and acknowledge it without weakening the transaction checks
+    // required for every commerce notification below.
+    if (notificationType === "TEST") {
+      if (existing) {
+        console.log(`[apple-notification] Duplicate TEST ${notificationUUID}, skipping`);
+        return new Response(
+          JSON.stringify({ received: true, duplicate: true, test: true }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const { error: testLogError } = await supabaseClient
+        .from("apple_notification_log")
+        .insert({
+          notification_uuid: notificationUUID,
+          notification_type: notificationType,
+          subtype: subtype ?? null,
+          environment: notification.data?.environment ?? null,
+          payload: notification,
+          processed_at: new Date().toISOString(),
+        });
+
+      if (testLogError) {
+        throw new Error(
+          `Failed to log verified Apple test notification: ${testLogError.message}`,
+        );
+      }
+
+      return new Response(JSON.stringify({ received: true, test: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -173,22 +325,55 @@ serve(async (req) => {
     const newStatus = resolveStatus(notificationType, subtype);
 
     // ── Log the notification ──
-    await supabaseClient.from("apple_notification_log").insert({
-      notification_uuid: notificationUUID,
-      notification_type: notificationType,
-      subtype: subtype ?? null,
-      original_transaction_id: originalTransactionId,
-      transaction_id: transactionId,
-      product_id: productId,
-      environment: notification.data.environment,
-      app_account_token: appAccountToken ?? null,
-      payload: notification,
-      processed_at: new Date().toISOString(),
-    }).then(({ error }) => {
-      if (error) {
-        console.error("[apple-notification] Failed to log notification:", error.message);
+    if (!existing) {
+      await supabaseClient.from("apple_notification_log").insert({
+        notification_uuid: notificationUUID,
+        notification_type: notificationType,
+        subtype: subtype ?? null,
+        original_transaction_id: originalTransactionId,
+        transaction_id: transactionId,
+        product_id: productId,
+        environment: notification.data.environment,
+        app_account_token: appAccountToken ?? null,
+        payload: notification,
+        processed_at: new Date().toISOString(),
+      }).then(({ error }) => {
+        if (error) {
+          console.error("[apple-notification] Failed to log notification:", error.message);
+        }
+      });
+    }
+
+    // Consumable credit packs must be fulfilled from Apple's independently
+    // signed server notification as a crash-safe backup to the client callback.
+    // The transaction and ledger share a unique idempotency key, so Apple
+    // retries and client/server races cannot grant the same credits twice.
+    if (notificationType === "ONE_TIME_CHARGE") {
+      const creditPack = APPLE_CREDIT_PACKS[productId];
+      if (!creditPack) {
+        console.warn(
+          `[apple-notification] Ignoring unprovisioned one-time product ${productId}`,
+        );
+        return new Response(
+          JSON.stringify({ received: true, warning: "Unprovisioned product" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
-    });
+
+      const balance = await fulfilCreditPack(supabaseClient, txInfo, creditPack);
+      console.log(
+        `[apple-notification] Fulfilled ${creditPack.totalCredits} credits for tx=${transactionId}`,
+      );
+      return new Response(
+        JSON.stringify({
+          received: true,
+          type: "credits",
+          credits_added: creditPack.totalCredits,
+          balance,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     // ── Resolve the verified product and subscription record ──
     const { data: catalogueProduct, error: catalogueError } =
@@ -231,7 +416,7 @@ serve(async (req) => {
     }
 
     if (!subscriptionRecord && catalogueProduct && appAccountToken) {
-      const tierName = catalogueProduct.membership_tiers?.name ??
+      const tierName = relatedTierName(catalogueProduct.membership_tiers) ??
         "Creator membership";
       const { data: created, error: createError } = await supabaseClient
         .from("fan_subscriptions")
@@ -290,7 +475,31 @@ serve(async (req) => {
       );
     }
 
-    const tierName = catalogueProduct?.membership_tiers?.name ??
+    // The delivery log is intentionally written before entitlement mutation so
+    // every verified Apple callback is auditable. A log row alone must never be
+    // treated as successful processing: the first attempt may have failed after
+    // logging but before creating/updating the membership. Skip a retry only
+    // when the downstream membership itself proves this exact notification was
+    // already applied.
+    const alreadyApplied = Boolean(
+      existing &&
+        subscriptionRecord.metadata?.apple_transaction_id === transactionId &&
+        subscriptionRecord.metadata?.last_notification_type === notificationType &&
+        (subscriptionRecord.metadata?.last_notification_subtype ?? null) ===
+          (subtype ?? null),
+    );
+    if (alreadyApplied) {
+      console.log(
+        `[apple-notification] Duplicate ${notificationUUID} already applied to ` +
+          `subscription ${subscriptionRecord.id}`,
+      );
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const tierName = relatedTierName(catalogueProduct?.membership_tiers) ??
       subscriptionRecord.metadata?.tier_name ??
       "Creator membership";
     console.log(

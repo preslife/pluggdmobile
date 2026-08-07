@@ -144,6 +144,9 @@ verify_jwt = true
 [functions.prepare-beat-license]
 verify_jwt = true
 
+[functions.authorize-beat-license-option]
+verify_jwt = true
+
 [functions.create-beat-purchase]
 verify_jwt = true
 
@@ -164,3 +167,6 @@ verify_jwt = true
 
 [functions.contract-execution]
 verify_jwt = true
+
+[functions.provision-membership-iap]
+verify_jwt = false

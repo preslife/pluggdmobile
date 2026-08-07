@@ -11,7 +11,7 @@ type GlassStoryRingProps = {
   onPress?: () => void;
 };
 
-export function GlassStoryRing({ name, imageUrl, tone = 'violet', viewed, onPress }: GlassStoryRingProps) {
+export function GlassStoryRing({ name, imageUrl, tone = 'accent', viewed, onPress }: GlassStoryRingProps) {
   return (
     <Pressable
       accessibilityRole="button"

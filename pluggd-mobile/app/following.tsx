@@ -35,8 +35,8 @@ export default function FollowingScreen() {
             <PromiseRow index="02" title="Scene movement" body="See events, mixes and community moments in one place." />
             <PromiseRow index="03" title="No invented activity" body="This view only shows creators you actually follow." last />
           </View>
-          <Pressable style={styles.primary} onPress={() => router.push('/auth/login' as any)}><Text style={styles.primaryText}>Sign in to see your signal</Text></Pressable>
-          <Pressable style={styles.secondary} onPress={() => router.push('/discover' as any)}><Text style={styles.secondaryText}>Discover creators</Text><MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /></Pressable>
+          <Pressable accessibilityRole="button" style={styles.primary} onPress={() => router.push('/auth/login' as any)}><Text style={styles.primaryText}>Sign in to see your signal</Text></Pressable>
+          <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => router.push('/discover' as any)}><Text style={styles.secondaryText}>Discover creators</Text><MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /></Pressable>
         </View>
       ) : null}
 
@@ -45,7 +45,7 @@ export default function FollowingScreen() {
           <Text style={styles.kicker}>0 CREATORS</Text>
           <Text style={styles.heroTitle}>Your signal is ready to take shape.</Text>
           <Text style={styles.heroBody}>Follow creators from Discover or their profile. Their real movement will collect here—nothing padded, nothing fabricated.</Text>
-          <Pressable style={styles.primary} onPress={() => router.push('/discover' as any)}><Text style={styles.primaryText}>Find your first creator</Text></Pressable>
+          <Pressable accessibilityRole="button" style={styles.primary} onPress={() => router.push('/discover' as any)}><Text style={styles.primaryText}>Find your first creator</Text></Pressable>
         </View>
       ) : null}
 
@@ -53,7 +53,7 @@ export default function FollowingScreen() {
         <View style={styles.creatorLedger}>
           <View style={styles.ledgerHeader}><Text style={styles.kicker}>{creators.length} FOLLOWING</Text><Text style={styles.order}>RECENTLY ADDED</Text></View>
           {creators.map((creator, index) => (
-            <Pressable key={creator.id} style={styles.creatorRow} onPress={() => router.push(creator.route as any)} accessibilityRole="button" accessibilityLabel={`Open ${creator.title}`}>
+            <Pressable key={creator.id} accessibilityRole="button" accessibilityLabel={`Open ${creator.title}`} style={styles.creatorRow} onPress={() => router.push(creator.route as any)}>
               <Text style={styles.creatorIndex}>{String(index + 1).padStart(2, '0')}</Text>
               {creator.imageUrl ? <Image source={{ uri: creator.imageUrl }} style={styles.avatar} resizeMode="cover" /> : <View style={styles.avatarFallback}><Text style={styles.avatarText}>{creator.title.slice(0, 1).toUpperCase()}</Text></View>}
               <View style={styles.copy}><Text style={styles.creatorTitle} numberOfLines={1}>{creator.title}</Text><Text style={styles.creatorMeta} numberOfLines={1}>{creator.subtitle}</Text></View>

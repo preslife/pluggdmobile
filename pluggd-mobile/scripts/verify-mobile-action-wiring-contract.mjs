@@ -58,6 +58,21 @@ const fanSetup = read('app/auth/fan-setup.tsx');
 assert.match(fanSetup, /from\('profiles'\)/, 'fan setup suggested creators must load from profiles');
 assert.match(fanSetup, /from\('user_follows'\)/, 'fan setup follows must write to user_follows');
 assert.doesNotMatch(fanSetup, /SUGGESTED_CREATORS|Maya Sol|Kairo Beats|Selecta Nia/, 'fan setup must not ship hardcoded fake creators');
+assert.doesNotMatch(
+  fanSetup,
+  /genres:\s*selectedGenres\.length/,
+  'fan setup must keep genre preferences inside onboarding_progress instead of writing the nonexistent profiles.genres column',
+);
+
+const credits = read('src/hooks/useCredits.ts');
+assert.match(credits, /auth\.getSession\(\)/, 'credit purchases must use the persisted authenticated session');
+assert.match(credits, /auth\.refreshSession\(\)/, 'credit purchases must refresh an expiring session before StoreKit');
+assert.match(
+  credits,
+  /validate-iap-receipt[\s\S]*Authorization:\s*`Bearer \$\{session\.access_token\}`/,
+  'receipt validation must explicitly forward the current bearer token',
+);
+assert.doesNotMatch(credits, /throw new Error\('Not authenticated'\)/, 'credit purchase UX must not expose a false generic auth error');
 
 const login = read('app/auth/login.tsx');
 const signup = read('app/auth/signup.tsx');
@@ -78,7 +93,7 @@ assert.match(soundboard, /from\('user_follows'\)/, 'soundboard follow button mus
 
 assert.match(read('app/social/notifications.tsx'), /href="\/notifications"/, 'legacy social notifications route must go directly to Activity');
 assert.match(read('app/social/inbox.tsx'), /href="\/inbox"/, 'legacy inbox route must go directly to the backed mobile Inbox surface');
-assert.match(read('app/settings/index.tsx'), /\/creator-mode/, 'Settings must route creator tools to mobile Creator Mode, not desktop dashboard');
+assert.match(read('app/settings/index.tsx'), /account\.creatorAccess[\s\S]*route: '\/studio'[\s\S]*route: '\/auth\/role'/, 'Settings must route creators to Studio and fans to role onboarding');
 
 for (const legacyTabRoute of [
   'app/(tabs)/drops.tsx',

@@ -559,7 +559,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     route: '/studio/splits',
     icon: 'account-tree',
     section: 'money',
-    status: 'limited',
+    status: 'native',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer', 'manager'],
     description: 'Create split sheets, payout shares, and collaborator rights records.',
@@ -1040,7 +1040,7 @@ export async function loadStudioData(): Promise<StudioData> {
     safeMaybe<ProfileRow>(
       (supabase as any)
         .from('profiles')
-        .select('id,user_id,display_name,full_name,username,avatar_url,cover_image_url,bio,custom_url,website_url,instagram_url,twitter_url,youtube_url,tiktok_url,soundcloud_url,spotify_url,embed_settings,user_type,profile_type,is_creator,is_label,onboarding_progress,city')
+        .select('id,user_id,full_name,username,avatar_url,cover_image_url,bio,custom_url,website_url,instagram_url,twitter_url,youtube_url,tiktok_url,soundcloud_url,spotify_url,embed_settings,user_type,profile_type,is_creator,is_label,onboarding_progress,city')
         .eq('user_id', userId)
         .maybeSingle(),
     ),

@@ -24,6 +24,8 @@ assert.match(home, /playQueue/, 'Home music choices must start the shared playba
 assert.match(home, /minHeight: 44/, 'Home primary controls must preserve 44pt touch targets');
 assert.match(home, /maxFontSizeMultiplier=\{1\.35\}[\s\S]*The Daily Plug/, 'Home display type must stay composed at accessibility sizes');
 assert.match(read('components/LiveTicker.tsx'), /maxFontSizeMultiplier=\{1\.3\}/, 'the fixed-height live ticker must remain legible without clipping at accessibility sizes');
+assert.match(read('components/LiveTicker.tsx'), /styles\.tickerSet[\s\S]*setWidth\(event\.nativeEvent\.layout\.width\)[\s\S]*<TickerSet items=\{visibleItems\} hidden/, 'ticker loop must measure and repeat the complete signal set rather than a constrained text fragment');
+assert.match(read('src/features/home/homeDiscoveryData.ts'), /const release = bundle\?\.releases\?\.\[0\][\s\S]*const liveRoom[\s\S]*const board[\s\S]*const event[\s\S]*const community[\s\S]*const beat/, 'home ticker must mirror the web signal mix instead of being dominated by releases');
 assert.ok(
   home.indexOf('{signals.length ? <LiveTicker') > 0 &&
     home.indexOf('{signals.length ? <LiveTicker') < home.indexOf('{featured ? ('),
@@ -74,8 +76,12 @@ for (const token of ['THE PLUG', 'THE LEAD STORY', 'Latest dispatches', 'Read di
 assert.match(homeData, /\.eq\('is_global_editorial', true\)[\s\S]*\.eq\('global_feature_status', 'approved'\)/, 'THE PLUG must prefer globally approved editorial stories');
 
 const events = read('src/features/editorial/EventsBoardScreen.tsx');
-for (const token of ['Go where the sound is.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'Open Opportunities', 'For Promoters']) {
+for (const token of ['Find your next night.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'MapRecommendationRail', 'More nights nearby', 'Open Opportunities', 'For Promoters']) {
   assert.match(events, new RegExp(token), `Events must preserve and redesign ${token}`);
+}
+const nativeEventsMap = read('components/EventsMap.native.tsx');
+for (const token of ['react-native-maps', 'MapView', 'Marker', 'onSelectEvent', 'fitToCoordinates']) {
+  assert.match(nativeEventsMap, new RegExp(token), `native Events map must preserve interactive ${token}`);
 }
 
 const mixes = read('src/features/editorial/MixesWorldScreen.tsx');

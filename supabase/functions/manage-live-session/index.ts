@@ -10,7 +10,7 @@ type ManageAction = "create" | "update" | "delete";
 
 interface ManageLiveSessionRequest {
   action: ManageAction;
-  userId: string;
+  userId?: string;
   session: {
     id?: string;
     title?: string;
@@ -38,6 +38,28 @@ const createAdminClient = () =>
       auth: { persistSession: false },
     },
   );
+
+const authenticateRequest = async (
+  req: Request,
+  supabaseAdmin: ReturnType<typeof createAdminClient>,
+) => {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return { userId: null, error: "Missing authorization header" };
+
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) return { userId: null, error: "Invalid authorization token" };
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user) {
+    return { userId: null, error: error?.message || "Unable to authenticate request" };
+  }
+
+  return { userId: user.id, error: null };
+};
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -76,10 +98,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { action, session, userId } = (await req.json()) as ManageLiveSessionRequest;
+  if (req.method !== "POST") {
+    return jsonResponse(405, { error: "Method not allowed" });
+  }
 
-    if (!userId || !action || !session) {
+  try {
+    const supabaseAdmin = createAdminClient();
+    const auth = await authenticateRequest(req, supabaseAdmin);
+    if (!auth.userId) {
+      return jsonResponse(401, { error: auth.error || "Unauthorized" });
+    }
+
+    const { action, session } = (await req.json()) as ManageLiveSessionRequest;
+    const userId = auth.userId;
+
+    if (!action || !session) {
       return jsonResponse(400, { error: "Missing required fields" });
     }
 
@@ -90,8 +123,6 @@ serve(async (req) => {
     if ((action === "create" || action === "update") && !session.scheduled_at) {
       return jsonResponse(400, { error: "Scheduled time is required" });
     }
-
-    const supabaseAdmin = createAdminClient();
 
     if (action === "create") {
       const payload = {

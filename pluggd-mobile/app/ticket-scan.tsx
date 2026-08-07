@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -33,77 +33,46 @@ type TicketScanResult = {
 async function lookupTicket(code: string): Promise<TicketScanResult | null> {
   const trimmed = code.trim();
   if (!trimmed) throw new Error('Enter a ticket payload first.');
-
-  if (trimmed.startsWith('pluggd-ticket-v1:')) {
-    const dynamic = await verifyTicketEntryToken(trimmed);
-    if (!dynamic.success) throw new Error(dynamic.error || 'Dynamic ticket verification failed.');
-    if (!dynamic.valid) throw new Error(dynamic.reason || 'Dynamic ticket payload is not valid.');
-
-    const verified = dynamic.ticket as any;
-    const orderId = verified?.ticket_order_id as string | undefined;
-    const eventId = verified?.event_id as string | undefined;
-    const ticketUserId = verified?.ticket_user_id as string | undefined;
-    const checkedInAt = (verified?.checked_in_at as string | null | undefined) ?? new Date().toISOString();
-
-    const event = eventId
-      ? await supabase
-          .from('events')
-          .select('id,title,location,starts_at')
-          .eq('id', eventId)
-          .maybeSingle()
-      : { data: null };
-
-    return {
-      id: orderId || 'dynamic-ticket',
-      event_id: eventId || '',
-      user_id: ticketUserId || '',
-      quantity: 1,
-      total_cents: null,
-      status: checkedInAt ? 'checked_in' : ((verified?.ticket_status as string | null | undefined) ?? 'verified'),
-      qr_code_data: trimmed,
-      checked_in_at: checkedInAt,
-      created_at: checkedInAt,
-      event_title: event.data?.title ?? null,
-      event_location: event.data?.location ?? null,
-      event_starts_at: event.data?.starts_at ?? null,
-    };
+  if (!trimmed.startsWith('pluggd-ticket-v1:')) {
+    throw new Error('Use the rotating QR code shown in the attendee ticket wallet.');
   }
 
-  const { data, error } = await (supabase as any)
-    .from('ticket_orders')
-    .select('id,event_id,user_id,tier_id,quantity,total_cents,status,qr_code_data,checked_in_at,created_at')
-    .eq('qr_code_data', trimmed)
-    .maybeSingle();
+  const dynamic = await verifyTicketEntryToken(trimmed);
+  if (!dynamic.success) throw new Error(dynamic.error || 'Ticket verification failed.');
+  if (!dynamic.valid) throw new Error(dynamic.reason || 'This ticket is not valid for entry.');
 
-  if (error) throw error;
-  if (!data) return null;
+  const verified = dynamic.ticket as any;
+  const orderId = verified?.ticket_order_id as string | undefined;
+  const eventId = verified?.event_id as string | undefined;
+  const ticketUserId = verified?.ticket_user_id as string | undefined;
+  const checkedInAt = (verified?.checked_in_at as string | null | undefined) ?? new Date().toISOString();
 
-  const order = data as TicketScanResult;
-  const event = await supabase
-    .from('events')
-    .select('id,title,location,starts_at')
-    .eq('id', order.event_id)
-    .maybeSingle();
+  const event = eventId
+    ? await supabase
+        .from('events')
+        .select('id,title,location,starts_at')
+        .eq('id', eventId)
+        .maybeSingle()
+    : { data: null };
 
   return {
-    ...order,
+    id: orderId || 'dynamic-ticket',
+    event_id: eventId || '',
+    user_id: ticketUserId || '',
+    quantity: 1,
+    total_cents: null,
+    status: 'checked_in',
+    qr_code_data: trimmed,
+    checked_in_at: checkedInAt,
+    created_at: checkedInAt,
     event_title: event.data?.title ?? null,
     event_location: event.data?.location ?? null,
     event_starts_at: event.data?.starts_at ?? null,
   };
 }
 
-async function checkInTicket(orderId: string) {
-  const { error } = await (supabase as any)
-    .from('ticket_orders')
-    .update({ status: 'checked_in', checked_in_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', orderId);
-  if (error) throw error;
-}
-
 export default function TicketScanScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { user, loading } = useAuth();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [code, setCode] = useState('');
@@ -121,27 +90,6 @@ export default function TicketScanScreen() {
     onError: (error) => {
       setScannerActive(false);
       Alert.alert('Lookup failed', error instanceof Error ? error.message : String(error));
-    },
-  });
-
-  const checkIn = useMutation({
-    mutationFn: () => {
-      if (!result?.id) throw new Error('Look up a valid ticket first.');
-      return checkInTicket(result.id);
-    },
-    onSuccess: () => {
-      const checkedIn = new Date().toISOString();
-      setResult((current) => current ? { ...current, status: 'checked_in', checked_in_at: checkedIn } : current);
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'wallet-tickets'] });
-      Alert.alert('Ticket checked in', 'The ticket order was marked as checked in.');
-    },
-    onError: (error) => {
-      Alert.alert(
-        'Check-in unavailable',
-        error instanceof Error
-          ? error.message
-          : 'This account cannot check in that ticket.',
-      );
     },
   });
 
@@ -243,7 +191,7 @@ export default function TicketScanScreen() {
         ) : null}
       </View>
 
-      <SectionTitle title="Ticket payload" />
+      <SectionTitle title="Manual fallback" />
       <View style={styles.scanCard}>
         <TextInput
           value={code}
@@ -253,7 +201,7 @@ export default function TicketScanScreen() {
           }}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="Paste QR payload as fallback"
+          placeholder="Paste rotating ticket payload"
           placeholderTextColor="#737373"
           style={styles.input}
         />
@@ -290,18 +238,13 @@ export default function TicketScanScreen() {
             <Detail label="Total" value={formatGBP(result.total_cents, { cents: true })} />
           </View>
           <Text style={styles.payload} numberOfLines={2}>{result.qr_code_data}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={result.status === 'checked_in' ? 'Ticket already checked in' : 'Check in ticket'}
-            accessibilityState={{ disabled: checkIn.isPending || result.status === 'checked_in' }}
-            style={[styles.primaryButton, result.status === 'checked_in' && styles.disabledButton]}
-            onPress={() => checkIn.mutate()}
-            disabled={checkIn.isPending || result.status === 'checked_in'}
-          >
-            <Text style={styles.primaryButtonText}>
-              {checkIn.isPending ? 'Checking In...' : result.status === 'checked_in' ? 'Already Checked In' : 'Check In Ticket'}
-            </Text>
-          </Pressable>
+          <View accessibilityRole="summary" accessibilityLabel="Entry confirmed" style={styles.confirmedBanner}>
+            <View style={styles.confirmedIcon}><MaterialIcons name="check" size={20} color="#0A0806" /></View>
+            <View style={styles.confirmedCopy}>
+              <Text style={styles.confirmedTitle}>Entry confirmed</Text>
+              <Text style={styles.confirmedText}>This rotating code is now used and cannot be replayed.</Text>
+            </View>
+          </View>
         </View>
       ) : null}
 
@@ -353,7 +296,11 @@ const styles = StyleSheet.create({
   detailLabel: { color: '#737373', fontSize: 10, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase' },
   detailValue: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 5, textTransform: 'capitalize' },
   payload: { color: '#8E8E9F', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', lineHeight: 16 },
+  confirmedBanner: { minHeight: 68, borderRadius: 5, borderWidth: 1, borderColor: '#1E6E4C', backgroundColor: 'rgba(30,110,76,0.14)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  confirmedIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#54D596', alignItems: 'center', justifyContent: 'center' },
+  confirmedCopy: { flex: 1, minWidth: 0 },
+  confirmedTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  confirmedText: { color: '#9DCDB7', fontSize: 11, lineHeight: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 2 },
   primaryButton: { minHeight: 50, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 12, flexDirection: 'row', gap: 9 },
   primaryButtonText: { color: '#0a0806', fontSize: 12, letterSpacing: 0.8, fontFamily: pluggdFonts.satoshiBlack },
-  disabledButton: { opacity: 0.6 },
 });

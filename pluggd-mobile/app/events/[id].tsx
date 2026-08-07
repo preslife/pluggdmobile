@@ -8,12 +8,14 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { DetailTitle } from '../../components/DetailTitle';
 import { RecoveryState } from '../../components/ContentUI';
+import { PluggdImage } from '../../src/components/PluggdImage';
 import { PLUGGD_ORANGE, formatDate, formatGBP } from '../../src/lib/mobileContent';
 import { addEventComment, loadEventCultureContext, loadEventDetail, setEventRsvp } from '../../src/features/culture/mobileServices';
 import { MobileStoriesRail } from '../../src/features/culture/MobileStoriesRail';
 import { cancelEventLocalReminder, scheduleEventLocalReminder } from '../../src/lib/localNotifications';
 import { openHostedCheckout, reconcileHostedCheckout, useCommercePolicy } from '../../src/commerce/policy';
 import { supabase } from '../../src/lib/supabase';
+import { eventTicketPriceLabel, externalTicketProvider, hasEligibleExternalTickets, openExternalEventTickets } from '../../src/lib/eventTickets';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,6 +33,7 @@ export default function EventDetailScreen() {
     enabled: !!id,
   });
   const event = detail.data?.event ?? null;
+  const externalTickets = event ? hasEligibleExternalTickets(event) : false;
 
   const rsvpMutation = useMutation({
     mutationFn: async (status: 'going' | 'interested' | 'cancelled') => {
@@ -89,8 +92,14 @@ export default function EventDetailScreen() {
         {event ? (
           <>
             <View style={styles.hero}>
-              {event.cover_image_url ? <Image source={{ uri: event.cover_image_url }} style={styles.heroImage} /> : null}
-              {!event.cover_image_url ? <MaterialIcons name="event" size={58} color={PLUGGD_ORANGE} /> : null}
+              <PluggdImage
+                uri={event.cover_image_url ?? ''}
+                fallbackSource={require('../../assets/web-parity/home/intimate-crowd-hero.png')}
+                style={styles.heroImage}
+                displayWidth={800}
+                resizeMode="cover"
+                accessibilityLabel={`${event.title || 'PLUGGD event'} artwork`}
+              />
             </View>
             <Text style={styles.eyebrow}>Event</Text>
             <DetailTitle title={event.title || 'Untitled event'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
@@ -98,7 +107,7 @@ export default function EventDetailScreen() {
 
             <View style={styles.metaRow}>
               <Meta label="When" value={formatDate(event.starts_at)} />
-              <Meta label="Price" value={formatGBP(event.price_cents, { cents: true })} />
+              <Meta label="Price" value={eventTicketPriceLabel(event)} />
               <Meta label="Interest" value={`${event.rsvp_count ?? 0}`} />
             </View>
 
@@ -109,7 +118,9 @@ export default function EventDetailScreen() {
               </Pressable>
             </View>
 
-            {!event.has_order && !event.has_ticket ? (
+            {externalTickets ? (
+              <ExternalTicketAccess event={event} />
+            ) : !event.has_order && !event.has_ticket ? (
               <EventTicketPurchase
                 eventId={event.id}
                 title={event.title || 'Event'}
@@ -282,6 +293,61 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ExternalTicketAccess({ event }: { event: NonNullable<Awaited<ReturnType<typeof loadEventDetail>>['event']> }) {
+  const provider = externalTicketProvider(event.ticket_url) || 'the event organiser';
+  const [opening, setOpening] = useState(false);
+
+  const openTickets = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const opened = await openExternalEventTickets({
+        eventId: event.id,
+        eventTitle: event.title,
+        ticketUrl: event.ticket_url,
+        sourceSurface: 'event_detail',
+      });
+      if (!opened) Alert.alert('Ticket page unavailable', 'The organiser’s ticket page could not be opened. Please try again.');
+    } catch {
+      Alert.alert('Ticket page unavailable', 'The organiser’s ticket page could not be opened. Please try again.');
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <View style={styles.externalTicketCard}>
+      <View style={styles.externalTicketHeadingRow}>
+        <View style={styles.externalTicketIcon}>
+          <MaterialIcons name="confirmation-number" size={22} color={PLUGGD_ORANGE} />
+        </View>
+        <View style={styles.externalTicketCopy}>
+          <Text style={styles.ticketKicker}>IN-PERSON EVENT</Text>
+          <Text style={styles.externalTicketTitle}>Tickets from {provider}</Text>
+          <Text style={styles.externalTicketBody}>Choose tickets and complete payment securely on the organiser’s website.</Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Open tickets for ${event.title || 'this event'} on ${provider}`}
+        accessibilityHint="Opens the organiser’s secure ticket website"
+        accessibilityState={{ busy: opening }}
+        disabled={opening}
+        style={({ pressed }) => [styles.externalTicketButton, pressed && styles.externalTicketButtonPressed]}
+        onPress={() => void openTickets()}
+      >
+        {opening ? <ActivityIndicator color="#160A02" /> : (
+          <>
+            <Text style={styles.externalTicketButtonText}>View tickets</Text>
+            <MaterialIcons name="open-in-new" size={19} color="#160A02" />
+          </>
+        )}
+      </Pressable>
+      <Text style={styles.ticketFootnote}>PLUGGD does not set the organiser’s price, availability or refund terms.</Text>
+    </View>
+  );
+}
+
 type TicketType = {
   id: string;
   name: string;
@@ -393,16 +459,15 @@ function EventTicketPurchase({ eventId, title, onComplete }: { eventId: string; 
     return <View style={styles.ticketPurchase}><ActivityIndicator color={PLUGGD_ORANGE} /></View>;
   }
 
-  if (!tiers.length || policy.permittedRail !== 'stripe_checkout') {
-    const unavailableMessage = tiers.length
-      ? 'Paid tickets are not available for this event right now.'
-      : 'No paid ticket tiers have been published for this event.';
+  if (!tiers.length) return null;
+
+  if (policy.permittedRail !== 'stripe_checkout') {
     return (
       <View style={styles.ticketPurchase}>
         <Text style={styles.ticketKicker}>TICKET ACCESS</Text>
         <Text style={styles.ticketHeading}>Purchase not available</Text>
-        <Text style={styles.ticketBody}>{unavailableMessage}</Text>
-        <Text style={styles.ticketFootnote}>Free RSVP remains available below. Paid tickets appear only when eligible inventory is ready.</Text>
+        <Text style={styles.ticketBody}>Paid tickets are not available for this event right now.</Text>
+        <Text style={styles.ticketFootnote}>Free RSVP remains available below.</Text>
       </View>
     );
   }
@@ -522,6 +587,15 @@ const styles = StyleSheet.create({
   commentBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   commentMeta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
   ticketPurchase: { marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#3B3028', paddingVertical: 18 },
+  externalTicketCard: { marginTop: 18, borderWidth: 1, borderColor: '#4A2C18', backgroundColor: '#160D08', borderRadius: 8, padding: 16, gap: 14 },
+  externalTicketHeadingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  externalTicketIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,102,0,0.11)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.28)', alignItems: 'center', justifyContent: 'center' },
+  externalTicketCopy: { flex: 1, minWidth: 0 },
+  externalTicketTitle: { color: '#FFF', fontSize: 19, lineHeight: 24, fontFamily: pluggdFonts.displayBold, marginTop: 4 },
+  externalTicketBody: { color: '#AAA29B', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, marginTop: 4 },
+  externalTicketButton: { minHeight: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  externalTicketButtonPressed: { opacity: 0.88, transform: [{ scale: 0.995 }] },
+  externalTicketButtonText: { color: '#160A02', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   ticketKicker: { color: PLUGGD_ORANGE, fontSize: 9, letterSpacing: 1.35, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   ticketHeading: { color: '#FFF', fontSize: 23, lineHeight: 28, fontFamily: pluggdFonts.displayBold, marginTop: 6 },
   ticketBody: { color: '#AFA7A0', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, marginTop: 5 },

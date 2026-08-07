@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { pluggdFonts } from '../src/design/typography';
 import { ed } from '../src/design/editorial';
 import { useReducedMotion } from '../src/design/useReducedMotion';
@@ -16,7 +16,45 @@ type LiveTickerProps = {
   variant?: 'night' | 'paper' | 'nightBand' | 'home';
 };
 
-const SEP = '     •     ';
+const SEP = '•';
+
+function TickerSet({
+  items,
+  hidden = false,
+  onLayout,
+  paper,
+  nightBand,
+  home,
+}: {
+  items: string[];
+  hidden?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  paper: boolean;
+  nightBand: boolean;
+  home: boolean;
+}) {
+  return (
+    <View
+      accessibilityElementsHidden={hidden}
+      importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+      onLayout={onLayout}
+      style={styles.tickerSet}
+    >
+      {items.map((item, index) => (
+        <View key={`${index}:${item}`} style={styles.tickerItem}>
+          <Text
+            maxFontSizeMultiplier={1.3}
+            numberOfLines={1}
+            style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}
+          >
+            {item}
+          </Text>
+          <Text aria-hidden maxFontSizeMultiplier={1.3} style={styles.separator}>{SEP}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 /**
  * Continuous activity marquee — the mobile port of the web app's scrolling
@@ -27,11 +65,11 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
   const translate = useRef(new Animated.Value(0)).current;
   const [width, setWidth] = useState(0);
   const reducedMotion = useReducedMotion();
-  const line = items.filter(Boolean).join(SEP) + SEP;
+  const visibleItems = items.filter(Boolean);
   const paper = variant === 'paper';
   const nightBand = variant === 'nightBand';
   const home = variant === 'home';
-  const accessibilitySummary = items.filter(Boolean).slice(0, 5).join('. ');
+  const accessibilitySummary = visibleItems.slice(0, 5).join('. ');
 
   useEffect(() => {
     if (!width || reducedMotion) {
@@ -42,7 +80,7 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
     const anim = Animated.loop(
       Animated.timing(translate, {
         toValue: -width,
-        duration: (width / speed) * 1000,
+        duration: Math.max(12_000, (width / speed) * 1000),
         easing: Easing.linear,
         useNativeDriver: true,
       }),
@@ -51,7 +89,7 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
     return () => anim.stop();
   }, [reducedMotion, width, speed, translate]);
 
-  if (!items.length) return null;
+  if (!visibleItems.length) return null;
 
   return (
     <View
@@ -77,7 +115,7 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
             maxFontSizeMultiplier={1.3}
             style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}
           >
-            {items.slice(0, 2).join(SEP)}
+            {visibleItems.slice(0, 2).join('     •     ')}
           </Text>
         ) : (
           <Animated.View
@@ -85,12 +123,14 @@ export function LiveTicker({ items, speed = 40, accent = '#ff6600', variant = 'n
             importantForAccessibility="no-hide-descendants"
             style={[styles.row, { transform: [{ translateX: translate }] }]}
           >
-            <Text maxFontSizeMultiplier={1.3} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
-              {line}
-            </Text>
-            <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.text, paper && styles.textPaper, nightBand && styles.textNightBand, home && styles.textHome]}>
-              {line}
-            </Text>
+            <TickerSet
+              items={visibleItems}
+              onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+              paper={paper}
+              nightBand={nightBand}
+              home={home}
+            />
+            <TickerSet items={visibleItems} hidden paper={paper} nightBand={nightBand} home={home} />
           </Animated.View>
         )}
       </View>
@@ -142,8 +182,11 @@ const styles = StyleSheet.create({
   homeLabel: { color: ed.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 8.5, letterSpacing: 1 },
   liveText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 9.5, letterSpacing: 1 },
   track: { flex: 1, overflow: 'hidden' },
-  row: { flexDirection: 'row' },
-  text: { color: 'rgba(255,255,255,0.62)', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
+  row: { flexDirection: 'row', alignSelf: 'flex-start' },
+  tickerSet: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
+  tickerItem: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
+  separator: { color: ed.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, marginHorizontal: 18 },
+  text: { color: 'rgba(255,255,255,0.62)', flexShrink: 0, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
   textPaper: { color: ed.ink, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   textNightBand: { color: '#fff8ed', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   textHome: { color: '#D7CFC4', fontFamily: pluggdFonts.satoshiBold, fontSize: 11.5, letterSpacing: 0.15 },

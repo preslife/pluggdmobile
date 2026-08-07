@@ -102,6 +102,16 @@ const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined
 // ─── Setup ────────────────────────────────────────────────────────────
 let isPlayerSetup = false;
 
+export function isPlayableTrack(track?: Partial<PluggdTrack> | null): track is PluggdTrack {
+  if (!track || typeof track.url !== 'string' || !track.url.trim()) return false;
+  try {
+    const protocol = new URL(track.url.trim()).protocol.toLowerCase();
+    return protocol === 'https:' || protocol === 'http:' || protocol === 'file:' || protocol === 'content:';
+  } catch {
+    return false;
+  }
+}
+
 async function setupPlayer(): Promise<boolean> {
   if (isPlayerSetup) return true;
   try {
@@ -196,6 +206,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playTrack = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
+      if (!isPlayableTrack(track)) {
+        Alert.alert('Audio unavailable', 'This item does not include a playable audio upload.');
+        return;
+      }
       lastPlaybackError.current = '';
       await TrackPlayer.reset();
       await TrackPlayer.add(track as any);
@@ -209,12 +223,18 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
       if (!isReady || tracks.length === 0) return;
+      const playableTracks = tracks.filter(isPlayableTrack);
+      if (playableTracks.length === 0) {
+        Alert.alert('Audio unavailable', 'These items do not include playable audio uploads.');
+        return;
+      }
       lastPlaybackError.current = '';
-      originalQueue.current = tracks;
+      const safeStartIndex = Math.min(Math.max(startIndex, 0), playableTracks.length - 1);
+      originalQueue.current = playableTracks;
       await TrackPlayer.reset();
-      await TrackPlayer.add(tracks as any);
-      if (startIndex > 0) {
-        await TrackPlayer.skip(startIndex);
+      await TrackPlayer.add(playableTracks as any);
+      if (safeStartIndex > 0) {
+        await TrackPlayer.skip(safeStartIndex);
       }
       await TrackPlayer.play();
       syncQueue();
@@ -267,6 +287,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const addToQueue = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
+      if (!isPlayableTrack(track)) return;
       await TrackPlayer.add(track as any);
       syncQueue();
     },

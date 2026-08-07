@@ -145,7 +145,7 @@ export default function PrivacySettingsScreen() {
             <View style={styles.dangerIcon}><MaterialIcons name="delete-forever" size={28} color="#FFFFFF" /></View>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Permanently delete account?</Text>
             <Text style={[styles.modalBody, { color: theme.colors.textMuted }]}>Your profile and personal content will be removed immediately. Financial, fraud-prevention and safety records may be retained where legally required. This cannot be undone.</Text>
-            <Pressable onPress={() => Linking.openURL(LEGAL_URLS.subscriptions)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
+            <Pressable accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_URLS.subscriptions)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
               <MaterialIcons name="open-in-new" size={18} color={theme.colors.accent} />
               <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Deleting PLUGGD does not cancel subscriptions managed by Apple. Open Apple subscriptions.</Text>
             </Pressable>
@@ -168,8 +168,8 @@ export default function PrivacySettingsScreen() {
               style={[styles.deleteInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
             />
             <View style={styles.modalActions}>
-              <Pressable onPress={() => setDeleteOpen(false)} style={[styles.cancel, { borderColor: theme.colors.border }]}><Text style={{ color: theme.colors.text }}>Cancel</Text></Pressable>
-              <Pressable disabled={deleteText !== 'DELETE' || deleting} onPress={confirmDeletion} style={[styles.deleteButton, { opacity: deleteText === 'DELETE' && !deleting ? 1 : 0.4 }]}>
+              <Pressable accessibilityRole="button" onPress={() => setDeleteOpen(false)} style={[styles.cancel, { borderColor: theme.colors.border }]}><Text style={{ color: theme.colors.text }}>Cancel</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={deleting ? 'Deleting account' : 'Delete account permanently'} disabled={deleteText !== 'DELETE' || deleting} onPress={confirmDeletion} style={[styles.deleteButton, { opacity: deleteText === 'DELETE' && !deleting ? 1 : 0.4 }]}>
                 <Text style={styles.deleteButtonText}>{deleting ? 'Deleting…' : 'Delete forever'}</Text>
               </Pressable>
             </View>

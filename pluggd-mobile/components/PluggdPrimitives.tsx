@@ -464,7 +464,10 @@ type PremiumTone = 'accent' | 'live' | 'community' | 'muted';
 
 function premiumToneColor(theme: ReturnType<typeof usePluggdTheme>, tone: PremiumTone = 'accent') {
   if (tone === 'live') return theme.colors.live;
-  if (tone === 'community') return theme.colors.backstage;
+  // 'community' used to resolve to colors.backstage — the violet sub-accent of
+  // the retired Backstage world. Backstage is gone, and Community is a core
+  // surface of a single-orange brand, so it takes the brand accent.
+  if (tone === 'community') return theme.colors.accent;
   if (tone === 'muted') return theme.colors.textMuted;
   return theme.colors.accent;
 }
@@ -479,7 +482,7 @@ export function PremiumScreenBackdrop({
   style?: StyleProp<ViewStyle>;
 }) {
   const theme = usePluggdTheme();
-  const backgroundTone = tone === 'live' ? 'rose' : tone === 'community' ? 'violet' : tone === 'muted' ? 'blue' : 'accent';
+  const backgroundTone = tone === 'live' ? 'rose' : tone === 'muted' ? 'blue' : 'accent';
 
   return (
     <View style={[premiumStyles.backdrop, { backgroundColor: theme.colors.canvas }, style]}>

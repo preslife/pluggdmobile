@@ -121,7 +121,9 @@ assert.doesNotMatch(
   'native Studio implementation must avoid internal planning labels in public UI copy',
 );
 
-const chromeSource = read('components/AppChrome.tsx');
+// Chrome visibility rules live in src/lib/appChromeVisibility.ts so AppChrome
+// and useBottomChromeInset cannot disagree. Assert against that source.
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 assert.match(chromeSource, /'\/studio'/, 'AppChrome must hide public chrome for native Studio routes');
 assert.doesNotMatch(chromeSource, /CreateActionSheet/, 'public chrome must not float a creator action over music, editorial, event or community content');
 assert.match(studioScreenSource, /dockCreateButton/, 'creator creation must remain first-class in the dedicated Studio dock');

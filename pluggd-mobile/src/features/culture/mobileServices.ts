@@ -277,11 +277,11 @@ export async function resolveMobileFeedAttachment(input: {
     const profile = await safeMaybe<any>(
       (supabase as any)
         .from('profiles')
-        .select('user_id,username,slug,full_name,display_name,custom_url')
+        .select('user_id,username,slug,full_name,custom_url')
         .eq('user_id', gallery.user_id)
         .maybeSingle(),
     );
-    const creatorName = profile?.display_name || profile?.full_name || profile?.username || 'Creator';
+    const creatorName = profile?.full_name || profile?.username || 'Creator';
     return {
       type: 'gallery_item',
       id: gallery.id,
@@ -354,7 +354,7 @@ function mapThread(row: any): BackstageThread {
     attached_release_id: row.attached_release_id ?? null,
     attached_event_id: row.attached_event_id ?? null,
     community_id: row.community_id ?? null,
-    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/backstage',
+    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/community',
   };
 }
 
@@ -808,6 +808,8 @@ function mapHubEvent(row: any): EventItem | null {
     ends_at: row.ends_at || row.end_at || null,
     price_cents: row.price_cents ?? null,
     rsvp_count: row.rsvp_count ?? null,
+    ticket_url: row.ticket_url || null,
+    commerce_classification: row.commerce_classification || 'unclassified',
     stream_url: row.stream_url || null,
     playback_url: row.playback_url || null,
     created_at: row.created_at || null,
@@ -865,7 +867,8 @@ export async function loadMyPluggdHub(): Promise<MyPluggdHub> {
     safeList<any>(
       (supabase as any)
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('starts_at', { ascending: true })
         .limit(12),
@@ -1227,7 +1230,7 @@ export async function loadCreatorMemberships(creatorId: string): Promise<Members
 }
 
 async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]> {
-  const selects = 'id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at';
+  const selects = 'id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at';
   const columns = ['created_by', 'creator_id', 'user_id', 'promoter_id'];
   const results = await Promise.all(
     columns.map((column) =>
@@ -1235,6 +1238,7 @@ async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]
         (supabase as any)
           .from('events')
           .select(selects)
+          .eq('discoverable', true)
           .eq(column, ownerId)
           .order('starts_at', { ascending: true })
           .limit(12),
@@ -1663,7 +1667,7 @@ export async function loadEventDetail(eventId: string) {
     safeMaybe<EventItem>(
       supabase
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
         .eq('id', eventId)
         .maybeSingle(),
     ),
@@ -2117,7 +2121,7 @@ export async function loadWalletTickets(): Promise<TicketWalletItem[]> {
     ? await safeList<EventItem>(
         supabase
           .from('events')
-          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
           .in('id', eventIds),
       )
     : [];
@@ -2343,7 +2347,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
       ? safeList<any>((supabase as any).from('videos').select('id,title,description,thumbnail_url,youtube_url,artist_id,created_at').in('id', videoIds))
       : Promise.resolve([]),
     eventIds.length
-      ? safeList<EventItem>(supabase.from('events').select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at').in('id', eventIds))
+      ? safeList<EventItem>(supabase.from('events').select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at').in('id', eventIds))
       : Promise.resolve([]),
     communityIds.length
       ? safeList<any>((supabase as any).from('communities').select('id,creator_id,name,slug,description,tagline,avatar_url,banner_url,cover_image_url,visibility,join_policy,status,is_primary,member_count,created_at,updated_at').in('id', communityIds))
@@ -2931,7 +2935,7 @@ export async function loadFanIdentitySummary(userId?: string | null): Promise<Fa
       ? safeList<EventItem>(
           supabase
             .from('events')
-            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
             .in('id', ticketRows.map((row) => row.event_id).filter(Boolean)),
         )
       : Promise.resolve([]),

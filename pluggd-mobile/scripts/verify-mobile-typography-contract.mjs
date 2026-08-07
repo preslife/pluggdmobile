@@ -30,7 +30,7 @@ const liquidGlassSheet = read('components/liquid-glass/GlassSheet.tsx');
 const liquidHeroCard = read('components/liquid-glass/GlassHeroCard.tsx');
 const packageJson = read('package.json');
 
-assert.match(typography, /appTitle:\s*'Sora-ExtraBold'/, 'page/app titles must use the same Sora display family as web');
+assert.match(typography, /appTitle:\s*'Sora-ExtraBold'/, 'page/app titles must use the selected mobile Sora display family');
 assert.match(typography, /displaySemiBold:\s*'Sora-SemiBold'/, 'Sora SemiBold display font must be exposed');
 assert.match(typography, /displayBold:\s*'Sora-Bold'/, 'Sora Bold display font must be exposed');
 assert.match(typography, /displayExtraBold:\s*'Sora-ExtraBold'/, 'Sora ExtraBold display font must be exposed');
@@ -54,7 +54,7 @@ assert.doesNotMatch(
   'retired display-font dependencies must not remain installed',
 );
 assert.doesNotMatch(layout, /Inter_600SemiBold|Inter-SemiBold/, 'retired Inter font must not be loaded');
-assert.match(packageJson, /@expo-google-fonts\/sora/, 'Sora font package must be installed to match web display typography');
+assert.match(packageJson, /@expo-google-fonts\/sora/, 'Sora font package must be installed for the selected mobile display typography');
 for (const [importName, family] of [
   ['Sora_600SemiBold', 'Sora-SemiBold'],
   ['Sora_700Bold', 'Sora-Bold'],

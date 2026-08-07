@@ -21,6 +21,10 @@ export type LicenseOptionRecord = {
   license_type: string;
   price_pence: number;
   is_available: boolean;
+  producer_authorization_text?: string | null;
+  producer_authorization_version?: string | null;
+  producer_authorized_by?: string | null;
+  producer_authorized_at?: string | null;
 };
 
 export type ContractTemplateRecord = {
@@ -42,6 +46,7 @@ export type ContractRecord = {
   currency: string;
   producer_signature?: string | null;
   artist_signature?: string | null;
+  producer_authorization_snapshot?: Record<string, unknown> | null;
 };
 
 export interface PrepareBeatLicenseDependencies {
@@ -77,14 +82,29 @@ const asId = (value: unknown) =>
 
 const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 
+/** Convert a trusted catalogue price in major currency units to integer minor units. */
+export function majorUnitsToMinorUnits(value: unknown): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+  return Math.round((numeric + Number.EPSILON) * 100);
+}
+
 function renderLegalText(
   template: string,
   values: Record<string, string>,
 ): string {
   return Object.entries(values).reduce(
     (text, [key, value]) => text.replaceAll(`{${key}}`, value),
-    template,
+    template.replaceAll("\\r\\n", "\n").replaceAll("\\n", "\n"),
   );
+}
+
+export function hasCompleteLicenceTerms(template: string): boolean {
+  const normalized = template.toLowerCase();
+  return template.trim().length >= 500 &&
+    !normalized.includes("additional legal terms continue") &&
+    !normalized.includes("full legal text continues") &&
+    !normalized.includes("[placeholder]");
 }
 
 export async function handlePrepareBeatLicense(
@@ -123,9 +143,29 @@ export async function handlePrepareBeatLicense(
     return json({ error: "Licence option is unavailable" }, 404);
   }
 
+  const isExclusive = option.license_type === "exclusive_rights";
+  const hasExclusiveAuthorization = Boolean(
+    option.producer_authorization_text &&
+      option.producer_authorization_version &&
+      option.producer_authorized_by === beat.user_id &&
+      option.producer_authorized_at,
+  );
+  if (isExclusive && !hasExclusiveAuthorization) {
+    return json({
+      error: "The producer must review and authorize this Exclusive licence before it can be offered",
+      code: "PRODUCER_AUTHORIZATION_REQUIRED",
+    }, 409);
+  }
+
   const template = await deps.loadContractTemplate(option.license_type);
   if (!template || !template.is_active) {
     return json({ error: "Licence terms are unavailable" }, 409);
+  }
+  if (!hasCompleteLicenceTerms(template.legal_text)) {
+    return json({
+      error: "This licence agreement is still being finalized",
+      code: "LICENCE_TERMS_INCOMPLETE",
+    }, 409);
   }
 
   const existing = await deps.findPendingContract({
@@ -146,25 +186,47 @@ export async function handlePrepareBeatLicense(
     amount,
   });
 
+  const existingAuthorizationVersion =
+    existing?.producer_authorization_snapshot?.version;
   const reusable = existing &&
       existing.amount_cents === option.price_pence &&
-      existing.currency === "GBP"
+      existing.currency === "GBP" &&
+      hasCompleteLicenceTerms(existing.legal_text) &&
+      (!isExclusive ||
+        existingAuthorizationVersion === option.producer_authorization_version)
     ? existing
     : null;
+  const producerAuthorizationSnapshot = isExclusive
+    ? {
+      option_id: option.id,
+      text: option.producer_authorization_text,
+      version: option.producer_authorization_version,
+      producer_id: option.producer_authorized_by,
+      authorized_at: option.producer_authorized_at,
+    }
+    : {
+      option_id: option.id,
+      text: "Producer publication of this licence option authorises PLUGGD to generate the published agreement.",
+      version: "2026-08-01.1",
+      producer_id: beat.user_id,
+      authorized_at: deps.now().toISOString(),
+    };
   const contract = reusable ?? await deps.createContract({
     beat_id: beat.id,
     producer_id: beat.user_id,
     artist_id: user.id,
     template_type: template.template_type,
     license_fee: option.price_pence / 100,
-    license_fee_pence: option.price_pence,
     amount_cents: option.price_pence,
     currency: "GBP",
     permitted_rail: "stripe_checkout",
     policy_version: "2026-07-27.1",
     legal_text: legalText,
     status: "pending",
-    producer_signature: `catalogue-offer:${option.id}`,
+    producer_signature: isExclusive
+      ? `exclusive-option-authorization:${option.id}:${option.producer_authorization_version}`
+      : `catalogue-offer:${option.id}:2026-08-01.1`,
+    producer_authorization_snapshot: producerAuthorizationSnapshot,
     contract_data: {
       license_option_id: option.id,
       template_id: template.template_type,
@@ -173,6 +235,7 @@ export async function handlePrepareBeatLicense(
         option_id: option.id,
         price_cents: option.price_pence,
         currency: "GBP",
+        authorization: producerAuthorizationSnapshot,
       },
     },
     pricing_snapshot: {
@@ -208,8 +271,8 @@ export async function handlePrepareBeatLicense(
       features: list(template.features),
       restrictions: list(template.restrictions),
       deliverables: list(template.deliverables),
-      territory: "As defined in the licence contract",
-      term: "As defined in the licence contract",
+      territory: "As defined in the licence agreement",
+      term: "As defined in the licence agreement",
     },
     contract: {
       id: contract.id,

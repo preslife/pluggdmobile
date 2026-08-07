@@ -21,12 +21,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdGlassSurface } from '../../../components/PluggdPrimitives';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
 import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { formatCompact } from '../../lib/mobileContent';
+import { SplitEngineListPanel } from './SplitEngineScreens';
+import { STUDIO } from './studio-tokens';
 import {
   loadStudioData,
   createStudioPreviewData,
@@ -64,22 +67,6 @@ type MobileCommandAction = {
 };
 
 const QUERY_KEY = ['studio', 'native-command'] as const;
-
-const STUDIO = {
-  bg: '#020202',
-  panel: 'rgba(255,255,255,0.065)',
-  panelDeep: 'rgba(10,10,14,0.92)',
-  panelPressed: 'rgba(255,255,255,0.11)',
-  line: 'rgba(255,255,255,0.13)',
-  lineHot: 'rgba(255,106,0,0.46)',
-  orange: '#ff6a00',
-  orangeSoft: '#ffb06f',
-  text: '#ffffff',
-  textMid: 'rgba(255,255,255,0.70)',
-  textSubtle: 'rgba(255,255,255,0.48)',
-  chip: 'rgba(255,255,255,0.075)',
-  dock: 'rgba(7,7,10,0.985)',
-};
 
 /**
  * Studio is intentionally information-dense. Keep Dynamic Type useful without
@@ -335,23 +322,39 @@ function HeaderAvatar({ data }: { data: StudioData }) {
   );
 }
 
-function StudioMenuButton({ signedIn }: { signedIn: boolean }) {
+function StudioExitButton() {
   const router = useRouter();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={signedIn ? 'Open Studio apps' : 'Back to PLUGGD'}
+      accessibilityLabel="Exit Studio"
+      accessibilityHint="Returns to the PLUGGD home screen"
       onPress={() => {
         selectionHaptic();
-        if (signedIn) router.push('/studio/apps' as any);
-        else router.replace('/' as any);
+        router.replace('/' as any);
+      }}
+      style={styles.studioExitButton}
+    >
+      <MaterialIcons name="arrow-back" size={20} color={STUDIO.text} />
+    </Pressable>
+  );
+}
+
+function StudioMenuButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open Studio apps"
+      onPress={() => {
+        selectionHaptic();
+        router.push('/studio/apps' as any);
       }}
       style={styles.studioMenuTap}
     >
       {({ pressed }) => (
         <View style={[styles.studioMenuButton, pressed && { backgroundColor: STUDIO.panelPressed }]}>
-          <MaterialIcons name={signedIn ? 'view-sidebar' : 'arrow-back'} size={17} color={STUDIO.text} />
-          <Text style={styles.studioMenuText}>{signedIn ? 'Menu' : 'Back'}</Text>
+          <MaterialIcons name="view-sidebar" size={19} color={STUDIO.text} />
         </View>
       )}
     </Pressable>
@@ -359,20 +362,31 @@ function StudioMenuButton({ signedIn }: { signedIn: boolean }) {
 }
 
 function StudioTopBar({ data, title }: { data: StudioData; title: string }) {
+  const accountMenuLabel = data.profile?.username
+    ? `Open Studio account menu for @${data.profile.username}`
+    : 'Open Studio account menu';
   return (
     <View style={styles.topBar}>
-      <StudioMenuButton signedIn={data.signedIn} />
+      <View style={styles.studioTopLeft}>
+        <StudioExitButton />
+        {data.creatorAccess ? <StudioMenuButton /> : null}
+      </View>
       <View style={styles.studioBrand}>
         <Text style={styles.studioBrandPlug}>PLUGGD</Text>
         <Text style={styles.studioBrandTitle} numberOfLines={1}>STUDIO</Text>
       </View>
-      <View style={styles.studioAccountPill}>
-        <HeaderAvatar data={data} />
-        <Text style={styles.studioAccountText} numberOfLines={1}>
-          {data.profile?.username ? `@${data.profile.username}` : data.signedIn ? 'Personal' : 'Guest'}
-        </Text>
-        <MaterialIcons name="expand-more" size={15} color={STUDIO.textMid} />
-      </View>
+      {/* The handle used to render beside the avatar in a fixed 116pt pill, so
+          even a short username clipped to "@ju…" on every Studio screen. The
+          avatar already identifies the account and the chevron already says it
+          opens; the name lives in the menu itself. */}
+      <AccountMenuButton context="studio" accessibilityLabel={accountMenuLabel} style={styles.studioAccountPill}>
+        {() => (
+          <>
+            <HeaderAvatar data={data} />
+            <MaterialIcons name="expand-more" size={16} color={STUDIO.textMid} />
+          </>
+        )}
+      </AccountMenuButton>
     </View>
   );
 }
@@ -437,10 +451,7 @@ function StudioDock({ active }: { active: StudioRouteKey }) {
               accessibilityHint={`Opens the ${item.label} Studio section`}
               accessibilityState={{ selected: isActive }}
               onPress={() => routePush(router, item.route)}
-              style={({ pressed }) => [
-                styles.dockItem,
-                pressed && { opacity: 0.76 },
-              ]}
+              style={styles.dockItem}
             >
               <View style={[styles.dockItemInner, isActive && styles.dockItemActive]}>
                 <View style={[styles.dockIconShell, isActive && styles.dockIconActive]}>
@@ -687,8 +698,13 @@ function CommandCard({ data }: { data: StudioData }) {
       )}
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(0,0,0,0.06)', 'rgba(3,3,5,0.68)', 'rgba(2,2,3,0.98)']}
-        locations={[0, 0.54, 1]}
+        // The quick-action row (Check cash / Go live / Apps) sits around the
+        // midpoint of this card, where the old ramp was still only ~68% opaque.
+        // Over a bright cover — a pale sky, a light building — those small
+        // labels were unreadable. Ramping earlier and harder keeps the artwork
+        // present at the top while every label below it stays legible.
+        colors={['rgba(0,0,0,0.30)', 'rgba(3,3,5,0.86)', 'rgba(2,2,3,0.98)']}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
@@ -719,7 +735,7 @@ function CommandCard({ data }: { data: StudioData }) {
               accessibilityRole="button"
               accessibilityLabel={primaryAction.title}
               onPress={() => routePush(router, primaryAction.route)}
-              style={({ pressed }) => [styles.commandPrimaryTap, pressed && { transform: [{ scale: 0.985 }] }]}
+              style={styles.commandPrimaryTap}
             >
               <LinearGradient colors={['#ff9b50', '#ff6500']} style={styles.commandPrimaryAction}>
                 <View style={styles.commandPrimaryIcon}>
@@ -737,7 +753,7 @@ function CommandCard({ data }: { data: StudioData }) {
                 accessibilityRole="button"
                 accessibilityLabel={action.title}
                 onPress={() => routePush(router, action.route)}
-                style={({ pressed }) => [styles.commandQuickAction, pressed && { backgroundColor: 'rgba(255,255,255,0.16)' }]}
+                style={styles.commandQuickAction}
               >
                 <MaterialIcons name={iconName(action.icon)} size={17} color={STUDIO.orangeSoft} />
                 <Text style={styles.commandQuickText} numberOfLines={1}>{action.title}</Text>
@@ -750,7 +766,7 @@ function CommandCard({ data }: { data: StudioData }) {
           accessibilityRole="button"
           accessibilityLabel={`Next move ${data.nextMove.title}`}
           onPress={() => routePush(router, data.nextMove.route)}
-          style={({ pressed }) => [styles.nextMove, { opacity: pressed ? 0.74 : 1 }]}
+          style={styles.nextMove}
         >
           <View style={styles.nextMoveText}>
             <Text style={styles.nextMoveKicker}>Next Move</Text>
@@ -770,26 +786,125 @@ function CommandCard({ data }: { data: StudioData }) {
   );
 }
 
+/**
+ * The creator's own artwork, keyed by the module it belongs to.
+ *
+ * Studio's launcher surfaces were entirely icons and gradients — the one place a
+ * creator's work never appeared. Where a module maps to something they have
+ * actually published, the newest cover backs its tile. Modules with no content
+ * behind them keep the plain treatment rather than borrowing someone's art, so
+ * the presence of a cover is itself information: that shelf has something on it.
+ *
+ * `catalogItems` arrives newest-first, so the first hit per module wins.
+ */
+const CATALOG_KIND_MODULE: Record<StudioCatalogItem['kind'], string> = {
+  release: 'releases',
+  beat: 'beats',
+  mix: 'mixes',
+  soundboard: 'soundboards',
+  event: 'events',
+};
+
+function artworkByModule(items: StudioCatalogItem[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const item of items) {
+    const moduleId = CATALOG_KIND_MODULE[item.kind];
+    if (!moduleId || map[moduleId] || !item.imageUrl) continue;
+    map[moduleId] = item.imageUrl;
+  }
+  return map;
+}
+
+/**
+ * Module copy is written as "Adds X. Use desktop Studio for Y." — a full
+ * desktop-parity explanation. At half-screen tile width the second sentence
+ * cannot fit and gets clipped mid-word, which is the loudest unfinished-looking
+ * thing in the Studio. The status chip already says where the rest of the work
+ * happens, so a tile shows the first sentence and stops.
+ */
+function leadSentence(text?: string | null): string {
+  const value = (text ?? '').trim();
+  if (!value) return '';
+  const end = value.search(/\.\s/);
+  return end === -1 ? value : value.slice(0, end + 1);
+}
+
+/**
+ * Tile-width copy: lead sentence, then clipped on a word boundary if it is
+ * still too long. Some descriptions are a single comma-spliced sentence with no
+ * full stop to cut at, and React Native's own ellipsis breaks mid-word — which
+ * is what produced "links, rates, services, a…".
+ */
+function tileCopy(text?: string | null, maxChars = 58): string {
+  const value = leadSentence(text);
+  if (value.length <= maxChars) return value;
+  const clipped = value.slice(0, maxChars);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return `${(lastSpace > 20 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:]$/, '')}…`;
+}
+
+/**
+ * One chip per card, and only when it says something the card does not already
+ * show. "Ready" was on almost every tile and carried no information; plugged-in
+ * state is already visible in the icon tint and the tile's accent gradient.
+ * Precedence matters: where a module is both suggested and desktop-only, the
+ * fact that it is not here yet is what a creator needs first.
+ */
+function moduleChip(module: StudioModuleState): { label: string; tone: 'native' | 'limited' | 'web' | 'neutral' } | null {
+  if (module.status === 'web_only') return { label: 'Desktop', tone: 'web' };
+  if (module.status === 'limited') return { label: 'Preview', tone: 'limited' };
+  if (module.recommendedForRole && !module.plugged && !module.alwaysVisible) return { label: 'Suggested', tone: 'limited' };
+  return null;
+}
+
+/**
+ * Compact page header for Studio surfaces whose opening block was pure copy.
+ *
+ * Studio is a workspace: the first screenful belongs to the tools, not to a
+ * restatement of what the page is for. Pages whose hero carries a primary
+ * action (Home, Connect Card, My PLUGGD, Split Engine) keep their hero — the
+ * action earns the space. Pages that only introduced themselves (Apps, Create,
+ * More) use this instead, which costs ~90pt where the hero cost ~190-280.
+ */
+function StudioPageHeader({
+  icon,
+  kicker,
+  title,
+  meta,
+}: {
+  icon: string;
+  kicker: string;
+  title: string;
+  meta?: string;
+}) {
+  return (
+    <View style={styles.pageHeader}>
+      <View style={styles.pageHeaderTop}>
+        <View style={styles.pageHeaderIcon}>
+          <MaterialIcons name={iconName(icon)} size={16} color={STUDIO.orange} />
+        </View>
+        <Text style={styles.pageHeaderKicker}>{kicker}</Text>
+      </View>
+      <Text style={styles.pageHeaderTitle}>{title}</Text>
+      {meta ? <Text style={styles.pageHeaderMeta}>{meta}</Text> : null}
+    </View>
+  );
+}
+
 function ActionBoard({ data }: { data: StudioData }) {
   const router = useRouter();
+  const artwork = useMemo(() => artworkByModule(data.catalogItems), [data.catalogItems]);
   const actionRows = Array.from({ length: Math.ceil(data.nativeActions.length / 2) }, (_, index) =>
     data.nativeActions.slice(index * 2, index * 2 + 2),
   );
   return (
     <>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.27)', 'rgba(32,17,10,0.96)', 'rgba(7,7,10,0.98)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.actionBoardHero}
-      >
-        <View style={styles.actionBoardSignal}>
-          <MaterialIcons name="bolt" size={18} color="#160A03" />
-        </View>
-        <Text style={styles.actionBoardKicker}>Creator actions</Text>
-        <Text style={styles.actionBoardTitle}>What are you moving today?</Text>
-        <Text style={styles.actionBoardBody}>Publish, go live, build your audience or prepare the next drop.</Text>
-      </LinearGradient>
+      <StudioPageHeader
+        icon="bolt"
+        kicker="Creator actions"
+        title="What are you moving today?"
+        meta="Publish, go live, build your audience or prepare the next drop."
+      />
       <View style={styles.actionBoardGrid}>
         {actionRows.map((row, rowIndex) => (
           <View key={`action-row-${rowIndex}`} style={styles.actionBoardRow}>
@@ -799,14 +914,30 @@ function ActionBoard({ data }: { data: StudioData }) {
                 accessibilityRole="button"
                 accessibilityLabel={action.title}
                 onPress={() => routePush(router, action.route)}
-                style={({ pressed }) => [styles.actionBoardTile, pressed && { transform: [{ scale: 0.985 }] }]}
+                style={styles.actionBoardTile}
               >
                 <LinearGradient
                   colors={rowIndex === 0 && columnIndex === 0 ? ['rgba(255,106,0,0.24)', 'rgba(19,19,23,0.98)'] : ['rgba(255,255,255,0.09)', 'rgba(14,14,18,0.98)']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  end={{ x: 0, y: 1 }}
                   style={styles.actionBoardTileInner}
                 >
+                  {artwork[action.id] ? (
+                    <>
+                      <PluggdImage
+                        uri={artwork[action.id]}
+                        style={styles.tileArtwork}
+                        resizeMode="cover"
+                        accessibilityLabel=""
+                      />
+                      <LinearGradient
+                        colors={['rgba(6,6,8,0.30)', 'rgba(6,6,8,0.80)', 'rgba(6,6,8,0.96)']}
+                        locations={[0, 0.52, 1]}
+                        style={styles.tileArtwork}
+                        pointerEvents="none"
+                      />
+                    </>
+                  ) : null}
                   <View style={styles.actionBoardTileTop}>
                     <View style={styles.actionBoardIcon}>
                       <MaterialIcons name={iconName(action.icon)} size={22} color={STUDIO.orangeSoft} />
@@ -814,11 +945,14 @@ function ActionBoard({ data }: { data: StudioData }) {
                     <MaterialIcons name="north-east" size={18} color={STUDIO.textSubtle} />
                   </View>
                   <Text style={styles.actionBoardTileTitle} numberOfLines={2}>{action.title}</Text>
-                  <Text style={styles.actionBoardTileBody} numberOfLines={2}>{action.detail}</Text>
-                  <StatusChip
-                    label={action.status === 'web_only' ? 'Desktop' : action.status === 'limited' ? 'Preview' : 'Ready'}
-                    tone={action.status === 'native' ? 'native' : 'limited'}
-                  />
+                  <Text style={styles.actionBoardTileBody} numberOfLines={2}>{tileCopy(action.detail)}</Text>
+                  {/* Only flag what is not fully here. "Ready" was on most tiles
+                      and told a creator nothing they could act on. */}
+                  {action.status === 'web_only' ? (
+                    <StatusChip label="Desktop" tone="web" />
+                  ) : action.status === 'limited' ? (
+                    <StatusChip label="Preview" tone="limited" />
+                  ) : null}
                 </LinearGradient>
               </Pressable>
             ))}
@@ -851,16 +985,12 @@ function KpiCard({
       accessibilityRole={route ? 'button' : 'text'}
       disabled={!route}
       onPress={() => routePush(router, route)}
-      style={({ pressed }) => [
-        styles.kpiCardTap,
-        cardWidth ? { flex: 0, width: cardWidth } : null,
-        pressed && { opacity: 0.78 },
-      ]}
+      style={[styles.kpiCardTap, cardWidth ? { flex: 0, width: cardWidth } : null]}
     >
       <LinearGradient
         colors={['rgba(255,255,255,0.115)', 'rgba(17,17,21,0.92)', 'rgba(2,2,3,0.95)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={[styles.kpiCard, cardWidth ? { width: cardWidth } : null]}
       >
         <View style={styles.kpiHead}>
@@ -872,7 +1002,8 @@ function KpiCard({
         <Text style={styles.kpiValue} numberOfLines={1}>
           {value}
         </Text>
-        <View style={styles.kpiSpark} />
+        {/* A decorative bar sat here. It was bound to nothing, so it implied a
+            measurement against a target that does not exist. */}
         <Text style={styles.kpiDetail} numberOfLines={1}>
           {detail}
         </Text>
@@ -910,7 +1041,7 @@ function ZoneGrid({ data }: { data: StudioData }) {
     },
     {
       title: 'Collect',
-      detail: 'Payouts and wallet',
+      detail: 'Payouts',
       tag: 'Money',
       route: '/wallet',
       icon: 'account-balance-wallet',
@@ -942,16 +1073,12 @@ function ZoneGrid({ data }: { data: StudioData }) {
               accessibilityRole="button"
               accessibilityLabel={zone.title}
               onPress={() => routePush(router, zone.route)}
-              style={({ pressed }) => [
-                styles.zoneCardTap,
-                { flex: 0, width: zoneCardWidth },
-                pressed && { opacity: 0.78 },
-              ]}
+              style={[styles.zoneCardTap, { flex: 0, width: zoneCardWidth }]}
             >
               <LinearGradient
                 colors={['rgba(255,255,255,0.13)', 'rgba(25,25,29,0.94)', 'rgba(5,5,7,0.95)']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 0, y: 1 }}
                 style={[styles.zoneCard, { width: zoneCardWidth }]}
               >
                 <View style={styles.zoneIcon}>
@@ -986,8 +1113,13 @@ function ProgressRow({ label, detail, value, icon, route }: { label: string; det
         <Text style={[styles.progressLabel, { color: theme.colors.text }]} numberOfLines={1}>{label}</Text>
         <Text style={[styles.progressDetail, { color: theme.colors.textMuted }]} numberOfLines={1}>{detail}</Text>
       </View>
+      {/* A 6% floor meant zero rendered as a small orange nub, which reads as a
+          rendering fault rather than "none yet". Zero now shows an empty track;
+          the floor only applies once there is something to show. */}
       <View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceAlt }]}>
-        <View style={[styles.progressFill, { width: `${Math.max(6, Math.min(100, value))}%`, backgroundColor: theme.colors.accent }]} />
+        {value > 0 ? (
+          <View style={[styles.progressFill, { width: `${Math.max(5, Math.min(100, value))}%`, backgroundColor: theme.colors.accent }]} />
+        ) : null}
       </View>
     </Pressable>
   );
@@ -1033,10 +1165,8 @@ function PublishingActivity({ data }: { data: StudioData }) {
           <Text style={styles.activityKicker}>Publishing activity</Text>
           <Text style={styles.activityTitle}>{total ? `${total} items in six months` : 'Your cadence starts here'}</Text>
         </View>
-        <View style={styles.activityBadge}>
-          <MaterialIcons name="insights" size={16} color={STUDIO.orangeSoft} />
-          <Text style={styles.activityBadgeText}>REAL DATA</Text>
-        </View>
+        {/* A "REAL DATA" badge used to sit here. Creators assume the numbers are
+            real; saying so out loud only invites the opposite thought. */}
       </View>
       <View style={styles.activityChart}>
         {activity.map((month) => (
@@ -1044,7 +1174,7 @@ function PublishingActivity({ data }: { data: StudioData }) {
             <Text style={styles.activityValue}>{month.count || '–'}</Text>
             <View style={styles.activityTrack}>
               <LinearGradient
-                colors={month.count ? [STUDIO.orangeSoft, STUDIO.orange] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)']}
+                colors={month.count ? [STUDIO.orangeSoft, STUDIO.orange] : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.10)']}
                 style={[styles.activityBar, { height: month.count ? Math.max(12, Math.round((month.count / maximum) * 74)) : 5 }]}
               />
             </View>
@@ -1118,11 +1248,11 @@ function ActionRow({ action, compact = false }: { action: StudioAction; compact?
       accessibilityRole={canOpen ? 'button' : 'text'}
       disabled={!canOpen}
       onPress={() => routePush(router, action.route)}
-      style={({ pressed }) => [
+      style={[
         styles.actionRow,
         compact && styles.actionRowCompact,
         {
-          backgroundColor: pressed ? theme.colors.surfacePressed : theme.colors.surface,
+          backgroundColor: theme.colors.surface,
           borderColor: theme.colors.border,
           opacity: canOpen ? 1 : 0.7,
         },
@@ -1154,33 +1284,34 @@ function ModuleCard({
   const theme = usePluggdTheme();
   const router = useRouter();
   const canToggle = !module.defaultForRole && !module.alwaysVisible;
-  const statusTone = module.status === 'web_only' ? 'web' : module.status;
-  const statusLabel = module.status === 'web_only' ? 'Desktop' : module.status === 'limited' ? 'Preview' : 'Ready';
+  const chip = moduleChip(module);
   return (
     <View style={[styles.moduleCard, { backgroundColor: theme.colors.surface, borderColor: module.plugged ? theme.colors.borderAccent : theme.colors.border }]}>
       <View style={styles.moduleTop}>
         <View style={[styles.moduleIcon, { backgroundColor: theme.colors.surfaceAlt, borderColor: module.plugged ? theme.colors.borderAccent : theme.colors.border }]}>
           <MaterialIcons name={iconName(module.icon)} size={22} color={module.plugged ? theme.colors.accent : theme.colors.textSecondary} />
+          {/* Apps exists to answer "what is in my Studio", so plugged state needs
+              an affirmative mark — but as an affordance on the icon rather than
+              another chip competing with Preview/Desktop. */}
+          {module.plugged ? (
+            <View style={[styles.modulePluggedMark, { borderColor: theme.colors.surface }]}>
+              <MaterialIcons name="check" size={10} color="#140A03" />
+            </View>
+          ) : null}
         </View>
         <View style={styles.moduleCopy}>
           <View style={styles.moduleTitleRow}>
             <Text style={[styles.moduleTitle, { color: theme.colors.text }]} numberOfLines={1}>{module.title}</Text>
-            {module.recommendedForRole ? <StatusChip label="Recommended" tone="limited" /> : null}
+            {chip ? <StatusChip label={chip.label} tone={chip.tone} /> : null}
           </View>
-          <Text style={[styles.moduleDetail, { color: theme.colors.textMuted }]} numberOfLines={2}>
+          {/* description says what the tool is; addsToStudio restated it in
+              desktop-parity terms, so the card carried two paragraphs saying
+              nearly the same thing. The chip covers the parity half. */}
+          <Text style={[styles.moduleDetail, { color: theme.colors.textMuted }]} numberOfLines={3}>
             {module.description}
           </Text>
         </View>
       </View>
-
-      <View style={styles.moduleMetaRow}>
-        <StatusChip label={module.plugged ? 'Plugged in' : 'Available'} tone={module.plugged ? 'native' : 'neutral'} />
-        <StatusChip label={statusLabel} tone={statusTone} />
-      </View>
-
-      <Text style={[styles.moduleAdds, { color: theme.colors.textSecondary }]} numberOfLines={2}>
-        {module.addsToStudio}
-      </Text>
 
       <View style={styles.moduleButtons}>
         {module.route ? (
@@ -1264,30 +1395,12 @@ export function StudioAppsScreen() {
     const recommendedCount = data.modules.filter((module) => module.recommendedForRole && !module.plugged).length;
     return (
       <StudioShell active="apps" title="Studio Apps" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-        <LinearGradient
-          colors={['rgba(255,106,0,0.24)', 'rgba(26,15,10,0.96)', 'rgba(8,8,11,0.98)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.appsHero}
-        >
-          <View style={styles.appsHeroIcon}>
-            <MaterialIcons name="widgets" size={22} color="#180B04" />
-          </View>
-          <Text style={styles.appsEyebrow}>Your creator toolkit</Text>
-          <Text style={styles.appsTitle}>Build the Studio around your work.</Text>
-          <Text style={styles.appsBody}>Keep the tools you use daily close. Specialist desktop modules remain visible when a bigger workflow is needed.</Text>
-          <View style={styles.appsStats}>
-            <View style={styles.appsStat}>
-              <Text style={styles.appsStatValue}>{formatCompact(pluggedCount)}</Text>
-              <Text style={styles.appsStatLabel}>Plugged in</Text>
-            </View>
-            <View style={styles.appsStatDivider} />
-            <View style={styles.appsStat}>
-              <Text style={styles.appsStatValue}>{formatCompact(recommendedCount)}</Text>
-              <Text style={styles.appsStatLabel}>Suggested for {ROLE_LABELS[data.primaryRole] ?? 'you'}</Text>
-            </View>
-          </View>
-        </LinearGradient>
+        <StudioPageHeader
+          icon="widgets"
+          kicker="Your creator toolkit"
+          title="Pick the tools you actually use."
+          meta={`${formatCompact(pluggedCount)} plugged in · ${formatCompact(recommendedCount)} suggested for ${ROLE_LABELS[data.primaryRole] ?? 'you'}`}
+        />
 
         <View style={styles.segmentStrip}>
           {(['all', ...SECTION_ORDER] as Array<StudioModuleSection | 'all'>).map((item) => {
@@ -1348,6 +1461,11 @@ export function StudioAnalyticsScreen() {
     const total = Math.max(1, data.stats.catalogCount);
     return (
       <StudioShell active="analytics" title="Analytics" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
+        <StudioPageHeader
+          icon="insights"
+          kicker="Studio insights"
+          title="How your catalogue is doing."
+        />
         <KpiGrid data={data} />
         <PublishingActivity data={data} />
         <View>
@@ -1412,10 +1530,7 @@ function StudioIdentityContent({
             accessibilityRole="button"
             accessibilityLabel="Open share tools"
             onPress={() => routePush(router, '/studio/connect-card')}
-            style={({ pressed }) => [
-              styles.myPluggdPrimaryPill,
-              pressed && { backgroundColor: 'rgba(255,255,255,0.16)' },
-            ]}
+            style={styles.myPluggdPrimaryPill}
           >
             <MaterialIcons name="ios-share" size={16} color={STUDIO.text} />
             <Text style={styles.myPluggdPrimaryText}>Share Tools</Text>
@@ -1460,10 +1575,7 @@ function StudioIdentityContent({
           accessibilityRole="button"
           accessibilityLabel={`Next up ${nextSection.title}`}
           onPress={() => routePush(router, nextSection.route)}
-          style={({ pressed }) => [
-            styles.myPluggdNextCard,
-            pressed && { backgroundColor: 'rgba(255,255,255,0.10)' },
-          ]}
+          style={styles.myPluggdNextCard}
         >
           <View style={styles.myPluggdNextTop}>
             <View style={styles.myPluggdNextIcon}>
@@ -1491,10 +1603,10 @@ function StudioIdentityContent({
             accessibilityRole="button"
             accessibilityLabel={section.title}
             onPress={() => routePush(router, section.route)}
-            style={({ pressed }) => [
+            style={[
               styles.myPluggdSectionCard,
               {
-                backgroundColor: pressed ? STUDIO.panelPressed : 'rgba(255,255,255,0.055)',
+                backgroundColor: 'rgba(255,255,255,0.055)',
                 borderColor: section.complete ? 'rgba(65,209,125,0.25)' : theme.colors.border,
               },
             ]}
@@ -1712,7 +1824,7 @@ function StudioConnectCardContent({
               accessibilityRole="button"
               accessibilityLabel={`Preview ${view.label} card`}
               onPress={() => routePush(router, view.route)}
-              style={({ pressed }) => [styles.connectViewCard, pressed && { opacity: 0.82 }]}
+              style={styles.connectViewCard}
             >
               <PluggdImage
                 uri=""
@@ -1722,6 +1834,16 @@ function StudioConnectCardContent({
                 accessibilityLabel=""
               />
               <LinearGradient colors={view.tone} style={StyleSheet.absoluteFill} />
+              {/* view.tone starts near-transparent at the top, so the eyebrow and
+                  icon sat straight on the photography — "PUBLIC" was barely
+                  readable over a bright frame. This scrim only darkens the band
+                  they occupy and leaves the image itself alone. */}
+              <LinearGradient
+                colors={['rgba(0,0,0,0.58)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0)']}
+                locations={[0, 0.34, 0.62]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
               <View style={styles.connectViewCardTop}>
                 <View style={styles.connectViewIcon}>
                   <MaterialIcons name={iconName(view.icon)} size={20} color="#FFFFFF" />
@@ -1847,133 +1969,16 @@ function StudioSplitGatewayContent({
   data: StudioData;
   query: ReturnType<typeof useStudioQuery>;
 }) {
-  const router = useRouter();
   const slug = data.connectProfile?.slug || '';
   const creatorName = data.connectProfile?.display_name || studioCreatorName(data);
-  const steps = [
-    {
-      number: '01',
-      icon: 'library-music',
-      title: 'Choose the work',
-      detail: 'Start with the release, beat or session everyone contributed to.',
-    },
-    {
-      number: '02',
-      icon: 'group-add',
-      title: 'Invite collaborators',
-      detail: 'Use verified Connect identities so names and contact details stay consistent.',
-    },
-    {
-      number: '03',
-      icon: 'draw',
-      title: 'Agree and lock',
-      detail: 'Confirm percentages, collect approvals and preserve the signed record.',
-    },
-  ];
 
   return (
     <StudioShell active="more" title="Split Engine" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.30)', 'rgba(42,20,8,0.38)', 'rgba(5,5,7,0.99)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.splitHero}
-      >
-        <View style={styles.splitHeroTop}>
-          <View style={styles.splitHeroIcon}>
-            <MaterialIcons name="account-tree" size={27} color="#170A03" />
-          </View>
-          <StatusChip label="Secure workflow" tone="native" />
-        </View>
-        <Text style={styles.splitEyebrow}>PLUGGD SPLIT ENGINE</Text>
-        <Text style={styles.splitHeroTitle}>Clear credits before the release moves.</Text>
-        <Text style={styles.splitHeroText}>
-          Create one shared source of truth for collaborators, percentages, approvals and signatures.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open secure Split Engine"
-          onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
-          style={styles.splitHeroButton}
-        >
-          <Text style={styles.splitHeroButtonText}>Open Split Engine</Text>
-          <MaterialIcons name="open-in-new" size={18} color="#170A03" />
-        </Pressable>
-      </LinearGradient>
-
-      <View>
-        <SectionTitle title="Three steps. One record." />
-        <View style={styles.splitStepStack}>
-          {steps.map((step) => (
-            <View key={step.number} style={styles.splitStep}>
-              <View style={styles.splitStepNumber}>
-                <Text style={styles.splitStepNumberText}>{step.number}</Text>
-              </View>
-              <View style={styles.splitStepCopy}>
-                <View style={styles.splitStepTitleRow}>
-                  <MaterialIcons name={iconName(step.icon)} size={19} color={STUDIO.orangeSoft} />
-                  <Text style={styles.splitStepTitle}>{step.title}</Text>
-                </View>
-                <Text style={styles.splitStepText}>{step.detail}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.splitIdentityPanel}>
-        <View style={styles.splitIdentityTop}>
-          <View style={styles.splitIdentityAvatar}>
-            {data.profile?.avatar_url ? (
-              <PluggdImage uri={data.profile.avatar_url} style={StyleSheet.absoluteFill} accessibilityLabel={creatorName} />
-            ) : (
-              <Text style={styles.splitIdentityInitials}>{initials(creatorName)}</Text>
-            )}
-          </View>
-          <View style={styles.splitIdentityCopy}>
-            <Text style={styles.splitIdentityEyebrow}>YOUR COLLABORATOR IDENTITY</Text>
-            <Text style={styles.splitIdentityName}>{creatorName}</Text>
-            <Text style={styles.splitIdentityStatus}>{slug ? 'Ready to share' : 'Complete Connect Card setup first'}</Text>
-          </View>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={slug ? 'Preview collaborator identity' : 'Set up collaborator identity'}
-          onPress={() => routePush(router, slug ? `/connect/${slug}/collab` : '/studio/connect-card')}
-          style={styles.splitIdentityButton}
-        >
-          <Text style={styles.splitIdentityButtonText}>{slug ? 'Preview collaborator card' : 'Set up Connect Card'}</Text>
-          <MaterialIcons name="arrow-forward" size={17} color="#FFFFFF" />
-        </Pressable>
-      </View>
-
-      <View>
-        <SectionTitle title="Keep every decision close" />
-        <View style={styles.splitToolGrid}>
-          {[
-            { icon: 'pending-actions', title: 'Approvals', detail: 'See who has agreed and who still needs to respond.' },
-            { icon: 'history-edu', title: 'Agreements', detail: 'Return to signed records without hunting through messages.' },
-            { icon: 'groups', title: 'Participants', detail: 'Reuse trusted collaborator identities on the next work.' },
-          ].map((tool) => (
-            <Pressable
-              key={tool.title}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${tool.title}`}
-              onPress={() => void Linking.openURL('https://pluggd.fm/studio/splits')}
-              style={styles.splitTool}
-            >
-              <View style={styles.splitToolIcon}>
-                <MaterialIcons name={iconName(tool.icon)} size={21} color={STUDIO.orangeSoft} />
-              </View>
-              <View style={styles.splitToolCopy}>
-                <Text style={styles.splitToolTitle}>{tool.title}</Text>
-                <Text style={styles.splitToolText}>{tool.detail}</Text>
-              </View>
-              <MaterialIcons name="north-east" size={17} color={STUDIO.textSubtle} />
-            </Pressable>
-          ))}
-        </View>
-      </View>
+      <SplitEngineListPanel
+        connectSlug={slug}
+        creatorName={creatorName}
+        avatarUrl={data.connectProfile?.avatar_url || data.profile?.avatar_url || null}
+      />
     </StudioShell>
   );
 }
@@ -1982,17 +1987,29 @@ export function StudioSplitGatewayScreen() {
   return withStudioData('more', 'Split Engine', (data, query) => <StudioSplitGatewayContent data={data} query={query} />);
 }
 
-function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
+function ModuleTileGrid({ modules, artwork }: { modules: StudioModuleState[]; artwork: Record<string, string> }) {
   const rows: StudioModuleState[][] = [];
   for (let index = 0; index < modules.length; index += 2) {
     rows.push(modules.slice(index, index + 2));
+  }
+  // A section holding a single module never establishes a grid rhythm, so the
+  // half-width tile plus a dead half read as a layout fault. Let it run full
+  // width instead. A trailing odd tile in a longer section keeps its gap, which
+  // is ordinary grid behaviour and reads correctly.
+  const soleModule = modules.length === 1 ? modules[0] : null;
+  if (soleModule) {
+    return (
+      <View style={styles.moduleTileGrid}>
+        <MoreModuleTile module={soleModule} artwork={artwork[soleModule.id]} />
+      </View>
+    );
   }
   return (
     <View style={styles.moduleTileGrid}>
       {rows.map((row, index) => (
         <View key={`module-tile-row-${index}`} style={styles.moduleTileRow}>
           {row.map((module) => (
-            <MoreModuleTile key={module.id} module={module} />
+            <MoreModuleTile key={module.id} module={module} artwork={artwork[module.id]} />
           ))}
           {row.length === 1 ? <View style={styles.moduleTileSpacer} /> : null}
         </View>
@@ -2001,38 +2018,49 @@ function ModuleTileGrid({ modules }: { modules: StudioModuleState[] }) {
   );
 }
 
-function MoreModuleTile({ module }: { module: StudioModuleState }) {
+function MoreModuleTile({ module, artwork }: { module: StudioModuleState; artwork?: string }) {
   const router = useRouter();
   const canOpen = Boolean(module.route);
-  const statusTone = module.status === 'web_only' ? 'web' : module.status;
-  const statusLabel = module.status === 'web_only' ? 'Desktop' : module.status === 'limited' ? 'Preview' : 'Ready';
+  const chip = moduleChip(module);
   return (
     <Pressable
       accessibilityRole={canOpen ? 'button' : 'text'}
       disabled={!canOpen}
       onPress={() => routePush(router, module.route)}
-      style={({ pressed }) => [styles.moduleTileTap, pressed && { opacity: 0.78 }]}
+      style={styles.moduleTileTap}
     >
       <LinearGradient
         colors={module.plugged || module.alwaysVisible ? ['rgba(255,106,0,0.16)', 'rgba(22,22,27,0.94)', 'rgba(5,5,7,0.98)'] : ['rgba(255,255,255,0.11)', 'rgba(18,18,23,0.93)', 'rgba(4,4,6,0.98)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={styles.moduleTile}
       >
+        {artwork ? (
+          <>
+            <PluggdImage uri={artwork} style={styles.tileArtwork} resizeMode="cover" accessibilityLabel="" />
+            <LinearGradient
+              colors={['rgba(5,5,7,0.34)', 'rgba(5,5,7,0.82)', 'rgba(5,5,7,0.96)']}
+              locations={[0, 0.5, 1]}
+              style={styles.tileArtwork}
+              pointerEvents="none"
+            />
+          </>
+        ) : null}
         <View style={styles.moduleTileTop}>
           <View style={styles.moduleTileIcon}>
             <MaterialIcons name={iconName(module.icon)} size={21} color={module.plugged || module.alwaysVisible ? STUDIO.orange : STUDIO.textMid} />
           </View>
           {canOpen ? <MaterialIcons name="arrow-outward" size={18} color={STUDIO.textMid} /> : null}
         </View>
-        <Text style={styles.moduleTileTitle} numberOfLines={1}>{module.title}</Text>
+        <Text style={styles.moduleTileTitle} numberOfLines={2}>{module.title}</Text>
         <Text style={styles.moduleTileDetail} numberOfLines={2}>
-          {module.status === 'web_only' ? module.unavailableReason || module.addsToStudio : module.addsToStudio}
+          {tileCopy(module.status === 'web_only' ? module.unavailableReason || module.addsToStudio : module.addsToStudio)}
         </Text>
-        <View style={styles.moduleTileChips}>
-          <StatusChip label={module.plugged || module.alwaysVisible ? 'Active' : 'Suggested'} tone={module.plugged || module.alwaysVisible ? 'native' : 'limited'} />
-          <StatusChip label={statusLabel} tone={statusTone} />
-        </View>
+        {chip ? (
+          <View style={styles.moduleTileChips}>
+            <StatusChip label={chip.label} tone={chip.tone} />
+          </View>
+        ) : null}
       </LinearGradient>
     </Pressable>
   );
@@ -2051,31 +2079,19 @@ function StudioMoreContent({
   })).filter((group) => group.modules.length > 0);
   const pluggedCount = data.modules.filter((module) => module.plugged || module.alwaysVisible).length;
   const desktopCount = data.modules.filter((module) => module.status === 'web_only' && (module.plugged || module.recommendedForRole)).length;
+  const artwork = artworkByModule(data.catalogItems);
   return (
     <StudioShell active="more" title="More" data={data} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <LinearGradient
-        colors={['rgba(255,106,0,0.18)', 'rgba(255,255,255,0.075)', 'rgba(7,7,10,0.96)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.moreHero}
-      >
-        <View style={styles.kickerRow}>
-          <MaterialIcons name="more-horiz" size={16} color={STUDIO.orange} />
-          <Text style={styles.kicker}>More Studio</Text>
-        </View>
-        <Text style={styles.moreHeroTitle}>Modules, account surfaces, and business tools.</Text>
-        <Text style={styles.moreHeroBody}>
-          Keep My PLUGGD, wallet, live, settings, and plugged modules close without turning them into primary tabs.
-        </Text>
-        <View style={styles.moreHeroStats}>
-          <StatusChip label={`${pluggedCount} active`} tone="native" />
-          <StatusChip label={`${desktopCount} desktop tools`} tone="web" />
-        </View>
-      </LinearGradient>
+      <StudioPageHeader
+        icon="more-horiz"
+        kicker="More Studio"
+        title="Everything else in your Studio."
+        meta={`${pluggedCount} active · ${desktopCount} desktop tools`}
+      />
       {sections.map((group) => (
         <View key={group.section}>
           <SectionTitle title={SECTION_LABELS[group.section]} />
-          <ModuleTileGrid modules={group.modules} />
+          <ModuleTileGrid modules={group.modules} artwork={artwork} />
         </View>
       ))}
     </StudioShell>
@@ -2118,30 +2134,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4,4,5,0.92)',
   },
   studioMenuTap: {
-    width: 92,
+    width: 44,
     height: 42,
     flexShrink: 0,
   },
   studioMenuButton: {
-    width: 92,
+    width: 44,
     height: 42,
-    borderRadius: 999,
+    // Sat beside the back button as a second 44pt circle, separated only by ring
+    // colour — two near-identical controls doing unrelated jobs. A rounded square
+    // reads as a tile, which is what it opens, and tells them apart at a glance.
+    borderRadius: 14,
     borderWidth: 1.2,
     borderColor: 'rgba(255,106,0,0.62)',
     backgroundColor: 'rgba(255,106,0,0.11)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
     flexDirection: 'row',
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
     overflow: 'hidden',
   },
-  studioMenuText: { fontFamily: pluggdFonts.satoshiBlack,
-    color: STUDIO.text,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '900',
+  studioTopLeft: {
+    width: 96,
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  studioExitButton: {
+    width: 44,
+    height: 42,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: STUDIO.line,
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   studioBrand: {
     flex: 1,
@@ -2166,14 +2195,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   studioAccountPill: {
-    maxWidth: 144,
+    width: 78,
     height: 44,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: STUDIO.line,
     backgroundColor: 'rgba(255,255,255,0.07)',
     paddingLeft: 6,
-    paddingRight: 10,
+    paddingRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -2720,6 +2749,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pageHeader: {
+    gap: 7,
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+  pageHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pageHeaderIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,106,0,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageHeaderKicker: {
+    color: STUDIO.orangeSoft,
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  pageHeaderTitle: {
+    color: STUDIO.text,
+    fontFamily: pluggdFonts.displayExtraBold,
+    fontSize: 23,
+    lineHeight: 26,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  pageHeaderMeta: {
+    color: STUDIO.textSubtle,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
   actionBoardHero: {
     minHeight: 188,
     borderRadius: 26,
@@ -2948,7 +3019,8 @@ const styles = StyleSheet.create({
     width: '72%',
     height: 74,
     borderRadius: 7,
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    // Deliberately unfilled. With a background, a month holding nothing rendered
+    // as a full-height dark bar, so five quiet months read as five real bars.
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
@@ -3101,9 +3173,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: pluggdFonts.displayBold,
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: 0,
+    // Had no colour, so it fell back to the platform default — black text on
+    // the Studio's dark ground. "Close to the work." was rendering invisible.
+    color: STUDIO.text,
+    // Sized to sit clearly under StudioPageHeader's title. At the previous 22 it
+    // matched the page title, so every screen read as two competing headlines.
+    fontSize: 18,
+    lineHeight: 23,
+    letterSpacing: -0.2,
   },
   sectionAction: { fontFamily: pluggdFonts.satoshiBlack,
     fontSize: 12,
@@ -3324,6 +3401,18 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 15,
     borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modulePluggedMark: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    backgroundColor: STUDIO.orange,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4550,6 +4639,15 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 8,
     overflow: 'hidden',
+  },
+  // Sits under the tile's padding so artwork bleeds to the rounded edge. Both
+  // the image and its scrim use it, so they stay in register.
+  tileArtwork: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   moduleTileTop: {
     flexDirection: 'row',

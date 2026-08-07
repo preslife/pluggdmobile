@@ -55,6 +55,15 @@ access, refunds and creator settlement.
   not a fallback purchase button.
 - Existing shared-price SKU subscriptions retain access during migration and
   must not be charged again.
+- Creator catalogue provisioning is queued only after PLUGGD approval. The
+  scheduled server worker creates or reconciles the creator's subscription
+  group, unique tier products, localisations, approved price point,
+  availability and App Review screenshot, then polls Apple for approval before
+  activating the mobile purchase control.
+- Fan purchases do not create subscription groups or products. A fan may hold
+  one product from each of many creator groups, which allows simultaneous
+  memberships to different creators at the same price without identity
+  collision.
 
 ## Hosted checkout and entitlement rules
 
@@ -71,6 +80,34 @@ access, refunds and creator settlement.
   chargebacks update entitlements, inventory and settlements as required.
 - Previously acquired access works across web and app, regardless of whether its
   source was Apple, credits, Stripe or an approved administrative grant.
+
+## Beat agreement formation and delivery
+
+- The four platform catalogue agreements are `basic_lease`, `premium_lease`,
+  `unlimited_lease` and `exclusive_rights`. Their production wording is held in
+  `contract_templates`; an executed contract keeps an immutable legal snapshot.
+- Accepting licence terms and requesting immediate digital delivery are separate
+  affirmative actions. The delivery control is unticked by default and records
+  its exact wording, version, timestamp, client address and user agent.
+- An Exclusive offer is disabled until the authenticated beat owner deliberately
+  records the versioned producer authorisation. A generic pre-authorised string
+  is not sufficient.
+- Exclusive means an exclusive licence for future Beat use. Prior valid leases
+  survive. It does not silently assign the Beat copyright, composition interest
+  or moral rights. Any copyright assignment requires a separate signed instrument.
+- Checkout begins only after the server has resolved the trusted option, complete
+  agreement, buyer signature, delivery consent and current producer authorisation.
+  Credits and generic cart checkout are rejected for beat licences.
+- Verified Stripe webhook completion creates the purchase and settlement record,
+  stores the immutable licence PDF and enables the web delivery route. The mobile
+  record exposes the retained agreement but does not present the professional file
+  as an in-app digital unlock.
+- On 1 August 2026 the product owner approved the default 50/50
+  producer-side/artist-side composition assumption and PLUGGD's precise
+  marketplace/intermediary role as the launch commercial baseline.
+  Independent UK music/consumer counsel review remains recommended before
+  material transaction volume or any marketing claim based on those terms and
+  is not represented as having occurred.
 
 ## App Review posture
 
@@ -97,4 +134,3 @@ Do not submit or enable a rail in production until:
    tests pass.
 6. Storefront default-deny and all remote kill switches are tested.
 7. Product/legal has approved the beat-licensing and event-classification stance.
-

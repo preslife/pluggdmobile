@@ -24,8 +24,12 @@ const wallet = read('src/hooks/useWallet.ts');
 const beat = read('app/beat/[id].tsx');
 const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
+const eventBoard = read('src/features/editorial/EventsBoardScreen.tsx');
+const externalEventTickets = read('src/lib/eventTickets.ts');
 const release = read('app/release/[id].tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const store = read('src/features/editorial/MarketStoreScreen.tsx');
+const product = read('app/product/[id].tsx');
 const mobileServices = read('src/features/culture/mobileServices.ts');
 const packageJson = JSON.parse(read('package.json'));
 const adr = read('docs/PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md');
@@ -98,6 +102,21 @@ assert.match(
   /membership_iap_products[\s\S]*(apple_product_id|product_id)[\s\S]*(unique|UNIQUE)/i,
   'Apple membership catalogue must enforce unique product identity',
 );
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+public/i,
+  'the membership catalogue must not inherit public table access',
+);
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+anon/i,
+  'anonymous users must not read the membership product catalogue',
+);
+assert.match(
+  migrationSource,
+  /grant\s+select\s+on\s+table\s+public\.membership_iap_products\s+to\s+authenticated/i,
+  'authenticated users need explicit read access before the active-product RLS policy can apply',
+);
 
 assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'native Stripe SDK must not ship');
 assert.ok(packageJson.dependencies['expo-web-browser'], 'hosted checkout must use expo-web-browser');
@@ -108,6 +127,23 @@ assert.doesNotMatch(
   hostedCheckout,
   /STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET/,
   'mobile hosted-checkout code must never contain Stripe secrets',
+);
+
+assert.match(
+  store,
+  /\.in\('product_type', \['physical', 'merchandise', 'physical_merch'\]\)/,
+  'iOS Store must exclude legacy digital store products',
+);
+assert.match(
+  store,
+  /\.eq\('requires_shipping', true\)/,
+  'creator merchandise must be explicitly classified for shipping before appearing in the iOS Store',
+);
+assert.doesNotMatch(store, /Shop all/, 'iOS Store must not route a generic purchase CTA into BeatPlug');
+assert.match(
+  product,
+  /product\.requires_shipping === true/,
+  'creator merchandise checkout must fail closed unless physical shipping is explicit',
 );
 
 assert.match(beat, /licenseOptionId/, 'beat detail must route a trusted licence-option identifier');
@@ -157,6 +193,14 @@ assert.doesNotMatch(
   /price(?:Cents|Pence)\s*=\s*(?:body|request)|const\s*\{\s*[^}]*price(?:Cents|Pence)/i,
   'event checkout must never trust a client-provided ticket price',
 );
+assert.match(externalEventTickets, /commerce_classification === 'physical'/, 'organiser ticket links must require a trusted physical-event classification');
+assert.match(externalEventTickets, /url\.protocol !== 'https:'/, 'organiser ticket links must require HTTPS');
+assert.match(externalEventTickets, /!event\.stream_url[\s\S]*!event\.playback_url/, 'paid virtual access must never use organiser ticket links');
+assert.match(externalEventTickets, /WebBrowser\.openBrowserAsync/, 'eligible organiser ticket links must open in a secure in-app browser');
+assert.match(eventBoard, /ticket_url,commerce_classification/, 'Events discovery must load ticket URLs and trusted classification');
+assert.match(eventBoard, /openExternalEventTickets/, 'Events discovery must provide a working organiser-ticket CTA');
+assert.match(event, /ExternalTicketAccess/, 'event detail must explain and open eligible organiser tickets');
+assert.match(event, /EventTicketPurchase/, 'event detail must retain PLUGGD-hosted ticket-tier checkout');
 
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release unlock must keep the universal credit path');
 assert.match(release, /useCommercePolicy/, 'optional release hosted checkout must be storefront and policy gated');

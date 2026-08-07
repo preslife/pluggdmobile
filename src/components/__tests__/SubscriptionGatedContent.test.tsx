@@ -184,11 +184,9 @@ describe('SubscriptionGatedContent', () => {
       </SubscriptionGatedContent>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Supporter-only post/i)).toBeInTheDocument();
-    });
-    expect(screen.getAllByText(/Members get the full story/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /unlock with membership/i })).toBeInTheDocument();
+    await screen.findByText(/Supporter-only post/i);
+    expect((await screen.findAllByText(/Members get the full story/i)).length).toBeGreaterThan(0);
+    await screen.findByRole('button', { name: /unlock with membership/i });
   });
 
   it('renders children when membership access is granted', async () => {

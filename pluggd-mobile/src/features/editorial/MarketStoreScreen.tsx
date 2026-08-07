@@ -19,13 +19,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
 import { safeList } from '../culture/mobileServices';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type SamplePackItem } from '../../lib/mobileContent';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 import { Enter, EdPressable } from './EditorialBits';
 
 type StoreProductRow = {
@@ -39,11 +40,16 @@ type StoreProductRow = {
   price?: number | null;
   product_type?: string | null;
   category?: string | null;
+  requires_shipping?: boolean | null;
   created_at?: string | null;
   source: 'store_products' | 'creator_merchandise';
 };
 
-const TRUST_CHIPS = ['Worldwide shipping', 'Secure payments', 'Support creators'] as const;
+const STORE_PROMISES = [
+  { label: 'Worldwide', icon: 'public' },
+  { label: 'Secure checkout', icon: 'lock-outline' },
+  { label: 'Creator-led', icon: 'favorite-border' },
+] as const;
 
 const SERVICES = [
   { key: 'production', icon: 'multitrack-audio', title: 'Music Production', copy: 'Custom tracks, beat edits and session-ready production.', price: 'From £250' },
@@ -125,7 +131,7 @@ function ProductCard({ product, wide = false }: { product: StoreProductRow; wide
 }
 
 export function MarketStoreScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
 
   const productsQuery = useQuery({
@@ -137,14 +143,16 @@ export function MarketStoreScreen() {
             .from('store_products')
             .select('id,title,description,image_url,price,product_type,created_at,is_active,stock_quantity')
             .eq('is_active', true)
+            .in('product_type', ['physical', 'merchandise', 'physical_merch'])
             .order('created_at', { ascending: false })
             .limit(12),
         ),
         safeList<any>(
           (supabase as any)
             .from('creator_merchandise')
-            .select('id,title,description,image_url,gallery_images,price,product_type,category,status,created_at,stock_quantity')
+            .select('id,title,description,image_url,gallery_images,price,product_type,category,requires_shipping,status,created_at,stock_quantity')
             .in('status', ['approved', 'active', 'published', 'live'])
+            .eq('requires_shipping', true)
             .order('created_at', { ascending: false })
             .limit(12),
         ),
@@ -184,14 +192,15 @@ export function MarketStoreScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
-          paddingBottom: insets.bottom + 210,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,
         }}
@@ -200,31 +209,28 @@ export function MarketStoreScreen() {
         <Enter delay={0}>
         <View style={{ gap: 12 }}>
           <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
-          <Text style={styles.heroTitle}>PLUGGD{'\n'}Store</Text>
+          <Text style={styles.heroTitle}>PLUGGD Store</Text>
           <Text style={styles.heroCopy}>
-            Official merch. Creator goods. Exclusive drops. Digital products. Services. Built for the culture.
+            Official merch, creator drops and professional services—built for the culture.
           </Text>
           <View style={styles.heroCtaRow}>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Shop all" onPress={() => router.push('/marketplace' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Explore BeatPlug" onPress={() => router.push('/market/beats' as any)}>
               <View style={styles.heroPrimary}>
-                <Text style={styles.heroPrimaryText}>Shop all</Text>
+                <Text style={styles.heroPrimaryText}>BeatPlug</Text>
               </View>
             </EdPressable>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
+            <EdPressable accessibilityRole="button" accessibilityLabel="Browse sample packs" onPress={() => router.push('/sample-packs' as any)}>
               <View style={styles.heroSecondary}>
-                <Text style={styles.heroSecondaryText}>BeatPlug</Text>
+                <Text style={styles.heroSecondaryText}>Sample packs</Text>
               </View>
             </EdPressable>
           </View>
-          <View style={styles.trustRow}>
-            {TRUST_CHIPS.map((chip) => (
-              <View key={chip} style={styles.trustChip}>
-                <MaterialIcons
-                  name={chip === 'Worldwide shipping' ? 'public' : chip === 'Secure payments' ? 'lock-outline' : 'favorite-border'}
-                  size={12.5}
-                  color="rgba(255,248,237,0.7)"
-                />
-                <Text style={styles.trustChipText}>{chip}</Text>
+          <View style={styles.trustBar}>
+            {STORE_PROMISES.map((promise, index) => (
+              <View key={promise.label} style={styles.trustItem}>
+                {index > 0 ? <View style={styles.trustDivider} /> : null}
+                <MaterialIcons name={promise.icon} size={13} color={ed.orange} />
+                <Text style={styles.trustItemText} numberOfLines={1} maxFontSizeMultiplier={1}>{promise.label}</Text>
               </View>
             ))}
           </View>
@@ -263,7 +269,7 @@ export function MarketStoreScreen() {
               </View>
             </EdPressable>
           ) : (
-            <EmptyPanel title="No featured merch yet" copy="Approved merch will appear here once it is published." />
+            <EmptyPanel title="New merch is on the way" copy="Fresh official drops will land here as they go live." />
           )}
         </View>
 
@@ -295,7 +301,7 @@ export function MarketStoreScreen() {
               </View>
             </EdPressable>
           ) : (
-            <EmptyPanel title="Drops coming soon" copy="Limited Store drops will be curated here." />
+            <EmptyPanel title="Drops coming soon" copy="Limited editions and new releases will land here." />
           )}
         </View>
 
@@ -314,8 +320,8 @@ export function MarketStoreScreen() {
             </ScrollView>
           ) : (
             <EmptyPanel
-              title="Creator shops are being approved"
-              copy="Approved creator merchandise will appear here without duplicating releases or BeatPlug."
+              title="Creator shops are opening soon"
+              copy="Fresh creator-made goods and limited drops will land here."
             />
           )}
         </View>
@@ -344,7 +350,12 @@ export function MarketStoreScreen() {
                     <Text style={styles.productTitle} numberOfLines={1}>{pack.title || 'Sample pack'}</Text>
                     <View style={styles.productFootRow}>
                       <Text style={styles.productOwner} numberOfLines={1}>{pack.genre || 'Digital goods'}</Text>
-                      <Text style={styles.productPrice}>{formatGBP(pack.price)}</Text>
+                      {/* Paid digital packs cannot be bought in the iOS app, so the card
+                          must not show a bare price — that reads as a buy affordance and
+                          dead-ends at the "Preview only on iPhone" notice. */}
+                      <Text style={Number(pack.price ?? 0) > 0 ? styles.productPreviewOnly : styles.productPrice}>
+                        {Number(pack.price ?? 0) > 0 ? 'Preview only' : 'Free'}
+                      </Text>
                     </View>
                   </View>
                 </EdPressable>
@@ -413,7 +424,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
 
   heroKicker: { fontFamily: edFonts.mono, fontSize: 11, letterSpacing: 2.2, color: ed.orange },
-  heroTitle: { fontFamily: edFonts.serif, fontSize: 62, lineHeight: 56, letterSpacing: -2, color: ed.paper },
+  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: ed.paper },
   heroCopy: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: 'rgba(255,248,237,0.68)' },
   heroCtaRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   heroPrimary: {
@@ -435,18 +446,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroSecondaryText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.cream },
-  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  trustChip: {
+  trustBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
+    minHeight: 42,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,248,237,0.25)',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    borderColor: 'rgba(255,248,237,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    paddingHorizontal: 9,
+    marginTop: 5,
   },
-  trustChipText: { fontFamily: edFonts.bodyBold, fontSize: 11, color: 'rgba(255,248,237,0.75)' },
+  trustItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, position: 'relative' },
+  trustDivider: { position: 'absolute', left: 0, width: StyleSheet.hairlineWidth, height: 18, backgroundColor: 'rgba(255,248,237,0.15)' },
+  trustItemText: { flexShrink: 1, fontFamily: edFonts.bodyBold, fontSize: 10.5, color: 'rgba(255,248,237,0.76)' },
 
   sectionEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: ed.orange },
   sectionTitle: { fontFamily: edFonts.serif, fontSize: 27, lineHeight: 30, color: ed.cream },
@@ -507,6 +520,7 @@ const styles = StyleSheet.create({
   productFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
   productOwner: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.55)' },
   productPrice: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.cream },
+  productPreviewOnly: { fontFamily: edFonts.bodyBlack, fontSize: 11, letterSpacing: 0.4, color: ed.creamMuted },
 
   packArtWrap: { borderRadius: 10, overflow: 'hidden' },
   packArt: { width: '100%', height: 130 },

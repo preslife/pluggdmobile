@@ -158,7 +158,7 @@ export default function StoryViewerRoute() {
       </View>
 
       <View style={[styles.topBar, { top: insets.top + 18 }]}>
-        <Pressable style={styles.iconButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close story">
+        <Pressable accessibilityRole="button" accessibilityLabel="Close story" style={styles.iconButton} onPress={() => router.back()}>
           <MaterialIcons name="close" size={24} color="#FFFFFF" />
         </Pressable>
         <View style={styles.author}>
@@ -170,7 +170,7 @@ export default function StoryViewerRoute() {
           </Text>
         </View>
         {story?.destination?.route ? (
-          <Pressable style={styles.iconButton} onPress={() => router.push(story.destination?.route as any)} accessibilityRole="button" accessibilityLabel="Open story destination">
+          <Pressable accessibilityRole="button" accessibilityLabel={`Open ${story.destination.label || 'story destination'}`} style={styles.iconButton} onPress={() => router.push(story.destination?.route as any)}>
             <MaterialIcons name="arrow-forward" size={22} color="#FFFFFF" />
           </Pressable>
         ) : (

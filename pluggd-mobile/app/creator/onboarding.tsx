@@ -400,6 +400,8 @@ export default function CreatorOnboarding() {
         <Text style={styles.subtitle} maxFontSizeMultiplier={1.45}>Complete the basics for your primary role.</Text>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit your creator roles"
           style={styles.roleSummaryCard}
           onPress={() => router.push('/profile' as any)}
         >
@@ -465,7 +467,7 @@ export default function CreatorOnboarding() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={handleContinue} disabled={saving}>
+        <Pressable accessibilityRole="button" accessibilityLabel={saving ? 'Saving creator profile' : 'Continue creator setup'} style={styles.cta} onPress={handleContinue} disabled={saving}>
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -509,6 +511,8 @@ function ChecklistRow({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}. ${item.status}. ${item.subtitle}`}
       style={[styles.checklistRow, !isLast && styles.checklistBorder]}
       onPress={onPress}
     >

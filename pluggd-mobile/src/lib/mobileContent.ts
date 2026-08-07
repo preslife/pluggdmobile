@@ -133,6 +133,8 @@ export type EventItem = {
   ends_at: string | null;
   price_cents: number | null;
   rsvp_count: number | null;
+  ticket_url: string | null;
+  commerce_classification: 'unclassified' | 'physical' | 'virtual' | 'hybrid' | null;
   stream_url: string | null;
   playback_url: string | null;
   created_at: string | null;
@@ -291,7 +293,14 @@ export function releasePlayableUrl(item: {
   preview_url?: string | null;
   audio_url?: string | null;
   download_url?: string | null;
+  catalogue_mode?: string | null;
+  catalogue_import_job_id?: string | null;
 }) {
+  // Catalogue imports are reference metadata for discovery and attribution.
+  // They are not PLUGGD-hosted audio and must never enter the global player.
+  if (item.catalogue_import_job_id || (item.catalogue_mode && item.catalogue_mode !== 'pluggd')) {
+    return null;
+  }
   return item.preview_url || item.audio_url || item.download_url || null;
 }
 
@@ -486,7 +495,8 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<EventItem>(
       supabase
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true })
         .limit(limit),
@@ -502,7 +512,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     ),
     list<ProfileItem>(
       (supabase as any)
-        .from('profiles')
+        .from('public_profiles')
         .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
         .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
         .limit(limit),

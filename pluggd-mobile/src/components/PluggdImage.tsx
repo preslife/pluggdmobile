@@ -16,6 +16,7 @@ type PluggdImageProps = Omit<ImageProps, 'source'> & {
 
 const STORAGE_PUBLIC_PATH = '/storage/v1/object/public/';
 const STORAGE_RENDER_PATH = '/storage/v1/render/image/public/';
+const DEFAULT_FALLBACK = require('../../assets/brand/pluggd-logo-dark.png');
 
 /** Supabase image-transform URL for public storage objects; null when not transformable. */
 export function transformedUri(uri: string, width: number): string | null {
@@ -40,6 +41,7 @@ export function PluggdImage({
   onLoadEnd,
   onError,
   displayWidth = 800,
+  resizeMode,
   ...props
 }: PluggdImageProps) {
   const opacity = useRef(new Animated.Value(FADE_ENABLED ? 0 : 1)).current;
@@ -48,21 +50,29 @@ export function PluggdImage({
   // rejects a request (unsupported format, transforms disabled, …).
   const [transformFailedFor, setTransformFailedFor] = useState<string | null>(null);
   const [originalFailedFor, setOriginalFailedFor] = useState<string | null>(null);
-  const resized = transformFailedFor === uri ? null : transformedUri(uri, displayWidth);
-  const usingFallback = Boolean(fallbackSource && (!uri || originalFailedFor === uri));
-  const source = (usingFallback ? fallbackSource : { uri: resized || uri, cache: 'force-cache' }) as ImageSourcePropType;
+  const resized = uri && transformFailedFor !== uri ? transformedUri(uri, displayWidth) : null;
+  const usingFallback = !uri || originalFailedFor === uri;
+  const usingDefaultFallback = usingFallback && !fallbackSource;
+  const source = (usingFallback
+    ? fallbackSource || DEFAULT_FALLBACK
+    : { uri: resized || uri, cache: 'force-cache' }) as ImageSourcePropType;
 
   return (
     <Animated.Image
       {...props}
       source={source}
-      style={[style, { opacity: loaded ? opacity : 0 }]}
+      resizeMode={usingDefaultFallback ? 'contain' : resizeMode}
+      style={[
+        style,
+        usingDefaultFallback && { backgroundColor: '#0B0A09' },
+        { opacity: loaded ? opacity : 0 },
+      ]}
       onError={(event) => {
-        if (resized) {
+        if (!usingFallback && resized) {
           setTransformFailedFor(uri);
           return;
         }
-        if (fallbackSource && originalFailedFor !== uri) {
+        if (!usingFallback) {
           opacity.setValue(0);
           setLoaded(false);
           setOriginalFailedFor(uri);

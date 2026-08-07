@@ -19,8 +19,10 @@ Recommended reviewer path:
 3. Move between Home, Discover, Community and Events to confirm uninterrupted playback.
 4. Open Discover to inspect scene, genre, city, event, mix, beat and soundboard routes.
 5. Open a Community post’s overflow menu to see Report and Block.
-6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.
-7. Open Wallet or a creator Membership to test StoreKit products and Restore Purchases.
+6. Open the avatar account menu → Settings → Privacy & safety to see age-aware
+   filters, blocked accounts, data export and account deletion.
+7. Open the avatar account menu → Restore Purchases, or open Wallet and use its
+   Restore Purchases control. Open a creator Membership to test subscriptions.
 8. Open a published beat, choose a professional usage licence, review its terms
    and continue to the reviewer-ready hosted checkout.
 9. Open a verified real-world event, choose a ticket tier and continue to the
@@ -48,7 +50,10 @@ PLUGGD uses a category-specific hybrid commerce model:
   creator tier maps to its own App Store product.
 - Professional beat licences use hosted Stripe Checkout. The purchase grants
   usage rights and professional files for creative work outside the app; credits
-  cannot purchase beat licences.
+  cannot purchase beat licences. The buyer separately accepts the licence and
+  requests immediate digital delivery using two unticked controls. Exclusive
+  offers appear only after the authenticated producer has expressly authorised
+  that specific offer; prior non-exclusive licences continue to be honoured.
 - Eligible ticket checkout is limited to verified real-world events. Paid
   virtual events are not routed through Stripe.
 - Physical merchandise may use hosted checkout. Paid digital sample packs and

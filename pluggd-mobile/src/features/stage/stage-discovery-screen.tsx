@@ -828,7 +828,7 @@ export function StageDiscoveryScreen() {
               <SectionHeader title="CHARTS" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartTabs}>
                 {CHART_TABS.map((tab) => (
-                  <Pressable key={tab} style={[styles.chartTab, chartTab === tab && styles.chartTabActive]} onPress={() => setChartTab(tab)}>
+                  <Pressable accessibilityRole="button" accessibilityState={{ selected: chartTab === tab }} key={tab} style={[styles.chartTab, chartTab === tab && styles.chartTabActive]} onPress={() => setChartTab(tab)}>
                     <Text style={[styles.chartTabText, chartTab === tab && styles.chartTabTextActive]}>{tab}</Text>
                   </Pressable>
                 ))}

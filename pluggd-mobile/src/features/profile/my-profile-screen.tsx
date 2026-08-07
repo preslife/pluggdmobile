@@ -33,7 +33,6 @@ type ProfileRow = {
   user_id: string;
   username?: string | null;
   full_name?: string | null;
-  display_name?: string | null;
   bio?: string | null;
   avatar_url?: string | null;
   cover_image_url?: string | null;
@@ -44,11 +43,12 @@ type ProfileRow = {
 
 async function loadOwnProfile(userId?: string | null) {
   if (!userId) return null;
-  const { data } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from('profiles')
-    .select('user_id,username,full_name,display_name,bio,avatar_url,cover_image_url,profile_type,is_creator,is_verified')
+    .select('user_id,username,full_name,bio,avatar_url,cover_image_url,profile_type,is_creator,is_verified')
     .eq('user_id', userId)
     .maybeSingle();
+  if (error) throw error;
   return (data as ProfileRow | null) ?? null;
 }
 
@@ -102,7 +102,6 @@ export function MyProfileScreen() {
 
   const row = profile.data;
   const displayName =
-    row?.display_name ||
     row?.full_name ||
     row?.username ||
     user?.email?.split('@')[0] ||
@@ -252,10 +251,12 @@ export function MyProfileScreen() {
           {row?.bio ? <Text style={[styles.bio, { color: theme.colors.text }]}>{row.bio}</Text> : null}
 
           <View style={styles.actionRow}>
-            <Pressable style={[styles.actionButton, { borderColor: theme.colors.border }]} onPress={() => go('/edit-profile')}>
+            <Pressable accessibilityRole="button" style={[styles.actionButton, { borderColor: theme.colors.border }]} onPress={() => go('/edit-profile')}>
               <Text style={[styles.actionButtonText, { color: theme.colors.text }]}>Edit profile</Text>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share profile"
               style={[styles.actionButton, { borderColor: theme.colors.border }]}
               onPress={() => {
                 void Share.share({ message: row?.username ? `https://pluggd.fm/${row.username}` : 'PLUGGD profile' });
@@ -380,7 +381,7 @@ function GridList({ items, empty }: { items: Array<{ id: string; title: string; 
   return (
     <View style={styles.grid}>
       {items.map((item) => (
-        <Pressable key={`${item.route}-${item.id}`} style={styles.gridItem} onPress={() => router.push(item.route as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} key={`${item.route}-${item.id}`} style={styles.gridItem} onPress={() => router.push(item.route as any)}>
           <View style={[styles.gridArt, { backgroundColor: theme.colors.surfaceAlt }]}>
             {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <MaterialIcons name="graphic-eq" size={22} color={theme.colors.accent} />}
           </View>

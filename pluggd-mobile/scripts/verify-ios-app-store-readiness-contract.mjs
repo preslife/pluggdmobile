@@ -16,7 +16,10 @@ const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
 const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
 const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
 const notifications = read('../supabase/functions/apple-server-notification/index.ts');
+const creditPacks = read('../supabase/functions/_shared/appleCreditPacks.ts');
+const subscriptions = read('src/hooks/useSubscription.ts');
 const policy = read('src/commerce/policy.ts');
+const environment = read('src/config/environment.ts');
 
 assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'Stripe native SDK must not ship');
 assert.ok(packageJson.dependencies['expo-web-browser'], 'eligible hosted checkout must use expo-web-browser');
@@ -27,6 +30,11 @@ assert.match(policy, /useCommercePolicy/, 'App Store build must route commerce t
 assert.match(policy, /resolve-commerce-policy/, 'commerce eligibility must be server resolved');
 assert.match(policy, /unavailable/, 'commerce policy must support fail-closed unavailable results');
 assert.match(policy, /expo-web-browser[\s\S]*openHostedCheckout/, 'eligible external rails must use hosted checkout without the native Stripe SDK');
+assert.match(
+  environment,
+  /__DEV__\s*\?\s*['"]development['"]\s*:\s*['"]production['"]/,
+  'a Release build with no explicit environment must default to production instead of silently re-enabling launch codes',
+);
 assert.match(auth, /if \(!LAUNCH_ACCESS_REQUIRED\)/, 'production auth must bypass launch access');
 assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field must be development-only');
 assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');
@@ -41,11 +49,30 @@ assert.match(safety, /block-user/, 'safety client must use the server block acti
 assert.match(social, /moderateUserContent/, 'UGC must pass through pre-publication moderation');
 assert.match(social, /loadBlockedUserIds/, 'community content must filter blocked authors');
 assert.match(storeKit, /initConnection/, 'StoreKit must have one root connection owner');
-assert.match(verifier, /SignedDataVerifier/, 'Apple official signed-data verifier is required');
+assert.match(verifier, /@peculiar\/x509/, 'Apple signed data must use an X.509 certificate verifier compatible with Supabase Edge');
+assert.match(verifier, /jwtVerify/, 'Apple signed-data JWS signatures must be verified');
+assert.match(verifier, /header\.alg\s*!==\s*["']ES256["']/, 'Apple signed data must reject non-ES256 algorithms');
+assert.match(verifier, /header\.x5c/, 'Apple signed data must require the x5c certificate chain');
+assert.match(verifier, /encodedChain\.length\s*!==\s*3/, 'Apple signed data must require the complete three-certificate chain');
+assert.match(verifier, /APPLE_ROOT_CA_G2_BASE64/, 'Apple Root CA G2 must be pinned from server configuration');
+assert.match(verifier, /APPLE_ROOT_CA_G3_BASE64/, 'Apple Root CA G3 must be pinned from server configuration');
+assert.match(verifier, /1\.2\.840\.113635\.100\.6\.11\.1/, 'Apple leaf certificate purpose OID must be enforced');
+assert.match(verifier, /1\.2\.840\.113635\.100\.6\.2\.1/, 'Apple intermediate certificate purpose OID must be enforced');
+assert.match(verifier, /leaf\.verify/, 'Apple leaf certificate signature must be verified');
+assert.match(verifier, /intermediate\.verify/, 'Apple intermediate certificate signature must be verified against a pinned root');
+assert.match(verifier, /APPLE_APP_ID is required for Production verification/, 'production verification must require the numeric Apple app ID');
+assert.match(verifier, /bundle identifier mismatch/, 'verified signed data must be bound to the configured bundle ID');
+assert.match(verifier, /environment mismatch/, 'verified signed data must be bound to the expected App Store environment');
 assert.match(receipt, /verifyAppleTransaction/, 'client transaction must be cryptographically verified');
 assert.doesNotMatch(receipt, /proceeding with basic validation|decodeJWSPayload/, 'unverified receipt fallback is forbidden');
+assert.match(subscriptions, /const signedTransaction = purchase\.verificationResultIOS;/, 'StoreKit 2 membership validation must use Apple\'s signed transaction JWS');
+assert.doesNotMatch(subscriptions, /receipt_data:\s*purchase\.transactionReceipt/, 'StoreKit 2 membership validation must not submit the empty legacy receipt field');
 assert.match(notifications, /verifyAppleNotification/, 'server notification must be cryptographically verified');
 assert.doesNotMatch(notifications, /without cryptographic verification|decodeJWSPayload/, 'unverified notification decoding is forbidden');
+assert.match(notifications, /notificationType === "ONE_TIME_CHARGE"/, 'Apple one-time charge notifications must recover credit fulfilment');
+assert.match(notifications, /idempotencyKey = `apple-iap:\$\{txInfo\.transactionId\}`/, 'server notification credit fulfilment must be replay safe');
+assert.match(notifications, /kind: "topup_iap"/, 'Apple credit packs must be immediately available instead of entering the web top-up hold');
+assert.match(creditPacks, /pluggd_credits_popular:[\s\S]*totalCredits: 1050/, 'server-owned Apple credit catalogue must preserve the Plus pack amount');
 assert.match(manifest, /NSPrivacyCollectedDataTypeEmailAddress/, 'privacy manifest must declare linked email');
 assert.match(manifest, /NSPrivacyCollectedDataTypeOtherUserContent/, 'privacy manifest must declare UGC');
 assert.equal(existsSync(new URL('../app/auth/biometric.tsx', import.meta.url)), false, 'decorative biometric route must not ship');

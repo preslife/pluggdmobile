@@ -22,11 +22,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { ReleaseArtwork } from '../../components/ReleaseArtwork';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList, toggleSavedContent } from '../culture/mobileServices';
 import { showQuickActions } from '../../lib/quickActions';
@@ -207,10 +208,16 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
           );
         })}
       </View>
-      <View style={styles.deckTimesRow}>
-        <Text style={styles.deckTime}>{formatDuration(position)}</Text>
-        <Text style={styles.deckTime}>{duration > 0 ? formatDuration(duration) : '--:--'}</Text>
-      </View>
+      {/* Until a duration resolves, both sides of this row render "--:--",
+          which reads as broken rather than as not-yet-started. The waveform
+          already communicates the idle state, so the row waits for real
+          numbers instead of showing placeholders. */}
+      {duration > 0 ? (
+        <View style={styles.deckTimesRow}>
+          <Text style={styles.deckTime}>{formatDuration(position)}</Text>
+          <Text style={styles.deckTime}>{formatDuration(duration)}</Text>
+        </View>
+      ) : null}
       <View style={styles.deckTransportRow}>
         <View style={styles.deckTransportLeft}>
           <EdPressable
@@ -586,7 +593,7 @@ function ListeningPasses({ events }: { events: PassEvent[] }) {
 /* ------------------------------------------------------------------ */
 
 export function ListeningFloorScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_CHIPS)[number]>('All Types');
@@ -649,6 +656,7 @@ export function ListeningFloorScreen() {
         (supabase as any)
           .from('events')
           .select('id,title,location,starts_at,price_cents')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(6),
@@ -700,14 +708,15 @@ export function ListeningFloorScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" translucent />
+      <DiscoveryHeader />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
-          paddingBottom: insets.bottom + 210,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,
         }}

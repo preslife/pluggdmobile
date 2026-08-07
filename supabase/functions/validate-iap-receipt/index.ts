@@ -10,59 +10,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { verifyAppleTransaction } from "../_shared/appleSignedData.ts";
+import {
+  APPLE_CREDIT_PACKS,
+  type AppleCreditPack,
+} from "../_shared/appleCreditPacks.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
-};
-
-// ─── Credit pack SKU → credit amounts ────────────────────────────────
-// Matches PLUGGD_NEW/src/lib/creditPricing.ts and the mobile useCredits hook.
-type CreditPackConfig = {
-  label: string;
-  priceGBP: number;
-  baseCredits: number;
-  bonusCredits: number;
-  totalCredits: number;
-};
-
-const CREDIT_PACKS: Record<string, CreditPackConfig> = {
-  pluggd_credits_starter: {
-    label: "Starter",
-    priceGBP: 5,
-    baseCredits: 500,
-    bonusCredits: 0,
-    totalCredits: 500,
-  },
-  pluggd_credits_popular: {
-    label: "Popular",
-    priceGBP: 10,
-    baseCredits: 1000,
-    bonusCredits: 50,
-    totalCredits: 1050,
-  },
-  pluggd_credits_value: {
-    label: "Value",
-    priceGBP: 25,
-    baseCredits: 2500,
-    bonusCredits: 250,
-    totalCredits: 2750,
-  },
-  pluggd_credits_premium: {
-    label: "Premium",
-    priceGBP: 50,
-    baseCredits: 5000,
-    bonusCredits: 750,
-    totalCredits: 5750,
-  },
-  pluggd_credits_ultimate: {
-    label: "Ultimate",
-    priceGBP: 100,
-    baseCredits: 10000,
-    bonusCredits: 2000,
-    totalCredits: 12000,
-  },
 };
 
 type MembershipProductRecord = {
@@ -148,7 +104,7 @@ async function insertCreditLedgerEntry(
   userId: string,
   productId: string,
   transactionId: string,
-  pack: CreditPackConfig,
+  pack: AppleCreditPack,
 ) {
   const balanceBefore = await getWalletBalance(supabaseClient, userId);
   const balanceAfterCredits =
@@ -157,7 +113,7 @@ async function insertCreditLedgerEntry(
   const basePayload = {
     user_id: userId,
     amount_credits: pack.totalCredits,
-    kind: "topup",
+    kind: "topup_iap",
     ref_type: "apple_iap",
     ref_id: null,
     meta: {
@@ -323,7 +279,7 @@ serve(async (req) => {
       throw new Error("This transaction has been revoked");
     }
 
-    const creditPack = CREDIT_PACKS[product_id] ?? null;
+    const creditPack = APPLE_CREDIT_PACKS[product_id] ?? null;
     const membershipProduct = creditPack
       ? null
       : await resolveMembershipProduct(

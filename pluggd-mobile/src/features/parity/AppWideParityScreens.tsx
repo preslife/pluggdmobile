@@ -295,7 +295,7 @@ function Hero({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: Image
       image={usableImageUrl(item.imageUrl)}
       fallbackSource={fallbackAsset}
       metadata={metadata}
-      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'accent'}
       onPress={item.route ? () => router.push(item.route as any) : undefined}
     />
   );
@@ -312,7 +312,7 @@ function RailCard({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: I
       imageUrl={usableImageUrl(item.imageUrl)}
       fallbackSource={fallbackAsset}
       metric={metric}
-      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'accent'}
       onPress={canOpen ? () => router.push(item.route as any) : undefined}
     />
   );
@@ -1192,7 +1192,7 @@ function ParityScaffold({
   return (
     <View style={styles.scaffold}>
       <LiquidBackground
-        tone={title === 'Events' ? 'rose' : title === 'Market' ? 'amber' : 'violet'}
+        tone={title === 'Events' ? 'rose' : title === 'Market' ? 'amber' : 'accent'}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView

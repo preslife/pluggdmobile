@@ -2,10 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
 import { MobileStoriesRail } from '../culture/MobileStoriesRail';
-import { CommunityComposer } from './CommunityComposer';
 import { CommunityFeedInterstitial } from './CommunityFeedInterstitials';
 import { CommunityBottomDockControls, CommunityInternalSwitcher } from './CommunityInternalSwitcher';
 import { FEED_FILTERS, type CommunityFeedFilterKey, type CommunityTabKey } from './communityFeedTypes';
@@ -53,7 +52,7 @@ function SecondaryRow({
 }
 
 export function CommunityFeedScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; filter?: string; hashtag?: string }>();
   const [tab, setTab] = useState<CommunityTabKey>(normalizedTab(params.tab));
@@ -70,30 +69,21 @@ export function CommunityFeedScreen() {
   const posts = useMemo(() => filterCommunityPosts(bundle?.posts ?? [], filter, hashtag), [bundle?.posts, filter, hashtag]);
 
   const feedHeader = (
-    <View style={{ paddingTop: 4, paddingBottom: 10 }}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}><Text style={styles.kicker}>SCENES IN MOTION</Text><Text style={styles.heading}>Community</Text><Text style={styles.headerBody}>Follow the conversations, works in progress and people moving independent music forward.</Text></View>
-        <View style={styles.communityMark}><MaterialIcons name="public" size={23} color={COLORS.orange} /></View>
-      </View>
+    <View style={{ paddingTop: 8, paddingBottom: 10 }}>
+      {tab === 'feed' ? <MobileStoriesRail title="Scene stories" compact /> : null}
 
-      {tab !== 'feed' ? (
-        <View style={styles.switchWrap}>
-          <CommunityInternalSwitcher value={tab} onChange={setTab} />
-        </View>
-      ) : null}
+      <View style={styles.switchWrap}>
+        <CommunityInternalSwitcher value={tab} onChange={setTab} />
+      </View>
 
       {tab === 'feed' ? (
         <View style={styles.feedLead}>
-          <View style={styles.switchWrap}>
-            <CommunityInternalSwitcher value={tab} onChange={setTab} />
-          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {FEED_FILTERS.map((item) => {
               const active = item.key === filter;
               return <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: active }} style={[styles.filterTab, active && styles.filterTabActive]} onPress={() => setFilter(item.key)}><Text style={[styles.filterText, active && styles.filterTextActive]}>{item.label}</Text></Pressable>;
             })}
           </ScrollView>
-          <CommunityComposer />
         </View>
       ) : null}
     </View>
@@ -119,7 +109,7 @@ export function CommunityFeedScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Community could not load</Text>
           <Text style={styles.emptyBody}>Pull to refresh or try again in a moment.</Text>
-          <Pressable style={styles.retry} onPress={() => void query.refetch()}>
+          <Pressable accessibilityRole="button" style={styles.retry} onPress={() => void query.refetch()}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -142,7 +132,7 @@ export function CommunityFeedScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={feedHeader}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 220 }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
           renderItem={({ item }) => <SecondaryRow item={item} onPress={() => item.route && router.push(item.route as any)} />}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>Nothing here yet</Text><Text style={styles.emptyBody}>Check Feed for the latest community activity.</Text></View>}
@@ -158,12 +148,11 @@ export function CommunityFeedScreen() {
         data={posts}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={feedHeader}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 226, gap: 14 }}
+        contentContainerStyle={{ paddingBottom: bottomInset, gap: 14 }}
         refreshControl={<RefreshControl tintColor={COLORS.orange} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
         renderItem={({ item, index }) => (
           <>
             <MobileSocialPostCard post={item} onMutated={() => void query.refetch()} />
-            {index === 0 ? <MobileStoriesRail title="Scene stories" compact /> : null}
             {index === 1 && bundle ? <CommunityFeedInterstitial kind="the_plug" bundle={bundle} /> : null}
             {index === 5 ? (
               <View style={styles.lowerShortcuts}>
@@ -184,11 +173,6 @@ export function CommunityFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.canvas },
-  header: { paddingHorizontal: 20, paddingBottom: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  kicker: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 10, letterSpacing: 1.7 },
-  heading: { color: COLORS.white, fontFamily: 'Sora-ExtraBold', fontSize: 34, lineHeight: 39, letterSpacing: -1.2, marginTop: 3 },
-  headerBody: { color: COLORS.muted, fontFamily: 'Satoshi-Regular', fontSize: 13, lineHeight: 19, marginTop: 6, maxWidth: 300 },
-  communityMark: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: '#3A332B', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   feedLead: { gap: 8 },
   switchWrap: { marginTop: 2 },
   filters: { paddingHorizontal: 20, paddingRight: 32, gap: 17 },

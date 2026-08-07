@@ -13,7 +13,7 @@ interface LicenseSelectionProps {
   beatId: string;
   producerId: string;
   beatTitle: string;
-  onLicenseSelected: (template: ContractTemplate, price: number) => void;
+  onLicenseSelected: (template: ContractTemplate, price: number, optionId: string) => void;
 }
 
 const LicenseSelection = ({ beatId, producerId, beatTitle, onLicenseSelected }: LicenseSelectionProps) => {
@@ -72,7 +72,7 @@ const LicenseSelection = ({ beatId, producerId, beatTitle, onLicenseSelected }: 
         // Set initial custom prices in pence (convert from USD pricing to pence)
         const prices: Record<string, number> = {};
         data?.forEach(license => {
-          prices[license.license_type] = Math.round(license.price * 80); // Convert USD to GBP pence
+          prices[license.license_type] = Number(license.price);
         });
         setCustomPrices(prices);
       } catch (error) {
@@ -157,10 +157,9 @@ const LicenseSelection = ({ beatId, producerId, beatTitle, onLicenseSelected }: 
   const handleSelectLicense = (template: ContractTemplate) => {
     console.log('handleSelectLicense called with:', template.template_type);
     const availableLicense = availableLicenses.find(l => l.license_type === template.template_type);
-    const pricePence = Math.round((availableLicense?.price || template.price_range_min || 0) * 80); // Convert USD to GBP pence
-    const priceGBP = pricePence / 100; // Convert to pounds for display
+    const priceGBP = Number(availableLicense?.price || template.price_range_min || 0);
     console.log('Final price (GBP):', priceGBP);
-    onLicenseSelected(template, priceGBP);
+    onLicenseSelected(template, priceGBP, availableLicense.id);
   };
 
   const toggleTerms = (templateType: string) => {
@@ -220,8 +219,7 @@ const LicenseSelection = ({ beatId, producerId, beatTitle, onLicenseSelected }: 
         {availableTemplates.map((template) => {
           const isSelected = selectedTemplate === template.template_type;
           const availableLicense = availableLicenses.find(l => l.license_type === template.template_type);
-          const pricePence = Math.round((availableLicense?.price || template.price_range_min || 0) * 80); // Convert USD to GBP pence
-          const currentPrice = pricePence / 100; // Convert to pounds
+          const currentPrice = Number(availableLicense?.price || template.price_range_min || 0);
 
           return (
             <Card 

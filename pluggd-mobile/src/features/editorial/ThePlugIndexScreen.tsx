@@ -147,7 +147,7 @@ export function ThePlugIndexScreen() {
             <MaterialIcons name="auto-stories" size={31} color={ORANGE} />
             <Text style={styles.emptyTitle}>The next dispatch is being written.</Text>
             <Text style={styles.emptyBody}>Return soon for interviews, reports and stories from across independent music.</Text>
-            <Pressable onPress={() => router.push('/discover' as any)} style={styles.emptyAction}><Text style={styles.emptyActionText}>Keep discovering</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/discover' as any)} style={styles.emptyAction}><Text style={styles.emptyActionText}>Keep discovering</Text></Pressable>
           </View>
         ) : null}
       </ScrollView>
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' },
   titleBlock: { paddingTop: 28, paddingBottom: 20, borderBottomWidth: 1, borderColor: LINE },
   eyebrow: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.65 },
-  pageTitle: { color: INK, fontFamily: pluggdFonts.displayExtraBold, fontSize: 48, lineHeight: 52, letterSpacing: -2.2, marginTop: 5 },
+  pageTitle: { color: INK, fontFamily: pluggdFonts.displayExtraBold, fontSize: 32, lineHeight: 36, letterSpacing: -1.1, marginTop: 5 },
   dek: { color: '#B8AFA6', fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, maxWidth: 345, marginTop: 9 },
   categoryRail: { gap: 8, paddingVertical: 15, paddingRight: 20 },
   category: { minHeight: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#171411', alignItems: 'center', justifyContent: 'center' },

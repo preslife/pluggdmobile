@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -155,13 +156,16 @@ async function syncRoleSelection(
 ) {
   const db = supabase as any;
 
-  const { error: clearPrimaryError } = await db
+  // Replace the saved role set so legacy roles cannot silently retain access.
+  // Merely clearing the old primary flag leaves obsolete creator roles behind
+  // and can incorrectly grant Studio access to a fan account.
+  const { error: clearRolesError } = await db
     .from('profile_roles')
-    .update({ is_primary: false })
+    .delete()
     .eq('user_id', userId);
 
-  if (clearPrimaryError && !ROLE_FALLBACK_CODES.has(clearPrimaryError.code)) {
-    throw clearPrimaryError;
+  if (clearRolesError && !ROLE_FALLBACK_CODES.has(clearRolesError.code)) {
+    throw clearRolesError;
   }
 
   const rows = selectedRoles.map((role) => ({
@@ -176,7 +180,7 @@ async function syncRoleSelection(
 
   const { error: upsertError } = await db
     .from('profile_roles')
-    .upsert(rows, { onConflict: 'user_id,role' });
+    .insert(rows);
 
   if (upsertError && !ROLE_FALLBACK_CODES.has(upsertError.code)) {
     throw upsertError;
@@ -189,6 +193,7 @@ function PluggdWordmark() {
 
 export default function RoleSelection() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { fontScale } = useWindowDimensions();
   const usesAccessibilityLayout = fontScale >= 1.5;
   const [primaryRole, setPrimaryRole] = useState<EcosystemRole | null>(null);
@@ -266,6 +271,9 @@ export default function RoleSelection() {
 
       await syncRoleSelection(user.id, selectedRoles, primaryRole);
 
+      await queryClient.invalidateQueries({ queryKey: ['mobile', 'account-identity', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['studio', 'native-command'] });
+
       router.replace(hasCreatorAccess ? '/creator/onboarding' : '/auth/fan-setup');
     } catch (error: any) {
       console.error('Error updating roles:', error);
@@ -324,6 +332,9 @@ export default function RoleSelection() {
             return (
               <Pressable
                 key={role.value}
+                accessibilityRole="radio"
+                accessibilityLabel={`${role.label}, ${role.description}`}
+                accessibilityState={{ selected }}
                 onPress={() => choosePrimaryRole(role.value)}
                 style={[
                   styles.roleCard,
@@ -391,6 +402,9 @@ export default function RoleSelection() {
                 return (
                   <Pressable
                     key={role.value}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={role.label}
+                    accessibilityState={{ checked: selected }}
                     onPress={() => toggleSecondaryRole(role.value)}
                     style={[
                       styles.secondaryChip,
@@ -428,6 +442,8 @@ export default function RoleSelection() {
 
       <View style={styles.footer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={loading ? 'Saving roles' : 'Continue with selected roles'}
           style={[styles.cta, (!primaryRole || loading) && styles.ctaDisabled]}
           onPress={handleContinue}
           disabled={!primaryRole || loading}
