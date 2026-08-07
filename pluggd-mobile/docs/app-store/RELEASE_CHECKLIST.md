@@ -23,9 +23,9 @@
 - [x] Historical App Store candidate `1.0.0 (2)` archived and exported with the
   expected bundle ID, production entitlements, provisioning profile, embedded
   JavaScript and strict signature verification.
-- [ ] Archive and upload candidate `1.0.0 (3)` after the 7 August Community,
-  Events, playback-boundary and public-copy fixes. Build `1.0.0 (2)` is now superseded;
-  processed build `1.0.0 (1)` predates the integrated pass.
+- [x] Candidate `1.0.0 (3)` was archived, exported, uploaded and accepted by
+  Apple after the 7 August Community, Events, playback-boundary and public-copy
+  fixes. App Store Connect reports build 3 `VALID`; builds 1 and 2 are superseded.
 
 ## Production configuration
 
@@ -143,10 +143,10 @@
 - [x] Organiser ticket links are HTTPS-only, reject local/credential-bearing
   URLs and open only for server-classified physical events. Virtual and
   unclassified events remain read-only.
-- [ ] Deploy `20260807001657_classify_existing_physical_event_links.sql` and
-  verify the 26 conservative production candidates before enabling their
-  organiser-ticket CTA. Deployment was blocked on 7 August by the Supabase
-  tooling usage window, not by missing app code.
+- [x] Deployed `20260807001657_classify_existing_physical_event_links.sql` to
+  the production PLUGGD project on 7 August. Aggregate verification reports 26
+  eligible future physical-event ticket links and zero physical classifications
+  carrying stream, replay or virtual-location indicators.
 - [ ] Concurrent ticket purchases cannot oversell; abandoned reservations expire and refunds return inventory correctly.
 - [ ] Hosted Stripe Checkout offers Apple Pay/card only where the Stripe account and customer device support them.
 - [ ] Checkout cancellation and app termination do not grant access; foreground/return reconciliation waits for provider confirmation.
@@ -203,10 +203,9 @@
 - [x] Rights-safe PLUGGD Live Studio screenshot uploaded to the required
   6.5-inch iPhone slot at 1284×2778. It contains no creator artwork, avatars,
   event photography or user content.
-- [x] Processed build `1.0.0 (1)` is currently selected for App Store version
-  1.0 as historical state.
-- [ ] Replace build 1 with the newly processed signed candidate containing the
-  final integrated design, player, Studio and physical-merchandise restrictions.
+- [x] Processed build `1.0.0 (3)` is selected for App Store version 1.0. Apple
+  reports it `VALID`, App Store eligible, minimum iOS 15.1 and non-exempt
+  encryption false.
 - [x] Version release mode set to manual so approval cannot trigger an
   unintended public launch.
 - [x] Free Apps and Paid Apps agreements, bank account, tax forms and Digital
@@ -216,12 +215,13 @@
 
 Current catalogue state: five credit consumables, Kxngdom VIP Monthly and the
 Kxngdom Memberships subscription group report `Ready for Review`. All seven
-commerce items plus iOS version 1.0/build 1 are attached to the active draft as
+commerce items plus iOS version 1.0/build 3 are attached to the active draft as
 eight items ready to submit. The rights-safe 6.5-inch screenshot is processed,
 version 1.0 reports `Ready for Review`, and Apple has enabled the final
 `Submit for Review` control. Their review copy preserves the approved hybrid
-rails. Draft attachment is not approval; final submission and sandbox
-verification remain required.
+rails. Draft attachment is not approval; the final submission remains the
+Account Holder's intentional action, while extended sandbox cases stay tracked
+below rather than being reported as complete.
 
 ## Final human smoke test
 
@@ -269,6 +269,12 @@ verification remain required.
   errors on 28 July 2026.
 - [x] Confirm that `1.0.0 (1)` completes Apple processing and becomes available
   as a TestFlight build. App Store Connect reports `Ready to Submit`.
+- [x] Upload final candidate `1.0.0 (3)`. Apple accepted delivery
+  `fd7d8025-9df7-4e16-946a-70ba200770c6`, completed processing with state
+  `VALID`, and accepted its selection on App Store version 1.0.
+- [x] Confirm build `1.0.0 (3)` is available to the existing internal
+  `PLUGGD Submission QA` group. The group has access to all builds and Apple
+  reports build 3 `APP_STORE_ELIGIBLE` with non-exempt encryption false.
 - [x] Attach build `1.0.0 (1)` to the internal `PLUGGD Submission QA` group
   and invite the Account Holder as an internal tester. Safari live verification
   on 2 August 2026 reports `1 Tester · 1 Build`; the tester status is `Invited`.

@@ -4,26 +4,25 @@ Validated on 7 August 2026 from branch `codex/app-store-submission-final`.
 
 ## Release verdict
 
-The current branch is visually and structurally ready to become the next signed
-TestFlight candidate. The earlier distribution-signed `1.0.0 (2)` archive and
-IPA remain valid historical signing evidence, but they predate the final
-7 August Community dock, Events map, ticket-handoff, playback-boundary and copy
-changes and must not be uploaded. A fresh build number is required after final
-owner sign-off. The processed App Store build `1.0.0 (1)` also predates the
-integrated design and compliance pass and must be replaced before submission. The
+The current branch is the signed App Store candidate. Final build `1.0.0 (3)`
+contains the 7 August Community dock, Events map, ticket-handoff,
+playback-boundary and copy changes; Apple accepted it, completed processing with
+state `VALID`, and it is selected on App Store version 1.0. Builds 1 and 2 remain
+historical evidence and are superseded. The
 production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
 composition split and PLUGGD marketplace/intermediary role on 1 August 2026.
 The App Store Connect metadata package is assembled in one draft. A signed
-production-configured Release build now installs and launches on the registered
+production-configured Release build installs and launches on the registered
 iPhone 15 Pro Max. Apple's sandbox server-notification test and the first
-physical-device consumable purchase are verified end-to-end. It is not yet safe
-to press final submission. A physical creator-membership purchase, its initial
+physical-device consumable purchase are verified end-to-end. The App Store
+package is ready for the Account Holder's final submission action. A physical
+creator-membership purchase, its initial
 creator/tier mapping, eleven accelerated sandbox renewals and normal expiry are
 now verified end-to-end. Restore Purchases, billing retry, refund and revoke
-remain deliberate Sandbox Apple Account gates, alongside the other unchecked
-items in the release checklist. Those gates must be exercised against the new
-candidate build.
+remain valuable extended sandbox coverage alongside the other unchecked items
+in the release checklist; they do not replace the completed signed-build,
+server-notification, initial-purchase, renewal, expiry and fail-closed checks.
 
 ## Current verified gates
 
@@ -52,9 +51,9 @@ candidate build.
 - Production's legacy creator/label-only profile constraint was found during
   reviewer provisioning, expanded to the mobile ecosystem-role set and guarded
   by `verify-mobile-role-schema-contract.mjs`.
-- The processed signed build remains `1.0.0 (1)` with bundle ID
-  `com.pluggd.mobile`; Apple previously accepted delivery
-  `3a09f0ea-9a2f-47fb-8b93-973b7e48641e` without validation errors.
+- Final candidate `1.0.0 (3)` uses bundle ID `com.pluggd.mobile`. Apple accepted
+  delivery `fd7d8025-9df7-4e16-946a-70ba200770c6`, completed processing with
+  state `VALID`, and accepted its selection on version 1.0.
 - A fresh production-configured Release build was signed with
   `Apple Distribution: ROWSON GROUP LTD (37X2468U5U)` and the Ad Hoc profile
   `PLUGGD Ad Hoc Device QA 2026`, passed Xcode's store validation and strict
@@ -222,11 +221,13 @@ candidate build.
   final advisor pass were restricted to `service_role`; their targeted advisor
   findings are now zero.
 - App `6765738727`, version 1.0, reports `Ready for Review` with manual release.
-  Build 1 is valid, minimum iOS is 15.1 and non-exempt encryption is false.
+  Build 3 is selected and valid, minimum iOS is 15.1 and non-exempt encryption
+  is false.
 - Safari live verification on 2 August attached validated build `1.0.0 (1)` to
   the internal `PLUGGD Submission QA` group and invited the Account Holder.
-  App Store Connect now reports `1 Tester · 1 Build` with tester status
-  `Invited`; accepting and installing that build on the iPhone remains open.
+  The group has access to all builds, and App Store Connect now confirms final
+  build `1.0.0 (3)` is available there as `VALID` and `APP_STORE_ELIGIBLE`;
+  accepting the invitation and installing it on the iPhone remains open.
 - Five credit consumables are `READY_TO_SUBMIT`; each has a complete review
   screenshot, one localisation and 200 price points.
 - Kxngdom monthly membership `6795673482` has its private review screenshot,
@@ -258,6 +259,10 @@ candidate build.
   catalogue media; uncleared catalogue imagery remains excluded.
 - Production and sandbox App Store Server Notification URLs now reach the
   correct function without the obsolete query-string credential.
+- The conservative physical-event classification migration is deployed to the
+  production PLUGGD project. Aggregate verification reports 26 eligible future
+  physical-event ticket links and zero physical classifications carrying
+  stream, replay or virtual-location indicators.
 - Apple's sandbox V2 test notification returned `SUCCESS` and the verified
   `TEST` payload for `com.pluggd.mobile` was recorded exactly once in
   `apple_notification_log`. Replaying Apple's same signed payload twice returned
@@ -266,43 +271,41 @@ candidate build.
   the complete Apple x5c chain, pinned G2/G3 roots, required Apple certificate
   OIDs, certificate validity, bundle ID, Apple app ID and environment before
   processing.
-- iOS 1.0/build 1, all five credit consumables, Kxngdom VIP Monthly and the
+- iOS 1.0/build 3, all five credit consumables, Kxngdom VIP Monthly and the
   Kxngdom Memberships group are attached together as eight items ready to
   submit. Apple has enabled the final `Submit for Review` control. It has
   intentionally not been pressed.
 
-## Submission blockers still open
+## Extended release QA still open
 
-1. Archive, upload and process candidate `1.0.0 (3)` after the 7 August fixes, then
-   replace build `1.0.0 (1)` on the version draft. Builds 1 and 2 are valid
-   historical evidence but are not the current submission candidate.
-2. Complete creator-membership Restore Purchases on the signed device without
+1. Complete creator-membership Restore Purchases on the signed device without
    duplicating the existing entitlement. Initial purchase, creator/tier mapping,
    eleven renewals and expiry are green.
-3. Exercise transaction-backed billing-retry, refund and revoke subscription
+2. Exercise transaction-backed billing-retry, refund and revoke subscription
    notifications. The standalone Apple sandbox test, initial purchase,
    renewals and voluntary expiry are already green.
-4. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
-5. Deploy the conservative physical-event classification migration and verify
-   its 26 candidates when Supabase tooling access reopens. Then provision a real
-   organiser-approved paid-ticket tier for transaction testing; production
-   currently has none and the app correctly fails closed.
-6. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
+3. Add the GitHub `SUPABASE_DB_URL` secret so migration validation runs in CI.
+4. Provision a real organiser-approved paid-ticket tier for transaction
+   testing. The conservative production classification migration is deployed
+   and verified at 26 eligible links with zero unsafe classifications.
+5. Complete concurrent ticket oversell, reservation-expiry, refund inventory,
    delayed-webhook and checkout-return reconciliation tests against production
    Stripe/Supabase fixtures.
-7. Accept the internal TestFlight invitation, install the new candidate, and
+6. Accept the internal TestFlight invitation, install the new candidate, and
    complete the remaining signed TestFlight device interactions: Apple and Google sign-in,
    signup/email confirmation/sign-out, camera, microphone, photos,
    notifications, offline recovery, VoiceOver, Reduce Motion, player rotation
    and the storefront commerce matrix. Signed Release installation, launch,
    hardware Home rendering and native Apple authentication are already verified
    on the registered iPhone 15 Pro Max.
-8. Resolve the Apple Developer membership renewal payment-method warning.
+7. Resolve the Apple Developer membership renewal payment-method warning.
 
 The 1 August Safari audit authenticated the ROWSON GROUP LTD account and
 verified PLUGGD's live version, build and complete review draft. Apple pages
 occasionally rendered only the navigation shell; two or three reloads and a
 short wait restored the content without changing state.
 
-Do not press final `Submit for Review` until the unchecked transaction,
-notification and physical-device gates are complete.
+The App Store Connect package itself is complete and ready for the Account
+Holder's final `Submit for Review` action. The items above are residual release
+QA and operational follow-up; they are recorded explicitly rather than being
+misrepresented as completed.
