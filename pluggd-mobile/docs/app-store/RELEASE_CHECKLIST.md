@@ -26,6 +26,10 @@
 - [x] Candidate `1.0.0 (3)` was archived, exported, uploaded and accepted by
   Apple after the 7 August Community, Events, playback-boundary and public-copy
   fixes. App Store Connect reports build 3 `VALID`; builds 1 and 2 are superseded.
+- [x] The accepted build 3 archive was re-exported without rebuilding using the
+  registered iPhone's `PLUGGD Ad Hoc Device QA 2026` profile, passed strict
+  signature verification, installed on the iPhone 15 Pro Max and launched
+  successfully. The process remained active after launch.
 
 ## Production configuration
 

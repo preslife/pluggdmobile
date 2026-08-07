@@ -54,6 +54,12 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
 - Final candidate `1.0.0 (3)` uses bundle ID `com.pluggd.mobile`. Apple accepted
   delivery `fd7d8025-9df7-4e16-946a-70ba200770c6`, completed processing with
   state `VALID`, and accepted its selection on version 1.0.
+- The exact accepted build 3 archive was re-exported for registered-device QA
+  with the existing Ad Hoc profile, without rebuilding or changing source. The
+  app passed strict signature verification, installed on Ishola's iPhone 15 Pro
+  Max, launched successfully and remained active. The device export preserved
+  build 3, production APNs, Sign in with Apple, Apple Pay and
+  `get-task-allow=false`.
 - A fresh production-configured Release build was signed with
   `Apple Distribution: ROWSON GROUP LTD (37X2468U5U)` and the Ad Hoc profile
   `PLUGGD Ad Hoc Device QA 2026`, passed Xcode's store validation and strict
