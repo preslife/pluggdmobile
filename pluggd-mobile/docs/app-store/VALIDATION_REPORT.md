@@ -4,10 +4,12 @@ Validated on 7 August 2026 from branch `codex/app-store-submission-final`.
 
 ## Release verdict
 
-The current branch is the signed App Store candidate. Final build `1.0.0 (3)`
+The current branch is the signed App Store candidate. Final build `1.0.0 (4)`
 contains the 7 August Community dock, Events map, ticket-handoff,
-playback-boundary and copy changes; Apple accepted it, completed processing with
-state `VALID`, and it is selected on App Store version 1.0. Builds 1 and 2 remain
+playback-boundary and copy changes, the complete native editorial reader and
+the approved orange-plug app icon. Apple validation and upload completed with
+zero errors; delivery `79ec3d66-ec11-4373-a256-86be7173ebd2` is `VALID`,
+`APP_STORE_ELIGIBLE` and selected on App Store version 1.0. Builds 1–3 remain
 historical evidence and are superseded. The
 production beat agreements and their formation controls
 are implemented and deployed, and the product owner approved the default
@@ -30,6 +32,10 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
   reachability, Live, hybrid commerce, public copy, typography, player,
   navigation and the new app-wide Pressable accessibility-role scanner.
 - Mobile TypeScript passes with no emit and Expo Doctor passes all 18 checks.
+- The final 7 August rerun after the editorial and icon change passes every
+  mobile contract, TypeScript and Expo Doctor 18/18. Current simulator captures
+  confirm Home, Community, Events, Store, the full-height account menu and the
+  Studio exit path remain visually intact after consolidation.
 - The root suite passes all 52 files and 188 tests. The focused App Store
   safety, Apple notification, commerce-policy and hybrid-checkout set passes
   4 files / 44 tests.
@@ -54,6 +60,10 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
 - Final candidate `1.0.0 (3)` uses bundle ID `com.pluggd.mobile`. Apple accepted
   delivery `fd7d8025-9df7-4e16-946a-70ba200770c6`, completed processing with
   state `VALID`, and accepted its selection on version 1.0.
+- Replacement candidate `1.0.0 (4)` uses the same verified bundle, signing and
+  production entitlements. Apple accepted delivery
+  `79ec3d66-ec11-4373-a256-86be7173ebd2`, completed processing with state
+  `VALID`, and accepted its selection on version 1.0.
 - The exact accepted build 3 archive was re-exported for registered-device QA
   with the existing Ad Hoc profile, without rebuilding or changing source. The
   app passed strict signature verification, installed on Ishola's iPhone 15 Pro
@@ -227,12 +237,12 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
   final advisor pass were restricted to `service_role`; their targeted advisor
   findings are now zero.
 - App `6765738727`, version 1.0, reports `Ready for Review` with manual release.
-  Build 3 is selected and valid, minimum iOS is 15.1 and non-exempt encryption
+  Build 4 is selected and valid, minimum iOS is 15.1 and non-exempt encryption
   is false.
 - Safari live verification on 2 August attached validated build `1.0.0 (1)` to
   the internal `PLUGGD Submission QA` group and invited the Account Holder.
   The group has access to all builds, and App Store Connect now confirms final
-  build `1.0.0 (3)` is available there as `VALID` and `APP_STORE_ELIGIBLE`;
+  build `1.0.0 (4)` is available there as `VALID` and `APP_STORE_ELIGIBLE`;
   accepting the invitation and installing it on the iPhone remains open.
 - Five credit consumables are `READY_TO_SUBMIT`; each has a complete review
   screenshot, one localisation and 200 price points.
@@ -257,6 +267,9 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
   onboarding, safe age defaults and an active Kxngdom StoreKit catalogue entry.
   Its credentials and verified Account Holder contact details are saved only
   in Apple's private review fields.
+- The private App Review notes now state the exact implemented paths for
+  Restore Purchases and account deletion, describe the approved hybrid rails in
+  customer terms and explain intentional browse-only purchase states.
 - The public support route returns HTTP 200 and `support@pluggd.fm` publishes
   active IONOS MX records. A live App Review support test sent on 1 August 2026
   arrived in the monitored IONOS inbox, closing the support-monitoring gate.
@@ -277,7 +290,7 @@ server-notification, initial-purchase, renewal, expiry and fail-closed checks.
   the complete Apple x5c chain, pinned G2/G3 roots, required Apple certificate
   OIDs, certificate validity, bundle ID, Apple app ID and environment before
   processing.
-- iOS 1.0/build 3, all five credit consumables, Kxngdom VIP Monthly and the
+- iOS 1.0/build 4, all five credit consumables, Kxngdom VIP Monthly and the
   Kxngdom Memberships group are attached together as eight items ready to
   submit. Apple has enabled the final `Submit for Review` control. It has
   intentionally not been pressed.

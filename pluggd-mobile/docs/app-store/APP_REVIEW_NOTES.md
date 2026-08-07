@@ -19,8 +19,10 @@ Recommended reviewer path:
 3. Move between Home, Discover, Community and Events to confirm uninterrupted playback.
 4. Open Discover to inspect scene, genre, city, event, mix, beat and soundboard routes.
 5. Open a Community post’s overflow menu to see Report and Block.
-6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.
-7. Open Wallet or a creator Membership to test StoreKit products and Restore Purchases.
+6. Open the avatar account menu → Settings → Privacy & safety to see age-aware
+   filters, blocked accounts, data export and account deletion.
+7. Open the avatar account menu → Restore Purchases, or open Wallet and use its
+   Restore Purchases control. Open a creator Membership to test subscriptions.
 8. Open a published beat, choose a professional usage licence, review its terms
    and continue to the reviewer-ready hosted checkout.
 9. Open a verified real-world event, choose a ticket tier and continue to the

@@ -30,6 +30,12 @@
   registered iPhone's `PLUGGD Ad Hoc Device QA 2026` profile, passed strict
   signature verification, installed on the iPhone 15 Pro Max and launched
   successfully. The process remained active after launch.
+- [x] Final App Store candidate `1.0.0 (4)` adds the complete native editorial
+  reader and the approved orange-plug app icon. The archive passed strict local
+  signature, entitlement, privacy-manifest and icon-alpha inspection, then
+  Apple validation and upload with zero errors. Delivery
+  `79ec3d66-ec11-4373-a256-86be7173ebd2` is `VALID` and
+  `APP_STORE_ELIGIBLE`.
 
 ## Production configuration
 
@@ -207,7 +213,7 @@
 - [x] Rights-safe PLUGGD Live Studio screenshot uploaded to the required
   6.5-inch iPhone slot at 1284×2778. It contains no creator artwork, avatars,
   event photography or user content.
-- [x] Processed build `1.0.0 (3)` is selected for App Store version 1.0. Apple
+- [x] Processed build `1.0.0 (4)` is selected for App Store version 1.0. Apple
   reports it `VALID`, App Store eligible, minimum iOS 15.1 and non-exempt
   encryption false.
 - [x] Version release mode set to manual so approval cannot trigger an
@@ -219,7 +225,7 @@
 
 Current catalogue state: five credit consumables, Kxngdom VIP Monthly and the
 Kxngdom Memberships subscription group report `Ready for Review`. All seven
-commerce items plus iOS version 1.0/build 3 are attached to the active draft as
+commerce items plus iOS version 1.0/build 4 are attached to the active draft as
 eight items ready to submit. The rights-safe 6.5-inch screenshot is processed,
 version 1.0 reports `Ready for Review`, and Apple has enabled the final
 `Submit for Review` control. Their review copy preserves the approved hybrid
@@ -276,9 +282,12 @@ below rather than being reported as complete.
 - [x] Upload final candidate `1.0.0 (3)`. Apple accepted delivery
   `fd7d8025-9df7-4e16-946a-70ba200770c6`, completed processing with state
   `VALID`, and accepted its selection on App Store version 1.0.
-- [x] Confirm build `1.0.0 (3)` is available to the existing internal
+- [x] Upload replacement candidate `1.0.0 (4)`. Apple validation and upload
+  succeeded without errors; delivery `79ec3d66-ec11-4373-a256-86be7173ebd2`
+  completed processing as `VALID` and is selected on App Store version 1.0.
+- [x] Confirm build `1.0.0 (4)` is available to the existing internal
   `PLUGGD Submission QA` group. The group has access to all builds and Apple
-  reports build 3 `APP_STORE_ELIGIBLE` with non-exempt encryption false.
+  reports build 4 `APP_STORE_ELIGIBLE` with non-exempt encryption false.
 - [x] Attach build `1.0.0 (1)` to the internal `PLUGGD Submission QA` group
   and invite the Account Holder as an internal tester. Safari live verification
   on 2 August 2026 reports `1 Tester · 1 Build`; the tester status is `Invited`.
