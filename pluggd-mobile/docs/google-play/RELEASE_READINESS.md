@@ -16,8 +16,11 @@ Source-level success is not a substitute for a Play-signed build or device test.
 
 ## External account gates
 
-- [ ] Pluggd Ltd Google Play organisation account is verified. Account ID
-      `5583821221716547447` was reported as verification-pending on 2026-08-09.
+- [ ] Pluggd Ltd Google Play organisation account is verified. Live Play
+      Console inspection on 2026-08-09 confirms account ID
+      `5583821221716547447` is still awaiting Google identity/document approval;
+      phone verification and **Create app** remain disabled. Evidence:
+      [`play-account-verification-pending.png`](../../artifacts/qa/android-v1-2026-08-08/play-account-verification-pending.png).
 - [ ] `com.pluggd.mobile` is registered and protected in Play Console.
 - [ ] Play App Signing is enabled and both upload and app-signing SHA-256
       fingerprints are recorded.
