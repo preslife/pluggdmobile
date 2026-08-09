@@ -29,9 +29,9 @@ processed by PLUGGD's backend.
   encryption at rest and least-privilege access.
 - PLUGGD does not sell personal data or use app data for cross-app advertising
   tracking.
-- Users can initiate permanent account deletion in the app and from the public
-  deletion URL. Statutory transaction, fraud, tax, and licence records may be
-  retained only as described by the privacy policy.
+- Users can initiate permanent account deletion in the app and from
+  `https://www.pluggd.fm/account-deletion`. Statutory transaction, fraud, tax,
+  and licence records may be retained only as described by the privacy policy.
 - Notification URLs, OAuth callbacks, and hosted-checkout callbacks accept only
   PLUGGD-owned hosts and approved internal routes.
 - Google Play purchase tokens, Apple signed transactions, and Stripe IDs are

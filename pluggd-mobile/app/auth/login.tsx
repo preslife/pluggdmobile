@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { AppleSignInButton } from '../../components/AppleSignInButton';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
-import { LAUNCH_ACCESS_REQUIRED } from '../../src/config/environment';
+import { LAUNCH_ACCESS_REQUIRED, MINIMUM_AGE } from '../../src/config/environment';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import {
@@ -107,12 +107,12 @@ export default function Login() {
     Alert.alert('Reset link sent', 'Check your inbox for the PLUGGD password reset link.');
   };
 
-  const performAppleLogin = async () => {
+  const performAppleLogin = async (minimumAgeConfirmed: boolean) => {
     setLoading(true);
     setError('');
     await clearLaunchAccessNotice();
     try {
-      const result = await signInWithApple();
+      const result = await signInWithApple({ minimumAgeConfirmed });
       router.replace(result.isNewUser ? ('/auth/role' as any) : ('/' as any));
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
@@ -126,20 +126,20 @@ export default function Login() {
   const handleAppleLogin = () => {
     Alert.alert(
       'Continue with Apple',
-      'By continuing, you confirm that you are at least 16 and agree to the PLUGGD Terms and Privacy Policy.',
+      `By continuing, you confirm that you are at least ${MINIMUM_AGE} and agree to the PLUGGD Terms and Privacy Policy.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue', onPress: () => void performAppleLogin() },
+        { text: `I’m ${MINIMUM_AGE}+ — Continue`, onPress: () => void performAppleLogin(true) },
       ],
     );
   };
 
-  const performGoogleLogin = async () => {
+  const performGoogleLogin = async (minimumAgeConfirmed: boolean) => {
     setLoading(true);
     setError('');
     await clearLaunchAccessNotice();
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle({ minimumAgeConfirmed });
       router.replace(result.isNewUser ? ('/auth/role' as any) : ('/' as any));
     } catch (authError: any) {
       if (!isGoogleSignInCancellation(authError)) {
@@ -153,10 +153,10 @@ export default function Login() {
   const handleGoogleLogin = () => {
     Alert.alert(
       'Continue with Google',
-      'By continuing, you confirm that you are at least 16 and agree to the PLUGGD Terms and Privacy Policy.',
+      `By continuing, you confirm that you are at least ${MINIMUM_AGE} and agree to the PLUGGD Terms and Privacy Policy.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue', onPress: () => void performGoogleLogin() },
+        { text: `I’m ${MINIMUM_AGE}+ — Continue`, onPress: () => void performGoogleLogin(true) },
       ],
     );
   };

@@ -21,6 +21,8 @@ assert.ok(
 
 const launchAccessSource = read('src/features/auth/launch-access.ts');
 const appleAuthSource = read('src/features/auth/apple-sign-in.ts');
+const googleAuthSource = read('src/features/auth/google-sign-in.ts');
+const socialConsentSource = read('src/features/auth/social-auth-consent.ts');
 const appleButtonSource = read('components/AppleSignInButton.tsx');
 const authProviderSource = read('src/context/AuthProvider.tsx');
 const loginSource = read('app/auth/login.tsx');
@@ -74,5 +76,22 @@ assert.match(appleAuthSource, /credential\.state !== expectedState/, 'Apple auth
 assert.match(appleAuthSource, /signInWithIdToken/, 'Apple identity tokens must be verified by Supabase Auth');
 assert.match(appleAuthSource, /nonce:\s*rawNonce/, 'Supabase must receive the unhashed nonce for verification');
 assert.match(appleAuthSource, /full_name/, 'Apple’s one-time full name must be persisted');
+
+for (const [provider, source] of [
+  ['Apple', appleAuthSource],
+  ['Google', googleAuthSource],
+]) {
+  assert.match(source, /consent:\s*SocialAuthConsent/, `${provider} auth must require an explicit consent object`);
+  assert.match(source, /requireSocialAuthConsent\(consent\)/, `${provider} auth must enforce consent before OAuth`);
+}
+assert.match(
+  socialConsentSource,
+  /if \(!consent\.minimumAgeConfirmed\)/,
+  'social OAuth must fail closed without explicit minimum-age confirmation',
+);
+assert.match(signupSource, /accessibilityRole="checkbox"/, 'signup must expose an accessible explicit age checkbox');
+assert.match(signupSource, /minimumAgeConfirmed:\s*ageConfirmed/, 'signup social auth must pass the user-controlled age state');
+assert.match(loginSource, /performGoogleLogin\(true\)/, 'Google login must start only from the explicit confirmation action');
+assert.match(loginSource, /performAppleLogin\(true\)/, 'Apple login must start only from the explicit confirmation action');
 
 console.log('mobile auth contract verified');

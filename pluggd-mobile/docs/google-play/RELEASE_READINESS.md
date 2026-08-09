@@ -178,9 +178,17 @@ Critical journeys:
 - [ ] Data Safety form matches `DATA_SAFETY_INVENTORY.md` and the release SDK
       dependency report.
 - [ ] Privacy policy, terms, account-deletion URL, support URL, and refund paths
-      are public and name Pluggd Ltd consistently.
+      are public and name Pluggd Ltd consistently. The canonical backend branch
+      now includes a self-service, pre-rendered
+      `https://www.pluggd.fm/account-deletion` route plus provider-neutral
+      deletion/export/moderation functions; this remains unchecked until the
+      migration and route are deployed and verified on the public host.
 - [ ] Content rating and target-audience declarations state the 16+ posture.
-- [ ] Neutral age confirmation appears before social OAuth account creation.
+- [x] Neutral age confirmation appears before social OAuth account creation.
+      Signup uses an unchecked accessible 16+ checkbox; login uses an explicit
+      provider confirmation action; both Apple and Google helpers reject calls
+      without a required consent object before starting OAuth. The focused auth,
+      iOS readiness, and TypeScript contracts pass.
 - [ ] UGC report/block flows and moderation operations are demonstrated with the
       Play review account.
 - [ ] Social/child-safety and CSAE standards/contact are supplied if Play

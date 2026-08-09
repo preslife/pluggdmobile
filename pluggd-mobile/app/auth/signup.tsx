@@ -130,7 +130,7 @@ export default function SignUp() {
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithApple();
+      await signInWithApple({ minimumAgeConfirmed: ageConfirmed });
       router.replace('/auth/role' as any);
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
@@ -151,7 +151,7 @@ export default function SignUp() {
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle({ minimumAgeConfirmed: ageConfirmed });
       router.replace('/auth/role' as any);
     } catch (authError: any) {
       if (!isGoogleSignInCancellation(authError)) {

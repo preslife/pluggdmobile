@@ -7,6 +7,7 @@ const config = read('app.config.ts');
 const auth = read('src/context/AuthProvider.tsx');
 const login = read('app/auth/login.tsx');
 const signup = read('app/auth/signup.tsx');
+const socialConsent = read('src/features/auth/social-auth-consent.ts');
 const privacy = read('app/settings/privacy.tsx');
 const dataExport = read('app/settings/data-export.tsx');
 const safety = read('src/features/safety/accountSafety.ts');
@@ -36,11 +37,18 @@ assert.match(
   /__DEV__\s*\?\s*['"]development['"]\s*:\s*['"]production['"]/,
   'a Release build with no explicit environment must default to production instead of silently re-enabling launch codes',
 );
+assert.match(
+  environment,
+  /accountDeletion:\s*['"]https:\/\/www\.pluggd\.fm\/account-deletion['"]/,
+  'mobile release metadata must retain the public self-service account deletion URL',
+);
 assert.match(auth, /if \(!LAUNCH_ACCESS_REQUIRED\)/, 'production auth must bypass launch access');
 assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field must be development-only');
 assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');
 assert.match(signup, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'signup access-code field must be development-only');
 assert.match(signup, /minimum_age_confirmed:\s*true/, 'signup must persist age confirmation');
+assert.match(signup, /accessibilityRole="checkbox"/, 'signup must require explicit accessible age confirmation');
+assert.match(socialConsent, /requireSocialAuthConsent/, 'social provider boundary must enforce age confirmation');
 assert.match(signup, /LEGAL_URLS\.terms/, 'signup must expose legal terms');
 assert.match(privacy, /deleteMyAccount/, 'account deletion must be an in-app server action');
 assert.match(privacy, /blocked-accounts/, 'blocked account manager must be reachable');

@@ -1,6 +1,10 @@
 import type * as AppleAuthenticationTypes from 'expo-apple-authentication';
 import { Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import {
+  requireSocialAuthConsent,
+  type SocialAuthConsent,
+} from './social-auth-consent';
 
 /**
  * Apple Sign In needs two native modules. Importing them at module scope meant
@@ -59,7 +63,8 @@ export const isAppleSignInCancellation = (error: unknown) =>
   'code' in error &&
   (error as { code?: string }).code === 'ERR_REQUEST_CANCELED';
 
-export async function signInWithApple(): Promise<AppleSignInResult> {
+export async function signInWithApple(consent: SocialAuthConsent): Promise<AppleSignInResult> {
+  requireSocialAuthConsent(consent);
   const AppleAuthentication = appleAuth();
   const Crypto = crypto();
   if (Platform.OS !== 'ios' || !AppleAuthentication || !Crypto || !(await AppleAuthentication.isAvailableAsync())) {
