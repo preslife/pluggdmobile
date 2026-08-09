@@ -44,6 +44,36 @@ Secrets belong in EAS, Google Cloud, Play Console, Stripe, or Supabase. Never
 commit `google-services.json`, service-account JSON, signing keys, Maps keys,
 Sentry DSNs, or Play credentials.
 
+### Live service audit — 2026-08-09
+
+- Google Cloud recognises `pluggd@pluggd.fm`, but the organisation requires a
+  passkey re-authentication before the console can be inspected. No Firebase
+  project, restricted Maps key, Publisher API principal, Pub/Sub topic, or RTDN
+  push subscription is therefore evidenced yet. Do not create or rotate any
+  credential until that authenticated console session is available.
+- EAS CLI and `expo.dev` are signed out. No production EAS environment,
+  Android upload credential, FCM credential, or Sentry build variable has been
+  verified. Firebase CLI and Sentry are also signed out, and the local release
+  environment contains no Maps, FCM, or Sentry secret.
+- Supabase CLI is authenticated and the backend worktree is linked to the
+  active healthy `9XHUB` project (`qkwvqmubhyondemhasjp`). This is read-only
+  evidence; no migration, function, or secret was deployed during the audit.
+- The four Android migrations (`20260808130000`, `20260808131000`,
+  `20260808132000`, and `20260809140000`) are local-only. The remote project
+  exposes existing `resolve-commerce-policy`, `delete-account`,
+  `export-my-data`, and `moderate-user-content` function slugs, but does not
+  expose `validate-google-play-purchase`, `google-play-rtdn`, or
+  `report-google-play-external-transaction`. Existing slugs are not evidence
+  that the provider-neutral branch implementations are deployed.
+- Supabase has `ACCOUNT_DELETION_AUDIT_SALT`, but does not have the required
+  `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`,
+  `GOOGLE_PLAY_PUBSUB_AUDIENCE`,
+  `GOOGLE_PLAY_PUBSUB_SERVICE_ACCOUNT_EMAIL`, or external-program secrets.
+- Live browser inspection of `https://www.pluggd.fm/account-deletion` renders
+  PLUGGD's **Page Not Found** surface. The source route is complete but not
+  deployed. `https://pluggd.fm/.well-known/assetlinks.json` returns the generic
+  web application HTML shell with `text/html`, not Digital Asset Links JSON.
+
 ## Build and native evidence
 
 - [x] `npm run verify:mobile` passes against the checked-in lockfile, including
@@ -181,8 +211,9 @@ Critical journeys:
       are public and name Pluggd Ltd consistently. The canonical backend branch
       now includes a self-service, pre-rendered
       `https://www.pluggd.fm/account-deletion` route plus provider-neutral
-      deletion/export/moderation functions; this remains unchecked until the
-      migration and route are deployed and verified on the public host.
+      deletion/export/moderation functions; live inspection on 2026-08-09 still
+      renders **Page Not Found**, so this remains unchecked until the migration,
+      functions, and route are deployed and verified on the public host.
 - [ ] Content rating and target-audience declarations state the 16+ posture.
 - [x] Neutral age confirmation appears before social OAuth account creation.
       Signup uses an unchecked accessible 16+ checkbox; login uses an explicit
