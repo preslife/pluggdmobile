@@ -85,21 +85,25 @@ screenshots, view hierarchy capture, default PII, and SDK logs remain disabled.
 The exact current source produced these local audit artifacts:
 
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab`, 236 MB,
-  SHA-256 `8067c06b258153e7f9a0b692643f4e49ea7b5f88c0d4ecdc7ebeb7bef10e4804`.
+  SHA-256 `1a9a42e915965c6e835b19836b3d143ea2c455c2e678e668d63106b4ef9d41ff`.
 - Arm64 APK: `android/app/build/outputs/apk/release/app-release.apk`, 150 MB,
-  SHA-256 `7d73533edd5776719176df7e1619a1b07bfd9851cd9d45269e3f6b5c22c3e090`.
+  SHA-256 `082027e7d799c9e2586b198a8ea6e5013ed1e22edd766288fa3cd198f0d6fbdf`.
 - Both artifacts pass `zipalign -P 16`; the APK verifies with v2 signing. The
   AAB and APK use the local Android Debug certificate only, so neither is a
   Play candidate. Production remains gated on EAS upload signing and Play App
   Signing.
-- With Metro stopped, the exact APK cold-launched the verified
-  `https://pluggd.fm/discover` App Link on API 24, 33, 35, and 36. The complete
-  evidence and limitations are recorded in
+- With Metro stopped, the exact final APK cold-launched the verified
+  `https://pluggd.fm/discover` App Link on API 24 and 36. Its immediate
+  predecessor passed API 33 and 35 before the API 24–25-only playback branch.
+  The complete evidence and limitations are recorded in
   [`ANDROID_DEVICE_MATRIX_2026-08-09.md`](ANDROID_DEVICE_MATRIX_2026-08-09.md).
 - API 24 initially exposed a real `OutOfMemoryError` under its 48 MB heap. The
   API 24–25-only image policy now caps derivatives at 360 px and schedules at
   most two native image loads concurrently. The rebuilt APK passed a full
-  Discover scroll, settle, and Home navigation without a fatal/OOM entry.
+  Discover scroll and settle. A second playback OOM was closed by bounded
+  5–10 second buffering and 192 px notification artwork on API 24–25. The final
+  APK retained an active MediaSession and foreground service through 50 seconds
+  foreground and 10 seconds background playback without a fatal/OOM entry.
 - Phone, tablet, and foldable evidence is retained under
   `artifacts/qa/android-v1-2026-08-08/`. The exact release screenshot is
   [phone-release-final-current.png](../../artifacts/qa/android-v1-2026-08-08/phone-release-final-current.png).

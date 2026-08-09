@@ -150,6 +150,7 @@ const appConfigSource = read('app.config.ts');
 const eventsMapSource = read('components/EventsMap.native.tsx');
 const pluggdImageSource = read('src/components/PluggdImage.tsx');
 const trackPlayerPatch = read('patches/react-native-track-player+4.1.2.patch');
+const playbackProvider = read('src/context/PlaybackProvider.tsx');
 const releaseDeviceSmoke = read('scripts/verify-android-release-device-smoke.mjs');
 assert.match(layoutSource, /applyAdaptiveAppOrientation\(Math\.min\(window\.width, window\.height\)\)/);
 assert.match(orientationSource, /Platform\.OS === 'android' && shortestWindowEdgeDp >= 600/);
@@ -185,6 +186,16 @@ assert.match(eventsMapSource, /Map unavailable in this build/);
 assert.match(pluggdImageSource, /lowMemoryImageLoadScheduler\.schedule/);
 assert.match(pluggdImageSource, /imageDisplayWidthForDevice/);
 assert.match(pluggdImageSource, /LOW_MEMORY_SLOT_TIMEOUT_MS/);
+
+// The API 24/25 player must not decode full-resolution notification artwork or
+// reserve TrackPlayer's default 50-second buffer alongside the Discover feed.
+assert.match(playbackProvider, /isConstrainedAndroidRuntime\(Platform\.OS, Platform\.Version\)/);
+assert.match(playbackProvider, /transformedUri\(track\.artwork, CONSTRAINED_PLAYBACK_ARTWORK_WIDTH\)/);
+assert.match(playbackProvider, /minBuffer:\s*5/);
+assert.match(playbackProvider, /maxBuffer:\s*10/);
+assert.match(playbackProvider, /playBuffer:\s*1/);
+assert.match(playbackProvider, /backBuffer:\s*0/);
+assert.match(playbackProvider, /tracks\.filter\(isPlayableTrack\)\.map\(\(track\) => trackForNativePlayback\(track\)\)/);
 
 // Device evidence must be collected against an explicitly selected serial and
 // fail on API drift, a backgrounded/crashed activity, or fatal native logs.

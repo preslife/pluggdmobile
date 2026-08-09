@@ -2,10 +2,12 @@ export const LOW_MEMORY_ANDROID_MAX_API = 25;
 export const LOW_MEMORY_IMAGE_WIDTH_CAP = 360;
 export const LOW_MEMORY_IMAGE_CONCURRENCY = 2;
 
-export function isLowMemoryAndroidImageTarget(platform: string, version: string | number) {
+export function isConstrainedAndroidRuntime(platform: string, version: string | number) {
   const api = Number(version);
   return platform === 'android' && Number.isFinite(api) && api <= LOW_MEMORY_ANDROID_MAX_API;
 }
+
+export const isLowMemoryAndroidImageTarget = isConstrainedAndroidRuntime;
 
 export function imageDisplayWidthForDevice(displayWidth: number, lowMemoryTarget: boolean) {
   const validWidth = Number.isFinite(displayWidth) && displayWidth > 0 ? displayWidth : LOW_MEMORY_IMAGE_WIDTH_CAP;

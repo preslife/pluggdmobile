@@ -28,7 +28,9 @@ import TrackPlayer, {
   useTrackPlayerEvents,
   AppKilledPlaybackBehavior,
 } from 'react-native-track-player';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { transformedUri } from '../components/PluggdImage';
+import { isConstrainedAndroidRuntime } from '../components/lowMemoryImagePolicy';
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type PluggdTrackKind =
@@ -101,6 +103,20 @@ const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined
 
 // ─── Setup ────────────────────────────────────────────────────────────
 let isPlayerSetup = false;
+const CONSTRAINED_ANDROID_RUNTIME = isConstrainedAndroidRuntime(Platform.OS, Platform.Version);
+const CONSTRAINED_PLAYBACK_ARTWORK_WIDTH = 192;
+
+/**
+ * Android 7 can give a normal app only 48 MB. TrackPlayer's notification
+ * metadata loader otherwise decodes full-size cover uploads, and its default
+ * 50-second forward buffer competes with an artwork-heavy screen. Keep the
+ * public queue semantics while bounding only the native resources on API 24/25.
+ */
+export function trackForNativePlayback(track: PluggdTrack, constrained = CONSTRAINED_ANDROID_RUNTIME): PluggdTrack {
+  if (!constrained || !track.artwork) return track;
+  const artwork = transformedUri(track.artwork, CONSTRAINED_PLAYBACK_ARTWORK_WIDTH);
+  return { ...track, artwork: artwork || undefined };
+}
 
 export function isPlayableTrack(track?: Partial<PluggdTrack> | null): track is PluggdTrack {
   if (!track || typeof track.url !== 'string' || !track.url.trim()) return false;
@@ -115,10 +131,20 @@ export function isPlayableTrack(track?: Partial<PluggdTrack> | null): track is P
 async function setupPlayer(): Promise<boolean> {
   if (isPlayerSetup) return true;
   try {
-    await TrackPlayer.setupPlayer({
-      // 15s forward/backward jump for controls
-      backBuffer: 30,
-    });
+    await TrackPlayer.setupPlayer(
+      CONSTRAINED_ANDROID_RUNTIME
+        ? {
+            minBuffer: 5,
+            maxBuffer: 10,
+            playBuffer: 1,
+            backBuffer: 0,
+            maxCacheSize: 0,
+          }
+        : {
+            // Preserve the submitted iOS and modern-Android behavior.
+            backBuffer: 30,
+          },
+    );
     await TrackPlayer.updateOptions({
       android: {
         appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
@@ -212,8 +238,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       }
       lastPlaybackError.current = '';
       await TrackPlayer.reset();
-      await TrackPlayer.add(track as any);
-      originalQueue.current = [track];
+      const nativeTrack = trackForNativePlayback(track);
+      await TrackPlayer.add(nativeTrack as any);
+      originalQueue.current = [nativeTrack];
       await TrackPlayer.play();
       syncQueue();
     },
@@ -223,7 +250,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
       if (!isReady || tracks.length === 0) return;
-      const playableTracks = tracks.filter(isPlayableTrack);
+      const playableTracks = tracks.filter(isPlayableTrack).map((track) => trackForNativePlayback(track));
       if (playableTracks.length === 0) {
         Alert.alert('Audio unavailable', 'These items do not include playable audio uploads.');
         return;
@@ -288,7 +315,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     async (track: PluggdTrack) => {
       if (!isReady) return;
       if (!isPlayableTrack(track)) return;
-      await TrackPlayer.add(track as any);
+      await TrackPlayer.add(trackForNativePlayback(track) as any);
       syncQueue();
     },
     [isReady, syncQueue],
