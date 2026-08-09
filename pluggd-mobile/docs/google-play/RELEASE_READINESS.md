@@ -69,6 +69,9 @@ Sentry DSNs, or Play credentials.
       inspection.
 - [x] R8, resource shrinking, release lint, AAB packaging, and an exact-source
       minified APK cold-launch smoke pass.
+- [x] The exact release APK installs and cold-launches on API 24, 33, 35, and
+      36; the repeatable smoke gate records the APK hash, SDK contract, resumed
+      activity, timing, screenshot, and fatal/OOM log result.
 - [ ] Sentry symbol/source-map upload is verified with a controlled test event.
 
 Sentry is deliberately disabled when `EXPO_PUBLIC_SENTRY_DSN` is absent. The
@@ -82,17 +85,21 @@ screenshots, view hierarchy capture, default PII, and SDK logs remain disabled.
 The exact current source produced these local audit artifacts:
 
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab`, 236 MB,
-  SHA-256 `aebc76671bfe32da6b528b4b862227118ee0b9c25a8c505a6dd9476a55273a63`.
+  SHA-256 `8067c06b258153e7f9a0b692643f4e49ea7b5f88c0d4ecdc7ebeb7bef10e4804`.
 - Arm64 APK: `android/app/build/outputs/apk/release/app-release.apk`, 150 MB,
-  SHA-256 `88db1e7ff04c671db90f01e482646961938260f09de5410eb3ffbb648053502f`.
+  SHA-256 `7d73533edd5776719176df7e1619a1b07bfd9851cd9d45269e3f6b5c22c3e090`.
 - Both artifacts pass `zipalign -P 16`; the APK verifies with v2 signing. The
   AAB and APK use the local Android Debug certificate only, so neither is a
   Play candidate. Production remains gated on EAS upload signing and Play App
   Signing.
 - With Metro stopped, the exact APK cold-launched the verified
-  `https://pluggd.fm/discover` App Link on API 36 in 880 ms. A subsequent
-  force-stop and `pluggd://discover` launch completed in 870 ms with a new PID;
-  the fatal/native-linkage/IAP/TrackPlayer log sweep was empty.
+  `https://pluggd.fm/discover` App Link on API 24, 33, 35, and 36. The complete
+  evidence and limitations are recorded in
+  [`ANDROID_DEVICE_MATRIX_2026-08-09.md`](ANDROID_DEVICE_MATRIX_2026-08-09.md).
+- API 24 initially exposed a real `OutOfMemoryError` under its 48 MB heap. The
+  API 24–25-only image policy now caps derivatives at 360 px and schedules at
+  most two native image loads concurrently. The rebuilt APK passed a full
+  Discover scroll, settle, and Home navigation without a fatal/OOM entry.
 - Phone, tablet, and foldable evidence is retained under
   `artifacts/qa/android-v1-2026-08-08/`. The exact release screenshot is
   [phone-release-final-current.png](../../artifacts/qa/android-v1-2026-08-08/phone-release-final-current.png).

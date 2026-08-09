@@ -28,10 +28,40 @@ const { navigationModeForWidth } = loadPureTypeScriptModule(
 const { matchesAllowedNotificationUrl } = loadPureTypeScriptModule(
   'src/lib/notificationUrlPolicy.ts',
 );
+const {
+  createImageLoadScheduler,
+  imageDisplayWidthForDevice,
+  isLowMemoryAndroidImageTarget,
+} = loadPureTypeScriptModule('src/components/lowMemoryImagePolicy.ts');
 
 assert.equal(navigationModeForWidth(599), 'compact');
 assert.equal(navigationModeForWidth(600), 'top');
 assert.equal(navigationModeForWidth(1280), 'top');
+
+assert.equal(isLowMemoryAndroidImageTarget('android', 24), true);
+assert.equal(isLowMemoryAndroidImageTarget('android', 25), true);
+assert.equal(isLowMemoryAndroidImageTarget('android', 26), false);
+assert.equal(isLowMemoryAndroidImageTarget('ios', 24), false);
+assert.equal(imageDisplayWidthForDevice(720, true), 360);
+assert.equal(imageDisplayWidthForDevice(720, false), 720);
+
+const imageScheduler = createImageLoadScheduler(2);
+const imageStarts = [];
+const imageReleases = [];
+for (const id of ['a', 'b', 'c']) {
+  imageScheduler.schedule((release) => {
+    imageStarts.push(id);
+    imageReleases.push(release);
+  });
+}
+assert.deepEqual(imageStarts, ['a', 'b']);
+assert.equal(imageScheduler.getActiveCount(), 2);
+assert.equal(imageScheduler.getPendingCount(), 1);
+imageReleases[0]();
+await Promise.resolve();
+assert.deepEqual(imageStarts, ['a', 'b', 'c']);
+assert.equal(imageScheduler.getActiveCount(), 2);
+assert.equal(imageScheduler.getPendingCount(), 0);
 
 const firstPartyHosts = new Set(['pluggd.fm', 'www.pluggd.fm']);
 for (const url of [
@@ -118,7 +148,9 @@ const orientationSource = read('src/lib/orientation.ts');
 const adaptiveActivityPlugin = read('plugins/withAndroidAdaptiveActivity.cjs');
 const appConfigSource = read('app.config.ts');
 const eventsMapSource = read('components/EventsMap.native.tsx');
+const pluggdImageSource = read('src/components/PluggdImage.tsx');
 const trackPlayerPatch = read('patches/react-native-track-player+4.1.2.patch');
+const releaseDeviceSmoke = read('scripts/verify-android-release-device-smoke.mjs');
 assert.match(layoutSource, /applyAdaptiveAppOrientation\(Math\.min\(window\.width, window\.height\)\)/);
 assert.match(orientationSource, /Platform\.OS === 'android' && shortestWindowEdgeDp >= 600/);
 assert.match(orientationSource, /orientation\.unlockAsync\(\)/);
@@ -147,6 +179,20 @@ assert.match(appConfigSource, /androidGoogleMapsConfigured:\s*Boolean\(GOOGLE_MA
 assert.match(eventsMapSource, /Constants\.expoConfig\?\.extra\?\.androidGoogleMapsConfigured === true/);
 assert.match(eventsMapSource, /Platform\.OS === 'android' && !androidMapsConfigured/);
 assert.match(eventsMapSource, /Map unavailable in this build/);
+
+// API 24/25 can expose a 48 MB normal app heap. Artwork-heavy ScrollViews must
+// not initiate every remote request and bitmap decode in one GC window.
+assert.match(pluggdImageSource, /lowMemoryImageLoadScheduler\.schedule/);
+assert.match(pluggdImageSource, /imageDisplayWidthForDevice/);
+assert.match(pluggdImageSource, /LOW_MEMORY_SLOT_TIMEOUT_MS/);
+
+// Device evidence must be collected against an explicitly selected serial and
+// fail on API drift, a backgrounded/crashed activity, or fatal native logs.
+assert.match(releaseDeviceSmoke, /ANDROID_SERIAL is required/);
+assert.match(releaseDeviceSmoke, /topResumedActivity=/);
+assert.match(releaseDeviceSmoke, /OutOfMemoryError/);
+assert.match(releaseDeviceSmoke, /Number\(minSdk\) !== 24/);
+assert.match(releaseDeviceSmoke, /Number\(targetSdk\) !== 36/);
 
 // React Native 0.81 TurboModules require Promise-based @ReactMethods to expose
 // a JVM void return. Keep the native TrackPlayer compatibility patch reachable

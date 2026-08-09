@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "verify:mobile": "node scripts/verify-mobile-finish.mjs",
     "verify:android-foundation": "node scripts/verify-android-foundation.mjs",
+    "verify:android-device-smoke": "node scripts/verify-android-release-device-smoke.mjs",
     "verify:android-navigation": "node scripts/verify-android-adaptive-navigation-contract.mjs",
     "verify:observability": "node scripts/verify-mobile-observability-contract.mjs"
   },
