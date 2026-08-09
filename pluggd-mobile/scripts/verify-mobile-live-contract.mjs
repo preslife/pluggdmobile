@@ -9,7 +9,7 @@ const liveFeedSource = read('app/live/feed.tsx');
 const liveSessionSource = read('src/screens/LiveSessionScreen.tsx');
 const liveCreateSource = read('app/live/create.tsx');
 const services = read('src/features/culture/mobileServices.ts');
-const chromeSource = read('components/AppChrome.tsx');
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const homeSource = read('src/features/home/MusicDiscoveryHome.tsx');
 const discoverSource = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
 const discoveryHeaderSource = read('src/features/discovery/DiscoveryHeader.tsx');
@@ -129,7 +129,7 @@ for (const token of [
 assert.match(liveSource, /ScrollView\s+horizontal/, 'Live must use horizontal shelves');
 assert.match(liveSource, /RefreshControl/, 'Live must support pull-to-refresh for live Supabase data');
 assert.match(liveSource, /Animated\.loop/, 'Live focus card must include subtle media motion');
-assert.match(chromeSource, /normalized === '\/live'/, 'Live should own its own header');
+assert.match(chromeSource, /DEDICATED_HEADER_EXACT[\s\S]*'\/live'/, 'Live should own its own header');
 assert.match(chromeSource, /<MiniPlayer\s*\/>/, 'Global MiniPlayer must remain available on Live when media is active');
 assert.match(homeSource, /accessibilityLabel="Enter PLUGGD Live"/, 'Home must retain an always-present public Live gateway');
 assert.match(homeSource, /onAction=\{\(\) => router\.push\('\/live'/, 'Home Happening now header must enter Live');

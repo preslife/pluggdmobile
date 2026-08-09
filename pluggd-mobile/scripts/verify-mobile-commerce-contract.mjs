@@ -28,6 +28,7 @@ const eventBoard = read('src/features/editorial/EventsBoardScreen.tsx');
 const externalEventTickets = read('src/lib/eventTickets.ts');
 const release = read('app/release/[id].tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const subscriptions = read('src/hooks/useSubscription.ts');
 const store = read('src/features/editorial/MarketStoreScreen.tsx');
 const product = read('app/product/[id].tsx');
 const mobileServices = read('src/features/culture/mobileServices.ts');
@@ -70,7 +71,12 @@ for (const purchaseKind of [
 for (const rail of [
   'apple_iap',
   'apple_subscription',
+  'google_play_iap',
+  'google_play_subscription',
+  'google_play_billing',
   'credits',
+  'stripe_physical',
+  'external_web_checkout',
   'stripe_checkout',
   'unavailable',
 ]) {
@@ -157,10 +163,15 @@ assert.doesNotMatch(
   /licenseFee|price(?:Cents|Pence)\s*:/,
   'beat checkout must not submit an authoritative client price',
 );
+assert.match(
+  beatLicence,
+  /if \(creditRailAllowed\)[\s\S]*complete-beat-credit-license[\s\S]*commercePlatform:\s*'android'[\s\S]*storefront:\s*policy\.storefront[\s\S]*return;[\s\S]*create-beat-purchase/,
+  'Android beat licences must complete with signed-contract credits and return before the hosted path',
+);
 assert.doesNotMatch(
-  `${beat}\n${beatLicence}`,
-  /spendCredits|Open Wallet|router\.push\(\s*['"]\/wallet/,
-  'professional beat licences must never spend credits',
+  beatLicence,
+  /spendCredits\s*\(/,
+  'beat licences must use the server-authoritative completion function, not a generic wallet debit',
 );
 assert.match(beatPreparation, /licenseOptionId/, 'beat preparation must resolve a trusted licence-option identifier');
 assert.doesNotMatch(
@@ -206,9 +217,14 @@ assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release unlock must ke
 assert.match(release, /useCommercePolicy/, 'optional release hosted checkout must be storefront and policy gated');
 
 assert.match(
-  membership,
+  subscriptions,
   /membership_iap_products/,
-  'membership purchase UI must load unique creator-tier Apple catalogue mappings',
+  'provider-neutral membership billing must preserve unique creator-tier Apple catalogue mappings',
+);
+assert.match(
+  subscriptions,
+  /store_commerce_products/,
+  'provider-neutral membership billing must load verified Google Play product/base-plan mappings',
 );
 assert.doesNotMatch(
   membership,
@@ -223,7 +239,7 @@ assert.match(
 assert.match(
   membership,
   /useSubscription\(\{\s*creatorId:\s*creatorUserId/,
-  'StoreKit catalogue lookup must use the resolved creator account ID',
+  'store catalogue lookup must use the resolved creator account ID',
 );
 assert.match(
   mobileServices,

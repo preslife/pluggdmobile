@@ -6,7 +6,7 @@ const homeRoute = read('app/(tabs)/index.tsx');
 const home = read('src/features/home/MusicDiscoveryHome.tsx');
 const homeData = read('src/features/home/homeDiscoveryData.ts');
 const model = read('src/features/discovery/discoveryModel.ts');
-const chrome = read('components/AppChrome.tsx');
+const chrome = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const content = read('src/lib/mobileContent.ts');
 const releaseFloor = read('src/features/editorial/ListeningFloorScreen.tsx');
 const search = read('src/features/culture/useCultureData.ts');
@@ -54,7 +54,7 @@ for (const token of ['loadHomeEditorialStories', 'loadHomeRecentlyPlayed', 'load
 assert.match(homeData, /get_public_release_market_signals/, 'Home support momentum must use verified public market signals');
 assert.match(homeData, /\.eq\('is_published', true\)/, 'Home editorial must only use published THE PLUG stories');
 assert.match(discover, /selectedScene[\s\S]*item\.city[\s\S]*item\.genre/, 'scene gateways must apply the selected city or genre');
-assert.match(chrome, /normalized === '\/'[\s\S]*normalized === '\/discover'/, 'Home and Discover must own their compact discovery header');
+assert.match(chrome, /DEDICATED_HEADER_EXACT[\s\S]*'\/'[\s\S]*'\/discover'/, 'Home and Discover must own their compact discovery header');
 for (const source of [content, releaseFloor, search]) {
   assert.match(source, /\.eq\('approved', true\)/, 'public release surfaces must require editorial approval');
   assert.match(source, /\.eq\('status', 'live'\)/, 'public release surfaces must require a live release');

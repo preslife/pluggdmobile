@@ -10,9 +10,12 @@ import { PluggdImage } from '../src/components/PluggdImage';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 import { useHomeFeed } from '../src/features/culture/useCultureData';
 import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
+import { useStoreBilling } from '../src/context/StoreBillingProvider';
 
 export default function PurchasesScreen() {
   const router = useRouter();
+  const { adapter } = useStoreBilling();
+  const storeName = adapter?.storeName ?? 'store';
   const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
   const feed = useHomeFeed();
   const purchases = library.data?.purchases ?? [];
@@ -57,12 +60,12 @@ export default function PurchasesScreen() {
       action={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Restore App Store memberships"
+          accessibilityLabel={`Restore ${storeName} memberships`}
           style={styles.restoreButton}
           onPress={() => router.push('/membership' as any)}
         >
           <MaterialIcons name="restore" size={18} color={PLUGGD_ORANGE} />
-          <Text style={styles.restoreText}>Restore Apple</Text>
+          <Text style={styles.restoreText}>Restore {storeName}</Text>
         </Pressable>
       }
     >

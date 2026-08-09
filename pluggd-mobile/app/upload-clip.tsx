@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -9,18 +10,45 @@ import { ScreenShell } from '../components/ContentUI';
 import { useAuth } from '../src/context/AuthProvider';
 import { createMobileClipRecord } from '../src/features/culture/mobileServices';
 import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
-import { supabase } from '../src/lib/supabase';
+import { uploadFileToSupabaseStorage } from '../src/lib/storageUpload';
 
 type SelectedClip = {
   uri: string;
   fileName?: string | null;
   mimeType?: string | null;
   duration?: number | null;
+  appOwned?: boolean;
 };
+
+const CLIP_DRAFT_DIRECTORY = 'pluggd-upload-drafts/clips/';
 
 function clipPath(userId: string, clip: SelectedClip) {
   const ext = clip.fileName?.split('.').pop()?.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'mp4';
   return `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+}
+
+function safeClipFileName(name?: string | null) {
+  const normalized = (name || 'clip.mp4')
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(-96);
+  return normalized || 'clip.mp4';
+}
+
+async function persistSelectedClip(asset: ImagePicker.ImagePickerAsset): Promise<SelectedClip> {
+  if (!FileSystem.documentDirectory) throw new Error('Persistent media storage is unavailable.');
+  const directory = `${FileSystem.documentDirectory}${CLIP_DRAFT_DIRECTORY}`;
+  await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+  const destination = `${directory}${Date.now()}-${safeClipFileName(asset.fileName)}`;
+  await FileSystem.copyAsync({ from: asset.uri, to: destination });
+  return {
+    uri: destination,
+    fileName: asset.fileName,
+    mimeType: asset.mimeType,
+    duration: asset.duration ? Math.round(asset.duration / 1000) : null,
+    appOwned: true,
+  };
 }
 
 export default function UploadClipScreen() {
@@ -46,12 +74,16 @@ export default function UploadClipScreen() {
 
     if (result.canceled || !result.assets?.[0]?.uri) return;
     const asset = result.assets[0];
-    setClip({
-      uri: asset.uri,
-      fileName: asset.fileName,
-      mimeType: asset.mimeType,
-      duration: asset.duration ? Math.round(asset.duration / 1000) : null,
-    });
+    try {
+      const persisted = await persistSelectedClip(asset);
+      const previous = clip;
+      setClip(persisted);
+      if (previous?.appOwned) {
+        void FileSystem.deleteAsync(previous.uri, { idempotent: true }).catch(() => undefined);
+      }
+    } catch (error) {
+      Alert.alert('Clip not saved', error instanceof Error ? error.message : 'Choose the clip again.');
+    }
   };
 
   const uploadClip = async () => {
@@ -66,17 +98,14 @@ export default function UploadClipScreen() {
 
     setUploading(true);
     try {
-      const response = await fetch(clip.uri);
-      const blob = await response.blob();
       const path = clipPath(user.id, clip);
-      const { error: uploadError } = await supabase.storage
-        .from('mobile-clips')
-        .upload(path, blob, {
-          contentType: clip.mimeType || 'video/mp4',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
+      await uploadFileToSupabaseStorage({
+        bucket: 'mobile-clips',
+        path,
+        uri: clip.uri,
+        contentType: clip.mimeType || 'video/mp4',
+        upsert: false,
+      });
 
       const record = await createMobileClipRecord({
         storagePath: path,
@@ -84,6 +113,10 @@ export default function UploadClipScreen() {
         durationSeconds: clip.duration ?? null,
       });
       if (!record.success) throw new Error(record.error || 'Clip metadata could not be created.');
+
+      if (clip.appOwned) {
+        await FileSystem.deleteAsync(clip.uri, { idempotent: true }).catch(() => undefined);
+      }
 
       Alert.alert('Clip uploaded', 'Your clip is saved for review and publishing.', [
         { text: 'Back to Studio', onPress: () => router.replace('/studio' as any) },

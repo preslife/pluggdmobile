@@ -16,7 +16,6 @@ export const LEGAL_URLS = {
   terms: 'https://www.pluggd.fm/terms',
   communityGuidelines: 'https://www.pluggd.fm/community-guidelines',
   support: 'https://www.pluggd.fm/help/contact',
-  subscriptions: 'https://apps.apple.com/account/subscriptions',
 } as const;
 
 export const SUPPORT_EMAIL = 'support@pluggd.fm';

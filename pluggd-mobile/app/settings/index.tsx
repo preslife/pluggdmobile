@@ -38,7 +38,7 @@ export default function SettingsIndex() {
         account.creatorAccess
           ? { id: 'creator-tools', label: 'Creator Studio', detail: 'Open your creator workspace', route: '/studio', icon: 'space-dashboard' as const }
           : { id: 'creator-tools', label: 'Become a creator', detail: 'Add a creator role when you are ready', route: '/auth/role', icon: 'auto-awesome' as const },
-        { id: 'restore-purchases', label: 'Restore purchases', detail: 'Recover eligible App Store access', route: '/wallet', icon: 'restore' as const },
+        { id: 'restore-purchases', label: 'Restore purchases', detail: 'Recover eligible store access', route: '/wallet', icon: 'restore' as const },
       ],
     },
   ] as const;

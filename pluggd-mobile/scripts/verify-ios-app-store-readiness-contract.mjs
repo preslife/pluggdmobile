@@ -11,7 +11,8 @@ const privacy = read('app/settings/privacy.tsx');
 const dataExport = read('app/settings/data-export.tsx');
 const safety = read('src/features/safety/accountSafety.ts');
 const social = read('src/features/culture/mobileSocial.ts');
-const storeKit = read('src/context/StoreKitProvider.tsx');
+const storeKit = read('src/context/StoreKitProvider.tsx') + read('src/context/StoreBillingProvider.tsx');
+const appleBilling = read('src/billing/adapters/apple.ts');
 const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
 const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
 const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
@@ -48,7 +49,8 @@ assert.match(dataExport, /requestDataExport/, 'data export must use the authenti
 assert.match(safety, /block-user/, 'safety client must use the server block action');
 assert.match(social, /moderateUserContent/, 'UGC must pass through pre-publication moderation');
 assert.match(social, /loadBlockedUserIds/, 'community content must filter blocked authors');
-assert.match(storeKit, /initConnection/, 'StoreKit must have one root connection owner');
+assert.match(storeKit, /adapter\s*\.\s*connect\(\)/, 'StoreKit must have one root connection owner');
+assert.match(appleBilling, /appAccountToken:\s*accountId/, 'the iOS adapter must preserve StoreKit account binding');
 assert.match(verifier, /@peculiar\/x509/, 'Apple signed data must use an X.509 certificate verifier compatible with Supabase Edge');
 assert.match(verifier, /jwtVerify/, 'Apple signed-data JWS signatures must be verified');
 assert.match(verifier, /header\.alg\s*!==\s*["']ES256["']/, 'Apple signed data must reject non-ES256 algorithms');
@@ -65,7 +67,7 @@ assert.match(verifier, /bundle identifier mismatch/, 'verified signed data must 
 assert.match(verifier, /environment mismatch/, 'verified signed data must be bound to the expected App Store environment');
 assert.match(receipt, /verifyAppleTransaction/, 'client transaction must be cryptographically verified');
 assert.doesNotMatch(receipt, /proceeding with basic validation|decodeJWSPayload/, 'unverified receipt fallback is forbidden');
-assert.match(subscriptions, /const signedTransaction = purchase\.verificationResultIOS;/, 'StoreKit 2 membership validation must use Apple\'s signed transaction JWS');
+assert.match(subscriptions, /const purchaseToken = purchase\.purchaseToken;/, 'expo-iap StoreKit 2 membership validation must use Apple\'s signed transaction JWS');
 assert.doesNotMatch(subscriptions, /receipt_data:\s*purchase\.transactionReceipt/, 'StoreKit 2 membership validation must not submit the empty legacy receipt field');
 assert.match(notifications, /verifyAppleNotification/, 'server notification must be cryptographically verified');
 assert.doesNotMatch(notifications, /without cryptographic verification|decodeJWSPayload/, 'unverified notification decoding is forbidden');

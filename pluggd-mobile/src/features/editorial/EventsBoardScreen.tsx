@@ -274,7 +274,7 @@ function EventSpotlight({ event }: { event?: EventItem }) {
           >
             <View style={styles.ticketLinkCta}>
               <MaterialIcons name={externalTickets ? 'info-outline' : 'confirmation-number'} size={15} color={ed.cream} />
-              <Text style={styles.ticketLinkText} numberOfLines={1}>{externalTickets ? 'Details' : 'Ticket details'}</Text>
+              <Text style={styles.ticketLinkText} numberOfLines={1}>Details</Text>
             </View>
           </EdPressable>
         </View>
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
   spotlightSecondaryPressable: { flex: 1, minWidth: 0 },
   spotlightSecondaryPressableCompact: { flexGrow: 0, flexShrink: 0, flexBasis: 108, width: 108 },
   openEventCta: {
-    width: '100%',
+    alignSelf: 'stretch',
     minHeight: 48,
     borderRadius: 5,
     backgroundColor: ed.orange,
@@ -907,19 +907,19 @@ const styles = StyleSheet.create({
   },
   openEventText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: '#3a1c04' },
   ticketLinkCta: {
-    width: '100%',
+    alignSelf: 'stretch',
     minHeight: 48,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.25)',
     backgroundColor: 'rgba(10,5,2,0.6)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 5,
   },
-  ticketLinkText: { fontFamily: edFonts.bodyBold, fontSize: 13, color: ed.cream },
+  ticketLinkText: { flexShrink: 1, minWidth: 0, fontFamily: edFonts.bodyBold, fontSize: 11.5, color: ed.cream },
 
   upcomingTitle: { fontFamily: edFonts.displayBold, fontSize: 24, color: '#ffffff', letterSpacing: -0.4 },
   upcomingSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.62)', marginTop: 2 },

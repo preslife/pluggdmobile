@@ -2,6 +2,12 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 const IS_PRODUCTION = APP_ENV === 'production';
+const APP_LINK_HOST = (process.env.EXPO_PUBLIC_APP_LINK_HOST ?? 'pluggd.fm').trim().toLowerCase();
+const EAS_PROJECT_ID = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? process.env.EAS_PROJECT_ID;
+const GOOGLE_SERVICES_FILE = process.env.GOOGLE_SERVICES_JSON;
+const GOOGLE_MAPS_ANDROID_API_KEY = process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+const NOTIFICATION_LINK_HOSTS =
+  APP_LINK_HOST === 'pluggd.fm' ? ['pluggd.fm', 'www.pluggd.fm'] : [APP_LINK_HOST];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -115,19 +121,49 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#1F2226',
     },
-    predictiveBackGestureEnabled: false,
+    allowBackup: false,
+    blockedPermissions: [
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
+    ...(GOOGLE_SERVICES_FILE ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
+    ...(GOOGLE_MAPS_ANDROID_API_KEY
+      ? { config: { googleMaps: { apiKey: GOOGLE_MAPS_ANDROID_API_KEY } } }
+      : {}),
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        category: ['BROWSABLE', 'DEFAULT'],
+        data: [
+          {
+            scheme: 'https',
+            host: APP_LINK_HOST,
+            pathPrefix: '/',
+          },
+        ],
+      },
+    ],
+    predictiveBackGestureEnabled: true,
     versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
-    permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET'],
+    permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET', 'POST_NOTIFICATIONS'],
     package: 'com.pluggd.mobile',
   },
   web: {
     favicon: './assets/favicon.png',
   },
   plugins: [
+    '@sentry/react-native',
+    './plugins/withAndroidAdaptiveActivity.cjs',
     [
       'expo-build-properties',
       {
-        android: { minSdkVersion: 24 },
+        android: {
+          minSdkVersion: 24,
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
         ios: {
           deploymentTarget: '15.1',
           buildReactNativeFromSource: true,
@@ -136,6 +172,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-router',
     'expo-apple-authentication',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/notification-icon.png',
+        color: '#ff6600',
+        defaultChannel: 'pluggd-reminders',
+      },
+    ],
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
+        microphonePermission: 'PLUGGD uses the microphone when you join or host a live audio room.',
+      },
+    ],
     [
       'expo-contacts',
       {
@@ -153,7 +204,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   extra: {
     ...config.extra,
+    ...(EAS_PROJECT_ID
+      ? {
+          eas: {
+            ...((config.extra?.eas as Record<string, unknown> | undefined) ?? {}),
+            projectId: EAS_PROJECT_ID,
+          },
+        }
+      : {}),
     appEnvironment: APP_ENV,
+    androidGoogleMapsConfigured: Boolean(GOOGLE_MAPS_ANDROID_API_KEY),
+    notificationLinkHosts: NOTIFICATION_LINK_HOSTS,
     launchAccessRequired: !IS_PRODUCTION,
   },
 });

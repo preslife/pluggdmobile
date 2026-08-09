@@ -5,11 +5,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { BrandLogo } from '../../../components/BrandLogo';
 import { GlassAvatar } from '../../../components/liquid-glass';
+import { useAdaptiveNavigationMode } from '../../design/adaptiveNavigation';
 import { selectionHaptic } from '../../design/haptics';
 
 export function DiscoveryHeader() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const navigationMode = useAdaptiveNavigationMode();
+
+  // AppChrome owns the full horizontal navigation on Android tablets and
+  // unfolded devices. Keep an exact-height spacer here so editorial content
+  // starts below that absolute overlay without rendering a second masthead.
+  if (navigationMode === 'top') {
+    return <View pointerEvents="none" style={{ height: insets.top + 70 }} />;
+  }
+
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 4 }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="Go to Home" onPress={() => router.push('/' as any)}>

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
+import { matchesAllowedNotificationUrl } from './notificationUrlPolicy';
 import { supabase } from './supabase';
 
 const STORAGE_PREFIX = 'pluggd.localReminder';
@@ -56,6 +57,36 @@ function expoProjectId() {
     (Constants.expoConfig?.extra as any)?.projectId ||
     null
   );
+}
+
+function notificationWebHosts() {
+  const configured = (Constants.expoConfig?.extra as any)?.notificationLinkHosts;
+  const hosts = Array.isArray(configured) ? configured : ['pluggd.fm', 'www.pluggd.fm'];
+
+  return new Set(
+    hosts
+      .filter((host): host is string => typeof host === 'string')
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * Notification data is remote input. Only open first-party app routes and
+ * verified PLUGGD web hosts; never hand arbitrary schemes to the OS.
+ */
+export function isAllowedNotificationUrl(value: unknown): value is string {
+  return matchesAllowedNotificationUrl(value, notificationWebHosts());
+}
+
+export async function openNotificationUrl(value: unknown) {
+  if (!isAllowedNotificationUrl(value)) {
+    console.warn('Ignored unsafe notification URL');
+    return false;
+  }
+
+  await Linking.openURL(value);
+  return true;
 }
 
 export async function registerMobilePushToken(options: { requestPermission?: boolean } = {}) {
@@ -132,9 +163,9 @@ export function configureLocalNotificationHandler() {
 export function addLocalNotificationResponseListener() {
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     const url = response.notification.request.content.data?.url;
-    if (typeof url === 'string' && url.length > 0) {
-      void Linking.openURL(url);
-    }
+    void openNotificationUrl(url).catch((error) => {
+      console.warn('Notification URL could not be opened', error);
+    });
   });
 
   return () => subscription.remove();

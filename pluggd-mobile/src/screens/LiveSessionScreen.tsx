@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import * as Crypto from 'expo-crypto';
 import { pluggdFonts } from '../design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -7,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -119,6 +121,39 @@ type LiveReaction = {
   lane: number;
 };
 
+type AndroidLivePermissionResult = {
+  granted: boolean;
+  permanentlyDenied: boolean;
+};
+
+async function requestAndroidLivePermissions(
+  nextRole: StreamRole,
+  nextMode?: string | null,
+): Promise<AndroidLivePermissionResult> {
+  if (Platform.OS !== 'android' || nextRole === 'audience') {
+    return { granted: true, permanentlyDenied: false };
+  }
+
+  const permissions: Array<(typeof PermissionsAndroid.PERMISSIONS)[keyof typeof PermissionsAndroid.PERMISSIONS]> = [
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+  ];
+  if (nextMode !== 'audio_room') {
+    permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+  }
+
+  const results = await PermissionsAndroid.requestMultiple(permissions);
+  const deniedPermissions = permissions.filter(
+    (permission) => results[permission] !== PermissionsAndroid.RESULTS.GRANTED,
+  );
+
+  return {
+    granted: deniedPermissions.length === 0,
+    permanentlyDenied: deniedPermissions.some(
+      (permission) => results[permission] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN,
+    ),
+  };
+}
+
 function initials(name: string) {
   const parsed = name
     .split(' ')
@@ -214,6 +249,7 @@ export default function LiveSessionScreen() {
   const [runtimeSaving, setRuntimeSaving] = useState(false);
   const [withdrawingStage, setWithdrawingStage] = useState(false);
   const [removingStageUserId, setRemovingStageUserId] = useState<string | null>(null);
+  const [permissionAttempt, setPermissionAttempt] = useState(0);
 
   const engineRef = useRef<IRtcEngine | null>(null);
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -466,17 +502,6 @@ export default function LiveSessionScreen() {
     reactionChannelRef.current = channel;
   }, [currentRoomId, pushReaction]);
 
-  const ensurePermissions = async (nextRole: StreamRole, nextMode?: string | null) => {
-    if (Platform.OS !== 'android' || nextRole === 'audience') return;
-
-    const permissions = [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
-    if (nextMode !== 'audio_room') {
-      permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
-    }
-
-    await PermissionsAndroid.requestMultiple(permissions);
-  };
-
   const initAgora = useCallback(
     (token: { appId: string; channelName: string; token: string; uid: number }, nextRole: StreamRole, liveMode?: string | null) => {
       const engine = createAgoraRtcEngine();
@@ -574,7 +599,31 @@ export default function LiveSessionScreen() {
 
         setStreamRole(nextRole);
         setStatus('connecting');
-        await ensurePermissions(nextRole, room.live_mode);
+        const permissions = await requestAndroidLivePermissions(nextRole, room.live_mode);
+        if (cancelled) return;
+        if (!permissions.granted) {
+          setStatus('error');
+          if (permissions.permanentlyDenied) {
+            Alert.alert(
+              'Camera or microphone blocked',
+              'Enable PLUGGD camera and microphone access in Android Settings to host or join the stage.',
+              [
+                { text: 'Not now', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+              ],
+            );
+          } else {
+            Alert.alert(
+              'Camera or microphone needed',
+              'PLUGGD needs the requested media access before connecting you as a host or collaborator.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Try again', onPress: () => setPermissionAttempt((attempt) => attempt + 1) },
+              ],
+            );
+          }
+          return;
+        }
         const token = await fetchLiveToken({ roomId: currentRoomId, role: nextRole });
         if (cancelled) return;
 
@@ -616,6 +665,7 @@ export default function LiveSessionScreen() {
     loadGifts,
     loadRoom,
     loadStageState,
+    permissionAttempt,
     router,
     setupReactions,
     user,
@@ -716,6 +766,14 @@ export default function LiveSessionScreen() {
         throw new Error(policy.reason);
       }
 
+      const idempotencyKey = [
+        Platform.OS,
+        'live_gift',
+        user?.id ?? 'unknown',
+        currentRoomId,
+        gift.id,
+        Crypto.randomUUID(),
+      ].join(':');
       const { data, error } = await supabase.functions.invoke('send-live-gift', {
         body: {
           room_id: currentRoomId,
@@ -723,6 +781,8 @@ export default function LiveSessionScreen() {
           quantity: 1,
           message: null,
           animation_variant: null,
+          idempotency_key: idempotencyKey,
+          ...(Platform.OS === 'android' ? { commerce_platform: 'android' } : {}),
         },
       });
 

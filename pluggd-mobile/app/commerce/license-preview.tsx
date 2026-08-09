@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,8 @@ import {
   useCommercePolicy,
 } from '../../src/commerce/policy';
 import { pluggdFonts } from '../../src/design/typography';
+import { recommendCreditPacks } from '../../src/hooks/useCredits';
+import { useWallet } from '../../src/hooks/useWallet';
 import { supabase } from '../../src/lib/supabase';
 
 const ORANGE = '#FF6600';
@@ -28,7 +31,9 @@ type PreparedLicence = {
   beat: { id: string; title: string; producerName: string };
   option: {
     id: string;
+    licenseType: string;
     name: string;
+    amountCents: number;
     priceLabel: string;
     usageRights: string[];
     restrictions: string[];
@@ -69,6 +74,12 @@ function normalizePrepared(data: unknown): PreparedLicence | null {
   const option = root.option ?? root.licenseOption ?? root.license_option;
   const contract = root.contract;
   if (!beat?.id || !option?.id || !contract?.id || !contract?.legalText && !contract?.legal_text) return null;
+  const rawAmountCents = Number(
+    option.amountCents ?? option.amount_cents ?? option.priceCents ?? option.price_cents ?? 0,
+  );
+  const amountCents = Number.isFinite(rawAmountCents) && rawAmountCents > 0
+    ? Math.round(rawAmountCents)
+    : 0;
   return {
     beat: {
       id: String(beat.id),
@@ -77,7 +88,9 @@ function normalizePrepared(data: unknown): PreparedLicence | null {
     },
     option: {
       id: String(option.id),
+      licenseType: String(option.licenseType ?? option.license_type ?? ''),
       name: String(option.name ?? option.licenseType ?? option.license_type ?? 'Professional licence'),
+      amountCents,
       priceLabel: String(option.priceLabel ?? option.price_label ?? 'Price confirmed at checkout'),
       usageRights: list(option.usageRights ?? option.usage_rights),
       restrictions: list(option.restrictions),
@@ -95,6 +108,7 @@ function normalizePrepared(data: unknown): PreparedLicence | null {
 
 export default function LicencePreviewScreen() {
   const router = useRouter();
+  const wallet = useWallet();
   const { beatId, licenseOptionId } = useLocalSearchParams<{
     beatId: string;
     licenseOptionId: string;
@@ -114,6 +128,24 @@ export default function LicencePreviewScreen() {
     classification: 'professional_off_app' as const,
   }), [beatId, licenseOptionId]);
   const policy = useCommercePolicy(policyRequest);
+  const creditsRequired = Math.max(0, Math.round(prepared?.option.amountCents ?? 0));
+  const creditShortfall = Math.max(0, creditsRequired - wallet.balance.available_credits);
+  const packRecommendation = useMemo(
+    () => recommendCreditPacks(creditShortfall),
+    [creditShortfall],
+  );
+  const recommendationLabel = useMemo(
+    () => packRecommendation
+      .map((pack) => `${pack.count > 1 ? `${pack.count} × ` : ''}${pack.label} (${pack.credits.toLocaleString()} credits)`)
+      .join(' + '),
+    [packRecommendation],
+  );
+  const creditRailAllowed = Platform.OS === 'android' && policy.permittedRail === 'credits';
+  // Android digital checkout is never opened in a generic browser. A future
+  // hosted choice must use the exact enrolled Play billing-program flow; until
+  // that programme is standardized by server policy, this screen fails closed
+  // to the globally available credit rail.
+  const hostedRailAllowed = Platform.OS !== 'android' && policy.permittedRail === 'stripe_checkout';
 
   const prepare = useCallback(async () => {
     if (!beatId || !licenseOptionId) {
@@ -161,8 +193,19 @@ export default function LicencePreviewScreen() {
 
   const beginCheckout = async () => {
     if (!prepared || submitting) return;
-    if (policy.permittedRail !== 'stripe_checkout') {
+    if (!creditRailAllowed && !hostedRailAllowed) {
       Alert.alert('Licence checkout unavailable', policy.reason);
+      return;
+    }
+    if (!prepared.option.licenseType || creditsRequired <= 0) {
+      Alert.alert('Licence checkout unavailable', 'PLUGGD could not verify this licence price and type.');
+      return;
+    }
+    if (creditRailAllowed && creditShortfall > 0) {
+      Alert.alert(
+        'More credits needed',
+        `You need ${creditShortfall.toLocaleString()} more credits. Add credits from the Wallet; PLUGGD will never buy multiple packs automatically.`,
+      );
       return;
     }
     if (!legalName.trim()) {
@@ -193,6 +236,43 @@ export default function LicencePreviewScreen() {
       });
       if (signatureError) throw signatureError;
 
+      if (creditRailAllowed) {
+        if (!policy.storefront || !/^[A-Z]{2}$/.test(policy.storefront)) {
+          throw new Error('Google Play storefront could not be verified. No credits were spent.');
+        }
+        const { data, error: completionError } = await supabase.functions.invoke(
+          'complete-beat-credit-license',
+          {
+            body: {
+              beatId: prepared.beat.id,
+              contractId: prepared.contract.id,
+              licenseType: prepared.option.licenseType,
+              commercePlatform: 'android',
+              storefront: policy.storefront,
+            },
+          },
+        );
+        if (completionError) throw completionError;
+        const completion = (data ?? {}) as Record<string, unknown>;
+        if (completion.success !== true) {
+          throw new Error(
+            typeof completion.error === 'string'
+              ? completion.error
+              : 'PLUGGD could not grant the verified licence.',
+          );
+        }
+        await wallet.refreshBalance();
+        router.replace({
+          pathname: '/commerce/success',
+          params: {
+            kind: 'beat_license',
+            status: 'success',
+            itemId: prepared.beat.id,
+          },
+        } as any);
+        return;
+      }
+
       const { data, error: checkoutError } = await supabase.functions.invoke('create-beat-purchase', {
         body: {
           beatId: prepared.beat.id,
@@ -200,6 +280,7 @@ export default function LicencePreviewScreen() {
           contractId: prepared.contract.id,
           requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           storefront: policy.storefront,
+          platform: Platform.OS,
           returnUrl: 'pluggd://commerce/success',
         },
       });
@@ -269,8 +350,36 @@ export default function LicencePreviewScreen() {
             <Text style={styles.beat}>{prepared.beat.title} · {prepared.beat.producerName}</Text>
             <View style={styles.priceLine}>
               <Text style={styles.factLabel}>VERIFIED PRICE</Text>
-              <Text style={styles.price}>{prepared.option.priceLabel}</Text>
+              <Text style={styles.price}>
+                {creditRailAllowed ? `${creditsRequired.toLocaleString()} credits` : prepared.option.priceLabel}
+              </Text>
             </View>
+            {creditRailAllowed ? (
+              <View style={styles.creditStatus}>
+                <View style={styles.creditStatusLine}>
+                  <Text style={styles.factLabel}>AVAILABLE BALANCE</Text>
+                  <Text style={styles.creditBalance}>{wallet.balance.available_credits.toLocaleString()} credits</Text>
+                </View>
+                {creditShortfall > 0 ? (
+                  <>
+                    <Text style={styles.shortfall}>You need exactly {creditShortfall.toLocaleString()} more credits.</Text>
+                    {recommendationLabel ? (
+                      <Text style={styles.recommendation}>Recommended: {recommendationLabel}. Choose each purchase yourself in Wallet.</Text>
+                    ) : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open Wallet to add ${creditShortfall} credits`}
+                      onPress={() => router.push('/wallet' as any)}
+                      style={styles.secondaryCompact}
+                    >
+                      <Text style={styles.secondaryText}>Add credits in Wallet</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Text style={styles.balanceReady}>Your current balance covers this licence.</Text>
+                )}
+              </View>
+            ) : null}
             <Fact title="Usage rights" values={prepared.option.usageRights} empty="Defined in the licence agreement below." />
             <Fact title="Restrictions" values={prepared.option.restrictions} empty="Defined in the licence agreement below." />
             <Fact title="Deliverables" values={prepared.option.deliverables} empty="Confirmed after verified payment." />
@@ -321,17 +430,21 @@ export default function LicencePreviewScreen() {
                 <Text style={styles.deliveryText}>I request immediate access to the digital files and understand that, once the download begins, I lose my 14-day right to cancel to the extent permitted by law.</Text>
               </View>
             </Pressable>
-            {policy.permittedRail === 'stripe_checkout' ? (
+            {creditRailAllowed || hostedRailAllowed ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Accept licence agreement and continue to secure checkout for ${prepared.option.priceLabel}`}
-                accessibilityState={{ disabled: submitting || !accepted || !deliveryAccepted || !legalName.trim() }}
-                disabled={submitting || !accepted || !deliveryAccepted || !legalName.trim()}
+                accessibilityLabel={creditRailAllowed
+                  ? `Accept licence agreement and license for ${creditsRequired} credits`
+                  : `Accept licence agreement and continue to secure checkout for ${prepared.option.priceLabel}`}
+                accessibilityState={{ disabled: submitting || creditShortfall > 0 || !accepted || !deliveryAccepted || !legalName.trim() }}
+                disabled={submitting || creditShortfall > 0 || !accepted || !deliveryAccepted || !legalName.trim()}
                 onPress={beginCheckout}
-                style={[styles.primary, (submitting || !accepted || !deliveryAccepted || !legalName.trim()) && styles.disabled]}
+                style={[styles.primary, (submitting || creditShortfall > 0 || !accepted || !deliveryAccepted || !legalName.trim()) && styles.disabled]}
               >
                 {submitting ? <ActivityIndicator color="#0A0806" /> : <>
-                  <Text style={styles.primaryText}>Accept & continue securely</Text>
+                  <Text style={styles.primaryText}>
+                    {creditRailAllowed ? `Accept & license · ${creditsRequired.toLocaleString()} credits` : 'Accept & continue securely'}
+                  </Text>
                   <MaterialIcons name="arrow-forward" size={19} color="#0A0806" />
                 </>}
               </Pressable>
@@ -382,6 +495,12 @@ const styles = StyleSheet.create({
   priceLine: { minHeight: 68, marginTop: 22, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#302A26', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   factLabel: { color: '#817A75', fontSize: 9, letterSpacing: 1.3, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   price: { color: ORANGE, fontSize: 18, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  creditStatus: { paddingVertical: 16, borderBottomWidth: 1, borderColor: '#302A26' },
+  creditStatusLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  creditBalance: { color: '#FFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  shortfall: { color: '#FFB079', fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 12 },
+  recommendation: { color: '#B6AFA9', fontSize: 12, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, marginTop: 5 },
+  balanceReady: { color: '#95D5A5', fontSize: 12, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, marginTop: 10 },
   fact: { paddingVertical: 18, borderBottomWidth: 1, borderColor: '#302A26' },
   factTitle: { color: '#FFF', fontSize: 17, fontFamily: pluggdFonts.displayBold, marginBottom: 10 },
   factRow: { minHeight: 28, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
@@ -406,6 +525,7 @@ const styles = StyleSheet.create({
   primaryText: { color: '#0A0806', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabled: { opacity: 0.42 },
   secondary: { minHeight: 50, minWidth: 150, borderWidth: 1, borderColor: ORANGE, borderRadius: 5, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+  secondaryCompact: { minHeight: 46, alignSelf: 'flex-start', paddingHorizontal: 15, borderWidth: 1, borderColor: ORANGE, borderRadius: 5, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   secondaryText: { color: ORANGE, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   policyBox: { padding: 16, borderWidth: 1, borderColor: '#44382F', marginTop: 4 },
   policyTitle: { color: '#FFF', fontSize: 15, fontFamily: pluggdFonts.displayBold },

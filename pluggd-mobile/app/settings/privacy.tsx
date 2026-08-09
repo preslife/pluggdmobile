@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { LEGAL_URLS, MINIMUM_AGE } from '../../src/config/environment';
+import { useStoreBilling } from '../../src/context/StoreBillingProvider';
 import { pluggdFonts } from '../../src/design/typography';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import {
@@ -28,6 +29,9 @@ import {
 export default function PrivacySettingsScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const { adapter } = useStoreBilling();
+  const storeName = adapter?.storeName ?? 'your app store';
+  const subscriptionManagementUrl = adapter?.subscriptionManagementUrl() ?? null;
   const [settings, setSettings] = useState<AccountSafetySettings>({
     ageBand: null,
     sensitiveContentEnabled: false,
@@ -145,9 +149,9 @@ export default function PrivacySettingsScreen() {
             <View style={styles.dangerIcon}><MaterialIcons name="delete-forever" size={28} color="#FFFFFF" /></View>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Permanently delete account?</Text>
             <Text style={[styles.modalBody, { color: theme.colors.textMuted }]}>Your profile and personal content will be removed immediately. Financial, fraud-prevention and safety records may be retained where legally required. This cannot be undone.</Text>
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_URLS.subscriptions)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
+            <Pressable accessibilityRole="link" disabled={!subscriptionManagementUrl} onPress={() => subscriptionManagementUrl && Linking.openURL(subscriptionManagementUrl)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
               <MaterialIcons name="open-in-new" size={18} color={theme.colors.accent} />
-              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Deleting PLUGGD does not cancel subscriptions managed by Apple. Open Apple subscriptions.</Text>
+              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Deleting PLUGGD does not cancel subscriptions managed by {storeName}. Open subscription settings.</Text>
             </Pressable>
             <Pressable
               accessibilityRole="checkbox"
@@ -156,7 +160,7 @@ export default function PrivacySettingsScreen() {
               style={styles.ackRow}
             >
               <MaterialIcons name={subscriptionAcknowledged ? 'check-box' : 'check-box-outline-blank'} size={24} color={theme.colors.accent} />
-              <Text style={[styles.ackText, { color: theme.colors.text }]}>I understand I must cancel Apple subscriptions separately.</Text>
+              <Text style={[styles.ackText, { color: theme.colors.text }]}>I understand I must cancel store subscriptions separately.</Text>
             </Pressable>
             <TextInput
               accessibilityLabel="Type DELETE to confirm"

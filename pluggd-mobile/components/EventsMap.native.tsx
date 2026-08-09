@@ -1,13 +1,14 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
 import { PluggdImage } from '../src/components/PluggdImage';
 import { selectionHaptic } from '../src/design/haptics';
 import { pluggdFonts } from '../src/design/typography';
 import type { EventMapPoint, MapPoint } from '../src/lib/mapbox';
 
-const EVENT_ARTWORK_FALLBACK = require('../assets/web-parity/events/pluggd-events.png');
+const EVENT_ARTWORK_FALLBACK = require('../assets/web-parity/events/pluggd-events.jpg');
 
 type Props = {
   points: Array<EventMapPoint | MapPoint>;
@@ -48,6 +49,7 @@ function dateParts(value?: string | null) {
 }
 
 export function EventsMap({ points: sourcePoints, count, loading = false, onSelectEvent, onActiveEventChange, onPress }: Props) {
+  const androidMapsConfigured = Constants.expoConfig?.extra?.androidGoogleMapsConfigured === true;
   const points = useMemo<EventMapPoint[]>(
     () => sourcePoints.map((point, index) => ({
       ...point,
@@ -84,6 +86,19 @@ export function EventsMap({ points: sourcePoints, count, loading = false, onSele
         <Text style={styles.emptyCopy}>
           {loading ? 'Pinning venues and locations…' : 'Events with confirmed locations will appear here.'}
         </Text>
+      </View>
+    );
+  }
+
+  // Google Maps throws during native view creation when Android metadata has
+  // no API key. Keep development/internal builds usable and fail closed until
+  // the restricted production key is injected by EAS.
+  if (Platform.OS === 'android' && !androidMapsConfigured) {
+    return (
+      <View style={styles.emptyCard} accessible accessibilityLabel="Events map unavailable in this build">
+        <View style={styles.emptyIcon}><MaterialIcons name="map" size={24} color="#ff6600" /></View>
+        <Text style={styles.emptyTitle}>Map unavailable in this build</Text>
+        <Text style={styles.emptyCopy}>Browse the event list while the protected Android Maps key is being provisioned.</Text>
       </View>
     );
   }

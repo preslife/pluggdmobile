@@ -14,12 +14,14 @@ const serviceSource = read('src/features/culture/mobileServices.ts');
 const socialSource = read('src/features/culture/mobileSocial.ts');
 const dataAndServiceSource = `${dataSource}\n${serviceSource}\n${socialSource}`;
 const chromeSource = read('components/AppChrome.tsx');
+const chromePolicySource = read('src/lib/appChromeVisibility.ts');
 
 assert.match(routeSource, /<Redirect href="\/create" \/>/, 'Legacy Backstage tab route must redirect to Create while deep-link details stay available');
 assert.match(tabsSource, /name="backstage"[\s\S]*href:\s*null/, 'Backstage compatibility route must stay hidden from the tab bar');
 assert.doesNotMatch(tabsSource, /title:\s*"Backstage"/, 'Tabs layout must not expose Backstage as a primary title');
 assert.doesNotMatch(dockSource, /label:\s*'Backstage'|route:\s*'\/backstage'/, 'Backstage must not remain a primary bottom tab');
-assert.match(chromeSource, /normalized === '\/backstage'/, 'Legacy Backstage route must still avoid duplicate global chrome while redirecting');
+assert.match(chromeSource, /hasDedicatedAppHeader\(normalized\)/, 'App chrome must delegate dedicated-header ownership to the shared route policy');
+assert.match(chromePolicySource, /DEDICATED_HEADER_EXACT[\s\S]*'\/backstage'/, 'Legacy Backstage route must still avoid duplicate global chrome while redirecting');
 
 for (const table of [
   "from('communities')",

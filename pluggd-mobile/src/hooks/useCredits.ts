@@ -1,30 +1,25 @@
 /**
- * useCredits — Apple IAP integration for credit packs.
+ * useCredits — App Store / Google Play billing integration for credit packs.
  *
  * Handles:
- *  - Fetching IAP products from App Store
+ *  - Fetching consumable products from the device store
  *  - Purchasing credit packs
  *  - Receipt validation via validate-iap-receipt edge function
  *  - Purchase restoration
  *  - Purchase listener for interrupted/deferred purchases
  */
 import { useEffect, useCallback, useState, useRef } from 'react';
-import {
-  getProducts,
-  requestPurchase,
-  finishTransaction,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  getAvailablePurchases,
-  type Product,
-  type Purchase,
-  type PurchaseError,
-} from 'react-native-iap';
-import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useWalletStore, type WalletBalance } from './useWallet';
 import { useStoreKit } from '../context/StoreKitProvider';
 import { resolveCommercePolicy } from '../commerce/policy';
+import {
+  storeProductId,
+  storeProductPrice,
+  type StoreProduct,
+  type StorePurchase,
+  type StorePurchaseError,
+} from '../billing';
 
 // ─── SKU Definitions ──────────────────────────────────────────────────
 export const CREDIT_PACK_SKUS = [
@@ -48,7 +43,7 @@ export interface CreditPackDefinition {
   popular?: boolean;
 }
 
-// Approved iOS credit packs. App Store Connect owns customer-facing prices;
+// Approved store credit packs. App Store Connect / Play Console own customer-facing prices;
 // fallback GBP values are retained only as catalogue reference data and must
 // never be shown in place of StoreKit's storefront-localized price.
 export const CREDIT_PACK_DEFINITIONS: Record<CreditPackSKU, CreditPackDefinition> = {
@@ -109,6 +104,73 @@ export const SKU_CREDITS_MAP: Record<CreditPackSKU, number> = {
   pluggd_credits_ultimate: 12000,
 };
 
+export type CreditPackRecommendation = {
+  sku: CreditPackSKU;
+  label: string;
+  count: number;
+  credits: number;
+};
+
+/**
+ * Returns the smallest-credit-overage pack combination for a shortfall, then
+ * prefers the fewest separate purchases. It is display guidance only: every
+ * Play purchase must still be explicitly initiated by the fan.
+ */
+export function recommendCreditPacks(shortfall: number): CreditPackRecommendation[] {
+  const required = Math.max(0, Math.ceil(shortfall));
+  if (!required) return [];
+
+  // Every approved pack is a multiple of 50 credits. Searching one maximum
+  // pack beyond the target guarantees a reachable recommendation.
+  const unit = 50;
+  const catalogue = CREDIT_PACK_SKUS.map((sku) => ({
+    sku,
+    units: CREDIT_PACK_DEFINITIONS[sku].totalCredits / unit,
+  }));
+  const target = Math.ceil(required / unit);
+  const limit = target + Math.max(...catalogue.map((pack) => pack.units));
+  const best = Array<number>(limit + 1).fill(Number.POSITIVE_INFINITY);
+  const previous = Array<{ total: number; sku: CreditPackSKU } | null>(limit + 1).fill(null);
+  best[0] = 0;
+
+  for (let total = 1; total <= limit; total += 1) {
+    for (const pack of catalogue) {
+      const prior = total - pack.units;
+      if (prior < 0 || !Number.isFinite(best[prior])) continue;
+      if (best[prior] + 1 < best[total]) {
+        best[total] = best[prior] + 1;
+        previous[total] = { total: prior, sku: pack.sku };
+      }
+    }
+  }
+
+  let recommendedTotal = target;
+  while (recommendedTotal <= limit && !Number.isFinite(best[recommendedTotal])) {
+    recommendedTotal += 1;
+  }
+  if (recommendedTotal > limit) return [];
+
+  const counts = new Map<CreditPackSKU, number>();
+  for (let cursor = recommendedTotal; cursor > 0;) {
+    const step = previous[cursor];
+    if (!step) return [];
+    counts.set(step.sku, (counts.get(step.sku) ?? 0) + 1);
+    cursor = step.total;
+  }
+
+  return CREDIT_PACK_SKUS.flatMap((sku) => {
+    const count = counts.get(sku) ?? 0;
+    if (!count) return [];
+    const definition = CREDIT_PACK_DEFINITIONS[sku];
+    return [{
+      sku,
+      label: definition.label,
+      count,
+      credits: definition.totalCredits * count,
+    }];
+  });
+}
+
 export interface CreditPack {
   sku: CreditPackSKU;
   credits: number;
@@ -116,15 +178,15 @@ export interface CreditPack {
   bonusCredits: number;
   bonusPercent: number;
   fallbackPriceGBP: number;
-  product: Product | null; // null if product not loaded yet
+  product: StoreProduct | null; // null if product not loaded yet
   localizedPrice: string;
   label: string;
   bonus?: string;
   popular?: boolean;
 }
 
-function displayPriceForProduct(product: Product | null) {
-  return product?.localizedPrice ?? '';
+function displayPriceForProduct(product: StoreProduct | null) {
+  return storeProductPrice(product);
 }
 
 function isWalletBalance(value: unknown): value is WalletBalance {
@@ -137,31 +199,38 @@ function isWalletBalance(value: unknown): value is WalletBalance {
   );
 }
 
-function purchaseErrorMessage(error: Pick<PurchaseError, 'code' | 'message'>): string {
+function purchaseErrorMessage(
+  error: Pick<StorePurchaseError, 'code' | 'message'>,
+  storeName: string,
+): string {
   switch (error.code) {
-    case 'E_USER_ERROR':
-      return 'This Apple account is not currently allowed to make purchases.';
-    case 'E_ITEM_UNAVAILABLE':
-      return 'This credit pack is not available in your current App Store.';
-    case 'E_NETWORK_ERROR':
-      return 'The App Store could not be reached. Check your connection and try again.';
-    case 'E_REMOTE_ERROR':
-    case 'E_SERVICE_ERROR':
-      return 'The App Store is temporarily unavailable. Please try again shortly.';
-    case 'E_DEFERRED_PAYMENT':
-      return 'Apple is waiting for purchase approval. Your credits will appear when it is approved.';
-    case 'E_INTERRUPTED':
-      return 'Apple needs you to finish an account step before this purchase can continue.';
-    case 'E_IAP_NOT_AVAILABLE':
+    case 'user-error':
+      return `This store account is not currently allowed to make purchases.`;
+    case 'item-unavailable':
+    case 'sku-not-found':
+      return `This credit pack is not available in your current ${storeName} storefront.`;
+    case 'network-error':
+      return `${storeName} could not be reached. Check your connection and try again.`;
+    case 'remote-error':
+    case 'service-error':
+    case 'service-disconnected':
+      return `${storeName} is temporarily unavailable. Please try again shortly.`;
+    case 'deferred-payment':
+    case 'pending':
+      return `${storeName} is waiting for purchase approval. Your credits will appear when it is approved.`;
+    case 'interrupted':
+      return `${storeName} needs you to finish an account step before this purchase can continue.`;
+    case 'iap-not-available':
+    case 'billing-unavailable':
       return 'In-app purchases are not available on this device.';
-    case 'E_UNKNOWN':
-      return 'Apple could not complete this purchase. Check your App Store account and purchase permissions, then try again.';
+    case 'unknown':
+      return `${storeName} could not complete this purchase. Check your store account and purchase permissions, then try again.`;
     default:
-      return error.message || 'Apple could not complete this purchase. Please try again.';
+      return error.message || `${storeName} could not complete this purchase. Please try again.`;
   }
 }
 
-function logPurchaseError(context: string, error: PurchaseError) {
+function logPurchaseError(context: string, error: StorePurchaseError) {
   console.error(`[useCredits] ${context}:`, {
     code: error.code,
     message: error.message,
@@ -195,10 +264,10 @@ async function requireAuthenticatedSession() {
   return session;
 }
 
-function buildCreditPacks(prods: Product[] = []): CreditPack[] {
+function buildCreditPacks(prods: StoreProduct[] = []): CreditPack[] {
   return CREDIT_PACK_SKUS.map((sku) => {
     const definition = CREDIT_PACK_DEFINITIONS[sku];
-    const product = prods.find((p) => p.productId === sku) ?? null;
+    const product = prods.find((p) => storeProductId(p) === sku) ?? null;
 
     return {
       sku,
@@ -221,34 +290,35 @@ function buildCreditPacks(prods: Product[] = []): CreditPack[] {
 
 // ─── Hook ─────────────────────────────────────────────────────────────
 export function useCredits() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<StoreProduct[]>([]);
   const [packs, setPacks] = useState<CreditPack[]>(() => buildCreditPacks());
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { ready: connected, connectionError } = useStoreKit();
+  const { ready: connected, connectionError, adapter } = useStoreKit();
 
   const setBalance = useWalletStore((s) => s.setBalance);
   const purchaseUpdateSub = useRef<any>(null);
   const purchaseErrorSub = useRef<any>(null);
   const pendingReconciliationStarted = useRef(false);
 
-  // ── Fetch credit products after the root StoreKit connection is ready ──
+  // ── Fetch credit products after the root store connection is ready ──
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !connected) return;
+    const billing = adapter!;
+    if (!billing || !connected) return;
 
     let mounted = true;
 
     async function init() {
       try {
-        const prods = await getProducts({ skus: [...CREDIT_PACK_SKUS] });
+        const prods = await billing.fetchProducts([...CREDIT_PACK_SKUS], 'in-app');
         if (mounted) {
           setProducts(prods);
           setPacks(buildCreditPacks(prods));
         }
       } catch (err: any) {
         console.error('[useCredits] init failed:', err);
-        if (mounted) setError(err?.message ?? 'Failed to connect to App Store');
+        if (mounted) setError(err?.message ?? `Failed to connect to ${billing.storeName}`);
       }
     }
 
@@ -257,7 +327,7 @@ export function useCredits() {
     return () => {
       mounted = false;
     };
-  }, [connected]);
+  }, [adapter, connected]);
 
   useEffect(() => {
     if (connectionError) setError(connectionError);
@@ -265,16 +335,24 @@ export function useCredits() {
 
   // ── Purchase listeners ──
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!adapter) return;
 
-    purchaseUpdateSub.current = purchaseUpdatedListener(
-      async (purchase: Purchase) => {
+    purchaseUpdateSub.current = adapter.listenForPurchases(
+      async (purchase: StorePurchase) => {
+        if (!CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU)) return;
         console.log('[useCredits] purchase update:', purchase.productId);
+        if (purchase.purchaseState === 'pending') {
+          setPurchasing(false);
+          setError(`${adapter.storeName} is waiting for payment approval. Do not buy again.`);
+          return;
+        }
         try {
           // Validate receipt with backend
-          await validateReceipt(purchase);
-          // Finish the transaction so Apple knows we handled it
-          await finishTransaction({ purchase, isConsumable: true });
+          const verification = await validateReceipt(purchase);
+          // On Android this consumes the item; on iOS it finishes StoreKit.
+          if (verification.finishRequired) {
+            await adapter.finishTransaction(purchase, true);
+          }
           setPurchasing(false);
           setError(null);
         } catch (err: any) {
@@ -285,13 +363,14 @@ export function useCredits() {
       },
     );
 
-    purchaseErrorSub.current = purchaseErrorListener(
-      (err: PurchaseError) => {
+    purchaseErrorSub.current = adapter.listenForErrors(
+      (err: StorePurchaseError) => {
+        if (err.productId && !CREDIT_PACK_SKUS.includes(err.productId as CreditPackSKU)) return;
         logPurchaseError('purchase error', err);
         setPurchasing(false);
         // User cancelled is not an error we should display
-        if (err.code !== 'E_USER_CANCELLED') {
-          setError(purchaseErrorMessage(err));
+        if (err.code !== 'user-cancelled') {
+          setError(purchaseErrorMessage(err, adapter.storeName));
         }
       },
     );
@@ -300,25 +379,31 @@ export function useCredits() {
       purchaseUpdateSub.current?.remove();
       purchaseErrorSub.current?.remove();
     };
-  }, []);
+  }, [adapter]);
 
   // ── Validate receipt with Supabase ──
-  async function validateReceipt(purchase: Purchase) {
+  async function validateReceipt(purchase: StorePurchase) {
+    const billing = adapter!;
+    if (!billing) throw new Error('Store billing is unavailable on this device.');
     const session = await requireAuthenticatedSession();
-    const signedTransaction = purchase.verificationResultIOS;
+    const purchaseToken = purchase.purchaseToken;
 
     async function recoverServerVerifiedPurchase() {
-      if (!purchase.transactionId) return null;
+      const transactionReference =
+        billing.provider === 'apple' ? purchase.transactionId : purchase.purchaseToken;
+      if (!transactionReference) return null;
+
+      const metadata =
+        billing.provider === 'apple'
+          ? { transaction_id: transactionReference, product_id: purchase.productId }
+          : { purchase_token: transactionReference, product_id: purchase.productId };
 
       const { data: ledgerEntry, error: ledgerError } = await supabase
         .from('wallet_ledger')
         .select('id,kind,amount_credits,meta')
         .eq('user_id', session.user.id)
-        .eq('ref_type', 'apple_iap')
-        .contains('meta', {
-          transaction_id: purchase.transactionId,
-          product_id: purchase.productId,
-        })
+        .eq('ref_type', billing.creditRail)
+        .contains('meta', metadata)
         .limit(1)
         .maybeSingle();
 
@@ -359,32 +444,33 @@ export function useCredits() {
       };
     }
 
-    // The StoreKit 2 adapter intentionally leaves `transactionReceipt` empty.
-    // `verificationResultIOS` is Apple's signed transaction JWS and is the
-    // only client-supplied transaction payload the server may trust.
+    // expo-iap exposes one token field: StoreKit 2 JWS on iOS and the Play
+    // purchase token on Android. The server remains the trust boundary.
     if (
-      typeof signedTransaction !== 'string' ||
-      signedTransaction.split('.').length !== 3
+      typeof purchaseToken !== 'string' ||
+      (billing.provider === 'apple' && purchaseToken.split('.').length !== 3)
     ) {
       const recovered = await recoverServerVerifiedPurchase();
-      if (recovered) return recovered;
+      if (recovered) {
+        return { data: recovered, finishRequired: billing.provider === 'apple' };
+      }
       throw new Error(
-        'Apple confirmed this purchase, but verification is still pending. Reopen Wallet or use Restore Purchases to try again.',
+        `${billing.storeName} confirmed this purchase, but verification is still pending. Reopen Wallet or use Restore Purchases to try again.`,
       );
     }
 
+    const verification = await billing.buildVerificationRequest(
+      purchase,
+      'credits',
+      session.user.id,
+    );
     const { data, error: fnError } = await supabase.functions.invoke(
-      'validate-iap-receipt',
+      verification.functionName,
       {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: {
-          receipt_data: signedTransaction,
-          product_id: purchase.productId,
-          transaction_id: purchase.transactionId,
-          platform: 'ios',
-        },
+        body: verification.body,
       },
     );
 
@@ -393,7 +479,9 @@ export function useCredits() {
       // callback. Treat that verified, user-owned transaction as success
       // instead of displaying a false failure or encouraging another purchase.
       const recovered = await recoverServerVerifiedPurchase();
-      if (recovered) return recovered;
+      if (recovered) {
+        return { data: recovered, finishRequired: billing.provider === 'apple' };
+      }
       console.error('[useCredits] receipt verification request failed:', {
         name: fnError.name,
         message: fnError.message,
@@ -401,26 +489,44 @@ export function useCredits() {
         transactionId: purchase.transactionId,
       });
       throw new Error(
-        'Apple confirmed this purchase, but PLUGGD is still verifying it. Do not buy again—reopen Wallet in a moment.',
+        `${billing.storeName} confirmed this purchase, but PLUGGD is still verifying it. Do not buy again—reopen Wallet in a moment.`,
       );
     }
 
-    // Update local balance from response
-    if (data?.balance) {
-      setBalance(data.balance);
+    if (billing.provider === 'google') {
+      const response = data as Record<string, unknown> | null;
+      if (
+        !response ||
+        response.success !== true ||
+        response.provider !== 'google_play' ||
+        response.purchase_kind !== 'credit_pack'
+      ) {
+        throw new Error('Google Play confirmed the purchase, but PLUGGD did not return a valid credit entitlement.');
+      }
+      if (response.finish_required === true && response.finish_mode !== 'consume') {
+        throw new Error('Google Play returned an invalid credit completion mode.');
+      }
+
+      const { data: balance, error: balanceError } = await supabase.rpc(
+        'get_wallet_balance',
+        { p_user_id: session.user.id },
+      );
+      if (!balanceError && isWalletBalance(balance)) setBalance(balance);
+      return { data: response, finishRequired: response.finish_required === true };
     }
 
-    return data;
+    // Preserve the submitted StoreKit 2 response path.
+    if (data?.balance) setBalance(data.balance);
+    return { data, finishRequired: true };
   }
 
-  // Recover an Apple-confirmed transaction if the app was interrupted between
-  // payment and server validation. When StoreKit reports an unfinished
-  // consumable, the backend transaction/ledger idempotency keys make this safe
-  // to repeat after relaunches. Apple's server notification is the independent
-  // recovery path when StoreKit no longer returns the consumable to the app.
+  // Recover a store-confirmed transaction if the app was interrupted between
+  // payment and server validation. The backend ledger idempotency key makes
+  // this safe to repeat after relaunches.
   useEffect(() => {
+    const billing = adapter!;
     if (
-      Platform.OS !== 'ios' ||
+      !billing ||
       !connected ||
       pendingReconciliationStarted.current
     ) {
@@ -432,14 +538,17 @@ export function useCredits() {
 
     async function reconcilePendingPurchases() {
       try {
-        const purchases = await getAvailablePurchases();
+        const purchases = await billing.getAvailablePurchases();
         const pendingCredits = purchases.filter((purchase) =>
           CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU),
         );
 
         for (const purchase of pendingCredits) {
-          await validateReceipt(purchase);
-          await finishTransaction({ purchase, isConsumable: true });
+          if (purchase.purchaseState === 'pending') continue;
+          const verification = await validateReceipt(purchase);
+          if (verification.finishRequired) {
+            await billing.finishTransaction(purchase, true);
+          }
         }
 
         if (!cancelled && pendingCredits.length > 0) {
@@ -456,7 +565,7 @@ export function useCredits() {
           setError(
             reconciliationError instanceof Error
               ? reconciliationError.message
-              : 'Apple confirmed a purchase that is still being verified.',
+              : `${billing.storeName} confirmed a purchase that is still being verified.`,
           );
         }
       }
@@ -466,13 +575,13 @@ export function useCredits() {
     return () => {
       cancelled = true;
     };
-  }, [connected]);
+  }, [adapter, connected]);
 
   // ── Purchase a credit pack ──
   const purchaseCredits = useCallback(
     async (sku: CreditPackSKU) => {
-      if (!connected) {
-        setError('App Store not connected');
+      if (!connected || !adapter) {
+        setError('Store billing is not connected');
         return;
       }
 
@@ -487,42 +596,45 @@ export function useCredits() {
           itemId: sku,
           classification: 'digital',
         });
-        if (policy.permittedRail !== 'apple_iap') {
+        if (policy.permittedRail !== adapter.creditRail) {
           throw new Error(policy.reason);
         }
 
-        await requestPurchase({
+        await adapter.requestProduct({
           sku,
-          appAccountToken: session.user.id,
-          andDangerouslyFinishTransactionAutomaticallyIOS: false,
+          accountId: session.user.id,
         });
         // Purchase listener handles the rest
       } catch (err: any) {
         setPurchasing(false);
-        if (err?.code !== 'E_USER_CANCELLED') {
+        if (err?.code !== 'user-cancelled') {
           if (err?.code) {
-            logPurchaseError('purchase request failed', err as PurchaseError);
-            setError(purchaseErrorMessage(err as PurchaseError));
+            logPurchaseError('purchase request failed', err as StorePurchaseError);
+            setError(purchaseErrorMessage(err as StorePurchaseError, adapter.storeName));
           } else {
             setError(err?.message ?? 'Purchase failed');
           }
         }
       }
     },
-    [connected],
+    [adapter, connected],
   );
 
   // ── Restore purchases (consumables don't restore, but needed for compliance) ──
   const restorePurchases = useCallback(async () => {
     setRestoring(true);
     try {
-      const purchases = await getAvailablePurchases();
+      if (!adapter) throw new Error('Store billing is unavailable on this device.');
+      const purchases = await adapter.getAvailablePurchases();
       // For consumables, there's nothing to restore — they're one-time.
       // But we validate any pending receipts that weren't finished.
       for (const purchase of purchases) {
         if (CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU)) {
-          await validateReceipt(purchase);
-          await finishTransaction({ purchase, isConsumable: true });
+          if (purchase.purchaseState === 'pending') continue;
+          const verification = await validateReceipt(purchase);
+          if (verification.finishRequired) {
+            await adapter.finishTransaction(purchase, true);
+          }
         }
       }
       setRestoring(false);
@@ -530,7 +642,7 @@ export function useCredits() {
       setRestoring(false);
       setError(err?.message ?? 'Restore failed');
     }
-  }, []);
+  }, [adapter]);
 
   return {
     packs,
@@ -539,6 +651,8 @@ export function useCredits() {
     restoring,
     error,
     connected,
+    storeName: adapter?.storeName ?? 'store',
+    storeAccountName: adapter?.accountName ?? 'store account',
     purchaseCredits,
     restorePurchases,
     clearError: () => setError(null),

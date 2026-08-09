@@ -10,6 +10,7 @@ const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
 const wallet = read('app/wallet.tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const subscriptions = read('src/hooks/useSubscription.ts');
 const tickets = read('app/tickets.tsx');
 
 assert.match(contentUi, /PremiumScreenHeader/, 'shared ScreenShell must use the premium app header');
@@ -66,8 +67,9 @@ for (const sku of [
   assert.match(wallet + read('src/hooks/useCredits.ts'), new RegExp(sku), `wallet credits flow must preserve ${sku}`);
 }
 
-assert.match(membership, /Apple[\s\S]*Settings[\s\S]*Subscriptions/, 'membership screen must keep Apple subscription cancel/manage guidance');
-assert.match(membership, /membership_iap_products/, 'membership screen must load unique creator-tier Apple product mappings');
+assert.match(membership, /storeName[\s\S]*store account settings/, 'membership screen must keep provider-aware subscription cancel/manage guidance');
+assert.match(subscriptions, /membership_iap_products/, 'membership billing must preserve unique creator-tier Apple product mappings');
+assert.match(subscriptions, /store_commerce_products/, 'membership billing must load verified Google Play product and base-plan mappings');
 assert.doesNotMatch(membership, /pluggd_tier_(?:299|499|999|1999|4999)/, 'membership screen must not use shared price SKUs as creator identity');
 assert.match(
   membership,

@@ -7,7 +7,7 @@ import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-
 import { useFonts } from "expo-font";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect } from "react";
-import { NativeModules, StyleSheet, View } from "react-native";
+import { NativeModules, StyleSheet, View, useWindowDimensions } from "react-native";
 import "../global.css";
 import { AppChrome } from "../components/AppChrome";
 import { LiquidBackground } from "../components/liquid-glass";
@@ -16,8 +16,11 @@ import { PlaybackProvider } from "../src/context/PlaybackProvider";
 import { StoreKitProvider } from "../src/context/StoreKitProvider";
 import { PluggdThemeProvider, usePluggdTheme } from "../src/design/usePluggdTheme";
 import { addLocalNotificationResponseListener, configureLocalNotificationHandler } from "../src/lib/localNotifications";
-import { lockAppPortrait } from "../src/lib/orientation";
+import { applyAdaptiveAppOrientation } from "../src/lib/orientation";
+import { initializeObservability, observeRootComponent } from "../src/lib/observability";
 import { PlaybackService } from "../src/lib/playback-service";
+
+initializeObservability();
 
 // Register the playback service once at module scope
 TrackPlayer.registerPlaybackService(() => PlaybackService);
@@ -32,7 +35,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function Layout() {
+function Layout() {
   const [fontsLoaded] = useFonts({
     ...MaterialIcons.font,
     "PluggdSans5-Regular": require("../assets/fonts/Pluggdsans5-Regular.otf"),
@@ -59,8 +62,11 @@ export default function Layout() {
   );
 }
 
+export default observeRootComponent(Layout);
+
 function LayoutContent() {
   const theme = usePluggdTheme();
+  const window = useWindowDimensions();
 
   useEffect(() => {
     if (!__DEV__) return;
@@ -70,10 +76,11 @@ function LayoutContent() {
 
   useEffect(() => addLocalNotificationResponseListener(), []);
 
-  // Portrait-first app; listening-room screens unlock rotation themselves.
+  // Phones remain portrait-first. Android tablets and unfolded devices opt in
+  // to rotation and resize so API 36 large-screen behaviour is first-class.
   useEffect(() => {
-    lockAppPortrait();
-  }, []);
+    applyAdaptiveAppOrientation(Math.min(window.width, window.height));
+  }, [window.height, window.width]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

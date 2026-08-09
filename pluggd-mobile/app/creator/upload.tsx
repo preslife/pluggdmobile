@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -60,6 +61,7 @@ const PAPER = '#FFF8ED';
 const MUTED = 'rgba(255,248,237,0.62)';
 const LINE = 'rgba(255,255,255,0.12)';
 const PANEL = 'rgba(255,255,255,0.055)';
+const AUDIO_DRAFT_DIRECTORY = 'pluggd-upload-drafts/audio/';
 const STEPS: Array<{ id: UploadStep; label: string; short: string }> = [
   { id: 'details', label: 'Details', short: '01' },
   { id: 'media', label: 'Media', short: '02' },
@@ -109,6 +111,35 @@ function formatSize(bytes?: number | null) {
   if (!bytes || bytes < 1) return 'Size available after selection';
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function safeDraftFileName(name: string) {
+  const sanitized = name
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(-96);
+
+  return sanitized || 'audio-upload';
+}
+
+async function persistPickedAudio(asset: DocumentPicker.DocumentPickerAsset): Promise<DraftAsset> {
+  if (!FileSystem.documentDirectory) {
+    throw new Error('Persistent document storage is unavailable.');
+  }
+
+  const directoryUri = `${FileSystem.documentDirectory}${AUDIO_DRAFT_DIRECTORY}`;
+  await FileSystem.makeDirectoryAsync(directoryUri, { intermediates: true });
+
+  const destinationUri = `${directoryUri}${Date.now()}-${safeDraftFileName(asset.name)}`;
+  await FileSystem.copyAsync({ from: asset.uri, to: destinationUri });
+
+  return {
+    name: asset.name,
+    uri: destinationUri,
+    size: asset.size,
+    mimeType: asset.mimeType,
+  };
 }
 
 function completedCount(draft: UploadDraft) {
@@ -197,17 +228,18 @@ export default function CreatorUpload() {
     selectionHaptic();
     const result = await DocumentPicker.getDocumentAsync({
       type: 'audio/*',
-      copyToCacheDirectory: false,
+      // Android SAF grants can be temporary. First copy the provider URI into
+      // app cache, then copy it below into durable app-owned document storage.
+      copyToCacheDirectory: true,
       multiple: false,
     });
     if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    update('audio', {
-      name: asset.name,
-      uri: asset.uri,
-      size: asset.size,
-      mimeType: asset.mimeType,
-    });
+    try {
+      update('audio', await persistPickedAudio(result.assets[0]));
+    } catch (error) {
+      console.warn('Audio draft copy failed', error);
+      Alert.alert('Audio not saved', 'PLUGGD could not make a durable copy of that audio file. Choose it again.');
+    }
   };
 
   const saveDraft = async () => {

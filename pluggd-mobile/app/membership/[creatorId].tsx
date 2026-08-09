@@ -5,7 +5,8 @@
  * Route: /membership/[creatorId]
  *
  * Loads tiers from `membership_tiers` table (owner_type='profile', owner_id=creatorId),
- * maps each to its unique creator-tier App Store product, and purchases via StoreKit.
+ * maps each to its unique creator-tier store product, and purchases through the
+ * active App Store or Google Play billing provider.
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -16,7 +17,6 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Platform,
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,8 +31,9 @@ import { useAuth } from '../../src/context/AuthProvider';
 import { useSubscription } from '../../src/hooks/useSubscription';
 import { resolveCommercePolicy } from '../../src/commerce/policy';
 
-// Product identity is loaded by useSubscription from membership_iap_products;
-// the creator and tier are never inferred from a shared price-point SKU.
+// Product identity is loaded by useSubscription from the active platform's
+// server-owned catalogue; creator, tier, base plan and offer are never inferred
+// from a shared price point.
 
 // ─── Tier colour accents (matching the tier names) ──────────────────
 const TIER_COLORS: Record<string, string> = {
@@ -102,19 +103,34 @@ export default function CreatorMembershipScreen() {
   const { user } = useAuth();
   const [creatorUserId, setCreatorUserId] = useState<string | null>(null);
   const {
-    tiers: appleTiers,
+    tiers: storeTiers,
     activeMemberships,
     subscribe,
     purchasing,
     loading: subscriptionLoading,
     error: subscriptionError,
     clearError,
+    storeName,
+    subscriptionRail,
   } = useSubscription({ creatorId: creatorUserId ?? '__creator_pending__' });
 
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [selectedBillingPeriod, setSelectedBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const availableBillingPeriods = Array.from(new Set<'monthly' | 'yearly'>(
+    storeTiers.map((product) => product.basePlanId === 'yearly' ? 'yearly' : 'monthly'),
+  ));
+
+  useEffect(() => {
+    if (
+      availableBillingPeriods.length > 0 &&
+      !availableBillingPeriods.includes(selectedBillingPeriod)
+    ) {
+      setSelectedBillingPeriod(availableBillingPeriods[0]);
+    }
+  }, [availableBillingPeriods.join('|'), selectedBillingPeriod]);
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -192,13 +208,11 @@ export default function CreatorMembershipScreen() {
         return;
       }
 
-      if (Platform.OS !== 'ios') {
-        Alert.alert('iOS only', 'Subscriptions are currently available on iOS only.');
-        return;
-      }
-
-      const appleProduct = appleTiers.find((product) => product.tierId === tier.id);
-      if (!appleProduct?.provisioned || !appleProduct.localizedPrice) {
+      const storeProduct = storeTiers.find((product) =>
+        product.tierId === tier.id &&
+        (product.basePlanId ?? 'monthly') === selectedBillingPeriod,
+      );
+      if (!storeProduct?.provisioned || !storeProduct.localizedPrice) {
         Alert.alert('Joining opens soon', 'You can explore this tier now. We’ll show the join option here as soon as it becomes available.');
         return;
       }
@@ -208,30 +222,42 @@ export default function CreatorMembershipScreen() {
         itemId: creatorUserId ?? creatorId,
         optionId: tier.id,
         classification: 'digital',
+        productId: storeProduct.sku,
+        basePlanId: storeProduct.basePlanId,
+        offerId: storeProduct.offerId,
       });
-      if (policy.permittedRail !== 'apple_subscription') {
+      const mapping = policy.productMapping;
+      const mappingMatches = Boolean(
+        mapping &&
+        mapping.catalogProductId === storeProduct.catalogId &&
+        mapping.productId === storeProduct.sku &&
+        mapping.basePlanId === storeProduct.basePlanId &&
+        mapping.offerId === storeProduct.offerId,
+      );
+      if (!subscriptionRail || policy.permittedRail !== subscriptionRail || !mappingMatches) {
         Alert.alert('Subscription unavailable', policy.reason);
         return;
       }
 
-      const priceLabel = appleProduct.localizedPrice;
+      const priceLabel = storeProduct.localizedPrice;
+      const periodLabel = selectedBillingPeriod === 'yearly' ? 'year' : 'month';
 
       const isChangingTier = Boolean(existingMembership);
       Alert.alert(
         isChangingTier ? `Switch to ${tier.name}?` : `Join ${tier.name}?`,
         isChangingTier
-          ? `Apple will show the timing and any price adjustment before you confirm the change to ${priceLabel} per month.`
-          : `You'll be charged ${priceLabel} monthly through Apple. You can cancel anytime in Settings.`,
+          ? `${storeName} will show the timing and any price adjustment before you confirm the change to ${priceLabel} per ${periodLabel}.`
+          : `You'll be charged ${priceLabel} per ${periodLabel} through ${storeName}. You can cancel anytime in Settings.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: isChangingTier ? 'Continue' : 'Subscribe',
-            onPress: () => subscribe(appleProduct.sku),
+            onPress: () => subscribe(storeProduct.catalogId),
           },
         ]
       );
     },
-    [user, creatorId, creatorUserId, existingMembership, appleTiers, subscribe]
+    [user, creatorId, creatorUserId, existingMembership, selectedBillingPeriod, storeName, storeTiers, subscribe, subscriptionRail]
   );
 
   // Show subscription error
@@ -339,7 +365,9 @@ export default function CreatorMembershipScreen() {
             </View>
             <View style={[styles.signalRule, { backgroundColor: theme.colors.border }]} />
             <View style={styles.signalCell}>
-              <Text style={[styles.signalValue, { color: theme.colors.text }]}>APPLE</Text>
+              <Text style={[styles.signalValue, { color: theme.colors.text }]}>
+                {storeName.toUpperCase()}
+              </Text>
               <Text style={[styles.signalLabel, { color: theme.colors.textSubtle }]}>
                 SECURE BILLING
               </Text>
@@ -382,15 +410,59 @@ export default function CreatorMembershipScreen() {
           )}
 
           <View style={styles.tierStack}>
+            {availableBillingPeriods.includes('yearly') ? (
+              <View
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Membership billing period"
+                style={[styles.billingPeriodToggle, { borderColor: theme.colors.border }]}
+              >
+                {(['monthly', 'yearly'] as const).map((period) => {
+                  const active = selectedBillingPeriod === period;
+                  const available = availableBillingPeriods.includes(period);
+                  return (
+                    <Pressable
+                      key={period}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active, disabled: !available }}
+                      disabled={!available}
+                      onPress={() => setSelectedBillingPeriod(period)}
+                      style={[
+                        styles.billingPeriodButton,
+                        active && styles.billingPeriodButtonActive,
+                        !available && styles.billingPeriodButtonDisabled,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.billingPeriodText,
+                        { color: theme.colors.textMuted },
+                        active && styles.billingPeriodTextActive,
+                      ]}>
+                        {period.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
             {tiers.map((tier) => {
               const accentColor = TIER_COLORS[tier.name] ?? tier.color ?? '#ff6600';
               const icon = TIER_ICONS[tier.name] ?? 'star';
-              const appleProduct = appleTiers.find((product) => product.tierId === tier.id) ?? null;
-              const fallbackPrice = formatTierPrice(tier.price_monthly, tier.currency);
-              const priceLabel = appleProduct?.localizedPrice ?? fallbackPrice ?? 'Coming soon';
+              const storeProduct = storeTiers.find((product) =>
+                product.tierId === tier.id &&
+                (product.basePlanId ?? 'monthly') === selectedBillingPeriod,
+              ) ?? null;
+              const fallbackPrice = formatTierPrice(
+                selectedBillingPeriod === 'yearly' ? tier.price_yearly : tier.price_monthly,
+                tier.currency,
+              );
+              const priceLabel = storeProduct?.localizedPrice ?? fallbackPrice ?? 'Coming soon';
+              const periodLabel = selectedBillingPeriod === 'yearly' ? 'year' : 'month';
               const isSelected = selectedTier === tier.id;
-              const isCurrentTier = existingMembership?.tier_id === tier.id ||
-                existingMembership?.apple_sku === appleProduct?.sku;
+              const sameTier = existingMembership?.tier_id === tier.id;
+              const sameStorePlan = !storeProduct?.basePlanId ||
+                (existingMembership?.store_sku === storeProduct.sku &&
+                  existingMembership?.store_base_plan_id === storeProduct.basePlanId);
+              const isCurrentTier = sameTier && sameStorePlan;
               const isFull =
                 tier.max_members !== null &&
                 tier.current_members >= tier.max_members;
@@ -411,7 +483,7 @@ export default function CreatorMembershipScreen() {
                   )}
                   <Pressable
                     accessibilityRole="radio"
-                    accessibilityLabel={`${tier.name}, ${priceLabel} per month`}
+                    accessibilityLabel={`${tier.name}, ${priceLabel} per ${periodLabel}`}
                     accessibilityHint={isSelected ? 'Collapses membership details' : 'Shows membership details'}
                     accessibilityState={{ selected: isSelected, disabled: isFull }}
                     disabled={isFull}
@@ -456,7 +528,7 @@ export default function CreatorMembershipScreen() {
                             maxFontSizeMultiplier={1.1}
                             style={[styles.priceTerm, { color: theme.colors.textSubtle }]}
                           >
-                            PER MONTH
+                            PER {selectedBillingPeriod === 'yearly' ? 'YEAR' : 'MONTH'}
                           </Text>
                         </View>
                         <SymbolIcon
@@ -491,10 +563,10 @@ export default function CreatorMembershipScreen() {
                         ))}
                       </View>
 
-                      {!isFull && appleProduct?.provisioned && !isCurrentTier && (
+                      {!isFull && storeProduct?.provisioned && !isCurrentTier && (
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`${existingMembership ? 'Switch to' : 'Join'} ${tier.name} for ${priceLabel} per month`}
+                          accessibilityLabel={`${existingMembership ? 'Switch to' : 'Join'} ${tier.name} for ${priceLabel} per ${periodLabel}`}
                           accessibilityState={{ disabled: purchasing }}
                           onPress={() => handleSubscribe(tier)}
                           disabled={purchasing}
@@ -521,16 +593,16 @@ export default function CreatorMembershipScreen() {
                         </Pressable>
                       )}
 
-                      {!isFull && subscriptionLoading && !appleProduct?.provisioned && (
+                      {!isFull && subscriptionLoading && !storeProduct?.provisioned && (
                         <View style={[styles.storeStatusButton, { borderColor: theme.colors.border }]}>
                           <ActivityIndicator color="#ff6600" size="small" />
                           <Text style={[styles.storeStatusLabel, { color: theme.colors.text }]}>
-                            CONNECTING TO APP STORE
+                            CONNECTING TO {storeName.toUpperCase()}
                           </Text>
                         </View>
                       )}
 
-                      {!isFull && !subscriptionLoading && !appleProduct?.provisioned && (
+                      {!isFull && !subscriptionLoading && !storeProduct?.provisioned && (
                         <View>
                           <View
                             accessibilityRole="button"
@@ -542,7 +614,7 @@ export default function CreatorMembershipScreen() {
                             <SymbolIcon name="schedule" style={styles.storeStatusIcon} />
                           </View>
                           <Text style={[styles.pendingText, { color: theme.colors.textMuted }]}>
-                            This tier is ready to explore. Apple billing will appear here as soon as availability is confirmed.
+                            This tier is ready to explore. {storeName} billing will appear here as soon as availability is confirmed.
                           </Text>
                         </View>
                       )}
@@ -572,8 +644,8 @@ export default function CreatorMembershipScreen() {
           <View style={[styles.appleNote, { borderTopColor: theme.colors.border }]}>
             <SymbolIcon name="verified_user" style={styles.appleNoteIcon} />
             <Text style={[styles.legal, { color: theme.colors.textSubtle }]}>
-              Subscriptions are billed monthly through Apple and renew automatically
-              until cancelled. Manage or cancel anytime in iPhone Settings.
+              Subscriptions are billed monthly through {storeName} and renew automatically
+              until cancelled. Manage or cancel anytime in your store account settings.
           </Text>
         </View>
 
@@ -751,6 +823,30 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   tierStack: { gap: 14 },
+  billingPeriodToggle: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    padding: 4,
+    borderWidth: 1,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.025)',
+  },
+  billingPeriodButton: {
+    minWidth: 104,
+    minHeight: 42,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  billingPeriodButtonActive: { backgroundColor: '#ff6600' },
+  billingPeriodButtonDisabled: { opacity: 0.38 },
+  billingPeriodText: {
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 10,
+    letterSpacing: 1.2,
+  },
+  billingPeriodTextActive: { color: '#0a0806' },
   tierCard: {
     position: 'relative',
     overflow: 'hidden',

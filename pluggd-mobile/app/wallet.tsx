@@ -102,6 +102,8 @@ export default function WalletScreen() {
     purchasing,
     restoring,
     error: iapError,
+    storeName,
+    storeAccountName,
     purchaseCredits,
     restorePurchases,
   } = useCredits();
@@ -169,7 +171,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'PLUGGD credits',
-                'Apple displays the final price in your App Store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.',
+                `${storeName} displays the final price in your store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.`,
               )
             }
           >
@@ -357,7 +359,7 @@ export default function WalletScreen() {
           </Text>
         </Pressable>
 
-        <PurchaseLegalLinks note="Credits are purchased through your Apple ID and are non-refundable except where required by law." />
+        <PurchaseLegalLinks note={`Credits are purchased through your ${storeAccountName} and are non-refundable except where required by law.`} />
 
         <View
           style={[
@@ -369,7 +371,7 @@ export default function WalletScreen() {
           <Text
             style={[styles.noteText, { color: theme.colors.textMuted }]}
           >
-            Apple displays the final price in your App Store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
+            {storeName} displays the final price in your store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
           </Text>
         </View>
 

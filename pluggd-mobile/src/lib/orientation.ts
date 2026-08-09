@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 /**
- * The app runs portrait-first (app config orientation is "default" so iOS
- * allows runtime rotation; the root layout locks portrait on launch).
+ * The app runs portrait-first on compact devices (app config orientation is
+ * "default" so the root can unlock large Android windows at runtime).
  * Listening-room surfaces opt into rotation with the hook below.
  *
  * expo-screen-orientation is only touched when the native module is actually
@@ -51,6 +51,32 @@ export function lockAppPortrait() {
 }
 
 /**
+ * Keep the compact phone experience portrait-first while allowing Android
+ * tablets and unfolded devices to participate fully in rotation, resize and
+ * multi-window. Using the shortest window edge avoids treating an ordinary
+ * phone in landscape as a tablet.
+ */
+export function applyAdaptiveAppOrientation(shortestWindowEdgeDp: number) {
+  const orientation = screenOrientation();
+  if (!orientation) return;
+
+  try {
+    if (Platform.OS === 'android' && shortestWindowEdgeDp >= 600) {
+      void orientation.unlockAsync().catch(() => undefined);
+      return;
+    }
+    void orientation.lockAsync(orientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
+  } catch {
+    // Rotation support is progressive enhancement; launch remains primary.
+  }
+}
+
+function restoreAdaptiveAppOrientation() {
+  const window = Dimensions.get('window');
+  applyAdaptiveAppOrientation(Math.min(window.width, window.height));
+}
+
+/**
  * Frees rotation while the screen is mounted — turning the phone
  * sideways enters the wide listening-room layout — and returns the app
  * to portrait when the screen unmounts.
@@ -66,7 +92,7 @@ export function useListeningRoomOrientation() {
     }
     return () => {
       try {
-        void orientation.lockAsync(orientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
+        restoreAdaptiveAppOrientation();
       } catch {
         // no-op
       }

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { uploadFileToSupabaseStorage } from '../../lib/storageUpload';
 import type { MobileFeedAttachment } from '../community-feed/communityFeedTypes';
 import {
   loadFeedBundle,
@@ -160,15 +161,13 @@ export async function uploadSocialMediaAsset(input: {
   const bucket = input.quarantine ? 'ugc-quarantine' : 'social-media';
   const storagePath = `${userId}/${folder}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   try {
-    const response = await fetch(input.uri);
-    const blob = await response.blob();
-    const { error } = await (supabase as any).storage
-      .from(bucket)
-      .upload(storagePath, blob, {
-        contentType: input.mimeType || 'application/octet-stream',
-        upsert: false,
-      });
-    if (error) throw error;
+    await uploadFileToSupabaseStorage({
+      bucket,
+      path: storagePath,
+      uri: input.uri,
+      contentType: input.mimeType || 'application/octet-stream',
+      upsert: false,
+    });
     if (input.quarantine) {
       return { success: true, url: `storage://${bucket}/${storagePath}`, storagePath };
     }

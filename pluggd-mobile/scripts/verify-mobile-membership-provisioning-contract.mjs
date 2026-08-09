@@ -46,12 +46,12 @@ assert.match(schedule, /vault\.decrypted_secrets/, 'cron must read its worker cr
 assert.match(schedule, /cron\.schedule[\s\S]*membership-iap-provisioner/, 'membership provisioning must run automatically');
 assert.match(schedule, /revoke all on function public\.invoke_membership_iap_provisioner[^]*authenticated/i, 'the scheduled invoker must not be callable by app users');
 
-assert.match(membership, /appleProduct\?\.provisioned/, 'join CTA must remain hidden until StoreKit resolves the creator-tier product');
+assert.match(membership, /storeProduct\?\.provisioned/, 'join CTA must remain hidden until the active store resolves the creator-tier product');
 assert.match(membership, /router\.canGoBack\(\)[\s\S]*router\.replace\(`\/creator\//, 'membership Back must have a safe creator-profile fallback');
 assert.match(membership, /hero: \{ height: 220/, 'membership hero must not bury the first tier below an empty 330pt masthead');
 assert.match(subscriptionHook, /\.eq\('status', 'active'\)/, 'mobile catalogue must expose only active products');
-assert.match(subscriptionHook, /recoverServerVerifiedMembership/, 'subscriptions must recover from Apple server verification when StoreKit omits the JWS');
-assert.match(subscriptionHook, /\.eq\('fan_id', session\.user\.id\)[\s\S]*\.eq\('apple_sku', purchase\.productId\)/, 'membership recovery must be scoped to the signed-in fan and creator-tier SKU');
+assert.match(subscriptionHook, /recoverServerVerifiedMembership/, 'subscriptions must recover from server verification when the store callback is incomplete');
+assert.match(subscriptionHook, /\.eq\('fan_id', session\.user\.id\)[\s\S]*billing\.provider === 'apple'[\s\S]*\.eq\('apple_sku', purchase\.productId\)[\s\S]*google_play_product_id/, 'membership recovery must be scoped to the signed-in fan and provider-specific creator-tier SKU');
 assert.doesNotMatch(membership, /pluggd_tier_(?:299|499|999|1999|4999)/, 'mobile must never use a shared creator membership SKU');
 
 console.log('mobile membership provisioning contract verified');

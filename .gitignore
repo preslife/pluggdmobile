@@ -38,6 +38,7 @@ build/
 # Separate projects
 pluggd map/
 PLUGGD ACADEMY/
+.worktrees/
 
 # IDE
 .idea/
