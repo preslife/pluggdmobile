@@ -94,7 +94,10 @@ const publicConfig = JSON.parse(
 
 assert.equal(publicConfig.android.allowBackup, false);
 assert.equal(publicConfig.android.predictiveBackGestureEnabled, true);
-assert.equal(publicConfig.extra.androidGoogleMapsConfigured, false);
+assert.equal(typeof publicConfig.extra.mapboxRuntimeConfigured, 'boolean');
+assert.equal(publicConfig.extra.mapboxDownloadTokenConfigured, undefined);
+assert.equal(publicConfig.extra.mapboxNativeSdkVersion, '11.20.1');
+assert.equal(publicConfig.android.config?.googleMaps, undefined);
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.READ_EXTERNAL_STORAGE'));
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.SYSTEM_ALERT_WINDOW'));
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.WRITE_EXTERNAL_STORAGE'));
@@ -108,6 +111,7 @@ const pluginNames = publicConfig.plugins.map((plugin) => (Array.isArray(plugin) 
 assert.ok(pluginNames.includes('expo-notifications'));
 assert.ok(pluginNames.includes('expo-camera'));
 assert.ok(pluginNames.includes('./plugins/withAndroidAdaptiveActivity.cjs'));
+assert.ok(pluginNames.includes('@rnmapbox/maps'));
 const buildPropertiesPlugin = publicConfig.plugins.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
 );
@@ -147,7 +151,8 @@ const layoutSource = read('app/_layout.tsx');
 const orientationSource = read('src/lib/orientation.ts');
 const adaptiveActivityPlugin = read('plugins/withAndroidAdaptiveActivity.cjs');
 const appConfigSource = read('app.config.ts');
-const eventsMapSource = read('components/EventsMap.native.tsx');
+const eventsMapSource = read('components/EventsMap.android.tsx');
+const iosEventsMapSource = read('components/EventsMap.native.tsx');
 const pluggdImageSource = read('src/components/PluggdImage.tsx');
 const trackPlayerPatch = read('patches/react-native-track-player+4.1.2.patch');
 const playbackProvider = read('src/context/PlaybackProvider.tsx');
@@ -174,12 +179,20 @@ for (const configChange of [
 assert.match(adaptiveActivityPlugin, /AndroidConfig\.Manifest\.getMainActivityOrThrow/);
 assert.match(adaptiveActivityPlugin, /android:configChanges/);
 
-// Credential-free local and internal builds must never instantiate Google
-// Maps without its restricted Android key; native view creation would crash.
-assert.match(appConfigSource, /androidGoogleMapsConfigured:\s*Boolean\(GOOGLE_MAPS_ANDROID_API_KEY\)/);
-assert.match(eventsMapSource, /Constants\.expoConfig\?\.extra\?\.androidGoogleMapsConfigured === true/);
-assert.match(eventsMapSource, /Platform\.OS === 'android' && !androidMapsConfigured/);
-assert.match(eventsMapSource, /Map unavailable in this build/);
+// Credential-free local and internal builds must never instantiate Mapbox
+// without its public runtime token. The secret download token remains an
+// environment-only native build input and must not enter plugin config.
+assert.match(appConfigSource, /EXPO_PUBLIC_MAPBOX_TOKEN/);
+assert.match(appConfigSource, /RNMAPBOX_MAPS_DOWNLOAD_TOKEN/);
+assert.doesNotMatch(appConfigSource, /RNMapboxMapsDownloadToken\s*:/);
+assert.doesNotMatch(appConfigSource, /GOOGLE_MAPS_ANDROID_API_KEY/);
+assert.match(eventsMapSource, /from '@rnmapbox\/maps'/);
+assert.match(eventsMapSource, /Mapbox\.setAccessToken\(MAPBOX_RUNTIME_TOKEN\)/);
+assert.match(eventsMapSource, /if \(!MAPBOX_RUNTIME_TOKEN \|\| mapLoadFailed\)/);
+assert.match(eventsMapSource, /Map temporarily unavailable/);
+assert.doesNotMatch(eventsMapSource, /react-native-maps/);
+assert.match(iosEventsMapSource, /from 'react-native-maps'/);
+assert.doesNotMatch(iosEventsMapSource, /@rnmapbox\/maps/);
 
 // API 24/25 can expose a 48 MB normal app heap. Artwork-heavy ScrollViews must
 // not initiate every remote request and bitmap decode in one GC window.

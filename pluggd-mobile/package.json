@@ -12,11 +12,13 @@
     "verify:android-foundation": "node scripts/verify-android-foundation.mjs",
     "verify:android-device-smoke": "node scripts/verify-android-release-device-smoke.mjs",
     "verify:android-navigation": "node scripts/verify-android-adaptive-navigation-contract.mjs",
+    "verify:mapbox": "node scripts/verify-native-mapbox-contract.mjs",
     "verify:observability": "node scripts/verify-mobile-observability-contract.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/sora": "^0.4.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@rnmapbox/maps": "10.3.5",
     "@sentry/react-native": "~7.2.0",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.93.3",

@@ -28,7 +28,14 @@ Source-level success is not a substitute for a Play-signed build or device test.
 - [ ] Android Publisher API service account has the minimum app-scoped access.
 - [ ] Google Cloud Pub/Sub topic and push subscription exist for RTDN.
 - [ ] FCM HTTP v1 credentials are configured in EAS.
-- [ ] A Maps SDK for Android key is restricted to package and signing SHA-256.
+- [ ] A dedicated Mapbox native runtime token is configured as
+      `EXPO_PUBLIC_MAPBOX_TOKEN` in each EAS environment. It is a public `pk` token
+      with only `styles:read` and `fonts:read`; native mobile SDK tokens cannot
+      use URL restrictions, so it is not shared with web or other environments.
+- [ ] If the native dependency download requires authenticated access, an EAS
+      build secret named `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` is configured as a secret
+      `sk` token with only `downloads:read`. It is never passed through Expo
+      plugin options or committed to source.
 - [ ] `https://pluggd.fm/.well-known/assetlinks.json` contains the Play signing
       fingerprint and serves as JSON without redirects.
 - [ ] UK billing-choice and US external-content-link enrolments are approved.
@@ -41,23 +48,26 @@ Source-level success is not a substitute for a Play-signed build or device test.
       build-only EAS secrets/variables.
 
 Secrets belong in EAS, Google Cloud, Play Console, Stripe, or Supabase. Never
-commit `google-services.json`, service-account JSON, signing keys, Maps keys,
-Sentry DSNs, or Play credentials.
+commit `google-services.json`, service-account JSON, signing keys, Mapbox secret
+download tokens, Sentry auth tokens, or Play credentials. The public Mapbox
+runtime token is a client credential and must remain least-privileged and
+environment-specific.
 
-### Live service audit — 2026-08-09
+### Live service audit — 2026-08-10
 
-- Google Cloud recognises `pluggd@pluggd.fm`, but the organisation requires a
-  passkey re-authentication before the console can be inspected. No Firebase
-  project, restricted Maps key, Publisher API principal, Pub/Sub topic, or RTDN
-  push subscription is therefore evidenced yet. Do not create or rotate any
-  credential until that authenticated console session is available.
-- EAS CLI and `expo.dev` are signed out. No production EAS environment,
-  Android upload credential, FCM credential, or Sentry build variable has been
-  verified. Firebase CLI and Sentry are also signed out, and the local release
-  environment contains no Maps, FCM, or Sentry secret.
-- Supabase CLI is authenticated and the backend worktree is linked to the
-  active healthy `9XHUB` project (`qkwvqmubhyondemhasjp`). This is read-only
-  evidence; no migration, function, or secret was deployed during the audit.
+- Pluggd Ltd's Play organisation is verified. Google Cloud project
+  `pluggd-mobile-production` contains the Firebase Android app, a least-privilege
+  Android Publisher service account, the RTDN topic, and an authenticated OIDC
+  push subscription pointed at the Supabase RTDN endpoint.
+- EAS project `@pluggd-ltd/pluggd` is linked and its production environment
+  contains the Firebase configuration plus the existing public Mapbox runtime
+  token. A direct Mapbox style request returned HTTP 200 on 2026-08-10. Sentry
+  release upload credentials and a controlled production event remain external
+  gates.
+- Supabase project `qkwvqmubhyondemhasjp` contains the Google Play verification
+  secrets, but its migration history diverges from source and several Android
+  commerce objects are not present. Do not bulk-push or repair history; rehearse
+  and apply a reviewed schema delta before deploying the new functions.
 - The four Android migrations (`20260808130000`, `20260808131000`,
   `20260808132000`, and `20260809140000`) are local-only. The remote project
   exposes existing `resolve-commerce-policy`, `delete-account`,
@@ -92,7 +102,7 @@ Sentry DSNs, or Play credentials.
       Play track.
 - [x] The local release AAB manifest targets API 36, has `allowBackup=false`,
       predictive back enabled, adaptive activity configuration, and no legacy
-      storage, overlay, cleartext, or unprovisioned Maps-key entry.
+      storage, overlay, cleartext, or Google Maps API-key metadata.
 - [x] The release dependency report resolves Play Billing Library 9.1.0 through
       `openiap-google:3.0.1` and `expo-iap:5.0.1`.
 - [x] All 51 arm64 and 50 x86-64 libraries pass Android 16 KB page-size
@@ -144,9 +154,11 @@ The exact current source produced these local audit artifacts:
   provider-neutral server catalogue rows become active.
 
 The AAB was built with Sentry upload disabled because the external Sentry
-project variables are not provisioned. The local Maps key was also absent, so
-Events used the deliberate non-crashing fallback. Those are release gates, not
-local passes.
+project variables are not provisioned. That artifact predates the native
+Mapbox correction and is superseded for map verification. The current Events
+map fails safely when `EXPO_PUBLIC_MAPBOX_TOKEN` is absent or rejected; release
+evidence still requires a newly built app using a verified, least-privileged
+runtime token on a real device.
 
 ## Commerce evidence
 

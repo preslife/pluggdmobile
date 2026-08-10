@@ -8,7 +8,10 @@ const EAS_PROJECT_ID =
   process.env.EAS_PROJECT_ID ??
   'c526e1c6-4684-4744-b205-5ea3ed2b4576';
 const GOOGLE_SERVICES_FILE = process.env.GOOGLE_SERVICES_JSON;
-const GOOGLE_MAPS_ANDROID_API_KEY = process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+const MAPBOX_PUBLIC_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN?.trim() ?? '';
+const MAPBOX_NATIVE_SDK_VERSION = '11.20.1';
+// @rnmapbox/maps reads RNMAPBOX_MAPS_DOWNLOAD_TOKEN directly during native
+// dependency installation. Never forward that build-only secret into Expo config.
 const NOTIFICATION_LINK_HOSTS =
   APP_LINK_HOST === 'pluggd.fm' ? ['pluggd.fm', 'www.pluggd.fm'] : [APP_LINK_HOST];
 
@@ -132,9 +135,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.WRITE_EXTERNAL_STORAGE',
     ],
     ...(GOOGLE_SERVICES_FILE ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
-    ...(GOOGLE_MAPS_ANDROID_API_KEY
-      ? { config: { googleMaps: { apiKey: GOOGLE_MAPS_ANDROID_API_KEY } } }
-      : {}),
     intentFilters: [
       {
         action: 'VIEW',
@@ -160,6 +160,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     '@sentry/react-native',
     './plugins/withAndroidAdaptiveActivity.cjs',
+    [
+      '@rnmapbox/maps',
+      {
+        RNMapboxMapsVersion: MAPBOX_NATIVE_SDK_VERSION,
+      },
+    ],
     [
       'expo-build-properties',
       {
@@ -217,7 +223,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         }
       : {}),
     appEnvironment: APP_ENV,
-    androidGoogleMapsConfigured: Boolean(GOOGLE_MAPS_ANDROID_API_KEY),
+    mapboxRuntimeConfigured: Boolean(MAPBOX_PUBLIC_TOKEN),
+    mapboxNativeSdkVersion: MAPBOX_NATIVE_SDK_VERSION,
     notificationLinkHosts: NOTIFICATION_LINK_HOSTS,
     launchAccessRequired: !IS_PRODUCTION,
   },

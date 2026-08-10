@@ -73,7 +73,9 @@ of the way.
 - `expo-glass-effect` is confined to `components/PluggdPrimitives.tsx` and already
   gated behind `canUseGlassEffect()` → `Platform.OS === 'ios'`, with a
   `theme.colors.glassFallback`. Android already degrades correctly. **No work.**
-- Events maps use the Mapbox **Static Images API**, not a native module. Works as-is.
+- Events maps share Mapbox geocoding and styling. Android uses the interactive
+  Mapbox mobile SDK through `@rnmapbox/maps`; iOS retains its submitted native
+  map and browser exports retain the Mapbox **Static Images API** fallback.
 - Agora, TrackPlayer, MMKV, Reanimated, Skia-free SVG, expo-video, expo-camera all
   support Android.
 - The whole Studio, Split Engine, discovery, editorial and design-system work is
