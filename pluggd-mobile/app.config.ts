@@ -3,7 +3,10 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 const IS_PRODUCTION = APP_ENV === 'production';
 const APP_LINK_HOST = (process.env.EXPO_PUBLIC_APP_LINK_HOST ?? 'pluggd.fm').trim().toLowerCase();
-const EAS_PROJECT_ID = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? process.env.EAS_PROJECT_ID;
+const EAS_PROJECT_ID =
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+  process.env.EAS_PROJECT_ID ??
+  'c526e1c6-4684-4744-b205-5ea3ed2b4576';
 const GOOGLE_SERVICES_FILE = process.env.GOOGLE_SERVICES_JSON;
 const GOOGLE_MAPS_ANDROID_API_KEY = process.env.GOOGLE_MAPS_ANDROID_API_KEY;
 const NOTIFICATION_LINK_HOSTS =
@@ -12,6 +15,7 @@ const NOTIFICATION_LINK_HOSTS =
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Pluggd',
+  owner: 'pluggd-ltd',
   slug: 'pluggd',
   scheme: 'pluggd',
   version: '1.0.0',
