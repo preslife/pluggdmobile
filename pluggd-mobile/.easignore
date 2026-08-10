@@ -1,0 +1,33 @@
+# Dependencies and local tool state
+node_modules/
+.expo/
+.kotlin/
+.git/
+
+# Generated output
+android/
+ios/
+dist/
+web-build/
+*.aab
+*.apk
+*.tsbuildinfo
+
+# Local secrets and credentials (EAS environments supply release values)
+.env
+.env.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+google-services.json
+
+# Development-only evidence and logs
+artifacts/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.orig.*
