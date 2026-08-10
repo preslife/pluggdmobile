@@ -160,6 +160,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     '@sentry/react-native',
     './plugins/withAndroidAdaptiveActivity.cjs',
+    './plugins/withAndroidGradleMemory.cjs',
     [
       '@rnmapbox/maps',
       {

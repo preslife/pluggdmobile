@@ -111,6 +111,7 @@ const pluginNames = publicConfig.plugins.map((plugin) => (Array.isArray(plugin) 
 assert.ok(pluginNames.includes('expo-notifications'));
 assert.ok(pluginNames.includes('expo-camera'));
 assert.ok(pluginNames.includes('./plugins/withAndroidAdaptiveActivity.cjs'));
+assert.ok(pluginNames.includes('./plugins/withAndroidGradleMemory.cjs'));
 assert.ok(pluginNames.includes('@rnmapbox/maps'));
 const buildPropertiesPlugin = publicConfig.plugins.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
@@ -150,6 +151,7 @@ assert.doesNotMatch(socialUploadSource, /response\.blob\(\)/);
 const layoutSource = read('app/_layout.tsx');
 const orientationSource = read('src/lib/orientation.ts');
 const adaptiveActivityPlugin = read('plugins/withAndroidAdaptiveActivity.cjs');
+const gradleMemoryPlugin = read('plugins/withAndroidGradleMemory.cjs');
 const appConfigSource = read('app.config.ts');
 const eventsMapSource = read('components/EventsMap.android.tsx');
 const iosEventsMapSource = read('components/EventsMap.native.tsx');
@@ -178,6 +180,14 @@ for (const configChange of [
 }
 assert.match(adaptiveActivityPlugin, /AndroidConfig\.Manifest\.getMainActivityOrThrow/);
 assert.match(adaptiveActivityPlugin, /android:configChanges/);
+
+// R8 and release lint exceed Expo's generated 2 GB heap once Mapbox, Agora,
+// Billing, and Sentry are linked. Keep the proven 6 GB setting in CNG output so
+// clean EAS builds do not depend on a locally edited android/ directory.
+assert.match(gradleMemoryPlugin, /withGradleProperties/);
+assert.match(gradleMemoryPlugin, /org\.gradle\.jvmargs/);
+assert.match(gradleMemoryPlugin, /-Xmx6g/);
+assert.match(gradleMemoryPlugin, /MaxMetaspaceSize=1g/);
 
 // Credential-free local and internal builds must never instantiate Mapbox
 // without its public runtime token. The secret download token remains an
