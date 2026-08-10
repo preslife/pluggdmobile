@@ -7,6 +7,7 @@ node_modules/
 # Generated output
 android/
 ios/
+build/
 dist/
 web-build/
 *.aab
