@@ -91,7 +91,7 @@ environment-specific.
 - [x] `npm run verify:mobile` passes against the checked-in lockfile, including
       all shared/iOS contracts, TypeScript, a real Android Hermes/source-map
       export, Expo Doctor 18/18, and the observability contract.
-- [ ] The production EAS job repeats installation and verification in a clean
+- [x] The production EAS job repeats installation and verification in a clean
       build environment.
 - [x] The current npm advisory result and runtime reachability disposition are
       recorded in `DEPENDENCY_SECURITY_AUDIT_2026-08-08.md`; no automated
@@ -100,7 +100,7 @@ environment-specific.
       release bundle proves React DevTools/`shell-quote` are excluded.
 - [x] Clean Expo CNG Android prebuild passes.
 - [x] Debug Gradle build installs and boots on API 36.
-- [ ] Production AAB is signed by the upload key and accepted by the internal
+- [x] Production AAB is signed by the upload key and accepted by the internal
       Play track.
 - [x] The local release AAB manifest targets API 36, has `allowBackup=false`,
       predictive back enabled, adaptive activity configuration, and no legacy
@@ -164,6 +164,24 @@ the live Mapbox event map were rendered and inspected. The final screenshots
 are in [`store-assets`](store-assets/). The app still fails safely when
 `EXPO_PUBLIC_MAPBOX_TOKEN` is absent or rejected.
 
+## Play internal release evidence — 2026-08-11
+
+- EAS production build `ecd995d7-4fdc-444d-b827-180feeccd45f` completed from
+  commit `91c81b8` as Android version code 9. The clean cloud build compiled all
+  four supported ABIs, completed release lint and R8 shrinking, and used the
+  configured production upload key.
+- The downloaded 271 MB AAB has SHA-256
+  `7c48c72f3d5cfb3d4b88530da4b1488ac77eee9137b16b87e9be369697a1a68a`.
+  ZIP integrity verification reported no errors.
+- Android Publisher edit `05212581463699531938` uploaded the exact AAB and
+  committed `PLUGGD Android 1.0.0 (9)` to the `internal` track with status
+  `completed`. A separate Publisher API read-back returned version code 9 and
+  the same completed status.
+- Source-map upload is explicitly skipped in EAS profiles until the Sentry
+  organisation, project, and auth-token gates above are provisioned. The SDK's
+  privacy-safe runtime integration remains in source, but this internal build
+  is not evidence of a controlled Sentry release event.
+
 ## Play store listing evidence — 2026-08-10
 
 - The `en-GB` listing, 512x512 RGB icon, and 1024x500 RGB feature graphic are
@@ -174,8 +192,9 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   live 10 August 2026 content; the Events map visibly uses Mapbox.
 - Data Safety, app access, ads, content rating, target audience, government,
   financial, and health declarations are completed in Play Console.
-- Store-listing assets are complete. A Play-signed production AAB accepted by
-  the internal track remains a separate unchecked gate.
+- Store-listing assets are complete. Version code 9 is Play-signed and accepted
+  on the completed internal-testing track; public rollout remains gated by the
+  unchecked commerce, legal, live-service, and device-policy evidence below.
 
 ## Commerce evidence
 
