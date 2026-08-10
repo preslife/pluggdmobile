@@ -1,0 +1,74 @@
+# Root Git ignores (EAS prioritises this file over .gitignore)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+.env
+.env.*
+pluggd map/
+PLUGGD ACADEMY/
+.worktrees/
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.bak
+*.backup
+Thumbs.db
+coverage/
+.nyc_output/
+
+# Repository-only tooling and history are not Android build inputs
+.git/
+.claude/
+.codex/
+.agents/
+AGENTS.md
+supabase/
+src/
+public/
+tests/
+docs/
+scripts/
+ios/
+app-store-screenshots/
+BUILD GUIDES/
+PLUGGD TESTING FOLDER/
+stitch_pluggd_home_discovery/
+stitch_pluggd_home_discovery (1).zip
+pluggd-mobile-iap-review-wallet.png
+pluggd-mobile-iap-review-wallet-apple-prices.png
+
+# Mobile-only local output and evidence
+pluggd-mobile/.expo/
+pluggd-mobile/.kotlin/
+pluggd-mobile/android/
+pluggd-mobile/ios/
+pluggd-mobile/build/
+pluggd-mobile/dist/
+pluggd-mobile/web-build/
+pluggd-mobile/artifacts/
+pluggd-mobile/.env
+pluggd-mobile/.env.*
+pluggd-mobile/*.aab
+pluggd-mobile/*.apk
+pluggd-mobile/*.tsbuildinfo
+pluggd-mobile/*.jks
+pluggd-mobile/*.p8
+pluggd-mobile/*.p12
+pluggd-mobile/*.key
+pluggd-mobile/*.mobileprovision
+pluggd-mobile/*.pem
+pluggd-mobile/google-services.json
