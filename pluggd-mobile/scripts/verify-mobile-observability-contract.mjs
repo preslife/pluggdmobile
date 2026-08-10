@@ -37,6 +37,7 @@ const metroConfig = read('metro.config.js');
 const layout = read('app/_layout.tsx');
 const observability = read('src/lib/observability.ts');
 const readiness = read('docs/google-play/RELEASE_READINESS.md');
+const easConfig = JSON.parse(read('eas.json'));
 
 assert.match(appConfig, /'@sentry\/react-native'/);
 assert.match(metroConfig, /getSentryExpoConfig\(__dirname/);
@@ -50,6 +51,13 @@ assert.match(observability, /attachScreenshot:\s*false/);
 assert.match(observability, /attachViewHierarchy:\s*false/);
 assert.match(readiness, /SENTRY_AUTH_TOKEN/);
 assert.match(readiness, /controlled test event/);
+for (const profile of ['development', 'preview', 'production']) {
+  assert.equal(
+    easConfig.build[profile].env.SENTRY_DISABLE_AUTO_UPLOAD,
+    'true',
+    `EAS ${profile} builds must skip optional Sentry uploads until release credentials are provisioned.`,
+  );
+}
 
 const { sanitizeObservabilityBreadcrumb, sanitizeObservabilityUrl } =
   loadPureTypeScriptModule('src/lib/observabilityPolicy.ts');
