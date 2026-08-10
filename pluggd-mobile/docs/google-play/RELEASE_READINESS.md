@@ -16,19 +16,20 @@ Source-level success is not a substitute for a Play-signed build or device test.
 
 ## External account gates
 
-- [ ] Pluggd Ltd Google Play organisation account is verified. Live Play
-      Console inspection on 2026-08-09 confirms account ID
-      `5583821221716547447` is still awaiting Google identity/document approval;
-      phone verification and **Create app** remain disabled. Evidence:
-      [`play-account-verification-pending.png`](../../artifacts/qa/android-v1-2026-08-08/play-account-verification-pending.png).
-- [ ] `com.pluggd.mobile` is registered and protected in Play Console.
-- [ ] Play App Signing is enabled and both upload and app-signing SHA-256
-      fingerprints are recorded.
+- [x] Pluggd Ltd Google Play organisation account is verified. Account ID:
+      `5583821221716547447`.
+- [x] `com.pluggd.mobile` is registered and protected in Play Console.
+- [x] Play App Signing is enabled and the app-signing SHA-256 fingerprint is
+      recorded in the release handoff.
 - [ ] Merchant/payments profile is active for Pluggd Ltd.
-- [ ] Android Publisher API service account has the minimum app-scoped access.
-- [ ] Google Cloud Pub/Sub topic and push subscription exist for RTDN.
-- [ ] FCM HTTP v1 credentials are configured in EAS.
-- [ ] A dedicated Mapbox native runtime token is configured as
+- [x] Android Publisher API service account has minimum app-scoped access for
+      store presence and internal testing; production release permission is
+      intentionally not granted.
+- [x] Google Cloud Pub/Sub topic and authenticated push subscription exist for
+      RTDN.
+- [x] Firebase/Google services configuration is present in the EAS production
+      environment for FCM. Supabase remains PLUGGD's application backend.
+- [x] A dedicated Mapbox native runtime token is configured as
       `EXPO_PUBLIC_MAPBOX_TOKEN` in each EAS environment. It is a public `pk` token
       with only `styles:read` and `fonts:read`; native mobile SDK tokens cannot
       use URL restrictions, so it is not shared with web or other environments.
@@ -41,7 +42,8 @@ Source-level success is not a substitute for a Play-signed build or device test.
 - [ ] UK billing-choice and US external-content-link enrolments are approved.
 - [ ] The exact EEA programme used by the release permits the implemented choice
       flow; otherwise the EEA external-checkout flag remains disabled.
-- [ ] Play licence testers and internal/closed test groups are configured.
+- [x] The `PLUGGD Internal QA` Play tester list is configured for the internal
+      track with `lordtokumbo@gmail.com`.
 - [ ] A Sentry project exists for both Android and iOS, with
       `EXPO_PUBLIC_SENTRY_DSN` stored in the applicable EAS environments and
       `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` stored as
@@ -153,12 +155,27 @@ The exact current source produced these local audit artifacts:
   proves that new monthly/yearly base plans are activated in Play before their
   provider-neutral server catalogue rows become active.
 
-The AAB was built with Sentry upload disabled because the external Sentry
-project variables are not provisioned. That artifact predates the native
-Mapbox correction and is superseded for map verification. The current Events
-map fails safely when `EXPO_PUBLIC_MAPBOX_TOKEN` is absent or rejected; release
-evidence still requires a newly built app using a verified, least-privileged
-runtime token on a real device.
+The 2026-08-09 AAB was built with Sentry upload disabled because the external
+Sentry project variables are not provisioned. It predates the native Mapbox
+correction and is superseded for map verification. On 2026-08-10, current
+source produced a release-mode arm64 APK with Billing 9 and Mapbox, and that APK
+cold-launched on API 36 at 1080x1920 and 2560x1440. Home, Discover, Events, and
+the live Mapbox event map were rendered and inspected. The final screenshots
+are in [`store-assets`](store-assets/). The app still fails safely when
+`EXPO_PUBLIC_MAPBOX_TOKEN` is absent or rejected.
+
+## Play store listing evidence — 2026-08-10
+
+- The `en-GB` listing, 512x512 RGB icon, and 1024x500 RGB feature graphic are
+  committed in Play Console.
+- Publisher edit `16819659014713659865` committed four 1080x1920 RGB JPEG phone
+  screenshots and two 2560x1440 RGB JPEG screenshots to both the seven-inch and
+  ten-inch tablet slots. All screenshots are current release-mode renders with
+  live 10 August 2026 content; the Events map visibly uses Mapbox.
+- Data Safety, app access, ads, content rating, target audience, government,
+  financial, and health declarations are completed in Play Console.
+- Store-listing assets are complete. A Play-signed production AAB accepted by
+  the internal track remains a separate unchecked gate.
 
 ## Commerce evidence
 
@@ -217,7 +234,7 @@ Critical journeys:
 
 ## Play policy declarations
 
-- [ ] Data Safety form matches `DATA_SAFETY_INVENTORY.md` and the release SDK
+- [x] Data Safety form matches `DATA_SAFETY_INVENTORY.md` and the release SDK
       dependency report.
 - [ ] Privacy policy, terms, account-deletion URL, support URL, and refund paths
       are public and name Pluggd Ltd consistently. The canonical backend branch
@@ -226,7 +243,7 @@ Critical journeys:
       deletion/export/moderation functions; live inspection on 2026-08-09 still
       renders **Page Not Found**, so this remains unchecked until the migration,
       functions, and route are deployed and verified on the public host.
-- [ ] Content rating and target-audience declarations state the 16+ posture.
+- [x] Content rating and target-audience declarations state the 16+ posture.
 - [x] Neutral age confirmation appears before social OAuth account creation.
       Signup uses an unchecked accessible 16+ checkbox; login uses an explicit
       provider confirmation action; both Apple and Google helpers reject calls
@@ -239,8 +256,9 @@ Critical journeys:
 - [ ] Foreground media playback service is declared with review evidence.
 - [ ] App access instructions exercise signed-in, creator, commerce, and safety
       surfaces without relying on production customer data.
-- [ ] Phone, tablet, and foldable screenshots use current cleared content and
-      match the submitted build.
+- [ ] Phone and tablet screenshots are current release-mode renders and are
+      committed to Play. A current foldable screenshot matching the submitted
+      AAB remains required before this combined gate can be checked.
 
 ## Rollout gates
 

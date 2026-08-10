@@ -37,7 +37,7 @@ coverage/
 .agents/
 AGENTS.md
 supabase/
-src/
+/src/
 public/
 tests/
 docs/
