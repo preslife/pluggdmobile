@@ -181,16 +181,22 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   configured behaviour is to stop playback and remove the notification. The
   source patch now returns `START_NOT_STICKY`, with a checked-in contract that
   prevents regression.
-- The version-13 release APK compiled the patched TrackPlayer service, passed
-  release lint/R8/signing, and completed the exact lifecycle reproduction on an
-  API 36 emulator: start the media service, background the app, clear logs,
-  kill the process, wait through the restart window, and relaunch. No service
-  restart, `ForegroundServiceStartNotAllowedException`, fatal exception, or
-  relaunch failure occurred.
+- The exact Play-signed version-13 build was installed from Google Play on an
+  API 36 emulator. Its signing certificate SHA-256 is
+  `85caaad251686fdea58555712483f421059059614007d888042c69e5d1571273`,
+  matching the certificate published in `assetlinks.json`. A cold verified
+  `https://pluggd.fm/notifications` App Link opened PLUGGD's Activity screen.
+  The same installed build completed the lifecycle reproduction: start the
+  media service, background the app, kill the process, wait through the
+  restart window, and relaunch. No service restart,
+  `ForegroundServiceStartNotAllowedException`, fatal exception, or relaunch
+  failure occurred.
 - Production version 13 is submitted for Google review as a 5% staged rollout.
   Submitting the corrected candidate deliberately restarted the same-day
-  version-10 launch review so Google reviews the fixed bundle. Managed
-  publishing remains ON, so approval cannot publish the app automatically.
+  version-10 launch review so Google reviews the fixed bundle. Google's
+  automated pre-review checks completed and the Publishing overview now shows
+  the changes in review. Managed publishing remains ON, so approval cannot
+  publish the app automatically.
 - The final exact Play-signed version-13 notification-tap and lifecycle repeat
   on the Samsung remains pending only because the physical phone disconnected
   after the version-13 internal release became available.
