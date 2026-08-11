@@ -162,17 +162,30 @@ are in [`store-assets`](store-assets/). The app still fails safely when
 
 ## Play internal release evidence — 2026-08-11
 
-- EAS production build `ecd995d7-4fdc-444d-b827-180feeccd45f` completed from
-  commit `91c81b8` as Android version code 9. The clean cloud build compiled all
-  four supported ABIs, completed release lint and R8 shrinking, and used the
-  configured production upload key.
-- The downloaded 271 MB AAB has SHA-256
-  `7c48c72f3d5cfb3d4b88530da4b1488ac77eee9137b16b87e9be369697a1a68a`.
+- EAS production build `c5cfb6cf-1dc7-437a-a798-6c9e94fc7c36` completed from
+  commit `e39302c` as Android version code 10. The clean cloud build compiled
+  all four supported ABIs, completed release lint and R8 shrinking, and used
+  the configured production upload key.
+- The downloaded version-code-10 AAB has SHA-256
+  `e32bd1a610662306569650f9a2cf8187d2f6a38d65c326f4eda2f18108e9de8b`.
   ZIP integrity verification reported no errors.
-- Android Publisher edit `05212581463699531938` uploaded the exact AAB and
-  committed `PLUGGD Android 1.0.0 (9)` to the `internal` track with status
-  `completed`. A separate Publisher API read-back returned version code 9 and
-  the same completed status.
+- Bundletool inspection of that exact AAB confirms package
+  `com.pluggd.mobile`, minimum API 24, target API 36, Billing Library 9.1.0,
+  `allowBackup=false`, predictive back enabled, verified App Links, FCM and
+  Mapbox native initialisation, and only the declared media-playback foreground
+  service. It contains neither the media-projection permission nor Agora's
+  optional screen-sharing service.
+- `PLUGGD Android 1.0.0 (10)` is active and available to the configured internal
+  testers. Version code 9 was replaced rather than left as the active test
+  candidate.
+- Production release `1.0.0 — Android launch` is staged in Publishing overview
+  with only version code 10. Its release preview is `Ready to release`, with no
+  bundle validation errors or warnings. It has not been sent for public review
+  because the exact Play-signed real-money purchase gate below remains open.
+- The foreground-service declaration now contains only media playback. Its
+  required demonstration shows PLUGGD continuing playback in the background
+  with Android's system media controls and is available at
+  `https://drive.google.com/file/d/1fJlJXFqleXwF4ZZxnqVZNu-wTPFa44ha/view?usp=sharing`.
 - Source-map upload is explicitly skipped in EAS profiles until the Sentry
   organisation, project, and auth-token gates above are provisioned. The SDK's
   privacy-safe runtime integration remains in source, but this internal build
@@ -182,14 +195,10 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   `plg_m_dfb18df1ab6e_32822335` with monthly and annual base plans. Exact active
   server catalogue rows and authenticated commerce-policy reads resolve these
   products to Google Play Billing while external checkout remains disabled.
-- A production release draft is staged with release notes and all supported
-  countries/regions. Version code 9 exposed an accurate Play Console error for
-  an unused Agora screen-sharing foreground service. The source fix removes the
-  optional media-projection service and permission while retaining TrackPlayer's
-  legitimate media-playback service. A clean release manifest merge proves the
-  corrected manifest contains `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and contains
-  neither `FOREGROUND_SERVICE_MEDIA_PROJECTION` nor Agora's
-  `LocalScreenSharingService`. Version code 10 will supersede version code 9.
+- Version code 9 exposed an accurate Play Console error for an unused Agora
+  screen-sharing foreground service. The source fix removed that service and
+  permission while retaining TrackPlayer's legitimate media-playback service;
+  version code 10 is the corrected Play candidate and has superseded version 9.
 
 ## Play store listing evidence — 2026-08-10
 
@@ -201,8 +210,8 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   live 10 August 2026 content; the Events map visibly uses Mapbox.
 - Data Safety, app access, ads, content rating, target audience, government,
   financial, and health declarations are completed in Play Console.
-- Store-listing assets are complete. Version code 9 is Play-signed and accepted
-  on the completed internal-testing track; public rollout remains gated by the
+- Store-listing assets are complete. Version code 10 is Play-signed and active
+  on the internal-testing track; public rollout remains gated by the
   unchecked commerce, legal, live-service, and device-policy evidence below.
 
 ## Commerce evidence
