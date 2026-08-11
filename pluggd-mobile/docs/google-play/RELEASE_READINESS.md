@@ -178,10 +178,11 @@ are in [`store-assets`](store-assets/). The app still fails safely when
 - `PLUGGD Android 1.0.0 (10)` is active and available to the configured internal
   testers. Version code 9 was replaced rather than left as the active test
   candidate.
-- Production release `1.0.0 — Android launch` is staged in Publishing overview
-  with only version code 10. Its release preview is `Ready to release`, with no
-  bundle validation errors or warnings. It has not been sent for public review
-  because the exact Play-signed real-money purchase gate below remains open.
+- Production release `1.0.0 — Android launch` was submitted to Google Play for
+  review with only version code 10. Its release preview was `Ready to release`,
+  with no bundle validation errors or warnings. Managed publishing is enabled,
+  so approval cannot make the app public until the exact Play-signed real-money
+  purchase gate below passes and the release is deliberately published.
 - The foreground-service declaration now contains only media playback. Its
   required demonstration shows PLUGGD continuing playback in the background
   with Android's system media controls and is available at
@@ -284,13 +285,15 @@ Critical journeys:
 
 - [x] Data Safety form matches `DATA_SAFETY_INVENTORY.md` and the release SDK
       dependency report.
-- [ ] Privacy policy, terms, account-deletion URL, support URL, and refund paths
-      are public and name Pluggd Ltd consistently. The canonical backend branch
-      now includes a self-service, pre-rendered
-      `https://www.pluggd.fm/account-deletion` route plus provider-neutral
-      deletion/export/moderation functions; live inspection on 2026-08-09 still
-      renders **Page Not Found**, so this remains unchecked until the migration,
-      functions, and route are deployed and verified on the public host.
+- [x] Advertising ID is declared as unused. The exact version-code-10 bundle
+      contains no `com.google.android.gms.permission.AD_ID` permission.
+- [x] Privacy policy, terms, account-deletion URL, support URL, and refund paths
+      are public and name Pluggd Ltd consistently. The self-service,
+      pre-rendered `https://www.pluggd.fm/account-deletion` route and the
+      provider-neutral deletion/export functions are deployed. `/privacy`,
+      `/terms`, `/account-deletion`, `/support`, `/contact`, and `/refunds` all
+      return HTTP 200; the canonical policy content names Pluggd Ltd and directs
+      billing/refund requests to `support@pluggd.fm`.
 - [x] Content rating and target-audience declarations state the 16+ posture.
 - [x] Neutral age confirmation appears before social OAuth account creation.
       Signup uses an unchecked accessible 16+ checkbox; login uses an explicit
@@ -301,7 +304,9 @@ Critical journeys:
       Play review account.
 - [ ] Social/child-safety and CSAE standards/contact are supplied if Play
       categorises PLUGGD as Social.
-- [ ] Foreground media playback service is declared with review evidence.
+- [x] Foreground media playback service is declared with review evidence. The
+      Play declaration contains only media playback and links to the public
+      background-playback/system-controls demonstration recorded above.
 - [ ] App access instructions exercise signed-in, creator, commerce, and safety
       surfaces without relying on production customer data.
 - [ ] Phone and tablet screenshots are current release-mode renders and are
