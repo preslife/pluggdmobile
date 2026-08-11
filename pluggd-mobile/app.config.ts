@@ -130,6 +130,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     allowBackup: false,
     blockedPermissions: [
+      'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION',
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.SYSTEM_ALERT_WINDOW',
       'android.permission.WRITE_EXTERNAL_STORAGE',
@@ -161,6 +162,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     '@sentry/react-native',
     './plugins/withAndroidAdaptiveActivity.cjs',
     './plugins/withAndroidGradleMemory.cjs',
+    './plugins/withAndroidNoUnusedMediaProjection.cjs',
     [
       '@rnmapbox/maps',
       {

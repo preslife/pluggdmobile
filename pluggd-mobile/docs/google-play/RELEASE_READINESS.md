@@ -21,7 +21,7 @@ Source-level success is not a substitute for a Play-signed build or device test.
 - [x] `com.pluggd.mobile` is registered and protected in Play Console.
 - [x] Play App Signing is enabled and the app-signing SHA-256 fingerprint is
       recorded in the release handoff.
-- [ ] Merchant/payments profile is active for Pluggd Ltd.
+- [x] Merchant/payments profile is active for Pluggd Ltd.
 - [x] Android Publisher API service account has minimum app-scoped access for
       store presence and internal testing; production release permission is
       intentionally not granted.
@@ -37,7 +37,7 @@ Source-level success is not a substitute for a Play-signed build or device test.
       build secret named `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` is configured as a secret
       `sk` token with only `downloads:read`. It is never passed through Expo
       plugin options or committed to source.
-- [ ] `https://pluggd.fm/.well-known/assetlinks.json` contains the Play signing
+- [x] `https://pluggd.fm/.well-known/assetlinks.json` contains the Play signing
       fingerprint and serves as JSON without redirects.
 - [ ] UK billing-choice and US external-content-link enrolments are approved.
 - [ ] The exact EEA programme used by the release permits the implemented choice
@@ -55,7 +55,7 @@ download tokens, Sentry auth tokens, or Play credentials. The public Mapbox
 runtime token is a client credential and must remain least-privileged and
 environment-specific.
 
-### Live service audit — 2026-08-10
+### Live service audit — 2026-08-11
 
 - Pluggd Ltd's Play organisation is verified. Google Cloud project
   `pluggd-mobile-production` contains the Firebase Android app, a least-privilege
@@ -66,25 +66,21 @@ environment-specific.
   token. A direct Mapbox style request returned HTTP 200 on 2026-08-10. Sentry
   release upload credentials and a controlled production event remain external
   gates.
-- Supabase project `qkwvqmubhyondemhasjp` contains the Google Play verification
-  secrets, but its migration history diverges from source and several Android
-  commerce objects are not present. Do not bulk-push or repair history; rehearse
-  and apply a reviewed schema delta before deploying the new functions.
-- The four Android migrations (`20260808130000`, `20260808131000`,
-  `20260808132000`, and `20260809140000`) are local-only. The remote project
-  exposes existing `resolve-commerce-policy`, `delete-account`,
-  `export-my-data`, and `moderate-user-content` function slugs, but does not
-  expose `validate-google-play-purchase`, `google-play-rtdn`, or
-  `report-google-play-external-transaction`. Existing slugs are not evidence
-  that the provider-neutral branch implementations are deployed.
-- Supabase has `ACCOUNT_DELETION_AUDIT_SALT`, but does not have the required
-  `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`,
-  `GOOGLE_PLAY_PUBSUB_AUDIENCE`,
-  `GOOGLE_PLAY_PUBSUB_SERVICE_ACCOUNT_EMAIL`, or external-program secrets.
-- Live browser inspection of `https://www.pluggd.fm/account-deletion` renders
-  PLUGGD's **Page Not Found** surface. The source route is complete but not
-  deployed. `https://pluggd.fm/.well-known/assetlinks.json` returns the generic
-  web application HTML shell with `text/html`, not Digital Asset Links JSON.
+- The four reviewed Android migrations (`20260808130000`, `20260808131000`,
+  `20260808132000`, and `20260809140000`) were rehearsed and applied to Supabase
+  one at a time. Only those exact migration timestamps were repaired; unrelated
+  production migration history was not changed.
+- The provider-neutral Google verification, RTDN, credit licensing, commerce
+  policy, reporting, account deletion/export, moderation, spend, gifting, and
+  licensing function set is deployed and ACTIVE. Unauthenticated requests were
+  smoke-tested to fail closed.
+- Required Google Play verification and Pub/Sub secret names are provisioned.
+  External-program flags remain disabled until Play approves the exact program,
+  so digital commerce safely remains Play/credits-only.
+- `https://www.pluggd.fm/account-deletion` and
+  `https://www.pluggd.fm/.well-known/assetlinks.json` both return HTTP 200. The
+  Asset Links document names `com.pluggd.mobile` and the Play App Signing SHA-256
+  fingerprint `85:CA:AA:D2:51:68:6F:DE:A5:85:55:71:24:83:F4:21:05:90:59:61:40:07:D8:88:04:2C:69:E5:D1:57:12:73`.
 
 ## Build and native evidence
 
@@ -181,6 +177,19 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   organisation, project, and auth-token gates above are provisioned. The SDK's
   privacy-safe runtime integration remains in source, but this internal build
   is not evidence of a controlled Sentry release event.
+- Play product setup now includes an active 500-credit consumable
+  `pluggd_credits_starter` and an active Kxngdom membership subscription
+  `plg_m_dfb18df1ab6e_32822335` with monthly and annual base plans. Exact active
+  server catalogue rows and authenticated commerce-policy reads resolve these
+  products to Google Play Billing while external checkout remains disabled.
+- A production release draft is staged with release notes and all supported
+  countries/regions. Version code 9 exposed an accurate Play Console error for
+  an unused Agora screen-sharing foreground service. The source fix removes the
+  optional media-projection service and permission while retaining TrackPlayer's
+  legitimate media-playback service. A clean release manifest merge proves the
+  corrected manifest contains `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and contains
+  neither `FOREGROUND_SERVICE_MEDIA_PROJECTION` nor Agora's
+  `LocalScreenSharingService`. Version code 10 will supersede version code 9.
 
 ## Play store listing evidence — 2026-08-10
 
@@ -197,6 +206,10 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   unchecked commerce, legal, live-service, and device-policy evidence below.
 
 ## Commerce evidence
+
+The active Play catalogue and authenticated live policy mapping are verified.
+The unchecked items below require an exact Play-signed install and tester
+account; a local or debug-signed APK cannot prove them.
 
 - [ ] One Play credit pack completes purchase, server verification, durable
       wallet grant, consume, reinstall recovery, refund, and RTDN handling.
@@ -219,6 +232,13 @@ are in [`store-assets`](store-assets/). The app still fails safely when
 - [ ] Provider-specific subscription management and refund/support URLs work.
 
 ## Functional and rendered QA matrix
+
+An API 36 Google Play system image is provisioned as `PLUGGD_Play_API_36` and
+boots cleanly. Current source cold-launched, rendered Home and Events, displayed
+the native Mapbox events map with live markers, and showed the neutral 16+ gate
+before social OAuth. The emulator has no Google account by design; signing the
+configured tester into Play Store is the remaining prerequisite for exact
+Play-signed install, product-query, purchase, FCM, and App Link evidence.
 
 Required form factors:
 

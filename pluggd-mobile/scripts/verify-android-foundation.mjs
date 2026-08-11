@@ -98,6 +98,7 @@ assert.equal(typeof publicConfig.extra.mapboxRuntimeConfigured, 'boolean');
 assert.equal(publicConfig.extra.mapboxDownloadTokenConfigured, undefined);
 assert.equal(publicConfig.extra.mapboxNativeSdkVersion, '11.20.1');
 assert.equal(publicConfig.android.config?.googleMaps, undefined);
+assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION'));
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.READ_EXTERNAL_STORAGE'));
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.SYSTEM_ALERT_WINDOW'));
 assert.ok(publicConfig.android.blockedPermissions.includes('android.permission.WRITE_EXTERNAL_STORAGE'));
@@ -112,6 +113,7 @@ assert.ok(pluginNames.includes('expo-notifications'));
 assert.ok(pluginNames.includes('expo-camera'));
 assert.ok(pluginNames.includes('./plugins/withAndroidAdaptiveActivity.cjs'));
 assert.ok(pluginNames.includes('./plugins/withAndroidGradleMemory.cjs'));
+assert.ok(pluginNames.includes('./plugins/withAndroidNoUnusedMediaProjection.cjs'));
 assert.ok(pluginNames.includes('@rnmapbox/maps'));
 const buildPropertiesPlugin = publicConfig.plugins.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
@@ -152,6 +154,7 @@ const layoutSource = read('app/_layout.tsx');
 const orientationSource = read('src/lib/orientation.ts');
 const adaptiveActivityPlugin = read('plugins/withAndroidAdaptiveActivity.cjs');
 const gradleMemoryPlugin = read('plugins/withAndroidGradleMemory.cjs');
+const noUnusedMediaProjectionPlugin = read('plugins/withAndroidNoUnusedMediaProjection.cjs');
 const appConfigSource = read('app.config.ts');
 const eventsMapSource = read('components/EventsMap.android.tsx');
 const iosEventsMapSource = read('components/EventsMap.native.tsx');
@@ -188,6 +191,13 @@ assert.match(gradleMemoryPlugin, /withGradleProperties/);
 assert.match(gradleMemoryPlugin, /org\.gradle\.jvmargs/);
 assert.match(gradleMemoryPlugin, /-Xmx6g/);
 assert.match(gradleMemoryPlugin, /MaxMetaspaceSize=1g/);
+
+// Agora ships optional screen-sharing components, but PLUGGD does not expose
+// screen sharing. Keep its mediaProjection service and permission out of the
+// release manifest so Play receives an accurate foreground-service declaration.
+assert.match(noUnusedMediaProjectionPlugin, /LocalScreenSharingService/);
+assert.match(noUnusedMediaProjectionPlugin, /application\.service/);
+assert.match(noUnusedMediaProjectionPlugin, /'tools:node': 'remove'/);
 
 // Credential-free local and internal builds must never instantiate Mapbox
 // without its public runtime token. The secret download token remains an
