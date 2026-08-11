@@ -98,6 +98,7 @@ final result: passed
 - Focused Release Radar comparison: `artifacts/qa/android-discover-parity-2026-08-11/07-comparison-release-radar.png`.
 - Before evidence: `artifacts/qa/android-discover-parity-2026-08-11/03-android-360dp-before.png`.
 - Post-fix evidence: `artifacts/qa/android-discover-parity-2026-08-11/04-android-360dp-fixed-top.png` and `artifacts/qa/android-discover-parity-2026-08-11/05-android-360dp-fixed-release-radar.png`.
+- Physical-device confirmation: Samsung Galaxy S21 (`SM-G991B`, Android 15/API 35), `artifacts/qa/android-discover-parity-2026-08-11/09-samsung-s21-fixed-top.png` and `artifacts/qa/android-discover-parity-2026-08-11/10-samsung-s21-fixed-new-platform.png`.
 
 ## Comparison history
 
@@ -113,6 +114,7 @@ final result: passed
 - Kept THE PLUG at a deliberate 100% basis and maximum.
 - Rebuilt and installed the release APK, then recaptured at the exact failing 360dp width.
 - The gateway cards now render 2 × 2 and Release Radar renders 2 × 2 without clipping or horizontal overflow.
+- Reinstalled the same corrected release source on the connected Samsung Galaxy S21 and repeated both captures; the physical device renders the same two-column compositions.
 
 ## Required fidelity surfaces
 
