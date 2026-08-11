@@ -75,6 +75,16 @@ export function matchesAllowedNotificationUrl(value: unknown, allowedWebHosts: R
   }
 }
 
-export function notificationOpenTarget(value: string) {
-  return value.startsWith('/') ? `pluggd://${value.slice(1)}` : value;
+/** Convert any allowed first-party notification URL to an Expo Router path. */
+export function notificationRoutePath(value: string) {
+  const parsed = value.startsWith('/')
+    ? new URL(value, 'https://pluggd.fm')
+    : new URL(value);
+
+  if (parsed.protocol === 'pluggd:') {
+    const path = `/${parsed.hostname}${parsed.pathname}`.replace(/\/{2,}/g, '/');
+    return `${path}${parsed.search}${parsed.hash}`;
+  }
+
+  return `${parsed.pathname || '/'}${parsed.search}${parsed.hash}`;
 }

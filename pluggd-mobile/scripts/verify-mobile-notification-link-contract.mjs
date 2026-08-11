@@ -28,14 +28,18 @@ assert.equal(policy.matchesAllowedNotificationUrl('https://evil.example/notifica
 assert.equal(policy.matchesAllowedNotificationUrl('javascript:alert(1)', hosts), false);
 assert.equal(policy.matchesAllowedNotificationUrl('pluggd://notifications', hosts), true);
 
-assert.equal(policy.notificationOpenTarget('/notifications'), 'pluggd://notifications');
+assert.equal(policy.notificationRoutePath('/notifications'), '/notifications');
 assert.equal(
-  policy.notificationOpenTarget('/events/example?source=push'),
-  'pluggd://events/example?source=push',
+  policy.notificationRoutePath('/events/example?source=push#ticket'),
+  '/events/example?source=push#ticket',
 );
 assert.equal(
-  policy.notificationOpenTarget('https://pluggd.fm/notifications'),
-  'https://pluggd.fm/notifications',
+  policy.notificationRoutePath('pluggd://events/example?source=push'),
+  '/events/example?source=push',
+);
+assert.equal(
+  policy.notificationRoutePath('https://www.pluggd.fm/community/post-1'),
+  '/community/post-1',
 );
 
 console.log('mobile notification link contract verified');

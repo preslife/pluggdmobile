@@ -85,6 +85,60 @@ final result: passed
 
 ---
 
+# Android Discover Narrow-Phone Parity — 2026-08-11
+
+## Comparison target
+
+- Source visual truth: `/Users/apple/Downloads/IMG_0881.PNG` and `/Users/apple/Downloads/IMG_0882.PNG`, supplied from the current iPhone app.
+- Implementation: local Android release APK rendered on an API 35 emulator configured to the Samsung S21 content width.
+- Source pixels: 1290 × 2796; approximately 430 × 932 points at 3× density.
+- Implementation pixels: 1080 × 2400; 360 × 800 dp at density 480.
+- State: signed-in Discover, dark theme, current live catalogue data.
+- Full-view comparison: `artifacts/qa/android-discover-parity-2026-08-11/06-comparison-top.png`.
+- Focused Release Radar comparison: `artifacts/qa/android-discover-parity-2026-08-11/07-comparison-release-radar.png`.
+- Before evidence: `artifacts/qa/android-discover-parity-2026-08-11/03-android-360dp-before.png`.
+- Post-fix evidence: `artifacts/qa/android-discover-parity-2026-08-11/04-android-360dp-fixed-top.png` and `artifacts/qa/android-discover-parity-2026-08-11/05-android-360dp-fixed-release-radar.png`.
+
+## Comparison history
+
+### Iteration 1 — blocked
+
+- P1: the four Discover gateways became a single left-aligned column at 360dp.
+- P1: Release Radar used the same overflowing percentage-plus-gap calculation and could also wrap into one column.
+- Cause: two 48.8% or 48.5% cards plus an 8dp or 10dp gap exceeded the 320dp content width after horizontal padding on a 360dp Android device.
+
+### Iteration 2 — passed
+
+- Changed both card families to a 47.5% flex basis with flex growth and a 48.8% maximum.
+- Kept THE PLUG at a deliberate 100% basis and maximum.
+- Rebuilt and installed the release APK, then recaptured at the exact failing 360dp width.
+- The gateway cards now render 2 × 2 and Release Radar renders 2 × 2 without clipping or horizontal overflow.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Sora display text and Satoshi supporting text remain unchanged; Android line wrapping reflects its narrower 360dp viewport without changing hierarchy.
+- Spacing and layout rhythm: card tracks now match the iPhone two-column composition; section gaps, padding, radii, and dock overlap remain consistent with the existing system.
+- Colors and visual tokens: the warm-black, cream, muted-grey, and PLUGGD orange tokens are unchanged.
+- Image quality and asset fidelity: both platforms use the same live catalogue artwork and crop behavior; no placeholders or replacement assets were introduced.
+- Copy and content: labels, counts, section titles, and discovery explanations are unchanged. Live data can differ between captures by time.
+- Accessibility: existing card button roles and labels are preserved. Screenshot comparison does not prove TalkBack reading order or dynamic-type reflow, which remain separate runtime checks.
+
+## Interaction evidence
+
+- Discover tab navigation: passed.
+- Vertical scrolling through the gateway, scene, and Release Radar sections: passed.
+- Persistent dock remained visible and operable: passed.
+- Android runtime fatal-error scan: clear for the captured session.
+
+## Residual differences
+
+- The Android proof is intentionally narrower than the iPhone reference because it recreates the Samsung failure. The horizontally scrollable filter row therefore shows less of the final filter, as designed.
+- Status-bar icons, density, and current profile artwork are device-owned or live-data differences rather than design drift.
+
+final result: passed
+
+---
+
 # PLUGGD Community Internal Dock QA — 7 August 2026
 
 ## Scope and source

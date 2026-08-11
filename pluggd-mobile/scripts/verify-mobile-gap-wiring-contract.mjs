@@ -69,7 +69,7 @@ assert.match(localNotifications, /cancelScheduledNotificationAsync/, 'Local remi
 assert.match(localNotifications, /addNotificationResponseReceivedListener/, 'Local reminder service must handle notification taps');
 assert.match(localNotifications, /getLastNotificationResponseAsync/, 'Cold-start notification taps must be recovered after the root layout mounts');
 assert.match(localNotifications, /clearLastNotificationResponseAsync/, 'Handled cold-start notification taps must not replay on later launches');
-assert.match(localNotifications, /Linking\.openURL/, 'Notification taps must deep-link back into the app');
+assert.match(localNotifications, /router\.push\(notificationRoutePath/, 'Notification taps must navigate through the mounted app router');
 assert.match(localNotifications, /SchedulableTriggerInputTypes\.DATE/, 'Local reminders must schedule against real event/session times');
 assert.match(localNotifications, /upsert_mobile_push_token/, 'Native push tokens must be registered against the mobile push backend contract');
 assert.match(notifications, /loadMobileNotifications/, 'Activity route must use the shared notification/deep-link service');

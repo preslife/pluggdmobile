@@ -1,14 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { pluggdFonts } from '../src/design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ScreenShell, SectionTitle } from '../components/ContentUI';
 import { formatDate, PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { loadMobileNotifications, markMobileNotificationRead } from '../src/features/culture/mobileServices';
 import type { MobileNotification } from '../src/features/culture/mobileTypes';
+import { registerMobilePushToken } from '../src/lib/localNotifications';
 
 export default function NotificationsRoute() {
   const router = useRouter();
@@ -16,6 +18,9 @@ export default function NotificationsRoute() {
   const [items, setItems] = useState<MobileNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [pushPermission, setPushPermission] = useState<'loading' | 'granted' | 'denied'>('loading');
+  const [canAskForPush, setCanAskForPush] = useState(true);
+  const [enablingPush, setEnablingPush] = useState(false);
 
   const unreadCount = useMemo(() => items.filter((item) => !item.read_at).length, [items]);
 
@@ -28,6 +33,32 @@ export default function NotificationsRoute() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const refreshPushPermission = useCallback(async () => {
+    const permission = await Notifications.getPermissionsAsync();
+    setPushPermission(permission.granted ? 'granted' : 'denied');
+    setCanAskForPush(permission.canAskAgain !== false);
+  }, []);
+
+  useEffect(() => {
+    void refreshPushPermission();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshPushPermission();
+    });
+    return () => subscription.remove();
+  }, [refreshPushPermission]);
+
+  const enablePush = async () => {
+    if (!canAskForPush) {
+      await Linking.openSettings();
+      return;
+    }
+
+    setEnablingPush(true);
+    await registerMobilePushToken({ requestPermission: true });
+    await refreshPushPermission();
+    setEnablingPush(false);
+  };
 
   const markRead = async (item: MobileNotification) => {
     if (!item.read_at) {
@@ -60,6 +91,26 @@ export default function NotificationsRoute() {
     >
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
+      {pushPermission === 'denied' ? (
+        <View style={styles.pushCard}>
+          <View style={styles.pushIcon}>
+            <MaterialIcons name="notifications-active" size={22} color={PLUGGD_ORANGE} />
+          </View>
+          <View style={styles.pushCopy}>
+            <Text style={styles.pushTitle}>Stay in the loop</Text>
+            <Text style={styles.pushBody}>Enable alerts for replies, follows, purchases, events and live sessions.</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={canAskForPush ? 'Enable notifications' : 'Open notification settings'}
+            style={styles.pushButton}
+            onPress={enablePush}
+            disabled={enablingPush}
+          >
+            <Text style={styles.pushButtonText}>{enablingPush ? 'Enabling…' : canAskForPush ? 'Enable' : 'Settings'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator color={PLUGGD_ORANGE} />
@@ -104,6 +155,37 @@ function iconForType(type?: string | null): keyof typeof MaterialIcons.glyphMap 
 }
 
 const styles = StyleSheet.create({
+  pushCard: {
+    minHeight: 86,
+    borderWidth: 1,
+    borderColor: 'rgba(255,102,0,0.35)',
+    backgroundColor: 'rgba(255,102,0,0.07)',
+    padding: 12,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pushIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,102,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushCopy: { flex: 1, minWidth: 0 },
+  pushTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  pushBody: { color: '#A3A3A3', fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
+  pushButton: {
+    minHeight: 38,
+    borderRadius: 5,
+    backgroundColor: PLUGGD_ORANGE,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushButtonText: { color: '#0A0806', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   markAllButton: {
     minHeight: 36,
     borderRadius: 5,

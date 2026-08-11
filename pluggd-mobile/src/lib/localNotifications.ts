@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { Linking, Platform } from 'react-native';
-import { matchesAllowedNotificationUrl, notificationOpenTarget } from './notificationUrlPolicy';
+import { router, type Href } from 'expo-router';
+import { Platform } from 'react-native';
+import { matchesAllowedNotificationUrl, notificationRoutePath } from './notificationUrlPolicy';
 import { supabase } from './supabase';
 
 const STORAGE_PREFIX = 'pluggd.localReminder';
@@ -86,7 +87,10 @@ export async function openNotificationUrl(value: unknown) {
     return false;
   }
 
-  await Linking.openURL(notificationOpenTarget(value));
+  // Stay inside the mounted Router. Re-opening the custom scheme from a cold
+  // notification response can create a second Android intent before the
+  // initial route is ready, leaving MainActivity on a blank surface.
+  router.push(notificationRoutePath(value) as Href);
   return true;
 }
 

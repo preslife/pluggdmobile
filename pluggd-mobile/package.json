@@ -14,6 +14,7 @@
     "verify:android-navigation": "node scripts/verify-android-adaptive-navigation-contract.mjs",
     "verify:mapbox": "node scripts/verify-native-mapbox-contract.mjs",
     "verify:notifications": "node scripts/verify-mobile-notification-link-contract.mjs",
+    "verify:discover-grid": "node scripts/verify-mobile-discover-grid-contract.mjs",
     "verify:observability": "node scripts/verify-mobile-observability-contract.mjs"
   },
   "dependencies": {
