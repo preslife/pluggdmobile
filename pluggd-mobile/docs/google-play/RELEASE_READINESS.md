@@ -162,6 +162,39 @@ are in [`store-assets`](store-assets/). The app still fails safely when
 
 ## Play internal release evidence — 2026-08-11
 
+- Version code 13 is the current Android candidate. The locally built production
+  AAB is 271 MB with SHA-256
+  `7b34ca87c28165e37497207bf3e86b1d4f9d5807a03c60697c41f5bca0e9471d`.
+  Its JAR signature verifies and its signing certificate SHA-256 is
+  `70:DD:CF:A7:29:C9:2E:14:66:FE:48:5C:5F:A6:78:26:99:38:29:B4:8B:B1:D3:EB:E5:99:D6:C8:1E:AA:55:A3`, matching the registered EAS/Play upload key.
+- Google Play accepted version code 13 as API 24+, target API 36, four screen
+  layouts, four ABIs, and seven required features. `PLUGGD Android v13 —
+  stability fix` is active and available on the internal-testing track.
+- The exact Play-signed version-code-12 predecessor was installed on a physical
+  Samsung S21. It proved the requested Discover parity: the four gateway cards
+  and the `New on the platform` content both render as two-column grids. It also
+  proved the verified `https://pluggd.fm/notifications` App Link and Android
+  notification permission flow.
+- A terminated-state push test on version 12 exposed a real Android 12+
+  `ForegroundServiceStartNotAllowedException`: TrackPlayer's sticky service
+  attempted to restart after PLUGGD had been killed even though the app's
+  configured behaviour is to stop playback and remove the notification. The
+  source patch now returns `START_NOT_STICKY`, with a checked-in contract that
+  prevents regression.
+- The version-13 release APK compiled the patched TrackPlayer service, passed
+  release lint/R8/signing, and completed the exact lifecycle reproduction on an
+  API 36 emulator: start the media service, background the app, clear logs,
+  kill the process, wait through the restart window, and relaunch. No service
+  restart, `ForegroundServiceStartNotAllowedException`, fatal exception, or
+  relaunch failure occurred.
+- Production version 13 is submitted for Google review as a 5% staged rollout.
+  Submitting the corrected candidate deliberately restarted the same-day
+  version-10 launch review so Google reviews the fixed bundle. Managed
+  publishing remains ON, so approval cannot publish the app automatically.
+- The final exact Play-signed version-13 notification-tap and lifecycle repeat
+  on the Samsung remains pending only because the physical phone disconnected
+  after the version-13 internal release became available.
+
 - EAS production build `c5cfb6cf-1dc7-437a-a798-6c9e94fc7c36` completed from
   commit `e39302c` as Android version code 10. The clean cloud build compiled
   all four supported ABIs, completed release lint and R8 shrinking, and used
@@ -177,14 +210,13 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   optional screen-sharing service.
 - `PLUGGD Android 1.0.0 (10)` is active and available to the configured internal
   testers. Version code 9 was replaced rather than left as the active test
-  candidate.
-- Production release `1.0.0 — Android launch` was submitted to Google Play for
-  review with only version code 10. Its release preview was `Ready to release`,
-  with no bundle validation errors or warnings. Google's automated submission
-  checks completed successfully and Publishing overview confirms the changes
-  are in review. Managed publishing is enabled, so approval cannot make the app
-  public until the exact Play-signed real-money purchase gate below passes and
-  the release is deliberately published.
+  candidate; version codes 10 and 12 were subsequently superseded by version
+  13.
+- Production release `1.0.0 — Android launch` was first submitted with version
+  code 10. It is now superseded in the active review by `PLUGGD Android v13 —
+  stability fix` at a 5% staged rollout. Managed publishing is enabled, so
+  approval cannot make the app public until the release is deliberately
+  published.
 - The foreground-service declaration now contains only media playback. Its
   required demonstration shows PLUGGD continuing playback in the background
   with Android's system media controls and is available at
@@ -246,7 +278,7 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   live 10 August 2026 content; the Events map visibly uses Mapbox.
 - Data Safety, app access, ads, content rating, target audience, government,
   financial, and health declarations are completed in Play Console.
-- Store-listing assets are complete. Version code 10 is Play-signed and active
+- Store-listing assets are complete. Version code 13 is Play-signed and active
   on the internal-testing track; public rollout remains gated by the
   unchecked commerce, legal, live-service, and device-policy evidence below.
 
