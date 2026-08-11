@@ -191,12 +191,13 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   restart window, and relaunch. No service restart,
   `ForegroundServiceStartNotAllowedException`, fatal exception, or relaunch
   failure occurred.
-- Production version 13 is submitted for Google review as a 5% staged rollout.
+- Production version 13 is submitted for Google review as a full 100% rollout.
   Submitting the corrected candidate deliberately restarted the same-day
   version-10 launch review so Google reviews the fixed bundle. Google's
   automated pre-review checks completed and the Publishing overview now shows
-  the changes in review. Managed publishing remains ON, so approval cannot
-  publish the app automatically.
+  the changes in review. At the owner's explicit request on 2026-08-11,
+  managed publishing was turned OFF so Google will publish the app
+  automatically as soon as the review is approved.
 - The final exact Play-signed version-13 notification-tap and lifecycle repeat
   on the Samsung remains pending only because the physical phone disconnected
   after the version-13 internal release became available.
@@ -220,9 +221,8 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   13.
 - Production release `1.0.0 — Android launch` was first submitted with version
   code 10. It is now superseded in the active review by `PLUGGD Android v13 —
-  stability fix` at a 5% staged rollout. Managed publishing is enabled, so
-  approval cannot make the app public until the release is deliberately
-  published.
+  stability fix` at a full 100% rollout. Managed publishing is disabled, so an
+  approval will make the app public automatically.
 - The foreground-service declaration now contains only media playback. Its
   required demonstration shows PLUGGD continuing playback in the background
   with Android's system media controls and is available at
@@ -394,7 +394,8 @@ Critical journeys:
 1. Internal: native infrastructure and one credit/membership test SKU.
 2. Closed: complete commerce lifecycle, device matrix, moderation, and account
    deletion. No production money or creator payout unless explicitly approved.
-3. Production 5%: monitor crash-free users, ANR, failed verification,
-   unacknowledged purchases, RTDN lag, and entitlement mismatches.
-4. Promote to 20%, 50%, and 100% only after each cohort remains within the
-   agreed thresholds for at least one full billing/notification monitoring day.
+3. Production launch: the owner explicitly selected immediate 100% availability
+   after approval. Monitor crash-free users, ANR, failed verification,
+   unacknowledged purchases, RTDN lag, and entitlement mismatches from launch.
+4. Pause the rollout immediately if launch telemetry exceeds the agreed safety
+   thresholds.
