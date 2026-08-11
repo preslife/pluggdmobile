@@ -198,9 +198,19 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   the changes in review. At the owner's explicit request on 2026-08-11,
   managed publishing was turned OFF so Google will publish the app
   automatically as soon as the review is approved.
-- The final exact Play-signed version-13 notification-tap and lifecycle repeat
-  on the Samsung remains pending only because the physical phone disconnected
-  after the version-13 internal release became available.
+- The physical Samsung S21 updated from Google Play to version code 13 on
+  Android 15/API 35. The exact Play-installed build cold-launched, reported
+  TrackPlayer `startCommandResult=2` (`START_NOT_STICKY`), remained stopped
+  after the background kill window without a fatal exception, and cold-opened
+  the verified `https://pluggd.fm/notifications` App Link into Activity. Its
+  rendered Discover screen also proves the four gateway cards and New on the
+  platform content retain the requested two-column layouts.
+- The final remote-notification tap is not marked passed. Expo accepted the
+  test messages and returned successful delivery receipts, but the Samsung did
+  not display them and the live Android push-token `last_seen_at` value did not
+  refresh after version-13 launches. Keep the notification-delivery gate open
+  until a fresh token registration and foreground/background/terminated tap
+  sequence is observed on hardware.
 
 - EAS production build `c5cfb6cf-1dc7-437a-a798-6c9e94fc7c36` completed from
   commit `e39302c` as Android version code 10. The clean cloud build compiled
