@@ -203,6 +203,39 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   permission while retaining TrackPlayer's legitimate media-playback service;
   version code 10 is the corrected Play candidate and has superseded version 9.
 
+### Live Play commerce proof — 2026-08-11
+
+- The exact Play-signed version-code-10 app was installed from the configured
+  tester account. Every purchase below was a Google Play licence-test order;
+  Play displayed that the tester would not be charged and no real payment was
+  taken.
+- The active `pluggd_credits_starter` consumable completed Play purchase,
+  authenticated server verification, durable 500-credit grant, and client
+  consume. A second post-RTDN test proved the complete refund path from Play
+  Console through Pub/Sub and the deployed Supabase function to an idempotent
+  negative wallet entry: the wallet moved from 1,700 to 1,200 credits after
+  entitlement removal.
+- The first refund, made before the final voided-purchase handler was deployed,
+  was recovered once using the exact Play order and linked grant entry. The
+  guarded transaction changed only that test order from purchased/granted to
+  refunded/revoked, created its missing -500 reversal, and restored the tester
+  wallet from 1,200 to its correct 700-credit balance. A cold app restart then
+  rendered 700 credits from the live backend.
+- Google Play RTDN is enabled for subscriptions, voided purchases, and all
+  one-time products. The deployed handler now accepts voided-purchase
+  notifications, re-queries provider state, reverses credit grants or revokes
+  membership entitlements, deduplicates deliveries, and retries previously
+  failed notifications instead of acknowledging them as complete.
+- The live RTDN fixes are committed on `codex/android-production-release` as
+  `cc2f9fa7`, `0d1dafcc`, and `879abe3f`. The full Supabase function suite
+  passed 31 files / 195 tests; the final focused Google Play and wallet suite
+  passed 19 tests, with typecheck and diff hygiene also passing.
+- The Kxngdom monthly membership completed Play test purchase, authenticated
+  server verification, durable entitlement grant, and acknowledgement. Its
+  test subscription was then cancelled in Play. Renewal, grace, account hold,
+  expiry, refund/revoke, and simultaneous memberships for two creators remain
+  separate lifecycle gates below.
+
 ## Play store listing evidence — 2026-08-10
 
 - The `en-GB` listing, 512x512 RGB icon, and 1024x500 RGB feature graphic are
@@ -219,9 +252,10 @@ are in [`store-assets`](store-assets/). The app still fails safely when
 
 ## Commerce evidence
 
-The active Play catalogue and authenticated live policy mapping are verified.
-The unchecked items below require an exact Play-signed install and tester
-account; a local or debug-signed APK cannot prove them.
+The active Play catalogue, authenticated live policy mapping, exact Play-signed
+install, tester purchase, membership grant, and one-time-product refund/RTDN
+path are verified. The broad boxes remain unchecked wherever their wording also
+requires an untested lifecycle state or a second product/creator.
 
 - [ ] One Play credit pack completes purchase, server verification, durable
       wallet grant, consume, reinstall recovery, refund, and RTDN handling.
@@ -248,9 +282,11 @@ account; a local or debug-signed APK cannot prove them.
 An API 36 Google Play system image is provisioned as `PLUGGD_Play_API_36` and
 boots cleanly. Current source cold-launched, rendered Home and Events, displayed
 the native Mapbox events map with live markers, and showed the neutral 16+ gate
-before social OAuth. The emulator has no Google account by design; signing the
-configured tester into Play Store is the remaining prerequisite for exact
-Play-signed install, product-query, purchase, FCM, and App Link evidence.
+before social OAuth. The configured licence tester is now signed into Play on
+the emulator, and exact Play-signed install, product-query, credit purchase,
+membership purchase, cancellation, one-time-product refund/RTDN, and cold-start
+wallet evidence exist. FCM/App Link tap behavior and physical-device behavior
+remain separate gates.
 
 Required form factors:
 
