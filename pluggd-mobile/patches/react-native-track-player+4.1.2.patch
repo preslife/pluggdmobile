@@ -352,3 +352,22 @@ index b2409a0..5ac113a 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
          callback.resolve(Arguments.fromBundle(musicService.getPlayerStateBundle(musicService.state)))
      }
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+index afa6b0f..0b7d451 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+@@ -96,7 +96,13 @@ class MusicService : HeadlessJsTaskService() {
+     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+         startTask(getTaskConfig(intent))
+         startAndStopEmptyNotificationToAvoidANR()
+-        return START_STICKY
++        // PLUGGD configures StopPlaybackAndRemoveNotification when the app is
++        // killed. A sticky restart can recreate this service from the
++        // background with a null intent, where Android 12+ forbids the
++        // temporary foreground promotion and crashes the process with
++        // ForegroundServiceStartNotAllowedException. Do not ask Android to
++        // recreate a service whose configured killed-app behaviour is stop.
++        return START_NOT_STICKY
+     }
+ 
+     /**

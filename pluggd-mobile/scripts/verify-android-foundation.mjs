@@ -245,4 +245,10 @@ assert.match(trackPlayerPatch, /private fun launch\(block: suspend \(\) -> Unit\
 assert.match(trackPlayerPatch, /fun play\(callback: Promise\) = launch \{/);
 assert.match(trackPlayerPatch, /fun getPlaybackState\(callback: Promise\) = launch \{/);
 
+// PLUGGD stops playback when Android kills the app. A sticky TrackPlayer
+// service restart can otherwise promote itself from the background and crash
+// Android 12+ with ForegroundServiceStartNotAllowedException.
+assert.match(trackPlayerPatch, /return START_NOT_STICKY/);
+assert.doesNotMatch(trackPlayerPatch, /^\+\s*return START_STICKY$/m);
+
 console.log('Android foundation contract: PASS');
