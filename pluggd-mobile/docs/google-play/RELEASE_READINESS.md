@@ -180,9 +180,11 @@ are in [`store-assets`](store-assets/). The app still fails safely when
   candidate.
 - Production release `1.0.0 — Android launch` was submitted to Google Play for
   review with only version code 10. Its release preview was `Ready to release`,
-  with no bundle validation errors or warnings. Managed publishing is enabled,
-  so approval cannot make the app public until the exact Play-signed real-money
-  purchase gate below passes and the release is deliberately published.
+  with no bundle validation errors or warnings. Google's automated submission
+  checks completed successfully and Publishing overview confirms the changes
+  are in review. Managed publishing is enabled, so approval cannot make the app
+  public until the exact Play-signed real-money purchase gate below passes and
+  the release is deliberately published.
 - The foreground-service declaration now contains only media playback. Its
   required demonstration shows PLUGGD continuing playback in the background
   with Android's system media controls and is available at
