@@ -13,6 +13,7 @@
     "verify:android-device-smoke": "node scripts/verify-android-release-device-smoke.mjs",
     "verify:android-navigation": "node scripts/verify-android-adaptive-navigation-contract.mjs",
     "verify:mapbox": "node scripts/verify-native-mapbox-contract.mjs",
+    "verify:notifications": "node scripts/verify-mobile-notification-link-contract.mjs",
     "verify:observability": "node scripts/verify-mobile-observability-contract.mjs"
   },
   "dependencies": {

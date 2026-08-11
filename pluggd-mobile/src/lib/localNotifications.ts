@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
-import { matchesAllowedNotificationUrl } from './notificationUrlPolicy';
+import { matchesAllowedNotificationUrl, notificationOpenTarget } from './notificationUrlPolicy';
 import { supabase } from './supabase';
 
 const STORAGE_PREFIX = 'pluggd.localReminder';
@@ -16,6 +16,7 @@ export type LocalReminderResult =
   | { success: false; scheduled: false; error: string };
 
 let notificationHandlerConfigured = false;
+const handledNotificationResponses = new Set<string>();
 
 function storageKey(kind: 'event' | 'live-session', id: string) {
   return `${STORAGE_PREFIX}.${kind}.${id}`;
@@ -85,8 +86,28 @@ export async function openNotificationUrl(value: unknown) {
     return false;
   }
 
-  await Linking.openURL(value);
+  await Linking.openURL(notificationOpenTarget(value));
   return true;
+}
+
+async function handleNotificationResponse(response: Notifications.NotificationResponse) {
+  const responseKey = `${response.notification.request.identifier}:${response.actionIdentifier}`;
+  if (handledNotificationResponses.has(responseKey)) return;
+
+  handledNotificationResponses.add(responseKey);
+  if (handledNotificationResponses.size > 32) {
+    const oldest = handledNotificationResponses.values().next().value;
+    if (oldest) handledNotificationResponses.delete(oldest);
+  }
+
+  const url = response.notification.request.content.data?.url;
+  try {
+    const opened = await openNotificationUrl(url);
+    if (opened) await Notifications.clearLastNotificationResponseAsync();
+  } catch (error) {
+    handledNotificationResponses.delete(responseKey);
+    console.warn('Notification URL could not be opened', error);
+  }
 }
 
 export async function registerMobilePushToken(options: { requestPermission?: boolean } = {}) {
@@ -162,11 +183,16 @@ export function configureLocalNotificationHandler() {
 
 export function addLocalNotificationResponseListener() {
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    const url = response.notification.request.content.data?.url;
-    void openNotificationUrl(url).catch((error) => {
-      console.warn('Notification URL could not be opened', error);
-    });
+    void handleNotificationResponse(response);
   });
+
+  void Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (response) return handleNotificationResponse(response);
+    })
+    .catch((error) => {
+      console.warn('Initial notification response could not be read', error);
+    });
 
   return () => subscription.remove();
 }

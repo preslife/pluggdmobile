@@ -67,6 +67,8 @@ assert.match(localNotifications, /expo-notifications/, 'Local reminder service m
 assert.match(localNotifications, /scheduleNotificationAsync/, 'Local reminder service must schedule notifications');
 assert.match(localNotifications, /cancelScheduledNotificationAsync/, 'Local reminder service must cancel stale notifications');
 assert.match(localNotifications, /addNotificationResponseReceivedListener/, 'Local reminder service must handle notification taps');
+assert.match(localNotifications, /getLastNotificationResponseAsync/, 'Cold-start notification taps must be recovered after the root layout mounts');
+assert.match(localNotifications, /clearLastNotificationResponseAsync/, 'Handled cold-start notification taps must not replay on later launches');
 assert.match(localNotifications, /Linking\.openURL/, 'Notification taps must deep-link back into the app');
 assert.match(localNotifications, /SchedulableTriggerInputTypes\.DATE/, 'Local reminders must schedule against real event/session times');
 assert.match(localNotifications, /upsert_mobile_push_token/, 'Native push tokens must be registered against the mobile push backend contract');

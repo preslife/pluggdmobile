@@ -40,6 +40,23 @@ export function matchesAllowedNotificationUrl(value: unknown, allowedWebHosts: R
   if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return false;
   if (containsDotPathSegment(value)) return false;
 
+  if (value.startsWith('/')) {
+    if (value.startsWith('//')) return false;
+
+    try {
+      const parsed = new URL(value, 'https://pluggd.fm');
+      return (
+        parsed.origin === 'https://pluggd.fm' &&
+        !parsed.username &&
+        !parsed.password &&
+        !parsed.port &&
+        SAFE_NOTIFICATION_ROUTE_ROOTS.has(routeRoot(parsed))
+      );
+    } catch {
+      return false;
+    }
+  }
+
   try {
     const parsed = new URL(value);
     if (parsed.username || parsed.password || parsed.port) return false;
@@ -56,4 +73,8 @@ export function matchesAllowedNotificationUrl(value: unknown, allowedWebHosts: R
   } catch {
     return false;
   }
+}
+
+export function notificationOpenTarget(value: string) {
+  return value.startsWith('/') ? `pluggd://${value.slice(1)}` : value;
 }
