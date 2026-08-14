@@ -30,6 +30,7 @@ import { formatGBP, type EventItem } from '../../lib/mobileContent';
 import { eventTicketPriceLabel, externalTicketProvider, hasEligibleExternalTickets, openExternalEventTickets } from '../../lib/eventTickets';
 import { Enter, EdPressable } from './EditorialBits';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
+import { isCarnivalCampaignActive, loadCarnivalHub } from '../carnival/carnivalService';
 import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 
 const CATEGORY_CHIPS = ['All events', 'Live Music', 'Culture', 'Meet-ups', 'Festivals', 'Clubbing', 'Comedy'] as const;
@@ -551,6 +552,12 @@ export function EventsBoardScreen() {
   });
 
   const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
+  const carnivalQuery = useQuery({
+    queryKey: ['carnival-hub', 1],
+    queryFn: loadCarnivalHub,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
   const filtered = useMemo(
     () => events.filter((event) => matchesCategory(event, category)),
     [events, category],
@@ -664,6 +671,24 @@ export function EventsBoardScreen() {
         </Enter>
 
         {mode === 'browse' && spotlight ? <EventSpotlight event={spotlight} /> : null}
+
+        {mode === 'browse' && isCarnivalCampaignActive(carnivalQuery.data) && carnivalQuery.data ? (
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel="Open the featured Notting Hill Carnival 2026 guide"
+            onPress={() => router.push('/hubs/notting-hill-carnival-2026' as any)}
+            style={styles.carnivalCard}
+          >
+            <PluggdImage uri={carnivalQuery.data.hub.heroImageUrl} style={styles.carnivalImage} resizeMode="cover" displayWidth={900} accessibilityLabel="" />
+            <LinearGradient colors={['rgba(8,5,3,0.05)', 'rgba(8,5,3,0.94)']} style={StyleSheet.absoluteFillObject} />
+            <View style={styles.carnivalCopy}>
+              <Text style={styles.carnivalEyebrow}>FEATURED EVENT GUIDE · 29–31 AUG</Text>
+              <Text style={styles.carnivalTitle}>Notting Hill Carnival 2026</Text>
+              <Text style={styles.carnivalBody}>Build a route, explore the sourced map, find your sound and save road essentials.</Text>
+              <View style={styles.carnivalCta}><Text style={styles.carnivalCtaText}>Open Carnival hub</Text><MaterialIcons name="arrow-forward" size={17} color="#120A05" /></View>
+            </View>
+          </EdPressable>
+        ) : null}
 
         {/* Category chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipWrap}>
@@ -858,6 +883,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.10)',
   },
+  carnivalCard: { minHeight: 248, borderRadius: 7, overflow: 'hidden', backgroundColor: '#26170F', borderWidth: 1, borderColor: 'rgba(255,102,0,0.35)' },
+  carnivalImage: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  carnivalCopy: { flex: 1, justifyContent: 'flex-end', padding: 17, gap: 6 },
+  carnivalEyebrow: { color: ed.orange, fontFamily: edFonts.bodyBlack, fontSize: 9.5, letterSpacing: 1.2 },
+  carnivalTitle: { color: '#FFFFFF', fontFamily: edFonts.displayExtraBold, fontSize: 25, lineHeight: 29, letterSpacing: -0.6 },
+  carnivalBody: { color: 'rgba(255,248,237,0.72)', fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, maxWidth: 330 },
+  carnivalCta: { minHeight: 44, marginTop: 4, alignSelf: 'flex-start', borderRadius: 999, backgroundColor: ed.orange, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 15 },
+  carnivalCtaText: { color: '#120A05', fontFamily: edFonts.bodyBlack, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.3 },
   spotlightArtwork: { height: 176, overflow: 'hidden', backgroundColor: '#26170F' },
   spotlightArtworkFallback: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   spotlightBody: { padding: 15, gap: 10 },

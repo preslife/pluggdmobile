@@ -25,9 +25,10 @@ import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { selectionHaptic } from '../../design/haptics';
 import { useReducedMotion } from '../../design/useReducedMotion';
 import { useBackstage, useHomeFeed, useLiveRooms } from '../culture/useCultureData';
+import { isCarnivalCampaignActive, loadCarnivalHub } from '../carnival/carnivalService';
 import {
   buildBalancedHomePicks,
-  buildDiscoveryItems,
+  buildPlayableDiscoveryItems,
   buildDiscoveryScenes,
   selectDailyFeature,
   type DiscoveryItem,
@@ -103,7 +104,7 @@ export function MusicDiscoveryHome() {
   const reducedMotion = useReducedMotion();
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
-  const items = useMemo(() => buildDiscoveryItems(feed.data), [feed.data]);
+  const items = useMemo(() => buildPlayableDiscoveryItems(feed.data), [feed.data]);
   const scenes = useMemo(() => buildDiscoveryScenes(feed.data), [feed.data]);
   const featured = useMemo(() => selectDailyFeature(items), [items]);
   const picks = useMemo(() => buildBalancedHomePicks(items, featured?.id), [featured?.id, items]);
@@ -130,6 +131,13 @@ export function MusicDiscoveryHome() {
     queryFn: () => loadHomeRecentlyPlayed(6),
     staleTime: 1000 * 60 * 2,
   });
+  const carnival = useQuery({
+    queryKey: ['carnival-hub', 1],
+    queryFn: loadCarnivalHub,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+  const showCarnival = isCarnivalCampaignActive(carnival.data);
 
   const signals = useMemo(
     () => buildHomeSignals(feed.data, liveRooms, communities),
@@ -288,6 +296,35 @@ export function MusicDiscoveryHome() {
                 </EdPressable>
               </View>
             </View>
+          </Enter>
+        ) : null}
+
+        {showCarnival && carnival.data ? (
+          <Enter delay={90}>
+            <EdPressable
+              accessibilityRole="button"
+              accessibilityLabel="Open the Notting Hill Carnival 2026 guide"
+              onPress={() => router.push('/hubs/notting-hill-carnival-2026' as any)}
+              style={styles.carnivalFeature}
+            >
+              <PluggdImage
+                uri={carnival.data.hub.heroImageUrl}
+                style={styles.carnivalFeatureImage}
+                resizeMode="cover"
+                displayWidth={900}
+                accessibilityLabel=""
+              />
+              <LinearGradient colors={['rgba(8,7,6,0.08)', 'rgba(8,7,6,0.94)']} style={StyleSheet.absoluteFill} />
+              <View style={styles.carnivalFeatureCopy}>
+                <Text style={styles.carnivalFeatureEyebrow}>CARNIVAL EDITION · SOURCE-CHECKED GUIDE</Text>
+                <Text style={styles.carnivalFeatureTitle}>Build your road for Notting Hill Carnival</Text>
+                <Text style={styles.carnivalFeatureBody}>Map sounds and stages, shape a route, read the culture and save essentials offline.</Text>
+                <View style={styles.carnivalFeatureCta}>
+                  <Text style={styles.carnivalFeatureCtaText}>Enter the hub</Text>
+                  <MaterialIcons name="arrow-forward" size={17} color="#100B07" />
+                </View>
+              </View>
+            </EdPressable>
           </Enter>
         ) : null}
 
@@ -959,6 +996,14 @@ const styles = StyleSheet.create({
   supportButton: { alignSelf: 'flex-start' },
   supportButtonInner: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, borderBottomWidth: 1, borderColor: '#756E64' },
   supportText: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 11.5 },
+  carnivalFeature: { minHeight: 230, marginTop: 18, borderRadius: 6, overflow: 'hidden', backgroundColor: '#211C17', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,102,0,0.42)' },
+  carnivalFeatureImage: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  carnivalFeatureCopy: { flex: 1, justifyContent: 'flex-end', padding: 18, gap: 7 },
+  carnivalFeatureEyebrow: { color: ORANGE, fontFamily: 'Satoshi-Black', fontSize: 9, letterSpacing: 1.1 },
+  carnivalFeatureTitle: { color: INK, fontFamily: 'Sora-ExtraBold', fontSize: 22, lineHeight: 25, letterSpacing: -0.6, maxWidth: 320 },
+  carnivalFeatureBody: { color: '#D0C8BC', fontFamily: 'Satoshi-Regular', fontSize: 11.5, lineHeight: 16, maxWidth: 315 },
+  carnivalFeatureCta: { minHeight: 44, alignSelf: 'flex-start', marginTop: 4, borderRadius: 999, backgroundColor: ORANGE, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  carnivalFeatureCtaText: { color: '#100B07', fontFamily: 'Satoshi-Black', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.35 },
   sectionHeader: { minHeight: 62, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 11, gap: 10 },
   sectionHeaderAccessibility: { minHeight: 72, alignItems: 'center', paddingBottom: 8 },
   sectionHeading: { flex: 1, minWidth: 0 },

@@ -91,6 +91,7 @@ export function isAppChromeHidden(pathname: string | null | undefined): boolean 
   const normalized = normalizeChromePath(pathname);
   return (
     HIDDEN_EXACT.has(normalized) ||
+    normalized.startsWith('/carnival/') ||
     normalized.startsWith('/story/') ||
     normalized.startsWith('/plug/') ||
     normalized.startsWith('/mixes/') ||

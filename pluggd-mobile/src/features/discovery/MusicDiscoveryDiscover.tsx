@@ -10,7 +10,13 @@ import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { buildHomeSignals } from '../home/homeDiscoveryData';
 import type { EventItem } from '../../lib/mobileContent';
 import { useHomeFeed, useLiveRooms } from '../culture/useCultureData';
-import { buildDiscoveryItems, buildDiscoveryScenes, type DiscoveryItem } from './discoveryModel';
+import {
+  buildDiscoveryItems,
+  buildDiscoveryScenes,
+  buildRankedDiscoveryItems,
+  isPlayableDiscoveryItem,
+  type DiscoveryItem,
+} from './discoveryModel';
 import { DiscoveryHeader } from './DiscoveryHeader';
 
 const INK = '#F7F2E9';
@@ -35,9 +41,12 @@ export function MusicDiscoveryDiscover() {
   const { playQueue } = usePlayback();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>(params.scene ? 'Scenes' : 'For you');
   const allItems = buildDiscoveryItems(feed.data);
+  const playableItems = useMemo(() => allItems.filter(isPlayableDiscoveryItem), [allItems]);
+  const chartItems = useMemo(() => buildRankedDiscoveryItems(allItems, 10), [allItems]);
   const scenes = buildDiscoveryScenes(feed.data);
   const items = useMemo(() => {
-    if (filter === 'For you' || filter === 'Charts') return allItems;
+    if (filter === 'For you') return allItems;
+    if (filter === 'Charts') return chartItems;
     if (filter === 'Cities') return allItems.filter((item) => item.city);
     if (filter === 'Genres') return allItems.filter((item) => item.genre);
     if (selectedScene) {
@@ -58,7 +67,7 @@ export function MusicDiscoveryDiscover() {
       });
     }
     return allItems.filter((item) => item.kind === 'mix');
-  }, [allItems, filter, selectedScene]);
+  }, [allItems, chartItems, filter, selectedScene]);
   const hasSelectedSceneMatches = filter === 'Scenes' && Boolean(selectedScene) && items.length > 0;
   const visible = filter === 'Scenes' && selectedScene
     ? (hasSelectedSceneMatches ? items : allItems)
@@ -93,20 +102,22 @@ export function MusicDiscoveryDiscover() {
   // from release/beat/mix owners for the same reason. Genre doubles as the meta
   // line so a creator always carries context.
   const creators = useMemo(() => {
-    const seen = new Map<string, { name: string; artwork: string | null; meta: string }>();
+    const seen = new Map<string, { name: string; artwork: string | null; meta: string; route: string }>();
     for (const item of allItems) {
       const name = item.creator?.trim();
-      if (!name || seen.has(name.toLowerCase())) continue;
+      if (!name || !item.creatorRoute || seen.has(name.toLowerCase())) continue;
       seen.set(name.toLowerCase(), {
         name,
         artwork: item.artwork,
         meta: item.genre || item.city || 'PLUGGD creator',
+        route: item.creatorRoute,
       });
     }
     return [...seen.values()].slice(0, 8);
   }, [allItems]);
   const pulse = useMemo(() => buildHomeSignals(feed.data, live.data ?? [], []).map((signal) => signal.label).slice(0, 5), [feed.data, live.data]);
   const worlds = useMemo(() => [
+    { title: 'Carnival 2026', meta: 'Build your road · map · stories · sounds', route: '/hubs/notting-hill-carnival-2026', image: 'https://www.pluggd.fm/carnival-2026/assets/mas/notting-hill-mas-2023.webp', icon: 'festival' as const, index: '00', wide: true },
     { title: 'Mixes', meta: `${feed.data?.mixes.length || 0} selector worlds`, route: '/mixes', image: feed.data?.mixes.find((item) => item.cover_url)?.cover_url || null, icon: 'album' as const, index: '01' },
     { title: 'Soundboards', meta: `${feed.data?.soundboards.length || 0} ideas in progress`, route: '/soundboards', image: feed.data?.soundboards.find((item) => item.cover_image_url)?.cover_image_url || null, icon: 'dashboard-customize' as const, index: '02' },
     { title: 'Releases', meta: `${feed.data?.releases.length || 0} fresh pressings`, route: '/releases', image: feed.data?.releases.find((item) => item.cover_art_url)?.cover_art_url || null, icon: 'music-note' as const, index: '03' },
@@ -116,7 +127,19 @@ export function MusicDiscoveryDiscover() {
 
   const play = async (item: DiscoveryItem) => {
     selectionHaptic();
-    await playQueue(allItems.map((entry) => entry.track), Math.max(0, allItems.findIndex((entry) => entry.id === item.id)));
+    if (!isPlayableDiscoveryItem(item)) {
+      router.push(item.destinationRoute as any);
+      return;
+    }
+    await playQueue(
+      playableItems.map((entry) => entry.track),
+      Math.max(0, playableItems.findIndex((entry) => entry.id === item.id)),
+    );
+  };
+
+  const open = (item: DiscoveryItem) => {
+    selectionHaptic();
+    router.push(item.destinationRoute as any);
   };
 
   return (
@@ -168,12 +191,12 @@ export function MusicDiscoveryDiscover() {
                         : `Inside ${filter.toLowerCase()}`}
                 </Text>
               </View>
-              <Text style={styles.liveCount}>{visible.length} PLAYABLE</Text>
+              <Text style={styles.liveCount}>{visible.length} SIGNALS</Text>
             </View>
             <View style={styles.mosaic}>
-              {visible[0] ? <SignalTile item={visible[0]} variant="lead" onPlay={() => play(visible[0])} /> : null}
+              {visible[0] ? <SignalTile item={visible[0]} variant="lead" onOpen={() => open(visible[0])} onPlay={() => play(visible[0])} /> : null}
               <View style={styles.mosaicStack}>
-                {visible.slice(1, 3).map((item) => <SignalTile key={item.id} item={item} variant="small" onPlay={() => play(item)} />)}
+                {visible.slice(1, 3).map((item) => <SignalTile key={item.id} item={item} variant="small" onOpen={() => open(item)} onPlay={() => play(item)} />)}
               </View>
             </View>
             <View style={styles.whyRow}><View style={styles.whyLine} /><Text style={styles.whyText}>{visible[0]?.discoveryReason}. Chosen from live creator and scene signals—not popularity alone.</Text></View>
@@ -199,9 +222,9 @@ export function MusicDiscoveryDiscover() {
             <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>RELEASE RADAR</Text><Text style={styles.sectionTitle}>New on the platform</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/releases' as any)}><Text style={styles.seeAll}>View all</Text></Pressable></View>
             <View style={styles.radarGrid}>
               {allItems.slice(3, 7).map((item) => (
-                <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={item.id} onPress={() => play(item)} style={styles.radarCard}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title} by ${item.creator}`} key={item.id} onPress={() => open(item)} style={styles.radarCard}>
                   {item.artwork ? <PluggdImage uri={item.artwork} style={styles.radarArt} displayWidth={420} /> : <View style={[styles.radarArt, styles.fallback]}><MaterialIcons name="graphic-eq" size={30} color={ORANGE} /></View>}
-                  <View style={styles.radarPlay}><MaterialIcons name="play-arrow" size={18} color="#100B07" /></View>
+                  <Pressable accessibilityRole="button" accessibilityLabel={item.isPlayable ? `Play ${item.title}` : `Open ${item.title}`} onPress={(event) => { event.stopPropagation(); void play(item); }} style={styles.radarPlay}><MaterialIcons name={item.isPlayable ? 'play-arrow' : 'north-east'} size={18} color="#100B07" /></Pressable>
                   <Text style={styles.radarTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.radarMeta} numberOfLines={1}>{item.creator} · {item.kind}</Text>
                 </Pressable>
               ))}
@@ -209,15 +232,15 @@ export function MusicDiscoveryDiscover() {
           </>
         ) : null}
 
-        {allItems.length > 7 ? (
+        {chartItems.length ? (
           <>
             <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>PLUGGD CHART</Text><Text style={styles.sectionTitle}>Moving without the machine</Text></View></View>
-            {allItems.slice(0, 6).map((item, index) => (
-              <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}`} key={`chart-${item.id}`} onPress={() => play(item)} style={styles.chartRow}>
+            {chartItems.slice(0, 6).map((item, index) => (
+              <Pressable accessibilityRole="button" accessibilityLabel={`Open chart item ${item.title} by ${item.creator}`} key={`chart-${item.id}`} onPress={() => open(item)} style={styles.chartRow}>
                 <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
                 {item.artwork ? <PluggdImage uri={item.artwork} style={styles.chartArt} displayWidth={180} /> : <View style={[styles.chartArt, styles.fallback]} />}
                 <View style={styles.chartCopy}><Text style={styles.chartTitle} numberOfLines={1}>{item.title}</Text><Text style={styles.chartMeta} numberOfLines={1}>{item.creator} · {item.discoveryReason}</Text></View>
-                <MaterialIcons name="north-east" size={18} color={index < 3 ? ORANGE : MUTED} />
+                <Pressable accessibilityRole="button" accessibilityLabel={item.isPlayable ? `Play ${item.title}` : `Open ${item.title}`} hitSlop={8} onPress={(event) => { event.stopPropagation(); void play(item); }}><MaterialIcons name={item.isPlayable ? 'play-arrow' : 'north-east'} size={22} color={index < 3 ? ORANGE : MUTED} /></Pressable>
               </Pressable>
             ))}
           </>
@@ -235,7 +258,7 @@ export function MusicDiscoveryDiscover() {
               accessibilityRole="button"
               accessibilityLabel={`Open live room ${room.title || 'PLUGGD Live'}`}
               key={`live-${room.id}`}
-              onPress={() => router.push('/live' as any)}
+              onPress={() => router.push(`/live/session?roomId=${encodeURIComponent(room.id)}` as any)}
               style={styles.chartRow}
             >
               <View style={[styles.liveDot, room.status === 'live' && styles.liveDotOn]} />
@@ -256,7 +279,7 @@ export function MusicDiscoveryDiscover() {
             <Text style={styles.emptyCopy}>Upcoming events are still moving — jump into one while the next room opens.</Text>
             <View style={styles.emptyActions}>
               <Pressable accessibilityRole="button" onPress={() => router.push('/events' as any)} style={styles.emptyPrimary}><Text style={styles.emptyPrimaryText}>View events</Text></Pressable>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/live' as any)} style={styles.emptySecondary}><Text style={styles.emptySecondaryText}>Start a room</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/live/create' as any)} style={styles.emptySecondary}><Text style={styles.emptySecondaryText}>Start a room</Text></Pressable>
             </View>
           </View>
         )}
@@ -306,9 +329,9 @@ export function MusicDiscoveryDiscover() {
               {creators.map((creator) => (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Search for ${creator.name}`}
+                  accessibilityLabel={`Open ${creator.name}`}
                   key={`creator-${creator.name}`}
-                  onPress={() => router.push(`/search?q=${encodeURIComponent(creator.name)}` as any)}
+                  onPress={() => router.push(creator.route as any)}
                   style={styles.creatorCard}
                 >
                   {creator.artwork ? (
@@ -359,10 +382,10 @@ function WorldGateway({ world, onPress }: { world: { title: string; meta: string
   );
 }
 
-function SignalTile({ item, variant, onPlay }: { item: DiscoveryItem; variant: 'lead' | 'small'; onPlay: () => void }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={`Play ${item.title} by ${item.creator}. ${item.discoveryReason}`} onPress={onPlay} style={variant === 'lead' ? styles.leadTile : styles.smallTile}>
+function SignalTile({ item, variant, onOpen, onPlay }: { item: DiscoveryItem; variant: 'lead' | 'small'; onOpen: () => void; onPlay: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title} by ${item.creator}. ${item.discoveryReason}`} onPress={onOpen} style={variant === 'lead' ? styles.leadTile : styles.smallTile}>
     {item.artwork ? <PluggdImage uri={item.artwork} style={styles.fill} displayWidth={720} /> : <View style={[styles.fill, styles.fallback]}><MaterialIcons name="graphic-eq" size={34} color={ORANGE} /></View>}
-    <View style={styles.tileShade} /><View style={variant === 'lead' ? styles.tilePlayLead : styles.tilePlaySmall}><MaterialIcons name="play-arrow" size={variant === 'lead' ? 24 : 18} color="#100B07" /></View>
+    <View style={styles.tileShade} /><Pressable accessibilityRole="button" accessibilityLabel={item.isPlayable ? `Play ${item.title}` : `Open ${item.title}`} onPress={(event) => { event.stopPropagation(); onPlay(); }} style={variant === 'lead' ? styles.tilePlayLead : styles.tilePlaySmall}><MaterialIcons name={item.isPlayable ? 'play-arrow' : 'north-east'} size={variant === 'lead' ? 24 : 18} color="#100B07" /></Pressable>
     <View style={styles.tileCopy}><Text style={styles.tileKind}>{item.kind.toUpperCase()} · {item.genre || item.city || 'INDEPENDENT'}</Text><Text style={variant === 'lead' ? styles.leadTitle : styles.smallTitle} numberOfLines={2}>{item.title}</Text><Text style={styles.tileCreator} numberOfLines={1}>{item.creator}</Text></View>
   </Pressable>;
 }

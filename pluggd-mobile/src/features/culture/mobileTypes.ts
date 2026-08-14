@@ -613,7 +613,23 @@ export type LiveGift = {
   recipient_id?: string | null;
   gift_type?: string | null;
   credits_amount?: number | null;
+  gift_id?: string | null;
+  quantity?: number | null;
+  total_credits?: number | null;
+  message?: string | null;
+  artwork_url?: string | null;
+  animation_variant?: 'standard' | 'reduced' | null;
   created_at: string;
+};
+
+export type LiveGiftSendResponse = {
+  event: LiveGift;
+  balance: {
+    balance_credits: number;
+    pending_credits: number;
+    available_credits: number;
+  };
+  already_processed: boolean;
 };
 
 export type LiveRecording = {

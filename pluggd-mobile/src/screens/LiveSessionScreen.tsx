@@ -7,8 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -36,6 +38,7 @@ import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 import { resolveCommercePolicy } from '../commerce/policy';
+import { useReducedMotion } from '../design/useReducedMotion';
 
 const PLUGGD_ORANGE = '#ff6600';
 const REACTION_TTL_MS = 2400;
@@ -88,6 +91,8 @@ type LiveGiftCatalogItem = {
   label: string;
   credit_cost: number;
   description?: string | null;
+  thumbnail_url?: string | null;
+  animation_url?: string | null;
 };
 
 type LiveGiftEvent = {
@@ -215,6 +220,7 @@ export default function LiveSessionScreen() {
   const { roomId, role } = useLocalSearchParams<{ roomId?: string; role?: string }>();
   const { user } = useAuth();
   const wallet = useWallet();
+  const reducedMotion = useReducedMotion();
 
   const currentRoomId = useMemo(
     () => (typeof roomId === 'string' && roomId.length > 0 ? roomId : null),
@@ -238,6 +244,11 @@ export default function LiveSessionScreen() {
   const [giftCatalog, setGiftCatalog] = useState<LiveGiftCatalogItem[]>([]);
   const [giftEvents, setGiftEvents] = useState<LiveGiftEvent[]>([]);
   const [sendingGift, setSendingGift] = useState(false);
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+  const [giftQuantity, setGiftQuantity] = useState(1);
+  const [giftMessage, setGiftMessage] = useState('');
+  const [giftConfirmation, setGiftConfirmation] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [stageRequest, setStageRequest] = useState<StageRequest | null>(null);
   const [stageRequestNote, setStageRequestNote] = useState('');
@@ -257,6 +268,7 @@ export default function LiveSessionScreen() {
   const giftChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const sessionRef = useRef<SessionRoom | null>(null);
   const blockedUserIdsRef = useRef<Set<string>>(new Set());
+  const giftPulse = useRef(new Animated.Value(0)).current;
 
   const host = profileName(session?.profiles);
   const isAudioRoom = session?.live_mode === 'audio_room';
@@ -424,12 +436,14 @@ export default function LiveSessionScreen() {
 
     const catalogResult = await (supabase as any)
       .from('live_gift_catalog')
-      .select('id, slug, label, description, credit_cost')
+      .select('id, slug, label, description, credit_cost, thumbnail_url, animation_url')
       .eq('is_active', true)
       .order('credit_cost', { ascending: true });
 
     if (!catalogResult.error) {
-      setGiftCatalog((catalogResult.data ?? []) as LiveGiftCatalogItem[]);
+      const catalog = (catalogResult.data ?? []) as LiveGiftCatalogItem[];
+      setGiftCatalog(catalog);
+      setSelectedGiftId((current) => current && catalog.some((gift) => gift.id === current) ? current : catalog[0]?.id ?? null);
     }
 
     let eventsResult = await (supabase as any)
@@ -442,7 +456,7 @@ export default function LiveSessionScreen() {
         total_credits,
         message,
         created_at,
-        live_gift_catalog(id, slug, label, credit_cost, description)
+        live_gift_catalog(id, slug, label, credit_cost, description, thumbnail_url, animation_url)
       `)
       .eq('room_id', currentRoomId)
       .order('created_at', { ascending: false })
@@ -741,7 +755,20 @@ export default function LiveSessionScreen() {
     });
   };
 
-  const sendGift = async () => {
+  const openGiftTray = () => {
+    impactHaptic();
+    if (session?.status !== 'live') {
+      Alert.alert('Gift unavailable', 'Gifts can be sent once the room is live.');
+      return;
+    }
+    if (session?.host_id === user?.id || isHostRoute) {
+      Alert.alert('Host view', 'Hosts cannot send gifts to their own live room.');
+      return;
+    }
+    setGiftTrayOpen(true);
+  };
+
+  const sendGift = async (gift: LiveGiftCatalogItem, quantity: number, message: string) => {
     impactHaptic();
     if (!currentRoomId || sendingGift) return;
     if (session?.status !== 'live') {
@@ -749,9 +776,17 @@ export default function LiveSessionScreen() {
       return;
     }
 
-    const gift = giftCatalog[0];
-    if (!gift) {
-      Alert.alert('Gift unavailable', 'No live gifts are configured yet.');
+    const total = gift.credit_cost * quantity;
+    if (wallet.balance.available_credits < total) {
+      setGiftTrayOpen(false);
+      Alert.alert(
+        'More credits needed',
+        `This gift costs ${total.toLocaleString()} credits. Your room will still be here when you return.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
+        ],
+      );
       return;
     }
 
@@ -778,9 +813,8 @@ export default function LiveSessionScreen() {
         body: {
           room_id: currentRoomId,
           gift_id: gift.id,
-          quantity: 1,
-          message: null,
-          animation_variant: null,
+          quantity,
+          message: message.trim() || null,
           idempotency_key: idempotencyKey,
           ...(Platform.OS === 'android' ? { commerce_platform: 'android' } : {}),
         },
@@ -792,6 +826,21 @@ export default function LiveSessionScreen() {
         appendGiftEvent(normalizeGiftEvent((data as any).event, gift));
       }
       await wallet.refreshBalance();
+      setGiftConfirmation(`${gift.label} sent to ${host}`);
+      setGiftTrayOpen(false);
+      setGiftQuantity(1);
+      setGiftMessage('');
+      giftPulse.setValue(0);
+      if (reducedMotion) {
+        giftPulse.setValue(1);
+      } else {
+        Animated.sequence([
+          Animated.spring(giftPulse, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 10 }),
+          Animated.delay(850),
+          Animated.timing(giftPulse, { toValue: 0, duration: 240, useNativeDriver: true }),
+        ]).start(() => setGiftConfirmation(null));
+      }
+      setTimeout(() => setGiftConfirmation(null), reducedMotion ? 1800 : 1500);
     } catch (error: any) {
       Alert.alert('Gift not sent', error?.message ?? 'Please check your credits and try again.');
     } finally {
@@ -1148,7 +1197,7 @@ export default function LiveSessionScreen() {
           <View style={styles.rightRail}>
             <RailButton icon="favorite" label="React" onPress={() => sendReaction('heart')} />
             <RailButton icon="local-fire-department" label="Boost" onPress={() => sendReaction('fire')} />
-            <RailButton icon="card-giftcard" label="Gift" loading={sendingGift} onPress={sendGift} />
+            {!isHostRoute ? <RailButton icon="card-giftcard" label="Gift" loading={sendingGift} onPress={openGiftTray} /> : null}
             <RailButton icon="ios-share" label="Share" onPress={shareRoom} />
             <RailButton icon="more-horiz" label="Safety" onPress={openRoomSafety} />
             <RailButton icon={muted ? 'mic-off' : 'mic'} label={muted ? 'Muted' : 'Mute'} onPress={toggleMute} />
@@ -1209,12 +1258,14 @@ export default function LiveSessionScreen() {
                 </Pressable>
               )}
 
-              <Pressable accessibilityRole="button" accessibilityLabel="Send live gift" style={styles.secondaryActionButton} onPress={sendGift}>
-                <MaterialIcons name="card-giftcard" size={18} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryActionText}>
-                  {giftCatalog[0] ? `Gift ${giftCatalog[0].credit_cost} cr` : 'Send gift'}
-                </Text>
-              </Pressable>
+              {!isHostRoute ? (
+                <Pressable accessibilityRole="button" accessibilityLabel="Open live gift tray" style={styles.secondaryActionButton} onPress={openGiftTray}>
+                  <MaterialIcons name="card-giftcard" size={18} color={PLUGGD_ORANGE} />
+                  <Text style={styles.secondaryActionText}>
+                    {giftCatalog[0] ? `Gift ${giftCatalog[0].credit_cost} cr` : 'Send gift'}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {!isHostRoute && stageSupported && session?.status === 'live' ? (
@@ -1438,7 +1489,170 @@ export default function LiveSessionScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {giftConfirmation ? (
+        <Animated.View
+          accessible
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.giftConfirmation,
+            {
+              opacity: giftPulse,
+              transform: [{ scale: reducedMotion ? 1 : giftPulse.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] }) }],
+            },
+          ]}
+        >
+          <View style={styles.giftConfirmationIcon}><MaterialIcons name="card-giftcard" size={27} color="#0A0806" /></View>
+          <Text style={styles.giftConfirmationText}>{giftConfirmation}</Text>
+        </Animated.View>
+      ) : null}
+
+      <LiveGiftTray
+        visible={giftTrayOpen}
+        gifts={giftCatalog}
+        selectedGiftId={selectedGiftId}
+        quantity={giftQuantity}
+        message={giftMessage}
+        balance={wallet.balance.available_credits}
+        host={host}
+        sending={sendingGift}
+        onClose={() => setGiftTrayOpen(false)}
+        onSelect={setSelectedGiftId}
+        onQuantity={setGiftQuantity}
+        onMessage={setGiftMessage}
+        onConfirm={() => {
+          const gift = giftCatalog.find((item) => item.id === selectedGiftId);
+          if (gift) void sendGift(gift, giftQuantity, giftMessage);
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+function giftVisual(slug: string): { icon: keyof typeof MaterialIcons.glyphMap; color: string } {
+  const key = slug.toLowerCase();
+  if (key.includes('crown') || key.includes('royal')) return { icon: 'workspace-premium', color: '#F7C84B' };
+  if (key.includes('fire') || key.includes('flame')) return { icon: 'local-fire-department', color: '#FF6A2A' };
+  if (key.includes('star')) return { icon: 'star', color: '#FFB02E' };
+  if (key.includes('rose') || key.includes('flower')) return { icon: 'local-florist', color: '#FF5A8D' };
+  if (key.includes('bolt') || key.includes('boost')) return { icon: 'bolt', color: '#BDA4FF' };
+  return { icon: 'favorite', color: '#FF5A6D' };
+}
+
+function LiveGiftTray({
+  visible,
+  gifts,
+  selectedGiftId,
+  quantity,
+  message,
+  balance,
+  host,
+  sending,
+  onClose,
+  onSelect,
+  onQuantity,
+  onMessage,
+  onConfirm,
+}: {
+  visible: boolean;
+  gifts: LiveGiftCatalogItem[];
+  selectedGiftId: string | null;
+  quantity: number;
+  message: string;
+  balance: number;
+  host: string;
+  sending: boolean;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+  onQuantity: (quantity: number) => void;
+  onMessage: (message: string) => void;
+  onConfirm: () => void;
+}) {
+  const selected = gifts.find((gift) => gift.id === selectedGiftId) ?? gifts[0];
+  const total = (selected?.credit_cost ?? 0) * quantity;
+  const enough = balance >= total;
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={styles.giftModalRoot}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close live gift tray" onPress={onClose} style={styles.giftModalBackdrop} />
+        <View style={styles.giftTray}>
+          <View style={styles.giftTrayHandle} />
+          <View style={styles.giftTrayHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.giftTrayEyebrow}>SUPPORT {host.toUpperCase()}</Text>
+              <Text style={styles.giftTrayTitle}>Send a live gift</Text>
+            </View>
+            <View style={styles.giftBalance}>
+              <MaterialIcons name="account-balance-wallet" size={16} color={PLUGGD_ORANGE} />
+              <Text style={styles.giftBalanceText}>{balance.toLocaleString()} cr</Text>
+            </View>
+          </View>
+          <Text style={styles.giftTrayCopy}>Every gift has a fixed credit price. There are no randomized rewards.</Text>
+
+          {gifts.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.giftCatalogRail}>
+              {gifts.map((gift) => {
+                const active = gift.id === selected?.id;
+                const visual = giftVisual(gift.slug);
+                return (
+                  <Pressable
+                    key={gift.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${gift.label}, ${gift.credit_cost} credits`}
+                    onPress={() => { selectionHaptic(); onSelect(gift.id); }}
+                    style={[styles.giftCard, active && styles.giftCardActive]}
+                  >
+                    <View style={[styles.giftArt, { backgroundColor: `${visual.color}22`, borderColor: `${visual.color}66` }]}>
+                      <MaterialIcons name={visual.icon} size={32} color={visual.color} />
+                    </View>
+                    <Text style={styles.giftLabel} numberOfLines={1}>{gift.label}</Text>
+                    <Text style={styles.giftCost}>{gift.credit_cost.toLocaleString()} credits</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.giftEmpty}><Text style={styles.giftEmptyTitle}>Gifts are not available in this room yet.</Text><Text style={styles.giftEmptyCopy}>You can still react, chat, follow and share.</Text></View>
+          )}
+
+          {selected ? (
+            <>
+              <View style={styles.giftQuantityRow}>
+                <Text style={styles.giftFieldLabel}>Quantity</Text>
+                {[1, 2, 5].map((value) => (
+                  <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: value === quantity }} accessibilityLabel={`${value} gifts`} onPress={() => onQuantity(value)} style={[styles.giftQuantity, value === quantity && styles.giftQuantityActive]}>
+                    <Text style={[styles.giftQuantityText, value === quantity && styles.giftQuantityTextActive]}>×{value}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={message}
+                onChangeText={(value) => onMessage(value.slice(0, 160))}
+                placeholder="Add a message (optional)"
+                placeholderTextColor="#77716B"
+                accessibilityLabel="Optional gift message"
+                style={styles.giftMessageInput}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={enough ? `Confirm ${selected.label} gift for ${total} credits` : `Open Wallet for ${selected.label} gift`}
+                accessibilityState={{ disabled: sending }}
+                disabled={sending}
+                onPress={onConfirm}
+                style={[styles.giftConfirm, !enough && styles.giftConfirmShort]}
+              >
+                {sending ? <ActivityIndicator color="#0A0806" /> : <>
+                  <Text style={styles.giftConfirmText}>{enough ? `Send ${selected.label}` : 'Add credits in Wallet'}</Text>
+                  <Text style={styles.giftConfirmPrice}>{total.toLocaleString()} cr</Text>
+                </>}
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -2125,4 +2339,37 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: PLUGGD_ORANGE,
   },
+  giftModalRoot: { flex: 1, justifyContent: 'flex-end' },
+  giftModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.62)' },
+  giftTray: { maxHeight: '82%', borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: '#100D0B', borderTopWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28 },
+  giftTrayHandle: { width: 46, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)', alignSelf: 'center', marginBottom: 14 },
+  giftTrayHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  giftTrayEyebrow: { color: PLUGGD_ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.2 },
+  giftTrayTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 31, letterSpacing: -0.7 },
+  giftBalance: { minHeight: 44, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, backgroundColor: '#1C1713', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,102,0,0.4)' },
+  giftBalanceText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  giftTrayCopy: { color: 'rgba(255,255,255,0.58)', fontFamily: pluggdFonts.satoshiRegular, fontSize: 11.5, lineHeight: 16, marginTop: 7 },
+  giftCatalogRail: { gap: 10, paddingVertical: 16, paddingRight: 18 },
+  giftCard: { width: 112, minHeight: 142, borderRadius: 18, backgroundColor: '#191512', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', padding: 10, gap: 7 },
+  giftCardActive: { borderColor: PLUGGD_ORANGE, backgroundColor: '#24150C' },
+  giftArt: { height: 72, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  giftLabel: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
+  giftCost: { color: PLUGGD_ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10.5 },
+  giftEmpty: { minHeight: 128, marginVertical: 16, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 18 },
+  giftEmptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 16, textAlign: 'center' },
+  giftEmptyCopy: { color: 'rgba(255,255,255,0.58)', fontFamily: pluggdFonts.satoshiRegular, fontSize: 12, textAlign: 'center' },
+  giftQuantityRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.1)' },
+  giftFieldLabel: { flex: 1, color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  giftQuantity: { minWidth: 48, height: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', backgroundColor: '#191512' },
+  giftQuantityActive: { backgroundColor: PLUGGD_ORANGE, borderColor: PLUGGD_ORANGE },
+  giftQuantityText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
+  giftQuantityTextActive: { color: '#0A0806' },
+  giftMessageInput: { minHeight: 48, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: '#171310', color: '#FFFFFF', fontFamily: pluggdFonts.satoshiRegular, fontSize: 13.5, paddingHorizontal: 14, marginTop: 10 },
+  giftConfirm: { minHeight: 56, marginTop: 12, borderRadius: 16, backgroundColor: PLUGGD_ORANGE, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  giftConfirmShort: { backgroundColor: '#FFB36F' },
+  giftConfirmText: { color: '#0A0806', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.3 },
+  giftConfirmPrice: { color: '#0A0806', fontFamily: pluggdFonts.displayExtraBold, fontSize: 16 },
+  giftConfirmation: { position: 'absolute', zIndex: 30, alignSelf: 'center', top: '32%', maxWidth: 300, borderRadius: 22, backgroundColor: 'rgba(12,9,7,0.95)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.55)', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  giftConfirmationIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
+  giftConfirmationText: { flex: 1, color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 16, lineHeight: 21 },
 });

@@ -34,6 +34,7 @@ import {
   type FeedBundle,
   type ProfileItem,
 } from '../../lib/mobileContent';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 import {
   cancelEventLocalReminder,
   cancelLiveSessionLocalReminder,
@@ -242,7 +243,7 @@ function mapCreators(bundle?: FeedBundle, rooms: LiveRoomItem[] = []): CreatorCa
 
   rooms.forEach((room) => {
     const name = roomHost(room);
-    if (!name || seen.has(name.toLowerCase())) return;
+    if (!isPublicProfileName(name) || seen.has(name.toLowerCase())) return;
     seen.add(name.toLowerCase());
     creators.push({
       id: `live-${room.id}`,
@@ -256,7 +257,7 @@ function mapCreators(bundle?: FeedBundle, rooms: LiveRoomItem[] = []): CreatorCa
 
   bundle?.profiles.forEach((profile) => {
     const name = profileName(profile);
-    if (!name || seen.has(name.toLowerCase())) return;
+    if (!isPublicProfileName(name) || seen.has(name.toLowerCase())) return;
     seen.add(name.toLowerCase());
     creators.push({
       id: profile.user_id || profile.id || profile.username || name,

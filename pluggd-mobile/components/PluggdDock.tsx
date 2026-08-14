@@ -34,6 +34,7 @@ export const CORE_TABS: TabItem[] = [
       '/mixes',
       '/search',
       '/directory',
+      '/hubs',
     ],
   },
   {
@@ -45,7 +46,6 @@ export const CORE_TABS: TabItem[] = [
       '/backstage',
       '/community/boards',
       '/community/events',
-      '/hubs',
       '/social/hub',
       '/post',
       '/story',

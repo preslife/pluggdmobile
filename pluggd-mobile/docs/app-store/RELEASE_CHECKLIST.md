@@ -1,5 +1,45 @@
 # iOS Release Checklist
 
+## Build 5 submission gate — controlling section
+
+The historical evidence below documents Builds 1–4 and must not be used to
+declare Build 5 ready. Build 5 must not be uploaded, selected or resubmitted
+until every critical item in this section is checked with current evidence.
+
+### Product and data
+
+- [x] Discover cards have deterministic destinations; only verified playable URLs enter the player or queue.
+- [x] Carnival uses the published production bundle, sourced map signals, native reader and timed campaign window.
+- [x] Live gifting verifies room, recipient, catalogue price, balance and idempotency server-side.
+- [x] No invented live state, crowd density, recommendation reason or rights claim appears in public copy.
+- [x] Carnival and Live migrations/functions are deployed to production project `qkwvqmubhyondemhasjp` and smoke-tested.
+
+### Automated and native verification
+
+- [x] Clean mobile contract suite, TypeScript and Expo Doctor pass (18/18 checks, 14 August 2026).
+- [x] Supabase function unit/integration tests and migration checks pass; deployed functions reject unauthenticated gift sends.
+- [x] Root web/backend tests (253 files / 1,326 tests) and production build pass.
+- [x] Signed Release archive passes privacy manifest, entitlements, icon, encryption and signature inspection. Archive `/private/tmp/Pluggd-v5.xcarchive` and exported IPA `/private/tmp/Pluggd-v5-export/Pluggd.ipa` were verified on 14 August 2026; bundle `com.pluggd.mobile`, version `1.0.0 (5)`, production APNs, Sign in with Apple, non-exempt encryption false, `get-task-allow=false` and strict code-signature validation all pass.
+- [x] Build 5 upload completed and App Store Connect finished processing it. TestFlight reports Build 5 `Ready to Submit`, assigned to the `PLUGGD Submission QA` internal group, on 14 August 2026.
+- [x] The same Build 5 archive was re-exported with the registered-device `PLUGGD Ad Hoc Device QA 2026` profile and installed successfully on the paired iPhone 15 Pro Max. Launch and walkthrough remain separate unchecked gates below.
+- [ ] Fresh and upgrade installs pass on iPhone 15 Pro Max, iPhone 17 Pro Max simulator and iPad Air 11-inch M3 compatibility mode.
+- [ ] Signed-out, fan, creator, offline, empty, denied-permission and interrupted-purchase states pass.
+- [ ] Consumable idempotency, membership purchase/restore/refund/revoke and Live-gift retry reconciliation pass.
+- [ ] Whole-app route, 44pt target, VoiceOver, Dynamic Type, contrast, Reduce Motion, safe-area and rotation audit has no open P0/P1 defects.
+
+### Reviewer evidence and App Store Connect
+
+- [ ] Two durable review accounts are verified immediately before submission and stored only in App Store Connect.
+- [ ] Continuous physical-device walkthrough is watched end-to-end, uploaded and fully processed.
+- [ ] Exact tested-device/OS results replace every placeholder in the eight-section Review Notes.
+- [ ] Content-rights statement is reviewed, signed and attached; screenshot assets match the rights register.
+- [ ] Final Build 5 screenshots are captured from the signed Release build and replace the Build 4 set.
+- [ ] Five consumables and the creator membership use exact product-specific review assets; optional promotional IAP images are empty.
+- [ ] Build `1.0.0 (5)` is `VALID` / App Store eligible and selected for version 1.0.
+- [ ] Terms, Privacy, subscription disclosures, account deletion, UGC safety and regional commerce wording are verified in-app and in metadata.
+- [ ] The eight-part Review Notes and Build 5 response are saved; every attachment has finished processing.
+- [ ] Final draft audit is clean before the complete review bundle is submitted.
+
 ## Automated gates
 
 - [x] `npm run verify:mobile`

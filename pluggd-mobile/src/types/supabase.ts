@@ -4487,6 +4487,64 @@ export type Database = {
           },
         ]
       }
+      live_gift_idempotency_requests: {
+        Row: {
+          created_at: string
+          event_id: string
+          gift_id: string
+          id: string
+          idempotency_key: string
+          message: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          gift_id: string
+          id?: string
+          idempotency_key: string
+          message?: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          gift_id?: string
+          id?: string
+          idempotency_key?: string
+          message?: string | null
+          quantity?: number
+          room_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gift_idempotency_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_idempotency_requests_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_idempotency_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "session_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_session_reminders: {
         Row: {
           created_at: string
@@ -10725,6 +10783,17 @@ export type Database = {
           p_sender: string
         }
         Returns: string
+      }
+      perform_live_gift_v3: {
+        Args: {
+          p_gift_id: string
+          p_idempotency_key: string
+          p_message: string | null
+          p_quantity: number
+          p_room_id: string
+          p_sender: string
+        }
+        Returns: Json
       }
       process_tip_payment: {
         Args: {
