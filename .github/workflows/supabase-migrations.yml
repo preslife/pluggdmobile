@@ -1,54 +1,25 @@
-name: Supabase Migrations
+name: Shared backend source ownership
 
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/**'
-      - 'supabase/config.toml'
+      - 'supabase/**'
       - '.github/workflows/supabase-migrations.yml'
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'supabase/migrations/**'
-      - 'supabase/config.toml'
+      - 'supabase/**'
       - '.github/workflows/supabase-migrations.yml'
 
+permissions:
+  contents: read
+
 jobs:
-  migrations:
+  backend-source-only:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Dry run migrations (PRs)
-        if: github.event_name == 'pull_request'
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - name: Record canonical backend deployment owner
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "SUPABASE_DB_URL secret is not set" >&2
-            exit 1
-          fi
-          supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
-
-      - name: Push migrations (main)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "SUPABASE_DB_URL secret is not set" >&2
-            exit 1
-          fi
-          supabase db push --db-url "$SUPABASE_DB_URL"
-
-
-
+          echo 'Shared production migrations and Edge Functions are released from preslife/PLUGGD_Build.'
+          echo 'This native repository retains source history but does not apply production migrations.'
+          echo 'Reconcile backend changes into the web repository before releasing a dependent native build.'

@@ -92,18 +92,19 @@ serve(async (req) => {
     const select = productSource === "store_products"
       ? "id,title,description,image_url,price,product_type,stock_quantity,is_active"
       : "id,title,description,image_url,price,product_type,stock_quantity,status,requires_shipping,user_id";
-    const { data: product, error: productError } = await service
+    const { data: productRow, error: productError } = await service
       .from(productSource)
       .select(select)
       .eq("id", productId)
       .maybeSingle();
-    if (productError || !product) {
+    if (productError || !productRow) {
       return json({ error: "Merchandise is unavailable" }, 404);
     }
+    const product: any = productRow;
     const isPhysical = productSource === "store_products"
       ? product.is_active === true && product.product_type === "merchandise"
       : product.requires_shipping === true &&
-        ["active", "published", "approved"].includes(product.status);
+        ["active", "published", "approved", "live"].includes(product.status);
     if (!isPhysical) {
       return json({ error: "Only verified physical merchandise is eligible" }, 403);
     }

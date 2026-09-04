@@ -8,7 +8,7 @@ const stageRoute = read('app/(tabs)/stage.tsx');
 const exploreRoute = read('app/(tabs)/explore.tsx');
 const dockSource = read('components/PluggdDock.tsx');
 const tabsSource = read('app/(tabs)/_layout.tsx');
-const chromeSource = read('components/AppChrome.tsx');
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const genrePath = new URL('../app/genre/[genre].tsx', import.meta.url);
 
 assert.match(stageRoute, /<Redirect href="\/discover" \/>/, 'Legacy Stage tab route must redirect to Discover');
@@ -21,7 +21,7 @@ assert.doesNotMatch(dockSource, /label:\s*'Stage'|route:\s*'\/stage'/, 'Stage mu
 
 assert.match(tabsSource, /name="stage"[\s\S]*href:\s*null/, 'Stage compatibility route must stay hidden from the tab bar');
 assert.doesNotMatch(tabsSource, /title:\s*"Stage"/, 'Tabs layout must not expose Stage as a primary title');
-assert.match(chromeSource, /normalized === '\/stage'/, 'Legacy Stage route must still avoid duplicate global chrome while redirecting');
+assert.match(chromeSource, /DEDICATED_HEADER_EXACT[\s\S]*'\/stage'/, 'Legacy Stage route must still avoid duplicate global chrome while redirecting');
 
 for (const token of [
   'ContinueListening',

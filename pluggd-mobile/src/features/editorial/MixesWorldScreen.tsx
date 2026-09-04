@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   RefreshControl,
   Share,
@@ -20,12 +20,14 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { Enter, EdPressable, TornEdge } from './EditorialBits';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { safeList } from '../culture/mobileServices';
@@ -33,6 +35,7 @@ import { showQuickActions } from '../../lib/quickActions';
 import { supabase } from '../../lib/supabase';
 import { formatCompact, formatDuration, toTrack, type MixItem } from '../../lib/mobileContent';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
+import { loadThePlugEditorialStories } from '../home/homeDiscoveryData';
 
 /** The /mixes page carries a yellow data-label accent on the live site. */
 const MIX_YELLOW = '#ffdf4d';
@@ -69,6 +72,32 @@ function selectorName(mix?: MixItem | null) {
   return mix?.city ? `${mix.city} selector` : 'PLUGGD selector';
 }
 
+function mixScore(mix?: MixItem | null) {
+  if (!mix) return 0;
+  return (
+    Number(mix.play_count ?? 0) * 1.4
+    + Number(mix.like_count ?? 0) * 4
+    + Number(mix.save_count ?? 0) * 5
+    + Number(mix.repost_count ?? 0) * 3
+  );
+}
+
+function MixFallbackArtwork({ style }: { style?: any }) {
+  return (
+    <LinearGradient colors={['#9a4de7', '#4c2776', '#131019']} style={[style, mixFallbackStyles.shell]}>
+      <View style={mixFallbackStyles.disc} />
+      <View style={mixFallbackStyles.discLabel} />
+      <MaterialIcons name="graphic-eq" size={26} color="rgba(255,255,255,0.82)" />
+    </LinearGradient>
+  );
+}
+
+const mixFallbackStyles = StyleSheet.create({
+  shell: { position: 'relative', overflow: 'hidden', padding: 14, justifyContent: 'flex-end' },
+  disc: { position: 'absolute', width: '82%', aspectRatio: 1, borderRadius: 999, right: '-24%', top: '-9%', borderWidth: 18, borderColor: 'rgba(12,8,18,0.34)', backgroundColor: 'rgba(10,7,14,0.36)' },
+  discLabel: { position: 'absolute', width: '23%', aspectRatio: 1, borderRadius: 999, right: '5.5%', top: '20.5%', backgroundColor: 'rgba(255,223,77,0.72)' },
+});
+
 /** Yellow tracked eyebrow + serif title — the /mixes section voice. */
 function MixSectionHead({ eyebrow, title, subtitle, action, onAction }: {
   eyebrow: string;
@@ -77,6 +106,7 @@ function MixSectionHead({ eyebrow, title, subtitle, action, onAction }: {
   action?: string;
   onAction?: () => void;
 }) {
+  const styles = useMixesWorldStyles();
   return (
     <View style={{ gap: 7 }}>
       <Text style={styles.mixEyebrow}>{eyebrow.toUpperCase()}</Text>
@@ -97,20 +127,22 @@ function MixSectionHead({ eyebrow, title, subtitle, action, onAction }: {
 /* Hero                                                                */
 /* ------------------------------------------------------------------ */
 
-function MixesHero({ mixes }: { mixes: MixItem[] }) {
+function MixesHero({ mixes, onBrowseLatest }: { mixes: MixItem[]; onBrowseLatest: () => void }) {
   const router = useRouter();
   const playback = usePlayback();
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
   const [tab, setTab] = useState(0);
 
   const heroPool = useMemo(() => {
     if (!mixes.length) return [] as MixItem[];
-    const byPlays = [...mixes].sort((a, b) => Number(b.play_count ?? 0) - Number(a.play_count ?? 0));
+    const byScore = [...mixes].sort((a, b) => mixScore(b) - mixScore(a));
     const byRecency = [...mixes].sort(
       (a, b) => new Date(b.published_at || b.created_at || 0).getTime() - new Date(a.published_at || a.created_at || 0).getTime(),
     );
     const byLikes = [...mixes].sort((a, b) => Number(b.like_count ?? 0) - Number(a.like_count ?? 0));
     const picks: MixItem[] = [];
-    [byPlays[0], byRecency.find((mix) => mix.id !== byPlays[0]?.id) || byRecency[0], byLikes.find((mix) => !picks.some((p) => p?.id === mix.id) && mix.id !== byPlays[0]?.id) || byLikes[0]]
+    [byScore[0], byRecency.find((mix) => mix.id !== byScore[0]?.id) || byRecency[0], byLikes.find((mix) => !picks.some((p) => p?.id === mix.id) && mix.id !== byScore[0]?.id) || byLikes[0]]
       .forEach((mix) => { if (mix) picks.push(mix); });
     return picks;
   }, [mixes]);
@@ -131,29 +163,34 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
             onPress={() => setTab(index)}
           >
             <View style={[styles.heroTab, index === tab && styles.heroTabActive]}>
-              <Text style={[styles.heroTabNumber, index === tab && { color: '#3a1c04' }]}>
+              <Text style={[styles.heroTabNumber, index === tab && { color: theme.colors.onAccent }]}>
                 {String(index + 1).padStart(2, '0')}
               </Text>
-              <Text style={[styles.heroTabText, index === tab && { color: '#3a1c04' }]}>{label.toUpperCase()}</Text>
+              <Text style={[styles.heroTabText, index === tab && { color: theme.colors.onAccent }]}>{label.toUpperCase()}</Text>
             </View>
           </EdPressable>
         ))}
       </ScrollView>
-      <View style={styles.heroPosterWrap}>
-        {hero.cover_url ? (
-          <PluggdImage uri={hero.cover_url} style={styles.heroPoster} />
-        ) : (
-          <View style={[styles.heroPoster, { backgroundColor: '#221329' }]} />
-        )}
-        <LinearGradient colors={['rgba(7,6,5,0.1)', 'rgba(7,6,5,0.92)']} style={StyleSheet.absoluteFillObject} />
+      <View style={styles.heroStage}>
+        <View style={styles.heroPosterWrap}>
+          {hero.cover_url ? (
+            <PluggdImage uri={hero.cover_url} style={styles.heroPoster} />
+          ) : (
+            <MixFallbackArtwork style={styles.heroPoster} />
+          )}
+          <LinearGradient
+            colors={['rgba(141,69,255,0.28)', 'rgba(7,6,5,0.58)', 'rgba(7,6,5,0.94)']}
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </View>
         <View style={styles.heroPosterBody}>
           <Text style={styles.heroKicker}>
             {`${selectorName(hero)}${hero.city ? ` - ${hero.city}` : ''}`.toUpperCase()}
           </Text>
-          <Text style={styles.heroTitle}>The sound{'\n'}of tomorrow</Text>
-          <Text style={styles.heroMixName} numberOfLines={1}>{hero.title || 'Featured mix'}</Text>
+          <Text style={styles.heroTitle}>The sound{`\n`}of tomorrow</Text>
           {hero.description ? (
-            <Text style={styles.heroDescription} numberOfLines={2}>{hero.description}</Text>
+            <Text style={styles.heroDescription} numberOfLines={3}>{hero.description}</Text>
           ) : null}
         </View>
       </View>
@@ -174,32 +211,36 @@ function MixesHero({ mixes }: { mixes: MixItem[] }) {
           }}
         >
           <View style={styles.heroPlay}>
-            <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={20} color="#3a1c04" />
+            <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={20} color={theme.colors.onAccent} />
             <Text style={styles.heroPlayText}>{playing ? 'Pause featured mix' : 'Play featured mix'}</Text>
           </View>
         </EdPressable>
         <View style={styles.heroCtaRow}>
-          <EdPressable
-            accessibilityRole="button"
-            accessibilityLabel="Enter Listening Room"
-            onPress={() => router.push(`/mixes/${hero.id}` as any)}
-            style={{ flex: 1 }}
-          >
-            <View style={styles.heroGhost}>
-              <MaterialIcons name="album" size={16} color={ed.cream} />
-              <Text style={styles.heroGhostText}>Enter room</Text>
-            </View>
-          </EdPressable>
-          <EdPressable
-            accessibilityRole="button"
-            accessibilityLabel="Browse latest"
-            onPress={() => router.push('/mixes' as any)}
-            style={{ flex: 1 }}
-          >
-            <View style={styles.heroGhost}>
-              <Text style={styles.heroGhostText}>Browse latest</Text>
-            </View>
-          </EdPressable>
+          <View style={styles.heroActionCell}>
+            <EdPressable
+              accessibilityRole="button"
+              accessibilityLabel="Enter Listening Room"
+              onPress={() => router.push(`/mixes/${hero.id}` as any)}
+              style={{ width: '100%' }}
+            >
+              <View style={styles.heroGhost}>
+                <MaterialIcons name="album" size={16} color={theme.colors.text} />
+                <Text style={styles.heroGhostText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>Enter Listening Room</Text>
+              </View>
+            </EdPressable>
+          </View>
+          <View style={styles.heroActionCell}>
+            <EdPressable
+              accessibilityRole="button"
+              accessibilityLabel="Browse latest"
+              onPress={onBrowseLatest}
+              style={{ width: '100%' }}
+            >
+              <View style={styles.heroGhost}>
+                <Text style={styles.heroGhostText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>Browse latest</Text>
+              </View>
+            </EdPressable>
+          </View>
         </View>
       </View>
     </View>
@@ -235,6 +276,8 @@ function FilterCycleRow({ label, value, options, onChange }: {
   options: string[];
   onChange: (next: string | null) => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
   const cycle = () => {
     if (!options.length) return;
     if (value == null) {
@@ -247,10 +290,10 @@ function FilterCycleRow({ label, value, options, onChange }: {
   return (
     <EdPressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'any'}`} onPress={cycle}>
       <View style={styles.filterRow}>
-        <Text style={[styles.filterRowText, value ? { color: ed.ink, fontFamily: edFonts.bodyBold } : null]}>
+        <Text style={[styles.filterRowText, value ? { color: theme.colors.text, fontFamily: edFonts.bodyBold } : null]}>
           {value || label}
         </Text>
-        <MaterialIcons name="unfold-more" size={17} color="rgba(34,23,15,0.55)" />
+        <MaterialIcons name="unfold-more" size={17} color={theme.colors.textMuted} />
       </View>
     </EdPressable>
   );
@@ -262,6 +305,8 @@ function FindYourNextMix({ mixes, filters, setFilters, matchCount }: {
   setFilters: (next: MixFilters) => void;
   matchCount: number;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
   const genres = useMemo(
     () => Array.from(new Set(mixes.flatMap((mix) => mix.genre_tags || []))).slice(0, 8),
     [mixes],
@@ -280,12 +325,12 @@ function FindYourNextMix({ mixes, filters, setFilters, matchCount }: {
       <Text style={styles.finderTitle}>Find your next mix</Text>
       <Text style={styles.finderSub}>Search by sound, scene, pace or energy, not just genre.</Text>
       <View style={styles.finderSearch}>
-        <MaterialIcons name="search" size={18} color="rgba(34,23,15,0.5)" />
+        <MaterialIcons name="search" size={18} color={theme.colors.textMuted} />
         <TextInput
           value={filters.search}
           onChangeText={(next) => setFilters({ ...filters, search: next })}
           placeholder="Search title, DJ or tracklist..."
-          placeholderTextColor="rgba(34,23,15,0.45)"
+          placeholderTextColor={theme.colors.textMuted}
           style={styles.finderSearchInput}
         />
       </View>
@@ -314,6 +359,7 @@ const HAPPENING_PILLS = ['Lead story', 'DJ spotlight', 'Scene report'] as const;
 function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
   const playback = usePlayback();
+  const styles = useMixesWorldStyles();
   const cards = mixes.slice(0, 3);
   if (!cards.length) return null;
   return (
@@ -325,7 +371,9 @@ function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
           <View key={mix.id} style={styles.happeningCard}>
             {mix.cover_url ? (
               <PluggdImage uri={mix.cover_url} style={StyleSheet.absoluteFillObject as any} />
-            ) : null}
+            ) : (
+              <MixFallbackArtwork style={StyleSheet.absoluteFillObject} />
+            )}
             <LinearGradient colors={['rgba(7,6,5,0.42)', 'rgba(7,6,5,0.94)']} style={StyleSheet.absoluteFillObject} />
             <View style={styles.happeningBody}>
               <View style={styles.happeningPill}>
@@ -376,6 +424,7 @@ function WhatsHappening({ mixes }: { mixes: MixItem[] }) {
 
 function ListeningRooms({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
+  const styles = useMixesWorldStyles();
   const rooms = mixes.slice(0, 3);
   if (!rooms.length) return null;
   return (
@@ -384,7 +433,9 @@ function ListeningRooms({ mixes }: { mixes: MixItem[] }) {
         <View key={mix.id} style={styles.roomCard}>
           {mix.cover_url ? (
             <PluggdImage uri={mix.cover_url} style={StyleSheet.absoluteFillObject as any} />
-          ) : null}
+          ) : (
+            <MixFallbackArtwork style={StyleSheet.absoluteFillObject} />
+          )}
           <LinearGradient colors={['rgba(7,6,5,0.4)', 'rgba(7,6,5,0.92)']} style={StyleSheet.absoluteFillObject} />
           <View style={styles.roomBody}>
             <View style={styles.roomOpenPill}>
@@ -448,20 +499,30 @@ function buildSelectors(mixes: MixItem[]): Selector[] {
 
 function RisingDJs({ selectors }: { selectors: Selector[] }) {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(352, Math.max(278, width - 68));
   if (!selectors.length) return null;
   return (
-    <View style={{ gap: 14 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={cardWidth + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.horizontalRail}
+    >
       {selectors.map((selector) => (
-        <View key={selector.id} style={styles.djCard}>
+        <View key={selector.id} style={[styles.djCard, { width: cardWidth }]}>
           <View style={styles.djImageWrap}>
             {selector.imageUrl ? (
               <PluggdImage uri={selector.imageUrl} style={styles.djImage} />
             ) : (
-              <View style={[styles.djImage, { backgroundColor: '#191410' }]} />
+              <View style={[styles.djImage, { backgroundColor: theme.colors.artworkBase }]} />
             )}
           </View>
           <View style={styles.djSelectorPill}>
-            <MaterialIcons name="person-outline" size={12} color={ed.cream} />
+            <MaterialIcons name="person-outline" size={12} color={theme.colors.text} />
             <Text style={styles.djSelectorText}>SELECTOR</Text>
           </View>
           <Text style={styles.djName}>{selector.name}</Text>
@@ -473,26 +534,17 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
           <View style={{ gap: 8, marginTop: 10 }}>
             <EdPressable
               accessibilityRole="button"
-              accessibilityLabel={`View mixes from ${selector.name}`}
-              onPress={() => router.push('/mixes' as any)}
-            >
-              <View style={styles.djProfile}>
-                <Text style={styles.djProfileText}>Profile</Text>
-              </View>
-            </EdPressable>
-            <EdPressable
-              accessibilityRole="button"
               accessibilityLabel={`Open room from ${selector.name}`}
               onPress={() => selector.firstMixId && router.push(`/mixes/${selector.firstMixId}` as any)}
             >
               <View style={styles.djRoom}>
-                <Text style={styles.djRoomText}>Room</Text>
+                <Text style={styles.djRoomText}>Open a mix</Text>
               </View>
             </EdPressable>
           </View>
         </View>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -503,11 +555,21 @@ function RisingDJs({ selectors }: { selectors: Selector[] }) {
 function FreshUploads({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
   const playback = usePlayback();
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(328, Math.max(258, width - 88));
   if (!mixes.length) {
     return <Text style={styles.nightEmpty}>Fresh mixes land here as selectors publish them.</Text>;
   }
   return (
-    <View style={styles.freshGrid}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={cardWidth + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.horizontalRail}
+    >
       {mixes.slice(0, 6).map((mix) => (
         <EdPressable
           key={mix.id}
@@ -522,19 +584,30 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
               { label: 'Share', onPress: () => void Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'}` }) },
             ]);
           }}
-          style={styles.freshCard}
+          style={[styles.freshCard, { width: cardWidth }]}
         >
           <View style={styles.freshArtWrap}>
             {mix.cover_url ? (
               <PluggdImage uri={mix.cover_url} style={styles.freshArt} />
             ) : (
-              <View style={[styles.freshArt, { backgroundColor: '#191410' }]} />
+              <MixFallbackArtwork style={styles.freshArt} />
             )}
+            {mix.audio_url ? (
+              <EdPressable
+                accessibilityRole="button"
+                accessibilityLabel={`Play ${mix.title || 'mix'}`}
+                onPress={() => {
+                  const track = toTrack(mix, 'mix');
+                  if (track) void playback.playTrack(track);
+                }}
+                style={styles.freshPlayPressable}
+              >
+                <View style={styles.freshPlay}><MaterialIcons name="play-arrow" size={22} color={theme.colors.onAccent} /></View>
+              </EdPressable>
+            ) : null}
           </View>
           <View style={styles.freshChipRow}>
-            <View style={styles.freshChipWhite}>
-              <Text style={styles.freshChipWhiteText}>BPM TBC</Text>
-            </View>
+            {mixDuration(mix) ? <View style={styles.freshChipWhite}><Text style={styles.freshChipWhiteText}>{mixDuration(mix)?.toUpperCase()}</Text></View> : null}
             {mix.mood_tags?.[0] ? (
               <View style={styles.freshChipYellow}>
                 <Text style={styles.freshChipYellowText}>{mix.mood_tags[0].toUpperCase()}</Text>
@@ -552,7 +625,7 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
           </Text>
         </EdPressable>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -562,6 +635,9 @@ function FreshUploads({ mixes }: { mixes: MixItem[] }) {
 
 function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
+  const styles = useMixesWorldStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(352, Math.max(282, width - 68));
   const cities = useMemo(() => {
     const byCity = new Map<string, { city: string; count: number; lead: MixItem; genres: string[] }>();
     mixes.forEach((mix) => {
@@ -579,12 +655,20 @@ function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
   }, [mixes]);
   if (!cities.length) return null;
   return (
-    <View style={{ gap: 14 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={cardWidth + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.horizontalRail}
+    >
       {cities.map((entry) => (
-        <View key={entry.city} style={styles.sceneCard}>
+        <View key={entry.city} style={[styles.sceneCard, { width: cardWidth }]}>
           {entry.lead.cover_url ? (
             <PluggdImage uri={entry.lead.cover_url} style={StyleSheet.absoluteFillObject as any} />
-          ) : null}
+          ) : (
+            <MixFallbackArtwork style={StyleSheet.absoluteFillObject} />
+          )}
           <LinearGradient colors={['rgba(7,6,5,0.45)', 'rgba(7,6,5,0.93)']} style={StyleSheet.absoluteFillObject} />
           <View style={styles.sceneBody}>
             <View style={styles.sceneCountPill}>
@@ -623,7 +707,7 @@ function SceneExplorer({ mixes }: { mixes: MixItem[] }) {
           </View>
         </View>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -640,6 +724,9 @@ const RADIO_TINTS: readonly (readonly [string, string])[] = [
 function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
   const router = useRouter();
   const playback = usePlayback();
+  const styles = useMixesWorldStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(352, Math.max(282, width - 68));
   const channels = useMemo(() => {
     const byGenre = new Map<string, MixItem[]>();
     mixes.forEach((mix) => {
@@ -654,7 +741,13 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
   }, [mixes]);
   if (!channels.length) return null;
   return (
-    <View style={{ gap: 14 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={cardWidth + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.horizontalRail}
+    >
       {channels.map(({ genre, list }, index) => {
         const nowPlaying = list[0];
         const nextUp = list[1] || list[0];
@@ -666,7 +759,7 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
             colors={[...RADIO_TINTS[index % RADIO_TINTS.length]]}
             start={{ x: 0.1, y: 0 }}
             end={{ x: 0.9, y: 1 }}
-            style={styles.radioCard}
+            style={[styles.radioCard, { width: cardWidth }]}
           >
             <View style={styles.radioHeadRow}>
               <View style={styles.radioOnAir}>
@@ -721,7 +814,7 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
           </LinearGradient>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -731,9 +824,18 @@ function PluggdRadio({ mixes }: { mixes: MixItem[] }) {
 
 function UpcomingEvents({ events }: { events: PassEvent[] }) {
   const router = useRouter();
+  const styles = useMixesWorldStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(328, Math.max(258, width - 88));
   if (!events.length) return null;
   return (
-    <View style={{ gap: 14 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={cardWidth + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.horizontalRail}
+    >
       {events.slice(0, 3).map((event) => {
         const starts = event.starts_at ? new Date(event.starts_at) : null;
         return (
@@ -743,7 +845,7 @@ function UpcomingEvents({ events }: { events: PassEvent[] }) {
             accessibilityLabel={`View ${event.title || 'event'}`}
             onPress={() => router.push(`/events/${event.id}` as any)}
           >
-            <View style={styles.eventCard}>
+            <View style={[styles.eventCard, { width: cardWidth }]}>
               {event.cover_image_url ? (
                 <PluggdImage uri={event.cover_image_url} style={StyleSheet.absoluteFillObject as any} />
               ) : null}
@@ -772,7 +874,7 @@ function UpcomingEvents({ events }: { events: PassEvent[] }) {
           </EdPressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -780,6 +882,8 @@ const HIGHLIGHT_EYEBROWS = ['Scene reports', 'Culture notes', 'Dispatches'] as c
 
 function EditorialHighlights({ posts }: { posts: BlogRow[] }) {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
   if (!posts.length) return null;
   return (
     <View style={styles.highlightSheet}>
@@ -796,7 +900,7 @@ function EditorialHighlights({ posts }: { posts: BlogRow[] }) {
               {post.featured_image_url ? (
                 <PluggdImage uri={post.featured_image_url} style={styles.highlightThumb} />
               ) : (
-                <View style={[styles.highlightThumb, { backgroundColor: '#1d1712' }]} />
+                <View style={[styles.highlightThumb, { backgroundColor: theme.colors.artworkBase }]} />
               )}
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
@@ -820,7 +924,11 @@ function EditorialHighlights({ posts }: { posts: BlogRow[] }) {
 export function MixesWorldScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMixesWorldStyles();
   const [filters, setFilters] = useState<MixFilters>(EMPTY_FILTERS);
+  const scrollRef = useRef<ScrollView>(null);
+  const [latestSectionY, setLatestSectionY] = useState(0);
 
   const mixesQuery = useQuery({
     queryKey: ['mixes-world', 'mixes'],
@@ -843,6 +951,7 @@ export function MixesWorldScreen() {
         (supabase as any)
           .from('events')
           .select('id,title,location,cover_image_url,starts_at')
+          .eq('discoverable', true)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
           .limit(4),
@@ -851,15 +960,7 @@ export function MixesWorldScreen() {
   });
   const storiesQuery = useQuery({
     queryKey: ['mixes-world', 'stories'],
-    queryFn: () =>
-      safeList<BlogRow>(
-        (supabase as any)
-          .from('blog_posts')
-          .select('id,title,excerpt,featured_image_url,tags,created_at')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false })
-          .limit(3),
-      ),
+    queryFn: () => loadThePlugEditorialStories(3),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -891,13 +992,14 @@ export function MixesWorldScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" translucent />
-      <DiscoveryHeader />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} translucent />
+      <DiscoveryHeader backToDiscovery />
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentFill} />}
         contentContainerStyle={{ paddingTop: 4, paddingBottom: insets.bottom + 210 }}
       >
         {mixesQuery.isLoading ? (
@@ -908,16 +1010,19 @@ export function MixesWorldScreen() {
           <>
             <View style={{ paddingHorizontal: 20 }}>
               <Enter delay={0}>
-                <MixesHero mixes={filtered.length ? filtered : mixes} />
+                <MixesHero
+                  mixes={filtered.length ? filtered : mixes}
+                  onBrowseLatest={() => scrollRef.current?.scrollTo({ y: Math.max(0, latestSectionY - 96), animated: true })}
+                />
               </Enter>
             </View>
 
             <View style={{ marginTop: 28 }}>
-              <TornEdge color={ed.paper2} />
+              <TornEdge color={theme.colors.surfaceAlt} />
               <View style={styles.finderWrap}>
                 <FindYourNextMix mixes={mixes} filters={filters} setFilters={setFilters} matchCount={filtered.length} />
               </View>
-              <TornEdge flip color={ed.paper2} />
+              <TornEdge flip color={theme.colors.surfaceAlt} />
             </View>
 
             <View style={styles.section}>
@@ -939,12 +1044,19 @@ export function MixesWorldScreen() {
             </View>
 
             <View style={styles.section}>
-              <MixSectionHead eyebrow="Selector directory" title="Rising DJs" action="View all DJs" onAction={() => router.push('/search' as any)} />
+              <MixSectionHead eyebrow="Selector directory" title="Rising DJs" />
               <RisingDJs selectors={selectors} />
             </View>
 
-            <View style={styles.section}>
-              <MixSectionHead eyebrow="Fresh uploads" title="New & notable mixes" />
+            <View
+              style={styles.section}
+              onLayout={(event) => setLatestSectionY(event.nativeEvent.layout.y)}
+            >
+              <MixSectionHead
+                eyebrow="Fresh uploads"
+                title="New & notable mixes"
+                subtitle="Play immediately or open the full listening room for track notes, saves and conversation."
+              />
               <FreshUploads mixes={filtered} />
             </View>
 
@@ -972,7 +1084,7 @@ export function MixesWorldScreen() {
             </View>
 
             <View style={{ marginTop: 28 }}>
-              <TornEdge color={ed.paper2} />
+              <TornEdge color={theme.colors.surfaceAlt} />
               <EditorialHighlights posts={storiesQuery.data ?? []} />
             </View>
           </>
@@ -987,29 +1099,33 @@ export function MixesWorldScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: ed.night },
+function useMixesWorldStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   section: { paddingHorizontal: 20, paddingTop: 34, gap: 16 },
-  nightEmpty: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
+  horizontalRail: { gap: 12, paddingRight: 20 },
+  nightEmpty: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: theme.colors.textSecondary },
 
-  mixEyebrow: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: MIX_YELLOW },
-  mixSectionTitle: { fontFamily: 'Sora-Bold', fontSize: 24, lineHeight: 29, letterSpacing: -0.7, color: ed.cream },
-  mixSectionSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: ed.creamMuted },
+  mixEyebrow: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: theme.colors.accentText },
+  mixSectionTitle: { fontFamily: 'Sora-Bold', fontSize: 24, lineHeight: 29, letterSpacing: -0.7, color: theme.colors.text },
+  mixSectionSub: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: theme.colors.textSecondary },
   mixActionPill: {
     alignSelf: 'flex-start',
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.3)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
   },
-  mixActionText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.6, color: ed.cream },
+  mixActionText: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.6, color: theme.colors.text },
 
   /* Hero */
-  heroTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 16, paddingRight: 20 },
+  heroTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 10, paddingRight: 20 },
   heroTab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1017,84 +1133,100 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.25)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 13,
   },
-  heroTabActive: { backgroundColor: ed.orange, borderColor: ed.orange },
-  heroTabNumber: { fontFamily: edFonts.mono, fontSize: 9.5, color: MIX_YELLOW },
-  heroTabText: { fontFamily: edFonts.bodyBlack, fontSize: 10.5, letterSpacing: 1.2, color: ed.cream },
-  heroPosterWrap: { borderRadius: 6, overflow: 'hidden', minHeight: 330, justifyContent: 'flex-end' },
-  heroPoster: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  heroPosterBody: { padding: 18, gap: 8 },
+  heroTabActive: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  heroTabNumber: { fontFamily: edFonts.mono, fontSize: 9.5, color: theme.colors.accentText },
+  heroTabText: { fontFamily: edFonts.bodyBlack, fontSize: 10.5, letterSpacing: 1.2, color: theme.colors.text },
+  heroStage: { minHeight: 274, position: 'relative' },
+  heroPosterWrap: {
+    position: 'absolute',
+    left: -12,
+    top: 26,
+    width: '94%',
+    height: 218,
+    overflow: 'hidden',
+    transform: [{ rotate: '-3deg' }, { skewX: '-2deg' }],
+  },
+  heroPoster: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', transform: [{ scale: 1.12 }] },
+  heroPosterBody: { position: 'absolute', left: 10, top: 78, zIndex: 2, width: 278, gap: 6 },
   heroKicker: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: MIX_YELLOW },
-  heroTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 35, color: ed.cream, letterSpacing: -1.1 },
-  heroMixName: { fontFamily: edFonts.bodyBold, fontSize: 14, color: 'rgba(255,248,237,0.85)', marginTop: 2 },
-  heroDescription: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,248,237,0.8)' },
-  heroCtas: { gap: 10, marginTop: 14 },
+  heroTitle: { fontFamily: edFonts.serif, fontSize: 38, lineHeight: 38, color: ed.cream, letterSpacing: -1.1 },
+  heroDescription: { fontFamily: edFonts.bodyMedium, fontSize: 12, lineHeight: 16, color: 'rgba(255,248,237,0.84)' },
+  heroCtas: { gap: 8, marginTop: 12 },
   heroPlay: {
     minHeight: 52,
     borderRadius: 8,
-    backgroundColor: ed.orange,
+    backgroundColor: theme.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  heroPlayText: { fontFamily: edFonts.bodyBlack, fontSize: 15, color: '#3a1c04' },
-  heroCtaRow: { flexDirection: 'row', gap: 10 },
+  heroPlayText: { fontFamily: edFonts.bodyBlack, fontSize: 15, color: theme.colors.onAccent },
+  heroCtaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, overflow: 'hidden' },
+  heroActionCell: { flex: 1, minWidth: 0 },
   heroGhost: {
+    width: '100%',
     minHeight: 46,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
   },
-  heroGhostText: { fontFamily: edFonts.bodyBold, fontSize: 12.5, color: ed.cream },
+  heroGhostText: { flexShrink: 1, textAlign: 'center', fontFamily: edFonts.bodyBold, fontSize: 11.5, color: theme.colors.text },
 
   /* Finder */
-  finderWrap: { backgroundColor: ed.paper2, paddingHorizontal: 20, paddingVertical: 26 },
+  finderWrap: { backgroundColor: theme.colors.surfaceAlt, paddingHorizontal: 20, paddingVertical: 26 },
   finderSheet: {
-    backgroundColor: '#171310',
+    backgroundColor: theme.colors.surfaceRaised,
     borderRadius: 14,
     padding: 18,
     gap: 12,
   },
-  finderTitle: { fontFamily: 'Sora-Bold', fontSize: 23, letterSpacing: -0.6, color: ed.cream },
-  finderSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: 'rgba(255,248,237,0.62)' },
+  finderTitle: { fontFamily: 'Sora-Bold', fontSize: 23, letterSpacing: -0.6, color: theme.colors.text },
+  finderSub: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: theme.colors.textSecondary },
   finderSearch: {
     minHeight: 46,
     borderRadius: 8,
-    backgroundColor: '#fffdf7',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
     paddingHorizontal: 12,
   },
-  finderSearchInput: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: ed.ink, paddingVertical: 0 },
+  finderSearchInput: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: theme.colors.text, paddingVertical: 0 },
   filterRow: {
     minHeight: 46,
     borderRadius: 8,
-    backgroundColor: '#fffdf7',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
   },
-  filterRowText: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: 'rgba(34,23,15,0.75)' },
+  filterRowText: { fontFamily: edFonts.bodyMedium, fontSize: 13.5, color: theme.colors.textSecondary },
   finderReset: {
     minHeight: 46,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.25)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  finderResetText: { fontFamily: edFonts.bodyBold, fontSize: 13.5, color: ed.cream },
-  finderMatch: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.62)' },
+  finderResetText: { fontFamily: edFonts.bodyBold, fontSize: 13.5, color: theme.colors.text },
+  finderMatch: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: theme.colors.textSecondary },
 
   /* What's happening */
   happeningCard: { borderRadius: 8, overflow: 'hidden', minHeight: 216 },
@@ -1115,16 +1247,16 @@ const styles = StyleSheet.create({
   happeningPlay: {
     minHeight: 46,
     borderRadius: 8,
-    backgroundColor: ed.orange,
+    backgroundColor: theme.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     marginTop: 6,
   },
-  happeningPlayText: { fontFamily: edFonts.bodyBlack, fontSize: 13.5, color: '#3a1c04' },
+  happeningPlayText: { fontFamily: edFonts.bodyBlack, fontSize: 13.5, color: theme.colors.onAccent },
   happeningRoom: {
-    minHeight: 42,
+    minHeight: 44,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,248,237,0.25)',
@@ -1171,8 +1303,8 @@ const styles = StyleSheet.create({
   djCard: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.14)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
     padding: 14,
   },
   djImageWrap: { borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
@@ -1182,51 +1314,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#171310',
+    backgroundColor: theme.colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.25)',
+    borderColor: theme.colors.controlBorder,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  djSelectorText: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: ed.cream },
-  djName: { fontFamily: edFonts.bodyBlack, fontSize: 19, color: ed.cream, marginTop: 8, textTransform: 'capitalize' },
-  djStat: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: ed.cream, marginTop: 4 },
-  djStatMuted: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.55)' },
-  djGenres: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: 'rgba(255,248,237,0.62)', marginTop: 4 },
+  djSelectorText: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: theme.colors.text },
+  djName: { fontFamily: edFonts.bodyBlack, fontSize: 19, color: theme.colors.text, marginTop: 8, textTransform: 'capitalize' },
+  djStat: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: theme.colors.text, marginTop: 4 },
+  djStatMuted: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: theme.colors.textMuted },
+  djGenres: { fontFamily: edFonts.bodyMedium, fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 },
   djProfile: {
     minHeight: 46,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  djProfileText: { fontFamily: edFonts.bodyBold, fontSize: 13, color: ed.cream },
+  djProfileText: { fontFamily: edFonts.bodyBold, fontSize: 13, color: theme.colors.text },
   djRoom: {
     minHeight: 46,
     borderRadius: 8,
-    backgroundColor: ed.orange,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  djRoomText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: '#3a1c04' },
+  djRoomText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: theme.colors.onAccent },
 
   /* Fresh uploads */
-  freshGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  freshCard: { width: '47.5%', flexGrow: 1, gap: 5 },
-  freshArtWrap: { borderRadius: 8, overflow: 'hidden' },
+  freshCard: { gap: 5 },
+  freshArtWrap: { borderRadius: 8, overflow: 'hidden', position: 'relative' },
   freshArt: { width: '100%', height: 130 },
+  freshPlayPressable: { position: 'absolute', right: 10, bottom: 10 },
+  freshPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder },
   freshChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 },
-  freshChipWhite: { backgroundColor: '#fffdf7', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
-  freshChipWhiteText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: ed.ink },
-  freshChipYellow: { backgroundColor: MIX_YELLOW, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
-  freshChipYellowText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: '#3a2f04' },
-  freshChipPurple: { backgroundColor: '#7c5cff', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
-  freshChipPurpleText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: '#ffffff' },
-  freshTitle: { fontFamily: edFonts.bodyBold, fontSize: 14, lineHeight: 18, color: ed.cream },
-  freshMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.6)' },
+  freshChipWhite: { backgroundColor: theme.colors.surfaceRaised, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
+  freshChipWhiteText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: theme.colors.text },
+  freshChipYellow: { backgroundColor: theme.colors.accentFill, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
+  freshChipYellowText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: theme.colors.onAccent },
+  freshChipPurple: { backgroundColor: theme.colors.surfaceStrong, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 3 },
+  freshChipPurpleText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 0.8, color: theme.colors.text },
+  freshTitle: { fontFamily: edFonts.bodyBold, fontSize: 14, lineHeight: 18, color: theme.colors.text },
+  freshMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: theme.colors.textSecondary },
 
   /* Scene explorer */
   sceneCard: { borderRadius: 10, overflow: 'hidden', minHeight: 216 },
@@ -1247,6 +1380,7 @@ const styles = StyleSheet.create({
   sceneGenres: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.55)' },
   sceneCtaRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   sceneFilter: {
+    width: '100%',
     minHeight: 46,
     borderRadius: 8,
     borderWidth: 1,
@@ -1257,6 +1391,7 @@ const styles = StyleSheet.create({
   },
   sceneFilterText: { fontFamily: edFonts.bodyBold, fontSize: 12.5, color: ed.cream },
   sceneRoom: {
+    width: '100%',
     minHeight: 46,
     borderRadius: 8,
     backgroundColor: ed.orange,
@@ -1280,6 +1415,7 @@ const styles = StyleSheet.create({
   radioNextRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   radioCtaRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   radioListen: {
+    width: '100%',
     minHeight: 46,
     borderRadius: 8,
     backgroundColor: ed.orange,
@@ -1288,6 +1424,7 @@ const styles = StyleSheet.create({
   },
   radioListenText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: '#3a1c04' },
   radioRoom: {
+    width: '100%',
     minHeight: 46,
     borderRadius: 8,
     borderWidth: 1,
@@ -1329,12 +1466,13 @@ const styles = StyleSheet.create({
   eventMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.65)' },
 
   /* Editorial highlights */
-  highlightSheet: { backgroundColor: ed.paper, paddingHorizontal: 20, paddingVertical: 26, gap: 14 },
-  highlightHead: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: ed.ink },
+  highlightSheet: { backgroundColor: theme.colors.surfaceAlt, paddingHorizontal: 20, paddingVertical: 26, gap: 14 },
+  highlightHead: { fontFamily: edFonts.mono, fontSize: 10.5, letterSpacing: 2, color: theme.colors.text },
   highlightRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   highlightThumbWrap: { width: 58, height: 58, borderRadius: 6, overflow: 'hidden' },
   highlightThumb: { width: '100%', height: '100%' },
-  highlightEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 9.5, letterSpacing: 1.2, color: '#8a4fd3' },
-  highlightTitle: { fontFamily: edFonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: ed.ink },
-  highlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(34,23,15,0.6)' },
-});
+  highlightEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 9.5, letterSpacing: 1.2, color: theme.colors.accentText },
+  highlightTitle: { fontFamily: edFonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: theme.colors.text },
+  highlightMeta: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: theme.colors.textSecondary },
+}), [theme]);
+}

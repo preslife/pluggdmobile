@@ -39,6 +39,7 @@ import {
   type SoundboardItem,
 } from '../../lib/mobileContent';
 import { supabase } from '../../lib/supabase';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 import {
   loadLibraryBundle,
   loadMobilePlaylists,
@@ -118,7 +119,7 @@ function waveformFor(id: string, bars = 22) {
 }
 
 function profileName(profile: ProfileItem) {
-  return profile.display_name || profile.full_name || profile.username || 'PLUGGD Creator';
+  return profile.display_name || profile.full_name || profile.username || '';
 }
 
 function profileRoute(profile: ProfileItem) {
@@ -184,7 +185,7 @@ function mapReleases(bundle?: FeedBundle): StageItem[] {
     id: release.id,
     kind: 'release',
     title: release.title || 'Untitled release',
-    creator: release.artist || 'PLUGGD Creator',
+    creator: release.artist || '',
     imageUrl: release.cover_art_url,
     route: `/release/${release.id}`,
     metadata: [release.genre, release.created_at ? formatDate(release.created_at) : null].filter(Boolean).join(' · ') || 'Release',
@@ -197,7 +198,7 @@ function mapMixes(bundle?: FeedBundle): StageItem[] {
     id: mix.id,
     kind: 'mix',
     title: mix.title || 'Untitled mix',
-    creator: mix.event_name || mix.city || 'PLUGGD DJ',
+    creator: mix.event_name || mix.city || '',
     imageUrl: mix.cover_url,
     route: `/mixes/${mix.slug || mix.id}`,
     metadata: [formatDuration(mix.duration_seconds), mix.genre_tags?.[0], mix.city].filter(Boolean).join(' · ') || 'Mix',
@@ -211,7 +212,7 @@ function mapBeats(bundle?: FeedBundle): StageItem[] {
     id: beat.id,
     kind: 'beat',
     title: beat.title || 'Untitled beat',
-    creator: beat.producer_name || 'Producer',
+    creator: beat.producer_name || '',
     imageUrl: beat.image_url,
     route: `/beat/${beat.id}`,
     metadata: formatBeatMeta(beat),
@@ -677,6 +678,10 @@ export function StageDiscoveryScreen() {
   const mixedItems = useMemo(() => filterItems(activeFilter, groups), [activeFilter, groups]);
   const heroItem = useMemo(() => heroFor(activeFilter, groups), [activeFilter, groups]);
   const recentlyPlayedItem = recentlyPlayed.data?.[0];
+  const publicCreatorProfiles = useMemo(
+    () => (home.data?.profiles || []).filter((profile) => isPublicProfileName(profileName(profile))),
+    [home.data?.profiles],
+  );
   const loading = home.isLoading || extras.isLoading;
   const refreshing = home.isRefetching || extras.isRefetching || recentlyPlayed.isRefetching;
   const bottomPadding = Math.max(insets.bottom + 154, 176);
@@ -828,7 +833,7 @@ export function StageDiscoveryScreen() {
               <SectionHeader title="CHARTS" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartTabs}>
                 {CHART_TABS.map((tab) => (
-                  <Pressable key={tab} style={[styles.chartTab, chartTab === tab && styles.chartTabActive]} onPress={() => setChartTab(tab)}>
+                  <Pressable accessibilityRole="button" accessibilityState={{ selected: chartTab === tab }} key={tab} style={[styles.chartTab, chartTab === tab && styles.chartTabActive]} onPress={() => setChartTab(tab)}>
                     <Text style={[styles.chartTabText, chartTab === tab && styles.chartTabTextActive]}>{tab}</Text>
                   </Pressable>
                 ))}
@@ -837,7 +842,7 @@ export function StageDiscoveryScreen() {
                 {(chartTab === 'Beats' ? groups.beat : chartTab === 'Releases' ? groups.release : chartTab === 'Mixes' ? groups.mix : []).slice(0, 5).map((item, index) => (
                   <ChartRow key={`${chartTab}-${item.id}`} rank={index + 1} title={item.title} meta={[item.creator, item.metric || item.metadata].filter(Boolean).join(' · ')} imageUrl={item.imageUrl} route={item.route} />
                 ))}
-                {chartTab === 'Creators' ? (home.data?.profiles || []).slice(0, 5).map((profile, index) => (
+                {chartTab === 'Creators' ? publicCreatorProfiles.slice(0, 5).map((profile, index) => (
                   <ChartRow key={`creator-chart-${profile.user_id || index}`} rank={index + 1} title={profileName(profile)} meta={profileMeta(profile)} imageUrl={profile.avatar_url} route={profileRoute(profile)} />
                 )) : null}
               </View>
@@ -850,9 +855,9 @@ export function StageDiscoveryScreen() {
             <View style={styles.sectionBlock}>{renderMediaShelf('SAMPLE PACKS', groups.sample_pack)}</View>
             <View style={styles.sectionBlock}>
               <SectionHeader title="RECOMMENDED CREATORS" />
-              {(home.data?.profiles || []).length ? (
+              {publicCreatorProfiles.length ? (
                 <View style={styles.creatorList}>
-                  {(home.data?.profiles || []).slice(0, 8).map((profile) => (
+                  {publicCreatorProfiles.slice(0, 8).map((profile) => (
                     <CreatorRow key={profile.user_id || profile.username || profile.full_name || Math.random().toString()} creator={profile} live={Boolean(profile.user_id && liveCreatorIds.has(profile.user_id))} />
                   ))}
                 </View>

@@ -434,7 +434,7 @@ const handleSplitAttribution = async (
 serve(async (req) => {
   let webhookClient: any = null;
   let verifiedEventId: string | null = null;
-  let logStep = async (
+  let logStep: Logger['info'] = (
     message: string,
     details?: Record<string, unknown>,
   ) => {
@@ -706,15 +706,18 @@ serve(async (req) => {
           const customer = await stripe.customers.retrieve(customerId);
           
           if ('email' in customer && customer.email) {
-            // Determine tier from price
             const priceId = subscription.items.data[0].price.id;
-            const price = await stripe.prices.retrieve(priceId);
-            const amount = price.unit_amount || 0;
-            
-            let tier: 'creator' | 'pro' = 'creator';
-            if (amount > 1000) {
-              tier = 'pro';
+            const { data: mappedProduct, error: mappedProductError } = await supabaseClient
+              .from('platform_subscription_products')
+              .select('tier,billing_cycle')
+              .eq('provider', 'stripe')
+              .eq('product_id', priceId)
+              .eq('is_active', true)
+              .maybeSingle();
+            if (mappedProductError || !mappedProduct) {
+              throw new Error(`Unmapped Stripe platform plan: ${priceId}`);
             }
+            const tier = mappedProduct.tier as 'starter' | 'creator' | 'pro';
 
             // Get user ID from metadata or customer
             let userId = session.metadata?.user_id;
@@ -723,15 +726,20 @@ serve(async (req) => {
             }
 
               if (userId) {
-                await supabaseClient.from("user_subscriptions").upsert({
-                  user_id: userId,
-                  tier,
-                  status: 'active',
-                  stripe_subscription_id: subscription.id,
-                  current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                  current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id' });
+                const { error: syncError } = await supabaseClient.rpc(
+                  'platform_sync_stripe_subscription',
+                  {
+                    p_user_id: userId,
+                    p_tier: tier,
+                    p_status: 'active',
+                    p_subscription_id: subscription.id,
+                    p_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                    p_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                    p_product_id: priceId,
+                    p_billing_cycle: mappedProduct.billing_cycle,
+                  },
+                );
+                if (syncError) throw new Error(`Stripe subscription reconciliation failed: ${syncError.message}`);
 
                 await logStep("Subscription created in database", { userId, tier, subscriptionId: subscription.id });
 
@@ -981,6 +989,7 @@ serve(async (req) => {
                 message: 'Order not found for Stripe session',
               });
             } else {
+              const orderId = orderRecord.id;
               const nowIso = new Date().toISOString();
               const paidAt =
                 typeof session.created === 'number'
@@ -1094,7 +1103,7 @@ serve(async (req) => {
                     });
 
                     const itemsToInsert = lineItems.data
-                      .map((lineItem) => {
+                      .map((lineItem: Stripe.LineItem) => {
                         const metadata =
                           lineItem.price?.product && typeof lineItem.price.product !== 'string'
                             ? (lineItem.price.product.metadata ?? {})
@@ -1110,7 +1119,7 @@ serve(async (req) => {
                         const unitPrice = quantity > 0 ? priceTotal / quantity : priceTotal;
 
                         return {
-                          order_id: orderRecord.id,
+                          order_id: orderId,
                           product_id: productId,
                           quantity,
                           price: unitPrice,
@@ -1118,7 +1127,14 @@ serve(async (req) => {
                           creator_id: typeof metadata.user_id === 'string' ? metadata.user_id : null,
                         };
                       })
-                      .filter((value): value is {
+                      .filter((value: {
+                        order_id: string;
+                        product_id: string;
+                        quantity: number;
+                        price: number;
+                        kind: string | null;
+                        creator_id: string | null;
+                      } | null): value is {
                         order_id: string;
                         product_id: string;
                         quantity: number;
@@ -1220,6 +1236,7 @@ serve(async (req) => {
                 paymentIntent: paymentIntentId,
               });
             } else {
+              const settledTip = tip;
               const updatePayload: Record<string, unknown> = {
                 status: 'succeeded',
                 paid_at: new Date().toISOString(),
@@ -1236,123 +1253,125 @@ serve(async (req) => {
               const { error: tipUpdateError } = await supabaseClient
                 .from('artist_tips')
                 .update(updatePayload)
-                .eq('id', tip.id);
+                .eq('id', settledTip.id);
 
               if (tipUpdateError) {
                 await tipLogger.error('artist_tip_update_failed', {
-                  tipId: tip.id,
+                  tipId: settledTip.id,
                   error: tipUpdateError.message,
                 });
               } else {
                 await tipLogger.info('artist_tip_settled', {
-                  tipId: tip.id,
-                  fanId: tip.fan_id,
-                  artistId: tip.artist_id,
-                  amount: tipTotal ?? tip.amount,
+                  tipId: settledTip.id,
+                  fanId: settledTip.fan_id,
+                  artistId: settledTip.artist_id,
+                  amount: tipTotal ?? settledTip.amount,
                 });
 
                 const siteUrl = Deno.env.get('SITE_URL') ?? 'https://pluggd.fm';
+                let artistName = 'your favorite creator';
+                let fanName: string | null = null;
 
                 try {
                   const [{ data: artistProfile }, { data: fanProfile }] = await Promise.all([
                     supabaseClient
                       .from('profiles')
                       .select('full_name, username')
-                      .eq('user_id', tip.artist_id)
+                      .eq('user_id', settledTip.artist_id)
                       .maybeSingle(),
                     supabaseClient
                       .from('profiles')
                       .select('full_name, username')
-                      .eq('user_id', tip.fan_id)
+                      .eq('user_id', settledTip.fan_id)
                       .maybeSingle(),
                   ]);
 
-                  const artistName = artistProfile?.full_name || artistProfile?.username || 'your favorite creator';
-                  const fanName = fanProfile?.full_name || fanProfile?.username || null;
-                  const tipAmount = tipTotal ?? tip.amount ?? 0;
+                  artistName = artistProfile?.full_name || artistProfile?.username || artistName;
+                  fanName = fanProfile?.full_name || fanProfile?.username || null;
+                  const tipAmount = tipTotal ?? settledTip.amount ?? 0;
 
                   const fanEmailResult = await executeWithNotificationPreference(
                     supabaseClient as any,
                     preferenceCache,
-                    tip.fan_id,
+                    settledTip.fan_id,
                     'notify_purchases',
                     () =>
                       supabaseClient.functions.invoke('send-lifecycle-emails', {
                         body: {
-                          user_id: tip.fan_id,
+                          user_id: settledTip.fan_id,
                           email_type: 'fan_tip_receipt',
                           user_data: {
                             amount: tipAmount,
                             artist_name: artistName,
-                            artist_url: `${siteUrl}/artist/${tip.artist_id}`,
-                            message: tip.message,
+                            artist_url: `${siteUrl}/artist/${settledTip.artist_id}`,
+                            message: settledTip.message,
                           },
                         },
                       }),
                   );
 
                   if (fanEmailResult.skipped) {
-                    await logStep('Skipping fan tip receipt email due to preferences', { fanId: tip.fan_id });
+                    await logStep('Skipping fan tip receipt email due to preferences', { fanId: settledTip.fan_id });
                   }
 
                   const artistEmailResult = await executeWithNotificationPreference(
                     supabaseClient as any,
                     preferenceCache,
-                    tip.artist_id,
+                    settledTip.artist_id,
                     'notify_supporters',
                     () =>
                       supabaseClient.functions.invoke('send-lifecycle-emails', {
                         body: {
-                          user_id: tip.artist_id,
+                          user_id: settledTip.artist_id,
                           email_type: 'creator_tip_notification',
                           user_data: {
                             amount: tipAmount,
                             fan_name: fanName,
-                            message: tip.message,
+                            message: settledTip.message,
                           },
                         },
                       }),
                   );
 
                   if (artistEmailResult.skipped) {
-                    await logStep('Skipping creator tip notification due to preferences', { artistId: tip.artist_id });
+                    await logStep('Skipping creator tip notification due to preferences', { artistId: settledTip.artist_id });
                   }
                 } catch (emailError) {
                   const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-                  await logStep('Artist tip email notification failed', { error: errorMessage, tipId: tip.id });
+                  await logStep('Artist tip email notification failed', { error: errorMessage, tipId: settledTip.id });
                 }
 
                 await scopeLogger(currentLogger, {
                   scope: 'artist_tip',
                   sessionId: session.id,
-                  tipId: tip.id,
+                  tipId: settledTip.id,
                 }).info('artist_tip_completed', {
-                  artistId: tip.artist_id,
-                  fanId: tip.fan_id,
-                  amount: tipTotal ?? tip.amount,
+                  artistId: settledTip.artist_id,
+                  fanId: settledTip.fan_id,
+                  amount: tipTotal ?? settledTip.amount,
                 });
 
                 try {
                   const fanMessage = `Your tip to ${artistName} was sent successfully.`;
                   const { error: fanNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
                     body: {
-                      recipients: [tip.fan_id],
+                      recipients: [settledTip.fan_id],
                       type: 'tip',
                       title: 'Tip confirmed',
                       message: fanMessage,
                       payload: {
-                        tip_id: tip.id,
-                        amount: tipTotal ?? tip.amount,
-                        artist_id: tip.artist_id,
+                        tip_id: settledTip.id,
+                        amount: tipTotal ?? settledTip.amount,
+                        artist_id: settledTip.artist_id,
                       },
-                      relatedId: tip.id,
+                      relatedId: settledTip.id,
                       relatedType: 'artist_tip',
                     },
                   });
 
                   if (fanNotifyError) {
                     await tipLogger.warn('artist_tip_fan_notification_failed', {
-                      tipId: tip.id,
+                      tipId: settledTip.id,
                       error: fanNotifyError.message,
                     });
                   }
@@ -1362,37 +1381,37 @@ serve(async (req) => {
                     : 'You just received a new tip!';
                   const { error: artistNotifyError } = await supabaseClient.functions.invoke('broadcast-notification', {
                     body: {
-                      recipients: [tip.artist_id],
+                      recipients: [settledTip.artist_id],
                       type: 'tip',
                       title: 'New tip received',
                       message: creatorMessage,
                       payload: {
-                        tip_id: tip.id,
-                        amount: tipTotal ?? tip.amount,
-                        fan_id: tip.fan_id,
+                        tip_id: settledTip.id,
+                        amount: tipTotal ?? settledTip.amount,
+                        fan_id: settledTip.fan_id,
                       },
-                      relatedId: tip.id,
+                      relatedId: settledTip.id,
                       relatedType: 'artist_tip',
                     },
                   });
 
                   if (artistNotifyError) {
                     await tipLogger.warn('artist_tip_creator_notification_failed', {
-                      tipId: tip.id,
+                      tipId: settledTip.id,
                       error: artistNotifyError.message,
                     });
                   }
 
                   await maybeSendCreatorFirstEarnings(
                     supabaseClient,
-                    tip.artist_id,
-                    tipTotal ?? tip.amount ?? 0,
+                    settledTip.artist_id,
+                    tipTotal ?? settledTip.amount ?? 0,
                     tipLogger,
                     'tip',
                   );
                 } catch (notificationError) {
                   await tipLogger.warn('artist_tip_notification_exception', {
-                    tipId: tip.id,
+                    tipId: settledTip.id,
                     error: notificationError instanceof Error
                       ? notificationError.message
                       : String(notificationError),
@@ -1692,6 +1711,17 @@ serve(async (req) => {
         break;
       }
 
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await expireHybridCheckout(
+          supabaseClient,
+          session,
+          scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+          "failed",
+        );
+        break;
+      }
+
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
         await expireHybridCheckout(
@@ -1714,7 +1744,10 @@ serve(async (req) => {
         const membershipResult = await syncMembershipFromSubscription(
           supabaseClient,
           subscription,
-          logStep
+          scopeLogger(currentLogger, {
+            scope: 'membership_sync',
+            subscriptionId: subscription.id,
+          }),
         );
 
         if (membershipResult?.processed && membershipResult.userId && membershipResult.creatorId) {
@@ -1819,14 +1852,20 @@ serve(async (req) => {
               .single();
 
             if (existingSub) {
-              await supabaseClient.from("user_subscriptions").update({
-                tier: 'free',
-                status: 'inactive',
-                stripe_subscription_id: null,
-                current_period_start: null,
-                current_period_end: null,
-                updated_at: new Date().toISOString(),
-              }).eq("stripe_subscription_id", subscription.id);
+              const { error: syncError } = await supabaseClient.rpc(
+                'platform_sync_stripe_subscription',
+                {
+                  p_user_id: existingSub.user_id,
+                  p_tier: 'free',
+                  p_status: 'inactive',
+                  p_subscription_id: null,
+                  p_period_start: null,
+                  p_period_end: null,
+                  p_product_id: null,
+                  p_billing_cycle: 'monthly',
+                },
+              );
+              if (syncError) throw new Error(`Stripe cancellation reconciliation failed: ${syncError.message}`);
 
               await logStep("Subscription cancelled in database", { subscriptionId: subscription.id });
 
@@ -1869,7 +1908,10 @@ serve(async (req) => {
         const membershipResult = await syncMembershipFromSubscription(
           supabaseClient,
           subscription,
-          logStep
+          scopeLogger(currentLogger, {
+            scope: 'membership_sync',
+            subscriptionId: subscription.id,
+          }),
         );
 
         if (membershipResult?.processed && membershipResult.userId && membershipResult.creatorId) {
@@ -1974,12 +2016,31 @@ serve(async (req) => {
             .single();
 
           if (existingSub) {
-            await supabaseClient.from("user_subscriptions").update({
-              status: subscription.status === 'active' ? 'active' : 'inactive',
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              updated_at: new Date().toISOString(),
-            }).eq("stripe_subscription_id", subscription.id);
+            const priceId = subscription.items.data[0].price.id;
+            const { data: mappedProduct, error: mappedProductError } = await supabaseClient
+              .from('platform_subscription_products')
+              .select('tier,billing_cycle')
+              .eq('provider', 'stripe')
+              .eq('product_id', priceId)
+              .eq('is_active', true)
+              .maybeSingle();
+            if (mappedProductError || !mappedProduct) {
+              throw new Error(`Unmapped Stripe platform plan: ${priceId}`);
+            }
+            const { error: syncError } = await supabaseClient.rpc(
+              'platform_sync_stripe_subscription',
+              {
+                p_user_id: existingSub.user_id,
+                p_tier: mappedProduct.tier,
+                p_status: subscription.status,
+                p_subscription_id: subscription.id,
+                p_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                p_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                p_product_id: priceId,
+                p_billing_cycle: mappedProduct.billing_cycle,
+              },
+            );
+            if (syncError) throw new Error(`Stripe subscription reconciliation failed: ${syncError.message}`);
 
             await logStep("Subscription updated in database", { subscriptionId: subscription.id });
 
@@ -2006,6 +2067,15 @@ serve(async (req) => {
         const paymentIntentId = typeof charge.payment_intent === "string"
           ? charge.payment_intent
           : charge.payment_intent?.id ?? null;
+        let providerCheckoutId = typeof charge.metadata?.external_checkout_id === "string"
+          ? charge.metadata.external_checkout_id
+          : null;
+        if (paymentIntentId && !providerCheckoutId) {
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          providerCheckoutId = typeof intent.metadata?.external_checkout_id === "string"
+            ? intent.metadata.external_checkout_id
+            : null;
+        }
         if (
           paymentIntentId &&
           await reverseHybridCheckout(
@@ -2014,6 +2084,7 @@ serve(async (req) => {
             charge.amount_refunded,
             "refund",
             scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+            providerCheckoutId,
           )
         ) {
           break;
@@ -2034,12 +2105,17 @@ serve(async (req) => {
           ? dispute.payment_intent
           : dispute.payment_intent?.id ?? null;
         if (paymentIntentId) {
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          const providerCheckoutId = typeof intent.metadata?.external_checkout_id === "string"
+            ? intent.metadata.external_checkout_id
+            : null;
           await reverseHybridCheckout(
             supabaseClient,
             paymentIntentId,
             dispute.amount,
             "dispute",
             scopeLogger(currentLogger, { scope: "hybrid_commerce" }),
+            providerCheckoutId,
           );
         }
         break;
@@ -2097,7 +2173,10 @@ serve(async (req) => {
           const membershipResult = await syncMembershipFromSubscription(
             supabaseClient,
             subscription,
-            logStep,
+            scopeLogger(currentLogger, {
+              scope: 'membership_sync',
+              subscriptionId: subscription.id,
+            }),
           );
 
           if (

@@ -8,6 +8,7 @@ import {
 import { LAUNCH_ACCESS_REQUIRED } from "../config/environment";
 import { registerMobilePushToken } from "../lib/localNotifications";
 import { supabase } from "../lib/supabase";
+import { clearSupabaseAuthStorage } from "../lib/storage";
 
 type AuthContextValue = {
   user: User | null;
@@ -37,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const clearStaleSession = async () => {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      await clearSupabaseAuthStorage().catch(() => undefined);
       if (!mounted) return;
       setSession(null);
       setUser(null);
@@ -104,7 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const signOut = async () => {
-    await supabase.auth.signOut({ scope: 'local' });
+    if (session?.access_token) {
+      await supabase.functions
+        .invoke('mobile-studio-handoff', { body: { action: 'revoke' } })
+        .catch(() => undefined);
+    }
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    await clearSupabaseAuthStorage().catch(() => undefined);
     setUser(null);
     setSession(null);
   };

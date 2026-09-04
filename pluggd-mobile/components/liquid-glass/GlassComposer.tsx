@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors } from '../../src/design/liquidGlassTokens';
 import { GlassAvatar } from './GlassAvatar';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type GlassComposerProps = {
   userAvatar?: string | null;
@@ -29,6 +30,7 @@ export function GlassComposer({
   onPress,
   style,
 }: GlassComposerProps) {
+  const theme = usePluggdTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -37,14 +39,14 @@ export function GlassComposer({
         selectionHaptic();
         onPress?.();
       }}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed, style]}
+      style={({ pressed }) => [styles.row, { borderColor: theme.colors.border }, pressed && styles.pressed, style]}
     >
       <GlassAvatar imageUrl={userAvatar} name={userName} size="sm" tone="accent" />
-      <Text style={styles.placeholder} numberOfLines={1}>
+      <Text style={[styles.placeholder, { color: theme.colors.textMuted }]} numberOfLines={1}>
         {placeholder}
       </Text>
-      <View style={styles.cta}>
-        <Text style={styles.ctaText}>{signedIn ? ctaLabel || 'Post' : ctaLabel || 'Sign in'}</Text>
+      <View style={[styles.cta, { backgroundColor: theme.colors.accentFill }]}>
+        <Text style={[styles.ctaText, { color: theme.colors.onAccent }]}>{signedIn ? ctaLabel || 'Post' : ctaLabel || 'Sign in'}</Text>
       </View>
     </Pressable>
   );

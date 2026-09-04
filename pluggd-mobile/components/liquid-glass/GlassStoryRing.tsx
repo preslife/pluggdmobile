@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors, type LiquidGlassTone } from '../../src/design/liquidGlassTokens';
 import { GlassAvatar } from './GlassAvatar';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type GlassStoryRingProps = {
   name: string;
@@ -11,7 +12,8 @@ type GlassStoryRingProps = {
   onPress?: () => void;
 };
 
-export function GlassStoryRing({ name, imageUrl, tone = 'violet', viewed, onPress }: GlassStoryRingProps) {
+export function GlassStoryRing({ name, imageUrl, tone = 'accent', viewed, onPress }: GlassStoryRingProps) {
+  const theme = usePluggdTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,10 +24,10 @@ export function GlassStoryRing({ name, imageUrl, tone = 'violet', viewed, onPres
       }}
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
     >
-      <View style={[styles.ring, viewed && styles.viewed]}>
+      <View style={[styles.ring, { borderColor: theme.colors.accentFill, backgroundColor: theme.scheme === 'light' ? 'rgba(232,79,0,0.09)' : 'rgba(255,102,0,0.12)' }, viewed && styles.viewed, viewed && { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
         <GlassAvatar imageUrl={imageUrl} name={name} tone={tone} size="lg" />
       </View>
-      <Text style={styles.label} numberOfLines={1}>{name}</Text>
+      <Text style={[styles.label, { color: theme.colors.textSecondary }]} numberOfLines={1}>{name}</Text>
     </Pressable>
   );
 }

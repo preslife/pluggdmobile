@@ -4487,6 +4487,64 @@ export type Database = {
           },
         ]
       }
+      live_gift_idempotency_requests: {
+        Row: {
+          created_at: string
+          event_id: string
+          gift_id: string
+          id: string
+          idempotency_key: string
+          message: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          gift_id: string
+          id?: string
+          idempotency_key: string
+          message?: string | null
+          quantity: number
+          room_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          gift_id?: string
+          id?: string
+          idempotency_key?: string
+          message?: string | null
+          quantity?: number
+          room_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gift_idempotency_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_idempotency_requests_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "live_gift_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gift_idempotency_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "session_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_session_reminders: {
         Row: {
           created_at: string
@@ -8822,12 +8880,17 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          apple_original_transaction_id: string | null
+          apple_product_id: string | null
+          apple_transaction_id: string | null
           billing_cycle: string | null
+          billing_provider: string | null
           commission_rate: number | null
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          metadata: Json
           status: string | null
           stripe_subscription_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -8835,12 +8898,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
+          apple_transaction_id?: string | null
           billing_cycle?: string | null
+          billing_provider?: string | null
           commission_rate?: number | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          metadata?: Json
           status?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -8848,12 +8916,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
+          apple_transaction_id?: string | null
           billing_cycle?: string | null
+          billing_provider?: string | null
           commission_rate?: number | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          metadata?: Json
           status?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -10726,6 +10799,17 @@ export type Database = {
         }
         Returns: string
       }
+      perform_live_gift_v3: {
+        Args: {
+          p_gift_id: string
+          p_idempotency_key: string
+          p_message: string | null
+          p_quantity: number
+          p_room_id: string
+          p_sender: string
+        }
+        Returns: Json
+      }
       process_tip_payment: {
         Args: {
           p_amount_credits: number
@@ -11092,7 +11176,7 @@ export type Database = {
         | "shoutout"
         | "behind_the_scenes"
       submission_status: "pending" | "approved" | "rejected"
-      subscription_tier: "free" | "creator" | "pro"
+      subscription_tier: "free" | "starter" | "creator" | "pro"
       tier_status: "draft" | "active" | "paused" | "archived"
       transaction_type: "entry" | "payout"
       user_role: "user" | "admin" | "moderator"
@@ -11262,7 +11346,7 @@ export const Constants = {
         "behind_the_scenes",
       ],
       submission_status: ["pending", "approved", "rejected"],
-      subscription_tier: ["free", "creator", "pro"],
+      subscription_tier: ["free", "starter", "creator", "pro"],
       tier_status: ["draft", "active", "paused", "archived"],
       transaction_type: ["entry", "payout"],
       user_role: ["user", "admin", "moderator"],

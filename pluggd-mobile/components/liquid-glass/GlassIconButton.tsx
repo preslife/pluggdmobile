@@ -4,6 +4,7 @@ import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors, liquidGlassRadii } from '../../src/design/liquidGlassTokens';
 import { GlassPanel } from './GlassPanel';
 import { LiftSurface } from './LiftSurface';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type GlassIconButtonProps = {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -26,17 +27,18 @@ export function GlassIconButton({
   quiet,
   style,
 }: GlassIconButtonProps) {
+  const theme = usePluggdTheme();
   const panel = (
     <GlassPanel
       intensity={active ? 'default' : 'subtle'}
       radius={liquidGlassRadii.pill}
-      style={[styles.fill, quiet && styles.quietPanel]}
+      style={[styles.fill, quiet && styles.quietPanel, quiet && { backgroundColor: theme.scheme === 'light' ? 'rgba(91,56,31,0.035)' : 'rgba(255,255,255,0.02)' }]}
       contentStyle={styles.content}
     >
       <MaterialIcons
         name={icon}
         size={Math.max(16, Math.round(size * 0.45))}
-        color={active ? liquidGlassColors.accent : liquidGlassColors.textSecondary}
+        color={active ? theme.colors.accentText : theme.colors.textSecondary}
       />
     </GlassPanel>
   );

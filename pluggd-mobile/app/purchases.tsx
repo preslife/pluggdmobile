@@ -4,15 +4,21 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ListCard, ScreenShell, SectionTitle } from '../components/ContentUI';
 import { PluggdImage } from '../src/components/PluggdImage';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 import { useHomeFeed } from '../src/features/culture/useCultureData';
-import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
+import { useStoreBilling } from '../src/context/StoreBillingProvider';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 export default function PurchasesScreen() {
+  const theme = usePluggdTheme();
+  const styles = usePurchasesStyles();
   const router = useRouter();
+  const { adapter } = useStoreBilling();
+  const storeName = adapter?.storeName ?? 'store';
   const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
   const feed = useHomeFeed();
   const purchases = library.data?.purchases ?? [];
@@ -57,21 +63,21 @@ export default function PurchasesScreen() {
       action={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Restore App Store memberships"
+          accessibilityLabel={`Restore ${storeName} memberships`}
           style={styles.restoreButton}
           onPress={() => router.push('/membership' as any)}
         >
-          <MaterialIcons name="restore" size={18} color={PLUGGD_ORANGE} />
-          <Text style={styles.restoreText}>Restore Apple</Text>
+          <MaterialIcons name="restore" size={18} color={theme.colors.accentText} />
+          <Text style={styles.restoreText}>Restore {storeName}</Text>
         </Pressable>
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       {library.isLoading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={PLUGGD_ORANGE} />
+          <ActivityIndicator color={theme.colors.accentFill} />
         </View>
       ) : null}
 
@@ -96,11 +102,11 @@ export default function PurchasesScreen() {
                     <PluggdImage uri={item.image} style={styles.gatewayImage} displayWidth={420} />
                   ) : (
                     <View style={[styles.gatewayImage, styles.gatewayFallback]}>
-                      <MaterialIcons name={item.icon} size={28} color={PLUGGD_ORANGE} />
+                      <MaterialIcons name={item.icon} size={28} color={theme.colors.accentText} />
                     </View>
                   )}
                   <LinearGradient colors={['rgba(5,4,3,0.08)', 'rgba(5,4,3,0.94)']} style={StyleSheet.absoluteFillObject} />
-                  <MaterialIcons name={item.icon} size={18} color={PLUGGD_ORANGE} />
+                  <MaterialIcons name={item.icon} size={18} color={theme.colors.accentFill} />
                   <View>
                     <Text style={styles.gatewayTitle}>{item.label}</Text>
                     <Text style={styles.gatewayDetail}>{item.detail}</Text>
@@ -123,13 +129,13 @@ export default function PurchasesScreen() {
               onPress={() => router.push((item.route || '/purchases') as any)}
             >
               <View style={styles.iconWrap}>
-                <MaterialIcons name={iconForKind(item.kind)} size={22} color={PLUGGD_ORANGE} />
+                <MaterialIcons name={iconForKind(item.kind)} size={22} color={theme.colors.accentText} />
               </View>
               <View style={styles.copy}>
                 <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
                 <Text style={styles.meta} numberOfLines={1}>{item.kind.replace(/_/g, ' ')} · {item.status}</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#737373" />
+              <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
             </Pressable>
           ))}
         </>
@@ -176,32 +182,34 @@ function iconForKind(kind: string): keyof typeof MaterialIcons.glyphMap {
   return 'lock-open';
 }
 
-const styles = StyleSheet.create({
+function usePurchasesStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
   restoreButton: {
     minHeight: 44,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: 'rgba(255,102,0,0.48)',
-    backgroundColor: 'rgba(255,102,0,0.08)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.accentSoft,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  restoreText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  restoreText: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   gatewayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 2, marginBottom: 18 },
   gatewayPressable: { width: '48.5%' },
-  gatewayCard: { height: 142, borderRadius: 6, overflow: 'hidden', padding: 12, justifyContent: 'space-between', backgroundColor: '#171411' },
-  gatewayImage: { ...StyleSheet.absoluteFillObject, backgroundColor: '#201A16' },
+  gatewayCard: { height: 142, borderRadius: 6, overflow: 'hidden', padding: 12, justifyContent: 'space-between', backgroundColor: theme.colors.artworkBase },
+  gatewayImage: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.artworkBase },
   gatewayFallback: { alignItems: 'center', justifyContent: 'center' },
-  gatewayTitle: { color: '#FFF', fontSize: 15, lineHeight: 18, fontFamily: pluggdFonts.displayBold },
-  gatewayDetail: { color: '#D2CAC0', fontSize: 10.5, lineHeight: 14, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
+  gatewayTitle: { color: theme.colors.mediaText, fontSize: 15, lineHeight: 18, fontFamily: pluggdFonts.displayBold },
+  gatewayDetail: { color: theme.colors.mediaTextMuted, fontSize: 10.5, lineHeight: 14, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
   entitlementCard: {
     minHeight: 76,
     borderRadius: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#262626',
+    borderColor: theme.colors.divider,
     backgroundColor: 'transparent',
     paddingVertical: 13,
     paddingHorizontal: 2,
@@ -214,12 +222,13 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: 'rgba(255,102,0,0.3)',
-    backgroundColor: 'rgba(255,102,0,0.1)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   copy: { flex: 1, minWidth: 0 },
-  title: { color: '#FFFFFF', fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  meta: { color: '#B3B3B3', fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 4, textTransform: 'capitalize' },
-});
+  title: { color: theme.colors.text, fontSize: 15, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  meta: { color: theme.colors.textMuted, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 4, textTransform: 'capitalize' },
+  }), [theme]);
+}

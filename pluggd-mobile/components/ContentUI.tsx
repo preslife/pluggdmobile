@@ -13,6 +13,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
 import { PLUGGD_ORANGE, pluggdRadii, pluggdTypography } from '../src/design/tokens';
 import { contentInitials } from '../src/lib/mobileContent';
 import { PluggdChip, PremiumScreenHeader } from './PluggdPrimitives';
@@ -29,6 +30,7 @@ export function ScreenShell({
   action?: ReactNode;
 }) {
   const theme = usePluggdTheme();
+  const bottomInset = useBottomChromeInset();
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
@@ -40,7 +42,10 @@ export function ScreenShell({
           style={styles.premiumHeader}
         />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
+      >
         {children}
       </ScrollView>
     </View>
@@ -61,9 +66,9 @@ export function SectionTitle({
     <View style={styles.sectionHeader}>
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
       {actionLabel ? (
-        <Pressable style={styles.sectionAction} onPress={onAction}>
-          <Text style={[styles.sectionActionText, { color: theme.colors.accent }]}>{actionLabel}</Text>
-          <MaterialIcons name="chevron-right" size={18} color={theme.colors.accent} />
+        <Pressable accessibilityRole="button" style={styles.sectionAction} onPress={onAction}>
+          <Text style={[styles.sectionActionText, { color: theme.colors.accentText }]}>{actionLabel}</Text>
+          <MaterialIcons name="chevron-right" size={18} color={theme.colors.accentText} />
         </Pressable>
       ) : null}
     </View>
@@ -115,6 +120,8 @@ export function PosterCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${title}`}
       onPress={onPress}
       style={[
         styles.posterCard,
@@ -139,13 +146,13 @@ export function PosterCard({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Play ${title}`}
-          style={styles.playBadge}
+          style={[styles.playBadge, { backgroundColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill }]}
           onPress={(event) => {
             event.stopPropagation?.();
             onPlay?.();
           }}
         >
-          <MaterialIcons name={icon} size={18} color="#FFFFFF" />
+          <MaterialIcons name={icon} size={20} color={theme.colors.onAccent} />
         </Pressable>
       </View>
       <Text style={[styles.cardTitle, { color: theme.colors.text }]} numberOfLines={1}>
@@ -166,7 +173,7 @@ export function PosterCard({
             },
           ]}
         >
-          <Text style={[styles.metaText, { color: theme.colors.accent }]} numberOfLines={1}>
+          <Text style={[styles.metaText, { color: theme.colors.accentText }]} numberOfLines={1}>
             {meta}
           </Text>
         </View>
@@ -195,6 +202,8 @@ export function ListCard({
   const theme = usePluggdTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${title}`}
       onPress={onPress}
       style={[
         styles.listCard,
@@ -217,7 +226,7 @@ export function ListCard({
           </Text>
         ) : null}
         {meta ? (
-          <Text style={[styles.listMeta, { color: theme.colors.accent }]} numberOfLines={1}>
+          <Text style={[styles.listMeta, { color: theme.colors.accentText }]} numberOfLines={1}>
             {meta}
           </Text>
         ) : null}
@@ -230,9 +239,9 @@ export function ListCard({
             event.stopPropagation?.();
             onPlay();
           }}
-          style={styles.listPlay}
+          style={[styles.listPlay, { backgroundColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill }]}
         >
-          <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
+          <MaterialIcons name="play-arrow" size={22} color={theme.colors.onAccent} />
         </Pressable>
       ) : (
         <MaterialIcons name={icon} size={24} color={theme.colors.textSubtle} />
@@ -252,7 +261,7 @@ export function EmptyState({ title, body }: { title: string; body?: string }) {
         },
       ]}
     >
-      <View style={styles.emptySignal}><View style={[styles.emptySignalBar, { backgroundColor: theme.colors.accent }]} /><Text style={[styles.emptyEyebrow, { color: theme.colors.accent }]}>CURRENT STATE</Text></View>
+      <View style={styles.emptySignal}><View style={[styles.emptySignalBar, { backgroundColor: theme.colors.accentFill }]} /><Text style={[styles.emptyEyebrow, { color: theme.colors.accentText }]}>CURRENT STATE</Text></View>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text>
       {body ? <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>{body}</Text> : null}
     </View>
@@ -299,19 +308,19 @@ export function RecoveryState({
           },
         ]}
       >
-        <MaterialIcons name={icon} size={28} color={theme.colors.accent} />
+        <MaterialIcons name={icon} size={28} color={theme.colors.accentText} />
       </View>
-      <Text style={[styles.recoveryEyebrow, { color: theme.colors.accent }]}>{eyebrow}</Text>
+      <Text style={[styles.recoveryEyebrow, { color: theme.colors.accentText }]}>{eyebrow}</Text>
       <Text style={[styles.recoveryTitle, { color: theme.colors.text }]}>{title}</Text>
       <Text style={[styles.recoveryBody, { color: theme.colors.textMuted }]}>{body}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={primaryLabel}
         onPress={onPrimary}
-        style={[styles.recoveryPrimary, { backgroundColor: theme.colors.accent }]}
+        style={[styles.recoveryPrimary, { backgroundColor: theme.colors.accentFill }]}
       >
-        <Text style={styles.recoveryPrimaryText}>{primaryLabel}</Text>
-        <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
+        <Text style={[styles.recoveryPrimaryText, { color: theme.colors.onAccent }]}>{primaryLabel}</Text>
+        <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
       </Pressable>
       {secondaryLabel && onSecondary ? (
         <Pressable
@@ -344,7 +353,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 12,
-    paddingBottom: 196,
+    paddingBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -358,6 +367,8 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.displayBold, fontWeight: pluggdTypography.weights.heavy,
   },
   sectionAction: {
+    minWidth: 44,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -403,9 +414,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 8,
     bottom: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -475,9 +486,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   listPlay: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',

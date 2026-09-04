@@ -4,14 +4,14 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassDock } from './liquid-glass';
 
-type TabItem = {
+export type TabItem = {
   label: string;
   route: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   aliases?: string[];
 };
 
-const CORE_TABS: TabItem[] = [
+export const CORE_TABS: TabItem[] = [
   {
     label: 'Home',
     route: '/',
@@ -34,6 +34,7 @@ const CORE_TABS: TabItem[] = [
       '/mixes',
       '/search',
       '/directory',
+      '/hubs',
     ],
   },
   {
@@ -45,7 +46,6 @@ const CORE_TABS: TabItem[] = [
       '/backstage',
       '/community/boards',
       '/community/events',
-      '/hubs',
       '/social/hub',
       '/post',
       '/story',
@@ -65,23 +65,40 @@ const CORE_TABS: TabItem[] = [
       '/creator/events',
     ],
   },
+  {
+    label: 'Store',
+    route: '/market',
+    icon: 'storefront',
+    aliases: [
+      '/(tabs)/market',
+      '/store',
+      '/marketplace',
+      '/beat-marketplace',
+      '/beat',
+      '/beats',
+      '/product',
+      '/sample-packs',
+      '/sample-pack',
+      '/drops',
+    ],
+  },
 ];
 
-function normalize(pathname: string | null) {
+export function normalizeCoreNavigationPath(pathname: string | null) {
   if (!pathname || pathname === '/(tabs)') return '/';
   return pathname.replace('/(tabs)', '') || '/';
 }
 
-function isActive(pathname: string, item: TabItem) {
-  const target = normalize(item.route);
+export function isCoreNavigationItemActive(pathname: string, item: TabItem) {
+  const target = normalizeCoreNavigationPath(item.route);
   if (target === '/') return pathname === '/' || pathname === '';
-  const candidates = [target, ...(item.aliases ?? []).map(normalize)];
+  const candidates = [target, ...(item.aliases ?? []).map(normalizeCoreNavigationPath)];
   return candidates.some((candidate) => pathname === candidate || pathname.startsWith(`${candidate}/`));
 }
 
 export function PluggdDock() {
   const rawPathname = usePathname();
-  const pathname = normalize(rawPathname);
+  const pathname = normalizeCoreNavigationPath(rawPathname);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -92,7 +109,7 @@ export function PluggdDock() {
         items={CORE_TABS.map((item) => ({
           label: item.label,
           icon: item.icon,
-          active: isActive(pathname, item),
+          active: isCoreNavigationItemActive(pathname, item),
           onPress: () => router.push(item.route as any),
         }))}
       />

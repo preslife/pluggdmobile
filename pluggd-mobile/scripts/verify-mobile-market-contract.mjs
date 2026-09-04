@@ -51,10 +51,20 @@ assert.doesNotMatch(
   'Native Market source must not contain App Review or implementation planning copy in public surfaces',
 );
 
+assert.match(
+  beatDetailSource,
+  /pathname:\s*['"]\/commerce\/license-preview['"][\s\S]*?params:\s*\{\s*beatId:\s*beat\.id,\s*licenseOptionId:\s*option\.id\s*\}/,
+  'Beat detail must pass only immutable beat and licence-option identifiers into licence review',
+);
 assert.doesNotMatch(
-  `${beatDetailSource}\n${beatLicenceSource}`,
-  /Open Wallet|router\.push\('\/wallet'|licenseFee|price(?:Cents|Pence)\s*:/i,
-  'Beat detail must not route licensing through credits or submit an authoritative client price',
+  beatDetailSource,
+  /params:\s*\{[^}]*\b(?:price|amount|licenseFee)(?:Cents|Pence)?\s*:/i,
+  'Beat detail must never pass a client-authored price into licence review',
+);
+assert.match(
+  beatLicenceSource,
+  /['"]complete-beat-credit-license['"][\s\S]*?body:\s*\{\s*beatId:\s*prepared\.beat\.id,\s*contractId:\s*prepared\.contract\.id,\s*licenseType:\s*prepared\.option\.licenseType,\s*commercePlatform:\s*['"]android['"],\s*storefront:\s*policy\.storefront,?\s*\}/,
+  'Android beat licensing must submit server-prepared identifiers, platform, and verified storefront only',
 );
 assert.match(
   `${beatDetailSource}\n${beatLicenceSource}`,

@@ -3,14 +3,15 @@ import { pluggdFonts } from '../../design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { PluggdImage } from '../../components/PluggdImage';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Linking, Pressable, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
 import { GlassAvatar, GlassPanel } from '../../../components/liquid-glass';
 import {
+  deleteMobileSocialPost,
   toggleSocialBookmark,
   toggleSocialLike,
   toggleSocialRepost,
@@ -19,19 +20,9 @@ import {
 import type { MobileSocialPost, MobileSocialPostPreview } from './mobileTypes';
 import { blockUser } from '../safety/accountSafety';
 import { showReportActions } from '../safety/reportActions';
-
-const COLORS = {
-  canvas: '#0a0806',
-  surface: '#171310',
-  surface2: '#241d15',
-  border: '#2a221a',
-  orange: '#ff6600',
-  live: '#FF4757',
-  white: '#FFFFFF',
-  soft: '#E4E4E9',
-  muted: '#8E8E9F',
-  dim: '#62627A',
-};
+import { MobileSocialMediaViewer, type MobileSocialMediaSelection } from './MobileSocialMediaViewer';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { useAuth } from '../../context/AuthProvider';
 
 type MobileSocialPostCardProps = {
   post: MobileSocialPost;
@@ -40,7 +31,7 @@ type MobileSocialPostCardProps = {
 };
 
 function displayNameFor(post: MobileSocialPostPreview) {
-  return post.display_name || post.username || 'PLUGGD user';
+  return post.display_name || post.username || 'Community member';
 }
 
 function userRouteFor(post: MobileSocialPostPreview) {
@@ -66,6 +57,7 @@ function getLinkPreviewValue(preview: Record<string, unknown> | null, key: strin
 }
 
 function RichText({ post }: { post: MobileSocialPostPreview }) {
+  const styles = usePostStyles();
   const router = useRouter();
   const content = post.content || (post.is_repost ? 'Reposted' : '');
   const tokenized = useMemo(() => content.split(/(\B#\w+|\B@\w+)/g).filter(Boolean), [content]);
@@ -97,8 +89,12 @@ function RichText({ post }: { post: MobileSocialPostPreview }) {
 }
 
 function DestinationPills({ post }: { post: MobileSocialPostPreview }) {
+  const styles = usePostStyles();
   const router = useRouter();
-  const destinations = post.destinations.slice(0, 4);
+  const destinations = post.destinations
+    .filter((destination) => destination.destination_type !== 'global_feed' && destination.destination_type !== 'user_profile')
+    .filter((destination) => Boolean(destination.route))
+    .slice(0, 4);
   if (!destinations.length) return null;
 
   return (
@@ -121,48 +117,108 @@ function DestinationPills({ post }: { post: MobileSocialPostPreview }) {
   );
 }
 
-function MediaGrid({ post }: { post: MobileSocialPostPreview }) {
+function MediaGrid({
+  post,
+  onOpen,
+  expanded = false,
+}: {
+  post: MobileSocialPostPreview;
+  onOpen: (index: number) => void;
+  expanded?: boolean;
+}) {
+  const styles = usePostStyles();
+  const { width: viewportWidth } = useWindowDimensions();
+  const [singleImageAspectRatio, setSingleImageAspectRatio] = useState<number | null>(null);
   const images = post.images.filter(Boolean).slice(0, 4);
+
+  useEffect(() => {
+    setSingleImageAspectRatio(null);
+    if (!expanded || images.length !== 1) return;
+    Image.getSize(
+      images[0],
+      (width, height) => {
+        if (width > 0 && height > 0) setSingleImageAspectRatio(width / height);
+      },
+      () => undefined,
+    );
+  }, [expanded, images.length, images[0]]);
+
   if (!images.length) return null;
 
   if (images.length === 1) {
+    const expandedHeight = singleImageAspectRatio
+      ? (viewportWidth - 32) / singleImageAspectRatio
+      : 244;
     return (
-      <View style={styles.singleMedia}>
-        <PluggdImage uri={images[0]} style={styles.fill} resizeMode="cover" />
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open image 1 full screen"
+        style={[styles.singleMedia, expanded && { height: expandedHeight }]}
+        onPress={(event) => {
+          event.stopPropagation();
+          selectionHaptic();
+          onOpen(0);
+        }}
+      >
+        <PluggdImage uri={images[0]} style={styles.fill} resizeMode={expanded ? 'contain' : 'cover'} />
+      </Pressable>
     );
   }
 
   return (
     <View style={styles.mediaGrid}>
       {images.map((image, index) => (
-        <View key={`${image}-${index}`} style={styles.gridMedia}>
+        <Pressable
+          key={`${image}-${index}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Open image ${index + 1} full screen`}
+          style={styles.gridMedia}
+          onPress={(event) => {
+            event.stopPropagation();
+            selectionHaptic();
+            onOpen(index);
+          }}
+        >
           <PluggdImage uri={image} style={styles.fill} resizeMode="cover" />
           {index === 3 && post.images.length > 4 ? (
             <View style={styles.moreImages}>
               <Text style={styles.moreImagesText}>+{post.images.length - 4}</Text>
             </View>
           ) : null}
-        </View>
+        </Pressable>
       ))}
     </View>
   );
 }
 
-function VideoAttachment({ post }: { post: MobileSocialPostPreview }) {
+function VideoAttachment({ post, onOpen }: { post: MobileSocialPostPreview; onOpen: () => void }) {
+  const styles = usePostStyles();
+  const theme = usePluggdTheme();
   if (!post.video) return null;
   return (
-    <View style={styles.videoCard}>
-      <MaterialIcons name="smart-display" size={24} color={COLORS.white} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open attached video full screen"
+      style={styles.videoCard}
+      onPress={(event) => {
+        event.stopPropagation();
+        selectionHaptic();
+        onOpen();
+      }}
+    >
+      <MaterialIcons name="smart-display" size={24} color={theme.colors.text} />
       <View style={styles.videoCopy}>
         <Text style={styles.embedTitle}>Video attached</Text>
-        <Text style={styles.embedMeta} numberOfLines={1}>Open the thread to view this media attachment.</Text>
+        <Text style={styles.embedMeta} numberOfLines={1}>Tap to view the full video.</Text>
       </View>
-    </View>
+      <MaterialIcons name="open-in-full" size={20} color={theme.colors.textMuted} />
+    </Pressable>
   );
 }
 
 function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
+  const styles = usePostStyles();
+  const theme = usePluggdTheme();
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayback();
   if (!post.audio) return null;
   const id = `social-audio-${post.id}`;
@@ -193,7 +249,7 @@ function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
       }}
     >
       <View style={styles.audioPlay}>
-        <MaterialIcons name={active && isPlaying ? 'pause' : 'play-arrow'} size={22} color={COLORS.canvas} />
+        <MaterialIcons name={active && isPlaying ? 'pause' : 'play-arrow'} size={22} color={theme.colors.onAccent} />
       </View>
       <View style={styles.audioCopy}>
         <Text style={styles.embedTitle} numberOfLines={1}>{title}</Text>
@@ -209,6 +265,7 @@ function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
 }
 
 function LinkPreview({ post }: { post: MobileSocialPostPreview }) {
+  const styles = usePostStyles();
   const router = useRouter();
   const title = getLinkPreviewValue(post.link_preview, 'title');
   const description = getLinkPreviewValue(post.link_preview, 'description');
@@ -238,6 +295,7 @@ function LinkPreview({ post }: { post: MobileSocialPostPreview }) {
 }
 
 function QuoteCard({ post }: { post: MobileSocialPostPreview }) {
+  const styles = usePostStyles();
   const router = useRouter();
   return (
     <Pressable
@@ -249,7 +307,7 @@ function QuoteCard({ post }: { post: MobileSocialPostPreview }) {
       <GlassPanel intensity="subtle" radius={16} contentStyle={styles.quoteContent}>
         <View style={styles.quoteHeader}>
           <Text style={styles.quoteAuthor}>{displayNameFor(post)}</Text>
-          <Text style={styles.quoteMeta}>{post.username ? `@${post.username}` : 'PLUGGD'}</Text>
+          {post.username ? <Text style={styles.quoteMeta}>{`@${post.username}`}</Text> : null}
         </View>
         <RichText post={post} />
         {post.images[0] ? (
@@ -269,6 +327,7 @@ function PollCard({
   post: MobileSocialPostPreview;
   onMutated: () => void;
 }) {
+  const styles = usePostStyles();
   const [pending, setPending] = useState<string | null>(null);
   if (!post.poll?.options?.length) return null;
 
@@ -310,10 +369,15 @@ function PollCard({
 }
 
 export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: MobileSocialPostCardProps) {
+  const styles = usePostStyles();
+  const theme = usePluggdTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [mediaSelection, setMediaSelection] = useState<MobileSocialMediaSelection>(null);
+  const [deleting, setDeleting] = useState(false);
   const displayName = displayNameFor(post);
-  const handle = post.username ? `@${post.username}` : '@pluggd';
+  const publicMeta = [post.username ? `@${post.username}` : null, formatDate(post.created_at)].filter(Boolean).join(' · ');
   const compact = variant === 'compact';
 
   const refresh = () => {
@@ -343,11 +407,33 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
 
   const openOverflow = () => {
     selectionHaptic();
-    Alert.alert(displayName, undefined, [
+    const ownPost = user?.id === post.user_id;
+    const actions = [
       { text: 'Quote post', onPress: () => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any) },
-      {
+      ...(ownPost ? [{
+        text: deleting ? 'Deleting…' : 'Delete post',
+        style: 'destructive' as const,
+        onPress: () => Alert.alert('Delete this post?', 'It will be removed from Community. Attached media is retained safely.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              setDeleting(true);
+              const result = await deleteMobileSocialPost(post.id);
+              setDeleting(false);
+              if (!result.success) {
+                Alert.alert('Post not deleted', result.error || 'Please try again.');
+                return;
+              }
+              refresh();
+              Alert.alert('Post deleted', 'Your post has been removed from Community.');
+            },
+          },
+        ]),
+      }] : [{
         text: 'Report post',
-        style: 'destructive',
+        style: 'destructive' as const,
         onPress: () => showReportActions({
           targetType: 'post',
           targetId: actionPostId(post),
@@ -356,7 +442,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
       },
       {
         text: `Block ${displayName}`,
-        style: 'destructive',
+        style: 'destructive' as const,
         onPress: async () => {
           try {
             await blockUser(post.user_id, 'Blocked from community post');
@@ -366,24 +452,27 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
             Alert.alert('Could not block account', error?.message ?? 'Please try again.');
           }
         },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+      }]),
+      { text: 'Cancel', style: 'cancel' as const },
+    ];
+    Alert.alert(displayName, ownPost ? 'Manage your post' : undefined, actions);
   };
 
   // Web-parity feed row: full-bleed, hairline divider, X-style header line and an
   // evenly spread five-icon action row — matching the live web Community feed.
   return (
-    <Pressable
+    <>
+      <Pressable
+      accessibilityRole="button"
       accessibilityLabel={`Open post by ${displayName}`}
       style={[styles.row, variant === 'thread' && styles.rowThread]}
       onPress={() => router.push(`/post/${post.id}` as any)}
     >
-      <View style={styles.rowInner}>
+      <View style={[styles.rowInner, variant === 'thread' && styles.rowInnerThread]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Open ${displayName}`}
-          style={styles.avatar}
+          style={[styles.avatar, variant === 'thread' && styles.avatarThread]}
           onPress={(event) => {
             event.stopPropagation();
             router.push(userRouteFor(post) as any);
@@ -392,10 +481,10 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           <GlassAvatar imageUrl={post.avatar_url} name={contentInitials(displayName)} size={40} tone="accent" />
         </Pressable>
 
-        <View style={styles.body}>
-          <View style={styles.header}>
+        <View style={[styles.body, variant === 'thread' && styles.bodyThread]}>
+          <View style={[styles.header, variant === 'thread' && styles.headerThread]}>
             <Text style={styles.author} numberOfLines={1}>{displayName}</Text>
-            <Text style={styles.meta} numberOfLines={1}>{handle} · {formatDate(post.created_at)}</Text>
+            <Text style={styles.meta} numberOfLines={1}>{publicMeta}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Post options"
@@ -406,7 +495,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
                 openOverflow();
               }}
             >
-              <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={19} color={COLORS.dim} />
+              <MaterialIcons name={post.is_repost ? 'repeat' : post.is_quote ? 'format-quote' : 'more-horiz'} size={19} color={theme.colors.textSubtle} />
             </Pressable>
           </View>
 
@@ -418,8 +507,8 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
 
           {!compact ? (
             <>
-              <MediaGrid post={post} />
-              <VideoAttachment post={post} />
+              <MediaGrid post={post} expanded={variant === 'thread'} onOpen={(index) => setMediaSelection({ kind: 'image', index })} />
+              <VideoAttachment post={post} onOpen={() => setMediaSelection({ kind: 'video' })} />
               <AudioAttachment post={post} />
               <LinkPreview post={post} />
               {post.original_post ? <QuoteCard post={post.original_post} /> : null}
@@ -429,19 +518,19 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
 
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => router.push(`/post/${post.id}` as any)}>
-              <MaterialIcons name="chat-bubble-outline" size={19} color={COLORS.muted} />
+              <MaterialIcons name="chat-bubble-outline" size={19} color={theme.colors.textMuted} />
               {post.comments_count ? <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.reposted ? 'Undo repost' : 'Repost'} style={styles.action} onPress={() => act('repost')}>
-              <MaterialIcons name="repeat" size={20} color={post.reposted ? COLORS.orange : COLORS.muted} />
+              <MaterialIcons name="repeat" size={20} color={post.reposted ? theme.colors.accentText : theme.colors.textMuted} />
               {post.reposts_count ? <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} style={styles.action} onPress={() => act('like')}>
-              <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? COLORS.live : COLORS.muted} />
+              <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? theme.colors.live : theme.colors.textMuted} />
               {post.likes_count ? <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text> : null}
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} style={styles.action} onPress={() => act('bookmark')}>
-              <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? COLORS.orange : COLORS.muted} />
+              <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? theme.colors.accentText : theme.colors.textMuted} />
               {post.bookmarks_count ? <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text> : null}
             </Pressable>
             <Pressable
@@ -453,47 +542,88 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
                 void Share.share({ message: post.content ? `PLUGGD: ${post.content}` : 'Open this PLUGGD post' });
               }}
             >
-              <MaterialIcons name="ios-share" size={19} color={COLORS.muted} />
+              <MaterialIcons name="ios-share" size={19} color={theme.colors.textMuted} />
             </Pressable>
           </View>
         </View>
       </View>
-    </Pressable>
+      </Pressable>
+      <MobileSocialMediaViewer
+        post={post}
+        selection={mediaSelection}
+        onSelectionChange={setMediaSelection}
+      />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
+function usePostStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => {
+    const COLORS = {
+      canvas: theme.colors.background,
+      surface: theme.colors.surface,
+      surface2: theme.colors.surfaceAlt,
+      border: theme.colors.border,
+      orange: theme.colors.accentText,
+      live: theme.colors.live,
+      white: theme.colors.text,
+      soft: theme.colors.textSecondary,
+      muted: theme.colors.textMuted,
+      dim: theme.colors.textSubtle,
+    };
+    return StyleSheet.create({
   // Full-bleed X-style feed row (web Community parity): hairline divider, no card chrome.
   row: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 14,
     paddingBottom: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.09)',
+    borderBottomColor: theme.colors.divider,
   },
   rowThread: {
+    paddingHorizontal: 16,
     borderBottomWidth: 0,
   },
   rowInner: {
     flexDirection: 'row',
-    gap: 11,
+    gap: 8,
+  },
+  rowInnerThread: {
+    position: 'relative',
+    flexDirection: 'column',
+    gap: 0,
   },
   body: {
     flex: 1,
     minWidth: 0,
     gap: 10,
   },
+  bodyThread: {
+    flex: 0,
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: 0,
   },
+  headerThread: {
+    minHeight: 44,
+    paddingLeft: 55,
+  },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarThread: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 1,
   },
   author: {
     color: COLORS.white,
@@ -510,7 +640,10 @@ const styles = StyleSheet.create({
   },
   kebab: {
     marginLeft: 'auto',
-    paddingLeft: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   repostLabel: {
     color: COLORS.orange,
@@ -533,11 +666,11 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   destinationPill: {
-    minHeight: 26,
+    minHeight: 44,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
@@ -571,7 +704,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   moreImagesText: {
-    color: COLORS.white,
+    color: theme.colors.mediaText,
     fontSize: 22,
     fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
@@ -605,7 +738,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: COLORS.white,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -706,7 +839,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.controlBorder,
     overflow: 'hidden',
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -714,14 +847,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pollOptionSelected: {
-    borderColor: 'rgba(255,102,0,0.72)',
+    borderColor: theme.colors.accentText,
   },
   pollFill: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255,102,0,0.18)',
+    backgroundColor: theme.colors.accentSoft,
   },
   pollOptionText: {
     color: COLORS.white,
@@ -748,7 +881,9 @@ const styles = StyleSheet.create({
     paddingRight: 18,
   },
   action: {
-    minHeight: 38,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -768,4 +903,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-});
+    });
+  }, [theme]);
+}

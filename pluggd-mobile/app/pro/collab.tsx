@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { EditorialTitle } from '../../components/EditorialTitle';
 import { selectionHaptic } from '../../src/design/haptics';
@@ -9,6 +10,7 @@ import { pluggdFonts } from '../../src/design/typography';
 import { formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { safeList } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 const ORANGE = '#ff6600';
 
@@ -30,6 +32,8 @@ type CollabRow = {
 
 function CollabCard({ collab }: { collab: CollabRow }) {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useCollabStyles();
   return (
     <View style={[styles.card, collab.is_featured && styles.cardFeatured]}>
       <View style={styles.headRow}>
@@ -38,7 +42,7 @@ function CollabCard({ collab }: { collab: CollabRow }) {
         </Text>
         {collab.is_featured ? (
           <View style={styles.featuredChip}>
-            <MaterialIcons name="star" size={11} color="#0E0E12" />
+            <MaterialIcons name="star" size={11} color={theme.colors.onAccent} />
             <Text style={styles.featuredText}>Featured</Text>
           </View>
         ) : null}
@@ -59,19 +63,19 @@ function CollabCard({ collab }: { collab: CollabRow }) {
       <View style={styles.metaRow}>
         {collab.budget_range ? (
           <View style={styles.metaItem}>
-            <MaterialIcons name="payments" size={13} color="#FF8A4C" />
+            <MaterialIcons name="payments" size={13} color={theme.colors.accentText} />
             <Text style={styles.metaText}>{collab.budget_range}</Text>
           </View>
         ) : null}
         {collab.deadline ? (
           <View style={styles.metaItem}>
-            <MaterialIcons name="schedule" size={13} color="#FF8A4C" />
+            <MaterialIcons name="schedule" size={13} color={theme.colors.accentText} />
             <Text style={styles.metaText}>Due {formatDate(collab.deadline)}</Text>
           </View>
         ) : null}
         {collab.votes ? (
           <View style={styles.metaItem}>
-            <MaterialIcons name="thumb-up-off-alt" size={13} color="#FF8A4C" />
+            <MaterialIcons name="thumb-up-off-alt" size={13} color={theme.colors.accentText} />
             <Text style={styles.metaText}>{formatCompact(collab.votes)}</Text>
           </View>
         ) : null}
@@ -88,7 +92,7 @@ function CollabCard({ collab }: { collab: CollabRow }) {
           style={({ pressed }) => pressed && styles.pressed}
         >
           <View style={styles.primary}>
-            <MaterialIcons name="person" size={15} color="#0E0E12" />
+            <MaterialIcons name="person" size={15} color={theme.colors.onAccent} />
             <Text style={styles.primaryText}>View creator</Text>
           </View>
         </Pressable>
@@ -102,7 +106,7 @@ function CollabCard({ collab }: { collab: CollabRow }) {
           style={({ pressed }) => pressed && styles.pressed}
         >
           <View style={styles.secondary}>
-            <MaterialIcons name="ios-share" size={15} color="#FFFFFF" />
+            <MaterialIcons name="ios-share" size={15} color={theme.colors.text} />
             <Text style={styles.secondaryText}>Share</Text>
           </View>
         </Pressable>
@@ -112,6 +116,8 @@ function CollabCard({ collab }: { collab: CollabRow }) {
 }
 
 export default function CollabHubScreen() {
+  const theme = usePluggdTheme();
+  const styles = useCollabStyles();
   const query = useQuery({
     queryKey: ['pro', 'collab-hub'],
     queryFn: async () =>
@@ -131,14 +137,14 @@ export default function CollabHubScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ title: 'Collab Hub', headerShown: false }} />
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <Text style={styles.pageKicker}>CREATOR OPPORTUNITIES</Text>
         <EditorialTitle
           segments={[{ text: 'The Collab ' }, { text: 'Hub', accent: true }]}
           size={32}
-          color="#FFFFFF"
-          accentColor={ORANGE}
+          color={theme.colors.text}
+          accentColor={theme.colors.accentText}
         />
         <Text style={styles.summary}>
           Open briefs from artists, producers, and DJs looking to build together — skills, budgets, and deadlines up front.
@@ -146,13 +152,13 @@ export default function CollabHubScreen() {
 
         {query.isLoading ? (
           <View style={styles.center}>
-            <ActivityIndicator color={ORANGE} />
+            <ActivityIndicator color={theme.colors.accentText} />
           </View>
         ) : collabs.length ? (
           collabs.map((collab) => <CollabCard key={collab.id} collab={collab} />)
         ) : (
           <View style={styles.empty}>
-            <MaterialIcons name="handshake" size={26} color={ORANGE} />
+            <MaterialIcons name="handshake" size={26} color={theme.colors.accentText} />
             <Text style={styles.emptyTitle}>No open collab briefs yet</Text>
             <Text style={styles.emptyBody}>Creator collaboration briefs appear here as soon as they are published.</Text>
           </View>
@@ -162,7 +168,7 @@ export default function CollabHubScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0A0806' },
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 128, paddingBottom: 226, gap: 14 },
@@ -243,3 +249,30 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 18 },
   emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'left' },
 });
+
+function useCollabStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => ({
+    ...baseStyles,
+    root: [baseStyles.root, { backgroundColor: theme.colors.background }],
+    pageKicker: [baseStyles.pageKicker, { color: theme.colors.accentText }],
+    summary: [baseStyles.summary, { color: theme.colors.textSecondary }],
+    card: [baseStyles.card, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }],
+    cardFeatured: [baseStyles.cardFeatured, { borderColor: theme.colors.borderAccent }],
+    kind: [baseStyles.kind, { color: theme.colors.accentText }],
+    featuredChip: [baseStyles.featuredChip, { backgroundColor: theme.colors.accentFill }],
+    featuredText: [baseStyles.featuredText, { color: theme.colors.onAccent }],
+    title: [baseStyles.title, { color: theme.colors.text }],
+    desc: [baseStyles.desc, { color: theme.colors.textSecondary }],
+    skillChip: [baseStyles.skillChip, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }],
+    skillText: [baseStyles.skillText, { color: theme.colors.textSecondary }],
+    metaText: [baseStyles.metaText, { color: theme.colors.textMuted }],
+    primary: [baseStyles.primary, { backgroundColor: theme.colors.accentFill }],
+    primaryText: [baseStyles.primaryText, { color: theme.colors.onAccent }],
+    secondary: [baseStyles.secondary, { borderColor: theme.colors.borderStrong }],
+    secondaryText: [baseStyles.secondaryText, { color: theme.colors.text }],
+    empty: [baseStyles.empty, { borderColor: theme.colors.border }],
+    emptyTitle: [baseStyles.emptyTitle, { color: theme.colors.text }],
+    emptyBody: [baseStyles.emptyBody, { color: theme.colors.textMuted }],
+  }), [theme]);
+}

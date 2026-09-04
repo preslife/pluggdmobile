@@ -50,13 +50,17 @@ for (const discoverToken of ['BeatPlug', 'Live rooms', 'Soundboards', 'Trending 
 for (const communityToken of ['Stories and moments', 'Community prompt', 'Contests', 'Crowdfund', 'From THE PLUG', 'Community radio', 'Who to follow']) {
   assert.match(services, new RegExp(communityToken), `Community parity loader must preserve web Community module ${communityToken}`);
 }
-for (const marketToken of ['BeatPlug flagship', 'Releases', 'Sample packs', 'Merch', 'Services', 'Licenses', 'Creator Offers']) {
+for (const marketToken of ['BeatPlug flagship', 'Releases', 'Sample packs', 'Merch', 'Licenses']) {
   assert.match(services, new RegExp(marketToken), `Market parity loader must preserve web Market lane ${marketToken}`);
 }
+assert.doesNotMatch(services, /(?:title|id):\s*['"](?:Services|services)['"]/, 'Market parity loader must not expose an unfinished Services lane');
+assert.doesNotMatch(services, /(?:title|id):\s*['"](?:Creator Offers|creator[_-]offers)['"]/, 'Market parity loader must not expose an unfinished Creator Offers lane');
+assert.doesNotMatch(services, /staticCard\('promoters'/, 'Events parity loader must not expose unfinished Promoter tools');
 assert.match(screens, /export function CommunityParityScreen/, 'Community parity screen must be exported');
 assert.match(appCommunity, /CommunityFeedScreen/, 'Top-level Community route must use the feed-first Community screen');
 assert.match(tabCommunity, /CommunityFeedScreen/, 'Tab Community route must use the feed-first Community screen');
-assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityComposer[\s\S]*MobileSocialPostCard/, 'Community feed must render stories, composer, and real social posts');
+assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityInternalSwitcher[\s\S]*MobileSocialPostCard/, 'Community feed must render stories, navigation, and real social posts');
+assert.match(communityFeed, /CommunityInternalSwitcher/, 'Community must render its web-parity internal dock');
 assert.doesNotMatch(appCommunity + tabCommunity, /CommunityParityScreen/, 'Community primary routes must not use the generic parity screen');
 assert.match(explore, /ExploreParityScreen/, 'Explore route must render the primary discovery parity screen');
 assert.match(tabExplore, /ExploreParityScreen/, 'Tab Explore route must render the primary discovery parity screen');

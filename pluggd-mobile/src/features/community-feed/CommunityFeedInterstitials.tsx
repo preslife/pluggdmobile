@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../../components/PluggdImage';
 import type { CommunityFeedBundle, CommunityInterstitialKind } from './communityFeedTypes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useMemo } from 'react';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 
 const COLORS = {
   surface: '#171310',
@@ -62,6 +64,8 @@ export function CommunityFeedInterstitial({
   kind: CommunityInterstitialKind;
   bundle: CommunityFeedBundle;
 }) {
+  const styles = useInterstitialStyles();
+  const theme = usePluggdTheme();
   const router = useRouter();
   const items = itemsForKind(kind, bundle).slice(0, 8);
 
@@ -69,13 +73,13 @@ export function CommunityFeedInterstitial({
     return (
       <Pressable accessibilityRole="button" accessibilityLabel="Open community post composer" style={styles.promptCard} onPress={() => router.push(bundle.prompt.route as any)}>
         <View style={styles.promptIcon}>
-          <MaterialIcons name="bolt" size={22} color={COLORS.orange} />
+          <MaterialIcons name="bolt" size={22} color={theme.colors.accentText} />
         </View>
         <View style={styles.promptCopy}>
           <Text style={styles.title}>{bundle.prompt.title}</Text>
           <Text style={styles.subtitle}>{bundle.prompt.subtitle}</Text>
         </View>
-        <MaterialIcons name="arrow-forward" size={20} color={COLORS.muted} />
+        <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textMuted} />
       </Pressable>
     );
   }
@@ -92,7 +96,7 @@ export function CommunityFeedInterstitial({
         {kind === 'the_plug' ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Open all THE PLUG stories" onPress={() => router.push('/plug' as any)} style={styles.headerAction}>
             <Text style={styles.headerActionText}>Read all</Text>
-            <MaterialIcons name="arrow-forward" size={15} color={COLORS.orange} />
+            <MaterialIcons name="arrow-forward" size={15} color={theme.colors.accentText} />
           </Pressable>
         ) : null}
       </View>
@@ -103,7 +107,7 @@ export function CommunityFeedInterstitial({
               <PluggdImage uri={item.imageUrl} style={styles.image} resizeMode="cover" />
             ) : (
               <View style={styles.imageFallback}>
-                <MaterialIcons name={kind === 'live_now' ? 'radio-button-checked' : kind === 'who_to_follow' ? 'person-add' : kind === 'nearby_events' ? 'event' : 'forum'} size={24} color={kind === 'live_now' ? COLORS.live : COLORS.orange} />
+                <MaterialIcons name={kind === 'live_now' ? 'radio-button-checked' : kind === 'who_to_follow' ? 'person-add' : kind === 'nearby_events' ? 'event' : 'forum'} size={24} color={kind === 'live_now' ? theme.colors.live : theme.colors.accentText} />
               </View>
             )}
             <LinearGradient colors={['rgba(6,5,4,0.06)', 'rgba(6,5,4,0.94)']} style={StyleSheet.absoluteFillObject} />
@@ -116,13 +120,15 @@ export function CommunityFeedInterstitial({
   );
 }
 
-const styles = StyleSheet.create({
+function useInterstitialStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
   promptCard: {
     marginHorizontal: 16,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(18,20,32,0.42)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: theme.colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -153,21 +159,21 @@ const styles = StyleSheet.create({
   },
   headerCopy: { flex: 1, minWidth: 0 },
   headerAction: { minHeight: 44, flexDirection: 'row', alignItems: 'flex-end', gap: 4, paddingBottom: 2 },
-  headerActionText: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBold, fontSize: 11.5 },
+  headerActionText: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 11.5 },
   kicker: {
-    color: COLORS.orange,
+    color: theme.colors.accentText,
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
   title: {
-    color: COLORS.white,
+    color: theme.colors.text,
     fontSize: 15,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   subtitle: {
-    color: COLORS.muted,
+    color: theme.colors.textMuted,
     fontSize: 12,
     lineHeight: 17,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
@@ -181,23 +187,23 @@ const styles = StyleSheet.create({
     width: 210,
     height: 184,
     borderRadius: 6,
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.colors.artworkBase,
     padding: 12,
     overflow: 'hidden',
     justifyContent: 'space-between',
   },
   image: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: theme.colors.artworkBase,
   },
   imageFallback: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: theme.colors.artworkBase,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardEyebrow: {
-    color: COLORS.orange,
+    color: '#FF6600',
     fontSize: 10,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
@@ -206,15 +212,16 @@ const styles = StyleSheet.create({
   cardTop: { zIndex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardCopy: { zIndex: 2 },
   cardTitle: {
-    color: COLORS.white,
+    color: theme.colors.mediaText,
     fontSize: 16,
     lineHeight: 20,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   cardSubtitle: {
-    color: '#D7CFC4',
+    color: theme.colors.mediaTextMuted,
     fontSize: 11,
     lineHeight: 15,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '500',
   },
-});
+  }), [theme]);
+}

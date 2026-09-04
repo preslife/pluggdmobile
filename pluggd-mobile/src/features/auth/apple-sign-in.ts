@@ -1,7 +1,40 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Crypto from 'expo-crypto';
+import type * as AppleAuthenticationTypes from 'expo-apple-authentication';
 import { Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import {
+  requireSocialAuthConsent,
+  type SocialAuthConsent,
+} from './social-auth-consent';
+
+/**
+ * Apple Sign In needs two native modules. Importing them at module scope meant
+ * a binary without them threw "Cannot find native module 'ExpoCrypto'" while
+ * the login screen was still loading — a white screen with no way to sign in
+ * at all, not even by email. They are resolved on demand instead, and
+ * appleSignInAvailable() lets the login screen hide the Apple button rather
+ * than offer one that cannot work.
+ */
+type AppleAuthenticationModule = typeof import('expo-apple-authentication');
+type CryptoModule = typeof import('expo-crypto');
+
+function nativeModule<T>(globalName: string, load: () => T): T | null {
+  const modules = (globalThis as { expo?: { modules?: Record<string, unknown> } }).expo?.modules;
+  if (!modules || !modules[globalName]) return null;
+  try {
+    return load();
+  } catch {
+    return null;
+  }
+}
+
+const appleAuth = () =>
+  nativeModule<AppleAuthenticationModule>('ExpoAppleAuthentication', () => require('expo-apple-authentication'));
+const crypto = () => nativeModule<CryptoModule>('ExpoCrypto', () => require('expo-crypto'));
+
+/** True when this build can actually offer Sign in with Apple. */
+export function appleSignInAvailable() {
+  return Platform.OS === 'ios' && Boolean(appleAuth()) && Boolean(crypto());
+}
 
 export type AppleSignInResult = {
   isNewUser: boolean;
@@ -10,7 +43,7 @@ export type AppleSignInResult = {
 const bytesToHex = (bytes: Uint8Array) =>
   Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
 
-const resolveFullName = (fullName: AppleAuthentication.AppleAuthenticationFullName | null) => {
+const resolveFullName = (fullName: AppleAuthenticationTypes.AppleAuthenticationFullName | null) => {
   if (!fullName) return '';
   return [
     fullName.namePrefix,
@@ -30,8 +63,11 @@ export const isAppleSignInCancellation = (error: unknown) =>
   'code' in error &&
   (error as { code?: string }).code === 'ERR_REQUEST_CANCELED';
 
-export async function signInWithApple(): Promise<AppleSignInResult> {
-  if (Platform.OS !== 'ios' || !(await AppleAuthentication.isAvailableAsync())) {
+export async function signInWithApple(consent: SocialAuthConsent): Promise<AppleSignInResult> {
+  requireSocialAuthConsent(consent);
+  const AppleAuthentication = appleAuth();
+  const Crypto = crypto();
+  if (Platform.OS !== 'ios' || !AppleAuthentication || !Crypto || !(await AppleAuthentication.isAvailableAsync())) {
     throw new Error('Sign in with Apple is not available on this device.');
   }
 

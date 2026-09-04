@@ -1,21 +1,29 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { pluggdFonts } from '../src/design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ScreenShell, SectionTitle } from '../components/ContentUI';
 import { formatDate, PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { loadMobileNotifications, markMobileNotificationRead } from '../src/features/culture/mobileServices';
 import type { MobileNotification } from '../src/features/culture/mobileTypes';
+import { registerMobilePushToken } from '../src/lib/localNotifications';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 export default function NotificationsRoute() {
+  const theme = usePluggdTheme();
+  const styles = useNotificationStyles();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [items, setItems] = useState<MobileNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [pushPermission, setPushPermission] = useState<'loading' | 'granted' | 'denied'>('loading');
+  const [canAskForPush, setCanAskForPush] = useState(true);
+  const [enablingPush, setEnablingPush] = useState(false);
 
   const unreadCount = useMemo(() => items.filter((item) => !item.read_at).length, [items]);
 
@@ -28,6 +36,32 @@ export default function NotificationsRoute() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const refreshPushPermission = useCallback(async () => {
+    const permission = await Notifications.getPermissionsAsync();
+    setPushPermission(permission.granted ? 'granted' : 'denied');
+    setCanAskForPush(permission.canAskAgain !== false);
+  }, []);
+
+  useEffect(() => {
+    void refreshPushPermission();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshPushPermission();
+    });
+    return () => subscription.remove();
+  }, [refreshPushPermission]);
+
+  const enablePush = async () => {
+    if (!canAskForPush) {
+      await Linking.openSettings();
+      return;
+    }
+
+    setEnablingPush(true);
+    await registerMobilePushToken({ requestPermission: true });
+    await refreshPushPermission();
+    setEnablingPush(false);
+  };
 
   const markRead = async (item: MobileNotification) => {
     if (!item.read_at) {
@@ -52,17 +86,37 @@ export default function NotificationsRoute() {
       subtitle="Likes, comments, follows, tickets, unlocks and community updates."
       action={
         unreadCount > 0 ? (
-          <Pressable style={styles.markAllButton} onPress={markAllRead} disabled={markingAll}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Mark all notifications as read" style={styles.markAllButton} onPress={markAllRead} disabled={markingAll}>
             <Text style={styles.markAllText}>{markingAll ? 'Marking...' : 'Mark all read'}</Text>
           </Pressable>
         ) : null
       }
     >
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
+      {pushPermission === 'denied' ? (
+        <View style={styles.pushCard}>
+          <View style={styles.pushIcon}>
+            <MaterialIcons name="notifications-active" size={22} color={theme.colors.accentText} />
+          </View>
+          <View style={styles.pushCopy}>
+            <Text style={styles.pushTitle}>Stay in the loop</Text>
+            <Text style={styles.pushBody}>Enable alerts for replies, follows, purchases, events and live sessions.</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={canAskForPush ? 'Enable notifications' : 'Open notification settings'}
+            style={styles.pushButton}
+            onPress={enablePush}
+            disabled={enablingPush}
+          >
+            <Text style={styles.pushButtonText}>{enablingPush ? 'Enabling…' : canAskForPush ? 'Enable' : 'Settings'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={PLUGGD_ORANGE} />
+          <ActivityIndicator color={theme.colors.accentText} />
         </View>
       ) : null}
       {!loading && items.length === 0 ? (
@@ -73,9 +127,9 @@ export default function NotificationsRoute() {
       ) : null}
       {items.length > 0 ? <SectionTitle title={unreadCount > 0 ? `${unreadCount} unread` : 'Recent activity'} /> : null}
       {items.map((item) => (
-        <Pressable key={item.id} style={styles.card} onPress={() => markRead(item)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open notification: ${item.title || 'PLUGGD update'}`} key={item.id} style={styles.card} onPress={() => markRead(item)}>
           <View style={[styles.iconWrap, !item.read_at && styles.iconWrapUnread]}>
-            <MaterialIcons name={iconForType(item.type)} size={22} color={!item.read_at ? '#0a0806' : '#FFFFFF'} />
+            <MaterialIcons name={iconForType(item.type)} size={22} color={!item.read_at ? theme.colors.onAccent : theme.colors.text} />
           </View>
           <View style={styles.copy}>
             <View style={styles.titleRow}>
@@ -85,7 +139,7 @@ export default function NotificationsRoute() {
             <Text style={styles.message} numberOfLines={2}>{item.body || 'Open this notification for details.'}</Text>
             <Text style={styles.meta}>{formatDate(item.created_at)}</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#737373" />
+          <MaterialIcons name="chevron-right" size={22} color={theme.colors.textSubtle} />
         </Pressable>
       ))}
     </ScreenShell>
@@ -103,7 +157,38 @@ function iconForType(type?: string | null): keyof typeof MaterialIcons.glyphMap 
   return 'notifications-none';
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
+  pushCard: {
+    minHeight: 86,
+    borderWidth: 1,
+    borderColor: 'rgba(255,102,0,0.35)',
+    backgroundColor: 'rgba(255,102,0,0.07)',
+    padding: 12,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pushIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,102,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushCopy: { flex: 1, minWidth: 0 },
+  pushTitle: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  pushBody: { color: '#A3A3A3', fontSize: 12, lineHeight: 16, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
+  pushButton: {
+    minHeight: 38,
+    borderRadius: 5,
+    backgroundColor: PLUGGD_ORANGE,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushButtonText: { color: '#0A0806', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   markAllButton: {
     minHeight: 36,
     borderRadius: 5,
@@ -144,3 +229,25 @@ const styles = StyleSheet.create({
   message: { color: '#B3B3B3', fontSize: 13, lineHeight: 18, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 4 },
   meta: { color: '#737373', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 6 },
 });
+
+function useNotificationStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => ({
+    ...baseStyles,
+    pushCard: [baseStyles.pushCard, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }],
+    pushIcon: [baseStyles.pushIcon, { backgroundColor: theme.colors.accentSoft }],
+    pushTitle: [baseStyles.pushTitle, { color: theme.colors.text }],
+    pushBody: [baseStyles.pushBody, { color: theme.colors.textMuted }],
+    pushButton: [baseStyles.pushButton, { minHeight: 44, backgroundColor: theme.colors.accentFill }],
+    pushButtonText: [baseStyles.pushButtonText, { color: theme.colors.onAccent }],
+    markAllButton: [baseStyles.markAllButton, { minHeight: 44, borderColor: theme.colors.borderAccent }],
+    markAllText: [baseStyles.markAllText, { color: theme.colors.accentText }],
+    card: [baseStyles.card, { borderColor: theme.colors.border }],
+    iconWrap: [baseStyles.iconWrap, { backgroundColor: theme.colors.surfaceAlt }],
+    iconWrapUnread: [baseStyles.iconWrapUnread, { backgroundColor: theme.colors.accentFill }],
+    title: [baseStyles.title, { color: theme.colors.text }],
+    unreadDot: [baseStyles.unreadDot, { backgroundColor: theme.colors.accentFill }],
+    message: [baseStyles.message, { color: theme.colors.textSecondary }],
+    meta: [baseStyles.meta, { color: theme.colors.textSubtle }],
+  }), [theme]);
+}

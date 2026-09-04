@@ -125,6 +125,20 @@ export async function loadConnectCard(
   return normalizePayload(data, viewType);
 }
 
+export async function loadConnectCardByUserId(
+  userId: string,
+  viewType: ConnectCardViewType,
+  token?: string | null,
+): Promise<ConnectCardPayload> {
+  const { data, error } = await (supabase as any).rpc('get_connect_card_by_user_id', {
+    p_user_id: userId,
+    p_view_type: viewType,
+    p_token: token ?? null,
+  });
+  if (error) throw error;
+  return normalizePayload(data, viewType);
+}
+
 export function createConnectCardPreview(viewType: ConnectCardViewType): ConnectCardPayload {
   const shared: ConnectCardFields = {
     display_name: 'Ari Vale',

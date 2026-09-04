@@ -335,7 +335,12 @@ function buildMarketplaceItems(bundle: FeedBundle | undefined, storeProducts: St
     subtitle: [release.artist, release.genre].filter(Boolean).join(' - ') || 'Release',
     imageUrl: release.cover_art_url,
     route: `/release/${release.id}`,
-    priceLabel: formatGBP(priceForRelease(release)),
+    priceLabel: (() => {
+      const credits = Number(release.credits_price) > 0
+        ? Math.ceil(Number(release.credits_price))
+        : Math.ceil(Math.max(0, priceForRelease(release)) * 100);
+      return credits > 0 ? `${credits.toLocaleString('en-GB')} credits` : 'Free';
+    })(),
     actionLabel: 'Listen',
     track: toTrack(release, 'release'),
   }));

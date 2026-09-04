@@ -15,6 +15,37 @@ const REVERSAL_STATUSES = new Set([
 const asId = (value: unknown) =>
   typeof value === "string" && value.trim() ? value.trim() : null;
 
+const isIosPhysicalBasket = (checkout: any) =>
+  checkout?.purchase_kind === "physical_merch" &&
+  checkout?.provider_metadata?.ios_physical_basket === true;
+
+async function releaseIosPhysicalBasketInventory(
+  client: any,
+  checkout: any,
+  checkoutStatus: "failed" | "expired" | "cancelled" | "refunded",
+  orderStatus: "cancelled" | "refunded",
+  refundedAmountCents: number | null = null,
+  refundReason: "refund" | null = null,
+) {
+  if (!isIosPhysicalBasket(checkout)) return false;
+  const released = await client.rpc(
+    "release_ios_physical_basket_inventory",
+    {
+      p_checkout_id: checkout.id,
+      p_checkout_status: checkoutStatus,
+      p_order_status: orderStatus,
+      p_refunded_amount_cents: refundedAmountCents,
+      p_refund_reason: refundReason,
+    },
+  );
+  if (released.error) {
+    throw new Error(
+      `Basket inventory release failed: ${released.error.message ?? "database transaction failed"}`,
+    );
+  }
+  return true;
+}
+
 function assertWrites(
   results: Array<{ error?: { message?: string } | null }>,
   label: string,
@@ -122,17 +153,55 @@ async function createLicencePdf(
     size: 9,
   });
   addLine(
+    `Immediate digital delivery requested: ${contract.digital_delivery_requested === true ? "Yes" : "No"}`,
+    { bold: true, size: 9 },
+  );
+  if (contract.digital_delivery_requested === true) {
+    addLine(
+      `Consent version: ${contract.digital_delivery_consent_version ?? "Not recorded"}`,
+      { size: 8.5 },
+    );
+    addLine(
+      `Consent recorded: ${contract.digital_delivery_consented_at ?? "Not recorded"}`,
+      { size: 8.5 },
+    );
+    for (const line of wrapText(pdfSafe(contract.digital_delivery_consent_text))) {
+      addLine(line || " ", { size: 8 });
+    }
+  }
+  const producerAuthorization = contract.producer_authorization_snapshot ?? {};
+  addLine(
+    `Producer authorization version: ${producerAuthorization.version ?? "Published offer"}`,
+    { size: 8.5 },
+  );
+  addLine(
+    `Producer authorization recorded: ${producerAuthorization.authorized_at ?? "Recorded with offer"}`,
+    { size: 8.5 },
+  );
+  addLine(
     "The authoritative contract record and payment verification are retained by PLUGGD.",
     { size: 8 },
   );
 
   const bytes = await pdf.save();
-  const path = `${contract.artist_id}/licences/${contract.id}.pdf`;
+  const documentHash = (await sha256(JSON.stringify({
+    id: contract.id,
+    legalText: contract.legal_text,
+    artistSignature: contract.artist_signature,
+    producerSignature: contract.producer_signature,
+    consentText: contract.digital_delivery_consent_text,
+    consentVersion: contract.digital_delivery_consent_version,
+    consentedAt: contract.digital_delivery_consented_at,
+    producerAuthorization,
+  }))).slice(0, 20);
+  const path = `${contract.artist_id}/licences/${contract.id}-${documentHash}.pdf`;
   const { error } = await client.storage.from("receipts").upload(path, bytes, {
     contentType: "application/pdf",
-    upsert: true,
+    upsert: false,
   });
-  if (error) throw new Error(`Licence PDF upload failed: ${error.message}`);
+  if (error && !/already exists|duplicate/i.test(error.message ?? "")) {
+    throw new Error(`Licence PDF upload failed: ${error.message}`);
+  }
   return `receipts/${path}`;
 }
 
@@ -234,6 +303,14 @@ async function finalizeBeat(
   if (contractError || !contract || !["signed", "completed"].includes(contract.status)) {
     throw new Error("Signed beat licence contract was not found");
   }
+  if (
+    contract.digital_delivery_requested !== true ||
+    !contract.digital_delivery_consent_text ||
+    !contract.digital_delivery_consent_version ||
+    !contract.digital_delivery_consented_at
+  ) {
+    throw new Error("Immediate digital delivery consent was not recorded");
+  }
 
   const platformFeeCents = Number(
     checkout.provider_metadata?.platform_fee_cents ?? 0,
@@ -325,6 +402,27 @@ async function finalizeBeat(
         purchaseUpdate.error?.message ?? contractUpdate.error?.message
       }`,
     );
+  }
+
+  if (contract.template_type === "exclusive_rights") {
+    const [optionsUpdate, beatUpdate] = await Promise.all([
+      client.from("licensing_options").update({
+        is_available: false,
+        updated_at: new Date().toISOString(),
+      }).eq("beat_id", checkout.resource_id),
+      client.from("beats").update({
+        available_licenses: [],
+        license_prices: {},
+        updated_at: new Date().toISOString(),
+      }).eq("id", checkout.resource_id),
+    ]);
+    if (optionsUpdate.error || beatUpdate.error) {
+      throw new Error(
+        `Exclusive licence catalogue withdrawal failed: ${
+          optionsUpdate.error?.message ?? beatUpdate.error?.message
+        }`,
+      );
+    }
   }
 
   await logger.info("hybrid_beat_licence_completed", {
@@ -487,15 +585,60 @@ export async function finalizeHybridCheckout(
     .from("external_checkout_sessions")
     .select("*")
     .eq("id", checkoutId)
-    .eq("stripe_checkout_session_id", session.id)
     .maybeSingle();
   if (error || !checkout) throw new Error("Trusted external checkout was not found");
+  if (
+    checkout.stripe_checkout_session_id &&
+    checkout.stripe_checkout_session_id !== session.id
+  ) {
+    throw new Error("Checkout provider session does not match trusted state");
+  }
   if (checkout.purchase_kind !== purchaseKind) {
     throw new Error("Checkout purchase kind does not match provider metadata");
   }
   if (COMPLETED.has(checkout.status)) return true;
   if (REVERSAL_STATUSES.has(checkout.status)) {
     throw new Error("Reversed checkout cannot be completed");
+  }
+
+  if (isIosPhysicalBasket(checkout)) {
+    const orderId = asId(checkout.provider_metadata?.order_id);
+    const paymentIntentId = typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+    const subtotal = Number(session.amount_subtotal);
+    const total = Number(session.amount_total);
+    const currency = String(session.currency ?? "").toUpperCase();
+    if (
+      session.metadata?.type !== "ios_physical_basket" || !orderId ||
+      session.payment_status !== "paid" || subtotal !== Number(checkout.amount_cents) ||
+      !Number.isSafeInteger(total) || total < subtotal || currency !== checkout.currency
+    ) {
+      throw new Error("Provider payment did not match the trusted physical basket");
+    }
+    const shipping = session.shipping_details ?? session.collected_information
+      ?.shipping_details ?? null;
+    if (!shipping?.address) throw new Error("Physical basket shipping was not collected");
+    if (!paymentIntentId) {
+      throw new Error("Physical basket payment intent was not recorded");
+    }
+    const completion = await client.rpc(
+      "complete_ios_physical_basket_checkout",
+      {
+        p_checkout_id: checkout.id,
+        p_session_id: session.id,
+        p_payment_intent_id: paymentIntentId,
+        p_paid_total_cents: total,
+        p_shipping_address: shipping,
+      },
+    );
+    if (completion.error) {
+      throw new Error(
+        `Physical basket completion failed: ${completion.error.message ?? "database transaction failed"}`,
+      );
+    }
+    await logger.info("ios_physical_basket_completed", { checkoutId: checkout.id, orderId });
+    return true;
   }
 
   const amount = Number(session.amount_total);
@@ -544,7 +687,20 @@ export async function finalizeHybridCheckout(
   return true;
 }
 
-async function restoreReservedInventory(client: any, checkout: any) {
+async function restoreReservedInventory(
+  client: any,
+  checkout: any,
+  checkoutStatus: "expired" | "failed",
+) {
+  if (isIosPhysicalBasket(checkout)) {
+    await releaseIosPhysicalBasketInventory(
+      client,
+      checkout,
+      checkoutStatus,
+      "cancelled",
+    );
+    return true;
+  }
   if (checkout.purchase_kind === "event_ticket") {
     const orderId = asId(checkout.provider_metadata?.ticket_order_id);
     const { data: order } = await client.from("ticket_orders").select("*")
@@ -597,25 +753,45 @@ async function restoreReservedInventory(client: any, checkout: any) {
       }).eq("id", order.id);
     }
   }
+  return false;
 }
 
 export async function expireHybridCheckout(
   client: any,
   session: any,
   logger: Logger,
+  checkoutStatus: "expired" | "failed" = "expired",
 ) {
   const checkoutId = asId(session.metadata?.external_checkout_id);
   if (!checkoutId) return false;
-  const { data: checkout } = await client.from("external_checkout_sessions")
-    .select("*").eq("id", checkoutId).eq("stripe_checkout_session_id", session.id)
-    .maybeSingle();
+  const { data: checkout, error } = await client.from("external_checkout_sessions")
+    .select("*").eq("id", checkoutId).maybeSingle();
+  if (error) throw new Error("Trusted external checkout lookup failed");
   if (!checkout || COMPLETED.has(checkout.status)) return Boolean(checkout);
-  await restoreReservedInventory(client, checkout);
-  await client.from("external_checkout_sessions").update({
-    status: "expired",
-    updated_at: new Date().toISOString(),
-  }).eq("id", checkout.id);
-  await logger.info("hybrid_checkout_expired", { checkoutId: checkout.id });
+  if (
+    checkout.stripe_checkout_session_id &&
+    checkout.stripe_checkout_session_id !== session.id
+  ) {
+    throw new Error("Checkout provider session does not match trusted state");
+  }
+  const transitionedAtomically = await restoreReservedInventory(
+    client,
+    checkout,
+    checkoutStatus,
+  );
+  if (!transitionedAtomically) {
+    const expiry = await client.from("external_checkout_sessions").update({
+      status: checkoutStatus,
+      updated_at: new Date().toISOString(),
+    }).eq("id", checkout.id);
+    assertWrites([expiry], "Checkout expiry failed");
+  }
+  await logger.info(
+    checkoutStatus === "failed"
+      ? "hybrid_checkout_async_payment_failed"
+      : "hybrid_checkout_expired",
+    { checkoutId: checkout.id },
+  );
   return true;
 }
 
@@ -625,10 +801,22 @@ export async function reverseHybridCheckout(
   refundedAmountCents: number,
   reason: "refund" | "dispute",
   logger: Logger,
+  providerCheckoutId: string | null = null,
 ) {
-  const { data: checkout } = await client.from("external_checkout_sessions")
+  let { data: checkout } = await client.from("external_checkout_sessions")
     .select("*").eq("stripe_payment_intent_id", paymentIntentId).maybeSingle();
+  if (!checkout && providerCheckoutId) {
+    const fallback = await client.from("external_checkout_sessions")
+      .select("*").eq("id", providerCheckoutId).maybeSingle();
+    checkout = fallback.data ?? null;
+  }
   if (!checkout) return false;
+  if (
+    checkout.stripe_payment_intent_id &&
+    checkout.stripe_payment_intent_id !== paymentIntentId
+  ) {
+    throw new Error("Checkout payment intent does not match reversal");
+  }
   const full = refundedAmountCents >= Number(checkout.amount_cents);
   const status = reason === "dispute"
     ? "disputed"
@@ -643,11 +831,9 @@ export async function reverseHybridCheckout(
     ),
     refund_reason: reason,
     refunded_at: new Date().toISOString(),
+    stripe_payment_intent_id: paymentIntentId,
     updated_at: new Date().toISOString(),
   };
-  const checkoutUpdate = await client.from("external_checkout_sessions").update(common)
-    .eq("id", checkout.id);
-  assertWrites([checkoutUpdate], "Checkout reversal failed");
 
   if (checkout.purchase_kind === "beat_license") {
     const contractId = asId(checkout.provider_metadata?.contract_id);
@@ -697,11 +883,42 @@ export async function reverseHybridCheckout(
     }).eq("stripe_payment_intent_id", paymentIntentId);
     assertWrites([result], "Release reversal failed");
   } else if (checkout.purchase_kind === "physical_merch") {
-    const orderId = asId(checkout.provider_metadata?.merch_order_id);
-    const result = await client.from("physical_merch_orders").update(common)
-      .eq("id", orderId);
-    assertWrites([result], "Merchandise reversal failed");
+    if (isIosPhysicalBasket(checkout)) {
+      if (full && reason === "refund") {
+        await releaseIosPhysicalBasketInventory(
+          client,
+          checkout,
+          "refunded",
+          "refunded",
+          common.refunded_amount_cents,
+          "refund",
+        );
+      } else {
+        const orderId = asId(checkout.provider_metadata?.order_id);
+        if (orderId) {
+          const result = await client.from("orders").update({
+            status: "processing",
+            updated_at: new Date().toISOString(),
+          }).eq("id", orderId);
+          assertWrites([result], "Physical basket reversal failed");
+        }
+      }
+      await logger.warn("ios_physical_basket_reversed", {
+        checkoutId: checkout.id,
+        full,
+        reason,
+      });
+      if (full && reason === "refund") return true;
+    } else {
+      const orderId = asId(checkout.provider_metadata?.merch_order_id);
+      const result = await client.from("physical_merch_orders").update(common)
+        .eq("id", orderId);
+      assertWrites([result], "Merchandise reversal failed");
+    }
   }
+  const checkoutUpdate = await client.from("external_checkout_sessions").update(common)
+    .eq("id", checkout.id);
+  assertWrites([checkoutUpdate], "Checkout reversal failed");
   await logger.warn("hybrid_checkout_reversed", {
     checkoutId: checkout.id,
     purchaseKind: checkout.purchase_kind,
@@ -720,15 +937,6 @@ export async function reinstateHybridCheckout(
   if (!checkout || checkout.status !== "disputed") return Boolean(checkout);
 
   const now = new Date().toISOString();
-  const checkoutUpdate = await client.from("external_checkout_sessions").update({
-    status: "completed",
-    refunded_amount_cents: 0,
-    refund_reason: null,
-    refunded_at: null,
-    updated_at: now,
-  }).eq("id", checkout.id);
-  assertWrites([checkoutUpdate], "Checkout reinstatement failed");
-
   if (checkout.purchase_kind === "beat_license") {
     const contractId = asId(checkout.provider_metadata?.contract_id);
     assertWrites(await Promise.all([
@@ -771,14 +979,41 @@ export async function reinstateHybridCheckout(
     }).eq("stripe_payment_intent_id", paymentIntentId);
     assertWrites([result], "Release reinstatement failed");
   } else if (checkout.purchase_kind === "physical_merch") {
-    const orderId = asId(checkout.provider_metadata?.merch_order_id);
-    const result = await client.from("physical_merch_orders").update({
-      status: "completed",
-      refunded_amount_cents: 0,
-      refund_reason: null,
-      refunded_at: null,
-    }).eq("id", orderId);
-    assertWrites([result], "Merchandise reinstatement failed");
+    if (isIosPhysicalBasket(checkout)) {
+      const orderId = asId(checkout.provider_metadata?.order_id);
+      if (orderId) {
+        const result = await client.from("orders").update({
+          status: "completed",
+          updated_at: now,
+        }).eq("id", orderId).eq("user_id", checkout.user_id).select("id");
+        if (result.error || !result.data?.length) {
+          throw new Error("Physical basket reinstatement failed");
+        }
+      }
+      await logger.info("ios_physical_basket_dispute_won", {
+        checkoutId: checkout.id,
+        orderId,
+      });
+    } else {
+      const orderId = asId(checkout.provider_metadata?.merch_order_id);
+      const result = await client.from("physical_merch_orders").update({
+        status: "completed",
+        refunded_amount_cents: 0,
+        refund_reason: null,
+        refunded_at: null,
+      }).eq("id", orderId);
+      assertWrites([result], "Merchandise reinstatement failed");
+    }
+  }
+  const checkoutUpdate = await client.from("external_checkout_sessions").update({
+    status: "completed",
+    refunded_amount_cents: 0,
+    refund_reason: null,
+    refunded_at: null,
+    updated_at: now,
+  }).eq("id", checkout.id).eq("status", "disputed").select("id");
+  if (checkoutUpdate.error || !checkoutUpdate.data?.length) {
+    throw new Error("Checkout reinstatement could not be recorded");
   }
   await logger.info("hybrid_checkout_dispute_won", {
     checkoutId: checkout.id,

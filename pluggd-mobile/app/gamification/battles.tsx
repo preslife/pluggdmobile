@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
 
 export default function BattlesRedirect() {
-  return <Redirect href="/community" />;
+  return <Redirect href="/live/battles" />;
 }

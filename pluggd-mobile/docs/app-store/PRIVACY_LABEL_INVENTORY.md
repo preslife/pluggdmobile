@@ -13,6 +13,17 @@ This inventory must match App Store Connect and `ios/Pluggd/PrivacyInfo.xcprivac
 | Other user content | Yes | No | Posts, comments, messages and reports |
 | Product interaction | Yes | No | Core functionality and aggregate product analytics |
 
+Conditional production diagnostics gate:
+
+- Sentry is inactive unless `EXPO_PUBLIC_SENTRY_DSN` is configured and the app
+  sets `sendDefaultPii=false`. If the final production build enables it, verify
+  whether Crash Data and Performance Data are transmitted and declare the
+  corresponding Diagnostics categories in App Store Connect and the native
+  privacy manifest before submission. If it is disabled, retain read-back
+  evidence from the exact archive environment.
+- Do not infer the remote EAS/production secret state from the checked-in
+  `eas.json`; inspect it read-only at the final archive gate.
+
 PLUGGD does not declare tracking and does not use data from the iOS app to track a person across other companies’ apps or websites for advertising. If a future SDK changes this behaviour, both this inventory and App Store Connect must be updated before that build.
 
 Payment Information remains undeclared only while eligible external purchases
@@ -26,3 +37,7 @@ Required-reason APIs declared by the native privacy manifest:
 - User defaults: CA92.1
 - Disk space: E174.1, 85F4.1
 - System boot time: 35F9.1
+
+The bundled Hermes framework carries its own framework-level privacy manifest.
+It declares file-timestamp reason C617.1 for in-app-container file metadata and
+declares no data collection or tracking.

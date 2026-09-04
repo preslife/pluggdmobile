@@ -24,6 +24,8 @@ describe('contract-execution handler', () => {
           artist_signature: null,
           signed_at: null,
           status: 'pending',
+          digital_delivery_requested: false,
+          digital_delivery_consent_version: null,
         },
       ],
       error: null,
@@ -45,6 +47,8 @@ describe('contract-execution handler', () => {
         artist_signature: null,
         signed_at: null,
         status: 'pending',
+        digital_delivery_requested: false,
+        digital_delivery_consent_version: null,
       },
       error: null,
     });
@@ -146,7 +150,7 @@ describe('contract-execution handler', () => {
     const updatePayload = mocks.updateMock.mock.calls[0][0] as Record<string, unknown>;
     expect(updatePayload.producer_ip_address).toBe('203.0.113.7');
     expect(mocks.signatureUpdateEqMock).toHaveBeenCalled();
-    expect(mocks.selectAfterUpdateMock).toHaveBeenCalledWith('id, producer_signature, artist_signature, signed_at, status');
+    expect(mocks.selectAfterUpdateMock).toHaveBeenCalledWith('id, producer_signature, artist_signature, signed_at, status, digital_delivery_requested, digital_delivery_consent_version');
     expect(mocks.finalizeUpdateEqMock).not.toHaveBeenCalled();
 
     const body = await response.json();
@@ -155,6 +159,7 @@ describe('contract-execution handler', () => {
       userAgent: 'Vitest/1.0',
       signedAt: '2024-04-12T15:30:00.000Z',
       signerType: 'producer',
+      digitalDeliveryConsentVersion: null,
     });
   });
 
@@ -190,6 +195,10 @@ describe('contract-execution handler', () => {
         contractId: 'contract-1',
         signature: 'signed-artist',
         signerType: 'artist',
+        digitalDeliveryConsent: {
+          accepted: true,
+          version: '2026-08-01.1',
+        },
       }),
     });
 
@@ -201,6 +210,8 @@ describe('contract-execution handler', () => {
           artist_signature: 'signed-artist',
           signed_at: null,
           status: 'pending',
+          digital_delivery_requested: true,
+          digital_delivery_consent_version: '2026-08-01.1',
         },
       ],
       error: null,
@@ -227,6 +238,8 @@ describe('contract-execution handler', () => {
 
     const updatePayload = mocks.updateMock.mock.calls[0][0] as Record<string, unknown>;
     expect(updatePayload.artist_ip_address).toBe('198.51.100.5');
+    expect(updatePayload.digital_delivery_requested).toBe(true);
+    expect(updatePayload.digital_delivery_consent_version).toBe('2026-08-01.1');
     expect(mocks.finalizeUpdateEqMock).toHaveBeenCalledTimes(1);
     const finalizePayload = mocks.updateMock.mock.calls[1][0] as Record<string, unknown>;
     expect(finalizePayload).toMatchObject({
@@ -241,6 +254,29 @@ describe('contract-execution handler', () => {
       userAgent: 'unknown',
       signedAt: '2024-04-12T15:30:00.000Z',
       signerType: 'artist',
+      digitalDeliveryConsentVersion: '2026-08-01.1',
     });
+  });
+
+  it('refuses artist signature when separate delivery consent is absent', async () => {
+    const mocks = buildSupabaseMock();
+    (mocks.supabase.auth.getUser as any).mockResolvedValueOnce({
+      data: { user: { id: 'user-2' } },
+      error: null,
+    });
+
+    const response = await handleContractExecution(new Request('https://example.com', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contractId: 'contract-1',
+        signature: 'signed-artist',
+        signerType: 'artist',
+      }),
+    }), { supabase: mocks.supabase });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).code).toBe('DIGITAL_DELIVERY_CONSENT_REQUIRED');
+    expect(mocks.insertMock).not.toHaveBeenCalled();
   });
 });

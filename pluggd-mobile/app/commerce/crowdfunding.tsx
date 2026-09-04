@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { EditorialTitle } from '../../components/EditorialTitle';
 import { PluggdImage } from '../../src/components/PluggdImage';
@@ -10,8 +11,7 @@ import { pluggdFonts } from '../../src/design/typography';
 import { formatCompact, formatDate } from '../../src/lib/mobileContent';
 import { safeList } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
-
-const ORANGE = '#ff6600';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type CampaignRow = {
   id: string;
@@ -33,6 +33,8 @@ function progressPct(campaign: CampaignRow) {
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignRow }) {
+  const theme = usePluggdTheme();
+  const styles = useCrowdfundingStyles();
   const router = useRouter();
   const pct = progressPct(campaign);
   const ended = campaign.status === 'success' || campaign.status === 'fulfilled';
@@ -43,7 +45,7 @@ function CampaignCard({ campaign }: { campaign: CampaignRow }) {
           <PluggdImage uri={campaign.cover_url} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={campaign.title} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.coverFallback]}>
-            <MaterialIcons name="favorite" size={30} color={ORANGE} />
+            <MaterialIcons name="favorite" size={30} color={theme.colors.accentText} />
           </View>
         )}
         <View style={styles.statusChip}>
@@ -73,7 +75,7 @@ function CampaignCard({ campaign }: { campaign: CampaignRow }) {
             style={({ pressed }) => pressed && styles.pressed}
           >
             <View style={styles.primary}>
-              <MaterialIcons name="person" size={15} color="#0E0E12" />
+              <MaterialIcons name="person" size={15} color={theme.colors.onAccent} />
               <Text style={styles.primaryText}>View creator</Text>
             </View>
           </Pressable>
@@ -87,7 +89,7 @@ function CampaignCard({ campaign }: { campaign: CampaignRow }) {
             style={({ pressed }) => pressed && styles.pressed}
           >
             <View style={styles.secondary}>
-              <MaterialIcons name="ios-share" size={15} color="#FFFFFF" />
+              <MaterialIcons name="ios-share" size={15} color={theme.colors.text} />
               <Text style={styles.secondaryText}>Share</Text>
             </View>
           </Pressable>
@@ -98,6 +100,8 @@ function CampaignCard({ campaign }: { campaign: CampaignRow }) {
 }
 
 export default function CrowdfundingScreen() {
+  const theme = usePluggdTheme();
+  const styles = useCrowdfundingStyles();
   const query = useQuery({
     queryKey: ['commerce', 'crowdfunding'],
     queryFn: async () =>
@@ -117,14 +121,14 @@ export default function CrowdfundingScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ title: 'Crowdfunding', headerShown: false }} />
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <Text style={styles.kicker}>COMMUNITY FUNDING</Text>
         <EditorialTitle
           segments={[{ text: 'Crowdfund the ' }, { text: 'culture', accent: true }]}
           size={32}
-          color="#FFFFFF"
-          accentColor={ORANGE}
+          color={theme.colors.text}
+          accentColor={theme.colors.accentText}
         />
         <Text style={styles.summary}>
           Community-backed campaigns from PLUGGD creators — listening parties, releases, and moments fans fund together.
@@ -132,13 +136,13 @@ export default function CrowdfundingScreen() {
 
         {query.isLoading ? (
           <View style={styles.center}>
-            <ActivityIndicator color={ORANGE} />
+            <ActivityIndicator color={theme.colors.accentFill} />
           </View>
         ) : campaigns.length ? (
           campaigns.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} />)
         ) : (
           <View style={styles.empty}>
-            <MaterialIcons name="favorite-border" size={26} color={ORANGE} />
+            <MaterialIcons name="favorite-border" size={26} color={theme.colors.accentText} />
             <Text style={styles.emptyTitle}>No live campaigns right now</Text>
             <Text style={styles.emptyBody}>Creator campaigns appear here the moment they go live.</Text>
           </View>
@@ -148,20 +152,22 @@ export default function CrowdfundingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0A0806' },
+function useCrowdfundingStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.colors.background },
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 128, paddingBottom: 226, gap: 14 },
-  kicker: { color: ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, letterSpacing: 1.2 },
-  summary: { color: '#B9B9C7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginBottom: 6 },
+  kicker: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 11, letterSpacing: 1.2 },
+  summary: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginBottom: 6 },
   card: {
     borderRadius: 5,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#14110F',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
-  cover: { height: 150, backgroundColor: '#1A1A24' },
+  cover: { height: 150, backgroundColor: theme.colors.artworkBase },
   coverFallback: { alignItems: 'center', justifyContent: 'center' },
   statusChip: {
     position: 'absolute',
@@ -174,15 +180,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  statusText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 9.5, letterSpacing: 1 },
+  statusText: { color: theme.colors.mediaText, fontFamily: pluggdFonts.satoshiBold, fontSize: 9.5, letterSpacing: 1 },
   body: { padding: 15, gap: 9 },
-  title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 23, letterSpacing: -0.3 },
-  track: { height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 4, backgroundColor: ORANGE },
+  title: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 18, lineHeight: 23, letterSpacing: -0.3 },
+  track: { height: 7, borderRadius: 4, backgroundColor: theme.colors.surfaceAlt, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 4, backgroundColor: theme.colors.accentFill },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pct: { color: '#FF8A4C', fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
-  goal: { color: '#B9B9C7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
-  ends: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
+  pct: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  goal: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5 },
+  ends: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
   actions: { flexDirection: 'row', gap: 9, marginTop: 3 },
   pressed: { opacity: 0.9 },
   primary: {
@@ -191,11 +197,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderRadius: 5,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.accentFill,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  primaryText: { color: '#0E0E12', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
+  primaryText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   secondary: {
     minHeight: 44,
     flexDirection: 'row',
@@ -203,20 +209,22 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surfaceRaised,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  secondaryText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
+  secondaryText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5 },
   center: { minHeight: 180, alignItems: 'center', justifyContent: 'center' },
   empty: {
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.divider,
     paddingVertical: 22,
     alignItems: 'flex-start',
     gap: 8,
   },
-  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 18 },
-  emptyBody: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'left' },
-});
+  emptyTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 18 },
+  emptyBody: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 18, textAlign: 'left' },
+  }), [theme]);
+}

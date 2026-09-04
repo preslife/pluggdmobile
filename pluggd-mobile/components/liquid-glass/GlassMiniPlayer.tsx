@@ -6,6 +6,8 @@ import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors, liquidGlassRadii } from '../../src/design/liquidGlassTokens';
 import { GlassPanel } from './GlassPanel';
 import { LiftSurface } from './LiftSurface';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { PlaybackSeekBar } from '../../src/components/PlaybackSeekBar';
 
 type GlassMiniPlayerProps = {
   title: string;
@@ -15,6 +17,7 @@ type GlassMiniPlayerProps = {
   isPlaying?: boolean;
   isBuffering?: boolean;
   progressPercent?: number;
+  progressLabel?: string;
   collapsed?: boolean;
   canLike?: boolean;
   liked?: boolean;
@@ -25,6 +28,7 @@ type GlassMiniPlayerProps = {
   onTogglePlay?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
+  onSeek?: (ratio: number) => void;
 };
 
 export function GlassMiniPlayer({
@@ -35,6 +39,7 @@ export function GlassMiniPlayer({
   isPlaying,
   isBuffering,
   progressPercent = 0,
+  progressLabel,
   collapsed,
   canLike,
   liked,
@@ -45,31 +50,34 @@ export function GlassMiniPlayer({
   onTogglePlay,
   onPrevious,
   onNext,
+  onSeek,
 }: GlassMiniPlayerProps) {
-  const progressWidth = `${Math.max(0, Math.min(progressPercent, 100))}%` as `${number}%`;
+  const theme = usePluggdTheme();
 
   if (collapsed) {
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Expand mini player"
-        onPress={() => {
-          selectionHaptic();
-          onToggleCollapse?.();
-        }}
-        style={styles.collapsedPressable}
-      >
-        <LiftSurface depth="high" style={styles.collapsedLift}>
-          <GlassPanel intensity="strong" radius={liquidGlassRadii.pill} style={styles.collapsedCard} contentStyle={styles.collapsedContent}>
-            <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} size={42} />
-          </GlassPanel>
-        </LiftSurface>
-      </Pressable>
+      <View pointerEvents="box-none" style={styles.collapsedWrap}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Expand mini player"
+          onPress={() => {
+            selectionHaptic();
+            onToggleCollapse?.();
+          }}
+          style={styles.collapsedPressable}
+        >
+          <LiftSurface depth="high" style={styles.collapsedLift}>
+            <GlassPanel intensity="strong" radius={liquidGlassRadii.pill} style={styles.collapsedCard} contentStyle={styles.collapsedContent}>
+              <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} size={42} />
+            </GlassPanel>
+          </LiftSurface>
+        </Pressable>
+      </View>
     );
   }
 
   return (
-    <View style={styles.pressable}>
+    <View pointerEvents="box-none" style={styles.pressable}>
       <LiftSurface depth="high">
         <GlassPanel
           intensity="strong"
@@ -77,28 +85,59 @@ export function GlassMiniPlayer({
           style={styles.card}
           contentStyle={styles.cardContent}
         >
-          <View style={styles.playerRow}>
-            <Pressable
-              accessible
-              focusable
-              collapsable={false}
-              accessibilityRole="button"
-              accessibilityLabel="Open full player"
-              testID="mini-player-open"
-              onPress={onOpen}
-              style={({ pressed }) => [styles.trackTapOverlay, pressed && styles.trackTapPressed]}
-            />
-            <View pointerEvents="none" style={styles.trackIdentity}>
-              <LiftSurface depth="low" style={styles.discLift}>
-                <ArtworkDisc artwork={artwork} locked={locked} spinning={isPlaying} />
-              </LiftSurface>
+          <View pointerEvents="none" style={[styles.accentRail, { backgroundColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill }]} />
 
-              <View style={styles.trackInfo}>
-                <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                <Text style={styles.artist} numberOfLines={1}>{locked ? `${artist} · Locked preview` : artist}</Text>
-              </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open full player for ${title} by ${artist}`}
+            testID="mini-player-open"
+            onPress={onOpen}
+            style={styles.trackIdentity}
+          >
+            <View style={styles.tileLift}>
+              <ArtworkTile artwork={artwork} locked={locked} />
             </View>
 
+            <View style={styles.trackInfo}>
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, { backgroundColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill }, !isPlaying && styles.statusDotPaused, !isPlaying && { backgroundColor: theme.colors.textMuted }]} />
+                <Text style={[styles.statusLabel, { color: theme.colors.accentText }]}>{isBuffering ? 'BUFFERING' : isPlaying ? 'NOW PLAYING' : 'PAUSED'}</Text>
+                {locked ? <Text style={[styles.previewLabel, { color: theme.colors.textMuted, borderLeftColor: theme.colors.border }]}>PREVIEW</Text> : null}
+                {progressLabel ? <Text style={[styles.progressLabel, { color: theme.colors.textMuted }]}>{progressLabel}</Text> : null}
+              </View>
+              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>{title}</Text>
+              <Text style={[styles.artist, { color: theme.colors.textSecondary }]} numberOfLines={1}>{artist}</Text>
+            </View>
+
+          </Pressable>
+
+          <View style={styles.identityActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Collapse mini player"
+              onPress={() => {
+                selectionHaptic();
+                onToggleCollapse?.();
+              }}
+              style={({ pressed }) => [styles.identityAction, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }, pressed && styles.iconButtonPressed]}
+            >
+              <MaterialIcons name="keyboard-arrow-down" size={24} color={theme.colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <PlaybackSeekBar
+            ratio={progressPercent / 100}
+            duration={onSeek ? 100 : 0}
+            position={progressPercent}
+            onSeek={(ratio) => onSeek?.(ratio)}
+            accessibilityLabel="Playback progress"
+            style={styles.progressSeek}
+            trackStyle={[styles.progressTrack, { backgroundColor: theme.colors.borderStrong }]}
+            fillStyle={[styles.progressFill, { backgroundColor: theme.colors.accentFill }]}
+            thumbStyle={[styles.progressKnob, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill }]}
+          />
+
+          <View style={styles.controlRow}>
             <PlayerIconButton
               accessibilityLabel={canLike ? (liked ? 'Remove from saved' : 'Save current track') : 'Save unavailable for this track'}
               icon={liked ? 'favorite' : 'favorite-border'}
@@ -119,12 +158,38 @@ export function GlassMiniPlayer({
             <PlayerIconButton accessibilityLabel="Next track" icon="skip-next" quiet compact onPress={onNext} />
             <PlayerIconButton accessibilityLabel="Open player options" icon="more-horiz" onPress={onMorePress} />
           </View>
-
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: progressWidth }]} />
-          </View>
         </GlassPanel>
       </LiftSurface>
+    </View>
+  );
+}
+
+function ArtworkTile({ artwork, locked }: { artwork?: string | null; locked?: boolean }) {
+  return (
+    <View style={styles.artworkTile}>
+      {artwork ? (
+        <PluggdImage uri={artwork} style={styles.fill} resizeMode="cover" />
+      ) : (
+        <LinearGradient
+          colors={['#3A241A', '#17100C']}
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.artworkFallback}
+        >
+          <MaterialIcons name="music-note" size={24} color={liquidGlassColors.textPrimary} />
+        </LinearGradient>
+      )}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(255,255,255,0.18)', 'transparent', 'rgba(0,0,0,0.28)']}
+        locations={[0, 0.42, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      {locked ? (
+        <View style={styles.tileLockBadge}>
+          <MaterialIcons name="lock" size={11} color="#0A0705" />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -198,6 +263,7 @@ function PlayerIconButton({
   compact?: boolean;
   disabled?: boolean;
 }) {
+  const theme = usePluggdTheme();
   const isDisabled = disabled || !onPress;
   return (
     <Pressable
@@ -213,32 +279,47 @@ function PlayerIconButton({
       }}
       style={({ pressed }) => [
         styles.iconButton,
-        quiet && styles.iconButtonQuiet,
         compact && styles.iconButtonCompact,
-        prominent && styles.iconButtonProminent,
-        active && styles.iconButtonActive,
+        prominent && styles.iconButtonProminentFrame,
         isDisabled && styles.iconButtonDisabled,
         pressed && !isDisabled && styles.iconButtonPressed,
       ]}
     >
-      <MaterialIcons
-        name={icon}
-        size={prominent ? 25 : 20}
-        color={active ? liquidGlassColors.accent : prominent ? liquidGlassColors.textPrimary : liquidGlassColors.textMuted}
-      />
+      <View
+        style={[
+          styles.iconButtonSurface,
+          { borderColor: theme.colors.border, backgroundColor: theme.colors.surface, shadowColor: theme.colors.shadow },
+          quiet && styles.iconButtonQuiet,
+          prominent && styles.iconButtonProminent,
+          prominent && { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentFill, shadowColor: theme.colors.accentFill },
+          active && styles.iconButtonActive,
+          active && { borderColor: theme.colors.borderAccent, backgroundColor: theme.scheme === 'light' ? 'rgba(232,79,0,0.10)' : 'rgba(255,102,0,0.10)' },
+        ]}
+      >
+        <MaterialIcons
+          name={icon}
+          size={prominent ? 29 : 23}
+          color={active ? theme.colors.accentText : prominent ? theme.colors.onAccent : theme.colors.textSecondary}
+        />
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   pressable: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
   },
-  collapsedPressable: {
+  collapsedWrap: {
     alignSelf: 'flex-end',
     marginRight: 28,
     marginLeft: 28,
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  collapsedPressable: {
     width: 58,
     height: 58,
   },
@@ -256,50 +337,73 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    height: 72,
+    height: 122,
     shadowColor: '#000',
-    shadowOpacity: 0.74,
-    shadowRadius: 46,
-    shadowOffset: { width: 0, height: 30 },
+    shadowOpacity: 0.82,
+    shadowRadius: 54,
+    shadowOffset: { width: 0, height: 34 },
   },
   cardContent: {
     width: '100%',
-    height: 72,
+    height: 122,
   },
-  playerRow: {
-    height: 72,
-    paddingHorizontal: 10,
-    paddingBottom: 3,
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  trackTapOverlay: {
+  accentRail: {
     position: 'absolute',
-    left: 10,
-    right: 184,
-    top: 8,
-    bottom: 8,
-    zIndex: 2,
-    borderRadius: 14,
+    left: 0,
+    top: 20,
+    bottom: 20,
+    width: 3,
+    borderTopRightRadius: 3,
+    borderBottomRightRadius: 3,
+    backgroundColor: liquidGlassColors.accent,
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.82,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
   trackTapPressed: {
     opacity: 0.86,
   },
   trackIdentity: {
-    flex: 1,
+    width: '100%',
     minWidth: 0,
-    height: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 3,
+    height: 70,
+    position: 'relative',
   },
-  discLift: {
+  tileLift: {
     position: 'absolute',
-    left: 0,
-    top: 2,
-    borderRadius: 999,
+    left: 12,
+    top: 8,
+    width: 54,
+    height: 54,
+    borderRadius: 13,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+  },
+  artworkTile: {
+    width: 54,
+    height: 54,
+    borderRadius: 13,
+    overflow: 'hidden',
+    backgroundColor: '#21150F',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.34)',
+    borderLeftColor: 'rgba(255,255,255,0.15)',
+    borderRightColor: 'rgba(0,0,0,0.36)',
+    borderBottomColor: 'rgba(0,0,0,0.58)',
+  },
+  tileLockBadge: {
+    position: 'absolute',
+    right: 5,
+    bottom: 5,
+    width: 19,
+    height: 19,
+    borderRadius: 10,
+    backgroundColor: liquidGlassColors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   artwork: {
     overflow: 'hidden',
@@ -359,26 +463,111 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   trackInfo: {
-    flex: 1,
+    position: 'absolute',
+    left: 77,
+    right: 104,
+    top: 8,
+    height: 54,
     minWidth: 0,
-    marginLeft: 52,
-    gap: 2,
+    justifyContent: 'center',
+    gap: 1,
+  },
+  statusRow: {
+    height: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 1,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: liquidGlassColors.accent,
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.9,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusDotPaused: {
+    backgroundColor: liquidGlassColors.textMuted,
+    shadowOpacity: 0,
+  },
+  statusLabel: {
+    color: liquidGlassColors.accent,
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 9.5,
+    lineHeight: 12,
+    letterSpacing: 1.2,
+  },
+  previewLabel: {
+    color: liquidGlassColors.textMuted,
+    fontFamily: 'Satoshi-Bold',
+    fontSize: 9,
+    lineHeight: 12,
+    letterSpacing: 1,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: 'rgba(255,255,255,0.22)',
+    paddingLeft: 6,
+  },
+  progressLabel: {
+    flexShrink: 1,
+    color: liquidGlassColors.textMuted,
+    fontFamily: 'Satoshi-Medium',
+    fontSize: 9,
+    lineHeight: 12,
+    letterSpacing: 0.2,
   },
   title: {
     color: liquidGlassColors.textPrimary,
     fontFamily: 'Satoshi-Bold',
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 16,
+    lineHeight: 19,
+    letterSpacing: -0.2,
   },
   artist: {
-    color: liquidGlassColors.textMuted,
+    color: liquidGlassColors.textSecondary,
     fontFamily: 'Satoshi-Medium',
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12.5,
+    lineHeight: 16,
+  },
+  identityActions: {
+    position: 'absolute',
+    right: 9,
+    top: 10,
+    flexDirection: 'row',
+    gap: 4,
+    zIndex: 3,
+  },
+  identityAction: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: liquidGlassColors.borderSoft,
+  },
+  controlRow: {
+    height: 49,
+    paddingHorizontal: 14,
+    paddingTop: 5,
+    paddingBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   iconButton: {
-    width: 34,
-    height: 34,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonSurface: {
+    width: '100%',
+    height: '100%',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -395,19 +584,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconButtonCompact: {
-    width: 30,
-    height: 34,
+    width: 44,
+    height: 44,
+  },
+  iconButtonProminentFrame: {
+    width: 48,
+    height: 48,
   },
   iconButtonProminent: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: 999,
-    borderColor: liquidGlassColors.borderTop,
-    backgroundColor: 'rgba(255,255,255,0.085)',
-    shadowColor: '#000',
-    shadowOpacity: 0.48,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 9 },
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: liquidGlassColors.accent,
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 7 },
   },
   iconButtonActive: {
     borderColor: 'rgba(255,102,0,0.36)',
@@ -420,19 +613,35 @@ const styles = StyleSheet.create({
     opacity: 0.82,
     transform: [{ scale: 0.96 }],
   },
-  progressTrack: {
+  progressSeek: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 0,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.11)',
-    overflow: 'hidden',
+    left: 14,
+    right: 14,
+    top: 49,
+    height: 44,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
   progressFill: {
-    height: 3,
-    borderRadius: 2,
+    height: 4,
+    borderRadius: 3,
     backgroundColor: liquidGlassColors.accent,
+  },
+  progressKnob: {
+    width: 10,
+    height: 10,
+    marginLeft: -5,
+    marginTop: -5,
+    borderRadius: 5,
+    backgroundColor: '#FFF7F1',
+    borderWidth: 2,
+    borderColor: liquidGlassColors.accent,
+    shadowColor: liquidGlassColors.accent,
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
 });

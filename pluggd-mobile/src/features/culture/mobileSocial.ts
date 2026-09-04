@@ -1,5 +1,11 @@
 import { supabase } from '../../lib/supabase';
+import { isNonPublicTestProfileName } from '../../lib/publicAudienceFilters';
 import { loadBlockedUserIds, moderateUserContent } from '../safety/accountSafety';
+import {
+  loadPublicCreatorIdentityMap,
+  publicCreatorDisplayName,
+  type PublicCreatorIdentity,
+} from './publicCreatorIdentity';
 import type {
   BackstageBoard,
   BackstageBoardDetail,
@@ -17,12 +23,17 @@ import type {
 
 type SupabaseErrorLike = { code?: string; message?: string } | null | undefined;
 type SocialPostRow = Record<string, any>;
-type ProfileRow = { user_id: string; full_name: string | null; username: string | null; avatar_url: string | null };
+type ProfileRow = PublicCreatorIdentity;
 type DestinationRow = { post_id: string; destination_type: string; destination_id: string; created_at?: string | null };
 type InteractionRow = { post_id: string };
 type PollVoteRow = { post_id: string; option_id: string };
 
 export type MobileSocialFeedMode = 'for-you' | 'latest' | 'following' | 'backstage' | 'trending';
+
+function isNonPublicTestIdentity(profile?: ProfileRow) {
+  return isNonPublicTestProfileName(profile?.full_name)
+    || isNonPublicTestProfileName(profile?.username);
+}
 
 const VALID_POST_TYPES = new Set<SocialPostType>([
   'post',
@@ -68,6 +79,15 @@ function isVisiblePost(row: SocialPostRow) {
   if (row.is_deleted) return false;
   const state = String(row.moderation_status || row.status || '').toLowerCase();
   return !['removed', 'deleted', 'hidden', 'rejected', 'cancelled'].includes(state);
+}
+
+function isPostVisibleToViewer(row: SocialPostRow, userId: string | null) {
+  if (row.is_deleted) return false;
+  if (userId && row.user_id === userId) {
+    const state = String(row.moderation_status || row.status || '').toLowerCase();
+    return !['deleted', 'cancelled'].includes(state);
+  }
+  return isVisiblePost(row);
 }
 
 async function safeList<T>(query: PromiseLike<{ data: unknown; error: SupabaseErrorLike }>, fallback: T[] = []) {
@@ -202,15 +222,7 @@ async function buildDestinationMap(postIds: string[]) {
 }
 
 async function loadProfiles(userIds: string[]) {
-  const ids = Array.from(new Set(userIds.filter(Boolean)));
-  if (!ids.length) return new Map<string, ProfileRow>();
-  const rows = await safeList<ProfileRow>(
-    supabase
-      .from('profiles')
-      .select('user_id,full_name,username,avatar_url')
-      .in('user_id', ids),
-  );
-  return new Map(rows.map((profile) => [profile.user_id, profile]));
+  return loadPublicCreatorIdentityMap(userIds);
 }
 
 async function loadInteractionSets(userId: string | null, postIds: string[]) {
@@ -270,7 +282,7 @@ function mapPostPreview(
     comments_count: Number(row.comments_count ?? 0),
     bookmarks_count: Number(row.bookmarks_count ?? 0),
     created_at: row.created_at || new Date().toISOString(),
-    display_name: profile?.full_name || profile?.username || 'PLUGGD user',
+    display_name: publicCreatorDisplayName(profile),
     username: profile?.username || null,
     avatar_url: profile?.avatar_url || null,
     liked: interactions.liked.has(actionPostId),
@@ -292,15 +304,20 @@ async function enrichPosts(rows: SocialPostRow[], userId: string | null): Promis
   const destinationMap = await buildDestinationMap(allRows.map((row) => row.id));
   const interactions = await loadInteractionSets(userId, allRows.map((row) => row.id));
 
+  const publicOriginals = originals.filter(
+    (row) => row.user_id === userId || !isNonPublicTestIdentity(profileMap.get(row.user_id)),
+  );
   const originalMap = new Map<string, MobileSocialPostPreview>();
-  for (const original of originals) {
+  for (const original of publicOriginals) {
     originalMap.set(original.id, mapPostPreview(original, profileMap.get(original.user_id), destinationMap, interactions));
   }
 
-  return rows.map((row) => ({
+  return rows
+    .filter((row) => row.user_id === userId || !isNonPublicTestIdentity(profileMap.get(row.user_id)))
+    .map((row) => ({
     ...mapPostPreview(row, profileMap.get(row.user_id), destinationMap, interactions),
     original_post: row.original_post_id ? originalMap.get(row.original_post_id) ?? null : null,
-  }));
+    }));
 }
 
 async function postsByIds(postIds: string[]) {
@@ -413,16 +430,36 @@ export async function loadMobileSocialFeed(options: {
     );
   }
 
+  if (userId && !options.destination && !options.hashtag && mode !== 'following') {
+    const ownedRows = await safeList<SocialPostRow>(
+      (supabase as any)
+        .from('social_posts')
+        .select('*')
+        .eq('user_id', userId)
+        .is('parent_id', null)
+        .order('created_at', { ascending: false })
+        .limit(limit),
+    );
+    const seen = new Set<string>();
+    rows = [...ownedRows, ...rows].filter((row) => {
+      if (!row.id || seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    });
+  }
+
   if (options.focusPostId && !rows.some((row) => row.id === options.focusPostId)) {
     const focused = await safeMaybe<SocialPostRow>(
       (supabase as any).from('social_posts').select('*').eq('id', options.focusPostId).maybeSingle(),
     );
-    if (focused && !focused.parent_id && isVisiblePost(focused)) rows = [focused, ...rows];
+    if (focused && !focused.parent_id && isPostVisibleToViewer(focused, userId)) rows = [focused, ...rows];
   }
 
   const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   return enrichPosts(
-    rows.filter((row) => !row.parent_id && isVisiblePost(row) && !blockedUserIds.has(row.user_id)),
+    rows
+      .filter((row) => !row.parent_id && isPostVisibleToViewer(row, userId) && (!blockedUserIds.has(row.user_id) || row.user_id === userId))
+      .slice(0, limit),
     userId,
   );
 }
@@ -430,7 +467,7 @@ export async function loadMobileSocialFeed(options: {
 export async function loadThreadDetail(postId: string): Promise<MobileThreadDetail> {
   const userId = await currentUserId();
   const focused = await safeMaybe<SocialPostRow>((supabase as any).from('social_posts').select('*').eq('id', postId).maybeSingle());
-  if (!focused || !isVisiblePost(focused)) return { post: null, threadPosts: [], comments: [] };
+  if (!focused || !isPostVisibleToViewer(focused, userId)) return { post: null, threadPosts: [], comments: [] };
   const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   if (blockedUserIds.has(focused.user_id)) return { post: null, threadPosts: [], comments: [] };
 
@@ -445,7 +482,7 @@ export async function loadThreadDetail(postId: string): Promise<MobileThreadDeta
   );
   const enrichedThread = await enrichPosts(
     (threadRows.length ? threadRows : [focused])
-      .filter((row) => isVisiblePost(row) && !blockedUserIds.has(row.user_id)),
+      .filter((row) => isPostVisibleToViewer(row, userId) && (!blockedUserIds.has(row.user_id) || row.user_id === userId)),
     userId,
   );
   const post = enrichedThread.find((item) => item.id === focused.id) ?? (await enrichPosts([focused], userId))[0] ?? null;
@@ -465,18 +502,19 @@ export async function loadSocialComments(postId: string): Promise<MobileSocialCo
   const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   const visibleRows = rows.filter((row) => !blockedUserIds.has(row.user_id));
   const profileMap = await loadProfiles(visibleRows.map((row) => row.user_id));
-  return visibleRows.map((row) => {
+  return visibleRows.flatMap((row) => {
     const profile = profileMap.get(row.user_id);
-    return {
+    if (isNonPublicTestIdentity(profile)) return [];
+    return [{
       id: row.id,
       user_id: row.user_id,
       post_id: row.post_id,
       content: row.content || '',
       created_at: row.created_at,
-      display_name: profile?.full_name || profile?.username || 'PLUGGD user',
+      display_name: publicCreatorDisplayName(profile),
       username: profile?.username || null,
       avatar_url: profile?.avatar_url || null,
-    };
+    }];
   });
 }
 
@@ -680,6 +718,21 @@ export async function createQuotePost(input: { content: string; originalPostId: 
     isQuote: true,
     destinations: input.destinations,
   });
+}
+
+export async function deleteMobileSocialPost(postId: string) {
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: 'Sign in to delete your post.' };
+  const { data, error } = await (supabase as any)
+    .from('social_posts')
+    .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+    .eq('id', postId)
+    .eq('user_id', userId)
+    .select('id')
+    .maybeSingle();
+  if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: 'Only the post owner can delete this post.' };
+  return { success: true };
 }
 
 export async function voteMobilePoll(postId: string, optionId: string) {

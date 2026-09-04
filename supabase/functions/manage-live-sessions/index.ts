@@ -46,11 +46,13 @@ const getServiceClient = () =>
     },
   );
 
+type ServiceClient = ReturnType<typeof getServiceClient>;
+
 type AuthenticatedUser = {
   id: string;
 };
 
-const authenticateRequest = async (req: Request, serviceClient: ReturnType<typeof createClient>): Promise<AuthenticatedUser> => {
+const authenticateRequest = async (req: Request, serviceClient: ServiceClient): Promise<AuthenticatedUser> => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     throw new Error("Missing authorization header");
@@ -74,13 +76,13 @@ const authenticateRequest = async (req: Request, serviceClient: ReturnType<typeo
 };
 
 const ensureHostOwnsRoom = async (
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: ServiceClient,
   roomId: string,
   hostId: string,
 ) => {
   const { data, error } = await serviceClient
     .from("session_rooms")
-    .select("id, host_id")
+    .select("id, host_id, status, mode_config")
     .eq("id", roomId)
     .maybeSingle();
 
@@ -91,10 +93,12 @@ const ensureHostOwnsRoom = async (
   if (!data || data.host_id !== hostId) {
     throw new Error("You do not have permission to modify this session");
   }
+
+  return data as { id: string; host_id: string; status: string | null; mode_config: Record<string, unknown> | null };
 };
 
 const scheduleReminderIfNeeded = async (
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: ServiceClient,
   roomId: string,
   scheduledFor: string | null | undefined,
 ) => {
@@ -113,6 +117,7 @@ const scheduleReminderIfNeeded = async (
 };
 
 const allowedLiveModes = new Set(["creator_live", "collab_live", "class_live", "audio_room"]);
+const allowedDiscoveryCategories = new Set(["community_room", "listening_party", "studio_cook_up", "event_linked"]);
 
 const normalizeLiveMode = (mode: string | undefined) =>
   mode && allowedLiveModes.has(mode) ? mode : "creator_live";
@@ -125,6 +130,51 @@ const coerceStageLimit = (value: number | undefined, liveMode: string) => {
 
 const defaultStageRequests = (liveMode: string) =>
   liveMode === "collab_live" || liveMode === "class_live" || liveMode === "audio_room";
+
+const normalizeModeConfig = async (
+  serviceClient: ServiceClient,
+  hostId: string,
+  value: Record<string, unknown> | undefined,
+) => {
+  const config = value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
+  const category = typeof config.discovery_category === "string" ? config.discovery_category : null;
+  if (!category) return config;
+  if (!allowedDiscoveryCategories.has(category)) {
+    throw new Error("Choose a supported Live discovery category");
+  }
+
+  if (category !== "event_linked") {
+    delete config.linked_event_id;
+    return config;
+  }
+
+  const linkedEventId = typeof config.linked_event_id === "string" ? config.linked_event_id.trim() : "";
+  if (!linkedEventId) {
+    throw new Error("Choose an eligible event for an event-linked session");
+  }
+  const { data: linkedEvent, error } = await serviceClient
+    .from("events")
+    .select("id, created_by, discoverable, starts_at, ends_at")
+    .eq("id", linkedEventId)
+    .eq("created_by", hostId)
+    .eq("discoverable", true)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Failed to verify the linked event: ${error.message}`);
+  }
+  const linkedEventRecord = linkedEvent as {
+    id: string;
+    starts_at: string | null;
+    ends_at: string | null;
+  } | null;
+  const eventEndValue = linkedEventRecord?.ends_at ?? linkedEventRecord?.starts_at;
+  const eventEnd = eventEndValue ? new Date(eventEndValue).getTime() : Number.NaN;
+  if (!linkedEventRecord || !Number.isFinite(eventEnd) || eventEnd < Date.now()) {
+    throw new Error("Choose one of your real upcoming PLUGGD events");
+  }
+  config.linked_event_id = linkedEventRecord.id;
+  return config;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -153,6 +203,7 @@ serve(async (req) => {
         throw new Error("Title is required to create a session");
       }
 
+      const modeConfig = await normalizeModeConfig(serviceClient, user.id, payload.mode_config);
       const insertPayload = {
         allow_stage_requests: payload.allow_stage_requests ?? defaultStageRequests(normalizeLiveMode(payload.live_mode)),
         title: payload.title.trim(),
@@ -163,7 +214,7 @@ serve(async (req) => {
         live_mode: normalizeLiveMode(payload.live_mode),
         max_stage_participants: coerceStageLimit(payload.max_stage_participants, normalizeLiveMode(payload.live_mode)),
         participant_count: Math.max(0, Math.round(Number(payload.participant_count ?? 0))),
-        mode_config: payload.mode_config ?? {},
+        mode_config: modeConfig,
         captions_enabled: payload.captions_enabled ?? false,
         recording_enabled: payload.recording_enabled ?? true,
         restream_enabled: payload.restream_enabled ?? false,
@@ -220,7 +271,7 @@ serve(async (req) => {
         updates.participant_count = Math.max(0, Math.round(Number(payload.participant_count)));
       }
       if (payload.mode_config !== undefined) {
-        updates.mode_config = payload.mode_config;
+        updates.mode_config = await normalizeModeConfig(serviceClient, user.id, payload.mode_config);
       }
       if (payload.captions_enabled !== undefined) {
         updates.captions_enabled = payload.captions_enabled;
@@ -273,18 +324,38 @@ serve(async (req) => {
         throw new Error("room_id is required to delete a session");
       }
 
-      await ensureHostOwnsRoom(serviceClient, payload.room_id, user.id);
+      const room = await ensureHostOwnsRoom(serviceClient, payload.room_id, user.id);
+      const removedAt = new Date().toISOString();
+      const modeConfig = room.mode_config && typeof room.mode_config === "object" && !Array.isArray(room.mode_config)
+        ? room.mode_config
+        : {};
 
-      const { error } = await serviceClient
+      const { data, error } = await serviceClient
         .from("session_rooms")
-        .delete()
-        .eq("id", payload.room_id);
+        .update({
+          status: "ended",
+          is_public: false,
+          participant_count: 0,
+          recording_status: "idle",
+          restream_enabled: false,
+          restream_status: "idle",
+          restream_targets: [],
+          ended_at: removedAt,
+          agora_live_ended_at: removedAt,
+          agora_last_activity_at: removedAt,
+          mode_config: { ...modeConfig, removed_at: removedAt, removed_by: user.id },
+          updated_at: removedAt,
+        })
+        .eq("id", payload.room_id)
+        .eq("host_id", user.id)
+        .select("id, status, is_public, mode_config")
+        .single();
 
       if (error) {
-        throw new Error(`Failed to delete session: ${error.message}`);
+        throw new Error(`Failed to remove session: ${error.message}`);
       }
 
-      return createResponse(200, { success: true });
+      return createResponse(200, { success: true, room: data });
     }
 
     return createResponse(400, { error: `Unsupported action: ${action}` });

@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RecoveryState } from '../../components/ContentUI';
 import { useAuth } from '../../src/context/AuthProvider';
@@ -16,14 +16,14 @@ import { toggleSocialBookmark, toggleSocialRepost, voteMobilePoll } from '../../
 import { MobileSocialPostCard } from '../../src/features/culture/MobileSocialPostCard';
 import { blockUser } from '../../src/features/safety/accountSafety';
 import { showReportActions } from '../../src/features/safety/reportActions';
-
-const ORANGE = '#ff6600';
-const CANVAS = '#0a0806';
-const SURFACE = '#171310';
-const BORDER = '#241d15';
-const MUTED = '#8E8E9F';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
+import { GlassAvatar } from '../../components/liquid-glass';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function SocialPostDetailRoute() {
+  const theme = usePluggdTheme();
+  const styles = usePostDetailStyles();
+  const bottomInset = useBottomChromeInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -107,8 +107,6 @@ export default function SocialPostDetailRoute() {
   const postBody = post?.content || '';
   const title = postBody || (post?.is_repost ? 'Repost' : 'Post');
   const imageMedia = post?.images?.[0] || null;
-  const displayName = post?.display_name || post?.username || 'PLUGGD user';
-  const handle = post?.username ? `@${post.username}` : 'pluggd';
   const threadPosts = query.data?.threadPosts || [];
 
   const openCommentSafety = (row: { id: string; user_id: string; display_name?: string | null; username?: string | null }) => {
@@ -153,23 +151,23 @@ export default function SocialPostDetailRoute() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={[CANVAS, '#120d08', CANVAS]} style={StyleSheet.absoluteFill} />
-      <StatusBar style="light" />
+      <LinearGradient colors={theme.scheme === 'dark' ? ['#0A0806', '#120D08', '#0A0806'] : ['#FFF8ED', '#F4E7D2', '#FFF8ED']} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 54), paddingBottom: insets.bottom + 42 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 54), paddingBottom: bottomInset }}>
         <View style={styles.headerRow}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}>
+            <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Post</Text>
-          <Pressable style={styles.backButton} onPress={() => router.push('/backstage' as any)}>
-            <MaterialIcons name="forum" size={21} color="#FFFFFF" />
+          <Pressable accessibilityRole="button" accessibilityLabel="Open Community" style={styles.backButton} onPress={() => router.push('/community' as any)}>
+            <MaterialIcons name="forum" size={21} color={theme.colors.text} />
           </Pressable>
         </View>
 
         {query.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={ORANGE} />
+            <ActivityIndicator color={theme.colors.accentText} />
           </View>
         ) : null}
 
@@ -182,7 +180,7 @@ export default function SocialPostDetailRoute() {
             primaryLabel="Open community"
             onPrimary={() => router.replace('/community' as any)}
             secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            onSecondary={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}
           />
         ) : null}
 
@@ -202,11 +200,15 @@ export default function SocialPostDetailRoute() {
               <>
                 <Text style={styles.sectionTitle}>Thread</Text>
                 {threadPosts.filter((item) => item.id !== post.id).map((item) => (
-                  <Pressable key={item.id} style={styles.threadItem} onPress={() => router.push(`/post/${item.id}` as any)}>
-                    <Text style={styles.commentAuthor}>{item.display_name || item.username || 'PLUGGD user'}</Text>
-                    <Text style={styles.commentBody}>{item.content}</Text>
-                    <Text style={styles.postTime}>{formatDate(item.created_at)}</Text>
-                  </Pressable>
+                  <View key={item.id} style={styles.threadItem}>
+                    <MobileSocialPostCard
+                      post={item}
+                      variant="thread"
+                      onMutated={() => {
+                        void query.refetch();
+                      }}
+                    />
+                  </View>
                 ))}
               </>
             ) : null}
@@ -216,11 +218,14 @@ export default function SocialPostDetailRoute() {
                 value={comment}
                 onChangeText={setComment}
                 placeholder="Add to the conversation"
-                placeholderTextColor="#62627A"
+                placeholderTextColor={theme.colors.textSubtle}
                 style={styles.input}
                 multiline
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={commentMutation.isPending ? 'Posting comment' : 'Post comment'}
+                accessibilityState={{ disabled: commentMutation.isPending }}
                 style={styles.sendButton}
                 onPress={() => {
                   if (!user?.id) {
@@ -236,25 +241,43 @@ export default function SocialPostDetailRoute() {
             </View>
 
             <Text style={styles.sectionTitle}>Comments</Text>
-            {query.data?.comments.length ? query.data.comments.map((row) => (
-              <View key={row.id} style={styles.commentCard}>
-                <Text style={styles.commentAuthor}>{contentInitials(row.user_id)}</Text>
-                <View style={styles.commentCopy}>
-                  <Text style={styles.commentBody}>{row.content}</Text>
-                  <Text style={styles.postTime}>{formatDate(row.created_at)}</Text>
-                </View>
-                {row.user_id !== user?.id ? (
+            {query.data?.comments.length ? query.data.comments.map((row) => {
+              const commentName = row.display_name || row.username || 'Community member';
+              const commentHandle = row.username ? `@${row.username}` : null;
+              const commentProfileRoute = row.username ? `/creator/${row.username}` : `/user/${row.user_id}`;
+              return (
+                <View key={row.id} style={styles.commentCard}>
                   <Pressable
-                    style={styles.commentMenu}
-                    onPress={() => openCommentSafety(row)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Safety options for comment by ${row.display_name || row.username || 'PLUGGD user'}`}
+                    accessibilityLabel={`Open ${commentName}`}
+                    style={styles.commentAvatarButton}
+                    onPress={() => router.push(commentProfileRoute as any)}
                   >
-                    <MaterialIcons name="more-horiz" size={21} color={MUTED} />
+                    <GlassAvatar imageUrl={row.avatar_url} name={contentInitials(commentName)} size={40} tone="accent" />
                   </Pressable>
-                ) : null}
-              </View>
-            )) : (
+                  <View style={styles.commentCopy}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${commentName}`} onPress={() => router.push(commentProfileRoute as any)}>
+                      <View style={styles.commentIdentity}>
+                        <Text style={styles.commentAuthor} numberOfLines={1}>{commentName}</Text>
+                        {commentHandle ? <Text style={styles.commentHandle} numberOfLines={1}>{commentHandle}</Text> : null}
+                      </View>
+                    </Pressable>
+                    <Text style={styles.commentBody}>{row.content}</Text>
+                    <Text style={styles.postTime}>{formatDate(row.created_at)}</Text>
+                  </View>
+                  {row.user_id !== user?.id ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Safety options for comment by ${commentName}`}
+                      style={styles.commentMenu}
+                      onPress={() => openCommentSafety(row)}
+                    >
+                      <MaterialIcons name="more-horiz" size={21} color={theme.colors.textMuted} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              );
+            }) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>No comments yet</Text>
               <Text style={styles.emptyBody}>Be first to reply.</Text>
@@ -267,54 +290,60 @@ export default function SocialPostDetailRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: CANVAS },
+function usePostDetailStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   headerRow: { marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: theme.colors.text, fontSize: 16, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   loading: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
-  postShell: { marginHorizontal: 16 },
-  postCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 12 },
+  postShell: { marginHorizontal: 0 },
+  postCard: { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 16, gap: 12 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#241d15', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: theme.colors.text, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   postCopy: { flex: 1, minWidth: 0 },
-  postAuthor: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  postTime: { color: MUTED, fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 2 },
-  postTitle: { color: '#FFFFFF', fontSize: 20, lineHeight: 26, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
-  postBody: { color: '#E4E4E9', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+  postAuthor: { color: theme.colors.text, fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  postTime: { color: theme.colors.textMuted, fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 2 },
+  postTitle: { color: theme.colors.text, fontSize: 20, lineHeight: 26, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  postBody: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   destinationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  destinationPill: { minHeight: 26, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 10, justifyContent: 'center' },
-  destinationText: { color: ORANGE, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  mediaWrap: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: '#241d15' },
+  destinationPill: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, paddingHorizontal: 10, justifyContent: 'center' },
+  destinationText: { color: theme.colors.accentText, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  mediaWrap: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: theme.colors.surfaceAlt },
   fill: { width: '100%', height: '100%' },
-  quoteCard: { borderRadius: 14, borderWidth: 1, borderColor: BORDER, backgroundColor: '#241d15', padding: 12, gap: 5 },
-  quoteAuthor: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  quoteText: { color: MUTED, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-  pollCard: { borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: '#241d15', padding: 12, gap: 9 },
-  pollQuestion: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  pollOption: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pollOptionSelected: { borderColor: 'rgba(255,102,0,0.72)' },
-  pollFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,102,0,0.18)' },
-  pollOptionText: { color: '#FFFFFF', fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', flex: 1 },
-  pollPct: { color: MUTED, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  quoteCard: { borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt, padding: 12, gap: 5 },
+  quoteAuthor: { color: theme.colors.text, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  quoteText: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+  pollCard: { borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt, padding: 12, gap: 9 },
+  pollQuestion: { color: theme.colors.text, fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  pollOption: { minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pollOptionSelected: { borderColor: theme.colors.borderAccent },
+  pollFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: theme.colors.accentSoft },
+  pollOptionText: { color: theme.colors.text, fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', flex: 1 },
+  pollPct: { color: theme.colors.textMuted, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   actionRow: { flexDirection: 'row', gap: 10 },
-  actionButton: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionButtonActive: { backgroundColor: ORANGE, borderColor: ORANGE },
-  actionText: { color: '#FFFFFF', fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  actionTextActive: { color: '#0a0806' },
-  composer: { margin: 16, borderRadius: 18, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 12, gap: 10 },
-  input: { minHeight: 76, color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-  sendButton: { height: 42, borderRadius: 21, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
-  sendText: { color: '#0a0806', fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  sectionTitle: { color: '#FFFFFF', fontSize: 18, fontFamily: pluggdFonts.displayBold, marginHorizontal: 16, marginTop: 6, marginBottom: 10 },
-  threadItem: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, gap: 6 },
-  commentCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 13, flexDirection: 'row', gap: 10 },
-  commentAuthor: { color: ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', width: 36 },
+  actionButton: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionButtonActive: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  actionText: { color: theme.colors.text, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  actionTextActive: { color: theme.colors.onAccent },
+  composer: { margin: 16, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 12, gap: 10 },
+  input: { minHeight: 76, color: theme.colors.text, fontSize: 15, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+  sendButton: { minHeight: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
+  sendText: { color: theme.colors.onAccent, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  sectionTitle: { color: theme.colors.text, fontSize: 18, fontFamily: pluggdFonts.displayBold, marginHorizontal: 16, marginTop: 6, marginBottom: 10 },
+  threadItem: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, overflow: 'hidden' },
+  commentCard: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  commentAvatarButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  commentIdentity: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
+  commentAuthor: { color: theme.colors.text, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', flexShrink: 1 },
+  commentHandle: { color: theme.colors.textMuted, fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', flexShrink: 1 },
   commentCopy: { flex: 1, minWidth: 0 },
   commentMenu: { width: 44, height: 44, marginTop: -8, marginRight: -8, alignItems: 'center', justifyContent: 'center' },
-  commentBody: { color: '#E4E4E9', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-  emptyCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: BORDER, backgroundColor: SURFACE, padding: 16, gap: 8 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
-  emptyBody: { color: MUTED, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-});
+  commentBody: { color: theme.colors.textSecondary, fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+  emptyCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 16, gap: 8 },
+  emptyTitle: { color: theme.colors.text, fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  emptyBody: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+}), [theme]);
+}

@@ -2,8 +2,9 @@
  * Mobile port of the web app's `src/lib/mapbox.ts` geocoding layer. Mobile events
  * carry only a free-text `location` (no venue coordinates), so the Events map
  * (EVT-02) geocodes those strings into lat/lng exactly the way the web EventsMap
- * does — same Mapbox Geocoding API, same public token. Rendering is handled
- * separately by `@rnmapbox/maps`; this module is only about coordinates.
+ * does — same Mapbox Geocoding API, same public token. Android rendering uses
+ * the Mapbox mobile SDK, iOS retains its submitted native map, and browser
+ * exports retain the Static Images API.
  *
  * Token: reuse the web `pk.…` public token via EXPO_PUBLIC_MAPBOX_TOKEN.
  */
@@ -90,12 +91,20 @@ export async function geocodeLocation(
 }
 
 export type MapPoint = { lat: number; lng: number };
+export type EventMapPoint = MapPoint & {
+  id: string;
+  title: string;
+  coverImage?: string | null;
+  location?: string | null;
+  startsAt?: string | null;
+  priceCents?: number | null;
+  ticketLabel?: string | null;
+};
 
 /**
- * Build a Mapbox Static Images API URL — a real branded dark-v11 map with orange
- * pins, rendered as a plain <Image> so it works on web AND native with no native
- * module. This is the first-pass EVT-02 events map; an interactive @rnmapbox
- * MapView is the later upgrade. Returns null when there is no token or no points.
+ * Build the static web map. Android uses the interactive Mapbox mobile SDK;
+ * browser exports retain this image implementation to avoid shipping a second
+ * web map renderer.
  */
 export function staticMapUrl(
   points: MapPoint[],

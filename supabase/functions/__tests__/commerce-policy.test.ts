@@ -178,6 +178,20 @@ describe("hybrid commerce default deny", () => {
     }).permittedRail).toBe("unavailable");
   });
 
+  it.each([
+    ["release_unlock", { storefront: "US", optionId: "external" }],
+    ["beat_license", { storefront: "US", classification: "professional_off_app" }],
+    ["event_ticket", { storefront: "GB", classification: "physical" }],
+  ] as const)("honours the remote kill switch for %s", (kind, input) => {
+    expect(decide(kind, input, {
+      ...baseRules[kind],
+      server_flags: {
+        ...baseRules[kind].server_flags,
+        kill_switch: true,
+      },
+    }).permittedRail).toBe("unavailable");
+  });
+
   it("does not expose a CTA or entitlement on a denied decision", () => {
     expect(decide("creator_membership", { storefront: null })).toMatchObject({
       permittedRail: "unavailable",

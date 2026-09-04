@@ -17,9 +17,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CreatorAccessGate } from '../../components/CreatorAccessGate';
+import type { PluggdTheme } from '../../src/design/tokens';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
-
-const PLUGGD_ORANGE = '#ff6600';
 
 function Text({ maxFontSizeMultiplier = 1.3, ...props }: TextProps) {
   return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
@@ -108,6 +109,8 @@ function formatNumber(value: number) {
 
 export default function CreatorEventsScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -316,20 +319,21 @@ export default function CreatorEventsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+    <CreatorAccessGate>
+      <SafeAreaView style={styles.screen}>
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={PLUGGD_ORANGE} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentText} />
         }
       >
         <View style={styles.topBar}>
-          <Pressable style={styles.iconButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={27} color="#FFFFFF" />
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.iconButton} onPress={() => router.back()}>
+            <MaterialIcons name="chevron-left" size={27} color={theme.colors.text} />
           </Pressable>
 
           <View style={styles.headerCenter}>
@@ -337,8 +341,8 @@ export default function CreatorEventsScreen() {
             <Text style={styles.pageTitle}>Events</Text>
           </View>
 
-          <Pressable style={styles.iconButton} onPress={startCreate}>
-            <MaterialIcons name="add" size={24} color={PLUGGD_ORANGE} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Create event" style={styles.iconButton} onPress={startCreate}>
+            <MaterialIcons name="add" size={24} color={theme.colors.accentText} />
           </Pressable>
         </View>
 
@@ -352,8 +356,8 @@ export default function CreatorEventsScreen() {
           <View style={styles.formCard}>
             <View style={styles.formHeader}>
               <Text style={styles.formTitle}>{editingId ? 'Edit event' : 'New event'}</Text>
-              <Pressable style={styles.closeButton} onPress={closeForm}>
-                <MaterialIcons name="close" size={20} color="#FFFFFF" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Close event form" style={styles.closeButton} onPress={closeForm}>
+                <MaterialIcons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </View>
 
@@ -362,7 +366,7 @@ export default function CreatorEventsScreen() {
               value={title}
               onChangeText={setTitle}
               placeholder="Afrobeats Night"
-              placeholderTextColor="#777777"
+              placeholderTextColor={theme.colors.textMuted}
               style={styles.input}
             />
 
@@ -371,7 +375,7 @@ export default function CreatorEventsScreen() {
               value={description}
               onChangeText={setDescription}
               placeholder="Lineup, vibe, age policy, and useful details"
-              placeholderTextColor="#777777"
+              placeholderTextColor={theme.colors.textMuted}
               style={[styles.input, styles.textArea]}
               multiline
             />
@@ -381,7 +385,7 @@ export default function CreatorEventsScreen() {
               value={location}
               onChangeText={setLocation}
               placeholder="Venue, city, or online"
-              placeholderTextColor="#777777"
+              placeholderTextColor={theme.colors.textMuted}
               style={styles.input}
             />
 
@@ -392,7 +396,7 @@ export default function CreatorEventsScreen() {
                   value={dateInput}
                   onChangeText={setDateInput}
                   placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#777777"
+                  placeholderTextColor={theme.colors.textMuted}
                   autoCapitalize="none"
                   style={styles.input}
                 />
@@ -403,7 +407,7 @@ export default function CreatorEventsScreen() {
                   value={timeInput}
                   onChangeText={setTimeInput}
                   placeholder="HH:mm"
-                  placeholderTextColor="#777777"
+                  placeholderTextColor={theme.colors.textMuted}
                   autoCapitalize="none"
                   style={styles.input}
                 />
@@ -418,7 +422,7 @@ export default function CreatorEventsScreen() {
                   onChangeText={setDurationMinutes}
                   keyboardType="numeric"
                   placeholder="180"
-                  placeholderTextColor="#777777"
+                  placeholderTextColor={theme.colors.textMuted}
                   style={styles.input}
                 />
               </View>
@@ -429,7 +433,7 @@ export default function CreatorEventsScreen() {
                   onChangeText={setPriceGbp}
                   keyboardType="decimal-pad"
                   placeholder="0"
-                  placeholderTextColor="#777777"
+                  placeholderTextColor={theme.colors.textMuted}
                   style={styles.input}
                 />
               </View>
@@ -440,17 +444,17 @@ export default function CreatorEventsScreen() {
               value={streamUrl}
               onChangeText={setStreamUrl}
               placeholder="https://..."
-              placeholderTextColor="#777777"
+              placeholderTextColor={theme.colors.textMuted}
               autoCapitalize="none"
               style={styles.input}
             />
 
-            <Pressable style={styles.saveButton} onPress={saveEvent} disabled={saving}>
+            <Pressable accessibilityRole="button" accessibilityLabel={saving ? 'Saving event' : 'Save event'} style={styles.saveButton} onPress={saveEvent} disabled={saving}>
               {saving ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={theme.colors.onAccent} />
               ) : (
                 <>
-                  <MaterialIcons name="check" size={20} color="#FFFFFF" />
+                  <MaterialIcons name="check" size={20} color={theme.colors.onAccent} />
                   <Text style={styles.saveButtonText}>{editingId ? 'Save event' : 'Create event'}</Text>
                 </>
               )}
@@ -465,7 +469,7 @@ export default function CreatorEventsScreen() {
 
         {loading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator color={PLUGGD_ORANGE} />
+            <ActivityIndicator color={theme.colors.accentText} />
             <Text style={styles.loadingText}>Loading events...</Text>
           </View>
         ) : visibleEvents.length > 0 ? (
@@ -481,7 +485,7 @@ export default function CreatorEventsScreen() {
           </View>
         ) : (
           <View style={styles.emptyCard}>
-            <View style={styles.emptyMark}><MaterialIcons name="event" size={27} color="#0A0806" /></View>
+            <View style={styles.emptyMark}><MaterialIcons name="event" size={27} color={theme.colors.onAccent} /></View>
             <Text style={styles.emptyEyebrow}>NO ACTIVE DATES</Text>
             <Text style={styles.emptyTitle}>
               {tab === 'upcoming' ? 'No upcoming events' : 'No past events'}
@@ -492,18 +496,21 @@ export default function CreatorEventsScreen() {
                 : 'Completed events will appear here after they end.'}
             </Text>
             {tab === 'upcoming' ? (
-              <Pressable style={styles.emptyButton} onPress={startCreate}>
+              <Pressable accessibilityRole="button" style={styles.emptyButton} onPress={startCreate}>
                 <Text style={styles.emptyButtonText}>Create event</Text>
               </Pressable>
             ) : null}
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CreatorAccessGate>
   );
 }
 
 function FieldLabel({ label }: { label: string }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return <Text style={styles.fieldLabel}>{label}</Text>;
 }
 
@@ -516,8 +523,10 @@ function SegmentButton({
   active: boolean;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
-    <Pressable style={[styles.segmentButton, active && styles.segmentButtonActive]} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.segmentButton, active && styles.segmentButtonActive]} onPress={onPress}>
       <Text style={[styles.segmentButtonText, active && styles.segmentButtonTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -532,9 +541,11 @@ function SummaryTile({
   value: string;
   icon: keyof typeof MaterialIcons.glyphMap;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.summaryTile}>
-      <MaterialIcons name={icon} size={20} color={PLUGGD_ORANGE} />
+      <MaterialIcons name={icon} size={20} color={theme.colors.accentText} />
       <Text style={styles.summaryValue} numberOfLines={1}>{value}</Text>
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
@@ -550,6 +561,8 @@ function EventCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const isOnline = Boolean(event.stream_url || event.playback_url);
   return (
     <View style={styles.eventCard}>
@@ -566,11 +579,11 @@ function EventCard({
         <View style={styles.eventTitleRow}>
           <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
           <View style={styles.eventActions}>
-            <Pressable style={styles.smallIconButton} onPress={onEdit}>
-              <MaterialIcons name="edit" size={17} color="#FFFFFF" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit event" style={styles.smallIconButton} onPress={onEdit}>
+              <MaterialIcons name="edit" size={17} color={theme.colors.text} />
             </Pressable>
-            <Pressable style={styles.smallIconButton} onPress={onDelete}>
-              <MaterialIcons name="delete-outline" size={17} color="#FF5C5C" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Delete event" style={styles.smallIconButton} onPress={onDelete}>
+              <MaterialIcons name="delete-outline" size={17} color={theme.colors.danger} />
             </Pressable>
           </View>
         </View>
@@ -582,11 +595,11 @@ function EventCard({
 
         <View style={styles.eventFooter}>
           <View style={styles.eventPill}>
-            <MaterialIcons name="groups" size={13} color={PLUGGD_ORANGE} />
+            <MaterialIcons name="groups" size={13} color={theme.colors.accentText} />
             <Text style={styles.eventPillText}>{formatNumber(event.rsvp_count ?? 0)} RSVPs</Text>
           </View>
           <View style={styles.eventPill}>
-            <MaterialIcons name={isOnline ? 'live-tv' : 'confirmation-number'} size={13} color={PLUGGD_ORANGE} />
+            <MaterialIcons name={isOnline ? 'live-tv' : 'confirmation-number'} size={13} color={theme.colors.accentText} />
             <Text style={styles.eventPillText}>{isOnline ? 'Stream' : formatMoneyFromCents(event.price_cents ?? 0)}</Text>
           </View>
         </View>
@@ -595,10 +608,11 @@ function EventCard({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: PluggdTheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0a0806',
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
     paddingHorizontal: 14,
@@ -616,9 +630,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 5,
-    backgroundColor: '#171310',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#262626',
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -632,24 +646,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoText: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 20,
     lineHeight: 24,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
   },
   headerEyebrow: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
     fontSize: 9.5,
     letterSpacing: 1.5,
     fontFamily: pluggdFonts.satoshiBlack,
     fontWeight: '900',
   },
   pageTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 22,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
     marginTop: 2,
@@ -658,33 +672,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
     marginBottom: 16,
   },
   summaryTile: {
     flex: 1,
     minHeight: 82,
     borderRightWidth: 1,
-    borderRightColor: '#302A26',
+    borderRightColor: theme.colors.border,
     paddingVertical: 11,
     paddingHorizontal: 10,
     justifyContent: 'space-between',
   },
   summaryValue: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 20,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   summaryLabel: {
-    color: '#AFAFAF',
+    color: theme.colors.textMuted,
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   formCard: {
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#171310',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
     padding: 14,
     marginBottom: 12,
   },
@@ -694,22 +708,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   formTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 20,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   closeButton: {
-    width: 34,
-    height: 34,
+    width: 44,
+    height: 44,
     borderRadius: 5,
-    backgroundColor: '#101010',
+    backgroundColor: theme.colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#303030',
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   fieldLabel: {
-    color: '#BEBEBE',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     textTransform: 'uppercase',
@@ -720,9 +734,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#303030',
-    backgroundColor: '#101010',
-    color: '#FFFFFF',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surfaceRaised,
+    color: theme.colors.text,
     fontSize: 15,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     paddingHorizontal: 12,
@@ -742,7 +756,7 @@ const styles = StyleSheet.create({
   saveButton: {
     height: 52,
     borderRadius: 5,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -750,7 +764,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.onAccent,
     fontSize: 17,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
@@ -758,8 +772,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#303030',
-    backgroundColor: '#101010',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     padding: 4,
     marginBottom: 12,
   },
@@ -771,17 +785,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#23140E',
+    backgroundColor: theme.colors.accentSoft,
     borderWidth: 1,
-    borderColor: PLUGGD_ORANGE,
+    borderColor: theme.colors.borderAccent,
   },
   segmentButtonText: {
-    color: '#AFAFAF',
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   segmentButtonTextActive: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
   },
   loadingWrap: {
     minHeight: 240,
@@ -790,7 +804,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   loadingText: {
-    color: '#AFAFAF',
+    color: theme.colors.textMuted,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
@@ -800,7 +814,7 @@ const styles = StyleSheet.create({
   eventCard: {
     minHeight: 120,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     flexDirection: 'row',
   },
@@ -809,19 +823,19 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#3B261A',
-    backgroundColor: '#20130E',
+    borderColor: theme.colors.borderAccent,
+    backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   eventMonth: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
     fontSize: 11,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   eventDay: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 26,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginTop: 2,
@@ -837,7 +851,7 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     flex: 1,
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 18,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
@@ -849,20 +863,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 4,
-    backgroundColor: '#101010',
+    backgroundColor: theme.colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#303030',
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   eventMeta: {
-    color: '#D8D8D8',
+    color: theme.colors.textSecondary,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 7,
   },
   eventLocation: {
-    color: '#A8A8A8',
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 4,
@@ -877,15 +891,15 @@ const styles = StyleSheet.create({
     minHeight: 30,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#343434',
-    backgroundColor: '#101010',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surfaceRaised,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 9,
   },
   eventPillText: {
-    color: '#DADADA',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
@@ -893,21 +907,21 @@ const styles = StyleSheet.create({
     minHeight: 220,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
     alignItems: 'flex-start',
     justifyContent: 'center',
     paddingVertical: 24,
   },
-  emptyMark: { width: 54, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center' },
-  emptyEyebrow: { color: PLUGGD_ORANGE, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 20 },
+  emptyMark: { width: 54, height: 54, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
+  emptyEyebrow: { color: theme.colors.accentText, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', marginTop: 20 },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 19,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
     marginTop: 10,
   },
   emptyBody: {
-    color: '#A8A8A8',
+    color: theme.colors.textMuted,
     fontSize: 13,
     lineHeight: 19,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
@@ -917,15 +931,16 @@ const styles = StyleSheet.create({
   emptyButton: {
     minHeight: 48,
     borderRadius: 5,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
     marginTop: 14,
   },
   emptyButtonText: {
-    color: '#0A0806',
+    color: theme.colors.onAccent,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
-});
+  });
+}

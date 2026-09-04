@@ -55,6 +55,7 @@ assert.match(localNotifications, /upsert_mobile_push_token/, 'local notification
 assert.match(tickets, /issueTicketEntryToken/, 'tickets screen must expose dynamic entry token generation');
 assert.match(tickets, /QRCode/, 'tickets screen must render real QR codes from dynamic/static payloads');
 assert.match(ticketScan, /verifyTicketEntryToken/, 'ticket scanner must verify rotating entry payloads');
+assert.doesNotMatch(ticketScan, /from\(['\"]ticket_orders['\"]\).*update|from\(['\"]ticket_orders['\"]\)\s*\n?\s*\.update/s, 'ticket scanner must not mutate ticket orders directly');
 assert.match(uploadClip, /mobile-clips/, 'clip upload route must use the mobile-clips bucket');
 
 console.log('mobile backend contracts verified');

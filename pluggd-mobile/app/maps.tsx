@@ -1,5 +1,5 @@
-import { MapSignalsParityScreen } from '../src/features/parity/AppWideParityScreens';
+import { MapSignalsScreen } from '../src/features/maps/MapSignalsScreen';
 
 export default function MapsRoute() {
-  return <MapSignalsParityScreen />;
+  return <MapSignalsScreen />;
 }

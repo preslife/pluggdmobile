@@ -24,8 +24,17 @@ const wallet = read('src/hooks/useWallet.ts');
 const beat = read('app/beat/[id].tsx');
 const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
+const eventBoard = read('src/features/editorial/EventsBoardScreen.tsx');
+const eventDiscoveryData = read('src/features/events/eventDiscoveryData.ts');
+const externalEventTickets = read('src/lib/eventTickets.ts');
 const release = read('app/release/[id].tsx');
+const releaseFloor = read('src/features/editorial/ListeningFloorScreen.tsx');
+const home = read('src/features/home/live-music-dashboard-home.tsx');
+const mobileContent = read('src/lib/mobileContent.ts');
 const membership = read('app/membership/[creatorId].tsx');
+const subscriptions = read('src/hooks/useSubscription.ts');
+const store = read('src/features/editorial/MarketStoreScreen.tsx');
+const product = read('app/product/[id].tsx');
 const mobileServices = read('src/features/culture/mobileServices.ts');
 const packageJson = JSON.parse(read('package.json'));
 const adr = read('docs/PLUGGD_IOS_HYBRID_COMMERCE_ARCHITECTURE_2026-07-27.md');
@@ -66,7 +75,12 @@ for (const purchaseKind of [
 for (const rail of [
   'apple_iap',
   'apple_subscription',
+  'google_play_iap',
+  'google_play_subscription',
+  'google_play_billing',
   'credits',
+  'stripe_physical',
+  'external_web_checkout',
   'stripe_checkout',
   'unavailable',
 ]) {
@@ -98,6 +112,21 @@ assert.match(
   /membership_iap_products[\s\S]*(apple_product_id|product_id)[\s\S]*(unique|UNIQUE)/i,
   'Apple membership catalogue must enforce unique product identity',
 );
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+public/i,
+  'the membership catalogue must not inherit public table access',
+);
+assert.match(
+  migrationSource,
+  /revoke\s+all\s+on\s+table\s+public\.membership_iap_products\s+from\s+anon/i,
+  'anonymous users must not read the membership product catalogue',
+);
+assert.match(
+  migrationSource,
+  /grant\s+select\s+on\s+table\s+public\.membership_iap_products\s+to\s+authenticated/i,
+  'authenticated users need explicit read access before the active-product RLS policy can apply',
+);
 
 assert.equal(packageJson.dependencies['@stripe/stripe-react-native'], undefined, 'native Stripe SDK must not ship');
 assert.ok(packageJson.dependencies['expo-web-browser'], 'hosted checkout must use expo-web-browser');
@@ -108,6 +137,23 @@ assert.doesNotMatch(
   hostedCheckout,
   /STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET/,
   'mobile hosted-checkout code must never contain Stripe secrets',
+);
+
+assert.match(
+  store,
+  /\.in\('product_type', \['physical', 'merchandise', 'merch', 'creator_merch'\]\)/,
+  'iOS Store must include every checkout-supported physical merchandise type while excluding digital products',
+);
+assert.match(
+  store,
+  /\.eq\('requires_shipping', true\)/,
+  'creator merchandise must be explicitly classified for shipping before appearing in the iOS Store',
+);
+assert.doesNotMatch(store, /Shop all/, 'iOS Store must not route a generic purchase CTA into BeatPlug');
+assert.match(
+  product,
+  /product\.requires_shipping === true/,
+  'creator merchandise checkout must fail closed unless physical shipping is explicit',
 );
 
 assert.match(beat, /licenseOptionId/, 'beat detail must route a trusted licence-option identifier');
@@ -121,10 +167,15 @@ assert.doesNotMatch(
   /licenseFee|price(?:Cents|Pence)\s*:/,
   'beat checkout must not submit an authoritative client price',
 );
+assert.match(
+  beatLicence,
+  /if \(creditRailAllowed\)[\s\S]*complete-beat-credit-license[\s\S]*commercePlatform:\s*'android'[\s\S]*storefront:\s*policy\.storefront[\s\S]*return;[\s\S]*create-beat-purchase/,
+  'Android beat licences must complete with signed-contract credits and return before the hosted path',
+);
 assert.doesNotMatch(
-  `${beat}\n${beatLicence}`,
-  /spendCredits|Open Wallet|router\.push\(\s*['"]\/wallet/,
-  'professional beat licences must never spend credits',
+  beatLicence,
+  /spendCredits\s*\(/,
+  'beat licences must use the server-authoritative completion function, not a generic wallet debit',
 );
 assert.match(beatPreparation, /licenseOptionId/, 'beat preparation must resolve a trusted licence-option identifier');
 assert.doesNotMatch(
@@ -157,14 +208,42 @@ assert.doesNotMatch(
   /price(?:Cents|Pence)\s*=\s*(?:body|request)|const\s*\{\s*[^}]*price(?:Cents|Pence)/i,
   'event checkout must never trust a client-provided ticket price',
 );
+assert.match(externalEventTickets, /classification === 'physical'[\s\S]*classification === 'unclassified'[\s\S]*classification == null/, 'organiser ticket links must support physical and legacy-unclassified real-world event rows');
+assert.match(externalEventTickets, /realWorldTicket[\s\S]*!event\.stream_url[\s\S]*!event\.playback_url/, 'organiser ticket links must reject virtual playback and stream access');
+assert.match(externalEventTickets, /url\.protocol !== 'https:'/, 'organiser ticket links must require HTTPS');
+assert.match(externalEventTickets, /!event\.stream_url[\s\S]*!event\.playback_url/, 'paid virtual access must never use organiser ticket links');
+assert.match(externalEventTickets, /WebBrowser\.openBrowserAsync/, 'eligible organiser ticket links must open in a secure in-app browser');
+assert.match(eventDiscoveryData, /ticket_url,commerce_classification/, 'the shared Events discovery layer must load ticket URLs and trusted classification');
+assert.match(eventBoard, /openExternalEventTickets/, 'Events discovery must provide a working organiser-ticket CTA');
+assert.match(event, /ExternalTicketAccess/, 'event detail must explain and open eligible organiser tickets');
+assert.match(event, /EventTicketPurchase/, 'event detail must retain PLUGGD-hosted ticket-tier checkout');
 
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release unlock must keep the universal credit path');
 assert.match(release, /useCommercePolicy/, 'optional release hosted checkout must be storefront and policy gated');
+assert.match(release, /creditsNeeded[\s\S]*credits/, 'release detail must present its normal unlock price in credits');
+assert.match(release, /download-signed-url/, 'owned release downloads must use the signed delivery service');
+assert.doesNotMatch(release, /\.from\('releases'\)[\s\S]{0,120}\.select\('\*'\)/, 'public release detail must not select private download fields');
+assert.match(releaseFloor, /credits_price/, 'release discovery must load the server credit price');
+assert.match(releaseFloor, /credits`/, 'release discovery must label normal prices as credits');
+assert.doesNotMatch(releaseFloor, /formatGBP/, 'normal release discovery prices must not be raw GBP');
+assert.match(home, /release\.credits_price[\s\S]*credits/, 'Home release cards must present digital release pricing in credits');
+assert.doesNotMatch(
+  home.match(/const releases = bundle\.releases[\s\S]*?const beats =/)?.[0] ?? '',
+  /formatGBP/,
+  'Home release cards must not present a GBP digital unlock price',
+);
+assert.doesNotMatch(mobileContent.match(/RELEASE_LIST_SELECT =[\s\S]*?;/)?.[0] ?? '', /download_url/, 'public release lists must not expose private downloads');
+assert.doesNotMatch(mobileContent.match(/CREATOR_RELEASE_LIST_SELECT =[\s\S]*?;/)?.[0] ?? '', /download_url/, 'creator release lists must not expose private downloads');
 
 assert.match(
-  membership,
+  subscriptions,
   /membership_iap_products/,
-  'membership purchase UI must load unique creator-tier Apple catalogue mappings',
+  'provider-neutral membership billing must preserve unique creator-tier Apple catalogue mappings',
+);
+assert.match(
+  subscriptions,
+  /store_commerce_products/,
+  'provider-neutral membership billing must load verified Google Play product/base-plan mappings',
 );
 assert.doesNotMatch(
   membership,
@@ -179,12 +258,29 @@ assert.match(
 assert.match(
   membership,
   /useSubscription\(\{\s*creatorId:\s*creatorUserId/,
-  'StoreKit catalogue lookup must use the resolved creator account ID',
+  'store catalogue lookup must use the resolved creator account ID',
 );
 assert.match(
   mobileServices,
-  /from\('membership_tiers'\)[\s\S]*\.eq\('owner_type', 'profile'\)[\s\S]*\.eq\('owner_id', creatorId\)/,
+  /loadCreatorMemberships\(profileId:[\s\S]*from\('membership_tiers'\)[\s\S]*\.eq\('owner_type', 'profile'\)[\s\S]*\.eq\('owner_id', profileId\)/,
   'creator membership discovery must query the canonical membership tier owner columns',
+);
+assert.match(
+  mobileServices,
+  /loadCreatorMemberships\(profileId, ownerId, viewerId\)/,
+  'creator profile membership discovery must separate profile ownership from the creator account purchase route and viewer state',
+);
+
+const releaseDetail = read('app/release/[id].tsx');
+assert.match(
+  releaseDetail,
+  /const canUnlock = !isOwned && creditsNeeded > 0 && hasCreatorSuppliedAudio/,
+  'release unlocks must require real creator-supplied audio',
+);
+assert.match(
+  releaseDetail,
+  /const hasCreatorSuppliedAudio = !catalogueReference/,
+  'catalogue reference pages must never present a paid audio unlock',
 );
 
 assert.match(

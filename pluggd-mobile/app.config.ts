@@ -2,38 +2,55 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 const IS_PRODUCTION = APP_ENV === 'production';
+const APP_LINK_HOST = (process.env.EXPO_PUBLIC_APP_LINK_HOST ?? 'pluggd.fm').trim().toLowerCase();
+const EAS_PROJECT_ID =
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+  process.env.EAS_PROJECT_ID ??
+  'c526e1c6-4684-4744-b205-5ea3ed2b4576';
+const GOOGLE_SERVICES_FILE = process.env.GOOGLE_SERVICES_JSON;
+const MAPBOX_PUBLIC_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN?.trim() ?? '';
+const MAPBOX_NATIVE_SDK_VERSION = '11.20.1';
+// @rnmapbox/maps reads RNMAPBOX_MAPS_DOWNLOAD_TOKEN directly during native
+// dependency installation. Never forward that build-only secret into Expo config.
+const NOTIFICATION_LINK_HOSTS =
+  APP_LINK_HOST === 'pluggd.fm' ? ['pluggd.fm', 'www.pluggd.fm'] : [APP_LINK_HOST];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Pluggd',
+  owner: 'pluggd-ltd',
   slug: 'pluggd',
   scheme: 'pluggd',
   version: '1.0.0',
-  orientation: 'default',
+  orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   splash: {
-    image: './assets/splash-icon.png',
     resizeMode: 'contain',
-    backgroundColor: '#080808',
+    backgroundColor: '#FF6600',
   },
   ios: {
     supportsTablet: false,
     requireFullScreen: true,
     usesAppleSignIn: true,
-    buildNumber: process.env.IOS_BUILD_NUMBER ?? '1',
+    buildNumber: process.env.IOS_BUILD_NUMBER ?? '13',
     bundleIdentifier: 'com.pluggd.mobile',
     entitlements: {
       'aps-environment': IS_PRODUCTION ? 'production' : 'development',
     },
     infoPlist: {
+      UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
+      'UISupportedInterfaceOrientations~ipad': ['UIInterfaceOrientationPortrait'],
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
+      NSLocationWhenInUseUsageDescription:
+        'PLUGGD uses your location only when you choose nearby events, maps or directions, so it can show music experiences and routes near you.',
       NSMicrophoneUsageDescription: 'PLUGGD uses the microphone when you join or host a live audio room.',
       NSPhotoLibraryUsageDescription: 'PLUGGD lets you choose images and media for your profile and creator content.',
       NSPhotoLibraryAddUsageDescription: 'PLUGGD saves an exported creator asset only when you ask it to.',
       NSContactsUsageDescription: 'PLUGGD opens the iPhone contact form only when you choose to save a creator Connect Card.',
+      UIBackgroundModes: ['audio'],
     },
     privacyManifests: {
       NSPrivacyTracking: false,
@@ -115,19 +132,55 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#1F2226',
     },
-    predictiveBackGestureEnabled: false,
+    allowBackup: false,
+    blockedPermissions: [
+      'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
+    ...(GOOGLE_SERVICES_FILE ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        category: ['BROWSABLE', 'DEFAULT'],
+        data: [
+          {
+            scheme: 'https',
+            host: APP_LINK_HOST,
+            pathPrefix: '/',
+          },
+        ],
+      },
+    ],
+    predictiveBackGestureEnabled: true,
     versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
-    permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET'],
+    permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET', 'POST_NOTIFICATIONS'],
     package: 'com.pluggd.mobile',
   },
   web: {
     favicon: './assets/favicon.png',
   },
   plugins: [
+    '@sentry/react-native',
+    './plugins/withAndroidAdaptiveActivity.cjs',
+    './plugins/withAndroidGradleMemory.cjs',
+    './plugins/withAndroidNoUnusedMediaProjection.cjs',
+    [
+      '@rnmapbox/maps',
+      {
+        RNMapboxMapsVersion: MAPBOX_NATIVE_SDK_VERSION,
+      },
+    ],
     [
       'expo-build-properties',
       {
-        android: { minSdkVersion: 24 },
+        android: {
+          minSdkVersion: 24,
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
         ios: {
           deploymentTarget: '15.1',
           buildReactNativeFromSource: true,
@@ -136,6 +189,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-router',
     'expo-apple-authentication',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/notification-icon.png',
+        color: '#ff6600',
+        defaultChannel: 'pluggd-reminders',
+      },
+    ],
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
+        microphonePermission: 'PLUGGD uses the microphone when you join or host a live audio room.',
+      },
+    ],
     [
       'expo-contacts',
       {
@@ -153,7 +221,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   extra: {
     ...config.extra,
+    ...(EAS_PROJECT_ID
+      ? {
+          eas: {
+            ...((config.extra?.eas as Record<string, unknown> | undefined) ?? {}),
+            projectId: EAS_PROJECT_ID,
+          },
+        }
+      : {}),
     appEnvironment: APP_ENV,
+    mapboxRuntimeConfigured: Boolean(MAPBOX_PUBLIC_TOKEN),
+    mapboxNativeSdkVersion: MAPBOX_NATIVE_SDK_VERSION,
+    notificationLinkHosts: NOTIFICATION_LINK_HOSTS,
     launchAccessRequired: !IS_PRODUCTION,
   },
 });

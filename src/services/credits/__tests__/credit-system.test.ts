@@ -44,7 +44,7 @@ describe('CreditSystemService.processPurchase', () => {
 
   it('caps credit usage based on policy and available balance', async () => {
     const items: PurchaseItem[] = [
-      { id: 'item-1', type: 'beat', title: 'Exclusive Beat', price: 200 },
+      { id: 'item-1', type: 'release', title: 'Release Unlock', price: 200 },
     ];
 
     policySpy.mockResolvedValue({ maxCartPercent: 0.4 });
@@ -81,8 +81,8 @@ describe('CreditSystemService.processPurchase', () => {
 
   it('creates download records when credits cover entire cart', async () => {
     const items: PurchaseItem[] = [
-      { id: 'beat-1', type: 'beat', title: 'Beat One', price: 30 },
-      { id: 'beat-2', type: 'beat', title: 'Beat Two', price: 20 },
+      { id: 'release-1', type: 'release', title: 'Release One', price: 30 },
+      { id: 'release-2', type: 'release', title: 'Release Two', price: 20 },
     ];
 
     const result = await creditSystem.processPurchase('user-2', items, {
@@ -98,7 +98,7 @@ describe('CreditSystemService.processPurchase', () => {
 
   it('respects requestedCreditSpend when provided', async () => {
     const items: PurchaseItem[] = [
-      { id: 'pack-1', type: 'sample_pack', title: 'Sample Pack', price: 150 },
+      { id: 'release-3', type: 'release', title: 'Release Three', price: 150 },
     ];
 
     const result = await creditSystem.processPurchase('user-3', items, {
@@ -134,5 +134,24 @@ describe('CreditSystemService.processPurchase', () => {
     expect(result.cashDue).toBe(0);
     expect(spendCreditsSpy).not.toHaveBeenCalled();
     expect(createDownloadSpy).not.toHaveBeenCalled();
+  });
+
+  it('never applies credits to beat licences or other excluded products', async () => {
+    const items: PurchaseItem[] = [
+      { id: 'beat-1', type: 'beat', title: 'Beat Licence', price: 100 },
+      { id: 'membership-1', type: 'membership', title: 'Membership', price: 50 },
+      { id: 'merch-1', type: 'merchandise', title: 'T-shirt', price: 30 },
+    ];
+
+    const result = await creditSystem.processPurchase('user-excluded', items, {
+      requestedCredits: 180,
+      maxCreditPercentage: 1,
+      previewOnly: true,
+    });
+
+    expect(result.creditsUsed).toBe(0);
+    expect(result.cashDue).toBe(180);
+    expect(result.maxCreditsAllowed).toBe(0);
+    expect(spendCreditsSpy).not.toHaveBeenCalled();
   });
 });

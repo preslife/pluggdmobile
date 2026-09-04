@@ -8,6 +8,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Image,
+  type ImageSourcePropType,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -26,6 +28,9 @@ import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { pluggdFonts, pluggdTextStyles } from '../../design/typography';
 import { edFonts } from '../../design/editorial';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
+import { supabase } from '../../lib/supabase';
+import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import {
   contentInitials,
   formatCompact,
@@ -34,6 +39,7 @@ import {
   type FeedBundle,
   type ProfileItem,
 } from '../../lib/mobileContent';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 import {
   cancelEventLocalReminder,
   cancelLiveSessionLocalReminder,
@@ -55,6 +61,9 @@ import {
   type BackstageCommunity,
   type LiveRoomItem,
 } from '../culture/useCultureData';
+import { DiscoveryReturnBar } from '../discovery/DiscoveryReturnBar';
+import { loadPluggdTvFeed, type PluggdTvVideo } from '../video/pluggdTvService';
+import { loadBattleSummaries, type BattleSummary } from './battleService';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -84,7 +93,12 @@ type CreatorCard = {
   route: string;
   imageUrl?: string | null;
   isLive?: boolean;
+  canFollow: boolean;
 };
+
+type ScheduleItem =
+  | { kind: 'room'; key: string; startsAt: string; room: LiveRoomItem }
+  | { kind: 'event'; key: string; startsAt: string; event: EventItem };
 
 const IMAGE_GRADIENTS: readonly (readonly [string, string, string])[] = [
   ['#152B33', '#11131B', '#07070A'],
@@ -147,17 +161,24 @@ function isUpcomingRoom(room: LiveRoomItem) {
 }
 
 function isCommunityRoom(room: LiveRoomItem) {
+  if (room.discovery_category) return room.discovery_category === 'community_room';
   return room.source === 'community_room' || roomSearchText(room).includes('community') || roomSearchText(room).includes('audio_room');
 }
 
 function isListeningParty(room: LiveRoomItem) {
+  if (room.discovery_category) return room.discovery_category === 'listening_party';
   const text = roomSearchText(room);
   return text.includes('listening') || text.includes('party') || text.includes('album playback') || text.includes('premiere');
 }
 
 function isStudioSession(room: LiveRoomItem) {
+  if (room.discovery_category) return room.discovery_category === 'studio_cook_up';
   const text = roomSearchText(room);
   return text.includes('studio') || text.includes('cook') || text.includes('producer') || text.includes('feedback') || text.includes('breakdown');
+}
+
+function isEventLinkedRoom(room: LiveRoomItem) {
+  return room.discovery_category === 'event_linked' && Boolean(room.linked_event_id);
 }
 
 function canRemindRoom(room: LiveRoomItem) {
@@ -216,7 +237,7 @@ function replayTrack(room: LiveRoomItem): PluggdTrack | null {
 }
 
 function profileName(profile: ProfileItem) {
-  return profile.display_name || profile.full_name || profile.username || 'PLUGGD Creator';
+  return profile.display_name?.trim() || profile.full_name?.trim() || profile.username?.trim() || null;
 }
 
 function profileHandle(profile: ProfileItem) {
@@ -236,27 +257,33 @@ function creatorRoute(room: LiveRoomItem) {
   return room.creator_id ? '/search' : '/live';
 }
 
+function isFollowableCreatorId(value?: string | null) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value));
+}
+
 function mapCreators(bundle?: FeedBundle, rooms: LiveRoomItem[] = []): CreatorCard[] {
   const creators: CreatorCard[] = [];
   const seen = new Set<string>();
 
   rooms.forEach((room) => {
-    const name = roomHost(room);
-    if (!name || seen.has(name.toLowerCase())) return;
+    const name = room.creator_name?.trim();
+    if (!name || !isPublicProfileName(name) || seen.has(name.toLowerCase())) return;
     seen.add(name.toLowerCase());
+    const creatorId = room.creator_id?.trim();
     creators.push({
-      id: `live-${room.id}`,
+      id: isFollowableCreatorId(creatorId) ? creatorId! : `live-${room.id}`,
       name,
       handle: humanizeLabel(room.category) || 'Live creator',
       route: creatorRoute(room),
       imageUrl: room.creator_avatar_url || room.thumbnail_url,
       isLive: room.status === 'live',
+      canFollow: isFollowableCreatorId(creatorId),
     });
   });
 
   bundle?.profiles.forEach((profile) => {
     const name = profileName(profile);
-    if (!name || seen.has(name.toLowerCase())) return;
+    if (!name || !isPublicProfileName(name) || seen.has(name.toLowerCase())) return;
     seen.add(name.toLowerCase());
     creators.push({
       id: profile.user_id || profile.id || profile.username || name,
@@ -264,6 +291,7 @@ function mapCreators(bundle?: FeedBundle, rooms: LiveRoomItem[] = []): CreatorCa
       handle: profileHandle(profile),
       route: profileRoute(profile),
       imageUrl: profile.avatar_url,
+      canFollow: isFollowableCreatorId(profile.user_id || profile.id),
     });
   });
 
@@ -310,12 +338,24 @@ function pickFocus(
   return undefined;
 }
 
-function LiveArtwork({ uri, title, style }: { uri?: string | null; title: string; style?: object }) {
+function LiveArtwork({
+  uri,
+  title,
+  fallbackSource,
+  style,
+}: {
+  uri?: string | null;
+  title: string;
+  fallbackSource?: ImageSourcePropType;
+  style?: object;
+}) {
+  const styles = useLiveCultureStyles();
   const colors = IMAGE_GRADIENTS[hashIndex(title, IMAGE_GRADIENTS.length)];
   return (
     <LinearGradient colors={colors as any} style={[styles.artworkBase, style]}>
       {uri ? <PluggdImage uri={uri} style={styles.imageFill} resizeMode="cover" /> : null}
-      {!uri ? <Text style={styles.fallbackInitials}>{contentInitials(title)}</Text> : null}
+      {!uri && fallbackSource ? <Image source={fallbackSource} style={styles.imageFill} resizeMode="cover" /> : null}
+      {!uri && !fallbackSource ? <Text style={styles.fallbackInitials}>{contentInitials(title)}</Text> : null}
     </LinearGradient>
   );
 }
@@ -323,8 +363,10 @@ function LiveArtwork({ uri, title, style }: { uri?: string | null; title: string
 function LiveHeader() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user } = useAuth();
   const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   const label = user?.email || 'PLUGGD';
   const unreadNotifications = useQuery({
     queryKey: ['culture', 'notifications', 'unread'],
@@ -333,6 +375,7 @@ function LiveHeader() {
     staleTime: 1000 * 45,
   });
   const unreadCount = unreadNotifications.data ?? 0;
+  const compact = width < 360;
 
   const go = (route: string) => {
     selectionHaptic();
@@ -343,6 +386,7 @@ function LiveHeader() {
     <View
       style={[
         styles.header,
+        compact && styles.headerCompact,
         {
           height: Math.max(insets.top + 62, 96),
           paddingTop: insets.top + 12,
@@ -351,16 +395,25 @@ function LiveHeader() {
         },
       ]}
     >
-      <Text style={[styles.headerTitle, { color: theme.colors.text }]}>LIVE</Text>
-      <View style={styles.headerActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Search PLUGGD" onPress={() => go('/search')} style={styles.headerIcon}>
+      <Text style={[styles.headerTitle, compact && styles.headerTitleCompact, { color: theme.colors.text }]}>LIVE</Text>
+      <View style={[styles.headerActions, compact && styles.headerActionsCompact]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go Live"
+          onPress={() => go(user ? '/live/create' : '/auth/login')}
+          style={[styles.goLiveButton, compact && styles.goLiveButtonCompact]}
+        >
+          <MaterialIcons name="sensors" size={17} color={theme.colors.onAccent} />
+          <Text style={styles.goLiveLabel}>GO LIVE</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Search PLUGGD" onPress={() => go('/search')} style={[styles.headerIcon, compact && styles.headerIconCompact]}>
           <MaterialIcons name="search" size={22} color={theme.colors.textSecondary} />
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : 'Open notifications'}
           onPress={() => go('/notifications')}
-          style={styles.headerIcon}
+          style={[styles.headerIcon, compact && styles.headerIconCompact]}
         >
           <MaterialIcons name="notifications-none" size={22} color={theme.colors.textSecondary} />
           {unreadCount > 0 ? (
@@ -373,7 +426,7 @@ function LiveHeader() {
           accessibilityRole="button"
           accessibilityLabel="Open profile"
           onPress={() => go(user ? '/profile' : '/auth/login')}
-          style={[styles.avatarButton, { borderColor: theme.colors.divider, backgroundColor: theme.colors.surface }]}
+          style={[styles.avatarButton, compact && styles.avatarButtonCompact]}
         >
           <Text style={[styles.avatarInitials, { color: theme.colors.text }]}>{contentInitials(label)}</Text>
         </Pressable>
@@ -383,6 +436,7 @@ function LiveHeader() {
 }
 
 function FilterPills({ active, onChange }: { active: LiveFilter; onChange: (filter: LiveFilter) => void }) {
+  const styles = useLiveCultureStyles();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
       {FILTERS.map((filter) => {
@@ -407,6 +461,7 @@ function FilterPills({ active, onChange }: { active: LiveFilter; onChange: (filt
 }
 
 function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  const styles = useLiveCultureStyles();
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionTitleRow}>
@@ -423,13 +478,21 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
 }
 
 function EmptyInline({ title, body, primary, onPrimary }: { title: string; body: string; primary?: string; onPrimary?: () => void }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   return (
     <View style={styles.emptyInline}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
+      <View style={styles.emptyInlineIcon}>
+        <MaterialIcons name="graphic-eq" size={20} color={theme.colors.accentText} />
+      </View>
+      <View style={styles.emptyInlineCopy}>
+        <Text style={styles.emptyTitle}>{title}</Text>
+        <Text style={styles.emptyBody}>{body}</Text>
+      </View>
       {primary && onPrimary ? (
         <Pressable accessibilityRole="button" onPress={onPrimary} style={styles.emptyAction}>
           <Text style={styles.emptyActionText}>{primary}</Text>
+          <MaterialIcons name="arrow-forward" size={17} color={theme.colors.onAccent} />
         </Pressable>
       ) : null}
     </View>
@@ -438,28 +501,27 @@ function EmptyInline({ title, body, primary, onPrimary }: { title: string; body:
 
 function FocusCard({
   source,
-  activeFilter,
   onJoinRoom,
   onToggleRoomReminder,
   onToggleEventReminder,
   onPlayReplay,
   isRoomReminded,
   isEventReminded,
-  onViewUpcoming,
-  onViewReplays,
+  currentUserId,
+  onRemoveRoom,
 }: {
   source?: FocusSource;
-  activeFilter: LiveFilter;
   onJoinRoom: (room: LiveRoomItem) => void;
   onToggleRoomReminder: (room: LiveRoomItem) => void;
   onToggleEventReminder: (event: EventItem) => void;
   onPlayReplay: (room: LiveRoomItem) => void;
   isRoomReminded: (room: LiveRoomItem) => boolean;
   isEventReminded: (event: EventItem) => boolean;
-  onViewUpcoming: () => void;
-  onViewReplays: () => void;
+  currentUserId?: string | null;
+  onRemoveRoom: (room: LiveRoomItem) => void;
 }) {
   const router = useRouter();
+  const styles = useLiveCultureStyles();
   const scale = useRef(new Animated.Value(1)).current;
   const reducedMotion = useReducedMotion();
 
@@ -479,34 +541,14 @@ function FocusCard({
   }, [reducedMotion, scale]);
 
   if (!source) {
-    const emptyTitle = activeFilter === 'Upcoming'
-      ? 'Nothing scheduled yet'
-      : activeFilter === 'Replays'
-        ? 'No replays yet'
-        : 'No one is live right now';
-    const emptyBody = activeFilter === 'Upcoming'
-      ? 'Follow creators or check back soon for the next session.'
-      : activeFilter === 'Replays'
-        ? 'Recent sessions will appear here when creators publish them.'
-        : "See what's coming up or replay recent sessions.";
     return (
       <View style={styles.focusEmpty}>
-        <Text style={styles.focusEmptyTitle}>{emptyTitle}</Text>
-        <Text style={styles.focusEmptyBody}>{emptyBody}</Text>
-        <View style={styles.focusEmptyActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={activeFilter === 'Upcoming' ? 'Watch replays' : 'View upcoming sessions'}
-            onPress={activeFilter === 'Upcoming' ? onViewReplays : onViewUpcoming}
-            style={styles.focusEmptyPrimary}
-          >
-            <Text style={styles.focusEmptyPrimaryText}>{activeFilter === 'Upcoming' ? 'Watch Replays' : 'View Upcoming'}</Text>
-          </Pressable>
-          {activeFilter !== 'Upcoming' && activeFilter !== 'Replays' ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Watch replays" onPress={onViewReplays} style={styles.focusEmptySecondary}>
-              <Text style={styles.focusEmptySecondaryText}>Watch Replays</Text>
-            </Pressable>
-          ) : null}
+        <Image source={WEB_PARITY_ASSETS.liveHero} style={styles.imageFill} resizeMode="cover" />
+        <LinearGradient colors={['rgba(10,8,6,0.28)', 'rgba(10,8,6,0.94)']} style={StyleSheet.absoluteFill} />
+        <View style={styles.focusEmptyCopy}>
+          <Text style={styles.focusEmptyEyebrow}>LIVE STATUS</Text>
+          <Text style={styles.focusEmptyTitle}>Nothing live or scheduled yet</Text>
+          <Text style={styles.focusEmptyBody}>When a creator schedules a real session, it will appear here first.</Text>
         </View>
       </View>
     );
@@ -529,8 +571,11 @@ function FocusCard({
   const canSetReminder = isRoom ? canRemindRoom(source.room) : canRemindEvent(source.event);
   const reminded = isRoom ? isRoomReminded(source.room) : isEventReminded(source.event);
   const canOpenBackstage = isRoom && Boolean(source.room.backstage_id);
+  const ownedRoom = isRoom && Boolean(currentUserId) && source.room.creator_id === currentUserId;
 
-  const primaryLabel = isLive && isRoom && isJoinableRoom(source.room)
+  const primaryLabel = ownedRoom
+    ? isLive ? 'Return as host' : 'Open Green Room'
+    : isLive && isRoom && isJoinableRoom(source.room)
     ? 'Join Live'
     : isReplay
       ? 'Watch Replay'
@@ -542,6 +587,10 @@ function FocusCard({
 
   const primaryAction = () => {
     impactHaptic();
+    if (ownedRoom && isRoom) {
+      onJoinRoom(source.room);
+      return;
+    }
     if (isLive && isRoom && isJoinableRoom(source.room)) {
       onJoinRoom(source.room);
       return;
@@ -563,7 +612,7 @@ function FocusCard({
   return (
     <View style={styles.focusCard}>
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale }] }]}>
-        <LiveArtwork uri={imageUrl} title={title} style={styles.focusImage} />
+        <LiveArtwork uri={imageUrl} title={title} fallbackSource={WEB_PARITY_ASSETS.liveHero} style={styles.focusImage} />
       </Animated.View>
       <LinearGradient colors={['rgba(10,8,6,0.04)', 'rgba(10,8,6,0.52)', 'rgba(10,8,6,0.96)']} locations={[0, 0.52, 1]} style={StyleSheet.absoluteFill} />
       {isLive ? <LinearGradient colors={['rgba(255,71,87,0.22)', 'rgba(10,8,6,0)']} style={StyleSheet.absoluteFill} /> : null}
@@ -580,7 +629,12 @@ function FocusCard({
           <Pressable accessibilityRole="button" onPress={primaryAction} style={[styles.focusPrimary, isLive && styles.focusPrimaryLive]}>
             <Text style={styles.focusPrimaryText}>{primaryLabel}</Text>
           </Pressable>
-          {canOpenBackstage ? (
+          {ownedRoom && isRoom ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${title}`} onPress={() => onRemoveRoom(source.room)} style={styles.focusDanger}>
+              <MaterialIcons name="delete-outline" size={17} color="#FFFFFF" />
+              <Text style={styles.focusDangerText}>Delete</Text>
+            </Pressable>
+          ) : canOpenBackstage ? (
             <Pressable accessibilityRole="button" onPress={() => router.push(`/backstage/${source.room.backstage_id}` as any)} style={styles.focusSecondary}>
               <Text style={styles.focusSecondaryText}>Open Community</Text>
             </Pressable>
@@ -595,12 +649,160 @@ function FocusCard({
   );
 }
 
-function LiveNowCard({ room, onJoin }: { room: LiveRoomItem; onJoin: (room: LiveRoomItem) => void }) {
+function categorySourceTitle(source?: FocusSource) {
+  if (!source) return null;
+  return source.kind === 'room' ? roomTitle(source.room) : eventTitle(source.event);
+}
+
+function categorySourceImage(source?: FocusSource) {
+  if (!source) return null;
+  return source.kind === 'room' ? mediaImageForRoom(source.room) : source.event.cover_image_url;
+}
+
+function categorySourceStatus(source?: FocusSource) {
+  if (!source) return null;
+  if (source.state === 'live') return 'Live now';
+  const startsAt = source.kind === 'room' ? source.room.scheduled_for : source.event.starts_at;
+  return startsAt ? formatDate(startsAt, 'Upcoming') : 'Upcoming';
+}
+
+function CategoryTile({
+  title,
+  source,
+  fallbackSource,
+  emptyKicker,
+  emptyCopy,
+  onOpen,
+  size,
+}: {
+  title: string;
+  source?: FocusSource;
+  fallbackSource: ImageSourcePropType;
+  emptyKicker: string;
+  emptyCopy: string;
+  onOpen: (source: FocusSource) => void;
+  size: number;
+}) {
+  const styles = useLiveCultureStyles();
+  const itemTitle = categorySourceTitle(source);
+  const content = (
+    <>
+      <LiveArtwork uri={categorySourceImage(source)} title={itemTitle || title} fallbackSource={fallbackSource} style={styles.categoryImage} />
+      <LinearGradient colors={['rgba(10,8,6,0.02)', 'rgba(10,8,6,0.92)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
+      <View style={styles.categoryCopy}>
+        <Text style={styles.categoryStatus}>{categorySourceStatus(source) || emptyKicker}</Text>
+        <Text style={styles.categoryTitle} numberOfLines={2}>{title}</Text>
+        <Text style={styles.categoryItemTitle} numberOfLines={2}>{itemTitle || emptyCopy}</Text>
+      </View>
+    </>
+  );
+
+  if (!source) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={`${title}. ${emptyCopy}`}
+        style={[styles.categoryTile, { width: size, height: size }]}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${title}: ${itemTitle}`}
+      onPress={() => {
+        selectionHaptic();
+        onOpen(source);
+      }}
+      style={({ pressed }) => [styles.categoryTile, { width: size, height: size }, pressed && styles.categoryTilePressed]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+function scheduleTimestamp(item: ScheduleItem) {
+  return new Date(item.startsAt).getTime();
+}
+
+function scheduleTime(startsAt: string) {
+  const date = new Date(startsAt);
+  if (!Number.isFinite(date.getTime())) return 'Time TBA';
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function isSameLocalDay(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+function ScheduleRow({
+  item,
+  reminded,
+  onOpen,
+  onReminder,
+}: {
+  item: ScheduleItem;
+  reminded: boolean;
+  onOpen: (item: ScheduleItem) => void;
+  onReminder: (item: ScheduleItem) => void;
+}) {
+  const styles = useLiveCultureStyles();
+  const isRoom = item.kind === 'room';
+  const title = isRoom ? roomTitle(item.room) : eventTitle(item.event);
+  const host = isRoom ? roomHost(item.room) : eventHost(item.event);
+  const imageUrl = isRoom ? mediaImageForRoom(item.room) : item.event.cover_image_url;
+  const canRemind = isRoom ? canRemindRoom(item.room) : canRemindEvent(item.event);
+
+  return (
+    <View style={styles.scheduleRow}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${title}`}
+        onPress={() => {
+          selectionHaptic();
+          onOpen(item);
+        }}
+        style={styles.scheduleOpen}
+      >
+        <LiveArtwork
+          uri={imageUrl}
+          title={title}
+          fallbackSource={isRoom ? WEB_PARITY_ASSETS.liveHero : WEB_PARITY_ASSETS.eventsHero}
+          style={styles.scheduleThumb}
+        />
+        <View style={styles.scheduleCopy}>
+          <Text style={styles.scheduleTime}>{scheduleTime(item.startsAt)}</Text>
+          <Text style={styles.scheduleTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.scheduleHost} numberOfLines={1}>{host}</Text>
+        </View>
+      </Pressable>
+      {canRemind ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={reminded ? `Remove reminder for ${title}` : `Notify me about ${title}`}
+          accessibilityState={{ selected: reminded }}
+          onPress={() => onReminder(item)}
+          style={[styles.notifyButton, reminded && styles.notifyButtonOn]}
+        >
+          <Text style={[styles.notifyButtonText, reminded && styles.notifyButtonTextOn]}>{reminded ? 'Set' : 'Notify'}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function LiveNowCard({ room, onJoin, currentUserId }: { room: LiveRoomItem; onJoin: (room: LiveRoomItem) => void; currentUserId?: string | null }) {
+  const styles = useLiveCultureStyles();
   const title = roomTitle(room);
   const host = roomHost(room);
   const viewers = viewerLabel(room);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Join ${title}`} onPress={() => onJoin(room)} style={styles.liveNowCard}>
+    <Pressable accessibilityRole="button" accessibilityLabel={room.creator_id === currentUserId ? `Return to ${title} as host` : `Join ${title}`} onPress={() => onJoin(room)} style={styles.liveNowCard}>
       <LiveArtwork uri={mediaImageForRoom(room)} title={title} style={styles.liveNowImage} />
       <LinearGradient colors={['rgba(10,8,6,0.08)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFill} />
       <View style={styles.liveBadgeSmall}>
@@ -612,14 +814,55 @@ function LiveNowCard({ room, onJoin }: { room: LiveRoomItem; onJoin: (room: Live
         <Text style={styles.liveNowTitle} numberOfLines={2}>{title}</Text>
         {viewers ? <Text style={styles.liveNowMeta} numberOfLines={1}>{viewers}</Text> : null}
         <View style={styles.liveNowButton}>
-          <Text style={styles.liveNowButtonText}>Join</Text>
+          <Text style={styles.liveNowButtonText}>{room.creator_id === currentUserId ? 'Return as host' : 'Join'}</Text>
         </View>
       </View>
     </Pressable>
   );
 }
 
+function PluggdTvEntry({ video, onPress }: { video?: PluggdTvVideo; onPress: () => void }) {
+  const styles = useLiveCultureStyles();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="Open PLUGGD TV" onPress={onPress} style={styles.tvEntry}>
+      <LiveArtwork uri={video?.thumbnailUrl} title={video?.title || 'PLUGGD TV'} fallbackSource={WEB_PARITY_ASSETS.phoneStage} style={styles.tvEntryImage} />
+      <LinearGradient colors={['rgba(10,8,6,0.08)', 'rgba(10,8,6,0.94)']} style={StyleSheet.absoluteFill} />
+      <View style={styles.tvEntryCopy}>
+        <View style={styles.tvEntryLabel}><MaterialIcons name="live-tv" size={16} color={COLORS.white} /><Text style={styles.tvEntryLabelText}>PLUGGD TV</Text></View>
+        <Text style={styles.tvEntryTitle} numberOfLines={2}>{video?.title || 'The scene, in motion.'}</Text>
+        <Text style={styles.tvEntryBody} numberOfLines={2}>{video ? `${video.creatorName} · Watch the latest published visual.` : 'Creator videos, sessions and selected visuals from across PLUGGD.'}</Text>
+        <View style={styles.tvEntryButton}><Text style={styles.tvEntryButtonText}>Open PLUGGD TV</Text><MaterialIcons name="arrow-forward" size={18} color={COLORS.white} /></View>
+      </View>
+    </Pressable>
+  );
+}
+
+function BattleArenaEntry({ battle, onPress }: { battle?: BattleSummary; onPress: () => void }) {
+  const styles = useLiveCultureStyles();
+  const theme = usePluggdTheme();
+  const active = battle?.status === 'live';
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Battle Arena" onPress={onPress} style={({ pressed }) => [styles.battleEntry, pressed && styles.categoryTilePressed]}>
+      <LinearGradient colors={theme.scheme === 'dark' ? ['#351306', '#160D08', '#090706'] : ['#FFD8B8', '#F4E7D2', '#FFFCF7']} style={StyleSheet.absoluteFill} />
+      <View style={styles.battleEntryGlow} />
+      <View style={styles.battleEntryCopy}>
+        <View style={styles.battleEntryTopRow}>
+          <View style={[styles.battleEntryLabel, active && styles.battleEntryLabelLive]}>
+            <MaterialIcons name="emoji-events" size={16} color={active ? COLORS.white : theme.colors.accentText} />
+            <Text style={[styles.battleEntryLabelText, { color: active ? COLORS.white : theme.colors.accentText }]}>{active ? 'LIVE BATTLE' : 'BATTLE ARENA'}</Text>
+          </View>
+          <View style={styles.battleEntryMark}><MaterialIcons name="bolt" size={31} color={theme.colors.accentText} /></View>
+        </View>
+        <Text style={[styles.battleEntryTitle, { color: theme.colors.text }]} numberOfLines={2}>{battle?.title || 'Enter the tournament.'}</Text>
+        <Text style={[styles.battleEntryBody, { color: theme.colors.textSecondary }]} numberOfLines={2}>{battle ? `${battle.entryCount} entries · ${battle.status === 'finished' ? 'Results ready' : battle.status === 'live' ? 'Hear the matchups and vote now.' : 'Submit a track before the bracket begins.'}` : 'Producer battles, tournament brackets, live voting and results.'}</Text>
+        <View style={[styles.battleEntryButton, { borderColor: theme.colors.accent }]}><Text style={[styles.battleEntryButtonText, { color: theme.colors.text }]}>Open Battle Arena</Text><MaterialIcons name="arrow-forward" size={18} color={theme.colors.accentText} /></View>
+      </View>
+    </Pressable>
+  );
+}
+
 function LiveSwipeEntry({ onPress, rooms }: { onPress: () => void; rooms: LiveRoomItem[] }) {
+  const styles = useLiveCultureStyles();
   if (!rooms.length) return null;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Open Live Feed" onPress={onPress} style={styles.swipeEntry}>
@@ -652,6 +895,8 @@ function UpcomingSessionCard({
   onToggleReminder: () => void;
   onOpen: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   const title = roomTitle(room);
   const canRemind = canRemindRoom(room);
   return (
@@ -660,7 +905,7 @@ function UpcomingSessionCard({
         <Text style={styles.cardTitle} numberOfLines={2}>{title}</Text>
         <Text style={styles.cardMeta} numberOfLines={1}>{roomHost(room)}</Text>
         <View style={styles.countdownRow}>
-          <MaterialIcons name="schedule" size={13} color={COLORS.muted} />
+          <MaterialIcons name="schedule" size={13} color={theme.colors.textMuted} />
           <Text style={styles.countdownText}>{formatDate(room.scheduled_for, 'Time TBA')} · {eventCountdown(room.scheduled_for)}</Text>
         </View>
       </Pressable>
@@ -681,11 +926,13 @@ function UpcomingSessionCard({
 }
 
 function CompactRoomRow({ room, onOpen }: { room: LiveRoomItem; onOpen: (room: LiveRoomItem) => void }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   const activeUsers = Number(room.viewer_count ?? 0);
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Join room ${roomTitle(room)}`} onPress={() => onOpen(room)} style={styles.roomRow}>
       <View style={styles.roomIcon}>
-        <MaterialIcons name="settings-input-antenna" size={20} color={COLORS.orange} />
+        <MaterialIcons name="settings-input-antenna" size={20} color={theme.colors.accentText} />
       </View>
       <View style={styles.roomCopy}>
         <Text style={styles.roomTitle} numberOfLines={1}>{roomTitle(room)}</Text>
@@ -712,6 +959,7 @@ function WideSessionCard({
   onJoin: (room: LiveRoomItem) => void;
   onReminder: (room: LiveRoomItem) => void;
 }) {
+  const styles = useLiveCultureStyles();
   const isLive = isRealLiveRoom(room);
   return (
     <View style={styles.wideCard}>
@@ -754,6 +1002,7 @@ function EventLiveCard({
   onReminder: (event: EventItem) => void;
 }) {
   const router = useRouter();
+  const styles = useLiveCultureStyles();
   return (
     <View style={styles.wideCard}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Open event hub for ${eventTitle(event)}`} onPress={() => router.push(`/events/${event.id}` as any)} style={StyleSheet.absoluteFill}>
@@ -785,6 +1034,8 @@ function EventLiveCard({
 
 function ReplayRow({ room }: { room: LiveRoomItem }) {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = usePlayback();
   const track = replayTrack(room);
   const active = Boolean(track && currentTrack?.id === track.id);
@@ -809,7 +1060,7 @@ function ReplayRow({ room }: { room: LiveRoomItem }) {
         <Text style={styles.replayMeta} numberOfLines={1}>{viewerLabel(room) || 'Replay'}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={active && isPlaying ? `Pause ${title}` : `Play ${title}`} onPress={(event) => { event.stopPropagation(); void play(); }} style={styles.replayPlay}>
-        <MaterialIcons name={active && isPlaying ? 'pause' : 'play-arrow'} size={18} color={COLORS.canvas} />
+        <MaterialIcons name={active && isPlaying ? 'pause' : 'play-arrow'} size={18} color={theme.colors.onAccent} />
       </Pressable>
     </Pressable>
   );
@@ -825,6 +1076,7 @@ function CreatorCardView({
   onToggle: () => void;
 }) {
   const router = useRouter();
+  const styles = useLiveCultureStyles();
   return (
     <View style={styles.creatorCard}>
       <Pressable
@@ -843,62 +1095,121 @@ function CreatorCardView({
       <Text style={styles.creatorHandle} numberOfLines={1}>{creator.handle}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={following ? `Unfollow ${creator.name}` : `Follow ${creator.name}`}
+        accessibilityLabel={creator.canFollow ? (following ? `Unfollow ${creator.name}` : `Follow ${creator.name}`) : `Open ${creator.name} profile`}
         onPress={() => {
           impactHaptic();
-          onToggle();
+          if (creator.canFollow) onToggle();
+          else router.push(creator.route as any);
         }}
         style={[styles.followButton, following && styles.followButtonOn]}
       >
-        <Text style={[styles.followText, following && styles.followTextOn]}>{following ? 'Following' : 'Follow'}</Text>
+        <Text style={[styles.followText, following && styles.followTextOn]}>{creator.canFollow ? (following ? 'Following' : 'Follow') : 'View profile'}</Text>
       </Pressable>
     </View>
   );
 }
 
 export function LiveCultureScreen() {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
+  const { user } = useAuth();
+  const theme = usePluggdTheme();
+  const styles = useLiveCultureStyles();
   const roomsQuery = useLiveRooms();
   const eventsQuery = useEventLayer(16);
   const backstageQuery = useBackstage();
   const homeQuery = useHomeFeed();
+  const tvQuery = useQuery({ queryKey: ['pluggd-tv', 'live-entry'], queryFn: () => loadPluggdTvFeed(1), staleTime: 60_000 });
+  const battlesQuery = useQuery({ queryKey: ['live', 'battles'], queryFn: loadBattleSummaries, staleTime: 20_000 });
   const playback = usePlayback();
   const remindersQuery = useQuery({ queryKey: ['culture', 'reminders'], queryFn: loadReminderState });
-  const [activeFilter, setActiveFilter] = useState<LiveFilter>('Live Now');
   const [following, setFollowing] = useState<Set<string>>(() => new Set());
+  const categoryTileSize = Math.max(148, Math.floor((width - 42) / 2));
 
   const rooms = roomsQuery.data ?? [];
   const events = eventsQuery.data ?? [];
   const liveNow = useMemo(() => rooms.filter(isRealLiveRoom), [rooms]);
   const upcomingRooms = useMemo(() => rooms.filter(isUpcomingRoom), [rooms]);
-  const communityRooms = useMemo(() => rooms.filter(isCommunityRoom).filter((room) => room.source === 'session_room' || Boolean(room.backstage_id)), [rooms]);
+  const communityRooms = useMemo(() => rooms.filter((room) => (isRealLiveRoom(room) || isUpcomingRoom(room)) && isCommunityRoom(room)), [rooms]);
   const listeningParties = useMemo(() => rooms.filter((room) => (isRealLiveRoom(room) || isUpcomingRoom(room)) && isListeningParty(room)), [rooms]);
   const studioSessions = useMemo(() => rooms.filter((room) => (isRealLiveRoom(room) || isUpcomingRoom(room)) && isStudioSession(room)), [rooms]);
+  const eventLinkedRooms = useMemo(() => rooms.filter((room) => (isRealLiveRoom(room) || isUpcomingRoom(room)) && isEventLinkedRoom(room)), [rooms]);
   const replays = useMemo(() => rooms.filter(isReplayRoom), [rooms]);
   const eventLinked = useMemo(() => events.filter(isEventLinkedLive), [events]);
   const creators = useMemo(() => mapCreators(homeQuery.data, rooms), [homeQuery.data, rooms]);
   const focus = useMemo(
-    () => pickFocus(activeFilter, liveNow, upcomingRooms, communityRooms, listeningParties, replays, eventLinked),
-    [activeFilter, communityRooms, eventLinked, listeningParties, liveNow, replays, upcomingRooms],
+    () => {
+      const live = liveNow[0];
+      if (live) return { kind: 'room', room: live, state: 'live' } satisfies FocusSource;
+      const upcoming = upcomingRooms[0];
+      if (upcoming) return { kind: 'room', room: upcoming, state: 'upcoming' } satisfies FocusSource;
+      const event = eventLinked
+        .filter((item) => Number.isFinite(new Date(item.starts_at || '').getTime()) && new Date(item.starts_at || '').getTime() > Date.now())
+        .sort((left, right) => new Date(left.starts_at || '').getTime() - new Date(right.starts_at || '').getTime())[0];
+      return event ? ({ kind: 'event', event, state: 'upcoming' } satisfies FocusSource) : undefined;
+    },
+    [eventLinked, liveNow, upcomingRooms],
   );
+  const categorySources = useMemo(() => ({
+    community: communityRooms[0]
+      ? ({ kind: 'room', room: communityRooms[0], state: isRealLiveRoom(communityRooms[0]) ? 'live' : 'upcoming' } satisfies FocusSource)
+      : undefined,
+    listening: listeningParties[0]
+      ? ({ kind: 'room', room: listeningParties[0], state: isRealLiveRoom(listeningParties[0]) ? 'live' : 'upcoming' } satisfies FocusSource)
+      : undefined,
+    studio: studioSessions[0]
+      ? ({ kind: 'room', room: studioSessions[0], state: isRealLiveRoom(studioSessions[0]) ? 'live' : 'upcoming' } satisfies FocusSource)
+      : undefined,
+    event: eventLinkedRooms[0]
+      ? ({ kind: 'room', room: eventLinkedRooms[0], state: isRealLiveRoom(eventLinkedRooms[0]) ? 'live' : 'upcoming' } satisfies FocusSource)
+      : eventLinked[0]
+        ? ({ kind: 'event', event: eventLinked[0], state: 'upcoming' } satisfies FocusSource)
+        : undefined,
+  }), [communityRooms, eventLinked, eventLinkedRooms, listeningParties, studioSessions]);
+  const featuredBattle = useMemo(() => {
+    const battles = battlesQuery.data ?? [];
+    return battles.find((battle) => battle.is_featured && battle.status !== 'finished')
+      ?? battles.find((battle) => battle.status === 'live')
+      ?? battles.find((battle) => battle.status === 'upcoming')
+      ?? battles.find((battle) => battle.status === 'finished');
+  }, [battlesQuery.data]);
+  const schedule = useMemo(() => {
+    const linkedEventIds = new Set(upcomingRooms.map((room) => room.linked_event_id).filter(Boolean));
+    const roomItems: ScheduleItem[] = upcomingRooms
+      .filter((room) => Boolean(room.scheduled_for))
+      .map((room) => ({ kind: 'room', key: `room-${room.id}`, startsAt: room.scheduled_for as string, room }));
+    const eventItems: ScheduleItem[] = eventLinked
+      .filter((event) => Boolean(event.starts_at) && !linkedEventIds.has(event.id))
+      .map((event) => ({ kind: 'event', key: `event-${event.id}`, startsAt: event.starts_at as string, event }));
+    const now = Date.now();
+    const sevenDaysFromNow = now + (7 * 24 * 60 * 60 * 1000);
+    return [...roomItems, ...eventItems]
+      .filter((item) => {
+        const time = scheduleTimestamp(item);
+        return Number.isFinite(time) && time >= now && time <= sevenDaysFromNow;
+      })
+      .sort((left, right) => scheduleTimestamp(left) - scheduleTimestamp(right));
+  }, [eventLinked, upcomingRooms]);
+  const tonight = useMemo(() => {
+    const today = new Date();
+    return schedule.filter((item) => isSameLocalDay(new Date(item.startsAt), today));
+  }, [schedule]);
+  const thisWeek = useMemo(() => {
+    const today = new Date();
+    return schedule.filter((item) => !isSameLocalDay(new Date(item.startsAt), today));
+  }, [schedule]);
   const loading = roomsQuery.isLoading || eventsQuery.isLoading || backstageQuery.isLoading || homeQuery.isLoading;
   const refreshing = roomsQuery.isRefetching || eventsQuery.isRefetching || backstageQuery.isRefetching || homeQuery.isRefetching || remindersQuery.isRefetching;
-  const focusHeight = Math.min(340, Math.max(280, width * 0.78));
-  const bottomPadding = Math.max(insets.bottom + 154, 176);
-
-  useEffect(() => {
-    if (!roomsQuery.isLoading && liveNow.length === 0 && activeFilter === 'Live Now') {
-      setActiveFilter('Upcoming');
-    }
-  }, [activeFilter, liveNow.length, roomsQuery.isLoading]);
+  const focusHeight = focus ? Math.min(390, Math.max(300, width * 0.86)) : 168;
+  const bottomPadding = useBottomChromeInset();
 
   const refresh = () => {
     void roomsQuery.refetch();
     void eventsQuery.refetch();
     void backstageQuery.refetch();
     void homeQuery.refetch();
+    void tvQuery.refetch();
+    void battlesQuery.refetch();
     void remindersQuery.refetch();
   };
 
@@ -919,7 +1230,33 @@ export function LiveCultureScreen() {
       Alert.alert('Replay available', 'Use the replay row to start this recording in the PLUGGD player.');
       return;
     }
-    Alert.alert('Room unavailable', 'This live item exists in PLUGGD, but it is not attached to a mobile join route yet.');
+    Alert.alert('Room unavailable', 'This room cannot be opened right now. Try again in a moment.');
+  };
+
+  const removeOwnedRoom = (room: LiveRoomItem) => {
+    if (!user?.id || room.creator_id !== user.id) return;
+    Alert.alert(
+      room.status === 'live' ? 'End and delete this live?' : 'Delete this live?',
+      'It will disappear from Live. Ticket, gift, recording and moderation history will be retained safely.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const { data, error } = await supabase.functions.invoke('manage-live-sessions', {
+              body: { action: 'delete', payload: { room_id: room.id } },
+            });
+            if (error || (data as any)?.error) {
+              Alert.alert('Live not deleted', 'Please check your connection and try again.');
+              return;
+            }
+            await roomsQuery.refetch();
+            Alert.alert('Live deleted', 'The live has been removed from public view.');
+          },
+        },
+      ],
+    );
   };
 
   const playReplayRoom = async (room: LiveRoomItem) => {
@@ -1007,157 +1344,127 @@ export function LiveCultureScreen() {
     });
   };
 
-  const communitiesById = useMemo(() => {
-    const map = new Map<string, BackstageCommunity>();
-    (backstageQuery.data?.communities ?? []).forEach((community) => map.set(community.id, community));
-    return map;
-  }, [backstageQuery.data?.communities]);
+  const openFocusSource = (source: FocusSource) => {
+    if (source.kind === 'room') openRoom(source.room);
+    else router.push(`/events/${source.event.id}` as any);
+  };
+
+  const openScheduleItem = (item: ScheduleItem) => {
+    if (item.kind === 'room') openRoom(item.room);
+    else router.push(`/events/${item.event.id}` as any);
+  };
+
+  const toggleScheduleReminder = (item: ScheduleItem) => {
+    if (item.kind === 'room') void toggleRoomReminder(item.room);
+    else void toggleEventReminder(item.event);
+  };
+
+  const isScheduleReminded = (item: ScheduleItem) => (
+    item.kind === 'room' ? isRoomReminded(item.room) : isEventReminded(item.event)
+  );
 
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#120d08', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+      <View pointerEvents="none" style={StyleSheet.absoluteFill} />
       <LiveHeader />
+      <DiscoveryReturnBar />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.orange} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentText} />}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
       >
-        <FilterPills active={activeFilter} onChange={setActiveFilter} />
         {loading ? <PremiumSkeleton compact label="Loading real Live sessions..." style={styles.loadingBlock} /> : null}
 
+        <View style={styles.featuredHeader}>
+          <Text style={styles.featuredEyebrow}>FEATURED LIVE</Text>
+          <View style={styles.featuredRule} />
+        </View>
         <View style={[styles.focusWrap, { height: focusHeight }]}>
           <FocusCard
             source={focus}
-            activeFilter={activeFilter}
             onJoinRoom={openRoom}
             onToggleRoomReminder={toggleRoomReminder}
             onToggleEventReminder={toggleEventReminder}
             onPlayReplay={(room) => { void playReplayRoom(room); }}
             isRoomReminded={isRoomReminded}
             isEventReminded={isEventReminded}
-            onViewUpcoming={() => setActiveFilter('Upcoming')}
-            onViewReplays={() => setActiveFilter('Replays')}
+            currentUserId={user?.id}
+            onRemoveRoom={removeOwnedRoom}
           />
         </View>
 
+        <View style={styles.categoryGrid}>
+          <View style={styles.categoryRow}>
+            <CategoryTile size={categoryTileSize} title="Community Rooms" source={categorySources.community} fallbackSource={WEB_PARITY_ASSETS.intimateCrowdHero} emptyKicker="DROP IN TOGETHER" emptyCopy="Creator-led conversation and shared moments." onOpen={openFocusSource} />
+            <CategoryTile size={categoryTileSize} title="Listening Parties" source={categorySources.listening} fallbackSource={WEB_PARITY_ASSETS.warmListeningRoom} emptyKicker="HEAR IT FIRST" emptyCopy="Collective first listens and release nights." onOpen={openFocusSource} />
+          </View>
+          <View style={styles.categoryRow}>
+            <CategoryTile size={categoryTileSize} title="Studio / Cook-up" source={categorySources.studio} fallbackSource={WEB_PARITY_ASSETS.bedroomStudio} emptyKicker="BUILD IN PUBLIC" emptyCopy="Sessions, process and live making." onOpen={openFocusSource} />
+            <CategoryTile size={categoryTileSize} title="Event-linked" source={categorySources.event} fallbackSource={WEB_PARITY_ASSETS.phoneStage} emptyKicker="FROM THE CROWD" emptyCopy="Live moments connected to real events." onOpen={openFocusSource} />
+          </View>
+        </View>
+
+        <PluggdTvEntry video={tvQuery.data?.[0]} onPress={() => router.push('/pluggd-tv' as any)} />
+
+        <BattleArenaEntry battle={featuredBattle} onPress={() => router.push('/live/battles' as any)} />
+
+        {tonight.length > 0 ? (
+          <View style={styles.scheduleSection}>
+            <SectionHeader title="TONIGHT" />
+            <View style={styles.scheduleList}>
+              {tonight.map((item) => (
+                <ScheduleRow key={item.key} item={item} reminded={isScheduleReminded(item)} onOpen={openScheduleItem} onReminder={toggleScheduleReminder} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {thisWeek.length > 0 ? (
+          <View style={styles.scheduleSection}>
+            <SectionHeader title="THIS WEEK" />
+            <View style={styles.scheduleList}>
+              {thisWeek.map((item) => (
+                <ScheduleRow key={item.key} item={item} reminded={isScheduleReminded(item)} onOpen={openScheduleItem} onReminder={toggleScheduleReminder} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {liveNow.length > 1 ? (
           <View style={styles.sectionBlock}>
-            <SectionHeader title="LIVE NOW" />
+            <SectionHeader title="MORE LIVE NOW" action="Open Live Feed" onAction={() => router.push('/live/feed' as any)} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveShelf}>
-              {liveNow.map((room) => <LiveNowCard key={room.id} room={room} onJoin={openRoom} />)}
+              {liveNow.slice(1).map((room) => <LiveNowCard key={room.id} room={room} onJoin={openRoom} currentUserId={user?.id} />)}
             </ScrollView>
           </View>
         ) : null}
 
-        <LiveSwipeEntry rooms={liveNow} onPress={() => router.push('/live/feed' as any)} />
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="UPCOMING LIVE SESSIONS" />
-          {upcomingRooms.length === 0 ? (
-            <EmptyInline title="Nothing scheduled yet" body="Follow creators to see their next live sessions here." primary="Find creators" onPrimary={() => router.push('/search' as any)} />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.upcomingShelf}>
-              {upcomingRooms.slice(0, 10).map((room) => (
-                <UpcomingSessionCard
-                  key={room.id}
-                  room={room}
-                  reminded={isRoomReminded(room)}
-                  onToggleReminder={() => { void toggleRoomReminder(room); }}
-                  onOpen={() => openRoom(room)}
-                />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="COMMUNITY ROOMS" />
-          {communityRooms.length === 0 ? (
-            <EmptyInline title="No community rooms active" body="Community rooms appear here when circles open real room data." />
-          ) : (
-            <View style={styles.roomList}>
-              {communityRooms.slice(0, 6).map((room) => (
-                <CompactRoomRow
-                  key={room.id}
-                  room={{ ...room, title: room.title || communitiesById.get(room.backstage_id || '')?.title || room.title }}
-                  onOpen={openRoom}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="LISTENING PARTIES" />
-          {listeningParties.length === 0 ? (
-            <EmptyInline title="No listening parties yet" body="Music-first live rooms will appear here when creators schedule them." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wideShelf}>
-              {listeningParties.map((room) => (
-                <WideSessionCard key={room.id} room={room} label="LISTENING" reminded={isRoomReminded(room)} onJoin={openRoom} onReminder={toggleRoomReminder} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="STUDIO / COOK-UP SESSIONS" />
-          {studioSessions.length === 0 ? (
-            <EmptyInline title="No studio sessions yet" body="Cook-ups, producer feedback and process rooms will appear here when they are real." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wideShelf}>
-              {studioSessions.map((room) => (
-                <WideSessionCard key={room.id} room={room} label="STUDIO" reminded={isRoomReminded(room)} onJoin={openRoom} onReminder={toggleRoomReminder} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="EVENT-LINKED LIVE SESSIONS" />
-          {eventLinked.length === 0 ? (
-            <EmptyInline title="No event-linked live sessions" body="Event streams, pre-parties, afterparties and recaps appear only when the event has live media attached." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wideShelf}>
-              {eventLinked.map((event) => (
-                <EventLiveCard key={event.id} event={event} reminded={isEventReminded(event)} onReminder={toggleEventReminder} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionBlock}>
+        {replays.length > 0 ? <View style={styles.sectionBlock}>
           <SectionHeader title="REPLAYS + CLIPS" />
-          {replays.length === 0 ? (
-            <EmptyInline title="No replays yet" body="Creator replays and clips appear here when replay media exists." />
-          ) : (
-            <View style={styles.replayList}>
-              {replays.slice(0, 8).map((room) => <ReplayRow key={room.id} room={room} />)}
-            </View>
-          )}
-        </View>
+          <View style={styles.replayList}>
+            {replays.slice(0, 8).map((room) => <ReplayRow key={room.id} room={room} />)}
+          </View>
+        </View> : null}
 
-        <View style={styles.sectionBlock}>
+        {creators.length > 0 ? <View style={styles.sectionBlock}>
           <SectionHeader title="FEATURED LIVE CREATORS" />
-          {creators.length === 0 ? (
-            <EmptyInline title="No featured live creators yet" body="Follow creators to shape future live recommendations." />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.creatorShelf}>
-              {creators.map((creator) => (
-                <CreatorCardView key={creator.id} creator={creator} following={following.has(creator.id)} onToggle={() => toggleFollow(creator.id)} />
-              ))}
-            </ScrollView>
-          )}
-        </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.creatorShelf}>
+            {creators.map((creator) => (
+              <CreatorCardView key={creator.id} creator={creator} following={following.has(creator.id)} onToggle={() => toggleFollow(creator.id)} />
+            ))}
+          </ScrollView>
+        </View> : null}
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.canvas },
+function useLiveCultureStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 10,
@@ -1165,22 +1472,33 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(10,8,6,0.92)',
+    backgroundColor: theme.colors.headerGlass,
+    borderBottomColor: theme.colors.divider,
     zIndex: 3,
   },
+  headerCompact: { paddingHorizontal: 10 },
   headerTitle: {
     ...pluggdTextStyles.appTitle,
     fontSize: 32,
     lineHeight: 36,
   },
+  headerTitleCompact: { fontSize: 27, lineHeight: 32 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerActionsCompact: { gap: 3 },
+  goLiveButton: { minWidth: 84, height: 44, borderRadius: 22, paddingHorizontal: 13, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill },
+  goLiveButtonCompact: { minWidth: 70, paddingHorizontal: 8, gap: 3 },
+  goLiveLabel: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 0.7 },
   headerIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerIconCompact: { width: 44, height: 44, borderRadius: 22 },
   notificationBadge: {
     position: 'absolute',
     right: 5,
@@ -1188,14 +1506,14 @@ const styles = StyleSheet.create({
     minWidth: 17,
     height: 17,
     borderRadius: 8.5,
-    backgroundColor: COLORS.coral,
+    backgroundColor: theme.colors.danger,
     borderWidth: 1,
-    borderColor: COLORS.canvas,
+    borderColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  notificationBadgeText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.white, fontSize: 9, fontWeight: '900' },
+  notificationBadgeText: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
   avatarButton: {
     width: 44,
     height: 44,
@@ -1203,9 +1521,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
   },
+  avatarButtonCompact: { width: 44, height: 44, borderRadius: 22 },
   avatarInitials: { fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
-  scrollContent: { paddingTop: 12 },
+  scrollContent: { paddingTop: 14 },
+  featuredHeader: { marginHorizontal: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featuredEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, lineHeight: 13, letterSpacing: 1.8 },
+  featuredRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.controlBorder },
   filters: { minHeight: 44, paddingHorizontal: 16, paddingBottom: 14, gap: 8, alignItems: 'center' },
   filterPill: {
     minHeight: 44,
@@ -1219,17 +1543,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: 'rgba(36,29,21,0.76)',
-    color: COLORS.muted,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.textSecondary,
     fontFamily: 'Satoshi-Medium',
     fontSize: 13,
     lineHeight: 31,
   },
   filterTextActive: {
-    color: COLORS.orange,
-    borderColor: 'rgba(255,102,0,0.64)',
-    backgroundColor: 'rgba(255,102,0,0.14)',
+    color: theme.colors.accentText,
+    borderColor: theme.colors.accentFill,
+    backgroundColor: theme.colors.accentSoft,
   },
   loadingBlock: {
     marginHorizontal: 16,
@@ -1237,13 +1561,13 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
   },
-  focusWrap: { marginHorizontal: 16, marginBottom: 20 },
+  focusWrap: { marginHorizontal: 16, marginBottom: 16 },
   focusCard: {
     flex: 1,
-    borderRadius: 23,
+    borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
@@ -1285,11 +1609,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: theme.colors.accentFill,
     paddingHorizontal: 16,
   },
-  focusPrimaryLive: { backgroundColor: COLORS.coral },
-  focusPrimaryText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17 },
+  focusPrimaryLive: { backgroundColor: theme.colors.accentFill },
+  focusPrimaryText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17 },
   focusSecondary: {
     minHeight: 44,
     borderRadius: 22,
@@ -1301,30 +1625,76 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   focusSecondaryText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13, lineHeight: 16 },
+  focusDanger: { minHeight: 44, borderRadius: 22, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(156,24,36,0.92)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  focusDangerText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 13, lineHeight: 16 },
   focusEmpty: {
     flex: 1,
-    borderRadius: 23,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: COLORS.surface2,
     backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 22,
+    overflow: 'hidden',
   },
+  focusEmptyCopy: { position: 'absolute', left: 16, right: 16, bottom: 15, alignItems: 'center' },
+  focusEmptySignal: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,102,0,0.42)', backgroundColor: 'rgba(255,102,0,0.12)' },
+  focusEmptyEyebrow: { marginBottom: 5, color: COLORS.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, lineHeight: 12, letterSpacing: 1.8 },
   focusEmptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 22, lineHeight: 26, textAlign: 'center' },
-  focusEmptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 8, color: COLORS.muted, fontSize: 14, lineHeight: 20, fontWeight: '600', textAlign: 'center' },
+  focusEmptyBody: { maxWidth: 560, fontFamily: pluggdFonts.satoshiMedium, marginTop: 6, color: COLORS.soft, fontSize: 12.5, lineHeight: 17, fontWeight: '600', textAlign: 'center' },
   focusEmptyActions: { marginTop: 18, flexDirection: 'row', gap: 10 },
-  focusEmptyPrimary: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.orange },
-  focusEmptyPrimaryText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  focusEmptyPrimary: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill },
+  focusEmptyPrimaryText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   focusEmptySecondary: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.surface2 },
   focusEmptySecondaryText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   sectionBlock: { marginBottom: 24 },
+  categoryGrid: { marginHorizontal: 16, marginBottom: 26, gap: 10 },
+  categoryRow: { flexDirection: 'row', gap: 10 },
+  categoryTile: { flexGrow: 0, flexShrink: 0, borderRadius: 3, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: COLORS.surface },
+  categoryTilePressed: { opacity: 0.78 },
+  categoryImage: { width: '100%', height: '100%' },
+  categoryCopy: { position: 'absolute', left: 11, right: 10, bottom: 10 },
+  categoryStatus: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, lineHeight: 12, letterSpacing: 0.8, textTransform: 'uppercase' },
+  categoryTitle: { marginTop: 3, color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 19, lineHeight: 21 },
+  categoryItemTitle: { marginTop: 4, color: COLORS.soft, fontFamily: pluggdFonts.satoshiMedium, fontSize: 10.5, lineHeight: 13, fontWeight: '600' },
+  tvEntry: { marginHorizontal: 16, marginBottom: 26, height: 224, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: COLORS.surface },
+  tvEntryImage: { width: '100%', height: '100%' },
+  tvEntryCopy: { position: 'absolute', left: 16, right: 16, bottom: 15 },
+  tvEntryLabel: { alignSelf: 'flex-start', minHeight: 28, borderRadius: 14, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10,8,6,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  tvEntryLabelText: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.3 },
+  tvEntryTitle: { marginTop: 10, color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 26, lineHeight: 29 },
+  tvEntryBody: { marginTop: 5, color: COLORS.soft, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
+  tvEntryButton: { alignSelf: 'flex-start', marginTop: 11, minHeight: 40, borderRadius: 20, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: 'rgba(10,8,6,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' },
+  tvEntryButtonText: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBlack, fontSize: 12 },
+  battleEntry: { marginHorizontal: 16, marginBottom: 18, minHeight: 238, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,102,0,0.34)', backgroundColor: COLORS.surface },
+  battleEntryGlow: { position: 'absolute', right: -58, top: -76, width: 230, height: 230, borderRadius: 115, backgroundColor: 'rgba(255,102,0,0.13)' },
+  battleEntryCopy: { flex: 1, padding: 18, justifyContent: 'flex-end' },
+  battleEntryTopRow: { position: 'absolute', left: 18, right: 18, top: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  battleEntryLabel: { minHeight: 30, borderRadius: 15, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,102,0,0.12)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.36)' },
+  battleEntryLabelLive: { backgroundColor: COLORS.coral, borderColor: COLORS.coral },
+  battleEntryLabelText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.3 },
+  battleEntryMark: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,102,0,0.38)', backgroundColor: 'rgba(255,102,0,0.10)' },
+  battleEntryTitle: { marginTop: 72, fontFamily: pluggdFonts.displayBold, fontSize: 29, lineHeight: 32 },
+  battleEntryBody: { marginTop: 6, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 17 },
+  battleEntryButton: { alignSelf: 'flex-start', marginTop: 13, minHeight: 42, borderRadius: 21, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1 },
+  battleEntryButtonText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 12 },
+  scheduleSection: { marginBottom: 25 },
+  scheduleList: { marginHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border },
+  scheduleRow: { minHeight: 82, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border },
+  scheduleOpen: { flex: 1, minWidth: 0, minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  scheduleThumb: { width: 62, height: 62, borderRadius: 2 },
+  scheduleCopy: { flex: 1, minWidth: 0 },
+  scheduleTime: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10, lineHeight: 13, letterSpacing: 0.6 },
+  scheduleTitle: { marginTop: 3, color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 15, lineHeight: 18, fontWeight: '800' },
+  scheduleHost: { marginTop: 3, color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11.5, lineHeight: 14, fontWeight: '600' },
+  notifyButton: { minWidth: 72, minHeight: 44, borderRadius: 22, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface },
+  notifyButtonOn: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  notifyButtonText: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  notifyButtonTextOn: { color: theme.colors.onAccent },
   sectionHeader: { paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
-  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: '#ff6600' },
-  sectionTitle: { fontFamily: edFonts.serif, color: COLORS.white, fontSize: 22, lineHeight: 26, letterSpacing: 0 },
+  sectionTick: { width: 3, height: 16, borderRadius: 2, backgroundColor: theme.colors.accentFill },
+  sectionTitle: { fontFamily: edFonts.serif, color: theme.colors.text, fontSize: 22, lineHeight: 26, letterSpacing: 0 },
   sectionActionButton: { minHeight: 44, justifyContent: 'center' },
-  sectionAction: { fontFamily: 'Satoshi-Bold', color: COLORS.orange, fontSize: 12, lineHeight: 15 },
+  sectionAction: { fontFamily: 'Satoshi-Bold', color: theme.colors.accentText, fontSize: 12, lineHeight: 15 },
   liveShelf: { paddingHorizontal: 16, gap: 12 },
   liveNowCard: {
     width: 166,
@@ -1362,58 +1732,58 @@ const styles = StyleSheet.create({
     minHeight: 108,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     overflow: 'hidden',
     padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
   },
   swipeCopy: { flex: 1, paddingRight: 12 },
-  swipeTitle: { color: COLORS.white, fontFamily: 'Satoshi-Black', fontSize: 18, lineHeight: 22 },
-  swipeBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 5, color: COLORS.muted, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  swipeTitle: { color: theme.colors.text, fontFamily: 'Satoshi-Black', fontSize: 18, lineHeight: 22 },
+  swipeBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 5, color: theme.colors.textSecondary, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   swipeStack: { width: 94, height: 64, position: 'relative' },
-  swipeThumb: { position: 'absolute', top: 0, width: 54, height: 64, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.surface2 },
+  swipeThumb: { position: 'absolute', top: 0, width: 54, height: 64, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.controlBorder },
   swipeThumbImage: { width: '100%', height: '100%' },
-  swipeCTA: { minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 13, backgroundColor: COLORS.orange },
-  swipeCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  swipeCTA: { minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 13, backgroundColor: theme.colors.accentFill },
+  swipeCTAText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   upcomingShelf: { paddingHorizontal: 16, gap: 12 },
   upcomingCard: {
     width: 244,
     height: 156,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     padding: 13,
   },
   upcomingDetailsButton: { flex: 1 },
-  cardTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
-  cardMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '700' },
+  cardTitle: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
+  cardMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 15, fontWeight: '700' },
   countdownRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  countdownText: { fontFamily: pluggdFonts.satoshiBold, color: COLORS.soft, fontSize: 12, lineHeight: 15, fontWeight: '800' },
-  compactCTA: { marginTop: 'auto', minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(36,29,21,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  compactCTAOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.14)' },
-  compactCTAText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12 },
-  compactCTATextOn: { color: COLORS.orange },
+  countdownText: { fontFamily: pluggdFonts.satoshiBold, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  compactCTA: { marginTop: 'auto', minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceAlt, borderWidth: 1, borderColor: theme.colors.controlBorder },
+  compactCTAOn: { borderColor: theme.colors.accentFill, backgroundColor: theme.colors.accentSoft },
+  compactCTAText: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  compactCTATextOn: { color: theme.colors.accentText },
   roomList: { marginHorizontal: 16, gap: 10 },
   roomRow: {
     minHeight: 82,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
   },
-  roomIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,102,0,0.12)' },
+  roomIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.controlBorder },
   roomCopy: { flex: 1, minWidth: 0 },
-  roomTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 18 },
-  roomMeta: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 5, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '600' },
+  roomTitle: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 18 },
+  roomMeta: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 5, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 15, fontWeight: '600' },
   roomLiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.coral },
-  roomCTA: { color: COLORS.orange, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  roomCTA: { color: theme.colors.accentText, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   wideShelf: { paddingHorizontal: 16, gap: 12 },
   wideCard: {
     width: 244,
@@ -1432,18 +1802,18 @@ const styles = StyleSheet.create({
   miniTagText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 10, lineHeight: 12 },
   wideTitle: { marginTop: 'auto', color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 19 },
   wideMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 4, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '700' },
-  wideCTA: { marginTop: 9, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
-  wideCTAText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 12 },
+  wideCTA: { marginTop: 9, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill },
+  wideCTAText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 12 },
   wideSplitActions: { marginTop: 9, flexDirection: 'row', gap: 8 },
-  wideSmallCTA: { flex: 1, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white, paddingHorizontal: 8 },
-  wideSmallCTAOn: { backgroundColor: 'rgba(255,102,0,0.16)', borderWidth: 1, borderColor: COLORS.orange },
+  wideSmallCTA: { flex: 1, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill, paddingHorizontal: 8 },
+  wideSmallCTAOn: { backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.controlBorder },
   replayList: { marginHorizontal: 16, gap: 10 },
   replayRow: {
     minHeight: 88,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1451,35 +1821,40 @@ const styles = StyleSheet.create({
   },
   replayThumb: { width: 72, height: 72, borderRadius: 12 },
   replayCopy: { flex: 1, minWidth: 0 },
-  replayTitle: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 19 },
-  replayMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 4, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '700' },
-  replayPlay: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
+  replayTitle: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 15, lineHeight: 19 },
+  replayMeta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 4, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 15, fontWeight: '700' },
+  replayPlay: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill },
   creatorShelf: { paddingHorizontal: 16, gap: 12 },
-  creatorCard: { width: 140, minHeight: 184, borderRadius: 16, borderWidth: 1, borderColor: COLORS.surface2, backgroundColor: COLORS.surface, padding: 12, alignItems: 'center' },
-  creatorAvatar: { width: 82, height: 82, borderRadius: 41, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: COLORS.surface2 },
+  creatorCard: { width: 140, minHeight: 184, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, padding: 12, alignItems: 'center' },
+  creatorAvatar: { width: 82, height: 82, borderRadius: 41, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceAlt },
   creatorAvatarLive: { borderColor: COLORS.coral, borderWidth: 2 },
-  creatorInitials: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
+  creatorInitials: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 16, lineHeight: 20 },
   creatorLivePill: { position: 'absolute', bottom: -1, height: 20, borderRadius: 10, paddingHorizontal: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.coral },
   creatorLiveText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 9, lineHeight: 11 },
-  creatorName: { marginTop: 11, color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17, textAlign: 'center' },
-  creatorHandle: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 4, color: COLORS.muted, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
-  followButton: { marginTop: 10, minHeight: 44, alignSelf: 'stretch', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(36,29,21,0.48)' },
-  followButtonOn: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.14)' },
-  followText: { color: COLORS.white, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
-  followTextOn: { color: COLORS.orange },
+  creatorName: { marginTop: 11, color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 14, lineHeight: 17, textAlign: 'center' },
+  creatorHandle: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 4, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
+  followButton: { marginTop: 10, minHeight: 44, alignSelf: 'stretch', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceAlt },
+  followButtonOn: { borderColor: theme.colors.accentFill, backgroundColor: theme.colors.accentSoft },
+  followText: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 12, lineHeight: 15 },
+  followTextOn: { color: theme.colors.accentText },
   emptyInline: {
     marginHorizontal: 16,
-    minHeight: 104,
+    minHeight: 92,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.surface2,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    gap: 12,
   },
-  emptyTitle: { color: COLORS.white, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19, textAlign: 'center' },
-  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 6, color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600', textAlign: 'center' },
-  emptyAction: { marginTop: 12, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, backgroundColor: COLORS.orange },
-  emptyActionText: { color: COLORS.canvas, fontFamily: 'Satoshi-Bold', fontSize: 13 },
-});
+  emptyInlineIcon: { width: 44, height: 44, borderRadius: 13, flexShrink: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.controlBorder },
+  emptyInlineCopy: { flex: 1, minWidth: 0 },
+  emptyTitle: { color: theme.colors.text, fontFamily: 'Sora-Bold', fontSize: 15, lineHeight: 19 },
+  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, marginTop: 4, color: theme.colors.textSecondary, fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  emptyAction: { minHeight: 44, borderRadius: 22, flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 15, backgroundColor: theme.colors.accentFill },
+  emptyActionText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  }), [theme]);
+}

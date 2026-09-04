@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../src/design/typography';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
+import { PluggdImage } from '../src/components/PluggdImage';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { MobileFeedAttachmentCard } from '../src/features/community-feed/MobileFeedAttachmentCard';
 import type { MobileFeedAttachment } from '../src/features/community-feed/communityFeedTypes';
@@ -20,12 +21,9 @@ import {
   uploadSocialMediaAsset,
 } from '../src/features/culture/mobileServices';
 import { contentInitials } from '../src/lib/mobileContent';
-
-const CANVAS = '#0a0806';
-const SURFACE = '#171310';
-const BORDER = '#241d15';
-const ORANGE = '#ff6600';
-const MUTED = '#8E8E9F';
+import { supabase } from '../src/lib/supabase';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
 
 type ComposerMedia = {
   uri: string;
@@ -63,9 +61,25 @@ const SUPPORTED_POST_TYPES = new Set([
 ]);
 
 export default function CreatePostRoute() {
+  const theme = usePluggdTheme();
+  const styles = useCreatePostStyles();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const profile = useQuery({
+    queryKey: ['profile', 'composer', user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('full_name,username,avatar_url')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { full_name?: string | null; username?: string | null; avatar_url?: string | null } | null;
+    },
+  });
   const params = useLocalSearchParams<{
     type?: string;
     communityId?: string;
@@ -80,6 +94,7 @@ export default function CreatePostRoute() {
     challengeId?: string;
     quotePostId?: string;
     attachmentType?: string;
+    returnTo?: string;
   }>();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
@@ -108,6 +123,7 @@ export default function CreatePostRoute() {
   const destinationLabel = destinations.length
     ? destinations.map((destination) => destination.destination_type.replace(/_/g, ' ')).join(' + ')
     : 'Community feed + profile';
+  const authorName = profile.data?.full_name || profile.data?.username || user?.email || 'PLUGGD member';
   const validPollOptions = useMemo(() => pollOptions.map((option) => option.trim()).filter(Boolean), [pollOptions]);
   const pollPayload = useMemo(() => {
     if (!isPoll || !pollQuestion.trim() || validPollOptions.length < 2) return null;
@@ -276,13 +292,13 @@ export default function CreatePostRoute() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient colors={[CANVAS, '#120d08', CANVAS]} style={StyleSheet.absoluteFill} />
-      <StatusBar style="light" />
+      <LinearGradient colors={theme.scheme === 'dark' ? ['#0A0806', '#120D08', '#0A0806'] : ['#FFF8ED', '#F4E7D2', '#FFF8ED']} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 58), paddingBottom: insets.bottom + 42 }}
+        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 58), paddingBottom: bottomInset }}
       >
         <View style={styles.header}>
           <Pressable
@@ -291,10 +307,11 @@ export default function CreatePostRoute() {
             style={styles.iconButton}
             onPress={() => {
               selectionHaptic();
-              router.back();
+              if (params.returnTo === '/community') router.replace('/community' as any);
+              else router.back();
             }}
           >
-            <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+            <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>{label}</Text>
@@ -314,12 +331,12 @@ export default function CreatePostRoute() {
         <View style={styles.card}>
           <View style={styles.authorRow}>
             <View style={styles.authorAvatar}>
-              <Text style={styles.authorInitial}>{contentInitials(user?.email || 'P')}</Text>
+              {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Text style={styles.authorInitial}>{contentInitials(authorName)}</Text>}
             </View>
             <View style={styles.authorCopy}>
-              <Text style={styles.authorName} numberOfLines={1}>{user?.email || 'PLUGGD member'}</Text>
+              <Text style={styles.authorName} numberOfLines={1}>{authorName}</Text>
               <View style={styles.destinationPill}>
-                <MaterialIcons name="public" size={14} color={ORANGE} />
+                <MaterialIcons name="public" size={14} color={theme.colors.accentText} />
                 <Text style={styles.destinationPillText} numberOfLines={1}>{destinationLabel}</Text>
               </View>
             </View>
@@ -332,7 +349,7 @@ export default function CreatePostRoute() {
                 value={pollQuestion}
                 onChangeText={setPollQuestion}
                 placeholder="Ask the community to vote..."
-                placeholderTextColor="#62627A"
+                placeholderTextColor={theme.colors.textSubtle}
                 style={styles.titleInput}
                 maxLength={180}
               />
@@ -348,7 +365,7 @@ export default function CreatePostRoute() {
                         setPollOptions(next);
                       }}
                       placeholder={`Option ${index + 1}`}
-                      placeholderTextColor="#62627A"
+                      placeholderTextColor={theme.colors.textSubtle}
                       style={styles.pollOptionInput}
                       maxLength={80}
                     />
@@ -359,7 +376,7 @@ export default function CreatePostRoute() {
                         style={styles.pollRemoveButton}
                         onPress={() => setPollOptions(pollOptions.filter((_, optionIndex) => optionIndex !== index))}
                       >
-                        <MaterialIcons name="close" size={18} color={MUTED} />
+                        <MaterialIcons name="close" size={18} color={theme.colors.textMuted} />
                       </Pressable>
                     ) : null}
                   </View>
@@ -372,7 +389,7 @@ export default function CreatePostRoute() {
                   style={styles.addOptionButton}
                   onPress={() => setPollOptions([...pollOptions, ''])}
                 >
-                  <MaterialIcons name="add" size={18} color={ORANGE} />
+                  <MaterialIcons name="add" size={18} color={theme.colors.accentText} />
                   <Text style={styles.addOptionText}>Add option</Text>
                 </Pressable>
               ) : null}
@@ -383,7 +400,7 @@ export default function CreatePostRoute() {
               {attachment ? <MobileFeedAttachmentCard attachment={attachment} /> : null}
               {attachmentUnavailable ? (
                 <View style={styles.attachmentUnavailable}>
-                  <MaterialIcons name="link-off" size={18} color={ORANGE} />
+                  <MaterialIcons name="link-off" size={18} color={theme.colors.accentText} />
                   <Text style={styles.attachmentUnavailableText}>Shared content could not be loaded. You can still post with a caption.</Text>
                 </View>
               ) : null}
@@ -397,7 +414,7 @@ export default function CreatePostRoute() {
                       ? 'Tell fans what is happening...'
                       : 'Share a music update...'
                 }
-                placeholderTextColor="#62627A"
+                placeholderTextColor={theme.colors.textSubtle}
                 style={styles.bodyInput}
                 multiline
                 textAlignVertical="top"
@@ -407,7 +424,7 @@ export default function CreatePostRoute() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder={postType === 'announcement' ? 'Add announcement title' : 'Add an optional title'}
-                placeholderTextColor="#62627A"
+                placeholderTextColor={theme.colors.textSubtle}
                 style={styles.titleInput}
                 maxLength={120}
               />
@@ -418,10 +435,10 @@ export default function CreatePostRoute() {
             <View style={styles.mediaPreviewRail}>
               {media.map((item, index) => (
                 <View key={`${item.uri}-${index}`} style={styles.mediaChip}>
-                  <MaterialIcons name={item.kind === 'image' ? 'image' : item.kind === 'video' ? 'videocam' : 'graphic-eq'} size={18} color={ORANGE} />
+                  <MaterialIcons name={item.kind === 'image' ? 'image' : item.kind === 'video' ? 'videocam' : 'graphic-eq'} size={18} color={theme.colors.accentText} />
                   <Text style={styles.mediaChipText} numberOfLines={1}>{item.fileName || item.kind}</Text>
                   <Pressable accessibilityRole="button" accessibilityLabel="Remove media" onPress={() => setMedia(media.filter((_, mediaIndex) => mediaIndex !== index))}>
-                    <MaterialIcons name="close" size={18} color={MUTED} />
+                    <MaterialIcons name="close" size={18} color={theme.colors.textMuted} />
                   </Pressable>
                 </View>
               ))}
@@ -429,19 +446,19 @@ export default function CreatePostRoute() {
           ) : null}
           <View style={styles.toolRow}>
             <Pressable accessibilityRole="button" accessibilityLabel="Add images" style={styles.toolButton} onPress={pickImages} disabled={isPoll}>
-              <MaterialIcons name="image" size={22} color={isPoll ? MUTED : ORANGE} />
+              <MaterialIcons name="image" size={22} color={isPoll ? theme.colors.textMuted : theme.colors.accentText} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Add video" style={styles.toolButton} onPress={pickVideo} disabled={isPoll}>
-              <MaterialIcons name="videocam" size={22} color={isPoll ? MUTED : ORANGE} />
+              <MaterialIcons name="videocam" size={22} color={isPoll ? theme.colors.textMuted : theme.colors.accentText} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Add audio" style={styles.toolButton} onPress={pickAudio} disabled={isPoll}>
-              <MaterialIcons name="graphic-eq" size={22} color={isPoll ? MUTED : ORANGE} />
+              <MaterialIcons name="graphic-eq" size={22} color={isPoll ? theme.colors.textMuted : theme.colors.accentText} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Create poll" style={styles.toolButton} onPress={() => router.setParams({ type: 'poll' } as any)}>
-              <MaterialIcons name="poll" size={22} color={ORANGE} />
+              <MaterialIcons name="poll" size={22} color={theme.colors.accentText} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Mention help" style={styles.toolButton} onPress={() => Alert.alert('Mentions and hashtags', 'Type @handles and #hashtags in your post to connect it to people and topics.')}>
-              <MaterialIcons name="alternate-email" size={22} color={ORANGE} />
+              <MaterialIcons name="alternate-email" size={22} color={theme.colors.accentText} />
             </Pressable>
           </View>
         </View>
@@ -453,11 +470,11 @@ export default function CreatePostRoute() {
           style={[styles.publishButton, (mutation.isPending || !canPublish) && styles.publishButtonDisabled]}
           onPress={publish}
         >
-          {mutation.isPending ? <ActivityIndicator color={CANVAS} /> : <Text style={styles.publishText}>Publish {label}</Text>}
+          {mutation.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.publishText}>Publish {label}</Text>}
         </Pressable>
 
         <View style={styles.note}>
-          <MaterialIcons name="info-outline" size={18} color={ORANGE} />
+          <MaterialIcons name="info-outline" size={18} color={theme.colors.accentText} />
           <Text style={styles.noteText}>
             Posting to {destinationLabel}. Hashtags, mentions, replies and shared cards stay connected to your post.
           </Text>
@@ -467,45 +484,48 @@ export default function CreatePostRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: CANVAS },
+function useCreatePostStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   header: { marginHorizontal: 16, marginBottom: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 42, height: 42, borderRadius: 5, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
   headerCopy: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: 10 },
-  kicker: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
-  title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 20, lineHeight: 25 },
-  publishMini: { minWidth: 64, height: 38, borderRadius: 5, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  publishMiniText: { color: CANVAS, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
-  card: { marginHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: BORDER, paddingVertical: 16, gap: 12 },
+  kicker: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.accentText, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
+  title: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 20, lineHeight: 25 },
+  publishMini: { minWidth: 64, minHeight: 44, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  publishMiniText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  card: { marginHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, paddingVertical: 16, gap: 12 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 4 },
-  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#241d15', borderWidth: 1, borderColor: '#2C2C3E', alignItems: 'center', justifyContent: 'center' },
-  authorInitial: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
+  authorAvatar: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: theme.colors.surfaceAlt, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  authorInitial: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
   authorCopy: { flex: 1, minWidth: 0, gap: 5 },
-  authorName: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
-  destinationPill: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 28, borderRadius: 5, borderWidth: 1, borderColor: 'rgba(255,102,0,0.32)', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  destinationPillText: { color: '#E4E4E9', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
-  label: { fontFamily: pluggdFonts.satoshiBlack, color: MUTED, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  titleInput: { minHeight: 48, borderRadius: 5, backgroundColor: '#111116', borderWidth: 1, borderColor: '#2a221a', color: '#FFFFFF', paddingHorizontal: 13, fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
-  bodyInput: { fontFamily: pluggdFonts.satoshiMedium, minHeight: 210, borderRadius: 5, backgroundColor: '#0D0D12', borderWidth: 1, borderColor: '#2a221a', color: '#FFFFFF', padding: 14, fontSize: 19, lineHeight: 27, fontWeight: '500' },
-  counter: { fontFamily: pluggdFonts.satoshiBold, color: '#62627A', fontSize: 11, fontWeight: '800', textAlign: 'right' },
+  authorName: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
+  destinationPill: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  destinationPillText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  label: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.textMuted, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  titleInput: { minHeight: 48, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, color: theme.colors.text, paddingHorizontal: 13, fontFamily: pluggdFonts.satoshiBold, fontSize: 15 },
+  bodyInput: { fontFamily: pluggdFonts.satoshiMedium, minHeight: 210, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, color: theme.colors.text, padding: 14, fontSize: 19, lineHeight: 27, fontWeight: '500' },
+  counter: { fontFamily: pluggdFonts.satoshiBold, color: theme.colors.textSubtle, fontSize: 11, fontWeight: '800', textAlign: 'right' },
   pollBuilder: { gap: 12 },
   pollOptions: { gap: 10 },
-  pollOptionRow: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: '#2a221a', backgroundColor: '#241d15', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pollOptionIndex: { fontFamily: pluggdFonts.satoshiBlack, width: 20, color: ORANGE, fontSize: 12, fontWeight: '900', textAlign: 'center' },
-  pollOptionInput: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '700', paddingVertical: 12 },
-  pollRemoveButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#151520', alignItems: 'center', justifyContent: 'center' },
-  addOptionButton: { height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(255,102,0,0.36)', backgroundColor: 'rgba(255,102,0,0.08)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
-  addOptionText: { fontFamily: pluggdFonts.satoshiBlack, color: ORANGE, fontSize: 13, fontWeight: '900' },
+  pollOptionRow: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pollOptionIndex: { fontFamily: pluggdFonts.satoshiBlack, width: 20, color: theme.colors.accentText, fontSize: 12, fontWeight: '900', textAlign: 'center' },
+  pollOptionInput: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: theme.colors.text, fontSize: 15, fontWeight: '700', paddingVertical: 12 },
+  pollRemoveButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
+  addOptionButton: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
+  addOptionText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.accentText, fontSize: 13, fontWeight: '900' },
   mediaPreviewRail: { gap: 8 },
-  attachmentUnavailable: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', backgroundColor: 'rgba(255,102,0,0.08)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  attachmentUnavailableText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#E4E4E9', fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  mediaChip: { minHeight: 42, borderRadius: 14, borderWidth: 1, borderColor: '#2a221a', backgroundColor: '#241d15', paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mediaChipText: { flex: 1, color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
-  toolRow: { minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2a221a', paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  attachmentUnavailable: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachmentUnavailableText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  mediaChip: { minHeight: 44, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mediaChipText: { flex: 1, color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  toolRow: { minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border, paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   toolButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  publishButton: { height: 54, borderRadius: 5, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, marginTop: 18 },
+  publishButton: { height: 54, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, marginTop: 18 },
   publishButtonDisabled: { opacity: 0.45 },
-  publishText: { fontFamily: pluggdFonts.satoshiBlack, color: CANVAS, fontSize: 14, fontWeight: '900' },
-  note: { margin: 16, borderRadius: 5, borderWidth: 1, borderColor: 'rgba(255,102,0,0.32)', backgroundColor: 'rgba(255,102,0,0.08)', padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
-  noteText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: '#E4E4E9', fontSize: 12, lineHeight: 18, fontWeight: '700' },
-});
+  publishText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.onAccent, fontSize: 14, fontWeight: '900' },
+  note: { margin: 16, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, padding: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  noteText: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+}), [theme]);
+}

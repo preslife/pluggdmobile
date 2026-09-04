@@ -43,6 +43,7 @@ vi.mock('@/services/credits/credit-system', () => ({
     getBalanceSummary: hoistedMocks.getBalanceSummaryMock,
     processPurchase: hoistedMocks.processPurchaseMock,
   },
+  isCreditPurchaseItem: (item: PurchaseItem) => item.type === 'release',
 }));
 
 vi.mock('@/services/credits/credit-policy', () => ({
@@ -106,27 +107,29 @@ beforeEach(() => {
     error: null,
   }));
 
-  processPurchaseMock.mockImplementation((_userId, _items, options) => {
+  processPurchaseMock.mockImplementation((_userId, purchaseItems: PurchaseItem[], options) => {
+    const totalCost = purchaseItems.reduce((sum, item) => sum + item.price, 0);
+    const eligibleCredits = purchaseItems
+      .filter((item) => item.type === 'release')
+      .reduce((sum, item) => sum + item.price, 0);
+    const creditsUsed = Math.min(
+      options?.requestedCredits ?? eligibleCredits,
+      eligibleCredits,
+      Math.floor(totalCost * 0.5),
+    );
+    const result = {
+      creditsUsed,
+      cashDue: totalCost - creditsUsed,
+      totalCost,
+      message: totalCost > creditsUsed ? 'Additional payment required' : 'Purchase complete',
+      appliedCredits: creditsUsed,
+      maxCreditsAllowed: creditsUsed,
+      cartTotal: totalCost,
+    };
     if (options?.previewOnly) {
-      return Promise.resolve({
-        creditsUsed: 50,
-        cashDue: 50,
-        totalCost: 100,
-        message: 'Additional payment required',
-        appliedCredits: 50,
-        maxCreditsAllowed: 50,
-        cartTotal: 100,
-      });
+      return Promise.resolve(result);
     }
-    return Promise.resolve({
-      creditsUsed: 50,
-      cashDue: 50,
-      totalCost: 100,
-      message: 'Additional payment required',
-      appliedCredits: 50,
-      maxCreditsAllowed: 50,
-      cartTotal: 100,
-    });
+    return Promise.resolve(result);
   });
 
   getPolicyMock.mockResolvedValue({ maxCartPercent: 0.5 });
@@ -166,14 +169,6 @@ describe('CheckoutModal hybrid checkout flow', () => {
         metadata: { cover_art: 'cover.jpg' },
       },
       {
-        id: 'beat-1',
-        type: 'beat',
-        title: 'Beat One',
-        price: 30,
-        license_type: 'premium',
-        metadata: { bpm: 120 },
-      },
-      {
         id: 'pack-1',
         type: 'sample_pack',
         title: 'Producer Pack',
@@ -198,7 +193,6 @@ describe('CheckoutModal hybrid checkout flow', () => {
 
     const typeLabels: Partial<Record<PurchaseItemType, string>> = {
       release: 'Release',
-      beat: 'Beat',
       sample_pack: 'Sample Pack',
       membership: 'Membership',
       course: 'Course',
@@ -224,16 +218,14 @@ describe('CheckoutModal hybrid checkout flow', () => {
     await waitFor(() => expect(getPolicyMock).toHaveBeenCalled());
 
     expect(await screen.findAllByText('Release')).not.toHaveLength(0);
-    expect(screen.getAllByText('Beat')).not.toHaveLength(0);
-    expect(screen.getAllByText('Premium license')).not.toHaveLength(0);
     expect(screen.getAllByText('Sample Pack')).not.toHaveLength(0);
     expect(screen.getAllByText('Membership')).not.toHaveLength(0);
     expect(screen.getAllByText('Course')).not.toHaveLength(0);
     expect(screen.getByText('Free')).toBeInTheDocument();
-    expect(screen.getByText('Items (5)')).toBeInTheDocument();
+    expect(screen.getByText('Items (4)')).toBeInTheDocument();
 
     const actionButton = await screen.findByRole('button', {
-      name: /apply 50 credits & pay/i,
+      name: /apply 20 credits & pay/i,
     });
 
     fireEvent.click(actionButton);
@@ -269,7 +261,7 @@ describe('CheckoutModal hybrid checkout flow', () => {
         enrichedCheckoutItems,
         expect.objectContaining({
           previewOnly: true,
-          cartTotal: 100,
+          cartTotal: 70,
         }),
       );
     });
@@ -290,6 +282,32 @@ describe('CheckoutModal hybrid checkout flow', () => {
     expect(toastMock).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Complete Your Payment' })
     );
+  });
+
+  it('routes beats to the signed licence flow instead of generic checkout', async () => {
+    render(
+      <CheckoutModal
+        isOpen
+        onClose={() => {}}
+        items={[
+          {
+            id: 'beat-1',
+            type: 'beat',
+            title: 'Beat One',
+            price: 30,
+            license_type: 'premium',
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByText('Choose your beat licence')).toBeInTheDocument();
+    expect(screen.getByText(/usage rights and a licence agreement/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review licences' }));
+
+    expect((window.location as any).href).toBe('/beat/beat-1');
+    expect(invokeMock).not.toHaveBeenCalledWith('enhanced-store-checkout', expect.anything());
   });
 
   it('has no accessibility violations in default state @a11y', async () => {

@@ -1,0 +1,411 @@
+# PLUGGD Android release readiness
+
+Owner: Pluggd Ltd
+
+Package: `com.pluggd.mobile`
+
+Minimum Android: API 24
+
+Target Android: API 36
+
+Audience: 16+
+
+This is the evidence ledger for the Android release. A box is checked only when
+the linked Play, Google Cloud, EAS, Supabase, build, or device evidence exists.
+Source-level success is not a substitute for a Play-signed build or device test.
+
+## External account gates
+
+- [x] Pluggd Ltd Google Play organisation account is verified. Account ID:
+      `5583821221716547447`.
+- [x] `com.pluggd.mobile` is registered and protected in Play Console.
+- [x] Play App Signing is enabled and the app-signing SHA-256 fingerprint is
+      recorded in the release handoff.
+- [x] Merchant/payments profile is active for Pluggd Ltd.
+- [x] Android Publisher API service account has minimum app-scoped access for
+      store presence and internal testing; production release permission is
+      intentionally not granted.
+- [x] Google Cloud Pub/Sub topic and authenticated push subscription exist for
+      RTDN.
+- [x] Firebase/Google services configuration is present in the EAS production
+      environment for FCM. Supabase remains PLUGGD's application backend.
+- [x] A dedicated Mapbox native runtime token is configured as
+      `EXPO_PUBLIC_MAPBOX_TOKEN` in each EAS environment. It is a public `pk` token
+      with only `styles:read` and `fonts:read`; native mobile SDK tokens cannot
+      use URL restrictions, so it is not shared with web or other environments.
+- [ ] If the native dependency download requires authenticated access, an EAS
+      build secret named `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` is configured as a secret
+      `sk` token with only `downloads:read`. It is never passed through Expo
+      plugin options or committed to source.
+- [x] `https://pluggd.fm/.well-known/assetlinks.json` contains the Play signing
+      fingerprint and serves as JSON without redirects.
+- [ ] UK billing-choice and US external-content-link enrolments are approved.
+- [ ] The exact EEA programme used by the release permits the implemented choice
+      flow; otherwise the EEA external-checkout flag remains disabled.
+- [x] The `PLUGGD Internal QA` Play tester list is configured for the internal
+      track with `lordtokumbo@gmail.com`.
+- [ ] A Sentry project exists for both Android and iOS, with
+      `EXPO_PUBLIC_SENTRY_DSN` stored in the applicable EAS environments and
+      `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` stored as
+      build-only EAS secrets/variables.
+
+Secrets belong in EAS, Google Cloud, Play Console, Stripe, or Supabase. Never
+commit `google-services.json`, service-account JSON, signing keys, Mapbox secret
+download tokens, Sentry auth tokens, or Play credentials. The public Mapbox
+runtime token is a client credential and must remain least-privileged and
+environment-specific.
+
+### Live service audit — 2026-08-11
+
+- Pluggd Ltd's Play organisation is verified. Google Cloud project
+  `pluggd-mobile-production` contains the Firebase Android app, a least-privilege
+  Android Publisher service account, the RTDN topic, and an authenticated OIDC
+  push subscription pointed at the Supabase RTDN endpoint.
+- EAS project `@pluggd-ltd/pluggd` is linked and its production environment
+  contains the Firebase configuration plus the existing public Mapbox runtime
+  token. A direct Mapbox style request returned HTTP 200 on 2026-08-10. Sentry
+  release upload credentials and a controlled production event remain external
+  gates.
+- The four reviewed Android migrations (`20260808130000`, `20260808131000`,
+  `20260808132000`, and `20260809140000`) were rehearsed and applied to Supabase
+  one at a time. Only those exact migration timestamps were repaired; unrelated
+  production migration history was not changed.
+- The provider-neutral Google verification, RTDN, credit licensing, commerce
+  policy, reporting, account deletion/export, moderation, spend, gifting, and
+  licensing function set is deployed and ACTIVE. Unauthenticated requests were
+  smoke-tested to fail closed.
+- Required Google Play verification and Pub/Sub secret names are provisioned.
+  External-program flags remain disabled until Play approves the exact program,
+  so digital commerce safely remains Play/credits-only.
+- `https://www.pluggd.fm/account-deletion` and
+  `https://www.pluggd.fm/.well-known/assetlinks.json` both return HTTP 200. The
+  Asset Links document names `com.pluggd.mobile` and the Play App Signing SHA-256
+  fingerprint `85:CA:AA:D2:51:68:6F:DE:A5:85:55:71:24:83:F4:21:05:90:59:61:40:07:D8:88:04:2C:69:E5:D1:57:12:73`.
+
+## Build and native evidence
+
+- [x] `npm run verify:mobile` passes against the checked-in lockfile, including
+      all shared/iOS contracts, TypeScript, a real Android Hermes/source-map
+      export, Expo Doctor 18/18, and the observability contract.
+- [x] The production EAS job repeats installation and verification in a clean
+      build environment.
+- [x] The current npm advisory result and runtime reachability disposition are
+      recorded in `DEPENDENCY_SECURITY_AUDIT_2026-08-08.md`; no automated
+      `audit fix` or incompatible SDK change was applied.
+- [x] The frozen production lockfile received a fresh dependency audit, and the
+      release bundle proves React DevTools/`shell-quote` are excluded.
+- [x] Clean Expo CNG Android prebuild passes.
+- [x] Debug Gradle build installs and boots on API 36.
+- [x] Production AAB is signed by the upload key and accepted by the internal
+      Play track.
+- [x] The local release AAB manifest targets API 36, has `allowBackup=false`,
+      predictive back enabled, adaptive activity configuration, and no legacy
+      storage, overlay, cleartext, or Google Maps API-key metadata.
+- [x] The release dependency report resolves Play Billing Library 9.1.0 through
+      `openiap-google:3.0.1` and `expo-iap:5.0.1`.
+- [x] All 51 arm64 and 50 x86-64 libraries pass Android 16 KB page-size
+      inspection.
+- [x] R8, resource shrinking, release lint, AAB packaging, and an exact-source
+      minified APK cold-launch smoke pass.
+- [x] The exact release APK installs and cold-launches on API 24, 33, 35, and
+      36; the repeatable smoke gate records the APK hash, SDK contract, resumed
+      activity, timing, screenshot, and fatal/OOM log result.
+- [ ] Sentry symbol/source-map upload is verified with a controlled test event.
+
+Sentry is deliberately disabled when `EXPO_PUBLIC_SENTRY_DSN` is absent. The
+release gate requires an EAS production build with the build-only source-map
+variables above, followed by a controlled JS exception whose Sentry stack
+resolves to the original TypeScript source and exact release. Session Replay,
+screenshots, view hierarchy capture, default PII, and SDK logs remain disabled.
+
+## Local release evidence — 2026-08-09
+
+The exact current source produced these local audit artifacts:
+
+- AAB: `android/app/build/outputs/bundle/release/app-release.aab`, 236 MB,
+  SHA-256 `1a9a42e915965c6e835b19836b3d143ea2c455c2e678e668d63106b4ef9d41ff`.
+- Arm64 APK: `android/app/build/outputs/apk/release/app-release.apk`, 150 MB,
+  SHA-256 `082027e7d799c9e2586b198a8ea6e5013ed1e22edd766288fa3cd198f0d6fbdf`.
+- Both artifacts pass `zipalign -P 16`; the APK verifies with v2 signing. The
+  AAB and APK use the local Android Debug certificate only, so neither is a
+  Play candidate. Production remains gated on EAS upload signing and Play App
+  Signing.
+- With Metro stopped, the exact final APK cold-launched the verified
+  `https://pluggd.fm/discover` App Link on API 24 and 36. Its immediate
+  predecessor passed API 33 and 35 before the API 24–25-only playback branch.
+  The complete evidence and limitations are recorded in
+  [`ANDROID_DEVICE_MATRIX_2026-08-09.md`](ANDROID_DEVICE_MATRIX_2026-08-09.md).
+- API 24 initially exposed a real `OutOfMemoryError` under its 48 MB heap. The
+  API 24–25-only image policy now caps derivatives at 360 px and schedules at
+  most two native image loads concurrently. The rebuilt APK passed a full
+  Discover scroll and settle. A second playback OOM was closed by bounded
+  5–10 second buffering and 192 px notification artwork on API 24–25. The final
+  APK retained an active MediaSession and foreground service through 50 seconds
+  foreground and 10 seconds background playback without a fatal/OOM entry.
+- Phone, tablet, and foldable evidence is retained under
+  `artifacts/qa/android-v1-2026-08-08/`. The exact release screenshot is
+  [phone-release-final-current.png](../../artifacts/qa/android-v1-2026-08-08/phone-release-final-current.png).
+  Fold/unfold transitions preserved one process and one `MainActivity`; compact
+  and expanded navigation recomposed without duplicating the Router root.
+- The Android/Supabase suite passes 29 files and 199 tests. The catalogue test
+  proves that new monthly/yearly base plans are activated in Play before their
+  provider-neutral server catalogue rows become active.
+
+The 2026-08-09 AAB was built with Sentry upload disabled because the external
+Sentry project variables are not provisioned. It predates the native Mapbox
+correction and is superseded for map verification. On 2026-08-10, current
+source produced a release-mode arm64 APK with Billing 9 and Mapbox, and that APK
+cold-launched on API 36 at 1080x1920 and 2560x1440. Home, Discover, Events, and
+the live Mapbox event map were rendered and inspected. The final screenshots
+are in [`store-assets`](store-assets/). The app still fails safely when
+`EXPO_PUBLIC_MAPBOX_TOKEN` is absent or rejected.
+
+## Play internal release evidence — 2026-08-11
+
+- Version code 13 is the current Android candidate. The locally built production
+  AAB is 271 MB with SHA-256
+  `7b34ca87c28165e37497207bf3e86b1d4f9d5807a03c60697c41f5bca0e9471d`.
+  Its JAR signature verifies and its signing certificate SHA-256 is
+  `70:DD:CF:A7:29:C9:2E:14:66:FE:48:5C:5F:A6:78:26:99:38:29:B4:8B:B1:D3:EB:E5:99:D6:C8:1E:AA:55:A3`, matching the registered EAS/Play upload key.
+- Google Play accepted version code 13 as API 24+, target API 36, four screen
+  layouts, four ABIs, and seven required features. `PLUGGD Android v13 —
+  stability fix` is active and available on the internal-testing track.
+- The exact Play-signed version-code-12 predecessor was installed on a physical
+  Samsung S21. It proved the requested Discover parity: the four gateway cards
+  and the `New on the platform` content both render as two-column grids. It also
+  proved the verified `https://pluggd.fm/notifications` App Link and Android
+  notification permission flow.
+- A terminated-state push test on version 12 exposed a real Android 12+
+  `ForegroundServiceStartNotAllowedException`: TrackPlayer's sticky service
+  attempted to restart after PLUGGD had been killed even though the app's
+  configured behaviour is to stop playback and remove the notification. The
+  source patch now returns `START_NOT_STICKY`, with a checked-in contract that
+  prevents regression.
+- The exact Play-signed version-13 build was installed from Google Play on an
+  API 36 emulator. Its signing certificate SHA-256 is
+  `85caaad251686fdea58555712483f421059059614007d888042c69e5d1571273`,
+  matching the certificate published in `assetlinks.json`. A cold verified
+  `https://pluggd.fm/notifications` App Link opened PLUGGD's Activity screen.
+  The same installed build completed the lifecycle reproduction: start the
+  media service, background the app, kill the process, wait through the
+  restart window, and relaunch. No service restart,
+  `ForegroundServiceStartNotAllowedException`, fatal exception, or relaunch
+  failure occurred.
+- Production version 13 is submitted for Google review as a full 100% rollout.
+  Submitting the corrected candidate deliberately restarted the same-day
+  version-10 launch review so Google reviews the fixed bundle. Google's
+  automated pre-review checks completed and the Publishing overview now shows
+  the changes in review. At the owner's explicit request on 2026-08-11,
+  managed publishing was turned OFF so Google will publish the app
+  automatically as soon as the review is approved.
+- The physical Samsung S21 updated from Google Play to version code 13 on
+  Android 15/API 35. The exact Play-installed build cold-launched, reported
+  TrackPlayer `startCommandResult=2` (`START_NOT_STICKY`), remained stopped
+  after the background kill window without a fatal exception, and cold-opened
+  the verified `https://pluggd.fm/notifications` App Link into Activity. Its
+  rendered Discover screen also proves the four gateway cards and New on the
+  platform content retain the requested two-column layouts.
+- The final remote-notification tap is not marked passed. Expo accepted the
+  test messages and returned successful delivery receipts, but the Samsung did
+  not display them and the live Android push-token `last_seen_at` value did not
+  refresh after version-13 launches. Keep the notification-delivery gate open
+  until a fresh token registration and foreground/background/terminated tap
+  sequence is observed on hardware.
+
+- EAS production build `c5cfb6cf-1dc7-437a-a798-6c9e94fc7c36` completed from
+  commit `e39302c` as Android version code 10. The clean cloud build compiled
+  all four supported ABIs, completed release lint and R8 shrinking, and used
+  the configured production upload key.
+- The downloaded version-code-10 AAB has SHA-256
+  `e32bd1a610662306569650f9a2cf8187d2f6a38d65c326f4eda2f18108e9de8b`.
+  ZIP integrity verification reported no errors.
+- Bundletool inspection of that exact AAB confirms package
+  `com.pluggd.mobile`, minimum API 24, target API 36, Billing Library 9.1.0,
+  `allowBackup=false`, predictive back enabled, verified App Links, FCM and
+  Mapbox native initialisation, and only the declared media-playback foreground
+  service. It contains neither the media-projection permission nor Agora's
+  optional screen-sharing service.
+- `PLUGGD Android 1.0.0 (10)` is active and available to the configured internal
+  testers. Version code 9 was replaced rather than left as the active test
+  candidate; version codes 10 and 12 were subsequently superseded by version
+  13.
+- Production release `1.0.0 — Android launch` was first submitted with version
+  code 10. It is now superseded in the active review by `PLUGGD Android v13 —
+  stability fix` at a full 100% rollout. Managed publishing is disabled, so an
+  approval will make the app public automatically.
+- The foreground-service declaration now contains only media playback. Its
+  required demonstration shows PLUGGD continuing playback in the background
+  with Android's system media controls and is available at
+  `https://drive.google.com/file/d/1fJlJXFqleXwF4ZZxnqVZNu-wTPFa44ha/view?usp=sharing`.
+- Source-map upload is explicitly skipped in EAS profiles until the Sentry
+  organisation, project, and auth-token gates above are provisioned. The SDK's
+  privacy-safe runtime integration remains in source, but this internal build
+  is not evidence of a controlled Sentry release event.
+- Play product setup now includes an active 500-credit consumable
+  `pluggd_credits_starter` and an active Kxngdom membership subscription
+  `plg_m_dfb18df1ab6e_32822335` with monthly and annual base plans. Exact active
+  server catalogue rows and authenticated commerce-policy reads resolve these
+  products to Google Play Billing while external checkout remains disabled.
+- Version code 9 exposed an accurate Play Console error for an unused Agora
+  screen-sharing foreground service. The source fix removed that service and
+  permission while retaining TrackPlayer's legitimate media-playback service;
+  version code 10 is the corrected Play candidate and has superseded version 9.
+
+### Live Play commerce proof — 2026-08-11
+
+- The exact Play-signed version-code-10 app was installed from the configured
+  tester account. Every purchase below was a Google Play licence-test order;
+  Play displayed that the tester would not be charged and no real payment was
+  taken.
+- The active `pluggd_credits_starter` consumable completed Play purchase,
+  authenticated server verification, durable 500-credit grant, and client
+  consume. A second post-RTDN test proved the complete refund path from Play
+  Console through Pub/Sub and the deployed Supabase function to an idempotent
+  negative wallet entry: the wallet moved from 1,700 to 1,200 credits after
+  entitlement removal.
+- The first refund, made before the final voided-purchase handler was deployed,
+  was recovered once using the exact Play order and linked grant entry. The
+  guarded transaction changed only that test order from purchased/granted to
+  refunded/revoked, created its missing -500 reversal, and restored the tester
+  wallet from 1,200 to its correct 700-credit balance. A cold app restart then
+  rendered 700 credits from the live backend.
+- Google Play RTDN is enabled for subscriptions, voided purchases, and all
+  one-time products. The deployed handler now accepts voided-purchase
+  notifications, re-queries provider state, reverses credit grants or revokes
+  membership entitlements, deduplicates deliveries, and retries previously
+  failed notifications instead of acknowledging them as complete.
+- The live RTDN fixes are committed on `codex/android-production-release` as
+  `cc2f9fa7`, `0d1dafcc`, and `879abe3f`. The full Supabase function suite
+  passed 31 files / 195 tests; the final focused Google Play and wallet suite
+  passed 19 tests, with typecheck and diff hygiene also passing.
+- The Kxngdom monthly membership completed Play test purchase, authenticated
+  server verification, durable entitlement grant, and acknowledgement. Its
+  test subscription was then cancelled in Play. Renewal, grace, account hold,
+  expiry, refund/revoke, and simultaneous memberships for two creators remain
+  separate lifecycle gates below.
+
+## Play store listing evidence — 2026-08-10
+
+- The `en-GB` listing, 512x512 RGB icon, and 1024x500 RGB feature graphic are
+  committed in Play Console.
+- Publisher edit `16819659014713659865` committed four 1080x1920 RGB JPEG phone
+  screenshots and two 2560x1440 RGB JPEG screenshots to both the seven-inch and
+  ten-inch tablet slots. All screenshots are current release-mode renders with
+  live 10 August 2026 content; the Events map visibly uses Mapbox.
+- Data Safety, app access, ads, content rating, target audience, government,
+  financial, and health declarations are completed in Play Console.
+- Store-listing assets are complete. Version code 13 is Play-signed and active
+  on the internal-testing track; public rollout remains gated by the
+  unchecked commerce, legal, live-service, and device-policy evidence below.
+
+## Commerce evidence
+
+The active Play catalogue, authenticated live policy mapping, exact Play-signed
+install, tester purchase, membership grant, and one-time-product refund/RTDN
+path are verified. The broad boxes remain unchecked wherever their wording also
+requires an untested lifecycle state or a second product/creator.
+
+- [ ] One Play credit pack completes purchase, server verification, durable
+      wallet grant, consume, reinstall recovery, refund, and RTDN handling.
+- [ ] One creator membership completes product/base-plan purchase, server
+      verification, durable entitlement, acknowledgement, renewal, grace,
+      account hold, cancellation, expiry, refund, and revoke.
+- [ ] A fan can hold active memberships for two creators at once.
+- [ ] Android never finishes a Play transaction before the server returns a
+      durable successful grant.
+- [ ] Duplicate client retries and duplicate/out-of-order RTDN messages produce
+      exactly one grant or lifecycle transition.
+- [ ] Beat licensing supports signed-contract payment with Play-acquired credits
+      and issues the immutable licence/download entitlement.
+- [ ] Physical merchandise and verified in-person event tickets use hosted
+      Stripe checkout and reconcile after app termination.
+- [ ] External digital checkout is visible only for an approved market/program,
+      uses Google's required disclosure/API flow, and is remotely killable.
+- [ ] External transactions and refunds are reported within the programme
+      deadline; nightly reconciliation alerts on omissions.
+- [ ] Provider-specific subscription management and refund/support URLs work.
+
+## Functional and rendered QA matrix
+
+An API 36 Google Play system image is provisioned as `PLUGGD_Play_API_36` and
+boots cleanly. Current source cold-launched, rendered Home and Events, displayed
+the native Mapbox events map with live markers, and showed the neutral 16+ gate
+before social OAuth. The configured licence tester is now signed into Play on
+the emulator, and exact Play-signed install, product-query, credit purchase,
+membership purchase, cancellation, one-time-product refund/RTDN, and cold-start
+wallet evidence exist. FCM/App Link tap behavior and physical-device behavior
+remain separate gates.
+
+Required form factors:
+
+| Cohort | Required evidence |
+|---|---|
+| Compact phone | 360dp and 412dp, gesture and three-button navigation |
+| Current Pixel | Physical or Play-certified API 36 device |
+| Samsung | Physical One UI device |
+| Tablet | 7-inch and 10-inch/Pixel Tablet layouts |
+| Foldable | Folded, unfolded, resize, and posture transition |
+| Minimum OS | API 24 install, launch, auth, playback, and core navigation |
+| Modern OS | API 33, 35, and 36 smoke and permission behavior |
+
+For each canonical route cohort capture current-run screenshots in light and
+dark appearance, default and large text, and portrait plus supported landscape.
+Check edge-to-edge insets, keyboard avoidance, predictive back, multi-window,
+player/navigation overlap, loading/empty/error/offline states, and tap targets.
+
+Critical journeys:
+
+- [ ] Email and Google OAuth, callback recovery, logout, and session restore.
+- [ ] Home, Discover, Community, Events/Maps, Market, Library, and profile.
+- [ ] Persistent player, queue, lock-screen controls, audio focus, Bluetooth,
+      headset removal, call interruption, background, and killed process.
+- [ ] Camera/microphone denial, retry, settings recovery, Live host/audience,
+      and collaboration.
+- [ ] Notification delivery/tap in foreground, background, and terminated state;
+      untrusted links are rejected.
+- [ ] Photo/document picker and large `content://` upload after app restart.
+- [ ] Credits, beat licence, membership, purchase history, restore/reinstall,
+      hosted checkout, and account deletion.
+
+## Play policy declarations
+
+- [x] Data Safety form matches `DATA_SAFETY_INVENTORY.md` and the release SDK
+      dependency report.
+- [x] Advertising ID is declared as unused. The exact version-code-10 bundle
+      contains no `com.google.android.gms.permission.AD_ID` permission.
+- [x] Privacy policy, terms, account-deletion URL, support URL, and refund paths
+      are public and name Pluggd Ltd consistently. The self-service,
+      pre-rendered `https://www.pluggd.fm/account-deletion` route and the
+      provider-neutral deletion/export functions are deployed. `/privacy`,
+      `/terms`, `/account-deletion`, `/support`, `/contact`, and `/refunds` all
+      return HTTP 200; the canonical policy content names Pluggd Ltd and directs
+      billing/refund requests to `support@pluggd.fm`.
+- [x] Content rating and target-audience declarations state the 16+ posture.
+- [x] Neutral age confirmation appears before social OAuth account creation.
+      Signup uses an unchecked accessible 16+ checkbox; login uses an explicit
+      provider confirmation action; both Apple and Google helpers reject calls
+      without a required consent object before starting OAuth. The focused auth,
+      iOS readiness, and TypeScript contracts pass.
+- [ ] UGC report/block flows and moderation operations are demonstrated with the
+      Play review account.
+- [ ] Social/child-safety and CSAE standards/contact are supplied if Play
+      categorises PLUGGD as Social.
+- [x] Foreground media playback service is declared with review evidence. The
+      Play declaration contains only media playback and links to the public
+      background-playback/system-controls demonstration recorded above.
+- [ ] App access instructions exercise signed-in, creator, commerce, and safety
+      surfaces without relying on production customer data.
+- [ ] Phone and tablet screenshots are current release-mode renders and are
+      committed to Play. A current foldable screenshot matching the submitted
+      AAB remains required before this combined gate can be checked.
+
+## Rollout gates
+
+1. Internal: native infrastructure and one credit/membership test SKU.
+2. Closed: complete commerce lifecycle, device matrix, moderation, and account
+   deletion. No production money or creator payout unless explicitly approved.
+3. Production launch: the owner explicitly selected immediate 100% availability
+   after approval. Monitor crash-free users, ANR, failed verification,
+   unacknowledged purchases, RTDN lag, and entitlement mismatches from launch.
+4. Pause the rollout immediately if launch telemetry exceeds the agreed safety
+   thresholds.

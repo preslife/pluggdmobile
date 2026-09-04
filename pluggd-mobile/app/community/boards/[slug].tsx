@@ -16,18 +16,8 @@ import {
 import { impactHaptic, selectionHaptic } from '../../../src/design/haptics';
 import { pluggdFonts } from '../../../src/design/typography';
 import { formatCompact } from '../../../src/lib/mobileContent';
-
-const COLORS = {
-  canvas: '#0a0806',
-  surface: '#171310',
-  surface2: '#241d15',
-  border: '#2a221a',
-  orange: '#ff6600',
-  white: '#FFFFFF',
-  soft: '#E4E4E9',
-  muted: '#8E8E9F',
-  dim: '#62627A',
-};
+import { useBottomChromeInset } from '../../../src/design/useBottomChromeInset';
+import { usePluggdTheme } from '../../../src/design/usePluggdTheme';
 
 const BOARD_FILTERS = ['Latest', 'Hot', 'Tickets', 'Audio', 'Events', 'Questions'] as const;
 type BoardFilter = (typeof BOARD_FILTERS)[number];
@@ -70,6 +60,9 @@ function filterBoardPosts(posts: any[], filter: BoardFilter) {
 }
 
 export default function CommunityBoardRoute() {
+  const theme = usePluggdTheme();
+  const styles = useCommunityBoardStyles();
+  const bottomInset = useBottomChromeInset();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -112,26 +105,26 @@ export default function CommunityBoardRoute() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#120d08', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+      <LinearGradient colors={theme.scheme === 'dark' ? ['#0A0806', '#120D08', '#0A0806'] : ['#FFF8ED', '#F4E7D2', '#FFF8ED']} style={StyleSheet.absoluteFill} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={boardQuery.isRefetching} onRefresh={() => boardQuery.refetch()} tintColor={COLORS.orange} />}
-        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 56), paddingBottom: Math.max(insets.bottom + 172, 196) }}
+        refreshControl={<RefreshControl refreshing={boardQuery.isRefetching} onRefresh={() => boardQuery.refetch()} tintColor={theme.colors.accentText} />}
+        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 56), paddingBottom: bottomInset }}
       >
         <View style={styles.headerRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={28} color={COLORS.white} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}>
+            <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>BOARD</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Open community" style={styles.iconButton} onPress={() => router.push('/community' as any)}>
-            <MaterialIcons name="groups" size={21} color={COLORS.white} />
+            <MaterialIcons name="groups" size={21} color={theme.colors.text} />
           </Pressable>
         </View>
 
         {boardQuery.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={COLORS.orange} />
+            <ActivityIndicator color={theme.colors.accentText} />
             <Text style={styles.loadingText}>Loading board...</Text>
           </View>
         ) : null}
@@ -145,7 +138,7 @@ export default function CommunityBoardRoute() {
             primaryLabel="Open community"
             onPrimary={() => router.replace('/community' as any)}
             secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            onSecondary={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}
           />
         ) : null}
 
@@ -153,25 +146,27 @@ export default function CommunityBoardRoute() {
           <>
             <View style={styles.hero}>
               <LinearGradient
-                colors={['rgba(255,102,0,0.22)', 'rgba(124,58,237,0.12)', 'rgba(23,19,16,0.98)']}
+                colors={theme.scheme === 'dark'
+                  ? ['rgba(255,102,0,0.22)', 'rgba(124,58,237,0.12)', 'rgba(23,19,16,0.98)']
+                  : ['rgba(232,79,0,0.13)', 'rgba(124,58,237,0.08)', 'rgba(255,252,247,0.98)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.boardIcon}>
-                <MaterialIcons name={boardIcon(board.icon)} size={34} color={COLORS.orange} />
+                <MaterialIcons name={boardIcon(board.icon)} size={34} color={theme.colors.accentText} />
               </View>
               <Text style={styles.kicker}>COMMUNITY BOARD</Text>
               <Text style={styles.title}>{board.name}</Text>
               {board.description ? <Text style={styles.description}>{board.description}</Text> : null}
               <View style={styles.metaRow}>
                 <View style={styles.metaPill}>
-                  <MaterialIcons name="groups" size={15} color={COLORS.orange} />
+                  <MaterialIcons name="groups" size={15} color={theme.colors.accentText} />
                   <Text style={styles.metaText}>{formatCompact(boardQuery.data?.member_count ?? 0)} members</Text>
                 </View>
                 {board.category ? (
                   <View style={styles.metaPill}>
-                    <MaterialIcons name="forum" size={15} color={COLORS.orange} />
+                    <MaterialIcons name="forum" size={15} color={theme.colors.accentText} />
                     <Text style={styles.metaText}>{board.category}</Text>
                   </View>
                 ) : null}
@@ -249,40 +244,43 @@ export default function CommunityBoardRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.canvas },
+function useCommunityBoardStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   headerRow: { marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: COLORS.white, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13, lineHeight: 17, letterSpacing: 1.4 },
+  iconButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13, lineHeight: 17, letterSpacing: 1.4 },
   loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { fontFamily: pluggdFonts.satoshiBold, color: COLORS.muted, fontSize: 13, fontWeight: '800' },
-  hero: { marginHorizontal: 16, borderRadius: 6, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', backgroundColor: COLORS.surface, padding: 18, gap: 10 },
-  boardIcon: { width: 62, height: 62, borderRadius: 5, backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: 'rgba(255,102,0,0.3)', alignItems: 'center', justifyContent: 'center' },
-  kicker: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.orange, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
-  title: { fontFamily: pluggdFonts.displayExtraBold, color: COLORS.white, fontSize: 34, lineHeight: 39, fontWeight: '800' },
-  description: { fontFamily: pluggdFonts.satoshiMedium, color: COLORS.soft, fontSize: 14, lineHeight: 21, fontWeight: '600' },
+  loadingText: { fontFamily: pluggdFonts.satoshiBold, color: theme.colors.textMuted, fontSize: 13, fontWeight: '800' },
+  hero: { marginHorizontal: 16, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden', backgroundColor: theme.colors.surface, padding: 18, gap: 10 },
+  boardIcon: { width: 62, height: 62, borderRadius: 5, backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.borderAccent, alignItems: 'center', justifyContent: 'center' },
+  kicker: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.accentText, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
+  title: { fontFamily: pluggdFonts.displayExtraBold, color: theme.colors.text, fontSize: 34, lineHeight: 39, fontWeight: '800' },
+  description: { fontFamily: pluggdFonts.satoshiMedium, color: theme.colors.textSecondary, fontSize: 14, lineHeight: 21, fontWeight: '600' },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metaPill: { minHeight: 30, borderRadius: 15, borderWidth: 1, borderColor: COLORS.border, backgroundColor: 'rgba(10,8,6,0.38)', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
-  metaText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.muted, fontSize: 12, fontWeight: '900', textTransform: 'capitalize' },
+  metaPill: { minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.backgroundElevated, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10 },
+  metaText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.textMuted, fontSize: 12, fontWeight: '900', textTransform: 'capitalize' },
   heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  joinButton: { flex: 1, height: 46, borderRadius: 5, borderWidth: 1, borderColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
-  joinButtonActive: { backgroundColor: COLORS.orange },
-  joinText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.orange, fontSize: 13, fontWeight: '900' },
-  joinTextActive: { color: COLORS.canvas },
-  threadButton: { minWidth: 132, height: 46, borderRadius: 5, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  threadButtonText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.canvas, fontSize: 13, fontWeight: '900' },
+  joinButton: { flex: 1, height: 46, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.borderAccent, alignItems: 'center', justifyContent: 'center' },
+  joinButtonActive: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  joinText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.accentText, fontSize: 13, fontWeight: '900' },
+  joinTextActive: { color: theme.colors.onAccent },
+  threadButton: { minWidth: 132, height: 46, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  threadButtonText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.onAccent, fontSize: 13, fontWeight: '900' },
   typeRow: { paddingHorizontal: 16, paddingTop: 14, gap: 8 },
-  typePill: { minHeight: 44, borderRadius: 5, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 13, justifyContent: 'center' },
-  typePillActive: { borderColor: COLORS.orange, backgroundColor: 'rgba(255,102,0,0.16)' },
-  typeText: { fontFamily: pluggdFonts.satoshiBlack, color: COLORS.soft, fontSize: 12, fontWeight: '900' },
-  typeTextActive: { color: COLORS.white },
-  composerRow: { marginHorizontal: 16, marginTop: 14, minHeight: 68, borderRadius: 5, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  composerPrompt: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: COLORS.muted, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  typePill: { minHeight: 44, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 13, justifyContent: 'center' },
+  typePillActive: { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft },
+  typeText: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.textSecondary, fontSize: 12, fontWeight: '900' },
+  typeTextActive: { color: theme.colors.accentText },
+  composerRow: { marginHorizontal: 16, marginTop: 14, minHeight: 68, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  composerPrompt: { fontFamily: pluggdFonts.satoshiBold, flex: 1, color: theme.colors.textMuted, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   sectionHeader: { marginHorizontal: 16, marginTop: 22, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayBold, fontSize: 17, lineHeight: 21, letterSpacing: -0.2 },
-  sectionMeta: { color: COLORS.muted, fontFamily: pluggdFonts.interSemiBold, fontSize: 12, lineHeight: 16 },
+  sectionTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 17, lineHeight: 21, letterSpacing: -0.2 },
+  sectionMeta: { color: theme.colors.textMuted, fontFamily: pluggdFonts.interSemiBold, fontSize: 12, lineHeight: 16 },
   postList: { marginHorizontal: 16, gap: 10 },
-  emptyCard: { marginHorizontal: 16, borderRadius: 5, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16, gap: 8 },
-  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: COLORS.white, fontSize: 17, fontWeight: '700' },
-  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, color: COLORS.muted, fontSize: 13, lineHeight: 19, fontWeight: '600' },
-});
+  emptyCard: { marginHorizontal: 16, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 16, gap: 8 },
+  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: theme.colors.text, fontSize: 17, fontWeight: '700' },
+  emptyBody: { fontFamily: pluggdFonts.satoshiMedium, color: theme.colors.textMuted, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+}), [theme]);
+}

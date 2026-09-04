@@ -16,6 +16,7 @@ type GlassPanelProps = {
   radius?: number;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  decorative?: boolean;
 };
 
 export function GlassPanel({
@@ -24,48 +25,55 @@ export function GlassPanel({
   radius = liquidGlassRadii.xl,
   style,
   contentStyle,
+  decorative = true,
 }: GlassPanelProps) {
   const theme = usePluggdTheme();
   const material = liquidGlassIntensity[intensity];
+  const light = theme.scheme === 'light';
+  const fallback = light ? theme.colors.glassFallback : material.backgroundColor;
 
   return (
     <PluggdGlassSurface
       glassEffectStyle="regular"
       blurIntensity={material.blurIntensity}
       colorScheme={theme.scheme}
-      fallbackColor={material.backgroundColor}
-      tintColor={material.backgroundColor}
-      borderColor={liquidGlassColors.borderSoft}
+      fallbackColor={fallback}
+      tintColor={light ? theme.colors.glassTint : material.backgroundColor}
+      borderColor={theme.colors.border}
       style={[
         styles.panel,
-        webPanel[intensity],
+        !light && decorative && webPanel[intensity],
         intensity === 'strong' && styles.panelStrong,
         {
           borderRadius: radius,
-          borderTopColor: liquidGlassColors.borderTop,
-          borderLeftColor: liquidGlassColors.borderLeft,
-          borderRightColor: 'rgba(0,0,0,0.30)',
-          borderBottomColor: liquidGlassColors.borderDark,
+          borderTopColor: light ? 'rgba(255,255,255,0.94)' : liquidGlassColors.borderTop,
+          borderLeftColor: light ? 'rgba(255,255,255,0.70)' : liquidGlassColors.borderLeft,
+          borderRightColor: light ? theme.colors.border : 'rgba(0,0,0,0.30)',
+          borderBottomColor: light ? theme.colors.borderStrong : liquidGlassColors.borderDark,
+          shadowColor: theme.colors.shadow,
         },
         style,
       ]}
     >
-      <LinearGradient
+      {decorative ? <><LinearGradient
         pointerEvents="none"
-        colors={['rgba(45,45,68,0.36)', 'rgba(14,16,31,0.30)', 'rgba(2,4,11,0.64)']}
+        colors={light
+          ? ['rgba(255,255,255,0.52)', 'rgba(255,248,237,0.22)', 'rgba(244,231,210,0.42)']
+          : ['rgba(45,45,68,0.36)', 'rgba(14,16,31,0.30)', 'rgba(2,4,11,0.64)']}
         locations={[0, 0.48, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <View pointerEvents="none" style={styles.topWash} />
-      <View pointerEvents="none" style={styles.cornerGlowA} />
-      <View pointerEvents="none" style={styles.cornerGlowB} />
+      <View pointerEvents="none" style={[styles.topWash, light && styles.topWashLight]} />
+      <View pointerEvents="none" style={[styles.cornerGlowA, light && styles.cornerGlowLight]} />
+      <View pointerEvents="none" style={[styles.cornerGlowB, light && styles.cornerGlowBLight]} />
+      </> : null}
       <View pointerEvents="none" style={[styles.topRim, { backgroundColor: liquidGlassColors.borderTop }]} />
       <View pointerEvents="none" style={[styles.leftRim, { backgroundColor: liquidGlassColors.borderLeft }]} />
-      <View pointerEvents="none" style={styles.rightCavity} />
-      <View pointerEvents="none" style={styles.innerGlow} />
+      <View pointerEvents="none" style={[styles.rightCavity, light && { backgroundColor: theme.colors.border }]} />
+      {decorative ? <><View pointerEvents="none" style={styles.innerGlow} />
       <View pointerEvents="none" style={styles.sheen} />
-      <View pointerEvents="none" style={styles.bottomShade} />
-      <View pointerEvents="none" style={styles.bottomEdge} />
+      <View pointerEvents="none" style={[styles.bottomShade, light && styles.bottomShadeLight]} /></> : null}
+      <View pointerEvents="none" style={[styles.bottomEdge, light && { backgroundColor: theme.colors.borderStrong }]} />
       <View style={[styles.content, contentStyle]}>{children}</View>
     </PluggdGlassSurface>
   );
@@ -129,6 +137,7 @@ const styles = StyleSheet.create({
     height: '46%',
     backgroundColor: 'rgba(255,255,255,0.052)',
   },
+  topWashLight: { backgroundColor: 'rgba(255,255,255,0.24)' },
   cornerGlowA: {
     position: 'absolute',
     left: '-14%',
@@ -149,6 +158,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,150,80,0.10)',
     opacity: 0.72,
   },
+  cornerGlowLight: { backgroundColor: 'rgba(255,255,255,0.34)', opacity: 0.48 },
+  cornerGlowBLight: { backgroundColor: 'rgba(232,79,0,0.045)', opacity: 0.48 },
   leftRim: {
     position: 'absolute',
     left: 0,
@@ -193,6 +204,7 @@ const styles = StyleSheet.create({
     height: '46%',
     backgroundColor: 'rgba(0,0,0,0.34)',
   },
+  bottomShadeLight: { backgroundColor: 'rgba(91,56,31,0.035)' },
   bottomEdge: {
     position: 'absolute',
     left: '8%',

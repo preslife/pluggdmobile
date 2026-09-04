@@ -77,7 +77,7 @@ serve(async (req) => {
         const { data: contract } = await service.from("licensing_contracts")
           .select("contract_pdf_url,status")
           .eq("id", orderId)
-          .eq("artist_id", user.id)
+          .or(`artist_id.eq.${user.id},producer_id.eq.${user.id}`)
           .eq("status", "completed")
           .maybeSingle();
         storedPath = receiptPath(contract?.contract_pdf_url);

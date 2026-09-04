@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
 import { registerMobilePushToken } from '../../src/lib/localNotifications';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 const PLUGGD_ORANGE = '#ff6600';
 
@@ -71,10 +72,12 @@ function creatorInitials(name: string) {
 }
 
 function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={122} height={44} />;
+  return <BrandLogo variant="auto" width={122} height={44} />;
 }
 
 export default function FanSetup() {
+  const theme = usePluggdTheme();
+  const styles = useFanSetupStyles();
   const router = useRouter();
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [eventsNearMe, setEventsNearMe] = useState(false);
@@ -189,7 +192,6 @@ export default function FanSetup() {
       const { error } = await (supabase.from('profiles').upsert(
         {
           user_id: user.id,
-          genres: selectedGenres.length > 0 ? selectedGenres : null,
           onboarding_progress: nextProgress,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
@@ -258,7 +260,7 @@ export default function FanSetup() {
           <View style={styles.progressTrack}>
             <View style={styles.progressFill} />
             <View style={[styles.progressStep, styles.progressDone]}>
-              <MaterialIcons name="check" size={13} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="check" size={13} color={theme.colors.accentText} />
             </View>
             <View style={[styles.progressStep, styles.progressActive]}>
               <Text style={styles.progressActiveText} maxFontSizeMultiplier={1.25}>2</Text>
@@ -317,14 +319,14 @@ export default function FanSetup() {
               <Text style={styles.cardTitle} maxFontSizeMultiplier={1.35}>Suggested creators</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="See all suggested creators" style={styles.seeAllButton} onPress={() => router.push('/search' as any)}>
               <Text style={styles.seeAllText} maxFontSizeMultiplier={1.3}>See all</Text>
-              <MaterialIcons name="chevron-right" size={22} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="chevron-right" size={22} color={theme.colors.accentText} />
             </Pressable>
           </View>
 
           <View style={styles.creatorList}>
             {creatorsLoading ? (
               <View style={styles.creatorLoading}>
-                <ActivityIndicator color={PLUGGD_ORANGE} />
+                <ActivityIndicator color={theme.colors.accentText} />
                 <Text style={styles.creatorEmptyText} maxFontSizeMultiplier={1.4}>Loading creators from PLUGGD...</Text>
               </View>
             ) : null}
@@ -398,7 +400,7 @@ export default function FanSetup() {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.onAccent} />
           ) : (
             <Text style={styles.ctaText} maxFontSizeMultiplier={1.35}>Finish setup</Text>
           )}
@@ -417,6 +419,8 @@ type ToggleRowProps = {
 };
 
 function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) {
+  const theme = usePluggdTheme();
+  const styles = useFanSetupStyles();
   return (
     <Pressable
       accessibilityRole="switch"
@@ -426,7 +430,7 @@ function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) 
       onPress={onPress}
     >
       <View style={styles.toggleIconBox}>
-        <MaterialIcons name={icon} size={25} color={PLUGGD_ORANGE} />
+        <MaterialIcons name={icon} size={25} color={theme.colors.accentText} />
       </View>
 
       <View style={styles.toggleTextWrap}>
@@ -441,7 +445,7 @@ function ToggleRow({ icon, title, subtitle, enabled, onPress }: ToggleRowProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#0a0806',
@@ -723,7 +727,7 @@ const styles = StyleSheet.create({
   },
   followButton: {
     minWidth: 104,
-    height: 42,
+    minHeight: 44,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#666666',
@@ -768,3 +772,52 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBlack,
   },
 });
+
+function useFanSetupStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => ({
+    ...baseStyles,
+    screen: [baseStyles.screen, { backgroundColor: theme.colors.background }],
+    logoText: [baseStyles.logoText, { color: theme.colors.text }],
+    logoAccent: [baseStyles.logoAccent, { color: theme.colors.accentText }],
+    progressTrack: [baseStyles.progressTrack, { backgroundColor: theme.colors.border }],
+    progressFill: [baseStyles.progressFill, { backgroundColor: theme.colors.accentFill }],
+    progressDone: [baseStyles.progressDone, { backgroundColor: theme.colors.background, borderColor: theme.colors.accentFill }],
+    progressActive: [baseStyles.progressActive, { backgroundColor: theme.colors.accentFill }],
+    progressFuture: [baseStyles.progressFuture, { backgroundColor: theme.colors.background, borderColor: theme.colors.textMuted }],
+    progressActiveText: [baseStyles.progressActiveText, { color: theme.colors.onAccent }],
+    progressFutureText: [baseStyles.progressFutureText, { color: theme.colors.textMuted }],
+    stepText: [baseStyles.stepText, { color: theme.colors.textMuted }],
+    title: [baseStyles.title, { color: theme.colors.text }],
+    subtitle: [baseStyles.subtitle, { color: theme.colors.textSecondary }],
+    sectionTitle: [baseStyles.sectionTitle, { color: theme.colors.text }],
+    genreChip: [baseStyles.genreChip, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }],
+    genreChipSelected: [baseStyles.genreChipSelected, { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill }],
+    genreChipText: [baseStyles.genreChipText, { color: theme.colors.text }],
+    genreChipTextSelected: [baseStyles.genreChipTextSelected, { color: theme.colors.onAccent }],
+    toggleRow: [baseStyles.toggleRow, { borderColor: theme.colors.border }],
+    toggleIconBox: [baseStyles.toggleIconBox, { backgroundColor: theme.colors.surfaceAlt }],
+    toggleTitle: [baseStyles.toggleTitle, { color: theme.colors.text }],
+    toggleSubtitle: [baseStyles.toggleSubtitle, { color: theme.colors.textMuted }],
+    switchTrack: [baseStyles.switchTrack, { backgroundColor: theme.colors.surfaceAlt }],
+    switchTrackOn: [baseStyles.switchTrackOn, { backgroundColor: theme.colors.accentFill }],
+    switchThumb: [baseStyles.switchThumb, { backgroundColor: theme.colors.textMuted }],
+    switchThumbOn: [baseStyles.switchThumbOn, { backgroundColor: theme.colors.onAccent }],
+    card: [baseStyles.card, { borderColor: theme.colors.border }],
+    cardTitle: [baseStyles.cardTitle, { color: theme.colors.text }],
+    seeAllText: [baseStyles.seeAllText, { color: theme.colors.accentText }],
+    creatorRowBorder: [baseStyles.creatorRowBorder, { borderBottomColor: theme.colors.border }],
+    avatar: [baseStyles.avatar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }],
+    avatarText: [baseStyles.avatarText, { color: theme.colors.text }],
+    creatorEmptyText: [baseStyles.creatorEmptyText, { color: theme.colors.textMuted }],
+    creatorName: [baseStyles.creatorName, { color: theme.colors.text }],
+    creatorRole: [baseStyles.creatorRole, { color: theme.colors.textSecondary }],
+    followButton: [baseStyles.followButton, { borderColor: theme.colors.borderStrong }],
+    followButtonActive: [baseStyles.followButtonActive, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }],
+    followButtonText: [baseStyles.followButtonText, { color: theme.colors.text }],
+    followButtonTextActive: [baseStyles.followButtonTextActive, { color: theme.colors.accentText }],
+    footer: [baseStyles.footer, { backgroundColor: theme.colors.headerGlass, borderTopColor: theme.colors.border }],
+    cta: [baseStyles.cta, { backgroundColor: theme.colors.accentFill }],
+    ctaText: [baseStyles.ctaText, { color: theme.colors.onAccent }],
+  }), [theme]);
+}

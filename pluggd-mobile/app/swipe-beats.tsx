@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../src/components/PluggdImage';
 import { usePlayback } from '../src/context/PlaybackProvider';
@@ -12,8 +12,7 @@ import { pluggdFonts } from '../src/design/typography';
 import { safeList, toggleSavedContent } from '../src/features/culture/mobileServices';
 import { contentInitials, toTrack, type BeatItem } from '../src/lib/mobileContent';
 import { supabase } from '../src/lib/supabase';
-
-const ORANGE = '#ff6600';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 async function loadSwipeBeats() {
   return safeList<BeatItem>(
@@ -28,6 +27,8 @@ async function loadSwipeBeats() {
 
 export default function SwipeBeatsRoute() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useSwipeBeatStyles();
   const { playTrack } = usePlayback();
   const query = useQuery({ queryKey: ['stage', 'swipe-beats'], queryFn: loadSwipeBeats });
   const [index, setIndex] = useState(0);
@@ -100,11 +101,11 @@ export default function SwipeBeatsRoute() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close Swipe Beats" style={styles.headerButton} onPress={() => router.back()}>
-          <MaterialIcons name="close" size={26} color="#FFFFFF" />
+          <MaterialIcons name="close" size={26} color={theme.colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>SWIPE BEATS</Text>
         <View style={styles.headerButton} />
@@ -137,7 +138,7 @@ export default function SwipeBeatsRoute() {
             <Text style={styles.title}>{beat.title || 'Untitled beat'}</Text>
             <Text style={styles.meta}>{beat.producer_name || 'Producer'} · {[beat.bpm ? `${beat.bpm} BPM` : null, beat.key, beat.genre].filter(Boolean).join(' · ')}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Play beat" style={styles.playButton} onPress={play}>
-              <MaterialIcons name="play-arrow" size={24} color="#0a0806" />
+              <MaterialIcons name="play-arrow" size={24} color={theme.colors.onAccent} />
               <Text style={styles.playText}>Preview</Text>
             </Pressable>
           </View>
@@ -146,15 +147,15 @@ export default function SwipeBeatsRoute() {
 
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" accessibilityLabel="Skip beat" style={styles.actionButton} onPress={skip}>
-          <MaterialIcons name="close" size={26} color="#FFFFFF" />
+          <MaterialIcons name="close" size={26} color={theme.colors.text} />
           <Text style={styles.actionText}>Skip</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Save beat" style={[styles.actionButton, styles.saveButton]} onPress={save}>
-          <MaterialIcons name="bookmark" size={26} color="#0a0806" />
+          <MaterialIcons name="bookmark" size={26} color={theme.colors.onAccent} />
           <Text style={[styles.actionText, styles.saveText]}>Save</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Open license options" style={styles.actionButton} onPress={openLicense}>
-          <MaterialIcons name="north" size={26} color="#FFFFFF" />
+          <MaterialIcons name="north" size={26} color={theme.colors.text} />
           <Text style={styles.actionText}>License</Text>
         </Pressable>
       </View>
@@ -163,26 +164,29 @@ export default function SwipeBeatsRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806', paddingHorizontal: 16 },
+function useSwipeBeatStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 16 },
   header: { height: 92, paddingTop: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 30, lineHeight: 34 },
+  headerTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 30, lineHeight: 34 },
   card: { flex: 1, maxHeight: 590, borderRadius: 5, overflow: 'hidden', borderWidth: 1, borderColor: '#302A26', justifyContent: 'flex-end' },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   initials: { alignSelf: 'center', marginTop: 190, color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBlack, fontSize: 52 },
   cardCopy: { padding: 20 },
   title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 32, lineHeight: 36, letterSpacing: -0.6 },
   meta: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 20, marginTop: 8 },
-  playButton: { alignSelf: 'flex-start', minHeight: 46, borderRadius: 5, paddingHorizontal: 18, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18 },
-  playText: { color: '#0a0806', fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
+  playButton: { alignSelf: 'flex-start', minHeight: 46, borderRadius: 5, paddingHorizontal: 18, backgroundColor: theme.colors.accentFill, flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18 },
+  playText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
   actions: { height: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', gap: 14 },
-  actionButton: { minWidth: 92, minHeight: 54, borderRadius: 5, borderWidth: 1, borderColor: '#302A26', backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center' },
-  saveButton: { backgroundColor: ORANGE, borderColor: ORANGE },
-  actionText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
-  saveText: { color: '#0a0806' },
-  instructions: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, textAlign: 'center', marginBottom: 18 },
+  actionButton: { minWidth: 92, minHeight: 54, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
+  saveButton: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  actionText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
+  saveText: { color: theme.colors.onAccent },
+  instructions: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, textAlign: 'center', marginBottom: 18 },
   empty: { flex: 1, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 24 },
-  emptyTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 24 },
-  emptyText: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, textAlign: 'left', marginTop: 8 },
-});
+  emptyTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 24 },
+  emptyText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, textAlign: 'left', marginTop: 8 },
+}), [theme]);
+}

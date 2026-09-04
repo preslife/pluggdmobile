@@ -19,11 +19,11 @@ const mobileServices = read('src/features/culture/mobileServices.ts');
 const creatorMode = read('src/features/culture/CultureScreens.tsx');
 const rootLayout = read('app/_layout.tsx');
 const localNotifications = read('src/lib/localNotifications.ts');
-const mobileHeader = read('components/MobileHeader.tsx');
+const mobileHeader = read('components/MobileHeader.tsx') + read('components/AccountMenuButton.tsx');
 
 assert.match(backstageDetail, /loadBackstageDetail/, 'Backstage detail route must load a selected community detail, not reuse only overview data');
 assert.match(backstageDetail, /joinBackstage|leaveBackstage/, 'Backstage detail must expose persisted join or leave actions');
-assert.match(backstageDetail, /Posts.*Threads.*Rooms.*Events.*Soundboards.*Drops/s, 'Backstage detail must expose required community tabs');
+assert.match(backstageDetail, /Community.*Live.*Collabs/s, 'Backstage detail must expose the approved community engagement tabs');
 
 assert.match(eventDetail, /loadEventDetail/, 'Event detail must use shared event detail service');
 assert.match(eventDetail, /setEventRsvp/, 'Event detail must persist RSVP state');
@@ -67,7 +67,9 @@ assert.match(localNotifications, /expo-notifications/, 'Local reminder service m
 assert.match(localNotifications, /scheduleNotificationAsync/, 'Local reminder service must schedule notifications');
 assert.match(localNotifications, /cancelScheduledNotificationAsync/, 'Local reminder service must cancel stale notifications');
 assert.match(localNotifications, /addNotificationResponseReceivedListener/, 'Local reminder service must handle notification taps');
-assert.match(localNotifications, /Linking\.openURL/, 'Notification taps must deep-link back into the app');
+assert.match(localNotifications, /getLastNotificationResponseAsync/, 'Cold-start notification taps must be recovered after the root layout mounts');
+assert.match(localNotifications, /clearLastNotificationResponseAsync/, 'Handled cold-start notification taps must not replay on later launches');
+assert.match(localNotifications, /router\.push\(notificationRoutePath/, 'Notification taps must navigate through the mounted app router');
 assert.match(localNotifications, /SchedulableTriggerInputTypes\.DATE/, 'Local reminders must schedule against real event/session times');
 assert.match(localNotifications, /upsert_mobile_push_token/, 'Native push tokens must be registered against the mobile push backend contract');
 assert.match(notifications, /loadMobileNotifications/, 'Activity route must use the shared notification/deep-link service');
@@ -85,13 +87,14 @@ assert.match(creatorMode, /\/upload-clip/, 'Creator Mode clip upload must route 
 assert.match(creatorMode, /\/ticket-scan/, 'Creator Mode ticket scanning must route to the real ticket scan/check-in surface');
 assert.match(mobileHeader, /route:\s*'\/ticket-scan'/, 'Promoter/venue avatar menu must route ticket scanning to the real scanner');
 assert.doesNotMatch(mobileHeader, /mode=scan/, 'Avatar menu must not use stale ticket-scan query routes');
-assert.match(ticketScan, /from\('ticket_orders'\)/, 'Ticket scan route must validate real ticket_orders');
-assert.match(ticketScan, /qr_code_data/, 'Ticket scan route must verify real QR payload data');
-assert.match(ticketScan, /verifyTicketEntryToken/, 'Ticket scan route must verify dynamic rotating ticket payloads');
-assert.match(ticketScan, /checked_in_at/, 'Ticket scan route must attempt real check-in state updates');
+assert.match(ticketScan, /verifyTicketEntryToken/, 'Ticket scan route must verify rotating payloads through the hardened server contract');
+assert.match(ticketScan, /pluggd-ticket-v1:/, 'Ticket scan route must accept only rotating PLUGGD entry payloads');
+assert.doesNotMatch(ticketScan, /from\(['\"]ticket_orders['\"]\).*update|from\(['\"]ticket_orders['\"]\)\s*\n?\s*\.update/s, 'Ticket scan route must never update ticket orders directly from the mobile client');
+assert.doesNotMatch(ticketScan, /from\(['\"]ticket_orders['\"]\)/, 'Ticket scan route must not bypass server authorization by querying ticket orders directly');
 assert.match(ticketScan, /CameraView/, 'Ticket scan route must expose native camera scanning once expo-camera is installed');
 assert.match(ticketScan, /barcodeScannerSettings=\{\{ barcodeTypes: \['qr'\] \}\}/, 'Ticket scan route must scan QR payloads only');
-assert.match(ticketScan, /Apple Wallet passes are not available until pass signing is connected/, 'Ticket scan route must keep unsupported Apple Wallet pass features explicit');
+assert.match(ticketScan, /Rotating entry codes help protect supported tickets during door checks/, 'Ticket scan route must explain the supported entry-security flow');
+assert.doesNotMatch(ticketScan, /pass signing is connected/, 'Ticket scan route must not expose internal implementation status to venue staff');
 assert.match(read('app/upload-clip.tsx'), /createMobileClipRecord/, 'Upload clip route must create a backend mobile clip record');
 assert.match(mobileServices, /content_reports/, 'Live/reporting flows must create real content_reports');
 

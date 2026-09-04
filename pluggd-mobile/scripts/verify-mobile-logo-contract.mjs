@@ -15,8 +15,11 @@ for (const asset of [
 }
 
 const header = read('components/MobileHeader.tsx');
+const brandLogo = read('components/BrandLogo.tsx');
 assert.match(header, /import \{ BrandLogo \}/, 'MobileHeader must use the shared BrandLogo component');
 assert.match(header, /<BrandLogo variant=\{theme\.scheme\}|<BrandLogo variant="auto"|<BrandLogo variant="dark"/, 'MobileHeader must render the real PLUGGD logo image');
 assert.doesNotMatch(header, /<Text style=\{styles\.wordmark\}>PLUGGD<\/Text>/, 'MobileHeader must not fall back to a text wordmark');
+assert.match(brandLogo, /FilterImage[\s\S]*name:\s*'feColorMatrix'[\s\S]*source=\{lightLogo\}[\s\S]*filters=\{editorialInkFilter\}/, 'Editorial Light must map the supplied white wordmark letters to readable ink without replacing the logo geometry');
+assert.match(brandLogo, /source=\{darkLogo\}/, 'Night must retain the supplied white-and-orange wordmark');
 
 console.log('mobile logo contract verified');

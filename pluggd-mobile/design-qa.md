@@ -1,192 +1,189 @@
-# PLUGGD Home Design QA
+# Listening Room tonearm visual QA
 
-## Scope
+## Inputs
 
-- Surface: signed-out Home, iPhone 17 Pro Max simulator
-- Captured viewport: 368 × 800
-- Visual direction: selected PLUGGD music-discovery system, strengthened with the live web product's signal ticker, editorial storytelling and Next Wave hierarchy
-- Comparison: `artifacts/qa/home-redesign-2026-07-29/home-before-after.jpg`
-- Final captures:
-  - `artifacts/qa/home-redesign-2026-07-29/after-home-top.jpg`
-  - `artifacts/qa/home-redesign-2026-07-29/after-home-middle.jpg`
-  - `artifacts/qa/home-redesign-2026-07-29/after-home-bottom.jpg`
-  - `artifacts/qa/home-redesign-2026-07-29/after-home-player.jpg`
+- Reference: `/private/tmp/pluggd-tonearm-reference.png` (converted without visual editing from the founder-supplied AVIF, 740 x 556).
+- Implementation, paused: `/private/tmp/pluggd-build12-tonearm-state-v2.png` (compact Simulator, 750 x 1334 physical pixels / 375 x 667 points).
+- Implementation, playing: `/private/tmp/pluggd-build12-tonearm-playing-v2.png` (same Simulator and viewport).
+- Combined comparison: `/private/tmp/pluggd-build12-tonearm-comparison-v2.png`.
 
-## Mandatory comparison
+## Comparison result
 
-### Typography
+- The reference is used for the platter-to-pivot relationship, a deliberate two-stage bend and a visible parked rest; it is not a literal full-screen layout source.
+- Paused: the complete arm, joint, headshell and stylus remain within the deck. The arm parks beside the platter, passes through the visible cradle and no longer clips the card or screen.
+- Playing: the pivot remains fixed, the connected arm swings inward, the elbow remains visibly continuous and the headshell reaches the right-hand outer groove.
+- The one-pixel lower-arm alignment and joint cap remove the former overlapping-rectangle seam.
+- Accepted platter size, artwork, grooves, deck card, meters and transport remain unchanged.
+- P0 issues: none.
+- P1 issues: none.
+- P2 issues: none.
 
-- Sora remains the display face and Satoshi the supporting copy face throughout.
-- Daily Plug, section headings, metadata and CTA hierarchy are consistent with the selected mobile system.
-- The featured CTA was shortened and rebuilt as one inline action so its icon no longer wrapped onto a second line.
-- No legacy display typography is visible.
+## Settings Appearance v2 (rejected) and direct-entry close QA
 
-### Spacing and layout
+### Inputs and state
 
-- The first viewport contains a featured playable release plus four additional choices.
-- Artwork remains square and fills its frame without blurred sidebars or destructive zooming.
-- Section rhythm is compact enough for discovery while preserving 44pt primary targets.
-- The single market gateway was moved onto a fixed 180pt visual surface after simulator QA exposed flex shrink.
-- Event artwork and event information now occupy separate, intentional surfaces; poster text is not duplicated by an overlay.
-- The live room is a complete bordered signal card rather than a collapsed row.
-- The persistent player and dock remain separate layers and do not restart playback during navigation.
+- Source defect evidence: `/private/tmp/pluggd-build12-appearance-before-current.png` (Night appearance selected, 750 x 1334 physical pixels / 375 x 667 points, 2x density).
+- Implementation: `/private/tmp/pluggd-build12-appearance-after-v2.png` (same route, theme, selection, viewport and density).
+- Combined equal-density comparison: `/private/tmp/pluggd-build12-appearance-comparison-v2.png`.
+- Direct-entry Listening Room before close: `/private/tmp/pluggd-build12-listening-room-direct-before-close.png`.
+- Result after pressing X once: `/private/tmp/pluggd-build12-listening-room-direct-after-close.png`.
 
-### Color and surfaces
+### Findings and comparison history
 
-- The fixed PLUGGD anchors remain black, warm cream and orange.
-- Borders and dark-brown surfaces create grouping without generic nested cards.
-- Orange is reserved for play, selected state, live signal and primary conversion actions.
-- Text and actionable controls maintain readable contrast against artwork and night surfaces.
+- Earlier P2: the three Appearance controls shrink-wrapped their contents, producing unequal spacing and pulling Editorial Light text away from its icon axis.
+- Rejected v2 attempt: a viewport-derived width was added, but the exact render still showed shrink-wrapped fixed elements and unequal internal axes. The founder correctly rejected this evidence; `/private/tmp/pluggd-build12-appearance-comparison-v2.png` is superseded and not a pass.
+- Earlier P1: direct-entry Listening Rooms had no previous stack entry, so visible X dispatched a no-op `router.back()`.
+- Fix: X preserves normal back navigation and replaces with `/mixes` only when no back destination exists. The direct-entry interaction capture proves one press closes the room to the populated Mixes page.
 
-### Imagery
+### Required fidelity surfaces
 
-- Release artwork uses the release-specific fitting component and displays edge-to-edge in square slots.
-- Editorial, event, soundboard, scene and market imagery use their actual source assets.
-- No placeholder artwork, synthetic illustration, custom SVG or CSS-art substitute was introduced.
-- Tall poster copy is preserved inside the image while UI copy sits in a separate information panel.
+- Fonts and typography: unchanged approved PLUGGD families, sizes and weights; v2 did not prove centred wrapping.
+- Spacing and layout rhythm: v2 remained failed for equal control width and shared per-column axes; v3 below owns the correction.
+- Colors and visual tokens: Night semantic background, text, muted, border and selected-orange tokens are unchanged.
+- Image quality and assets: no image or icon asset was replaced; the established Material Icons remain sharp and correctly sized.
+- Copy and content: System, Editorial Light, Night and their detail copy are unchanged.
+- Focused comparison was required because the alignment defect was localized to the Appearance row; the combined full-view comparison also confirms surrounding header, account rows and dock did not move unexpectedly.
 
-### Copy and content
+## My PLUGGD header, feed tabs and post-context QA
 
-- The live ticker, editorial story, releases, events and market counts are source-backed.
-- Imported catalogue metadata is not used as a pretend playable release.
-- Registration is secondary and appears only after the music, scenes, editorial, live and commerce gateways.
-- Internal status values and architecture language are not exposed.
+### Inputs and state
 
-### States and interactions
+- Source defect evidence: `/Users/apple/Desktop/Simulator Screenshot - PLUGGD Compact Parity 26.3 - 2026-08-27 at 22.18.56.png` (My PLUGGD Feed, For You selected, Night, signed out, 750 x 1334 physical pixels / 375 x 667 points, 2x density).
+- Implementation: `/private/tmp/pluggd-build12-mypluggd-after.png` (same route, tab, feed mode, theme, auth state, viewport and density).
+- Combined equal-density comparison: `/private/tmp/pluggd-build12-mypluggd-before-after.png` (1500 x 1334 physical pixels).
+- Following interaction: `/private/tmp/pluggd-build12-mypluggd-following-after.png` (same implementation and viewport after a real tap on Following).
+- Community post presentation: `/private/tmp/pluggd-build12-community-destinations-after.png` (same compact Simulator and Night theme).
 
-- Featured and grid play actions have distinct accessible targets from their detail routes.
-- One-tap playback opens the persistent player; an unavailable remote file reaches the existing honest “Audio unavailable” state.
-- Home-to-Discover scene deep links apply city/genre matching; when no exact playable match exists, Discover offers wider real signals instead of a dead end or fabricated scene content.
-- Reduce Motion disables ticker movement and featured parallax.
-- Loading, empty, signed-out and unavailable-audio states remain represented.
+### Findings and comparison history
 
-### Accessibility and resilience
+- Earlier P1: four header actions competed with the shared title block in one horizontal row, forcing `My PLUGGD` to two lines and the supporting sentence to three lines.
+- Fix: the eyebrow and actions now share the first row, while the title and concise supporting sentence each receive the complete content width below. Both render on one line without truncation.
+- Earlier P2: For You and Following appeared as two unrelated CTA pills with unequal visual weight.
+- Fix: both modes now occupy equal halves of one bordered segmented tab control. A real Simulator tap moved the selected orange-soft surface and accessibility-selected state from For You to Following.
+- Earlier P1: every post exposed `Community Feed` and `Profile` as large destination buttons. The former repeated the current route and the latter had no route, so neither added usable customer context.
+- Fix: those two default distribution types remain in stored post routing but are filtered from card presentation. The Community render shows clean content with no redundant chips; source review confirms linked board, creator-community, release, beat, mix, event and challenge destinations remain eligible and actionable.
+- Post-fix full-view and focused evidence contains no actionable P0/P1/P2 issue.
 
-- Simulator runtime snapshot exposes labelled play, open, search, account, scene, event, market, registration, player and dock controls.
-- Primary controls use at least 44pt targets.
-- The ticker has a static VoiceOver summary and a non-moving Reduce Motion treatment.
-- Longer titles are constrained deliberately and supporting copy can wrap without breaking the grid.
+### Required fidelity surfaces
 
-## Findings resolved
+- Fonts and typography: approved PLUGGD display/body families and weights remain; the title and supporting line now have stable one-line hierarchy at the exact compact viewport.
+- Spacing and layout rhythm: the header uses a balanced action row followed by full-width copy; the feed selector is one equal two-column control with consistent four-point internal spacing and 44-point-plus targets.
+- Colors and visual tokens: the Night semantic canvas, text, divider and accent tokens remain; the selected feed tab uses a restrained accent-soft surface instead of a full orange CTA block.
+- Image quality and assets: no image, logo or icon asset changed; existing vector icons and avatar treatment remain sharp.
+- Copy and content: the supporting line is shortened without changing meaning; internal distribution labels no longer leak into customer-facing cards, while real destination context is preserved.
+- Focused comparison was required for the selected Following state and destination-label removal; the combined full-view comparison confirms the surrounding primary tabs, Stories, composer, feed card and dock retain their accepted geometry.
 
-- P1 — single market gateway collapsed to a narrow strip: fixed with an explicit inner visual surface and verified in the bottom capture.
-- P1 — primary registration button lost its fill: fixed with an inner button surface and verified in the bottom capture.
-- P1 — scheduled live room exposed an internal status and lacked hierarchy: replaced with human date/creator metadata and a full signal card.
-- P2 — featured CTA icon wrapped onto a separate line: rebuilt as a single inline action.
-- P2 — event poster and overlay repeated the same title: separated poster media from the event information panel.
-- P2 — scene deep link could become an immediate empty dead end: retained honest matching and added a real-content fallback.
+## Settings Appearance v3 correction QA
 
-## Remaining follow-up
+### Inputs and state
 
-- P3 — validate the same hierarchy at the largest accessibility text setting during the broader accessibility submission pass.
-- P3 — replace any remotely unavailable creator audio at its source; the client already presents the correct unavailable state.
+- Source defect evidence: `/private/tmp/pluggd-build12-appearance-before-v3.png` (Settings, Night selected, 750 x 1334 physical pixels / 375 x 667 points, 2x density).
+- First v3 implementation: `/private/tmp/pluggd-build12-appearance-after-v3.png` (same route, theme, selection, viewport and density).
+- Final v3 implementation: `/private/tmp/pluggd-build12-appearance-after-v3b.png` (same route, theme, selection, viewport and density).
+- Full-view equal-density comparison: `/private/tmp/pluggd-build12-appearance-comparison-v3.png` (1500 x 1334 physical pixels).
+- Focused equal-density comparison: `/private/tmp/pluggd-build12-appearance-focused-comparison-v3.png` (1500 x 330 physical pixels).
+- Real selection interaction: `/private/tmp/pluggd-build12-appearance-v3-light-selected.png` (same viewport after tapping Editorial Light; theme and selected mark both changed).
+
+### Current comparison finding
+
+- Earlier P1: v2 spread shrink-wrapped choices across the available row and was incorrectly accepted as three centred columns.
+- First v3 fix: three structural `flex: 1` slots make the label/detail columns equal.
+- First v3 render P2: the fixed-size icon and selection circle still rendered at each slot's left edge while the full-width label/detail were centred.
+- Final fix: the icon and selection control now sit inside full-width centring rails. The final full and focused comparisons show three equal columns centred at approximately 70.5, 187.5 and 304.5 points, with icon, label, detail and selection mark sharing each axis.
+- Interaction result: tapping Editorial Light changes the app to Editorial Light and moves the selected marker to the middle column; radio behaviour remains working.
+- Post-fix result: no actionable P0/P1/P2 alignment issue remains.
+
+### Required fidelity surfaces
+
+- Fonts and typography: System, Editorial Light and Night retain the approved Satoshi weight and one-line centred labels; compact details remain one line without clipping.
+- Spacing and layout rhythm: three equal structural slots span the content width with two equal 8-point gaps; every icon, label, detail and selection mark is visibly centred on its slot's vertical axis.
+- Colors and visual tokens: Night and Editorial Light retain their semantic canvas, ink, muted, border and selected-orange tokens; the selected state remains clear in both schemes.
+- Image quality and assets: established Material Icons remain unchanged and sharp; no raster or replacement asset was introduced.
+- Copy and content: all three labels and their compact details remain unchanged; no technical or internal copy was added.
+- Full-view comparison confirms surrounding header, account rows and dock did not move. The focused crop is required and now makes the corrected per-column axes directly judgeable.
+
+## Settings vertical hierarchy and compact Appearance rail QA
+
+### Inputs and state
+
+- Source render: `/private/tmp/pluggd-build12-appearance-v3-light-selected.png` (Settings, Editorial Light selected, 750 x 1334 physical pixels / 375 x 667 points, 2x density).
+- Implementation: `/private/tmp/pluggd-build12-settings-vertical-after-v4.png` (same route, selected theme, viewport and density).
+- Full-view equal-density comparison: `/private/tmp/pluggd-build12-settings-vertical-comparison-v4.png` (1500 x 1334 physical pixels).
+- Focused equal-density comparison: `/private/tmp/pluggd-build12-settings-vertical-focused-v4.png` (1500 x 760 physical pixels).
+
+### Current comparison finding
+
+- Earlier P2: a decorative two-line headline and 132-point selector kept the first useful account rows unnecessarily low on a utility screen.
+- Fix: the decorative headline is removed; `ACCOUNT CONTROL` remains; `Manage your profile, purchases and privacy.` is a true one-line summary; header gaps are tightened without changing the back target.
+- The equal three-choice Appearance rail is now 90 points high, matching the established compact Stories-rail footprint. Icon, one-line label, detail and selection state all remain visible and centred on the accepted three axes.
+- The founder's positional target is met directly: in the equal-density comparison, the new `YOUR PLUGGD` heading begins at approximately the same screen height as the former `APPEARANCE` heading.
+- The current implementation visibly retains Editorial Light and its middle-column selection state; the previously interaction-proven theme handler and radio semantics are unchanged.
+- P0 issues: none.
+- P1 issues: none.
+- P2 issues: none.
+
+### Required fidelity surfaces
+
+- Fonts and typography: approved PLUGGD body/eyebrow families remain; the management summary is one line at compact width without truncation.
+- Spacing and layout rhythm: the page now prioritises controls, uses the shared 90-point compact-rail height and brings every subsequent settings row upward without crowding.
+- Colors and visual tokens: Editorial Light semantic canvas, ink, muted, border and selected-orange tokens are unchanged.
+- Image quality and assets: established Material Icons remain unchanged and sharp; no image asset was introduced.
+- Copy and content: only the redundant decorative headline is removed and the management summary is shortened; setting labels, details, routes and actions remain intact.
+- The complete before/after comparison confirms the back action remains clear and the dock continues to reserve the lower safe area.
+
+## Settings final compact header and complete account-group QA
+
+### Inputs and state
+
+- Prior accepted-axis source: `/private/tmp/pluggd-build12-appearance-v3-light-selected.png` (Settings, Editorial Light selected, 750 x 1334 physical pixels / 375 x 667 points, 2x density).
+- Final implementation: `/private/tmp/pluggd-build12-settings-final-v10.png` (same route, selected theme, viewport and density).
+- Full-view equal-density comparison: `/private/tmp/pluggd-build12-settings-final-comparison-v10.png` (1500 x 1334 physical pixels).
+- Intermediate v4/v6/v9 renders remain iteration evidence only; v10 is the exact-current approval surface.
+
+### Final comparison finding
+
+- `ACCOUNT CONTROL` now uses a legible 13-point compact-title scale and is mathematically centred across the full content width between the real 44-point back target and an equal right-side spacer.
+- The back control's visible circle is 36 points and sits nearer the safe-area edge; its routing and accessible target remain unchanged. No redundant top bar was added.
+- `Manage your identity, purchases and privacy.` restores the original identity meaning and remains centred, complete and one line.
+- The Appearance selector remains a 90-point compact rail with three equal horizontal slots and unchanged centred icon/label/detail/selection axes.
+- The lower Appearance gap now matches the compact upper interval closely, avoiding a second oversized gap.
+- At the exact 375 x 667 compact viewport the five `YOUR PLUGGD` rows use 62-point targets, remain above the 44-point accessibility minimum and render Public profile, Wallet, Purchases, Memberships and the complete Tickets row plus divider above the dock. Source inspection confirms screens at least 760 points tall retain the established 68-point premium rows rather than inheriting compact compression.
+- P0 issues: none.
+- P1 issues: none.
+- P2 issues: none.
+
+### Required fidelity surfaces
+
+- Fonts and typography: approved PLUGGD font families and weights remain; centred compact-title and one-line body copy are fully legible.
+- Spacing and layout rhythm: useful controls start higher; the selector and account group use consistent compact intervals; no row is obstructed by the dock.
+- Colors and visual tokens: Editorial Light semantic canvas, ink, muted, border and selected-orange tokens remain unchanged.
+- Image quality and assets: established vector icons remain sharp; no replacement asset was added.
+- Copy and content: the decorative headline alone is removed; all working setting labels, descriptions and routes are retained.
 
 final result: passed
 
----
+## Community final compact rhythm QA
 
-# PLUGGD Home Geometry Correction
-
-## Findings resolved
-
-- Moved the live signal ticker directly beneath the Daily Plug masthead so it establishes realtime context before the featured music.
-- Rebuilt scene gateways as fixed 176×136pt visual frames; artwork, gradient and copy now fill the complete card instead of collapsing inside an empty frame.
-- Rebuilt mix cards as fixed 176pt artwork frames with separate 48pt detail actions; artwork now fills the surface without the blank lower panel seen in the simulator.
-- Added explicit non-shrinking widths to horizontal scene and mix rails so card density cannot collapse at runtime.
-- Rebuilt the complete lower Home sequence rather than stopping at the first affected rails:
-  - Next Wave uses a fixed 224pt editorial mosaic plus fixed 132pt supporting cards.
-  - Soundboards use non-shrinking 224×158pt artwork frames with copy and interaction layered independently.
-  - The featured event preserves its complete poster, information and RSVP treatment inside a fixed frame.
-  - The live-room row is fixed at 88pt with an independent full-row target.
-  - Market gateways use fixed 180pt visual frames and cannot collapse when only one gateway is available.
-- Preserved independent play/open accessibility targets and selection haptics.
-
-## Verification
-
-- Compared against the user-supplied iPhone 17 Pro Max capture.
-- Inspected the ticker, scene rail, mix rail, Next Wave mosaic, Soundboards rail, event, live room and market gateway in the running simulator after hot reload.
-- TypeScript: passed.
-- Evidence:
-  - `artifacts/qa/home-page-polish-2026-07-30/01-home-top-ticker.jpg`
-  - `artifacts/qa/home-page-polish-2026-07-30/02-scenes-mixes-fixed.jpg`
-  - `artifacts/qa/home-page-polish-2026-07-30/03-next-wave-soundboards-fixed.jpg`
-  - `artifacts/qa/home-page-polish-2026-07-30/04-events-market-fixed.jpg`
+- Founder annotation: `/Users/apple/Downloads/comspacing.png`.
+- Exact-current implementation: `/private/tmp/pluggd-build12-community-spacing-final-v11.png` at 375 x 667 points / 750 x 1334 physical pixels.
+- Equal-density comparison: `/private/tmp/pluggd-build12-community-spacing-guides-comparison-final-v11.png`.
+- The working return arrow remains while only redundant label copy is hidden; the adjacent rule, Stories rail and complete Story ring are unclipped.
+- The sticky Community dock and timeline use the bottom dock's 10-point guide. The filter rail fills that same width and distributes all five controls across it without horizontal clipping.
+- The avatar-to-name/body gap is reduced while the approved expanded-thread shell remains unchanged.
+- Typography, semantic colors, icons, imagery, copy and working navigation remain intact.
+- P0 issues: none. P1 issues: none. P2 issues: none.
+- Founder signed off Community after inspecting the exact-current Simulator state.
 
 final result: passed
 
----
+## Events admin-featured Spotlight restoration QA
 
-# PLUGGD Fan Experience Design QA
-
-## Scope
-
-- Audited fan entry, onboarding, My PLUGGD, personal profile, Library, playlists, tickets, purchases, memberships and the account navigation model.
-- Compared the mobile collection model with the local live-web implementation in `/Users/apple/PLUGGD_NEW`.
-- Evidence and detailed flow report: `artifacts/qa/fan-experience-audit-2026-07-30/`.
-
-## Findings resolved
-
-- Activated the existing rich My PLUGGD fan hub instead of redirecting it to Profile.
-- Made My PLUGGD the signed-in fan account entry while keeping Studio as the creator entry.
-- Split Library and Purchases & Access into clear account destinations.
-- Added owned and followed playlists to the unified Library data and deduplicated saved content.
-- Reframed Library around Music, Playlists, Events and Access, with a clear first-playlist action and ownership gateway.
-- Connected the onboarding notification choice to real mobile push registration.
-- Added explicit accessible roles, labels and states to onboarding choices and actions.
-- Updated stale contracts so they protect the intentional fan information architecture rather than the retired redirect.
-
-## Verification
-
-- TypeScript: passed.
-- Full mobile verification suite: passed.
-- Expo Doctor: passed.
-- Native iOS simulator build and launch: passed.
-- iPhone 17 Pro Max visual inspection: passed for signed-out and empty states.
-
-## Evidence limitation
-
-- The current simulator is signed out. Populated playlists, purchases, memberships, activity and ticket history still require one signed-in fan test-account pass before App Store sign-off.
-
-final result: passed with signed-in populated-state QA remaining
-
----
-
-# PLUGGD Remaining-Surfaces Design QA
-
-## Scope
-
-- Surfaces audited on the iPhone 17 Pro Max simulator: Discover, Community, Events, Releases, Mixes, Soundboards, Market, Studio access, Connect Card, Login, Purchases, Wallet, Memberships, Tickets, Library, Settings, release detail, mix detail, event detail, beat detail, beat licensing and soundboard detail.
-- Local product reference: `/Users/apple/PLUGGD_NEW`, including the production soundboard playback resolver and current public experience.
-- Evidence:
-  - `artifacts/qa/remaining-pages-2026-07-30/soundboard-playing.jpg`
-  - `artifacts/qa/remaining-pages-2026-07-30/recovery-beat.jpg`
-  - `artifacts/qa/remaining-pages-2026-07-30/licence-signed-out.jpg`
-
-## Visual-system findings
-
-- Sora display typography, Satoshi supporting typography, warm-black surfaces and restrained PLUGGD orange remain consistent across the audited screens.
-- Existing catalogue, discovery, creator, community and commerce surfaces already use the selected mobile system; no legacy web-parity redesign was reintroduced.
-- Purchases now uses four image-led gateways rather than an underdesigned empty panel.
-- Public-profile, missing-content and restricted-commerce states now retain the same hierarchy and polish as populated screens.
-- Valid detail pages preserve artwork-first presentation, readable metadata, 44pt actions and the persistent player/dock separation.
-
-## Functional findings resolved
-
-- Soundboard slugs no longer enter the UUID query path.
-- Relative soundboard media paths now use the same secure playback resolver as the live web app.
-- Play-all resolves every playable soundboard item before building the queue.
-- Soundboard play, follow, save, post, share, react and comment actions expose clear VoiceOver labels.
-- Signed-out licence review no longer leaks a backend response; it explains the authentication step and links directly to sign-in.
-- Missing beats, mixes, soundboards, events, posts, communities, boards, playlists, videos, products and sample packs now use a shared premium recovery treatment with real onward navigation.
-- The recovery primary action was exercised in the simulator and reached the live market catalogue.
-
-## Verification
-
-- TypeScript: passed.
-- Mobile contract suite: passed through all product contracts and TypeScript.
-- Expo Doctor: 18/18 passed.
-- Native iOS simulator build and launch: passed.
-- Runtime accessibility snapshot: recovery and licence actions are labelled and actionable.
-- One pre-existing Hermes dependency-analysis warning remains; it is a CocoaPods build-script warning and does not affect runtime or submission behavior.
+- Founder regression reference: `/Users/apple/Downloads/Screenshot 2026-08-28 at 12.08.17 AM.png`.
+- Exact-current implementation: `/private/tmp/pluggd-build12-events-spotlight-v1.png` at 375 x 667 points / 750 x 1334 physical pixels.
+- The complete Event Spotlight section is restored between the collapsed discovery controls and event listings.
+- The rendered `ELLE & L's Festival Day 2` card comes from the eligible `featured_event` collection in admin order; the removed `The Journey of Reggae` event is not restored.
+- The active Carnival takeover remains the separate leading campaign surface rather than duplicating its first event in normal Spotlight.
+- Existing Spotlight artwork, overlay, typography, metadata and actions are unchanged.
+- P0 issues: none. P1 issues: none. P2 issues: none.
 
 final result: passed

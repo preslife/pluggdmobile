@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthProvider';
 import { selectionHaptic } from '../../src/design/haptics';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { PurchaseLegalLinks } from '../../src/components/PurchaseLegalLinks';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import {
   useSubscription,
   type ActiveMembership,
@@ -36,7 +38,7 @@ function tierAccent(label: string) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return 'Renews through Apple';
+  if (!value) return 'date pending';
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -53,8 +55,16 @@ export default function MyMembershipsScreen() {
     loading,
     error,
     clearError,
+    storeName,
+    subscriptionManagementUrl,
   } = useSubscription();
   const [refreshing, setRefreshing] = useState(false);
+  const bottomInset = useBottomChromeInset();
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/profile' as any);
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -66,11 +76,11 @@ export default function MyMembershipsScreen() {
   };
 
   const openSubscriptionSettings = () => {
-    void Linking.openURL('https://apps.apple.com/account/subscriptions');
+    if (subscriptionManagementUrl) void Linking.openURL(subscriptionManagementUrl);
   };
 
   const handleRestore = () => {
-    Alert.alert('Restore purchases', 'Restore Apple memberships linked to this Apple ID.', [
+    Alert.alert('Restore purchases', `Restore memberships linked to this ${storeName} account.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Restore', onPress: restoreSubscriptions },
     ]);
@@ -87,7 +97,7 @@ export default function MyMembershipsScreen() {
         <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.signedOutTop}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={[styles.iconButton, { borderColor: theme.colors.border }]} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={[styles.iconButton, { borderColor: theme.colors.border }]} onPress={handleBack}>
             <MaterialIcons name="arrow-back-ios-new" size={19} color={theme.colors.text} />
           </Pressable>
         </View>
@@ -99,7 +109,7 @@ export default function MyMembershipsScreen() {
           <Text style={[styles.kicker, { color: theme.colors.accent }]}>MEMBERSHIPS</Text>
           <Text style={[styles.signedOutTitle, { color: theme.colors.text }]}>Back the artists shaping your world.</Text>
           <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
-            Join creator tiers for direct support, early releases and member-only moments. Billing stays protected by Apple.
+            Join creator tiers for direct support, early releases and member-only moments. Billing stays protected by {storeName}.
           </Text>
           <View style={[styles.benefitRail, { borderTopColor: theme.colors.border, borderBottomColor: theme.colors.border }]}>
             {[
@@ -116,10 +126,10 @@ export default function MyMembershipsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Sign in for memberships"
-            style={[styles.primaryButton, styles.signedOutButton, { backgroundColor: theme.colors.accent }]}
+            style={[styles.primaryButton, styles.signedOutButton, { backgroundColor: theme.colors.accentFill }]}
             onPress={() => go('/auth/login')}
           >
-            <Text style={styles.primaryButtonText}>SIGN IN TO CONTINUE</Text>
+            <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>SIGN IN TO CONTINUE</Text>
             <MaterialIcons name="arrow-forward" size={19} color="#0a0806" />
           </Pressable>
           <Pressable accessibilityRole="button" style={[styles.signedOutSecondary, { borderColor: theme.colors.border }]} onPress={() => go('/discover')}>
@@ -127,7 +137,7 @@ export default function MyMembershipsScreen() {
           </Pressable>
           <View style={styles.appleLine}>
             <MaterialIcons name="verified-user" size={16} color={theme.colors.textSubtle} />
-            <Text style={[styles.appleLineText, { color: theme.colors.textSubtle }]}>Subscriptions managed securely through Apple</Text>
+            <Text style={[styles.appleLineText, { color: theme.colors.textSubtle }]}>Subscriptions managed securely through {storeName}</Text>
           </View>
         </View>
       </View>
@@ -141,13 +151,13 @@ export default function MyMembershipsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 150 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: bottomInset }]}
       >
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={handleBack}>
             <MaterialIcons name="arrow-back-ios-new" size={19} color={theme.colors.text} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Manage Apple subscriptions" style={styles.iconButton} onPress={openSubscriptionSettings}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Manage ${storeName} subscriptions`} style={styles.iconButton} onPress={openSubscriptionSettings}>
             <MaterialIcons name="settings" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
@@ -157,30 +167,31 @@ export default function MyMembershipsScreen() {
             <MaterialIcons name="workspace-premium" size={16} color={theme.colors.accent} />
             <Text style={[styles.kicker, { color: theme.colors.accent }]}>Memberships</Text>
           </View>
-          <Text maxFontSizeMultiplier={1.35} style={[styles.heroTitle, { color: theme.colors.text }]}>Creator access, billed through Apple.</Text>
+          <Text maxFontSizeMultiplier={1.35} style={[styles.heroTitle, { color: theme.colors.text }]}>Creator access, billed through {storeName}.</Text>
           <Text maxFontSizeMultiplier={1.6} style={[styles.heroBody, { color: theme.colors.textSecondary }]}>
             Subscribe to creators, restore purchases, and manage active memberships without leaving your account hub.
           </Text>
           <View style={styles.heroStats}>
             <StatPill label="Active" value={`${activeMemberships.length}`} />
-            <StatPill label="Billing" value="Apple" />
+            <StatPill label="Billing" value={storeName} />
           </View>
         </View>
 
         {error ? (
-          <Pressable style={[styles.errorCard, { borderColor: theme.colors.danger }]} onPress={clearError}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss membership error" style={[styles.errorCard, { borderColor: theme.colors.danger }]} onPress={clearError}>
             <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text>
           </Pressable>
         ) : null}
 
         <View style={styles.actionRow}>
-          <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]} onPress={() => go('/discover')}>
-            <Text style={styles.primaryButtonText}>Find creators</Text>
+          <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }]} onPress={() => go('/discover')}>
+            <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Find creators</Text>
           </Pressable>
           <Pressable accessibilityRole="button" disabled={restoring} style={[styles.secondaryButton, { borderColor: theme.colors.border }]} onPress={handleRestore}>
             {restoring ? <ActivityIndicator color={theme.colors.text} /> : <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Restore</Text>}
           </Pressable>
         </View>
+        <PurchaseLegalLinks note={`Memberships renew for the period and price shown until cancelled. Manage or cancel any time in your ${storeName} subscription settings.`} />
 
         <View style={styles.section}>
           <SectionHead title="Your memberships" subtitle="Creators you currently support." />
@@ -208,9 +219,9 @@ export default function MyMembershipsScreen() {
         <View style={[styles.reviewCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <MaterialIcons name="verified-user" size={22} color={theme.colors.accent} />
           <View style={styles.reviewCopy}>
-            <Text style={[styles.reviewTitle, { color: theme.colors.text }]}>Apple manages billing</Text>
+            <Text style={[styles.reviewTitle, { color: theme.colors.text }]}>{storeName} manages billing</Text>
             <Text style={[styles.reviewBody, { color: theme.colors.textMuted }]}>
-              Membership purchases, renewal, restore, and cancellation use Apple subscription controls.
+              Membership purchases, renewal, restore, and cancellation use {storeName} subscription controls.
             </Text>
           </View>
         </View>

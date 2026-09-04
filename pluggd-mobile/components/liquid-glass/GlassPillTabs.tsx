@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassColors, liquidGlassRadii } from '../../src/design/liquidGlassTokens';
 import { GlassPanel } from './GlassPanel';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type GlassPillTabsProps<T extends string> = {
   value: T;
@@ -10,6 +11,7 @@ type GlassPillTabsProps<T extends string> = {
 };
 
 export function GlassPillTabs<T extends string>({ value, items, onChange }: GlassPillTabsProps<T>) {
+  const theme = usePluggdTheme();
   return (
     <GlassPanel intensity="subtle" radius={liquidGlassRadii.xl} style={styles.wrap} contentStyle={styles.panelContent}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -28,10 +30,11 @@ export function GlassPillTabs<T extends string>({ value, items, onChange }: Glas
               style={({ pressed }) => [
                 styles.tab,
                 active && styles.tabActive,
+                active && { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.borderStrong },
                 pressed && styles.tabPressed,
               ]}
             >
-              <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
+              <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive, { color: active ? theme.colors.text : theme.colors.textMuted }]} numberOfLines={1}>
                 {item.label}
               </Text>
             </Pressable>
@@ -46,18 +49,18 @@ const styles = StyleSheet.create({
   wrap: {
     alignSelf: 'flex-start',
     width: '100%',
-    height: 40,
+    minHeight: 50,
   },
   panelContent: {
     maxWidth: '100%',
-    height: 40,
+    minHeight: 50,
   },
   row: {
     padding: 3,
     gap: 3,
   },
   tab: {
-    minHeight: 34,
+    minHeight: 44,
     borderRadius: liquidGlassRadii.pill,
     paddingHorizontal: 13,
     alignItems: 'center',

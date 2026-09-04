@@ -6,3 +6,9 @@ export const supabaseStorage = {
   setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
   removeItem: (key: string) => AsyncStorage.removeItem(key),
 };
+
+export async function clearSupabaseAuthStorage() {
+  const keys = await AsyncStorage.getAllKeys();
+  const authKeys = keys.filter((key) => key.startsWith("sb-") && key.includes("-auth-token"));
+  if (authKeys.length) await AsyncStorage.multiRemove(authKeys);
+}

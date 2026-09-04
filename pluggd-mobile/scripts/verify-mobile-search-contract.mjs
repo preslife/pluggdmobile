@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const routeSource = read('app/search.tsx');
 const searchSource = read('src/features/search/search-discovery-screen.tsx');
 const dataSource = read('src/features/culture/useCultureData.ts');
-const chromeSource = read('components/AppChrome.tsx');
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 
 assert.match(routeSource, /SearchDiscoveryScreen/, 'Search route must use the dedicated premium Search screen');
 
@@ -33,7 +33,10 @@ for (const hook of ['useUniversalSearch', 'useHomeFeed', 'useEventLayer', 'useBa
   assert.match(searchSource, new RegExp(hook), `${hook} must power Search`);
 }
 
-for (const table of ["from('profiles')", "from('releases')", "from('mixes')", "from('beats')", "from('videos')", "from('events')", "from('hubs')", "from('session_rooms')"]) {
+// Public creator lookups read public_profiles, a view exposing only the fields
+// already public on the web creator page. public.profiles itself denies SELECT
+// to anon, so reading it directly returned no names for signed-out users.
+for (const table of ["from('public_profiles')", "from('releases')", "from('mixes')", "from('beats')", "from('videos')", "from('events')", "from('hubs')", "from('session_rooms')"]) {
   assert.match(dataSource, new RegExp(table.replace(/[()']/g, '\\$&')), `${table} must be in universal search data map`);
 }
 
@@ -54,7 +57,7 @@ for (const action of [
 
 assert.match(searchSource, /RefreshControl/, 'Search must support pull-to-refresh for live data');
 assert.match(searchSource, /TextInput/, 'Search must expose a native text input');
-assert.match(chromeSource, /normalized === '\/search'/, 'Search should own its own premium header');
+assert.match(chromeSource, /DEDICATED_HEADER_EXACT[\s\S]*'\/search'/, 'Search should own its own premium header');
 assert.doesNotMatch(searchSource, /Fictional|Elias Thorne|LONDON WAREHOUSE|Boiler Room|Spotify|TikTok|DICE|Ticketmaster|Lorem|mock/i, 'Search must not ship fake or third-party placeholder data');
 assert.doesNotMatch(searchSource, /😀|😃|😄|😁|🎵|🎧|🎟|💬|❤️|🔥|✨/, 'production UI must not use emoji icons');
 

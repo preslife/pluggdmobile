@@ -29,11 +29,20 @@ const banned = [
   /\bcontract\b/i,
   /\bfaked\b/i,
   /\bweb app\b/i,
+  /\binternal\b/i,
+  /\bimplementation\b/i,
+  /\bmigration\b/i,
+  /\bdebug(?:ging)?\b/i,
+  /\bsandbox\b/i,
+  /\btest mode\b/i,
+  /\bpolicy resolution\b/i,
+  /\bfail(?:s|ed|ing)? closed\b/i,
 ];
 
 const ignoredFiles = new Set([
   'src/lib/supabase.ts',
   'src/lib/storage.ts',
+  'src/lib/publicAudienceFilters.ts',
 ]);
 
 // Exact strings copied verbatim from the live pluggd.fm UI. These are real
@@ -41,6 +50,7 @@ const ignoredFiles = new Set([
 // must not flag them.
 const webCopyAllowlist = new Set([
   'Native previews from real board items, waveforms, notes, and comments.',
+  'Have the legal capacity to enter into a binding contract.',
 ]);
 
 function collectFiles(dir, out = []) {

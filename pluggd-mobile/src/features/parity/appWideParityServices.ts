@@ -15,6 +15,7 @@ import {
 } from '../../lib/mobileContent';
 import { getCurrentUserId, safeList, safeMaybe } from '../culture/mobileServices';
 import { geocodeMany } from '../../lib/mapbox';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 
 export type ParityCard = {
   id: string;
@@ -287,16 +288,23 @@ function socialPostCard(item: SocialPostItem): ParityCard {
   };
 }
 
-function profileCard(profile: { id?: string | null; user_id?: string | null; username?: string | null; full_name?: string | null; display_name?: string | null; avatar_url?: string | null; primary_genre?: string | null; city?: string | null; profile_type?: string | null; user_type?: string | null; is_verified?: boolean | null }): ParityCard {
+type ProfileCardSource = { id?: string | null; user_id?: string | null; username?: string | null; full_name?: string | null; display_name?: string | null; avatar_url?: string | null; primary_genre?: string | null; city?: string | null; profile_type?: string | null; user_type?: string | null; is_verified?: boolean | null };
+
+function profileCard(profile: ProfileCardSource): ParityCard {
+  const title = profile.display_name || profile.full_name || profile.username || '';
   return {
     id: profile.user_id || profile.id || profile.username || profile.full_name || 'profile',
-    title: profile.display_name || profile.full_name || profile.username || 'PLUGGD Creator',
+    title,
     subtitle: profile.primary_genre || profile.city || profile.profile_type || profile.user_type || 'Creator',
     eyebrow: profile.is_verified ? 'Verified creator' : 'Creator',
     route: profile.username ? `/creator/${profile.username}` : profile.user_id ? `/user/${profile.user_id}` : '/search',
     imageUrl: profile.avatar_url,
     kind: 'profile',
   };
+}
+
+function publicProfileCards(profiles: ProfileCardSource[]) {
+  return profiles.map(profileCard).filter((card) => isPublicProfileName(card.title));
 }
 
 function hubCard(item: HubRow): ParityCard {
@@ -476,7 +484,7 @@ export async function loadDiscoverParity(): Promise<ParityPayload> {
         };
       }), emptyText: 'Trending scenes are not available yet.' },
       { id: 'soundboards', title: 'Soundboards', icon: 'push-pin', serif: true, subtitle: 'Raw ideas, references, comments, and audio sketches from creators building in public.', items: bundle.soundboards.map(soundboardCard), emptyText: 'No soundboards are available yet.' },
-      { id: 'creators', title: 'Creators to Watch', icon: 'group', serif: true, subtitle: 'Artists, producers, DJs, hosts, and soundboard builders shaping the feed.', items: bundle.profiles.slice(0, 10).map(profileCard), emptyText: 'Creators will appear here when profiles are public.' },
+      { id: 'creators', title: 'Creators to Watch', icon: 'group', serif: true, subtitle: 'Artists, producers, DJs, hosts, and soundboard builders shaping the feed.', items: publicProfileCards(bundle.profiles).slice(0, 10), emptyText: 'Creators will appear here when profiles are public.' },
       { id: 'community-pulse', title: 'Community Pulse', icon: 'chat-bubble-outline', serif: true, subtitle: 'Short live activity from comments, rooms, drops, and board updates.', items: bundle.posts.filter((post) => !post.is_deleted).slice(0, 8).map(socialPostCard), emptyText: 'Community signals will appear here soon.' },
     ],
   };
@@ -517,7 +525,7 @@ export async function loadCommunityParity(): Promise<ParityPayload> {
     title: 'Community',
     kicker: 'Culture hub',
     summary: 'Follow the conversations, moments, rooms, boards, events, and creators shaping the PLUGGD scene.',
-    hero: posts[0] || hubs.map(hubCard)[0] || bundle.profiles.map(profileCard)[0] || null,
+    hero: posts[0] || hubs.map(hubCard)[0] || publicProfileCards(bundle.profiles)[0] || null,
     actions: [
       { id: 'post', label: 'Create post', route: '/create-post' },
       { id: 'directory', label: 'Directory', route: '/search' },
@@ -532,7 +540,7 @@ export async function loadCommunityParity(): Promise<ParityPayload> {
       { id: 'crowdfund', title: 'Crowdfund', items: campaigns.map((campaign) => communityFeatureCard(campaign, 'Crowdfund', null)), emptyText: 'Campaigns will appear here when they are live.' },
       { id: 'the-plug', title: 'From THE PLUG', items: blogPosts.map((post) => communityFeatureCard(post, 'THE PLUG', null)), emptyText: 'Editorial stories will appear here soon.' },
       { id: 'radio', title: 'Community radio', items: bundle.mixes.slice(0, 6).map((mix) => ({ ...mixCard(mix), eyebrow: 'Community radio' })), emptyText: 'Community radio will appear when published mixes are available.' },
-      { id: 'creators', title: 'Who to follow', items: bundle.profiles.map(profileCard), emptyText: 'Creators will appear when public profiles are available.' },
+      { id: 'creators', title: 'Who to follow', items: publicProfileCards(bundle.profiles), emptyText: 'Creators will appear when public profiles are available.' },
       { id: 'soundboards', title: 'Community soundboards', items: bundle.soundboards.map(soundboardCard), emptyText: 'No public soundboards are active.' },
     ],
   };
@@ -546,7 +554,7 @@ export async function loadMarketParity(section?: string | string[] | null): Prom
   // /market/beats (Marketplace.tsx), a distinct destination from the /market hub.
   if (sectionKey === 'beats' || sectionKey === 'beatplug') {
     const beats = bundle.beats.map(beatCard);
-    const producers = bundle.profiles.slice(0, 10).map(profileCard);
+    const producers = publicProfileCards(bundle.profiles).slice(0, 10);
     return {
       title: 'BeatPlug',
       kicker: 'Beat marketplace',
@@ -588,19 +596,16 @@ export async function loadMarketParity(section?: string | string[] | null): Prom
         staticCard('browse-releases', 'Releases', 'Albums, singles, mixtapes, and creator drops.', 'Market', '/releases'),
         staticCard('browse-samples', 'Sample Packs', 'Loops, drums, stems, and producer packs.', 'Market', '/sample-packs'),
         staticCard('browse-merch', 'Merch', 'Approved creator merchandise and physical drops.', 'Market', '/market/merch'),
-        staticCard('browse-services', 'Services', 'Creator services will appear when enabled.', 'Coming soon', null),
         staticCard('browse-licenses', 'Licenses', 'Review beat license previews before opening a beat.', 'Market', '/market/licenses'),
-        staticCard('browse-offers', 'Creator Offers', 'Creator offers will appear when published.', 'Coming soon', null),
       ] },
       { id: 'releases', title: 'Releases', items: bundle.releases.map(releaseCard), emptyText: 'No releases are available.' },
       { id: 'samples', title: 'Sample packs', items: bundle.samplePacks.map(samplePackCard), emptyText: 'No sample packs are available.' },
-      { id: 'merch', title: 'Merch', items: storeProducts.map(storeCard), emptyText: 'Creator merch will appear when approved products exist.' },
+      { id: 'merch', title: 'Merch', items: storeProducts.map(storeCard), emptyText: 'Creator merch will appear here as new physical drops land.' },
       { id: 'licenses', title: 'Licenses', items: bundle.beats.slice(0, 8).map((item) => ({ ...beatCard(item), eyebrow: 'License preview' })), emptyText: 'Beat licensing previews will appear when published beats exist.' },
-      { id: 'offers', title: 'Creator Offers', items: [], emptyText: 'Creator offers will appear here soon.' },
       { id: 'trust', title: 'Market trust', items: [
-        staticCard('off-app-safe', 'Off-app safe licensing', 'Keep beat licensing clear without introducing Apple credit wallet routes.', 'Policy'),
-        staticCard('creator-safe', 'Creator-owned storefronts', 'Product details stay tied to creator catalog and approved store data.', 'Trust'),
-        staticCard('studio-ready', 'Studio tools', 'Upload and manage catalog from Studio when creator access is available.', 'Studio', '/studio'),
+        staticCard('off-app-safe', 'Licensing made clear', 'Review usage rights, files and terms before buying a beat licence.', 'Buyer protection'),
+        staticCard('creator-safe', 'Creator-owned storefronts', 'Every product stays connected to the creator who made and supports it.', 'Creator first'),
+        staticCard('studio-ready', 'Studio tools', 'Upload and manage your catalogue from Studio once creator access is active.', 'For creators', '/studio'),
       ] },
     ],
   };
@@ -670,7 +675,8 @@ export async function loadEventsParity(): Promise<ParityPayload> {
   const events = await safeList<EventItem>(
     (supabase as any)
       .from('events')
-      .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+      .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+      .eq('discoverable', true)
       .gte('starts_at', nowIso)
       .order('starts_at', { ascending: true })
       .limit(30),
@@ -713,7 +719,6 @@ export async function loadEventsParity(): Promise<ParityPayload> {
       { id: 'event-board', title: 'Event board', items: bundle.events.map(eventCard), emptyText: 'No event signals are available.' },
       { id: 'spotlight', title: 'Spotlight', items: events.slice(0, 4).map(eventCard), emptyText: 'Event spotlights will appear when events are published.' },
       { id: 'opportunities', title: 'Opportunities', items: [
-        staticCard('promoters', 'Promoter tools', 'Promoter and venue opportunities will appear when enabled.', 'Coming soon'),
         staticCard('live-linked', 'Live-linked events', 'Use live sessions and Community posts around published events.', 'Live', '/live'),
         staticCard('my-tickets', 'My tickets', 'Open saved tickets and RSVPs.', 'Tickets', '/tickets'),
       ] },
@@ -759,7 +764,8 @@ export async function loadMapSignalsParity(): Promise<ParityPayload> {
     safeList<EventItem>(
       (supabase as any)
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+        .eq('discoverable', true)
         .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true })
         .limit(30),

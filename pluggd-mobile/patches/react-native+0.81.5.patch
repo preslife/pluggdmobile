@@ -1,0 +1,89 @@
+diff --git a/node_modules/react-native/sdks/hermes-engine/utils/replace_hermes_version.js b/node_modules/react-native/sdks/hermes-engine/utils/replace_hermes_version.js
+index 18ef387..c5e209d 100644
+--- a/node_modules/react-native/sdks/hermes-engine/utils/replace_hermes_version.js
++++ b/node_modules/react-native/sdks/hermes-engine/utils/replace_hermes_version.js
+@@ -12,10 +12,71 @@
+ 
+ const {spawnSync} = require('child_process');
+ const fs = require('fs');
++const path = require('path');
+ const yargs = require('yargs');
+ 
+ const LAST_BUILD_FILENAME = '.last_build_configuration';
+ 
++// Apple lists Hermes among the third-party SDKs that must include a privacy
++// manifest. React Native's prebuilt iOS tarball does not currently place one
++// inside hermes.framework, so make the release artifact self-contained at the
++// framework boundary Apple validates. Hermes uses fstat while loading files
++// inside the app container, so declare Apple's C617.1 approved reason here.
++const HERMES_PRIVACY_MANIFEST = `<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++  <key>NSPrivacyAccessedAPITypes</key>
++  <array>
++    <dict>
++      <key>NSPrivacyAccessedAPIType</key>
++      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
++      <key>NSPrivacyAccessedAPITypeReasons</key>
++      <array>
++        <string>C617.1</string>
++      </array>
++    </dict>
++  </array>
++  <key>NSPrivacyCollectedDataTypes</key>
++  <array/>
++  <key>NSPrivacyTracking</key>
++  <false/>
++</dict>
++</plist>
++`;
++
++function ensureHermesPrivacyManifests(podsRoot) {
++  const hermesRoot = path.join(podsRoot, 'hermes-engine');
++  if (!fs.existsSync(hermesRoot)) {
++    throw new Error(`Unable to locate Hermes at ${hermesRoot}`);
++  }
++
++  let frameworkCount = 0;
++  const visit = directory => {
++    for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
++      if (!entry.isDirectory()) {
++        continue;
++      }
++      const entryPath = path.join(directory, entry.name);
++      if (entry.name === 'hermes.framework') {
++        fs.writeFileSync(
++          path.join(entryPath, 'PrivacyInfo.xcprivacy'),
++          HERMES_PRIVACY_MANIFEST,
++        );
++        frameworkCount += 1;
++      } else {
++        visit(entryPath);
++      }
++    }
++  };
++
++  visit(hermesRoot);
++  if (frameworkCount === 0) {
++    throw new Error('No Hermes frameworks were found for privacy-manifest injection.');
++  }
++  console.log(`Ensured privacy manifests for ${frameworkCount} Hermes frameworks`);
++}
++
+ function validateBuildConfiguration(configuration) {
+   if (!['Debug', 'Release'].includes(configuration)) {
+     throw new Error(`Invalid configuration ${configuration}`);
+@@ -76,10 +137,12 @@ function main(configuration, version, podsRoot) {
+   validateVersion(version);
+ 
+   if (!shouldReplaceHermesConfiguration(configuration)) {
++    ensureHermesPrivacyManifests(podsRoot);
+     return;
+   }
+ 
+   replaceHermesConfiguration(configuration, version, podsRoot);
++  ensureHermesPrivacyManifests(podsRoot);
+   updateLastBuildConfiguration(configuration);
+   console.log('Done replacing hermes-engine');
+ }

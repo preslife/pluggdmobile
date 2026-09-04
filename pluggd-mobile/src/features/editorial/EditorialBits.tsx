@@ -17,6 +17,7 @@ import {
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ed, edFonts } from '../../design/editorial';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
+import { useReducedMotion } from '../../design/useReducedMotion';
 
 /**
  * One-shot entrance for masthead elements — a quiet drift up + fade,
@@ -34,8 +35,10 @@ export function Enter({
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }) {
-  const entering =
-    from === 'down'
+  const reducedMotion = useReducedMotion();
+  const entering = reducedMotion
+    ? undefined
+    : from === 'down'
       ? FadeInDown.duration(430).delay(delay).springify().damping(19).stiffness(160)
       : FadeIn.duration(380).delay(delay);
   return (
@@ -53,16 +56,23 @@ export const ED_PRESSED = { opacity: 0.86, transform: [{ scale: 0.985 }] } as co
  * dim+shrink visual plus a selection haptic tick. Drop-in replacement
  * for Pressable across the editorial surfaces.
  */
-export function EdPressable({ style, onPress, haptic = true, ...props }: PressableProps & { haptic?: boolean }) {
+export function EdPressable({
+  style,
+  onPress,
+  haptic = 'selection',
+  ...props
+}: PressableProps & { haptic?: boolean | 'selection' | 'impact' }) {
   return (
     <Pressable
+      accessibilityRole="button"
       {...props}
       onPress={(event: GestureResponderEvent) => {
-        if (haptic) selectionHaptic();
+        if (haptic === 'impact') impactHaptic();
+        else if (haptic) selectionHaptic();
         onPress?.(event);
       }}
       style={(state) => [
-        typeof style === 'function' ? style(state) : style,
+        StyleSheet.flatten(typeof style === 'function' ? style(state) : style),
         state.pressed ? ED_PRESSED : null,
       ]}
     />
