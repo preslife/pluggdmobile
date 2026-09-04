@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { liquidGlassColors } from '../../src/design/liquidGlassTokens';
 import { pluggdFonts } from '../../src/design/typography';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type SectionHeaderProps = {
   title: string;
@@ -14,27 +15,28 @@ type SectionHeaderProps = {
 };
 
 export function SectionHeader({ title, subtitle, actionLabel, onActionPress, icon, serif }: SectionHeaderProps) {
+  const theme = usePluggdTheme();
   const editorial = Boolean(icon || serif);
   return (
     <View style={styles.wrap}>
       <View style={styles.copy}>
         <View style={styles.titleRow}>
           {icon ? (
-            <MaterialIcons name={icon} size={18} color="#ff6600" />
+            <MaterialIcons name={icon} size={18} color={theme.colors.accentText} />
           ) : (
-            <View style={styles.tick} />
+            <View style={[styles.tick, { backgroundColor: theme.colors.accentFill }]} />
           )}
-          <Text style={[styles.title, serif && styles.titleSerif]}>{title}</Text>
+          <Text style={[styles.title, { color: theme.colors.text }, serif && styles.titleSerif]}>{title}</Text>
         </View>
         {subtitle ? (
-          <Text style={[styles.subtitle, editorial && styles.subtitleEditorial]}>
+          <Text style={[styles.subtitle, { color: theme.colors.textMuted }, editorial && styles.subtitleEditorial]}>
             {editorial ? subtitle.toUpperCase() : subtitle}
           </Text>
         ) : null}
       </View>
       {actionLabel ? (
         <Pressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onActionPress} style={styles.action}>
-          <Text style={styles.actionText}>{actionLabel}</Text>
+          <Text style={[styles.actionText, { color: theme.colors.accentText }]}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>

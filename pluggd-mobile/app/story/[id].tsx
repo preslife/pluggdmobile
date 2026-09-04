@@ -15,6 +15,7 @@ import { loadMobileStoryDeck, markMobileStoryViewed } from '../../src/features/c
 import type { MobileStory } from '../../src/features/culture/mobileTypes';
 import { blockUser } from '../../src/features/safety/accountSafety';
 import { showReportActions } from '../../src/features/safety/reportActions';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 function StoryVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (instance) => {
@@ -43,6 +44,8 @@ function StoryMedia({ story }: { story: MobileStory }) {
 }
 
 export default function StoryViewerRoute() {
+  const theme = usePluggdTheme();
+  const styles = useStoryStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -144,7 +147,7 @@ export default function StoryViewerRoute() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <Stack.Screen options={{ headerShown: false }} />
       {story ? <StoryMedia story={story} /> : <LinearGradient colors={['#15151D', '#0a0806']} style={StyleSheet.absoluteFill} />}
       <LinearGradient colors={['rgba(0,0,0,0.78)', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.86)']} style={StyleSheet.absoluteFill} />
@@ -158,8 +161,8 @@ export default function StoryViewerRoute() {
       </View>
 
       <View style={[styles.topBar, { top: insets.top + 18 }]}>
-        <Pressable style={styles.iconButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close story">
-          <MaterialIcons name="close" size={24} color="#FFFFFF" />
+        <Pressable accessibilityRole="button" accessibilityLabel="Close story" style={styles.iconButton} onPress={() => router.back()}>
+          <MaterialIcons name="close" size={24} color={theme.colors.mediaText} />
         </Pressable>
         <View style={styles.author}>
           <Text style={styles.authorName} numberOfLines={1}>
@@ -170,20 +173,20 @@ export default function StoryViewerRoute() {
           </Text>
         </View>
         {story?.destination?.route ? (
-          <Pressable style={styles.iconButton} onPress={() => router.push(story.destination?.route as any)} accessibilityRole="button" accessibilityLabel="Open story destination">
-            <MaterialIcons name="arrow-forward" size={22} color="#FFFFFF" />
+          <Pressable accessibilityRole="button" accessibilityLabel={`Open ${story.destination.label || 'story destination'}`} style={styles.iconButton} onPress={() => router.push(story.destination?.route as any)}>
+            <MaterialIcons name="arrow-forward" size={22} color={theme.colors.mediaText} />
           </Pressable>
         ) : (
           <View style={styles.iconButton} />
         )}
         <Pressable style={styles.iconButton} onPress={openSafetyMenu} accessibilityRole="button" accessibilityLabel="Story safety options">
-          <MaterialIcons name="more-horiz" size={23} color="#FFFFFF" />
+          <MaterialIcons name="more-horiz" size={23} color={theme.colors.mediaText} />
         </Pressable>
       </View>
 
       {isLoading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color="#ff6600" />
+          <ActivityIndicator color={theme.colors.accentFill} />
         </View>
       ) : null}
 
@@ -198,7 +201,7 @@ export default function StoryViewerRoute() {
         <View style={styles.bottom}>
           {isAudioStory ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Play audio story" style={styles.audioButton} onPress={playAudioStory}>
-              <MaterialIcons name={audioActive && isPlaying ? 'pause' : 'play-arrow'} size={26} color="#0a0806" />
+              <MaterialIcons name={audioActive && isPlaying ? 'pause' : 'play-arrow'} size={26} color={theme.colors.onAccent} />
               <View style={styles.audioCopy}>
                 <Text style={styles.audioTitle} numberOfLines={1}>Audio story</Text>
                 <Text style={styles.audioMeta} numberOfLines={1}>Plays through the PLUGGD player</Text>
@@ -221,8 +224,10 @@ export default function StoryViewerRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806' },
+function useStoryStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   progressRail: {
     position: 'absolute',
     left: 16,
@@ -242,7 +247,7 @@ const styles = StyleSheet.create({
     width: '0%',
     height: '100%',
     borderRadius: 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.mediaText,
   },
   progressFillActive: { width: '100%' },
   topBar: {
@@ -260,17 +265,17 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(23,19,16,0.72)',
+    backgroundColor: theme.colors.mediaScrim,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: theme.colors.mediaTextMuted,
   },
   author: { flex: 1, minWidth: 0 },
-  authorName: { fontFamily: pluggdFonts.satoshiBlack, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  authorMeta: { fontFamily: pluggdFonts.satoshiBold, color: '#B3B3B3', fontSize: 12, fontWeight: '800', marginTop: 2 },
+  authorName: { fontFamily: pluggdFonts.satoshiBlack, color: theme.colors.mediaText, fontSize: 15, fontWeight: '900' },
+  authorMeta: { fontFamily: pluggdFonts.satoshiBold, color: theme.colors.mediaTextMuted, fontSize: 12, fontWeight: '800', marginTop: 2 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
-  emptyText: { color: '#B3B3B3', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
+  emptyTitle: { fontFamily: pluggdFonts.displayBold, color: theme.colors.mediaText, fontSize: 24, fontWeight: '700' },
+  emptyText: { color: theme.colors.mediaTextMuted, fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8 },
   bottom: {
     position: 'absolute',
     left: 18,
@@ -278,15 +283,15 @@ const styles = StyleSheet.create({
     bottom: 42,
     padding: 16,
     borderRadius: 5,
-    backgroundColor: 'rgba(23,19,16,0.74)',
+    backgroundColor: theme.colors.mediaScrim,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: theme.colors.mediaTextMuted,
     zIndex: 5,
   },
   audioButton: {
     minHeight: 58,
     borderRadius: 5,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.accentFill,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -294,13 +299,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   audioCopy: { flex: 1, minWidth: 0 },
-  audioTitle: { color: '#0a0806', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
-  audioMeta: { color: '#62627A', fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
-  caption: { fontFamily: pluggdFonts.satoshiBold, color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '800' },
+  audioTitle: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
+  audioMeta: { color: theme.colors.onAccent, opacity: 0.72, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 2 },
+  caption: { fontFamily: pluggdFonts.satoshiBold, color: theme.colors.mediaText, fontSize: 17, lineHeight: 24, fontWeight: '800' },
   tapZones: {
     ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     zIndex: 3,
   },
   tapZone: { flex: 1 },
-});
+  }), [theme]);
+}

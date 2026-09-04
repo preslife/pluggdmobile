@@ -134,7 +134,40 @@ export async function deleteMyAccount(input: {
   confirmation: string;
   acknowledgeSubscription: boolean;
 }) {
-  return invoke<{ deleted: boolean }>('delete-account', input);
+  let lastError: unknown = null;
+
+  // Deletion is deliberately idempotent. If the function completed but its
+  // response was lost, the server-side auth check below turns that outcome
+  // into success. A single retry also recovers a transient 5xx after partial
+  // cleanup without asking the reviewer to repeat the destructive flow.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const { data, error } = await supabase.functions.invoke('delete-account', { body: input });
+    if (!error && data?.deleted) return data as { deleted: boolean };
+
+    if (error) {
+      lastError = error;
+      const { data: authCheck } = await supabase.auth.getUser();
+      if (!authCheck.user) return { deleted: true };
+
+      const response = (error as any)?.context;
+      const status = typeof response?.status === 'number' ? response.status : null;
+      if (attempt === 0 && (status === null || status >= 500)) continue;
+
+      let serverMessage: string | null = null;
+      try {
+        const payload = await response?.clone?.().json?.();
+        serverMessage = typeof payload?.error === 'string' ? payload.error : null;
+      } catch {
+        // The SDK may already have consumed the response body. Its original
+        // error remains the safest fallback in that case.
+      }
+      if (serverMessage) throw new Error(serverMessage);
+    } else if (data?.error) {
+      throw new Error(data.error);
+    }
+  }
+
+  throw lastError ?? new Error('We could not complete account deletion. Please try again.');
 }
 
 export async function moderateUserContent(input: {

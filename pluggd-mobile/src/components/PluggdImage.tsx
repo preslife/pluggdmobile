@@ -1,5 +1,11 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, type ImageProps, type ImageSourcePropType } from 'react-native';
+import {
+  imageDisplayWidthForDevice,
+  isLowMemoryAndroidImageTarget,
+  lowMemoryImageLoadScheduler,
+} from './lowMemoryImagePolicy';
+import { resolvedImageUri } from '../lib/imageUri';
 
 type PluggdImageProps = Omit<ImageProps, 'source'> & {
   uri: string;
@@ -32,6 +38,8 @@ export function transformedUri(uri: string, width: number): string | null {
 // load handlers, which would leave the fade-in stuck at opacity 0 — so the
 // fade only runs on native, where onLoadEnd is reliable for cache hits.
 const FADE_ENABLED = Platform.OS !== 'web';
+const LOW_MEMORY_ANDROID_TARGET = isLowMemoryAndroidImageTarget(Platform.OS, Platform.Version);
+const LOW_MEMORY_SLOT_TIMEOUT_MS = 20_000;
 
 export function PluggdImage({
   uri,
@@ -40,39 +48,101 @@ export function PluggdImage({
   onLoadEnd,
   onError,
   displayWidth = 800,
+  resizeMode,
   ...props
 }: PluggdImageProps) {
+  const resolvedUri = resolvedImageUri(uri);
   const opacity = useRef(new Animated.Value(FADE_ENABLED ? 0 : 1)).current;
   const [loaded, setLoaded] = useState(!FADE_ENABLED);
+  const [loadAllowed, setLoadAllowed] = useState(!LOW_MEMORY_ANDROID_TARGET);
+  const slotReleaseRef = useRef<(() => void) | null>(null);
+  const slotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Falls back to the original object URL if the transform endpoint ever
   // rejects a request (unsupported format, transforms disabled, …).
   const [transformFailedFor, setTransformFailedFor] = useState<string | null>(null);
   const [originalFailedFor, setOriginalFailedFor] = useState<string | null>(null);
-  const resized = transformFailedFor === uri ? null : transformedUri(uri, displayWidth);
-  const usingFallback = Boolean(fallbackSource && (!uri || originalFailedFor === uri));
-  const source = (usingFallback ? fallbackSource : { uri: resized || uri, cache: 'force-cache' }) as ImageSourcePropType;
+  const releaseLowMemorySlot = useCallback(() => {
+    if (slotTimeoutRef.current) {
+      clearTimeout(slotTimeoutRef.current);
+      slotTimeoutRef.current = null;
+    }
+    slotReleaseRef.current?.();
+    slotReleaseRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!LOW_MEMORY_ANDROID_TARGET || !resolvedUri) {
+      setLoadAllowed(true);
+      return undefined;
+    }
+
+    setLoaded(false);
+    setLoadAllowed(false);
+    opacity.setValue(0);
+    const cancel = lowMemoryImageLoadScheduler.schedule((release) => {
+      slotReleaseRef.current = release;
+      slotTimeoutRef.current = setTimeout(releaseLowMemorySlot, LOW_MEMORY_SLOT_TIMEOUT_MS);
+      setLoadAllowed(true);
+    });
+
+    return () => {
+      cancel();
+      releaseLowMemorySlot();
+    };
+  }, [opacity, releaseLowMemorySlot, resolvedUri]);
+
+  const effectiveDisplayWidth = imageDisplayWidthForDevice(displayWidth, LOW_MEMORY_ANDROID_TARGET);
+  const resized = resolvedUri && transformFailedFor !== resolvedUri
+    ? transformedUri(resolvedUri, effectiveDisplayWidth)
+    : null;
+  const usingFallback = !resolvedUri || originalFailedFor === resolvedUri;
+  const usingDefaultFallback = usingFallback && !fallbackSource;
+  // Packaged require(...) assets are synchronously available to native. Keeping
+  // them behind the remote fade state can leave a fallback permanently black
+  // when its load event wins the race with the rerender after a failed URL.
+  const usingPackagedFallback = usingFallback && Boolean(fallbackSource);
+  const source = (usingFallback
+    ? fallbackSource
+    : { uri: resized || resolvedUri, cache: 'force-cache' }) as ImageSourcePropType;
+
+  if (LOW_MEMORY_ANDROID_TARGET && !loadAllowed) {
+    return <Animated.View style={[style as any, { backgroundColor: '#17130F' }]} />;
+  }
+
+  // Never decode the 7001px wordmark as a generic missing-art fallback. Apart
+  // from wasting memory, a failed cover could briefly render a huge cropped
+  // "P" while scrolling. A bounded neutral surface is stable and lets each
+  // card's own overlay/fallback treatment remain in control.
+  if (usingDefaultFallback) {
+    return <Animated.View style={[style as any, { backgroundColor: '#211C17' }]} />;
+  }
 
   return (
     <Animated.Image
       {...props}
       source={source}
-      style={[style, { opacity: loaded ? opacity : 0 }]}
+      resizeMode={resizeMode}
+      style={[style, { opacity: usingPackagedFallback ? 1 : loaded ? opacity : 0 }]}
       onError={(event) => {
-        if (resized) {
-          setTransformFailedFor(uri);
+        if (!usingFallback && resized) {
+          setTransformFailedFor(resolvedUri);
           return;
         }
-        if (fallbackSource && originalFailedFor !== uri) {
+        if (!usingFallback) {
           opacity.setValue(0);
           setLoaded(false);
-          setOriginalFailedFor(uri);
+          setOriginalFailedFor(resolvedUri);
+          releaseLowMemorySlot();
+          onError?.(event);
           return;
         }
+        releaseLowMemorySlot();
         onError?.(event);
       }}
       onLoadEnd={() => {
         setLoaded(true);
         Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        releaseLowMemorySlot();
         onLoadEnd?.();
       }}
     />

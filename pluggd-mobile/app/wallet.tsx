@@ -16,8 +16,9 @@ import {
 } from 'react-native';
 import { PremiumScreenHeader } from '../components/PluggdPrimitives';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { PurchaseLegalLinks } from '../src/components/PurchaseLegalLinks';
 import { useCredits, type CreditPack } from '../src/hooks/useCredits';
-import { creditsToGBP, useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
+import { useWallet, type WalletLedgerEntry } from '../src/hooks/useWallet';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
 
 const PLUGGD_ORANGE = '#ff6600';
@@ -45,6 +46,7 @@ const LEDGER_LABELS: Record<string, string> = {
 };
 
 function formatPriceLabel(price: string) {
+  if (!price) return 'Checking…';
   return price.replace(/\.00$/, '');
 }
 
@@ -100,6 +102,8 @@ export default function WalletScreen() {
     purchasing,
     restoring,
     error: iapError,
+    storeName,
+    storeAccountName,
     purchaseCredits,
     restorePurchases,
   } = useCredits();
@@ -123,7 +127,7 @@ export default function WalletScreen() {
   }, [library, refreshBalance, refreshLedger]);
 
   const handlePurchase = () => {
-    if (!selectedPack) return;
+    if (!selectedPack?.product || !selectedPack.localizedPrice) return;
 
     Alert.alert(
       'Buy credits',
@@ -158,6 +162,8 @@ export default function WalletScreen() {
             style={styles.walletHeader}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="About PLUGGD credits"
             style={[
               styles.infoButton,
               { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border },
@@ -165,7 +171,7 @@ export default function WalletScreen() {
             onPress={() =>
               Alert.alert(
                 'PLUGGD credits',
-                '100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.',
+                `${storeName} displays the final price in your store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.`,
               )
             }
           >
@@ -201,6 +207,9 @@ export default function WalletScreen() {
             </Text>
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showActivity ? 'Hide wallet activity' : 'View wallet activity'}
+              accessibilityState={{ expanded: showActivity }}
               style={styles.activityLink}
               onPress={() => setShowActivity((current) => !current)}
             >
@@ -232,16 +241,16 @@ export default function WalletScreen() {
         )}
 
         {iapError ? (
-          <View style={styles.errorCard}>
-            <MaterialIcons name="error-outline" size={20} color="#FF6B6B" />
-            <Text style={styles.errorText}>{iapError}</Text>
+          <View style={[styles.errorCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.danger }]}>
+            <MaterialIcons name="error-outline" size={20} color={theme.colors.danger} />
+            <Text style={[styles.errorText, { color: theme.colors.danger }]}>{iapError}</Text>
           </View>
         ) : null}
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Buy credits</Text>
           <Text style={[styles.balanceValue, { color: theme.colors.textSubtle }]}>
-            ~£{creditsToGBP(balance.available_credits).toFixed(2)}
+            Non-expiring
           </Text>
         </View>
 
@@ -254,6 +263,9 @@ export default function WalletScreen() {
             return (
               <Pressable
                 key={pack.sku}
+                accessibilityRole="radio"
+                accessibilityLabel={`${pack.label}, ${pack.credits.toLocaleString()} credits, ${formatPriceLabel(pack.localizedPrice)}${subtext ? `, ${subtext}` : ''}`}
+                accessibilityState={{ selected }}
                 onPress={() => setSelectedSku(pack.sku)}
                 style={[
                   styles.packCard,
@@ -322,9 +334,11 @@ export default function WalletScreen() {
         </View>
 
         <Pressable
-          style={[styles.cta, (!selectedPack || purchasing) && styles.ctaDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel={selectedPack?.product && selectedPack.localizedPrice ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : 'Credit pack price is not yet available'}
+          style={[styles.cta, (!selectedPack?.product || !selectedPack.localizedPrice || purchasing) && styles.ctaDisabled]}
           onPress={handlePurchase}
-          disabled={!selectedPack || purchasing}
+          disabled={!selectedPack?.product || !selectedPack.localizedPrice || purchasing}
         >
           {purchasing ? (
             <ActivityIndicator color="#fff" />
@@ -333,11 +347,19 @@ export default function WalletScreen() {
           )}
         </Pressable>
 
-        <Pressable onPress={restorePurchases} disabled={restoring} style={styles.restoreButton}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={restoring ? 'Restoring purchases' : 'Restore purchases'}
+          onPress={restorePurchases}
+          disabled={restoring}
+          style={styles.restoreButton}
+        >
           <Text style={[styles.restoreText, { color: theme.colors.textSubtle }]}>
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>
         </Pressable>
+
+        <PurchaseLegalLinks note={`Credits are purchased through your ${storeAccountName} and are non-refundable except where required by law.`} />
 
         <View
           style={[
@@ -346,8 +368,10 @@ export default function WalletScreen() {
           ]}
         >
           <MaterialIcons name="info-outline" size={20} color={theme.colors.accent} />
-          <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>
-            100 credits = £1. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
+          <Text
+            style={[styles.noteText, { color: theme.colors.textMuted }]}
+          >
+            {storeName} displays the final price in your store currency. Credits never expire and can be used for eligible release unlocks, creator tips, and live gifts.
           </Text>
         </View>
 
@@ -439,8 +463,8 @@ const styles = StyleSheet.create({
     color: PLUGGD_ORANGE,
   },
   infoButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 5,
     backgroundColor: '#171310',
     borderWidth: 1,
@@ -543,9 +567,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   errorCard: {
-    backgroundColor: '#2A1111',
     borderWidth: 1,
-    borderColor: '#5A2424',
     borderRadius: 13,
     padding: 12,
     flexDirection: 'row',
@@ -554,7 +576,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   errorText: {
-    color: '#FFB4B4',
     flex: 1,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',

@@ -3,6 +3,7 @@ import type { MobileSocialPost } from '../culture/mobileTypes';
 import { loadCommunityParity, type ParityCard, type ParityPayload } from '../parity/appWideParityServices';
 import { loadHomeEditorialStories } from '../home/homeDiscoveryData';
 import type { CommunityFeedBundle, CommunityFeedFilterKey } from './communityFeedTypes';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 
 function hasMedia(post: MobileSocialPost) {
   return Boolean(post.images?.length || post.video || post.audio || post.gif || post.link_preview);
@@ -65,6 +66,10 @@ function uniqueCards(cards: ParityCard[]) {
   });
 }
 
+export function isPublicCreatorRecommendation(card: ParityCard) {
+  return isPublicProfileName(card.title);
+}
+
 export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
   const [posts, boards, parity, stories] = await Promise.all([
     loadMobileSocialFeed({ mode: 'latest', limit: 36 }),
@@ -75,7 +80,7 @@ export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
 
   const liveNow = bySection(parity, 'events').filter((item) => /live|room|event/i.test(`${item.eyebrow} ${item.title} ${item.subtitle}`));
   const nearbyEvents = bySection(parity, 'events');
-  const whoToFollow = bySection(parity, 'creators');
+  const whoToFollow = bySection(parity, 'creators').filter(isPublicCreatorRecommendation);
   const radio = bySection(parity, 'radio');
   const editorials: ParityCard[] = stories.map((story) => ({
     id: story.id,

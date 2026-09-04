@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as Contacts from 'expo-contacts';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,10 +19,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
 import { pluggdFonts } from '../../design/typography';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import {
   CONNECT_CARD_VIEW_LABELS,
   createConnectCardPreview,
@@ -32,13 +35,6 @@ import {
   type ConnectService,
 } from './connect-card-data';
 
-const ORANGE = '#FF6700';
-const ORANGE_SOFT = '#FF8A3D';
-const INK = '#070708';
-const PANEL = '#111113';
-const PANEL_HIGH = '#17171A';
-const LINE = 'rgba(255,255,255,0.11)';
-const MUTED = '#A9A6A2';
 const PREVIEW_COVER = require('../../../assets/web-parity/home/intimate-vocalist.png');
 const LOGO = require('../../../assets/brand/pluggd-logo-light.png');
 
@@ -86,13 +82,14 @@ function money(value: unknown, currency = 'GBP') {
 function identityFrom(payload: ConnectCardPayload, fallbackSlug: string) {
   const fields = payload.fields ?? {};
   const profile = payload.profile ?? {};
+  const publicSlug = readString(profile.slug) || fallbackSlug;
   const displayName = readString(fields.display_name)
     || readString(fields.artist_name)
     || readString(profile.display_name)
-    || 'PLUGGD Creator';
+    || publicSlug;
   return {
     displayName,
-    handle: readString(profile.slug) ? `@${profile.slug}` : fallbackSlug ? `@${fallbackSlug}` : '',
+    handle: publicSlug ? `@${publicSlug}` : '',
     role: readString(fields.primary_role) || readString(profile.primary_role) || 'Independent creator',
     roles: readArray(fields.roles).length ? readArray(fields.roles) : readArray(profile.roles),
     bio: readString(fields.bio),
@@ -113,6 +110,8 @@ function IconButton({
   label: string;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -124,7 +123,7 @@ function IconButton({
       style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}
     >
       <View style={styles.quickActionIcon}>
-        <MaterialIcons name={icon as any} size={21} color="#FFFFFF" />
+        <MaterialIcons name={icon as any} size={21} color={theme.colors.accentText} />
       </View>
       <Text style={styles.quickActionLabel}>{label}</Text>
     </Pressable>
@@ -142,6 +141,8 @@ function PrimaryButton({
   onPress: () => void;
   secondary?: boolean;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -155,19 +156,21 @@ function PrimaryButton({
         secondary ? styles.secondaryButton : undefined,
       ]}
     >
-      <MaterialIcons name={icon as any} size={20} color={secondary ? '#FFFFFF' : '#180A02'} />
+      <MaterialIcons name={icon as any} size={20} color={secondary ? theme.colors.text : theme.colors.onAccent} />
       <Text style={[styles.primaryButtonText, secondary && styles.secondaryButtonText]}>{label}</Text>
-      <MaterialIcons name="arrow-forward" size={18} color={secondary ? '#FFFFFF' : '#180A02'} />
+      <MaterialIcons name="arrow-forward" size={18} color={secondary ? theme.colors.text : theme.colors.onAccent} />
     </Pressable>
   );
 }
 
 function DetailRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   if (!value) return null;
   return (
     <View style={styles.detailRow}>
       <View style={styles.detailIcon}>
-        <MaterialIcons name={icon as any} size={19} color={ORANGE_SOFT} />
+        <MaterialIcons name={icon as any} size={19} color={theme.colors.accentText} />
       </View>
       <View style={styles.detailCopy}>
         <Text style={styles.detailLabel}>{label}</Text>
@@ -186,6 +189,7 @@ function Section({
   title: string;
   children: React.ReactNode;
 }) {
+  const styles = useConnectCardStyles();
   return (
     <View style={styles.section}>
       {eyebrow ? <Text style={styles.sectionEyebrow}>{eyebrow}</Text> : null}
@@ -199,11 +203,17 @@ function ProfileHero({
   payload,
   slug,
   viewType,
+  onExit,
+  topInset,
 }: {
   payload: ConnectCardPayload;
   slug: string;
   viewType: ConnectCardViewType;
+  onExit: () => void;
+  topInset: number;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const identity = identityFrom(payload, slug);
   return (
     <View style={styles.hero}>
@@ -220,10 +230,18 @@ function ProfileHero({
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.heroTop}>
+        <View style={[styles.heroTop, { top: Math.max(topInset + 10, 18) }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Leave Connect Card"
+            onPress={onExit}
+            style={({ pressed }) => [styles.heroExit, pressed && styles.pressed]}
+          >
+            <MaterialIcons name="arrow-back" size={22} color={theme.colors.mediaText} />
+          </Pressable>
           <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="PLUGGD" />
           <View style={styles.heroViewChip}>
-            <MaterialIcons name={viewMeta[viewType].icon as any} size={14} color={ORANGE_SOFT} />
+            <MaterialIcons name={viewMeta[viewType].icon as any} size={14} color={theme.colors.accentFill} />
             <Text style={styles.heroViewChipText}>{CONNECT_CARD_VIEW_LABELS[viewType]}</Text>
           </View>
         </View>
@@ -239,7 +257,7 @@ function ProfileHero({
         />
         {identity.verified ? (
           <View style={styles.verifiedBadge}>
-            <MaterialIcons name="check" size={18} color="#FFFFFF" />
+            <MaterialIcons name="check" size={18} color={theme.colors.onAccent} />
           </View>
         ) : null}
       </View>
@@ -248,7 +266,7 @@ function ProfileHero({
         <Text style={styles.identityEyebrow}>{viewMeta[viewType].eyebrow}</Text>
         <View style={styles.nameRow}>
           <Text style={styles.name}>{identity.displayName}</Text>
-          {identity.verified ? <MaterialIcons name="verified" size={21} color={ORANGE} /> : null}
+          {identity.verified ? <MaterialIcons name="verified" size={21} color={theme.colors.accentText} /> : null}
         </View>
         <Text style={styles.handle}>{identity.handle}</Text>
         <View style={styles.roleRow}>
@@ -262,7 +280,7 @@ function ProfileHero({
         <View style={styles.locationRow}>
           {identity.location ? (
             <>
-              <MaterialIcons name="place" size={16} color={MUTED} />
+              <MaterialIcons name="place" size={16} color={theme.colors.textMuted} />
               <Text style={styles.locationText}>{identity.location}</Text>
             </>
           ) : null}
@@ -283,6 +301,8 @@ function ViewSwitcher({
   active: ConnectCardViewType;
   token?: string | null;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const router = useRouter();
   const views: ConnectCardViewType[] = ['public', 'business', 'rates', 'collab', 'contract'];
   return (
@@ -307,7 +327,7 @@ function ViewSwitcher({
           <MaterialIcons
             name={viewMeta[view].icon as any}
             size={15}
-            color={active === view ? '#170A03' : MUTED}
+            color={active === view ? theme.colors.onAccent : theme.colors.textMuted}
           />
           <Text style={[styles.switcherText, active === view && styles.switcherTextActive]}>
             {CONNECT_CARD_VIEW_LABELS[view]}
@@ -327,6 +347,7 @@ function PublicCardBody({
   shareUrl: string;
   onSaveContact: () => void;
 }) {
+  const styles = useConnectCardStyles();
   const fields = payload.fields ?? {};
   const email = readString(fields.email_public) || readString(fields.email_business);
   const website = normalizeUrl(fields.website_url);
@@ -375,6 +396,8 @@ function PublicCardBody({
 }
 
 function BusinessCardBody({ fields }: { fields: ConnectCardFields }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const email = readString(fields.email_business);
   const phone = readString(fields.phone_business);
   const booking = normalizeUrl(fields.booking_url);
@@ -398,10 +421,10 @@ function BusinessCardBody({ fields }: { fields: ConnectCardFields }) {
             {portfolios.slice(0, 4).map((item, index) => {
               const url = normalizeUrl(item.url);
               return (
-                <Pressable key={`${item.label}-${index}`} onPress={() => url && void NativeLinking.openURL(url)} style={styles.linkRow}>
-                  <View style={styles.linkIcon}><MaterialIcons name="north-east" size={18} color={ORANGE_SOFT} /></View>
+                <Pressable accessibilityRole="link" accessibilityLabel={`Open ${item.label}`} key={`${item.label}-${index}`} onPress={() => url && void NativeLinking.openURL(url)} style={styles.linkRow}>
+                  <View style={styles.linkIcon}><MaterialIcons name="north-east" size={18} color={theme.colors.accentText} /></View>
                   <Text style={styles.linkText}>{readString(item.label) || readString(item.title) || 'View work'}</Text>
-                  <MaterialIcons name="chevron-right" size={20} color={MUTED} />
+                  <MaterialIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
                 </Pressable>
               );
             })}
@@ -413,6 +436,8 @@ function BusinessCardBody({ fields }: { fields: ConnectCardFields }) {
 }
 
 function RatesCardBody({ fields }: { fields: ConnectCardFields }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const services = (Array.isArray(fields.services) ? fields.services : [])
     .filter((service): service is ConnectService => Boolean(service && service.available !== false));
   const booking = normalizeUrl(fields.booking_url);
@@ -425,7 +450,7 @@ function RatesCardBody({ fields }: { fields: ConnectCardFields }) {
           {services.map((service, index) => (
             <View key={service.id || `${service.service_name}-${index}`} style={[styles.rateRow, index === services.length - 1 && styles.rateRowLast]}>
               <View style={styles.rateIcon}>
-                <MaterialIcons name={index % 2 ? 'graphic-eq' : 'headphones'} size={20} color={ORANGE_SOFT} />
+                <MaterialIcons name={index % 2 ? 'graphic-eq' : 'headphones'} size={20} color={theme.colors.accentText} />
               </View>
               <View style={styles.rateCopy}>
                 <Text style={styles.rateName}>{service.service_name}</Text>
@@ -437,7 +462,7 @@ function RatesCardBody({ fields }: { fields: ConnectCardFields }) {
           ))}
           {!services.length ? (
             <View style={styles.emptyInline}>
-              <MaterialIcons name="schedule" size={20} color={ORANGE_SOFT} />
+              <MaterialIcons name="schedule" size={20} color={theme.colors.accentText} />
               <Text style={styles.emptyInlineText}>Rates are shared by enquiry.</Text>
             </View>
           ) : null}
@@ -445,7 +470,7 @@ function RatesCardBody({ fields }: { fields: ConnectCardFields }) {
       </Section>
       {readString(fields.service_notes) ? (
         <View style={styles.notePanel}>
-          <MaterialIcons name="info-outline" size={21} color={ORANGE_SOFT} />
+          <MaterialIcons name="info-outline" size={21} color={theme.colors.accentText} />
           <Text style={styles.noteText}>{readString(fields.service_notes)}</Text>
         </View>
       ) : null}
@@ -463,6 +488,8 @@ function PrivateCardBody({
   viewType: 'collab' | 'contract';
   shareUrl: string;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const rows = viewType === 'collab'
     ? [
       ['badge', 'Legal name', readString(fields.legal_name)],
@@ -488,7 +515,7 @@ function PrivateCardBody({
   return (
     <>
       <View style={styles.securityStrip}>
-        <MaterialIcons name="lock" size={19} color="#75E0B2" />
+        <MaterialIcons name="lock" size={19} color={theme.colors.success} />
         <View style={styles.securityCopy}>
           <Text style={styles.securityTitle}>Access verified</Text>
           <Text style={styles.securityText}>This private view is protected by a secure share link.</Text>
@@ -504,7 +531,7 @@ function PrivateCardBody({
       </Section>
       <PrimaryButton
         icon={viewType === 'collab' ? 'group-add' : 'share'}
-        label={viewType === 'collab' ? 'Use for Split Sheet' : 'Share with Legal Team'}
+        label={viewType === 'collab' ? 'Share collaborator card' : 'Share with Legal Team'}
         onPress={() => void Share.share({ title: 'PLUGGD secure card', message: shareUrl, url: shareUrl })}
       />
     </>
@@ -518,12 +545,14 @@ function LockedState({
   slug: string;
   viewType: ConnectCardViewType;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   const router = useRouter();
   const isPrivate = viewType === 'collab' || viewType === 'contract';
   return (
     <View style={styles.stateCard}>
       <View style={styles.stateIcon}>
-        <MaterialIcons name={isPrivate ? 'lock-outline' : 'visibility-off'} size={30} color={ORANGE_SOFT} />
+        <MaterialIcons name={isPrivate ? 'lock-outline' : 'visibility-off'} size={30} color={theme.colors.accentText} />
       </View>
       <Text style={styles.stateEyebrow}>{isPrivate ? 'PRIVATE BY DESIGN' : 'NOT PUBLISHED'}</Text>
       <Text style={styles.stateTitle}>
@@ -546,6 +575,8 @@ function QRPanel({
   shareUrl: string;
   displayName: string;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
   return (
     <View style={styles.qrPanel}>
       <View style={styles.qrWrap}>
@@ -555,8 +586,8 @@ function QRPanel({
         <Text style={styles.qrEyebrow}>SCAN TO CONNECT</Text>
         <Text style={styles.qrTitle}>{displayName}</Text>
         <Text style={styles.qrUrl} numberOfLines={2}>{shareUrl.replace(/^https?:\/\//, '')}</Text>
-        <Pressable onPress={() => void Share.share({ title: 'PLUGGD Connect Card', message: shareUrl, url: shareUrl })} style={styles.qrShare}>
-          <MaterialIcons name="ios-share" size={17} color={ORANGE_SOFT} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Share Connect Card" onPress={() => void Share.share({ title: 'PLUGGD Connect Card', message: shareUrl, url: shareUrl })} style={styles.qrShare}>
+          <MaterialIcons name="ios-share" size={17} color={theme.colors.accentText} />
           <Text style={styles.qrShareText}>Share card</Text>
         </Pressable>
       </View>
@@ -565,6 +596,10 @@ function QRPanel({
 }
 
 export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectCardViewType }) {
+  const theme = usePluggdTheme();
+  const styles = useConnectCardStyles();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ slug?: string; token?: string; preview?: string }>();
   const slug = readString(params.slug);
   const token = readString(params.token) || null;
@@ -616,23 +651,29 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
     }
   };
 
+  const exitCard = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/' as any);
+  };
+
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={ORANGE} />}
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={theme.colors.accentFill} />}
         contentContainerStyle={styles.content}
       >
         {query.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={ORANGE} />
+            <ActivityIndicator color={theme.colors.accentFill} />
             <Text style={styles.loadingText}>Opening Connect Card</Text>
           </View>
         ) : query.isError ? (
           <View style={styles.stateCard}>
-            <View style={styles.stateIcon}><MaterialIcons name="cloud-off" size={30} color={ORANGE_SOFT} /></View>
+            <View style={styles.stateIcon}><MaterialIcons name="cloud-off" size={30} color={theme.colors.accentText} /></View>
             <Text style={styles.stateEyebrow}>CONNECTION INTERRUPTED</Text>
             <Text style={styles.stateTitle}>This card could not load</Text>
             <Text style={styles.stateText}>Check your connection and try again. No private card details were exposed.</Text>
@@ -640,7 +681,7 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
           </View>
         ) : payload?.status === 'ok' ? (
           <>
-            <ProfileHero payload={payload} slug={canonicalSlug} viewType={viewType} />
+            <ProfileHero payload={payload} slug={canonicalSlug} viewType={viewType} onExit={exitCard} topInset={insets.top} />
             <ViewSwitcher slug={canonicalSlug} active={viewType} token={token} />
             <View style={styles.body}>
               {viewType === 'public' ? <PublicCardBody payload={payload} shareUrl={shareUrl} onSaveContact={() => void saveContact()} /> : null}
@@ -655,12 +696,12 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
                 onPress={() => setShowQR(true)}
                 style={styles.qrTeaser}
               >
-                <View style={styles.qrTeaserIcon}><MaterialIcons name="qr-code-2" size={24} color={ORANGE_SOFT} /></View>
+                <View style={styles.qrTeaserIcon}><MaterialIcons name="qr-code-2" size={24} color={theme.colors.accentText} /></View>
                 <View style={styles.qrTeaserCopy}>
                   <Text style={styles.qrTeaserTitle}>Share in the room</Text>
                   <Text style={styles.qrTeaserText}>Open the full-screen QR for fast contact exchange.</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color={MUTED} />
+                <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
               </Pressable>
               <View style={styles.poweredBy}>
                 <Text style={styles.poweredByText}>POWERED BY</Text>
@@ -671,7 +712,7 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
         ) : (
           <>
             <View style={styles.masthead}>
-              <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="PLUGGD" />
+              <Image source={LOGO} style={[styles.logo, styles.mastheadLogo]} resizeMode="contain" accessibilityLabel="PLUGGD" />
               <Text style={styles.mastheadLabel}>CONNECT CARD</Text>
             </View>
             <LockedState slug={canonicalSlug} viewType={viewType} />
@@ -687,11 +728,11 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
               <Text style={styles.qrModalTitle}>Scan. Save. Stay connected.</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Close QR" onPress={() => setShowQR(false)} style={styles.closeButton}>
-              <MaterialIcons name="close" size={22} color="#FFFFFF" />
+              <MaterialIcons name="close" size={22} color={theme.colors.text} />
             </Pressable>
           </View>
           <View style={styles.qrModalCenter}>
-            <QRPanel shareUrl={shareUrl} displayName={identity?.displayName || 'PLUGGD Creator'} />
+            <QRPanel shareUrl={shareUrl} displayName={identity?.displayName || canonicalSlug} />
           </View>
           <PrimaryButton icon="ios-share" label="Share Connect Card" onPress={() => void Share.share({ title: 'PLUGGD Connect Card', message: shareUrl, url: shareUrl })} />
         </View>
@@ -700,105 +741,110 @@ export function ConnectCardScreen({ viewType = 'public' }: { viewType?: ConnectC
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: INK },
+function useConnectCardStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { flexGrow: 1, paddingBottom: 48 },
   loading: { minHeight: 680, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  loadingText: { color: MUTED, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14 },
-  hero: { backgroundColor: INK },
+  loadingText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14 },
+  hero: { backgroundColor: theme.colors.background },
   cover: { height: 304, overflow: 'hidden' },
-  heroTop: { position: 'absolute', top: 58, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroTop: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  heroExit: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(7,7,8,0.78)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   logo: { width: 108, height: 30 },
   heroViewChip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: 'rgba(10,10,11,0.80)', borderWidth: 1, borderColor: 'rgba(255,103,0,0.42)', flexDirection: 'row', alignItems: 'center', gap: 7 },
   heroViewChipText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 11, letterSpacing: 0.3 },
-  avatarWrap: { width: 108, height: 108, borderRadius: 54, borderWidth: 3, borderColor: ORANGE, padding: 4, backgroundColor: INK, marginTop: -62, marginLeft: 22 },
-  avatar: { width: 94, height: 94, borderRadius: 47, backgroundColor: PANEL_HIGH },
-  verifiedBadge: { position: 'absolute', right: -3, bottom: 6, width: 31, height: 31, borderRadius: 16, backgroundColor: ORANGE, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  avatarWrap: { width: 108, height: 108, borderRadius: 54, borderWidth: 3, borderColor: theme.colors.accentFill, padding: 4, backgroundColor: theme.colors.background, marginTop: -62, marginLeft: 22 },
+  avatar: { width: 94, height: 94, borderRadius: 47, backgroundColor: theme.colors.artworkBase },
+  verifiedBadge: { position: 'absolute', right: -3, bottom: 6, width: 31, height: 31, borderRadius: 16, backgroundColor: theme.colors.accentFill, borderWidth: 3, borderColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' },
   identityBlock: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 22 },
-  identityEyebrow: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.8, marginBottom: 7 },
+  identityEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.8, marginBottom: 7 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 31, lineHeight: 35, flexShrink: 1 },
-  handle: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 15, marginTop: 2 },
+  name: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 31, lineHeight: 35, flexShrink: 1 },
+  handle: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 15, marginTop: 2 },
   roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 15 },
-  roleChip: { minHeight: 31, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,103,0,0.58)', backgroundColor: 'rgba(255,103,0,0.08)', alignItems: 'center', justifyContent: 'center' },
-  roleChipText: { color: '#F9EEE7', fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
-  bio: { color: '#D7D3CF', fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, marginTop: 16 },
+  roleChip: { minHeight: 44, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  roleChipText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
+  bio: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, marginTop: 16 },
   locationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 13 },
-  locationText: { color: MUTED, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
-  dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#66615D' },
+  locationText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12 },
+  dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: theme.colors.textSubtle },
   switcher: { paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
-  switcherPill: { minHeight: 38, borderRadius: 19, paddingHorizontal: 13, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  switcherPillActive: { backgroundColor: ORANGE, borderColor: ORANGE },
-  switcherText: { color: MUTED, fontFamily: pluggdFonts.satoshiBold, fontSize: 11 },
-  switcherTextActive: { color: '#170A03' },
+  switcherPill: { minHeight: 44, borderRadius: 22, paddingHorizontal: 13, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  switcherPillActive: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  switcherText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontSize: 11 },
+  switcherTextActive: { color: theme.colors.onAccent },
   body: { paddingHorizontal: 16, gap: 18 },
   actionStack: { gap: 10 },
-  primaryButton: { width: '100%', minHeight: 54, borderRadius: 14, paddingHorizontal: 17, backgroundColor: ORANGE, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  secondaryButton: { backgroundColor: PANEL_HIGH, borderWidth: 1, borderColor: LINE },
-  primaryButtonText: { color: '#180A02', fontFamily: pluggdFonts.satoshiBlack, fontSize: 14, flex: 1 },
-  secondaryButtonText: { color: '#FFFFFF' },
+  primaryButton: { width: '100%', minHeight: 54, borderRadius: 14, paddingHorizontal: 17, backgroundColor: theme.colors.accentFill, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  secondaryButton: { backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.controlBorder },
+  primaryButtonText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14, flex: 1 },
+  secondaryButtonText: { color: theme.colors.text },
   quickGrid: { flexDirection: 'row', gap: 8 },
-  quickAction: { flex: 1, minHeight: 82, borderRadius: 15, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, alignItems: 'center', justifyContent: 'center', gap: 7 },
-  quickActionIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,103,0,0.14)', alignItems: 'center', justifyContent: 'center' },
-  quickActionLabel: { color: '#F6F3F0', fontFamily: pluggdFonts.satoshiBold, fontSize: 10, textTransform: 'capitalize' },
+  quickAction: { flex: 1, minHeight: 82, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center', gap: 7 },
+  quickActionIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  quickActionLabel: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, textTransform: 'capitalize' },
   section: { gap: 10, marginTop: 3 },
-  sectionEyebrow: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
-  sectionTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 21, lineHeight: 25 },
-  detailPanel: { borderRadius: 17, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, overflow: 'hidden' },
-  detailRow: { minHeight: 67, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: LINE, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  detailIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,103,0,0.10)', alignItems: 'center', justifyContent: 'center' },
+  sectionEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
+  sectionTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 21, lineHeight: 25 },
+  detailPanel: { borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, overflow: 'hidden' },
+  detailRow: { minHeight: 67, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   detailCopy: { flex: 1, gap: 3 },
-  detailLabel: { color: '#77736F', fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.1, textTransform: 'uppercase' },
-  detailValue: { color: '#F7F4F1', fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 18 },
+  detailLabel: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.1, textTransform: 'uppercase' },
+  detailValue: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 18 },
   linkStack: { gap: 8 },
-  linkRow: { minHeight: 58, borderRadius: 14, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  linkIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(255,103,0,0.10)', alignItems: 'center', justifyContent: 'center' },
-  linkText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 13, flex: 1 },
-  rateTable: { borderRadius: 17, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, overflow: 'hidden' },
-  rateRow: { minHeight: 90, padding: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: LINE, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  linkRow: { minHeight: 58, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  linkIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  linkText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 13, flex: 1 },
+  rateTable: { borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, overflow: 'hidden' },
+  rateRow: { minHeight: 90, padding: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider, flexDirection: 'row', alignItems: 'center', gap: 11 },
   rateRowLast: { borderBottomWidth: 0 },
-  rateIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: 'rgba(255,103,0,0.10)', alignItems: 'center', justifyContent: 'center' },
+  rateIcon: { width: 44, height: 44, borderRadius: 11, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   rateCopy: { flex: 1, gap: 2 },
-  rateName: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
-  rateDescription: { color: MUTED, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 15 },
-  rateTurnaround: { color: '#716C67', fontFamily: pluggdFonts.satoshiMedium, fontSize: 10, marginTop: 3 },
-  ratePrice: { color: ORANGE_SOFT, fontFamily: pluggdFonts.displayBold, fontSize: 17 },
+  rateName: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
+  rateDescription: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 15 },
+  rateTurnaround: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 10, marginTop: 3 },
+  ratePrice: { color: theme.colors.accentText, fontFamily: pluggdFonts.displayBold, fontSize: 17 },
   emptyInline: { padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  emptyInlineText: { color: '#D4CFCB', fontFamily: pluggdFonts.satoshiMedium, fontSize: 13 },
-  notePanel: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,103,0,0.28)', backgroundColor: 'rgba(255,103,0,0.06)', padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  noteText: { color: '#CEC8C3', fontFamily: pluggdFonts.satoshiRegular, fontSize: 12, lineHeight: 18, flex: 1 },
-  securityStrip: { borderRadius: 15, borderWidth: 1, borderColor: 'rgba(117,224,178,0.28)', backgroundColor: 'rgba(30,103,74,0.13)', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  emptyInlineText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13 },
+  notePanel: { borderRadius: 14, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  noteText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 12, lineHeight: 18, flex: 1 },
+  securityStrip: { borderRadius: 15, borderWidth: 1, borderColor: theme.colors.success, backgroundColor: theme.colors.surfaceAlt, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 11 },
   securityCopy: { flex: 1, gap: 2 },
-  securityTitle: { color: '#C5F7E0', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
-  securityText: { color: '#91B9A7', fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 16 },
-  qrTeaser: { minHeight: 76, borderRadius: 17, borderWidth: 1, borderColor: LINE, backgroundColor: PANEL, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  qrTeaserIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,103,0,0.10)', alignItems: 'center', justifyContent: 'center' },
+  securityTitle: { color: theme.colors.success, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  securityText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 16 },
+  qrTeaser: { minHeight: 76, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  qrTeaserIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   qrTeaserCopy: { flex: 1, gap: 3 },
-  qrTeaserTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
-  qrTeaserText: { color: MUTED, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 15 },
+  qrTeaserTitle: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  qrTeaserText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 15 },
   poweredBy: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
-  poweredByText: { color: '#696560', fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.7 },
-  poweredLogo: { width: 76, height: 20, opacity: 0.72 },
+  poweredByText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.7 },
+  poweredLogo: { width: 76, height: 20, opacity: 0.72, tintColor: theme.colors.text },
   masthead: { paddingTop: 58, paddingHorizontal: 20, paddingBottom: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mastheadLabel: { color: MUTED, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
-  stateCard: { margin: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,103,0,0.22)', backgroundColor: PANEL, padding: 24, gap: 13 },
-  stateIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: 'rgba(255,103,0,0.11)', alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
-  stateEyebrow: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
-  stateTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 27, lineHeight: 32 },
-  stateText: { color: MUTED, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, marginBottom: 5 },
-  qrModal: { flex: 1, backgroundColor: INK, paddingTop: 24, paddingHorizontal: 18, paddingBottom: 34, gap: 20 },
+  mastheadLogo: { tintColor: theme.colors.text },
+  mastheadLabel: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
+  stateCard: { margin: 16, borderRadius: 24, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 24, gap: 13 },
+  stateIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
+  stateEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 },
+  stateTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 27, lineHeight: 32 },
+  stateText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, marginBottom: 5 },
+  qrModal: { flex: 1, backgroundColor: theme.colors.background, paddingTop: 24, paddingHorizontal: 18, paddingBottom: 34, gap: 20 },
   qrModalTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 15 },
-  qrModalEyebrow: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6, marginBottom: 7 },
-  qrModalTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 23, lineHeight: 28, maxWidth: 260 },
-  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: PANEL_HIGH, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' },
+  qrModalEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6, marginBottom: 7 },
+  qrModalTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 23, lineHeight: 28, maxWidth: 260 },
+  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.controlBorder, alignItems: 'center', justifyContent: 'center' },
   qrModalCenter: { flex: 1, justifyContent: 'center' },
-  qrPanel: { borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,103,0,0.28)', backgroundColor: PANEL, padding: 20, alignItems: 'center', gap: 19 },
+  qrPanel: { borderRadius: 24, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 20, alignItems: 'center', gap: 19 },
   qrWrap: { padding: 14, borderRadius: 15, backgroundColor: '#FFFFFF' },
   qrCopy: { alignItems: 'center', gap: 6 },
-  qrEyebrow: { color: ORANGE_SOFT, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.6 },
-  qrTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 22 },
-  qrUrl: { color: MUTED, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, textAlign: 'center' },
-  qrShare: { minHeight: 40, borderRadius: 20, marginTop: 6, paddingHorizontal: 15, borderWidth: 1, borderColor: LINE, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  qrShareText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 11 },
+  qrEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.6 },
+  qrTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 22 },
+  qrUrl: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, textAlign: 'center' },
+  qrShare: { minHeight: 44, borderRadius: 22, marginTop: 6, paddingHorizontal: 15, borderWidth: 1, borderColor: theme.colors.controlBorder, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  qrShareText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 11 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
-});
+  }), [theme]);
+}

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, createElement, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { createContext, createElement, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Appearance, Platform, Settings, useColorScheme } from 'react-native';
 import { pluggdDark, pluggdLight, type PluggdTheme } from './tokens';
 
 export type PluggdThemeMode = 'system' | 'light' | 'dark';
@@ -9,6 +9,8 @@ const THEME_MODE_KEY = 'pluggd.themeMode';
 
 type ThemeModeContextValue = {
   mode: PluggdThemeMode;
+  resolvedScheme: 'light' | 'dark';
+  isHydrated: boolean;
   setMode: (mode: PluggdThemeMode) => void;
 };
 
@@ -18,28 +20,44 @@ function isThemeMode(value: string | null): value is PluggdThemeMode {
   return value === 'system' || value === 'light' || value === 'dark';
 }
 
+function applyNativeThemeMode(mode: PluggdThemeMode) {
+  if (Platform.OS !== 'ios') return;
+  Settings.set({ [THEME_MODE_KEY]: mode });
+  Appearance.setColorScheme(mode === 'system' ? null : mode);
+}
+
 export function PluggdThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<PluggdThemeMode>('dark');
+  const systemScheme = useColorScheme();
+  const [mode, setModeState] = useState<PluggdThemeMode>('system');
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_MODE_KEY)
       .then((stored) => {
-        if (isThemeMode(stored)) {
-          setModeState(stored);
-        }
+        const nextMode = isThemeMode(stored) ? stored : 'system';
+        applyNativeThemeMode(nextMode);
+        setModeState(nextMode);
       })
-      .catch(() => undefined);
+      .catch(() => applyNativeThemeMode('system'))
+      .finally(() => setIsHydrated(true));
   }, []);
+
+  const setMode = useCallback((nextMode: PluggdThemeMode) => {
+    applyNativeThemeMode(nextMode);
+    setModeState(nextMode);
+    AsyncStorage.setItem(THEME_MODE_KEY, nextMode).catch(() => undefined);
+  }, []);
+
+  const resolvedScheme = mode === 'system' ? (systemScheme === 'light' ? 'light' : 'dark') : mode;
 
   const value = useMemo<ThemeModeContextValue>(
     () => ({
       mode,
-      setMode: (nextMode) => {
-        setModeState(nextMode);
-        AsyncStorage.setItem(THEME_MODE_KEY, nextMode).catch(() => undefined);
-      },
+      resolvedScheme,
+      isHydrated,
+      setMode,
     }),
-    [mode],
+    [isHydrated, mode, resolvedScheme, setMode],
   );
 
   return createElement(ThemeModeContext.Provider, { value }, children);
@@ -50,6 +68,8 @@ export function usePluggdThemeMode() {
   if (!context) {
     return {
       mode: 'system' as PluggdThemeMode,
+      resolvedScheme: 'dark' as const,
+      isHydrated: true,
       setMode: () => undefined,
     };
   }
@@ -57,8 +77,6 @@ export function usePluggdThemeMode() {
 }
 
 export function usePluggdTheme(): PluggdTheme {
-  const { mode } = usePluggdThemeMode();
-  const systemScheme = useColorScheme();
-  const resolvedMode = mode === 'system' ? systemScheme : mode;
-  return resolvedMode === 'light' ? pluggdLight : pluggdDark;
+  const { resolvedScheme } = usePluggdThemeMode();
+  return resolvedScheme === 'light' ? pluggdLight : pluggdDark;
 }

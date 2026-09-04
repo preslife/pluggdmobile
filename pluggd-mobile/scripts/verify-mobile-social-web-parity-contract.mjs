@@ -14,6 +14,7 @@ const communityRoute = read('app/community.tsx');
 const communityTabRoute = read('app/(tabs)/community.tsx');
 const parityScreens = read('src/features/parity/AppWideParityScreens.tsx');
 const socialCard = read('src/features/culture/MobileSocialPostCard.tsx');
+const socialMediaViewer = read('src/features/culture/MobileSocialMediaViewer.tsx');
 const boardRoute = read('app/community/boards/[slug].tsx');
 const backstageDetail = read('app/backstage/[id].tsx');
 const storiesRail = read('src/features/culture/MobileStoriesRail.tsx');
@@ -63,9 +64,19 @@ for (const token of [
   'toggleSocialRepost',
   'voteMobilePoll',
   'social_comments',
+  'row.display_name || row.username',
+  'row.avatar_url',
 ]) {
   assert.match(postRoute + social, new RegExp(token), `${token} must be wired into the thread/post route`);
 }
+
+assert.ok(postRoute.includes('`/creator/${row.username}`'), 'named comment authors must route to their creator profile');
+assert.ok(postRoute.includes('`/user/${row.user_id}`'), 'comments without a username must retain a user-profile fallback route');
+assert.match(
+  postRoute,
+  /threadPosts\.filter[\s\S]*<MobileSocialPostCard[\s\S]*post=\{item\}[\s\S]*variant="thread"/,
+  'every post in a Community thread must keep the shared full media and interaction card',
+);
 
 for (const token of [
   'social_post_destinations',
@@ -138,12 +149,13 @@ for (const token of ['boards', 'Board', 'MobileSocialPostCard']) {
   assert.match(boardRoute + services, new RegExp(token), `Community board routes must keep ${token}`);
 }
 
-for (const token of ['thread.route', 'board.route']) {
-  assert.match(backstageDetail + services, new RegExp(token), `Community compatibility detail must keep ${token}`);
-}
+assert.match(backstageDetail, /MobileSocialPostCard/, 'Community detail must preserve the full rich social card for posts and discussion threads.');
+assert.match(social, /route: `\/community\/boards\/\$\{board\.slug\}`/, 'Dedicated Community boards must keep their exact working routes.');
+assert.doesNotMatch(backstageDetail, /thread\.route/, 'Community detail must not reintroduce a generic thread route beside the full social-card destination.');
 
 for (const token of [
   'MediaGrid',
+  'MobileSocialMediaViewer',
   'AudioAttachment',
   'LinkPreview',
   'PollCard',
@@ -154,6 +166,23 @@ for (const token of [
 ]) {
   assert.match(socialCard, new RegExp(token), `Social post card must support ${token}`);
 }
+
+for (const token of [
+  'presentationStyle="fullScreen"',
+  'resizeMode="contain"',
+  'maximumZoomScale={4}',
+  'VideoView',
+  'nativeControls',
+  'contentFit="contain"',
+  'Previous image',
+  'Next image',
+]) {
+  assert.match(socialMediaViewer, new RegExp(escapeRegExp(token)), `Community media viewer must support ${token}`);
+}
+
+assert.match(socialCard, /event\.stopPropagation\(\)[\s\S]*setMediaSelection/, 'opening Community media must not also navigate the outer post card');
+assert.match(socialCard, /Open image \$\{index \+ 1\} full screen/, 'each Community gallery tile must expose an accessible full-screen action');
+assert.match(socialCard, /Open attached video full screen/, 'Community video attachments must expose an accessible full-screen action');
 
 assert.doesNotMatch(
   `${dock}\n${communityRoute}\n${communityTabRoute}\n${discover}\n${parityScreens}`,

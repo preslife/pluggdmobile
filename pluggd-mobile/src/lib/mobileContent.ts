@@ -28,10 +28,21 @@ export type ReleaseItem = {
   genre: string | null;
   explicit?: boolean | null;
   price: number | null;
+  credits_price?: number | null;
   download_price: number | null;
   minimum_price: number | null;
   release_date?: string | null;
   is_featured?: boolean | null;
+  is_exclusive?: boolean | null;
+  is_premium_content?: boolean | null;
+  perk_access?: string | null;
+  description?: string | null;
+  total_plays?: number | null;
+  youtube_url?: string | null;
+  spotify_url?: string | null;
+  apple_music_url?: string | null;
+  soundcloud_url?: string | null;
+  presskit_url?: string | null;
   approved?: boolean | null;
   status?: string | null;
   catalogue_mode?: string | null;
@@ -58,6 +69,7 @@ export type BeatItem = {
   tags: string[] | null;
   license_prices: unknown | null;
   available_licenses: unknown | null;
+  is_featured?: boolean | null;
   created_at: string | null;
 };
 
@@ -125,22 +137,33 @@ export type MixTrackItem = {
 
 export type EventItem = {
   id: string;
+  slug?: string | null;
   title: string | null;
   description: string | null;
   cover_image_url: string | null;
   location: string | null;
+  city?: string | null;
+  venue_id?: string | null;
+  lineup_headline?: string | null;
+  genre_tags?: string[] | null;
+  event_tags?: string[] | null;
   starts_at: string | null;
   ends_at: string | null;
   price_cents: number | null;
   rsvp_count: number | null;
+  ticket_url: string | null;
+  commerce_classification: 'unclassified' | 'physical' | 'virtual' | 'hybrid' | null;
   stream_url: string | null;
   playback_url: string | null;
   created_at: string | null;
+  occurrence_status?: string | null;
 };
 
 export type SoundboardItem = {
   id: string;
   creator_id: string | null;
+  creator_display_name?: string | null;
+  creator_username?: string | null;
   slug: string | null;
   title: string | null;
   description: string | null;
@@ -234,7 +257,10 @@ export type FeedBundle = {
 };
 
 export const RELEASE_LIST_SELECT =
-  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,download_url,genre,explicit,price,download_price,minimum_price,release_date,is_featured,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
+  'id,user_id,owner_id,title,artist,cover_art_url,preview_url,genre,explicit,price,credits_price,download_price,minimum_price,release_date,is_featured,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
+
+export const CREATOR_RELEASE_LIST_SELECT =
+  'id,user_id,owner_id,title,artist,description,cover_art_url,preview_url,youtube_url,spotify_url,apple_music_url,soundcloud_url,presskit_url,genre,explicit,price,credits_price,download_price,minimum_price,release_date,is_featured,is_exclusive,is_premium_content,perk_access,total_plays,approved,status,catalogue_mode,visibility_status,catalogue_import_job_id,created_at';
 
 export function formatGBP(value?: number | null, options?: { cents?: boolean }) {
   const numeric = Number(value ?? 0);
@@ -291,8 +317,22 @@ export function releasePlayableUrl(item: {
   preview_url?: string | null;
   audio_url?: string | null;
   download_url?: string | null;
+  catalogue_mode?: string | null;
+  catalogue_import_job_id?: string | null;
+  is_exclusive?: boolean | null;
+  is_premium_content?: boolean | null;
+  perk_access?: string | null;
 }) {
-  return item.preview_url || item.audio_url || item.download_url || null;
+  // Catalogue imports are reference metadata for discovery and attribution.
+  // They are not PLUGGD-hosted audio and must never enter the global player.
+  if (item.catalogue_import_job_id || (item.catalogue_mode && item.catalogue_mode !== 'pluggd')) {
+    return null;
+  }
+  const access = String(item.perk_access || 'public').trim().toLowerCase();
+  if (item.is_exclusive || item.is_premium_content || !['', 'public', 'free'].includes(access)) {
+    return item.preview_url || null;
+  }
+  return item.preview_url || item.audio_url || null;
 }
 
 export function toTrack(
@@ -486,8 +526,9 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     list<EventItem>(
       supabase
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
-        .gte('starts_at', nowIso)
+        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at,occurrence_status')
+        .eq('discoverable', true)
+        .or(`ends_at.gte.${nowIso},and(ends_at.is.null,starts_at.gte.${nowIso})`)
         .order('starts_at', { ascending: true })
         .limit(limit),
     ),
@@ -502,7 +543,7 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
     ),
     list<ProfileItem>(
       (supabase as any)
-        .from('profiles')
+        .from('public_profiles')
         .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
         .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
         .limit(limit),

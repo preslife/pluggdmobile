@@ -67,6 +67,8 @@ const instruments = [
   'Kicks', 'Snares', 'Percussion', 'Pad', 'Lead', 'Arp', 'FX'
 ];
 
+const EXCLUSIVE_AUTHORIZATION_VERSION = '2026-08-01.1';
+
 const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
   const { user } = useAuth();
   const { subscription, usage, incrementUsage } = useSubscription();
@@ -124,6 +126,7 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
     { type: 'exclusive_rights', title: 'Exclusive Rights', price: 500, enabled: false }
   ]);
   const [stemsRequired, setStemsRequired] = useState(false);
+  const [exclusiveAuthorizationAccepted, setExclusiveAuthorizationAccepted] = useState(false);
 
   const form = useForm<BeatFormData>({
     defaultValues: {
@@ -191,6 +194,9 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
 
   const toggleLicense = (type: LicenseType) => {
     updateLicenseOption(type, { enabled: !licenseOptions.find(l => l.type === type)?.enabled });
+    if (type === 'exclusive_rights' && licenseOptions.find(l => l.type === type)?.enabled) {
+      setExclusiveAuthorizationAccepted(false);
+    }
   };
 
   const updateLicensePrice = (type: LicenseType, price: number) => {
@@ -251,6 +257,14 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
         });
         return;
       }
+      if (requiresStems && !exclusiveAuthorizationAccepted) {
+        toast({
+          title: "Review the Exclusive licence",
+          description: "Explicit producer authorisation is required before an Exclusive licence can be published.",
+          variant: "destructive",
+        });
+        return;
+      }
 
     setUploading(true);
     try {
@@ -286,15 +300,31 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
         beat_id: beatData.id,
         license_type: license.type,
         price: license.price,
-        is_available: true
+        is_available: license.type !== 'exclusive_rights'
       }));
 
       if (licensingData.length > 0) {
-        const { error: licensingError } = await supabase
+        const { data: createdOptions, error: licensingError } = await supabase
           .from('licensing_options')
-          .insert(licensingData);
+          .insert(licensingData)
+          .select('id,license_type');
 
         if (licensingError) throw licensingError;
+        const exclusiveOption = createdOptions?.find((option) => option.license_type === 'exclusive_rights');
+        if (exclusiveOption) {
+          const { error: authorizationError } = await supabase.functions.invoke(
+            'authorize-beat-license-option',
+            {
+              body: {
+                beatId: beatData.id,
+                licenseOptionId: exclusiveOption.id,
+                accepted: true,
+                authorizationVersion: EXCLUSIVE_AUTHORIZATION_VERSION,
+              },
+            },
+          );
+          if (authorizationError) throw authorizationError;
+        }
       }
 
       try {
@@ -680,16 +710,16 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
                             {license.title}
                           </label>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {license.type === 'basic_lease' && 'Standard licensing for non-commercial use'}
-                            {license.type === 'premium_lease' && 'Enhanced licensing with stems included'}
-                            {license.type === 'unlimited_lease' && 'Unlimited usage rights with stems'}
-                            {license.type === 'exclusive_rights' && 'Exclusive ownership and all rights'}
+                            {license.type === 'basic_lease' && 'Commercial licence for one New Song with defined limits'}
+                            {license.type === 'premium_lease' && 'Higher commercial limits, radio and two monetised videos'}
+                            {license.type === 'unlimited_lease' && 'No numerical usage limits; stems where listed'}
+                            {license.type === 'exclusive_rights' && 'Exclusive future Beat use; prior licences and producer publishing share remain'}
                           </p>
                         </div>
                       </div>
                       {license.enabled && (
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">$</span>
+                          <span className="text-sm text-muted-foreground">£</span>
                           <Input
                             type="number"
                             value={license.price}
@@ -704,6 +734,24 @@ const BeatUploadForm = ({ onSuccess, onCancel }: BeatUploadFormProps) => {
                   </div>
                 ))}
               </div>
+
+              {licenseOptions.some((license) => license.enabled && license.type === 'exclusive_rights') ? (
+                <div className="border border-primary/40 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="exclusive-authorisation"
+                      checked={exclusiveAuthorizationAccepted}
+                      onCheckedChange={(checked) => setExclusiveAuthorizationAccepted(checked === true)}
+                    />
+                    <label htmlFor="exclusive-authorisation" className="text-sm leading-5 cursor-pointer">
+                      I confirm that I control the rights needed to offer this Beat under PLUGGD&apos;s Exclusive Beat Licence v1.0. I authorise PLUGGD to generate that agreement for buyers on the published price and terms, subject to prior valid licences.
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    This grants exclusive future use; it is not an automatic copyright or publishing assignment. Existing valid non-exclusive licences survive.
+                  </p>
+                </div>
+              ) : null}
 
               {/* License Summary */}
               {licenseOptions.some(l => l.enabled) && (

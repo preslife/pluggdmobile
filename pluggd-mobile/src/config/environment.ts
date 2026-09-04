@@ -2,7 +2,8 @@ export type AppEnvironment = 'development' | 'preview' | 'production';
 
 function normalizeEnvironment(value?: string): AppEnvironment {
   if (value === 'production' || value === 'preview') return value;
-  return 'development';
+  if (value === 'development') return value;
+  return __DEV__ ? 'development' : 'production';
 }
 
 export const APP_ENVIRONMENT = normalizeEnvironment(process.env.EXPO_PUBLIC_APP_ENV);
@@ -15,7 +16,7 @@ export const LEGAL_URLS = {
   terms: 'https://www.pluggd.fm/terms',
   communityGuidelines: 'https://www.pluggd.fm/community-guidelines',
   support: 'https://www.pluggd.fm/help/contact',
-  subscriptions: 'https://apps.apple.com/account/subscriptions',
+  accountDeletion: 'https://www.pluggd.fm/account-deletion',
 } as const;
 
 export const SUPPORT_EMAIL = 'support@pluggd.fm';

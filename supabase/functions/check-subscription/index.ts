@@ -26,10 +26,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
@@ -41,21 +37,35 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    logStep("Stripe key verified");
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
       logStep("No customer found, updating unsubscribed state");
-      await supabaseClient.from("user_subscriptions").upsert({
-        user_id: user.id,
-        tier: 'free',
-        status: 'active'
-      }, { onConflict: 'user_id' });
+      const { data: entitlement, error: syncError } = await supabaseClient.rpc(
+        "platform_sync_stripe_subscription",
+        {
+          p_user_id: user.id,
+          p_tier: "free",
+          p_status: "inactive",
+          p_subscription_id: null,
+          p_period_start: null,
+          p_period_end: null,
+          p_product_id: null,
+          p_billing_cycle: "monthly",
+        },
+      );
+      if (syncError) throw new Error(`Subscription reconciliation failed: ${syncError.message}`);
       
       return new Response(JSON.stringify({ 
-        tier: 'free',
-        status: 'active',
-        current_period_end: null
+        tier: entitlement?.tier ?? 'free',
+        status: entitlement?.status ?? 'active',
+        current_period_end: entitlement?.current_period_end ?? null,
+        billing_provider: entitlement?.billing_provider ?? null,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -72,6 +82,8 @@ serve(async (req) => {
     });
 
     let tier = 'free';
+    let billingCycle = 'monthly';
+    let priceId: string | null = null;
     let subscriptionEnd = null;
     let stripeSubscriptionId = null;
 
@@ -82,36 +94,47 @@ serve(async (req) => {
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
       // Determine tier from price
-      const priceId = subscription.items.data[0].price.id;
-      const price = await stripe.prices.retrieve(priceId);
-      const amount = price.unit_amount || 0;
-      
-      if (amount <= 1000) {
-        tier = "creator";
-      } else {
-        tier = "pro";
-      }
-      logStep("Determined subscription tier", { priceId, amount, tier });
+      priceId = subscription.items.data[0].price.id;
+      const { data: mappedProduct, error: mappedProductError } = await supabaseClient
+        .from("platform_subscription_products")
+        .select("tier,billing_cycle")
+        .eq("provider", "stripe")
+        .eq("product_id", priceId)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (mappedProductError) throw new Error(`Stripe plan catalogue lookup failed: ${mappedProductError.message}`);
+      if (!mappedProduct) throw new Error(`Stripe price is not mapped to a PLUGGD plan: ${priceId}`);
+      tier = mappedProduct.tier;
+      billingCycle = mappedProduct.billing_cycle;
+      logStep("Resolved subscription tier", { priceId, tier, billingCycle });
     } else {
       logStep("No active subscription found");
     }
 
-    // Update database
-    await supabaseClient.from("user_subscriptions").upsert({
-      user_id: user.id,
-      tier: tier as 'free' | 'creator' | 'pro',
-      status: subscriptions.data.length > 0 ? 'active' : 'inactive',
-      current_period_end: subscriptionEnd,
-      stripe_subscription_id: stripeSubscriptionId,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    const { data: entitlement, error: syncError } = await supabaseClient.rpc(
+      "platform_sync_stripe_subscription",
+      {
+        p_user_id: user.id,
+        p_tier: tier,
+        p_status: subscriptions.data.length > 0 ? "active" : "inactive",
+        p_subscription_id: stripeSubscriptionId,
+        p_period_start: subscriptions.data.length > 0
+          ? new Date(subscriptions.data[0].current_period_start * 1000).toISOString()
+          : null,
+        p_period_end: subscriptionEnd,
+        p_product_id: priceId,
+        p_billing_cycle: billingCycle,
+      },
+    );
+    if (syncError) throw new Error(`Subscription reconciliation failed: ${syncError.message}`);
 
     logStep("Updated database with subscription info", { tier, status: subscriptions.data.length > 0 ? 'active' : 'inactive' });
     
     return new Response(JSON.stringify({
-      tier,
-      status: subscriptions.data.length > 0 ? 'active' : 'inactive',
-      current_period_end: subscriptionEnd
+      tier: entitlement?.tier ?? tier,
+      status: entitlement?.status ?? (subscriptions.data.length > 0 ? 'active' : 'inactive'),
+      current_period_end: entitlement?.current_period_end ?? subscriptionEnd,
+      billing_provider: entitlement?.billing_provider ?? null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

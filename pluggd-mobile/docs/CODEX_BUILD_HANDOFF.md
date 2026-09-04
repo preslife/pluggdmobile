@@ -28,7 +28,9 @@ npx expo run:ios                      # or eas build if local disk is tight (~15
    (Mixes) → native action sheet (`src/lib/quickActions.ts`).
 4. **Images**: served resized via Supabase `render/image` (width=800, quality=80) with auto-fallback in
    `src/components/PluggdImage.tsx`. Check sharpness on a 3x screen; bump `displayWidth` if soft.
-5. **Events map**: Events tab → Map toggle → dark Mapbox static image with orange pins.
+5. **Events map**: Events tab → Map toggle → interactive dark Mapbox map with
+   selectable orange event pins on Android; the submitted iOS native map remains
+   unchanged and browser exports retain the static image.
 6. **Entrance motion**: Reanimated spring entrances on every main page masthead (`Enter` in
    `src/features/editorial/EditorialBits.tsx`); Home hero photo parallaxes on scroll.
 7. **Home two-phase mount**: hero paints instantly, below-fold sections mount right after

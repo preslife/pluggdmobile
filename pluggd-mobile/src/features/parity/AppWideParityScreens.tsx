@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
   Image as RNImage,
@@ -295,7 +296,7 @@ function Hero({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: Image
       image={usableImageUrl(item.imageUrl)}
       fallbackSource={fallbackAsset}
       metadata={metadata}
-      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'accent'}
       onPress={item.route ? () => router.push(item.route as any) : undefined}
     />
   );
@@ -312,7 +313,7 @@ function RailCard({ item, fallbackAsset }: { item: ParityCard; fallbackAsset?: I
       imageUrl={usableImageUrl(item.imageUrl)}
       fallbackSource={fallbackAsset}
       metric={metric}
-      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'violet'}
+      fallbackTone={/event/i.test(item.eyebrow || item.title) ? 'rose' : /market|beat/i.test(item.eyebrow || item.title) ? 'amber' : 'accent'}
       onPress={canOpen ? () => router.push(item.route as any) : undefined}
     />
   );
@@ -1069,10 +1070,14 @@ function CategoryPillRow() {
             style={({ pressed }) => [
               styles.categoryPill,
               active && styles.categoryPillActive,
+              {
+                backgroundColor: active ? theme.colors.accentFill : theme.colors.surface,
+                borderColor: active ? theme.colors.accentFill : theme.colors.controlBorder,
+              },
               pressed && styles.categoryPillPressed,
             ]}
           >
-            <Text style={[styles.categoryPillText, { color: active ? theme.colors.text : theme.colors.textSecondary }]}>
+            <Text style={[styles.categoryPillText, { color: active ? theme.colors.onAccent : theme.colors.textSecondary }]}>
               {item.label}
             </Text>
           </Pressable>
@@ -1098,9 +1103,9 @@ function ActionPill({ action, primary = false }: { action: ParityAction; primary
   const canOpen = Boolean(action.route);
   const fillColors = canOpen
     ? primary
-      ? ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.045)'] as const
-      : ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.018)'] as const
-    : ['rgba(255,255,255,0.035)', 'rgba(255,255,255,0.012)'] as const;
+      ? [theme.colors.surfaceRaised, theme.colors.surfaceAlt] as const
+      : [theme.colors.surface, theme.colors.surfaceAlt] as const
+    : [theme.colors.surface, theme.colors.surface] as const;
   return (
     <Pressable
       accessibilityRole={canOpen ? 'button' : 'text'}
@@ -1114,7 +1119,7 @@ function ActionPill({ action, primary = false }: { action: ParityAction; primary
       style={({ pressed }) => [
         styles.actionPill,
         {
-          borderColor: canOpen && primary ? 'rgba(255,255,255,0.22)' : theme.colors.border,
+          borderColor: theme.colors.controlBorder,
           opacity: pressed ? 0.86 : 1,
         },
       ]}
@@ -1190,14 +1195,15 @@ function ParityScaffold({
   const fallbackAsset = fallbackAssetForTitle(title);
 
   return (
-    <View style={styles.scaffold}>
+    <View style={[styles.scaffold, { backgroundColor: theme.colors.background }]}>
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} translucent />
       <LiquidBackground
-        tone={title === 'Events' ? 'rose' : title === 'Market' ? 'amber' : 'violet'}
+        tone={title === 'Events' ? 'rose' : title === 'Market' ? 'amber' : 'accent'}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={theme.colors.accent} />}
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={theme.colors.accentFill} />}
         style={styles.screen}
         contentContainerStyle={styles.content}
       >
@@ -1213,7 +1219,7 @@ function ParityScaffold({
 
         {query.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={theme.colors.accent} />
+            <ActivityIndicator color={theme.colors.accentFill} />
             <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>Loading {title.toLowerCase()}...</Text>
           </View>
         ) : query.error ? (
@@ -1225,12 +1231,12 @@ function ParityScaffold({
         ) : payload ? (
           <>
             <View style={styles.pageHeader}>
-              <Text style={[styles.kicker, { color: theme.colors.accent }]}>{payload.kicker}</Text>
+              <Text style={[styles.kicker, { color: theme.colors.accentText }]}>{payload.kicker}</Text>
               <EditorialTitle
                 segments={accentLastWord(payload.title)}
                 size={32}
                 color={theme.colors.text}
-                accentColor={theme.colors.accent}
+                accentColor={theme.colors.accentText}
                 style={styles.editorialTitle}
               />
               <Text style={[styles.summary, { color: theme.colors.textSecondary }]}>{payload.summary}</Text>
@@ -1241,7 +1247,7 @@ function ParityScaffold({
             {!hasPublishedSurfaceContent(payload) ? (
               <View style={[styles.surfaceEmpty, { borderColor: theme.colors.border }]}>
                 <View style={styles.surfaceEmptyRule} />
-                <Text style={[styles.surfaceEmptyEyebrow, { color: theme.colors.accent }]}>
+                <Text style={[styles.surfaceEmptyEyebrow, { color: theme.colors.accentText }]}>
                   {emptySurfaceCopy(title).eyebrow}
                 </Text>
                 <Text style={[styles.surfaceEmptyTitle, { color: theme.colors.text }]}>
@@ -1254,10 +1260,10 @@ function ParityScaffold({
                   accessibilityRole="button"
                   accessibilityLabel="Open Discover"
                   onPress={() => router.push('/discover' as any)}
-                  style={styles.surfaceEmptyAction}
+                  style={[styles.surfaceEmptyAction, { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.controlBorder }]}
                 >
-                  <Text style={styles.surfaceEmptyActionText}>Open Discover</Text>
-                  <MaterialIcons name="arrow-forward" size={18} color="#100B07" />
+                  <Text style={[styles.surfaceEmptyActionText, { color: theme.colors.onAccent }]}>Open Discover</Text>
+                  <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
                 </Pressable>
               </View>
             ) : null}
@@ -1399,7 +1405,6 @@ export function StudioParityScreen() {
 const styles = StyleSheet.create({
   scaffold: {
     flex: 1,
-    backgroundColor: '#05070F',
   },
   screen: {
     flex: 1,
@@ -1417,16 +1422,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonPlaceholder: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
   },
   primaryTopSpacer: {
     height: 44,
@@ -1493,7 +1498,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryPill: {
-    minHeight: 34,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
@@ -1566,13 +1571,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   actionPill: {
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   actionPillFill: {
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: 15,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1753,9 +1758,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   playCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2085,7 +2090,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    minHeight: 38,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 13,
@@ -2237,7 +2242,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   filterChip: {
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.05)',

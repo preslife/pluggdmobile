@@ -8822,12 +8822,17 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          apple_original_transaction_id: string | null
+          apple_product_id: string | null
+          apple_transaction_id: string | null
           billing_cycle: string | null
+          billing_provider: string | null
           commission_rate: number | null
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          metadata: Json
           status: string | null
           stripe_subscription_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -8835,12 +8840,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
+          apple_transaction_id?: string | null
           billing_cycle?: string | null
+          billing_provider?: string | null
           commission_rate?: number | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          metadata?: Json
           status?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -8848,12 +8858,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
+          apple_transaction_id?: string | null
           billing_cycle?: string | null
+          billing_provider?: string | null
           commission_rate?: number | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          metadata?: Json
           status?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -11092,7 +11107,7 @@ export type Database = {
         | "shoutout"
         | "behind_the_scenes"
       submission_status: "pending" | "approved" | "rejected"
-      subscription_tier: "free" | "creator" | "pro"
+      subscription_tier: "free" | "starter" | "creator" | "pro"
       tier_status: "draft" | "active" | "paused" | "archived"
       transaction_type: "entry" | "payout"
       user_role: "user" | "admin" | "moderator"
@@ -11262,7 +11277,7 @@ export const Constants = {
         "behind_the_scenes",
       ],
       submission_status: ["pending", "approved", "rejected"],
-      subscription_tier: ["free", "creator", "pro"],
+      subscription_tier: ["free", "starter", "creator", "pro"],
       tier_status: ["draft", "active", "paused", "archived"],
       transaction_type: ["entry", "payout"],
       user_role: ["user", "admin", "moderator"],

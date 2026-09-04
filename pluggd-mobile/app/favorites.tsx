@@ -3,21 +3,22 @@ import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, View } from 'react-native';
 import { EmptyState, ListCard, ScreenShell, SectionTitle } from '../components/ContentUI';
-import { PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
+import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 export default function FavoritesScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
   const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
   const items = library.data?.saved ?? [];
 
   return (
     <ScreenShell title="Saved" subtitle="Content saved to your PLUGGD account.">
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       {library.isLoading ? (
         <View style={{ minHeight: 220, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={PLUGGD_ORANGE} />
+          <ActivityIndicator color={theme.colors.accentText} />
         </View>
       ) : null}
       {!library.isLoading && items.length === 0 ? (

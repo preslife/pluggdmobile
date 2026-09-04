@@ -1,0 +1,124 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CreatorAccessGate } from '../../../components/CreatorAccessGate';
+import type { PluggdTheme } from '../../design/tokens';
+import { pluggdFonts } from '../../design/typography';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { buildEmbeddedStudioRoute } from './studio-data';
+import {
+  createStudioVideoDraft,
+  duplicateStudioVideoDraft,
+  loadStudioVideoWorkspace,
+  replaceStudioVideoAsset,
+  saveStudioVideo,
+  setStudioVideoPublished,
+  type StudioVideoAsset,
+  type StudioVideoRecord,
+  type StudioVideoWorkspace,
+} from './videoCatalogService';
+
+type VideoForm = { title: string; description: string; youtubeUrl: string; isFeatured: boolean; video: StudioVideoAsset | null; thumbnail: StudioVideoAsset | null };
+const EMPTY_FORM: VideoForm = { title: '', description: '', youtubeUrl: '', isFeatured: false, video: null, thumbnail: null };
+
+function formFor(record: StudioVideoRecord): VideoForm {
+  return { title: record.title, description: record.description, youtubeUrl: record.youtubeUrl || '', isFeatured: record.isFeatured, video: null, thumbnail: null };
+}
+
+function pickedAsset(asset: ImagePicker.ImagePickerAsset, fallback: string): StudioVideoAsset {
+  return { uri: asset.uri, name: asset.fileName || fallback, size: asset.fileSize, mimeType: asset.mimeType };
+}
+
+function VideoCard({ record, busy, onEdit, onPublish, onDuplicate, onReplaceVideo, onReplaceThumbnail }: { record: StudioVideoRecord; busy: boolean; onEdit: () => void; onPublish: () => void; onDuplicate: () => void; onReplaceVideo: () => void; onReplaceThumbnail: () => void }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return <View style={styles.card}>
+    <View style={styles.cardMedia}>{record.thumbnailUrl ? <Image source={{ uri: record.thumbnailUrl }} style={styles.cardImage} /> : <View style={styles.cardFallback}><MaterialIcons name="smart-display" size={38} color={theme.colors.accentText} /></View>}<View style={[styles.badge, record.isPublished ? styles.badgeLive : styles.badgeDraft]}><Text style={styles.badgeText}>{record.isPublished ? 'PUBLISHED' : 'PRIVATE DRAFT'}</Text></View></View>
+    <View style={styles.cardBody}><Text style={styles.cardTitle}>{record.title}</Text><Text style={styles.cardMeta}>{record.viewCount} views · {record.videoUrl ? 'Uploaded video' : 'YouTube source'}{record.isFeatured ? ' · Featured' : ''}</Text>{record.description ? <Text style={styles.cardDescription} numberOfLines={3}>{record.description}</Text> : null}
+      <View style={styles.cardActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit ${record.title}`} disabled={busy} style={styles.smallAction} onPress={onEdit}><MaterialIcons name="edit" size={17} color={theme.colors.text} /><Text style={styles.smallActionText}>Edit</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`${record.isPublished ? 'Unpublish' : 'Publish'} ${record.title}`} disabled={busy} style={[styles.smallAction, record.isPublished && styles.smallActionWarn]} onPress={onPublish}><MaterialIcons name={record.isPublished ? 'visibility-off' : 'publish'} size={17} color={theme.colors.text} /><Text style={styles.smallActionText}>{record.isPublished ? 'Unpublish' : 'Publish'}</Text></Pressable></View>
+      <View style={styles.cardActions}><Pressable accessibilityRole="button" accessibilityLabel={`Replace video for ${record.title}`} disabled={busy} style={styles.textAction} onPress={onReplaceVideo}><Text style={styles.textActionText}>Replace video</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Replace thumbnail for ${record.title}`} disabled={busy} style={styles.textAction} onPress={onReplaceThumbnail}><Text style={styles.textActionText}>Replace artwork</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Duplicate ${record.title} as a private draft`} disabled={busy} style={styles.textAction} onPress={onDuplicate}><Text style={styles.textActionText}>Duplicate</Text></Pressable></View>
+    </View>
+  </View>;
+}
+
+export function StudioVideoScreen() {
+  const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [workspace, setWorkspace] = useState<StudioVideoWorkspace | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<StudioVideoRecord | null>(null);
+  const [showComposer, setShowComposer] = useState(false);
+  const [form, setForm] = useState<VideoForm>(EMPTY_FORM);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true); setError(null);
+    try { setWorkspace(await loadStudioVideoWorkspace()); }
+    catch (loadError: any) { setError(loadError?.message || 'Video Studio could not be loaded.'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void load(); }, []);
+
+  const run = async (key: string, task: () => Promise<void>, success: string) => {
+    if (busy) return false;
+    setBusy(key);
+    try { await task(); Alert.alert(success); await load(); return true; }
+    catch (operationError: any) { Alert.alert('Video action failed', operationError?.message || 'Please try again.'); return false; }
+    finally { setBusy(null); }
+  };
+
+  const startNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowComposer(true); };
+  const startEdit = (record: StudioVideoRecord) => { setEditing(record); setForm(formFor(record)); setShowComposer(true); };
+  const closeComposer = () => { if (busy) return; setShowComposer(false); setEditing(null); setForm(EMPTY_FORM); };
+
+  const pick = async (kind: 'video' | 'thumbnail', replaceRecord?: StudioVideoRecord) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return Alert.alert('Library access needed', `Allow photo-library access to choose ${kind === 'video' ? 'a video' : 'artwork'}.`);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: kind === 'video' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images, allowsEditing: kind === 'thumbnail', aspect: kind === 'thumbnail' ? [16, 9] : undefined, quality: 0.9, videoMaxDuration: 600 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = pickedAsset(result.assets[0], kind === 'video' ? 'creator-video.mp4' : 'video-thumbnail.jpg');
+    if (replaceRecord) await run(`replace-${kind}-${replaceRecord.id}`, () => replaceStudioVideoAsset(replaceRecord, kind, asset), kind === 'video' ? 'Video replaced as a private draft' : 'Video artwork replaced');
+    else setForm((current) => ({ ...current, [kind]: asset }));
+  };
+
+  const save = async () => {
+    let saved = false;
+    if (editing) {
+      saved = await run('save', () => saveStudioVideo(editing, { title: form.title, description: form.description, youtubeUrl: form.youtubeUrl, isFeatured: form.isFeatured }), 'Video details saved');
+    } else {
+      saved = await run('create', async () => { await createStudioVideoDraft(form); }, 'Private video draft created');
+    }
+    if (!saved) return;
+    setShowComposer(false); setEditing(null); setForm(EMPTY_FORM);
+  };
+
+  return <CreatorAccessGate><SafeAreaView style={styles.safe} edges={['top']}><StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} /><Stack.Screen options={{ headerShown: false }} />
+    <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Back to Creator Studio" style={styles.headerButton} onPress={() => router.back()}><MaterialIcons name="arrow-back" size={24} color={theme.colors.text} /></Pressable><View style={styles.headerCopy}><Text style={styles.headerKicker}>CREATOR STUDIO</Text><Text accessibilityRole="header" style={styles.headerTitle}>Videos</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Add a video" style={styles.newButton} onPress={startNew}><MaterialIcons name="add" size={22} color={theme.colors.accentText} /></Pressable></View>
+    {loading ? <View style={styles.center}><ActivityIndicator color={theme.colors.accentText} size="large" /><Text style={styles.centerText}>Loading your videos…</Text></View> : error || !workspace ? <View style={styles.center}><MaterialIcons name="error-outline" size={40} color={theme.colors.danger} /><Text style={styles.errorTitle}>Video Studio unavailable</Text><Text style={styles.centerText}>{error}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry loading Video Studio" style={styles.secondaryButton} onPress={() => void load()}><Text style={styles.secondaryButtonText}>Try again</Text></Pressable></View> : <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.hero}><Text style={styles.heroKicker}>VISUAL CATALOGUE</Text><Text style={styles.heroTitle}>Your videos, managed where you create.</Text><Text style={styles.heroBody}>Upload a video or connect YouTube, keep it private while preparing, then publish it to your profile and make it eligible for PLUGGD TV.</Text><View style={styles.heroActions}><Pressable accessibilityRole="button" accessibilityLabel="Add a creator video" style={styles.primaryButton} onPress={startNew}><MaterialIcons name="video-call" size={20} color={theme.colors.accentText} /><Text style={styles.primaryButtonText}>Add video</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Open advanced Video Studio tools" style={styles.secondaryButton} onPress={() => router.push(buildEmbeddedStudioRoute('/studio/videos', 'Advanced Video Studio', '/studio/videos') as any)}><MaterialIcons name="tune" size={19} color={theme.colors.text} /><Text style={styles.secondaryButtonText}>Advanced tools</Text></Pressable></View></View>
+      <View style={styles.summary}><View><Text style={styles.summaryValue}>{workspace.videos.length}</Text><Text style={styles.summaryLabel}>TOTAL</Text></View><View><Text style={styles.summaryValue}>{workspace.videos.filter((video) => video.isPublished).length}</Text><Text style={styles.summaryLabel}>PUBLISHED</Text></View><View><Text style={styles.summaryValue}>{workspace.videos.reduce((total, video) => total + video.viewCount, 0)}</Text><Text style={styles.summaryLabel}>VIEWS</Text></View></View>
+      <View style={styles.listHeader}><View><Text style={styles.heroKicker}>OWNER CATALOGUE</Text><Text style={styles.listTitle}>Videos</Text></View><Pressable accessibilityRole="button" accessibilityLabel="View public creator profile" style={styles.profileButton} onPress={() => router.push(workspace.publicProfileRoute as any)}><MaterialIcons name="open-in-new" size={17} color={theme.colors.accentText} /><Text style={styles.profileButtonText}>Public profile</Text></Pressable></View>
+      {workspace.videos.length ? workspace.videos.map((record) => <VideoCard key={record.id} record={record} busy={Boolean(busy)} onEdit={() => startEdit(record)} onPublish={() => Alert.alert(record.isPublished ? 'Unpublish video?' : 'Publish video?', record.isPublished ? 'The owner record remains available and can be published again.' : 'This makes the video visible on your public profile and eligible for PLUGGD TV.', [{ text: 'Cancel', style: 'cancel' }, { text: record.isPublished ? 'Unpublish' : 'Publish', onPress: () => void run(`publish-${record.id}`, () => setStudioVideoPublished(record, !record.isPublished), record.isPublished ? 'Video returned to a private draft' : 'Video published') }])} onDuplicate={() => Alert.alert('Duplicate as a private draft?', 'The video and artwork references are reused without publishing a second public item.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Duplicate', onPress: () => void run(`duplicate-${record.id}`, async () => { await duplicateStudioVideoDraft(record); }, 'Private video copy created') }])} onReplaceVideo={() => void pick('video', record)} onReplaceThumbnail={() => void pick('thumbnail', record)} />) : <View style={styles.empty}><MaterialIcons name="video-library" size={42} color={theme.colors.accentText} /><Text style={styles.emptyTitle}>No creator videos yet</Text><Text style={styles.emptyBody}>Create a private draft first. Nothing appears publicly until you publish it.</Text><Pressable accessibilityRole="button" accessibilityLabel="Create first creator video" style={styles.primaryButton} onPress={startNew}><Text style={styles.primaryButtonText}>Create first video</Text></Pressable></View>}
+    </ScrollView>}
+
+    {showComposer ? <View style={styles.composerOverlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.composerKeyboard}><View style={styles.composer}><View style={styles.composerHeader}><View><Text style={styles.heroKicker}>{editing ? 'EDIT OWNER VIDEO' : 'NEW PRIVATE DRAFT'}</Text><Text style={styles.composerTitle}>{editing ? 'Edit video' : 'Add video'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close video form" style={styles.headerButton} disabled={Boolean(busy)} onPress={closeComposer}><MaterialIcons name="close" size={23} color={theme.colors.text} /></Pressable></View><ScrollView contentContainerStyle={styles.composerContent} keyboardShouldPersistTaps="handled"><Text style={styles.label}>TITLE</Text><TextInput accessibilityLabel="Video title" value={form.title} onChangeText={(title) => setForm((current) => ({ ...current, title }))} placeholder="Name this video" placeholderTextColor={theme.colors.textMuted} style={styles.input} /><Text style={styles.label}>DESCRIPTION</Text><TextInput accessibilityLabel="Video description" value={form.description} onChangeText={(description) => setForm((current) => ({ ...current, description }))} placeholder="What should viewers know?" placeholderTextColor={theme.colors.textMuted} multiline textAlignVertical="top" style={[styles.input, styles.textarea]} /><Text style={styles.label}>YOUTUBE URL (OPTIONAL)</Text><TextInput accessibilityLabel="YouTube URL" value={form.youtubeUrl} onChangeText={(youtubeUrl) => setForm((current) => ({ ...current, youtubeUrl }))} placeholder="https://youtube.com/watch?v=…" placeholderTextColor={theme.colors.textMuted} autoCapitalize="none" keyboardType="url" style={styles.input} />{!editing ? <><View style={styles.assetRow}><Pressable accessibilityRole="button" accessibilityLabel="Choose creator video file" style={styles.assetPicker} onPress={() => void pick('video')}><MaterialIcons name="video-file" size={23} color={theme.colors.accentText} /><View style={styles.assetCopy}><Text style={styles.assetTitle}>{form.video?.name || 'Choose video file'}</Text><Text style={styles.assetDetail}>Optional when a supported YouTube URL is supplied.</Text></View></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Choose creator video thumbnail" style={styles.assetPicker} onPress={() => void pick('thumbnail')}><MaterialIcons name="image" size={23} color={theme.colors.accentText} /><View style={styles.assetCopy}><Text style={styles.assetTitle}>{form.thumbnail?.name || 'Choose thumbnail'}</Text><Text style={styles.assetDetail}>16:9 artwork; optional for the private draft.</Text></View></Pressable></View></> : null}<View style={styles.toggle}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>Feature across PLUGGD</Text><Text style={styles.toggleDetail}>Prioritises this video on your profile and PLUGGD TV once published.</Text></View><Switch accessibilityLabel="Feature across PLUGGD" style={styles.switch} value={form.isFeatured} onValueChange={(isFeatured) => setForm((current) => ({ ...current, isFeatured }))} trackColor={{ false: theme.colors.surfacePressed, true: theme.colors.accentFill }} thumbColor={form.isFeatured ? theme.colors.onAccent : theme.colors.textMuted} /></View><Pressable accessibilityRole="button" accessibilityLabel={editing ? 'Save video details' : 'Create private video draft'} disabled={Boolean(busy) || !form.title.trim()} style={[styles.primaryButton, (!form.title.trim() || busy) && styles.disabled]} onPress={() => void save()}>{busy === 'save' || busy === 'create' ? <ActivityIndicator color={theme.colors.accentText} /> : <><Text style={styles.primaryButtonText}>{editing ? 'Save changes' : 'Create private draft'}</Text><MaterialIcons name="save" size={19} color={theme.colors.accentText} /></>}</Pressable></ScrollView></View></KeyboardAvoidingView></View> : null}
+  </SafeAreaView></CreatorAccessGate>;
+}
+
+function createStyles(theme: PluggdTheme) {
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.colors.background }, header: { minHeight: 76, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.divider }, headerButton: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' }, headerCopy: { flex: 1 }, headerKicker: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.8 }, headerTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 28 }, newButton: { width: 46, height: 46, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, padding: 28, alignItems: 'center', justifyContent: 'center', gap: 13 }, centerText: { color: theme.colors.textSecondary, textAlign: 'center', fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21 }, errorTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 22 }, content: { padding: 18, paddingBottom: 60, gap: 18 },
+  hero: { borderRadius: 25, padding: 20, backgroundColor: theme.colors.accentSoft, borderWidth: 1, borderColor: theme.colors.borderAccent }, heroKicker: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.6 }, heroTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 29, lineHeight: 33, marginTop: 8 }, heroBody: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 21, marginTop: 9 }, heroActions: { flexDirection: 'row', gap: 10, marginTop: 18 }, primaryButton: { minHeight: 52, flex: 1, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.surfaceRaised, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 15 }, primaryButtonText: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 }, secondaryButton: { minHeight: 52, flex: 1, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 15 }, secondaryButtonText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 }, disabled: { opacity: 0.45 },
+  summary: { flexDirection: 'row', justifyContent: 'space-around', borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingVertical: 17 }, summaryValue: { color: theme.colors.text, textAlign: 'center', fontFamily: pluggdFonts.displayBold, fontSize: 22 }, summaryLabel: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiBold, fontSize: 9, letterSpacing: 1.2, marginTop: 4 }, listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 7 }, listTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 25, marginTop: 4 }, profileButton: { minHeight: 44, paddingHorizontal: 13, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 7 }, profileButtonText: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  card: { borderRadius: 23, overflow: 'hidden', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }, cardMedia: { height: 190, backgroundColor: theme.colors.artworkBase }, cardImage: { width: '100%', height: '100%', resizeMode: 'cover' }, cardFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' }, badge: { position: 'absolute', top: 13, left: 13, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }, badgeLive: { backgroundColor: theme.colors.success }, badgeDraft: { backgroundColor: theme.colors.mediaScrim }, badgeText: { color: theme.colors.mediaText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.1 }, cardBody: { padding: 16, backgroundColor: theme.colors.surface }, cardTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 21 }, cardMeta: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 11, marginTop: 6 }, cardDescription: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 13, lineHeight: 19, marginTop: 8 }, cardActions: { flexDirection: 'row', gap: 8, marginTop: 14 }, smallAction: { minHeight: 44, flex: 1, borderRadius: 13, backgroundColor: theme.colors.surfaceAlt, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }, smallActionWarn: { backgroundColor: theme.colors.accentSoft }, smallActionText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 }, textAction: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center' }, textActionText: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiBold, fontSize: 10 },
+  empty: { minHeight: 300, borderRadius: 23, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center', padding: 28 }, emptyTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 21, marginTop: 13 }, emptyBody: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 13, lineHeight: 20, textAlign: 'center', marginVertical: 9 },
+  composerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.overlay, justifyContent: 'flex-end' }, composerKeyboard: { maxHeight: '94%' }, composer: { maxHeight: '100%', backgroundColor: theme.colors.surfaceRaised, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }, composerHeader: { minHeight: 82, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: theme.colors.divider }, composerTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 25, marginTop: 3 }, composerContent: { padding: 18, paddingBottom: 46, gap: 11 }, label: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.2, marginTop: 4 }, input: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, color: theme.colors.text, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, paddingHorizontal: 14 }, textarea: { minHeight: 105, paddingTop: 14 }, assetRow: { gap: 9, marginTop: 3 }, assetPicker: { minHeight: 68, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14 }, assetCopy: { flex: 1 }, assetTitle: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 }, assetDetail: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, marginTop: 3 }, toggle: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 14 }, toggleCopy: { flex: 1 }, toggleTitle: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 }, toggleDetail: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11, lineHeight: 16, marginTop: 3 }, switch: { minWidth: 51, minHeight: 44 },
+  });
+}

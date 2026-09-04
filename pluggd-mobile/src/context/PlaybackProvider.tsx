@@ -27,8 +27,11 @@ import TrackPlayer, {
   useActiveTrack,
   useTrackPlayerEvents,
   AppKilledPlaybackBehavior,
+  IOSCategory,
 } from 'react-native-track-player';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { transformedUri } from '../components/PluggdImage';
+import { isConstrainedAndroidRuntime } from '../components/lowMemoryImagePolicy';
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type PluggdTrackKind =
@@ -49,6 +52,10 @@ export type PluggdTrack = Omit<Track, 'type'> & {
   duration?: number;
   // Pluggd-specific metadata
   releaseId?: string;
+  /** Canonical release-track identity for per-track waveform and lyrics. */
+  trackId?: string;
+  /** Single-track compatibility only; never copy release lyrics across a multi-track queue. */
+  legacyLyrics?: string;
   beatId?: string;
   mixId?: string;
   samplePackId?: string;
@@ -83,32 +90,77 @@ interface PlaybackContextType {
   shuffleMode: ShuffleMode;
 
   // Actions
-  playTrack: (track: PluggdTrack) => Promise<void>;
-  playQueue: (tracks: PluggdTrack[], startIndex?: number) => Promise<void>;
+  playTrack: (track: PluggdTrack) => Promise<PluggdTrack | null>;
+  playQueue: (tracks: PluggdTrack[], startIndex?: number) => Promise<PluggdTrack | null>;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   togglePlayPause: () => Promise<void>;
   skipToNext: () => Promise<void>;
   skipToPrevious: () => Promise<void>;
+  skipToQueueIndex: (index: number) => Promise<void>;
   seekTo: (position: number) => Promise<void>;
   addToQueue: (track: PluggdTrack) => Promise<void>;
   clearQueue: () => Promise<void>;
+  closePlayer: () => Promise<void>;
   toggleRepeat: () => Promise<void>;
   toggleShuffle: () => void;
 }
 
 const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined);
 
+export function resolvePlaybackDuration(reportedDuration: unknown, trackDuration: unknown): number {
+  const reported = Number(reportedDuration);
+  if (Number.isFinite(reported) && reported > 0) return reported;
+  const supplied = Number(trackDuration);
+  return Number.isFinite(supplied) && supplied > 0 ? supplied : 0;
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────
 let isPlayerSetup = false;
+const CONSTRAINED_ANDROID_RUNTIME = isConstrainedAndroidRuntime(Platform.OS, Platform.Version);
+const CONSTRAINED_PLAYBACK_ARTWORK_WIDTH = 192;
+
+/**
+ * Android 7 can give a normal app only 48 MB. TrackPlayer's notification
+ * metadata loader otherwise decodes full-size cover uploads, and its default
+ * 50-second forward buffer competes with an artwork-heavy screen. Keep the
+ * public queue semantics while bounding only the native resources on API 24/25.
+ */
+export function trackForNativePlayback(track: PluggdTrack, constrained = CONSTRAINED_ANDROID_RUNTIME): PluggdTrack {
+  if (!constrained || !track.artwork) return track;
+  const artwork = transformedUri(track.artwork, CONSTRAINED_PLAYBACK_ARTWORK_WIDTH);
+  return { ...track, artwork: artwork || undefined };
+}
+
+export function isPlayableTrack(track?: Partial<PluggdTrack> | null): track is PluggdTrack {
+  if (!track || typeof track.url !== 'string' || !track.url.trim()) return false;
+  try {
+    const protocol = new URL(track.url.trim()).protocol.toLowerCase();
+    return protocol === 'https:' || protocol === 'http:' || protocol === 'file:' || protocol === 'content:';
+  } catch {
+    return false;
+  }
+}
 
 async function setupPlayer(): Promise<boolean> {
   if (isPlayerSetup) return true;
   try {
-    await TrackPlayer.setupPlayer({
-      // 15s forward/backward jump for controls
-      backBuffer: 30,
-    });
+    await TrackPlayer.setupPlayer(
+      CONSTRAINED_ANDROID_RUNTIME
+        ? {
+            minBuffer: 5,
+            maxBuffer: 10,
+            playBuffer: 1,
+            backBuffer: 0,
+            maxCacheSize: 0,
+          }
+        : {
+            // Preserve the submitted iOS and modern-Android behavior.
+            backBuffer: 30,
+            iosCategory: IOSCategory.Playback,
+            autoHandleInterruptions: true,
+          },
+    );
     await TrackPlayer.updateOptions({
       android: {
         appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
@@ -195,29 +247,49 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   // ─── Actions ──────────────────────────────────────────────────
   const playTrack = useCallback(
     async (track: PluggdTrack) => {
-      if (!isReady) return;
+      if (!isReady) return null;
+      if (!isPlayableTrack(track)) {
+        Alert.alert('Audio unavailable', 'This item does not include a playable audio upload.');
+        return null;
+      }
       lastPlaybackError.current = '';
       await TrackPlayer.reset();
-      await TrackPlayer.add(track as any);
-      originalQueue.current = [track];
+      const nativeTrack = trackForNativePlayback(track);
+      await TrackPlayer.add(nativeTrack as any);
+      originalQueue.current = [nativeTrack];
       await TrackPlayer.play();
-      syncQueue();
+      await syncQueue();
+      return ((await TrackPlayer.getActiveTrack()) as PluggdTrack | undefined) ?? null;
     },
     [isReady, syncQueue],
   );
 
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
-      if (!isReady || tracks.length === 0) return;
+      if (!isReady || tracks.length === 0) return null;
+      const requestedTrack = tracks[Math.min(Math.max(startIndex, 0), tracks.length - 1)] ?? null;
+      const playableTracks = tracks.filter(isPlayableTrack).map((track) => trackForNativePlayback(track));
+      if (playableTracks.length === 0) {
+        Alert.alert('Audio unavailable', 'These items do not include playable audio uploads.');
+        return null;
+      }
       lastPlaybackError.current = '';
-      originalQueue.current = tracks;
+      const requestedIndex = requestedTrack
+        ? playableTracks.findIndex((track) => track.id === requestedTrack.id)
+        : -1;
+      const safeStartIndex = requestedIndex >= 0
+        ? requestedIndex
+        : Math.min(Math.max(startIndex, 0), playableTracks.length - 1);
+      originalQueue.current = playableTracks;
       await TrackPlayer.reset();
-      await TrackPlayer.add(tracks as any);
-      if (startIndex > 0) {
-        await TrackPlayer.skip(startIndex);
+      await TrackPlayer.add(playableTracks as any);
+      if (safeStartIndex > 0) {
+        await TrackPlayer.skip(safeStartIndex);
       }
       await TrackPlayer.play();
-      syncQueue();
+      await syncQueue();
+      const active = ((await TrackPlayer.getActiveTrack()) as PluggdTrack | undefined) ?? null;
+      return active;
     },
     [isReady, syncQueue],
   );
@@ -260,6 +332,16 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     }
   }, [progress.position]);
 
+  const skipToQueueIndex = useCallback(async (index: number) => {
+    if (!Number.isInteger(index) || index < 0) return;
+    try {
+      await TrackPlayer.skip(index);
+      await TrackPlayer.play();
+    } catch {
+      // Queue can change between render and selection; retain the current item.
+    }
+  }, []);
+
   const seekTo = useCallback(async (position: number) => {
     await TrackPlayer.seekTo(position);
   }, []);
@@ -267,7 +349,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const addToQueue = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
-      await TrackPlayer.add(track as any);
+      if (!isPlayableTrack(track)) return;
+      await TrackPlayer.add(trackForNativePlayback(track) as any);
       syncQueue();
     },
     [isReady, syncQueue],
@@ -277,6 +360,13 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     await TrackPlayer.reset();
     setQueue([]);
     originalQueue.current = [];
+  }, []);
+
+  const closePlayer = useCallback(async () => {
+    await TrackPlayer.reset();
+    setQueue([]);
+    originalQueue.current = [];
+    lastPlaybackError.current = '';
   }, []);
 
   const toggleRepeat = useCallback(async () => {
@@ -321,6 +411,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, [isReady, queue, shuffleMode, syncQueue]);
 
   const currentTrack = (activeTrack as PluggdTrack) ?? null;
+  // Some long-form uploads do not expose their duration through AVPlayer until
+  // after buffering. Keep progress tied to the real position while using the
+  // catalogue duration as the truthful fallback instead of presenting a fake,
+  // frozen percentage in the UI.
+  const progressDuration = resolvePlaybackDuration(progress.duration, currentTrack?.duration);
 
   return (
     <PlaybackContext.Provider
@@ -331,7 +426,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         currentTrack,
         progress: {
           position: progress.position,
-          duration: progress.duration,
+          duration: progressDuration,
           buffered: progress.buffered,
         },
         queue,
@@ -344,9 +439,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         togglePlayPause,
         skipToNext,
         skipToPrevious,
+        skipToQueueIndex,
         seekTo,
         addToQueue,
         clearQueue,
+        closePlayer,
         toggleRepeat,
         toggleShuffle,
       }}

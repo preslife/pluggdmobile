@@ -1,5 +1,6 @@
-import type { ManualEntryInput } from '../process-credits-transaction/manualFallback.ts';
+import type { ManualEntryInput, ManualTransactionPayload } from '../process-credits-transaction/manualFallback.ts';
 import { performManualTransactionFallback } from '../process-credits-transaction/manualFallback.ts';
+import type { WalletTransactionKind } from '../process-credits-transaction/logic.ts';
 
 const WALLET_TRANSACTION_RPC = 'wallet_process_transaction';
 
@@ -10,7 +11,7 @@ type LoggerLike = {
 export interface WalletTransactionInput {
   userId: string;
   amountCredits: number;
-  kind: string;
+  kind: WalletTransactionKind;
   refType?: string | null;
   refId?: string | null;
   counterpartyUserId?: string | null;
@@ -65,7 +66,7 @@ const isComplianceError = (error: any) => {
   return message.includes('WALLET_BALANCE_NEGATIVE');
 };
 
-const toManualPayload = (input: WalletTransactionInput) => ({
+const toManualPayload = (input: WalletTransactionInput): ManualTransactionPayload => ({
   amount_credits: input.amountCredits,
   kind: input.kind,
   ref_type: input.refType ?? null,

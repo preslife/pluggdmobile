@@ -14,12 +14,14 @@ const serviceSource = read('src/features/culture/mobileServices.ts');
 const socialSource = read('src/features/culture/mobileSocial.ts');
 const dataAndServiceSource = `${dataSource}\n${serviceSource}\n${socialSource}`;
 const chromeSource = read('components/AppChrome.tsx');
+const chromePolicySource = read('src/lib/appChromeVisibility.ts');
 
 assert.match(routeSource, /<Redirect href="\/create" \/>/, 'Legacy Backstage tab route must redirect to Create while deep-link details stay available');
 assert.match(tabsSource, /name="backstage"[\s\S]*href:\s*null/, 'Backstage compatibility route must stay hidden from the tab bar');
 assert.doesNotMatch(tabsSource, /title:\s*"Backstage"/, 'Tabs layout must not expose Backstage as a primary title');
 assert.doesNotMatch(dockSource, /label:\s*'Backstage'|route:\s*'\/backstage'/, 'Backstage must not remain a primary bottom tab');
-assert.match(chromeSource, /normalized === '\/backstage'/, 'Legacy Backstage route must still avoid duplicate global chrome while redirecting');
+assert.match(chromeSource, /hasDedicatedAppHeader\(normalized\)/, 'App chrome must delegate dedicated-header ownership to the shared route policy');
+assert.match(chromePolicySource, /DEDICATED_HEADER_EXACT[\s\S]*'\/backstage'/, 'Legacy Backstage route must still avoid duplicate global chrome while redirecting');
 
 for (const table of [
   "from('communities')",
@@ -44,14 +46,14 @@ assert.doesNotMatch(
 
 assert.match(
   detailSource,
-  /const TABS = \['Posts', 'Threads', 'Rooms', 'Events', 'Soundboards', 'Drops'\]/,
-  'Community detail tabs must be preserved for existing deep links',
+  /const TABS = \['Community', 'Live', 'Collabs'\] as const/,
+  'Community detail must use the approved engagement tabs while preserving the deep-link route',
 );
-assert.match(detailSource, /Official Community/, 'Backstage deep-link detail must present as Community in visible copy');
+assert.match(detailSource, /creatorProfileRoute \? 'Creator community' : 'Community'/, 'Backstage deep-link detail must present as Community in visible copy');
 assert.doesNotMatch(detailSource, /Official Backstage|Backstage unavailable|No Backstage events/, 'Visible Backstage detail copy must be retired');
-assert.match(detailSource, /MobileSocialPostCard/, 'Community detail Posts must use the shared social card system');
-assert.match(detailSource, /activeTab === 'Rooms'/, 'Community detail must use Rooms, not Live Rooms');
-assert.match(detailSource, /activeTab === 'Soundboards'/, 'Community detail must expose Soundboards');
+assert.match(detailSource, /MobileSocialPostCard/, 'Community detail must use the shared social card system');
+assert.match(detailSource, /activeTab === 'Live'/, 'Community detail must preserve its focused Live surface');
+assert.doesNotMatch(detailSource, /activeTab === 'Soundboards'|activeTab === 'Drops'/, 'Community detail must not duplicate creator catalogue tabs');
 assert.match(detailSource, /\/community\/events\/\$\{event\.id\}/, 'Community detail events must route to a real community event route');
 assert.doesNotMatch(detailSource, /pathname: '\/create-post'.{0,120}room|pathname: '\/create-post'.{0,120}event/s, 'Room and event card taps must not route directly to composer');
 

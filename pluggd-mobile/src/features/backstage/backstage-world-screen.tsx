@@ -42,6 +42,7 @@ import {
   type BackstageThread,
   type LiveRoomItem,
 } from '../culture/useCultureData';
+import { isPublicProfileName } from '../../lib/publicAudienceFilters';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -140,7 +141,7 @@ function routeForThread(thread: BackstageThread) {
 }
 
 function profileName(profile: ProfileItem) {
-  return profile.display_name || profile.full_name || profile.username || 'PLUGGD Creator';
+  return profile.display_name || profile.full_name || profile.username || '';
 }
 
 function profileLabel(profile: ProfileItem) {
@@ -210,13 +211,16 @@ function soundboardRoute(soundboard: SoundboardItem) {
 
 function mapCreators(bundle?: FeedBundle): Recommendation[] {
   if (!bundle) return [];
-  return bundle.profiles.slice(0, 10).map((profile) => ({
-    id: profile.user_id || profile.id || profile.username || profileName(profile),
-    title: profileName(profile),
-    label: profileLabel(profile),
-    imageUrl: profile.avatar_url,
-    route: profileRoute(profile),
-  }));
+  return bundle.profiles
+    .filter((profile) => isPublicProfileName(profileName(profile)))
+    .slice(0, 10)
+    .map((profile) => ({
+      id: profile.user_id || profile.id || profile.username || profileName(profile),
+      title: profileName(profile),
+      label: profileLabel(profile),
+      imageUrl: profile.avatar_url,
+      route: profileRoute(profile),
+    }));
 }
 
 function mapProducerLounge(posts?: SocialPostItem[], beats?: BeatItem[], rooms?: Array<BackstageRoom | LiveRoomItem>): ProducerLoungeItem[] {

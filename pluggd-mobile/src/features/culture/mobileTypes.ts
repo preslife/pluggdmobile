@@ -249,14 +249,8 @@ export type BackstageDetail = {
   threads: BackstageThread[];
   rooms: BackstageRoom[];
   events: BackstageCommunityEvent[];
-  soundboards: Array<{
-    id: string;
-    title: string;
-    cover_image_url?: string | null;
-    item_count?: number | null;
-    created_at?: string | null;
-  }>;
-  drops: Array<ReleaseItem | BeatItem | MixItem>;
+  liveSessions: LiveRoomItem[];
+  latestRelease: ReleaseItem | null;
 };
 
 export type EventRsvpState = 'going' | 'interested' | 'cancelled' | 'none';
@@ -327,6 +321,7 @@ export type SavedContentKind =
   | 'profile'
   | 'live_room'
   | 'post'
+  | 'blog_post'
   | 'soundboard';
 
 export type SavedContentItem = {
@@ -351,6 +346,7 @@ export type SavedContentItem = {
     | 'licensing_contracts'
     | 'fan_subscriptions'
     | 'external_checkout_sessions'
+    | 'orders'
     | 'ticket_orders'
     | 'local-unavailable';
   status?: string | null;
@@ -373,6 +369,8 @@ export type StageMediaItem = {
   mix?: MixItem;
 };
 
+export type LiveDiscoveryCategory = 'community_room' | 'listening_party' | 'studio_cook_up' | 'event_linked';
+
 export type LiveRoomItem = {
   id: string;
   source?: 'session_room' | 'live_session' | 'scheduled_session' | 'community_room';
@@ -380,6 +378,9 @@ export type LiveRoomItem = {
   description?: string | null;
   status?: string | null;
   category?: string | null;
+  live_mode?: string | null;
+  discovery_category?: LiveDiscoveryCategory | null;
+  linked_event_id?: string | null;
   viewer_count?: number | null;
   scheduled_for?: string | null;
   started_at?: string | null;
@@ -613,7 +614,23 @@ export type LiveGift = {
   recipient_id?: string | null;
   gift_type?: string | null;
   credits_amount?: number | null;
+  gift_id?: string | null;
+  quantity?: number | null;
+  total_credits?: number | null;
+  message?: string | null;
+  artwork_url?: string | null;
+  animation_variant?: 'standard' | 'reduced' | null;
   created_at: string;
+};
+
+export type LiveGiftSendResponse = {
+  event: LiveGift;
+  balance: {
+    balance_credits: number;
+    pending_credits: number;
+    available_credits: number;
+  };
+  already_processed: boolean;
 };
 
 export type LiveRecording = {
@@ -742,11 +759,75 @@ export type MembershipSummary = {
   creator_id?: string | null;
   title: string;
   description?: string | null;
+  features?: string[];
   price_cents?: number | null;
+  price_yearly_cents?: number | null;
   currency?: string | null;
   member_count?: number | null;
   is_member?: boolean;
+  image_url?: string | null;
+  tier_order?: number | null;
   route?: string | null;
+};
+
+export type CreatorProfileModuleId =
+  | 'featured'
+  | 'player'
+  | 'discography'
+  | 'beats'
+  | 'soundboards'
+  | 'gallery'
+  | 'video'
+  | 'community'
+  | 'membership'
+  | 'store'
+  | 'shows'
+  | 'live'
+  | 'about'
+  | 'stats'
+  | 'support'
+  | 'booking'
+  | 'links';
+
+export type CreatorProfilePublicConfig = {
+  accentColor: string;
+  preset: 'stage' | 'studio' | 'club' | 'editorial' | 'venue';
+  imagery: 'cinematic' | 'clean' | 'editorial';
+  density: 'comfortable' | 'compact';
+  typography: 'modern' | 'display' | 'editorial';
+  motion: 'minimal' | 'subtle' | 'signature';
+  modules: Array<{
+    id: CreatorProfileModuleId;
+    visible: boolean;
+    order: number;
+    variant: 'default' | 'compact' | 'feature';
+    settings?: {
+      featuredContentType?: 'automatic' | 'release' | 'beat' | 'soundboard';
+      featuredContentId?: string;
+    };
+  }>;
+};
+
+export type CreatorProfileVideo = {
+  id: string;
+  title: string;
+  description?: string | null;
+  thumbnail_url?: string | null;
+  youtube_url?: string | null;
+  video_url?: string | null;
+  is_featured?: boolean | null;
+  view_count?: number | null;
+  created_at?: string | null;
+  release_id?: string | null;
+  route?: string | null;
+  source_type?: 'creator_video' | 'release_video';
+};
+
+export type CreatorConnectCardSummary = {
+  slug: string;
+  route: string;
+  label: 'Message / Book' | 'Connect';
+  bookingAvailable: boolean;
 };
 
 export type FanIdentitySummary = {
@@ -788,10 +869,14 @@ export type CreatorProfileBundle = {
   communities: BackstageCommunity[];
   stories: MobileStory[];
   galleryItems: CreatorGalleryItem[];
-  clips: VideoItem[];
+  clips: CreatorProfileVideo[];
   playlists: MobilePlaylist[];
   storefront: StorefrontItem[];
   memberships: MembershipSummary[];
+  pageConfig: CreatorProfilePublicConfig | null;
+  connectCard: CreatorConnectCardSummary | null;
+  achievementCount: number;
+  diagnostics: string[];
 };
 
 export type CultureSearchResults = {

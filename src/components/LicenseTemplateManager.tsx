@@ -348,6 +348,10 @@ const LicenseTemplateManager = () => {
                 <FormField
                   control={form.control}
                   name="terms"
+                  rules={{
+                    required: 'Licence terms are required',
+                    minLength: { value: 80, message: 'Add complete, usable licence terms' },
+                  }}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>License Terms</FormLabel>

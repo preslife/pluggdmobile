@@ -33,7 +33,6 @@ type ProfileRow = {
   user_id: string;
   username?: string | null;
   full_name?: string | null;
-  display_name?: string | null;
   bio?: string | null;
   avatar_url?: string | null;
   cover_image_url?: string | null;
@@ -44,11 +43,12 @@ type ProfileRow = {
 
 async function loadOwnProfile(userId?: string | null) {
   if (!userId) return null;
-  const { data } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from('profiles')
-    .select('user_id,username,full_name,display_name,bio,avatar_url,cover_image_url,profile_type,is_creator,is_verified')
+    .select('user_id,username,full_name,bio,avatar_url,cover_image_url,profile_type,is_creator,is_verified')
     .eq('user_id', userId)
     .maybeSingle();
+  if (error) throw error;
   return (data as ProfileRow | null) ?? null;
 }
 
@@ -102,7 +102,6 @@ export function MyProfileScreen() {
 
   const row = profile.data;
   const displayName =
-    row?.display_name ||
     row?.full_name ||
     row?.username ||
     user?.email?.split('@')[0] ||
@@ -159,7 +158,7 @@ export function MyProfileScreen() {
         <View style={styles.signedOut}>
           <BrandLogo width={86} height={28} variant={theme.scheme === 'dark' ? 'dark' : 'light'} />
           <View style={[styles.signedOutPanel, { borderColor: theme.colors.border }]}>
-            <View style={[styles.signedOutRule, { backgroundColor: theme.colors.accent }]} />
+            <View style={[styles.signedOutRule, { backgroundColor: theme.colors.accentFill }]} />
             <Text style={[styles.signedOutEyebrow, { color: theme.colors.accent }]}>MY PLUGGD</Text>
             <Text style={[styles.signedOutTitle, { color: theme.colors.text }]}>Build the world around your sound.</Text>
             <Text style={[styles.signedOutBody, { color: theme.colors.textMuted }]}>
@@ -173,10 +172,10 @@ export function MyProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Sign in to My PLUGGD"
-              style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}
+              style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }]}
               onPress={() => go('/auth/login')}
             >
-              <Text style={styles.primaryButtonText}>Sign in</Text>
+              <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Sign in</Text>
               <MaterialIcons name="arrow-forward" size={18} color="#0a0806" />
             </Pressable>
           </View>
@@ -227,8 +226,8 @@ export function MyProfileScreen() {
                 <Text style={[styles.avatarInitial, { color: theme.colors.text }]}>{contentInitials(displayName)}</Text>
               )}
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Edit profile photo" onPress={() => go('/edit-profile')} style={[styles.avatarPlus, { backgroundColor: theme.colors.accent }]}>
-              <MaterialIcons name="add" size={22} color="#0a0806" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit profile photo" hitSlop={5} onPress={() => go('/edit-profile')} style={[styles.avatarPlus, { backgroundColor: theme.colors.accentFill }]}>
+              <MaterialIcons name="add" size={22} color={theme.colors.onAccent} />
             </Pressable>
           </View>
 
@@ -252,10 +251,12 @@ export function MyProfileScreen() {
           {row?.bio ? <Text style={[styles.bio, { color: theme.colors.text }]}>{row.bio}</Text> : null}
 
           <View style={styles.actionRow}>
-            <Pressable style={[styles.actionButton, { borderColor: theme.colors.border }]} onPress={() => go('/edit-profile')}>
+            <Pressable accessibilityRole="button" style={[styles.actionButton, { borderColor: theme.colors.border }]} onPress={() => go('/edit-profile')}>
               <Text style={[styles.actionButtonText, { color: theme.colors.text }]}>Edit profile</Text>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share profile"
               style={[styles.actionButton, { borderColor: theme.colors.border }]}
               onPress={() => {
                 void Share.share({ message: row?.username ? `https://pluggd.fm/${row.username}` : 'PLUGGD profile' });
@@ -302,7 +303,7 @@ export function MyProfileScreen() {
               >
                 <MaterialIcons name={tab.icon} size={22} color={active ? theme.colors.text : theme.colors.inactive} />
                 <Text style={[styles.profileTabLabel, { color: active ? theme.colors.text : theme.colors.inactive }]}>{tab.label}</Text>
-                {active ? <View style={[styles.profileTabIndicator, { backgroundColor: theme.colors.accent }]} /> : null}
+                {active ? <View style={[styles.profileTabIndicator, { backgroundColor: theme.colors.accentFill }]} /> : null}
               </Pressable>
             );
           })}
@@ -380,7 +381,7 @@ function GridList({ items, empty }: { items: Array<{ id: string; title: string; 
   return (
     <View style={styles.grid}>
       {items.map((item) => (
-        <Pressable key={`${item.route}-${item.id}`} style={styles.gridItem} onPress={() => router.push(item.route as any)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} key={`${item.route}-${item.id}`} style={styles.gridItem} onPress={() => router.push(item.route as any)}>
           <View style={[styles.gridArt, { backgroundColor: theme.colors.surfaceAlt }]}>
             {item.imageUrl ? <PluggdImage uri={item.imageUrl} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <MaterialIcons name="graphic-eq" size={22} color={theme.colors.accent} />}
           </View>

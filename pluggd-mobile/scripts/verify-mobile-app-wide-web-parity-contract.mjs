@@ -109,11 +109,17 @@ for (const token of [
   'StudioConnectCardScreen',
   'StudioMoreScreen',
   'setStudioModulePlugged',
-  'Desktop Tools',
-  'Use desktop Studio',
+  'advanced tools',
+  'buildEmbeddedStudioRoute',
 ]) {
   assert.match(`${studioScreenSource}\n${studioDataSource}`, new RegExp(token), `native Studio implementation must include ${token}`);
 }
+
+assert.doesNotMatch(
+  `${studioScreenSource}\n${studioDataSource}`,
+  /Desktop Tools|Use desktop Studio/,
+  'native Studio must not expose superseded desktop-tool semantics',
+);
 
 assert.doesNotMatch(
   `${studioScreenSource}\n${studioDataSource}`,
@@ -121,7 +127,9 @@ assert.doesNotMatch(
   'native Studio implementation must avoid internal planning labels in public UI copy',
 );
 
-const chromeSource = read('components/AppChrome.tsx');
+// Chrome visibility rules live in src/lib/appChromeVisibility.ts so AppChrome
+// and useBottomChromeInset cannot disagree. Assert against that source.
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 assert.match(chromeSource, /'\/studio'/, 'AppChrome must hide public chrome for native Studio routes');
 assert.doesNotMatch(chromeSource, /CreateActionSheet/, 'public chrome must not float a creator action over music, editorial, event or community content');
 assert.match(studioScreenSource, /dockCreateButton/, 'creator creation must remain first-class in the dedicated Studio dock');

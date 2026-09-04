@@ -4,23 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RecoveryState } from '../../../components/ContentUI';
 import { selectionHaptic } from '../../../src/design/haptics';
 import { supabase } from '../../../src/lib/supabase';
 import { formatDate } from '../../../src/lib/mobileContent';
-
-const COLORS = {
-  canvas: '#0a0806',
-  surface: '#171310',
-  border: '#241d15',
-  orange: '#ff6600',
-  violet: '#7C3AED',
-  white: '#FFFFFF',
-  soft: '#E4E4E9',
-  muted: '#8E8E9F',
-};
+import { useBottomChromeInset } from '../../../src/design/useBottomChromeInset';
+import { usePluggdTheme } from '../../../src/design/usePluggdTheme';
 
 type CommunityEventDetail = {
   id: string;
@@ -80,6 +72,9 @@ function communityRoute(event: CommunityEventDetail) {
 }
 
 export default function CommunityEventRoute() {
+  const theme = usePluggdTheme();
+  const styles = useCommunityEventStyles();
+  const bottomInset = useBottomChromeInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -94,25 +89,25 @@ export default function CommunityEventRoute() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#0B0B12', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+      <LinearGradient colors={theme.scheme === 'dark' ? ['#0A0806', '#0B0B12', '#0A0806'] : ['#FFF8ED', '#F1E5F8', '#FFF8ED']} style={StyleSheet.absoluteFill} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 56), paddingBottom: Math.max(insets.bottom + 160, 190) }}
+        contentContainerStyle={{ paddingTop: Math.max(insets.top + 18, 56), paddingBottom: bottomInset }}
       >
         <View style={styles.headerRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => router.back()}>
-            <MaterialIcons name="chevron-left" size={28} color={COLORS.white} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}>
+            <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>COMMUNITY EVENT</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Open community" style={styles.iconButton} onPress={() => event ? router.push(communityRoute(event) as any) : router.push('/community' as any)}>
-            <MaterialIcons name="groups" size={21} color={COLORS.white} />
+            <MaterialIcons name="groups" size={21} color={theme.colors.text} />
           </Pressable>
         </View>
 
         {query.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={COLORS.orange} />
+            <ActivityIndicator color={theme.colors.accentText} />
             <Text style={styles.loadingText}>Loading community event...</Text>
           </View>
         ) : null}
@@ -126,14 +121,19 @@ export default function CommunityEventRoute() {
             primaryLabel="Explore events"
             onPrimary={() => router.replace('/events' as any)}
             secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            onSecondary={() => (router.canGoBack() ? router.back() : router.replace('/community' as any))}
           />
         ) : null}
 
         {event ? (
           <>
             <View style={styles.hero}>
-              <LinearGradient colors={['rgba(124,58,237,0.3)', 'rgba(255,102,0,0.14)', 'rgba(23,19,16,0.98)']} style={StyleSheet.absoluteFill} />
+              <LinearGradient
+                colors={theme.scheme === 'dark'
+                  ? ['rgba(124,58,237,0.3)', 'rgba(255,102,0,0.14)', 'rgba(23,19,16,0.98)']
+                  : ['rgba(124,58,237,0.10)', 'rgba(232,79,0,0.10)', 'rgba(255,252,247,0.98)']}
+                style={StyleSheet.absoluteFill}
+              />
               <Text style={styles.kicker}>{event.event_type || 'Community event'}</Text>
               <Text style={styles.title}>{event.title}</Text>
               <Text style={styles.meta}>{[event.location || 'Online / TBA', formatDate(event.starts_at)].filter(Boolean).join(' · ')}</Text>
@@ -176,24 +176,27 @@ export default function CommunityEventRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.canvas },
+function useCommunityEventStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   headerRow: { marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: COLORS.white, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1.4 },
+  iconButton: { width: 44, height: 44, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: theme.colors.text, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', letterSpacing: 1.4 },
   loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { color: COLORS.muted, fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  hero: { marginHorizontal: 16, minHeight: 220, borderRadius: 6, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', backgroundColor: COLORS.surface, padding: 18, justifyContent: 'flex-end' },
-  kicker: { color: COLORS.orange, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
-  title: { marginTop: 8, color: COLORS.white, fontSize: 30, lineHeight: 34, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800' },
-  meta: { marginTop: 7, color: COLORS.muted, fontSize: 14, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  description: { marginTop: 12, color: COLORS.soft, fontSize: 14, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+  loadingText: { color: theme.colors.textMuted, fontSize: 13, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  hero: { marginHorizontal: 16, minHeight: 220, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden', backgroundColor: theme.colors.surface, padding: 18, justifyContent: 'flex-end' },
+  kicker: { color: theme.colors.accentText, fontSize: 11, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  title: { marginTop: 8, color: theme.colors.text, fontSize: 30, lineHeight: 34, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800' },
+  meta: { marginTop: 7, color: theme.colors.textMuted, fontSize: 14, lineHeight: 18, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  description: { marginTop: 12, color: theme.colors.textSecondary, fontSize: 14, lineHeight: 21, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
   actions: { marginHorizontal: 16, marginTop: 14, gap: 10 },
-  primaryButton: { minHeight: 48, borderRadius: 5, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: COLORS.canvas, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  secondaryButton: { minHeight: 44, borderRadius: 5, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: COLORS.white, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  emptyCard: { marginHorizontal: 16, borderRadius: 5, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16, gap: 8 },
-  emptyTitle: { color: COLORS.white, fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
-  emptyBody: { color: COLORS.muted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
-});
+  primaryButton: { minHeight: 48, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { color: theme.colors.onAccent, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  secondaryButton: { minHeight: 44, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: theme.colors.text, fontSize: 13, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  emptyCard: { marginHorizontal: 16, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 16, gap: 8 },
+  emptyTitle: { color: theme.colors.text, fontSize: 17, fontFamily: pluggdFonts.displayBold, fontWeight: '700' },
+  emptyBody: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600' },
+}), [theme]);
+}

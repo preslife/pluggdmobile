@@ -6,38 +6,51 @@ const homeRoute = read('app/(tabs)/index.tsx');
 const home = read('src/features/home/MusicDiscoveryHome.tsx');
 const homeData = read('src/features/home/homeDiscoveryData.ts');
 const model = read('src/features/discovery/discoveryModel.ts');
-const chrome = read('components/AppChrome.tsx');
+const chrome = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const content = read('src/lib/mobileContent.ts');
 const releaseFloor = read('src/features/editorial/ListeningFloorScreen.tsx');
 const search = read('src/features/culture/useCultureData.ts');
 const discover = read('src/features/discovery/MusicDiscoveryDiscover.tsx');
+const destinations = read('src/features/discovery/publicDestinations.ts');
+const homeDestinations = read('src/features/home/homeDestinations.ts');
+const plugService = read('src/features/editorial/thePlugArticleService.ts');
+const eventsData = read('src/features/events/eventDiscoveryData.ts');
 const plugRoute = read('app/plug/index.tsx');
 const plug = read('src/features/editorial/ThePlugIndexScreen.tsx');
 
 assert.match(homeRoute, /MusicDiscoveryHome/, 'Home tab must use the mobile discovery-first Home');
-for (const token of ['The Daily Plug', 'Four worth your time', 'LiveTicker', 'Pick up where you left off', 'From the scenes', 'Mixes in rotation', 'New releases', 'From THE PLUG', 'The next wave', 'Soundboards', 'Happening now', 'Drops & tools', 'featuredPlayBadge', 'featuredActionLabel']) {
+for (const token of ['The Daily Plug', 'Moving now', 'Four worth your time', 'LiveTicker', 'Pick up where you left off', 'From the scenes', 'Mixes in rotation', 'New releases', 'From THE PLUG', 'The next wave', 'Soundboards', 'Happening now', 'Drops & tools', 'featuredPlayBadge', 'featuredActionLabel']) {
   assert.match(home, new RegExp(token), `Home must include ${token}`);
 }
-assert.match(home, /buildBalancedHomePicks\(items, featured\?\.id\)/, 'Home must deliberately balance the four compact choices');
+assert.match(home, /buildBalancedHomePicks\(items\.filter\(\(item\) => item\.id !== movingFeature\?\.id\), featured\?\.id\)/, 'Home must deliberately balance the four compact choices without duplicating either feature module');
 assert.match(home, /selectDailyFeature\(items\)/, 'Home must select the daily lead deliberately instead of always taking the first release');
+assert.match(home, /const movingFeature = useMemo\([\s\S]*homepageHero\.data/, 'Home admin hero curation must render as the separate Moving module');
+assert.ok(
+  home.indexOf('item={featured}') < home.indexOf('title="Four worth your time"') &&
+    home.indexOf('title="Four worth your time"') < home.indexOf('title="Moving now"') &&
+    home.indexOf('title="Moving now"') < home.indexOf('item={movingFeature}'),
+  'Featured Track and Four Worth Your Time must render before the separate Moving module',
+);
 assert.match(home, /playQueue/, 'Home music choices must start the shared playback queue');
 assert.match(home, /minHeight: 44/, 'Home primary controls must preserve 44pt touch targets');
 assert.match(home, /maxFontSizeMultiplier=\{1\.35\}[\s\S]*The Daily Plug/, 'Home display type must stay composed at accessibility sizes');
 assert.match(read('components/LiveTicker.tsx'), /maxFontSizeMultiplier=\{1\.3\}/, 'the fixed-height live ticker must remain legible without clipping at accessibility sizes');
+assert.match(read('components/LiveTicker.tsx'), /styles\.tickerSet[\s\S]*setWidth\(event\.nativeEvent\.layout\.width\)[\s\S]*<TickerSet items=\{visibleItems\} hidden/, 'ticker loop must measure and repeat the complete signal set rather than a constrained text fragment');
+assert.match(read('src/features/home/homeDiscoveryData.ts'), /const release = bundle\?\.releases\?\.\[0\][\s\S]*const liveRoom[\s\S]*const board[\s\S]*const event[\s\S]*const community[\s\S]*const beat/, 'home ticker must mirror the web signal mix instead of being dominated by releases');
 assert.ok(
   home.indexOf('{signals.length ? <LiveTicker') > 0 &&
     home.indexOf('{signals.length ? <LiveTicker') < home.indexOf('{featured ? ('),
   'Home live ticker must sit at the top of the discovery sequence before the featured music',
 );
-assert.match(home, /style=\{styles\.sceneFrame\}[\s\S]*style=\{styles\.sceneHit\}/, 'Home scene artwork must use a fixed visual frame with a full-frame hit target');
+assert.match(home, /<View key=\{`\$\{scene\.kind\}:\$\{scene\.canonicalValue\}`\} style=\{styles\.sceneFrame\}>[\s\S]*accessibilityLabel=\{`Explore \$\{scene\.label\}[\s\S]*style=\{styles\.sceneSurface\}/, 'Home scene artwork must use a fixed layout frame with one semantic destination');
 assert.match(home, /style=\{styles\.mixSurfaceFrame\}[\s\S]*style=\{styles\.mixSurfaceHit\}/, 'Home mix artwork must use a fixed visual frame with a full-frame hit target');
-assert.match(home, /style=\{\[styles\.waveFrame, style\]\}[\s\S]*style=\{styles\.waveHit\}/, 'Home Next Wave cards must use fixed editorial frames with full-frame hit targets');
-assert.match(home, /style=\{styles\.soundboardFrame\}[\s\S]*style=\{styles\.soundboardHit\}/, 'Home soundboards must use fixed artwork frames with full-frame hit targets');
-assert.match(home, /style=\{\[styles\.eventFrame[\s\S]*style=\{\(\{ pressed \}\) => \[styles\.eventHit/, 'Home event media and details must live in a fixed frame independent of interaction');
+assert.match(home, /<View style=\{style\}>[\s\S]*accessibilityLabel=\{`Open \$\{item\.title\}[\s\S]*style=\{styles\.waveFrame\}/, 'Home Next Wave cards must use a layout-owning wrapper and one semantic editorial-frame target');
+assert.match(home, /<View key=\{board\.id\} style=\{styles\.soundboardFrame\}>[\s\S]*accessibilityLabel=\{`Open soundboard[\s\S]*style=\{styles\.soundboardSurface\}/, 'Home soundboards must keep fixed geometry outside one semantic artwork-and-copy target');
+assert.match(home, /accessibilityLabel=\{`Open event[\s\S]*style=\{styles\.eventFrame\}/, 'Home event media and details must live in a fixed interactive frame');
 assert.match(home, /style=\{styles\.signalFrame\}[\s\S]*style=\{\(\{ pressed \}\) => \[styles\.signalHit/, 'Home live room must use a stable complete-row frame');
-assert.match(home, /styles\.worldFrame[\s\S]*styles\.worldHit/, 'Home market gateways must use fixed visual frames with full-frame hit targets');
+assert.match(home, /accessibilityLabel=\{action\}[\s\S]*style=\{styles\.worldFrame\}/, 'Home market gateways must use one semantic fixed-frame target');
 assert.match(home, /\/auth\/signup[\s\S]*\/auth\/login/, 'signed-out Home must provide working Join and Sign in routes');
-assert.match(home, /pathname:\s*'\/live\/session'[\s\S]*roomId/, 'Home live rooms must use the real session route');
+assert.match(homeDestinations, /`\/live\/session\?roomId=\$\{/, 'Home live rooms must use the real session route');
 assert.doesNotMatch(home, /pulseRow|Platform pulse|Backstage communities|Creators to know/, 'Home must not regress to low-value platform stats or duplicated people rails');
 assert.doesNotMatch(home, /Playfair|edFonts\.serif|Marketing|Join the movement/, 'Home must use the chosen modern grotesk discovery voice');
 for (const token of ['DiscoveryItem', 'playableUrl', 'destinationRoute', 'discoveryReason', 'supportRoute', 'PluggdTrack']) {
@@ -52,7 +65,7 @@ for (const token of ['loadHomeEditorialStories', 'loadHomeRecentlyPlayed', 'load
 assert.match(homeData, /get_public_release_market_signals/, 'Home support momentum must use verified public market signals');
 assert.match(homeData, /\.eq\('is_published', true\)/, 'Home editorial must only use published THE PLUG stories');
 assert.match(discover, /selectedScene[\s\S]*item\.city[\s\S]*item\.genre/, 'scene gateways must apply the selected city or genre');
-assert.match(chrome, /normalized === '\/'[\s\S]*normalized === '\/discover'/, 'Home and Discover must own their compact discovery header');
+assert.match(chrome, /DEDICATED_HEADER_EXACT[\s\S]*'\/'[\s\S]*'\/discover'/, 'Home and Discover must own their compact discovery header');
 for (const source of [content, releaseFloor, search]) {
   assert.match(source, /\.eq\('approved', true\)/, 'public release surfaces must require editorial approval');
   assert.match(source, /\.eq\('status', 'live'\)/, 'public release surfaces must require a live release');
@@ -61,21 +74,31 @@ for (const source of [content, releaseFloor, search]) {
   assert.match(source, /\.order\('release_date'/, 'public release surfaces must sort by the actual release date');
 }
 
-for (const token of ['Start somewhere unexpected', 'SignalTile', 'WorldGateway', 'worldImage', 'Soundboards', 'SCENE DIAL', 'RELEASE RADAR', 'PLUGGD CHART', 'Creator market']) {
-  assert.match(discover, new RegExp(token), `Discover must preserve the visual exploration module ${token}`);
+for (const token of ['Start somewhere unexpected', 'SignalTile', 'WorldGateway', 'worldImage', 'Soundboards', 'SCENE DIAL', 'NEW ON PLUGGD', 'PLUGGD TOP 10', 'CREATORS TO WATCH']) {
+  assert.match(`${discover}\n${destinations}`, new RegExp(token), `Discover must preserve the visual exploration module ${token}`);
 }
-assert.match(discover, /title:\s*'THE PLUG'[\s\S]*route:\s*'\/plug'/, 'Discover must expose THE PLUG as an artwork-led exploration gateway');
+assert.match(destinations, /title:\s*'THE PLUG'[\s\S]*route:\s*'\/plug'/, 'Discover must expose THE PLUG through the authoritative destination registry');
 assert.doesNotMatch(discover, /Fresh signals[\s\S]*items\.slice\(0, 10\)/, 'Discover must not regress to a generic ranked list as its primary experience');
 
 assert.match(plugRoute, /ThePlugIndexScreen/, 'THE PLUG index route must render the dedicated editorial surface');
-for (const token of ['THE PLUG', 'THE LEAD STORY', 'Latest dispatches', 'Read dispatch', 'loadHomeEditorialStories']) {
+for (const token of ['THE PLUG', 'LEAD DISPATCH', 'Latest dispatches', 'Read dispatch', 'loadThePlugEditorialStories']) {
   assert.match(plug, new RegExp(token), `THE PLUG must preserve ${token}`);
 }
 assert.match(homeData, /\.eq\('is_global_editorial', true\)[\s\S]*\.eq\('global_feature_status', 'approved'\)/, 'THE PLUG must prefer globally approved editorial stories');
+assert.match(homeData, /hydrateMissingEditorialArtwork[\s\S]*metadata,editor_document,html_content,content,content_blocks/, 'THE PLUG lists must hydrate embedded artwork only for stories missing an explicit hero');
+for (const token of ['metadata', 'editor_document', 'content_blocks', 'imageFromHtml', 'resolveThePlugArtwork']) {
+  assert.match(plugService, new RegExp(token), `THE PLUG artwork resolver must support ${token}`);
+}
+assert.match(eventsData, /isHappeningNowEvent[\s\S]*imminentWindowMs = 3[\s\S]*6 \* 60 \* 60/, 'Happening Now must use a bounded underway/imminent event window');
+assert.match(home, /\.find\(\(event\) => isHappeningNowEvent\(event\)\)/, 'Home must apply the strict current-time event contract after admin ordering');
 
 const events = read('src/features/editorial/EventsBoardScreen.tsx');
-for (const token of ['Go where the sound is.', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'FullEventCards', 'Open Opportunities', 'For Promoters']) {
+for (const token of ['FIND YOUR NIGHT', 'EventSpotlight', 'UpcomingPosterRail', 'BrowseFastList', 'CompactEventBoard', 'MapRecommendationRail', 'More nights nearby', 'Open Opportunities', 'For Promoters']) {
   assert.match(events, new RegExp(token), `Events must preserve and redesign ${token}`);
+}
+const nativeEventsMap = read('components/EventsMap.native.tsx');
+for (const token of ['react-native-maps', 'MapView', 'Marker', 'onSelectEvent', 'fitToCoordinates']) {
+  assert.match(nativeEventsMap, new RegExp(token), `native Events map must preserve interactive ${token}`);
 }
 
 const mixes = read('src/features/editorial/MixesWorldScreen.tsx');

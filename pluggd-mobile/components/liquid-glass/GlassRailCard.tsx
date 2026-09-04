@@ -27,7 +27,7 @@ export function GlassRailCard({
   subtitle,
   imageUrl,
   fallbackSource,
-  fallbackTone = 'violet',
+  fallbackTone = 'accent',
   metric,
   onPress,
   style,

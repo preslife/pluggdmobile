@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import * as Crypto from 'expo-crypto';
 import { pluggdFonts } from '../design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -6,7 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
+  Linking,
+  Modal,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -17,7 +23,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChannelProfileType,
   ClientRoleType,
@@ -34,9 +40,25 @@ import { fetchLiveToken } from '../lib/live';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 import { resolveCommercePolicy } from '../commerce/policy';
+import { useReducedMotion } from '../design/useReducedMotion';
+import { usePluggdTheme } from '../design/usePluggdTheme';
+import { LiveGiftArtwork, LiveGiftOverlay } from '../features/live/LiveGiftOverlay';
+import { PluggdImage } from '../components/PluggdImage';
+import { toggleProfileFollow } from '../features/culture/mobileServices';
+import {
+  LiveGiftCatalogItem,
+  LiveGiftEvent,
+  isGiftCatalogRpcUnavailable,
+  liveGiftCatalogLookup,
+  liveGiftSenderName,
+  normalizeLiveGiftCatalogItem,
+  normalizeLiveGiftEvent,
+} from '../features/live/liveGiftPresentation';
+import { useLiveGiftQueue } from '../features/live/useLiveGiftQueue';
 
 const PLUGGD_ORANGE = '#ff6600';
 const REACTION_TTL_MS = 2400;
+const LIVE_PREVIEW_IMAGE = require('../../assets/web-parity/live/pluggd-live-hero.jpg');
 
 type StreamRole = 'host' | 'collaborator' | 'audience';
 type JoinStatus = 'loading' | 'waiting' | 'connecting' | 'joined' | 'error' | 'ended';
@@ -46,9 +68,14 @@ type Profile = {
   full_name?: string | null;
   username?: string | null;
   avatar_url?: string | null;
+  bio?: string | null;
+  cover_image_url?: string | null;
+  slug?: string | null;
   profile_type?: string | null;
   user_type?: string | null;
   is_creator?: boolean | null;
+  is_verified?: boolean | null;
+  verification_status?: string | null;
 };
 
 type SessionRoom = {
@@ -80,25 +107,6 @@ type ChatMessage = {
   created_at: string;
 };
 
-type LiveGiftCatalogItem = {
-  id: string;
-  slug: string;
-  label: string;
-  credit_cost: number;
-  description?: string | null;
-};
-
-type LiveGiftEvent = {
-  id: string;
-  room_id: string;
-  sender_id: string;
-  quantity: number;
-  total_credits: number;
-  message?: string | null;
-  created_at: string;
-  gift?: LiveGiftCatalogItem | null;
-};
-
 type StageRequest = {
   id: string;
   requester_id: string;
@@ -118,6 +126,39 @@ type LiveReaction = {
   kind: 'heart' | 'fire' | 'boost';
   lane: number;
 };
+
+type AndroidLivePermissionResult = {
+  granted: boolean;
+  permanentlyDenied: boolean;
+};
+
+async function requestAndroidLivePermissions(
+  nextRole: StreamRole,
+  nextMode?: string | null,
+): Promise<AndroidLivePermissionResult> {
+  if (Platform.OS !== 'android' || nextRole === 'audience') {
+    return { granted: true, permanentlyDenied: false };
+  }
+
+  const permissions: Array<(typeof PermissionsAndroid.PERMISSIONS)[keyof typeof PermissionsAndroid.PERMISSIONS]> = [
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+  ];
+  if (nextMode !== 'audio_room') {
+    permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+  }
+
+  const results = await PermissionsAndroid.requestMultiple(permissions);
+  const deniedPermissions = permissions.filter(
+    (permission) => results[permission] !== PermissionsAndroid.RESULTS.GRANTED,
+  );
+
+  return {
+    granted: deniedPermissions.length === 0,
+    permanentlyDenied: deniedPermissions.some(
+      (permission) => results[permission] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN,
+    ),
+  };
+}
 
 function initials(name: string) {
   const parsed = name
@@ -142,68 +183,65 @@ function modeLabel(mode?: string | null) {
   return 'Creator Live';
 }
 
-function roleLabel(profile?: Profile | null) {
-  const raw = profile?.profile_type ?? profile?.user_type ?? null;
-  if (raw === 'dj') return 'DJ';
-  if (raw === 'producer') return 'Producer';
-  if (raw === 'artist') return 'Artist';
-  if (raw === 'promoter') return 'Promoter';
-  if (raw === 'venue') return 'Venue';
-  if (raw === 'curator') return 'Curator';
-  if (raw === 'service_provider') return 'Service';
-  if (raw === 'manager') return 'Manager';
-  if (profile?.is_creator) return 'Creator';
-  return 'Host';
-}
-
 function formatCount(value: number) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
   return String(value);
 }
 
-function normalizeGiftEvent(row: any, fallback?: LiveGiftCatalogItem | null): LiveGiftEvent {
-  return {
-    id: row.id,
-    room_id: row.room_id,
-    sender_id: row.sender_id,
-    quantity: row.quantity ?? 1,
-    total_credits: row.total_credits ?? 0,
-    message: row.message ?? null,
-    created_at: row.created_at,
-    gift: row.live_gift_catalog ?? row.gift ?? fallback ?? null,
-  };
-}
-
 export default function LiveSessionScreen() {
   const router = useRouter();
-  const { roomId, role } = useLocalSearchParams<{ roomId?: string; role?: string }>();
+  const theme = usePluggdTheme();
+  const styles = useLiveSessionStyles();
+  const insets = useSafeAreaInsets();
+  const { roomId, preview, previewSheet, previewReaction, initialCamera, initialMic, initialFacing, audioRoute } = useLocalSearchParams<{
+    roomId?: string;
+    preview?: string;
+    previewSheet?: string;
+    previewReaction?: string;
+    initialCamera?: string;
+    initialMic?: string;
+    initialFacing?: string;
+    audioRoute?: string;
+  }>();
   const { user } = useAuth();
   const wallet = useWallet();
+  const reducedMotion = useReducedMotion();
 
+  const previewRole = __DEV__ && preview === 'creator'
+    ? 'creator'
+    : __DEV__ && typeof preview === 'string' && preview.startsWith('audience')
+      ? 'audience'
+      : null;
   const currentRoomId = useMemo(
-    () => (typeof roomId === 'string' && roomId.length > 0 ? roomId : null),
-    [roomId],
+    () => (previewRole ? 'live-visual-preview' : typeof roomId === 'string' && roomId.length > 0 ? roomId : null),
+    [previewRole, roomId],
   );
-  const routeRole = useMemo<StreamRole>(
-    () => (role === 'host' || role === 'collaborator' ? role : 'audience'),
-    [role],
-  );
-  const isHostRoute = routeRole === 'host';
-
   const [session, setSession] = useState<SessionRoom | null>(null);
   const [status, setStatus] = useState<JoinStatus>('loading');
-  const [streamRole, setStreamRole] = useState<StreamRole>(routeRole);
+  const [streamRole, setStreamRole] = useState<StreamRole>('audience');
   const [remoteUsers, setRemoteUsers] = useState<number[]>([]);
   const [tokenInfo, setTokenInfo] = useState<{ channelName: string; token: string; uid: number; appId: string } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
+  const [commentComposerOpen, setCommentComposerOpen] = useState(false);
+  const [controlSheet, setControlSheet] = useState<'stage' | 'host' | null>(null);
   const [profilesById, setProfilesById] = useState<Record<string, Profile>>({});
   const [reactions, setReactions] = useState<LiveReaction[]>([]);
   const [giftCatalog, setGiftCatalog] = useState<LiveGiftCatalogItem[]>([]);
   const [giftEvents, setGiftEvents] = useState<LiveGiftEvent[]>([]);
   const [sendingGift, setSendingGift] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [creatorSheetOpen, setCreatorSheetOpen] = useState(false);
+  const [followingHost, setFollowingHost] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [hostFollowerCount, setHostFollowerCount] = useState<number | null>(null);
+  const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+  const [giftQuantity, setGiftQuantity] = useState(1);
+  const [muted, setMuted] = useState(initialMic === 'off');
+  const [videoMuted, setVideoMuted] = useState(initialCamera === 'off');
+  const [frontCamera, setFrontCamera] = useState(initialFacing !== 'back');
+  const [speakerOn, setSpeakerOn] = useState(audioRoute !== 'receiver');
   const [stageRequest, setStageRequest] = useState<StageRequest | null>(null);
   const [stageRequestNote, setStageRequestNote] = useState('');
   const [requestingStage, setRequestingStage] = useState(false);
@@ -214,17 +252,40 @@ export default function LiveSessionScreen() {
   const [runtimeSaving, setRuntimeSaving] = useState(false);
   const [withdrawingStage, setWithdrawingStage] = useState(false);
   const [removingStageUserId, setRemovingStageUserId] = useState<string | null>(null);
+  const [permissionAttempt, setPermissionAttempt] = useState(0);
+  const {
+    active: activeGift,
+    pendingCount: pendingGiftCount,
+    enqueue: enqueueGift,
+    seedSeen: seedSeenGifts,
+    complete: completeGift,
+  } = useLiveGiftQueue({
+    resetKey: `${currentRoomId ?? 'no-room'}:${status === 'ended' ? 'ended' : 'active'}`,
+    reducedMotion,
+  });
 
   const engineRef = useRef<IRtcEngine | null>(null);
+  const commentInputRef = useRef<TextInput>(null);
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const reactionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const giftChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const sessionRef = useRef<SessionRoom | null>(null);
   const blockedUserIdsRef = useRef<Set<string>>(new Set());
+  const giftCatalogByIdRef = useRef<Map<string, LiveGiftCatalogItem>>(new Map());
+  const giftLoadGenerationRef = useRef(0);
+  const initialMediaRef = useRef({
+    microphoneEnabled: initialMic !== 'off',
+    cameraEnabled: initialCamera !== 'off',
+    frontCamera: initialFacing !== 'back',
+    speakerOn: audioRoute !== 'receiver',
+  });
 
   const host = profileName(session?.profiles);
+  const hostIsVerified = session?.profiles?.is_verified === true;
   const isAudioRoom = session?.live_mode === 'audio_room';
   const isPublisher = streamRole === 'host' || streamRole === 'collaborator';
+  const isHost = streamRole === 'host' || Boolean(session?.host_id && session.host_id === user?.id);
   const stageSupported =
     Boolean(session?.allow_stage_requests) ||
     ['collab_live', 'class_live', 'audio_room'].includes(session?.live_mode ?? '');
@@ -252,6 +313,38 @@ export default function LiveSessionScreen() {
       return [event, ...current].slice(0, 50);
     });
   }, []);
+
+  const hydrateGiftEvent = useCallback(async (
+    row: unknown,
+    fallbackGift?: LiveGiftCatalogItem | null,
+  ): Promise<LiveGiftEvent | null> => {
+    let event = normalizeLiveGiftEvent(row, giftCatalogByIdRef.current, fallbackGift);
+    if (!event || event.gift || !event.gift_id) return event;
+
+    const { data, error } = await (supabase as any)
+      .from('live_gift_catalog')
+      .select('id, slug, label, description, credit_cost, thumbnail_url, animation_url')
+      .eq('id', event.gift_id)
+      .maybeSingle();
+    if (error || !data) return event;
+
+    const gift = normalizeLiveGiftCatalogItem(data);
+    if (!gift) return event;
+    giftCatalogByIdRef.current.set(gift.id, gift);
+    event = { ...event, gift };
+    return event;
+  }, []);
+
+  const receiveGiftEvent = useCallback(async (
+    row: unknown,
+    fallbackGift?: LiveGiftCatalogItem | null,
+  ) => {
+    if (!currentRoomId || sessionRef.current?.status === 'ended') return;
+    const event = await hydrateGiftEvent(row, fallbackGift);
+    if (!event || event.room_id !== currentRoomId || sessionRef.current?.status === 'ended') return;
+    appendGiftEvent(event);
+    enqueueGift(event);
+  }, [appendGiftEvent, currentRoomId, enqueueGift, hydrateGiftEvent]);
 
   const pushReaction = useCallback((reaction: LiveReaction) => {
     setReactions((current) => [...current, reaction].slice(-18));
@@ -284,7 +377,7 @@ export default function LiveSessionScreen() {
         restream_targets,
         captions_enabled,
         recording_enabled,
-        profiles!session_rooms_host_id_fkey(user_id, full_name, username, avatar_url, profile_type, user_type, is_creator)
+        profiles!session_rooms_host_id_fkey(user_id, full_name, username, avatar_url, bio, cover_image_url, slug, profile_type, user_type, is_creator, is_verified, verification_status)
       `)
       .eq('id', currentRoomId)
       .maybeSingle();
@@ -385,44 +478,79 @@ export default function LiveSessionScreen() {
 
   const loadGifts = useCallback(async () => {
     if (!currentRoomId) return;
+    const loadGeneration = ++giftLoadGenerationRef.current;
 
-    const catalogResult = await (supabase as any)
-      .from('live_gift_catalog')
-      .select('id, slug, label, description, credit_cost')
-      .eq('is_active', true)
-      .order('credit_cost', { ascending: true });
-
-    if (!catalogResult.error) {
-      setGiftCatalog((catalogResult.data ?? []) as LiveGiftCatalogItem[]);
+    const scopedCatalogResult = await (supabase as any).rpc('get_live_room_gift_catalog', {
+      p_room_id: currentRoomId,
+    });
+    if (loadGeneration !== giftLoadGenerationRef.current) return;
+    let catalogRows: unknown[] = [];
+    if (!scopedCatalogResult.error && Array.isArray(scopedCatalogResult.data)) {
+      // A valid empty result is authoritative. The backend function already applies
+      // its documented global-default semantics when no creator selection exists.
+      catalogRows = scopedCatalogResult.data;
+    } else if (isGiftCatalogRpcUnavailable(scopedCatalogResult.error)) {
+      const globalCatalogResult = await (supabase as any)
+        .from('live_gift_catalog')
+        .select('id, slug, label, description, credit_cost, thumbnail_url, animation_url')
+        .eq('is_active', true)
+        .order('credit_cost', { ascending: true });
+      if (loadGeneration !== giftLoadGenerationRef.current) return;
+      if (!globalCatalogResult.error && Array.isArray(globalCatalogResult.data)) {
+        catalogRows = globalCatalogResult.data;
+      } else if (globalCatalogResult.error) {
+        console.warn('Live gift catalogue fallback failed', globalCatalogResult.error);
+      }
+    } else {
+      console.warn('Room gift catalogue unavailable', scopedCatalogResult.error ?? 'Invalid response');
     }
+
+    const catalog = catalogRows
+      .map(normalizeLiveGiftCatalogItem)
+      .filter((gift): gift is LiveGiftCatalogItem => Boolean(gift));
+    giftCatalogByIdRef.current = liveGiftCatalogLookup(catalog);
+    setGiftCatalog(catalog);
+    setSelectedGiftId((current) => (
+      current && catalog.some((gift) => gift.id === current) ? current : catalog[0]?.id ?? null
+    ));
 
     let eventsResult = await (supabase as any)
       .from('live_gift_events')
       .select(`
         id,
         room_id,
+        gift_id,
         sender_id,
         quantity,
         total_credits,
         message,
+        animation_variant,
         created_at,
-        live_gift_catalog(id, slug, label, credit_cost, description)
+        live_gift_catalog(id, slug, label, credit_cost, description, thumbnail_url, animation_url)
       `)
       .eq('room_id', currentRoomId)
       .order('created_at', { ascending: false })
       .limit(30);
+    if (loadGeneration !== giftLoadGenerationRef.current) return;
 
     if (eventsResult.error && /relationship|embed|live_gift_catalog/i.test(eventsResult.error.message ?? '')) {
       eventsResult = await (supabase as any)
         .from('live_gift_events')
-        .select('id, room_id, sender_id, quantity, total_credits, message, created_at')
+        .select('id, room_id, gift_id, sender_id, quantity, total_credits, message, animation_variant, created_at')
         .eq('room_id', currentRoomId)
         .order('created_at', { ascending: false })
         .limit(30);
+      if (loadGeneration !== giftLoadGenerationRef.current) return;
     }
 
     if (!eventsResult.error) {
-      setGiftEvents((eventsResult.data ?? []).map((row: any) => normalizeGiftEvent(row)));
+      const hydrated = await Promise.all(
+        (eventsResult.data ?? []).map((row: unknown) => hydrateGiftEvent(row)),
+      );
+      if (loadGeneration !== giftLoadGenerationRef.current) return;
+      const initialEvents = hydrated.filter((event): event is LiveGiftEvent => Boolean(event));
+      setGiftEvents(initialEvents);
+      seedSeenGifts(initialEvents.map((event) => event.id));
     }
 
     const channel = supabase
@@ -435,12 +563,18 @@ export default function LiveSessionScreen() {
           table: 'live_gift_events',
           filter: `room_id=eq.${currentRoomId}`,
         },
-        (payload) => appendGiftEvent(normalizeGiftEvent(payload.new)),
+        (payload) => {
+          void receiveGiftEvent(payload.new);
+        },
       )
       .subscribe();
 
+    if (loadGeneration !== giftLoadGenerationRef.current) {
+      supabase.removeChannel(channel);
+      return;
+    }
     giftChannelRef.current = channel;
-  }, [appendGiftEvent, currentRoomId]);
+  }, [currentRoomId, hydrateGiftEvent, receiveGiftEvent, seedSeenGifts]);
 
   const setupReactions = useCallback(() => {
     if (!currentRoomId) return;
@@ -466,16 +600,43 @@ export default function LiveSessionScreen() {
     reactionChannelRef.current = channel;
   }, [currentRoomId, pushReaction]);
 
-  const ensurePermissions = async (nextRole: StreamRole, nextMode?: string | null) => {
-    if (Platform.OS !== 'android' || nextRole === 'audience') return;
-
-    const permissions = [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
-    if (nextMode !== 'audio_room') {
-      permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+  const applyRoomUpdate = useCallback((update: Partial<SessionRoom>) => {
+    setSession((current) => {
+      if (!current) return current;
+      const next = { ...current, ...update };
+      sessionRef.current = next;
+      return next;
+    });
+    if (update.status === 'ended') {
+      Keyboard.dismiss();
+      setCommentComposerOpen(false);
+      setGiftTrayOpen(false);
+      setControlSheet(null);
+      setStatus('ended');
+      engineRef.current?.leaveChannel();
+      engineRef.current?.release();
+      engineRef.current = null;
     }
+  }, []);
 
-    await PermissionsAndroid.requestMultiple(permissions);
-  };
+  useEffect(() => {
+    if (!currentRoomId) return;
+    let active = true;
+    const pollRoomStatus = async () => {
+      const { data, error } = await (supabase as any)
+        .from('session_rooms')
+        .select('status, ended_at, agora_live_ended_at, agora_last_activity_at')
+        .eq('id', currentRoomId)
+        .maybeSingle();
+      if (!active || error || !data) return;
+      applyRoomUpdate(data as Partial<SessionRoom>);
+    };
+    const timer = setInterval(() => void pollRoomStatus(), 2500);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [applyRoomUpdate, currentRoomId]);
 
   const initAgora = useCallback(
     (token: { appId: string; channelName: string; token: string; uid: number }, nextRole: StreamRole, liveMode?: string | null) => {
@@ -506,9 +667,19 @@ export default function LiveSessionScreen() {
       } else {
         engine.enableVideo();
         if (nextRole !== 'audience') {
-          engine.startPreview();
+          if (!initialMediaRef.current.frontCamera) {
+            (engine as any).switchCamera?.();
+          }
+          (engine as any).enableLocalVideo?.(initialMediaRef.current.cameraEnabled);
+          (engine as any).muteLocalVideoStream?.(!initialMediaRef.current.cameraEnabled);
+          if (initialMediaRef.current.cameraEnabled) engine.startPreview();
         }
       }
+
+      if (nextRole !== 'audience') {
+        (engine as any).muteLocalAudioStream?.(!initialMediaRef.current.microphoneEnabled);
+      }
+      (engine as any).setEnableSpeakerphone?.(initialMediaRef.current.speakerOn);
 
       engine.joinChannel(token.token, token.channelName, token.uid, {
         clientRoleType:
@@ -526,6 +697,54 @@ export default function LiveSessionScreen() {
 
     const start = async () => {
       try {
+        if (previewRole) {
+          const previewSession: SessionRoom = {
+            id: 'live-visual-preview',
+            title: 'Late Night Studio Session',
+            description: 'New music, live ideas and conversation from the room.',
+            host_id: 'preview-host',
+            status: 'live',
+            is_public: true,
+            created_at: new Date().toISOString(),
+            participant_count: 128,
+            live_mode: 'creator_live',
+            allow_stage_requests: true,
+            max_stage_participants: 4,
+            profiles: {
+              user_id: 'preview-host',
+              full_name: 'Ari Vale',
+              username: 'arivale',
+              bio: 'Producer and selector sharing new music straight from the studio.',
+              profile_type: 'Artist · Producer',
+              is_creator: true,
+              is_verified: true,
+            },
+          };
+          setSession(previewSession);
+          sessionRef.current = previewSession;
+          setStreamRole(previewRole === 'creator' ? 'host' : 'audience');
+          setStatus('joined');
+          setMessages([
+            { id: 'preview-comment-1', content: 'That switch was cold', user_id: 'preview-fan-1', created_at: new Date().toISOString() },
+            { id: 'preview-comment-2', content: 'Run that one back!', user_id: 'preview-fan-2', created_at: new Date().toISOString() },
+            { id: 'preview-comment-3', content: 'Big love from South London', user_id: 'preview-fan-3', created_at: new Date().toISOString() },
+          ]);
+          setProfilesById({
+            'preview-fan-1': { full_name: 'Nia' },
+            'preview-fan-2': { username: 'jayloops' },
+            'preview-fan-3': { full_name: 'Mika' },
+          });
+          setHostFollowerCount(9035);
+          if (preview === 'audience-sheet' || previewSheet === 'creator') setCreatorSheetOpen(true);
+          if (preview === 'audience-reaction' || previewReaction === 'heart') {
+            setReactions([
+              { id: 'preview-heart-1', kind: 'heart', lane: 0 },
+              { id: 'preview-heart-2', kind: 'heart', lane: 2 },
+            ]);
+          }
+          return;
+        }
+
         if (!currentRoomId) {
           setStatus('error');
           Alert.alert('Room unavailable', 'Choose a live room before joining.', [
@@ -549,6 +768,20 @@ export default function LiveSessionScreen() {
 
         await Promise.all([loadChat(), loadGifts()]);
         setupReactions();
+        const roomChannel = supabase
+          .channel(`session-room-status-${currentRoomId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'session_rooms',
+              filter: `id=eq.${currentRoomId}`,
+            },
+            (payload) => applyRoomUpdate(payload.new as Partial<SessionRoom>),
+          )
+          .subscribe();
+        roomChannelRef.current = roomChannel;
         const stageState = await loadStageState(room);
 
         if (cancelled) return;
@@ -559,7 +792,7 @@ export default function LiveSessionScreen() {
         }
 
         const nextRole: StreamRole =
-          isHostRoute || room.host_id === user.id
+          room.host_id === user.id
             ? 'host'
             : stageState.myRequest?.status === 'approved'
               ? 'collaborator'
@@ -574,7 +807,31 @@ export default function LiveSessionScreen() {
 
         setStreamRole(nextRole);
         setStatus('connecting');
-        await ensurePermissions(nextRole, room.live_mode);
+        const permissions = await requestAndroidLivePermissions(nextRole, room.live_mode);
+        if (cancelled) return;
+        if (!permissions.granted) {
+          setStatus('error');
+          if (permissions.permanentlyDenied) {
+            Alert.alert(
+              'Camera or microphone blocked',
+              'Enable PLUGGD camera and microphone access in Android Settings to host or join the stage.',
+              [
+                { text: 'Not now', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+              ],
+            );
+          } else {
+            Alert.alert(
+              'Camera or microphone needed',
+              'PLUGGD needs the requested media access before connecting you as a host or collaborator.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Try again', onPress: () => setPermissionAttempt((attempt) => attempt + 1) },
+              ],
+            );
+          }
+          return;
+        }
         const token = await fetchLiveToken({ roomId: currentRoomId, role: nextRole });
         if (cancelled) return;
 
@@ -591,6 +848,7 @@ export default function LiveSessionScreen() {
 
     return () => {
       cancelled = true;
+      giftLoadGenerationRef.current += 1;
       engineRef.current?.leaveChannel();
       engineRef.current?.release();
       engineRef.current = null;
@@ -598,6 +856,10 @@ export default function LiveSessionScreen() {
       if (chatChannelRef.current) {
         supabase.removeChannel(chatChannelRef.current);
         chatChannelRef.current = null;
+      }
+      if (roomChannelRef.current) {
+        supabase.removeChannel(roomChannelRef.current);
+        roomChannelRef.current = null;
       }
       if (reactionChannelRef.current) {
         supabase.removeChannel(reactionChannelRef.current);
@@ -610,19 +872,27 @@ export default function LiveSessionScreen() {
     };
   }, [
     currentRoomId,
+    applyRoomUpdate,
     initAgora,
-    isHostRoute,
     loadChat,
     loadGifts,
     loadRoom,
     loadStageState,
+    permissionAttempt,
+    previewRole,
+    preview,
+    previewReaction,
+    previewSheet,
     router,
     setupReactions,
     user,
   ]);
 
   useEffect(() => {
-    const unknownIds = Array.from(new Set(messages.map((message) => message.user_id))).filter(
+    const unknownIds = Array.from(new Set([
+      ...messages.map((message) => message.user_id),
+      ...giftEvents.map((event) => event.sender_id),
+    ])).filter(
       (id) => id && !profilesById[id],
     );
     if (unknownIds.length === 0) return;
@@ -649,7 +919,34 @@ export default function LiveSessionScreen() {
     return () => {
       mounted = false;
     };
-  }, [messages, profilesById]);
+  }, [giftEvents, messages, profilesById]);
+
+  useEffect(() => {
+    if (!session?.host_id || previewRole) return;
+    let mounted = true;
+
+    const loadHostFollowState = async () => {
+      const followerResult = await (supabase as any)
+        .from('user_follows')
+        .select('id', { count: 'exact', head: true })
+        .eq('following_id', session.host_id);
+      if (mounted && !followerResult.error) setHostFollowerCount(Number(followerResult.count ?? 0));
+
+      if (!user?.id || user.id === session.host_id) return;
+      const followingResult = await (supabase as any)
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', session.host_id)
+        .maybeSingle();
+      if (mounted && !followingResult.error) setFollowingHost(Boolean(followingResult.data?.id));
+    };
+
+    void loadHostFollowState();
+    return () => {
+      mounted = false;
+    };
+  }, [previewRole, session?.host_id, user?.id]);
 
   const sendMessage = async () => {
     const text = messageInput.trim();
@@ -691,7 +988,37 @@ export default function LiveSessionScreen() {
     });
   };
 
-  const sendGift = async () => {
+  const openGiftTray = () => {
+    impactHaptic();
+    if (session?.status !== 'live') {
+      Alert.alert('Gift unavailable', 'Gifts can be sent once the room is live.');
+      return;
+    }
+    if (isHost) {
+      Alert.alert('Host view', 'Hosts cannot send gifts to their own live room.');
+      return;
+    }
+    Keyboard.dismiss();
+    setCommentComposerOpen(false);
+    setControlSheet(null);
+    setGiftTrayOpen(true);
+  };
+
+  const openControlSheet = (sheet: 'stage' | 'host') => {
+    selectionHaptic();
+    Keyboard.dismiss();
+    setCommentComposerOpen(false);
+    setGiftTrayOpen(false);
+    setControlSheet(sheet);
+  };
+
+  const closeControlSheet = () => {
+    selectionHaptic();
+    Keyboard.dismiss();
+    setControlSheet(null);
+  };
+
+  const sendGift = async (gift: LiveGiftCatalogItem, quantity: number) => {
     impactHaptic();
     if (!currentRoomId || sendingGift) return;
     if (session?.status !== 'live') {
@@ -699,9 +1026,17 @@ export default function LiveSessionScreen() {
       return;
     }
 
-    const gift = giftCatalog[0];
-    if (!gift) {
-      Alert.alert('Gift unavailable', 'No live gifts are configured yet.');
+    const total = gift.credit_cost * quantity;
+    if (wallet.balance.available_credits < total) {
+      setGiftTrayOpen(false);
+      Alert.alert(
+        'More credits needed',
+        `This gift costs ${total.toLocaleString()} credits. Your room will still be here when you return.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Wallet', onPress: () => router.push('/wallet' as any) },
+        ],
+      );
       return;
     }
 
@@ -716,22 +1051,33 @@ export default function LiveSessionScreen() {
         throw new Error(policy.reason);
       }
 
+      const idempotencyKey = [
+        Platform.OS,
+        'live_gift',
+        user?.id ?? 'unknown',
+        currentRoomId,
+        gift.id,
+        Crypto.randomUUID(),
+      ].join(':');
       const { data, error } = await supabase.functions.invoke('send-live-gift', {
         body: {
           room_id: currentRoomId,
           gift_id: gift.id,
-          quantity: 1,
+          quantity,
           message: null,
-          animation_variant: null,
+          idempotency_key: idempotencyKey,
+          ...(Platform.OS === 'android' ? { commerce_platform: 'android' } : {}),
         },
       });
 
       if (error) throw error;
 
       if ((data as any)?.event) {
-        appendGiftEvent(normalizeGiftEvent((data as any).event, gift));
+        await receiveGiftEvent((data as any).event, gift);
       }
       await wallet.refreshBalance();
+      setGiftTrayOpen(false);
+      setGiftQuantity(1);
     } catch (error: any) {
       Alert.alert('Gift not sent', error?.message ?? 'Please check your credits and try again.');
     } finally {
@@ -848,7 +1194,7 @@ export default function LiveSessionScreen() {
           }
         : sessionRef.current;
     } catch (error: any) {
-      Alert.alert('Runtime preferences failed', error?.message ?? 'Please try again.');
+      Alert.alert('Live settings not saved', 'Check your connection and try again.');
     } finally {
       setRuntimeSaving(false);
     }
@@ -868,7 +1214,7 @@ export default function LiveSessionScreen() {
       if ((data as any)?.error) throw new Error((data as any).error);
       await loadRoom();
     } catch (error: any) {
-      Alert.alert('Runtime action failed', error?.message ?? 'Please try again in a moment.');
+      Alert.alert('Live control unavailable', 'Please try again in a moment.');
     } finally {
       setRuntimeActionLoading(null);
     }
@@ -887,6 +1233,37 @@ export default function LiveSessionScreen() {
     }
   };
 
+  const toggleVideo = () => {
+    if (streamRole === 'audience' || isAudioRoom) return;
+    selectionHaptic();
+    const nextMuted = !videoMuted;
+    setVideoMuted(nextMuted);
+    const engine = engineRef.current as any;
+    if (nextMuted) {
+      engine?.muteLocalVideoStream?.(true);
+      engine?.stopPreview?.();
+      engine?.enableLocalVideo?.(false);
+    } else {
+      engine?.enableLocalVideo?.(true);
+      engine?.startPreview?.();
+      engine?.muteLocalVideoStream?.(false);
+    }
+  };
+
+  const flipCamera = () => {
+    if (streamRole === 'audience' || isAudioRoom || videoMuted) return;
+    selectionHaptic();
+    (engineRef.current as any)?.switchCamera?.();
+    setFrontCamera((current) => !current);
+  };
+
+  const toggleAudioRoute = () => {
+    selectionHaptic();
+    const nextSpeakerOn = !speakerOn;
+    (engineRef.current as any)?.setEnableSpeakerphone?.(nextSpeakerOn);
+    setSpeakerOn(nextSpeakerOn);
+  };
+
   const shareRoom = async () => {
     selectionHaptic();
     await Share.share({
@@ -894,10 +1271,37 @@ export default function LiveSessionScreen() {
     });
   };
 
+  const toggleHostFollow = async () => {
+    if (!session?.host_id || isHost || followBusy) return;
+    if (previewRole) {
+      setFollowingHost((current) => !current);
+      setHostFollowerCount((current) => Math.max(0, Number(current ?? 0) + (followingHost ? -1 : 1)));
+      return;
+    }
+
+    setFollowBusy(true);
+    const result = await toggleProfileFollow(session.host_id);
+    setFollowBusy(false);
+    if (!result.success) {
+      Alert.alert('Follow failed', result.error || 'Could not update this follow right now.');
+      return;
+    }
+    setFollowingHost(Boolean(result.saved));
+    setHostFollowerCount((current) => Math.max(0, Number(current ?? 0) + (result.saved ? 1 : -1)));
+  };
+
+  const openHostProfile = () => {
+    const handle = session?.profiles?.username?.trim() || session?.profiles?.slug?.trim();
+    setCreatorSheetOpen(false);
+    if (handle) router.push(`/creator/${handle}` as any);
+    else router.push('/search' as any);
+  };
+
   const openRoomSafety = () => {
     selectionHaptic();
+    if (isHost) return;
     if (!currentRoomId || !session?.host_id) {
-      Alert.alert('Safety options unavailable', 'This room does not expose a verified host yet. For urgent concerns, contact support@pluggd.fm.');
+      Alert.alert('Safety options unavailable', 'The host details for this room are unavailable. For urgent concerns, contact support@pluggd.fm.');
       return;
     }
 
@@ -947,7 +1351,7 @@ export default function LiveSessionScreen() {
     if (!currentRoomId) return;
 
     try {
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from('session_rooms')
         .update({
           status: 'ended',
@@ -956,6 +1360,7 @@ export default function LiveSessionScreen() {
           agora_last_activity_at: new Date().toISOString(),
         })
         .eq('id', currentRoomId);
+      if (error) throw error;
       router.replace('/live');
     } catch (error: any) {
       Alert.alert('Could not end live', error?.message ?? 'Please try again.');
@@ -983,6 +1388,17 @@ export default function LiveSessionScreen() {
   };
 
   const renderMedia = () => {
+    if (previewRole) {
+      return (
+        <ImageBackground source={LIVE_PREVIEW_IMAGE} style={styles.previewMedia} resizeMode="cover">
+          <View style={styles.previewMediaWash} />
+          <View style={styles.previewDisclosure}>
+            <Text style={styles.previewDisclosureText}>PREVIEW ONLY</Text>
+          </View>
+        </ImageBackground>
+      );
+    }
+
     if (isAudioRoom) {
       return <AudioRoomStage title={session?.title ?? 'Live Room'} host={host} status={status} />;
     }
@@ -1007,12 +1423,12 @@ export default function LiveSessionScreen() {
     return (
       <View style={styles.mediaPlaceholder}>
         {status === 'loading' || status === 'connecting' ? (
-          <ActivityIndicator color={PLUGGD_ORANGE} />
+          <ActivityIndicator color={theme.colors.accentText} />
         ) : (
           <MaterialIcons
             name={status === 'ended' ? 'stop-circle' : 'settings-input-antenna'}
             size={44}
-            color="#FFFFFF66"
+            color={theme.colors.textMuted}
           />
         )}
         <Text style={styles.placeholderTitle}>
@@ -1034,8 +1450,12 @@ export default function LiveSessionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
+    <View style={styles.screen}>
+      <StatusBar
+        style={isAudioRoom ? (theme.scheme === 'dark' ? 'light' : 'dark') : 'light'}
+        translucent={!isAudioRoom}
+        backgroundColor={isAudioRoom ? theme.colors.background : 'transparent'}
+      />
       <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
@@ -1043,14 +1463,45 @@ export default function LiveSessionScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.stage}>
-          <View style={styles.mediaLayer}>{renderMedia()}</View>
-          <View style={styles.topGradient} />
-          <View style={styles.bottomGradient} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isHost ? 'Live video' : 'Live video. Tap to send a heart'}
+            accessibilityHint={isHost ? undefined : 'Sends a heart reaction without opening another panel'}
+            onPress={() => {
+              if (!isHost) void sendReaction('heart');
+            }}
+            style={styles.mediaLayer}
+          >
+            {renderMedia()}
+          </Pressable>
+          <View pointerEvents="none" style={styles.topGradient} />
+          <View pointerEvents="none" style={styles.bottomGradient} />
 
-          <View style={styles.topOverlay}>
-            <View style={styles.hostBlock}>
+          <LiveGiftOverlay
+            event={activeGift}
+            hostName={host}
+            onComplete={completeGift}
+            pendingCount={pendingGiftCount}
+            reducedMotion={reducedMotion}
+            senderName={activeGift ? liveGiftSenderName(activeGift, user?.id, profilesById) : 'A supporter'}
+          />
+
+          <View style={[styles.topOverlay, { top: Math.max(insets.top + 8, 10) }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${host} live creator card`}
+              onPress={() => {
+                selectionHaptic();
+                setCreatorSheetOpen(true);
+              }}
+              style={styles.hostBlock}
+            >
               <View style={styles.hostAvatar}>
-                <Text style={styles.hostAvatarText}>{initials(host)}</Text>
+                {session?.profiles?.avatar_url ? (
+                  <PluggdImage uri={session.profiles.avatar_url} style={styles.hostAvatarImage} />
+                ) : (
+                  <Text style={styles.hostAvatarText}>{initials(host)}</Text>
+                )}
               </View>
 
               <View style={styles.hostTextWrap}>
@@ -1058,7 +1509,7 @@ export default function LiveSessionScreen() {
                   <Text style={styles.hostName} numberOfLines={1}>
                     {host}
                   </Text>
-                  <MaterialIcons name="verified" size={17} color={PLUGGD_ORANGE} />
+                  {hostIsVerified ? <MaterialIcons name="verified" size={17} color={PLUGGD_ORANGE} /> : null}
                 </View>
 
                 <View style={styles.liveMetaRow}>
@@ -1071,311 +1522,574 @@ export default function LiveSessionScreen() {
                     <MaterialIcons name="visibility" size={14} color="#D8D8D8" />
                     <Text style={styles.viewerText}>{formatCount(viewerCount)}</Text>
                   </View>
-                  <View style={styles.modeBadge}>
-                    <Text style={styles.modeBadgeText}>{modeLabel(session?.live_mode)}</Text>
-                  </View>
                 </View>
               </View>
-            </View>
-
-            <Pressable onPress={leave} accessibilityRole="button" accessibilityLabel="Leave live room">
-              <PluggdGlassSurface interactive glassEffectStyle="clear" style={styles.closeButton}>
-                <MaterialIcons name="keyboard-arrow-down" size={30} color="#FFFFFF" />
-              </PluggdGlassSurface>
             </Pressable>
-          </View>
 
-          <View style={styles.rightRail}>
-            <RailButton icon="favorite" label="React" onPress={() => sendReaction('heart')} />
-            <RailButton icon="local-fire-department" label="Boost" onPress={() => sendReaction('fire')} />
-            <RailButton icon="card-giftcard" label="Gift" loading={sendingGift} onPress={sendGift} />
-            <RailButton icon="ios-share" label="Share" onPress={shareRoom} />
-            <RailButton icon="more-horiz" label="Safety" onPress={openRoomSafety} />
-            <RailButton icon={muted ? 'mic-off' : 'mic'} label={muted ? 'Muted' : 'Mute'} onPress={toggleMute} />
+            {!isHost ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${followingHost ? 'Unfollow' : 'Follow'} ${host}`}
+                accessibilityState={{ selected: followingHost, busy: followBusy }}
+                disabled={followBusy}
+                onPress={() => void toggleHostFollow()}
+                style={[styles.topFollowButton, followingHost && styles.topFollowButtonActive]}
+              >
+                {followBusy ? (
+                  <ActivityIndicator size="small" color={followingHost ? '#FFFFFF' : '#0A0806'} />
+                ) : (
+                  <Text style={[styles.topFollowText, followingHost && styles.topFollowTextActive]}>
+                    {followingHost ? 'Following' : 'Follow'}
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
+
+            <View style={styles.topActions}>
+              <Pressable onPress={leave} accessibilityRole="button" accessibilityLabel="Leave live room" style={styles.closeButton}>
+                <MaterialIcons name="close" size={30} color="#FFFFFF" />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.reactionLayer} pointerEvents="none">
             {reactions.map((reaction) => (
-              <View
+              <FloatingReaction
                 key={reaction.id}
-                style={[
-                  styles.reactionBubble,
-                  {
-                    right: 18 + reaction.lane * 12,
-                    bottom: 210 + reaction.lane * 54,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name={reaction.kind === 'fire' ? 'local-fire-department' : 'favorite'}
-                  size={22}
-                  color={PLUGGD_ORANGE}
-                />
-              </View>
+                reaction={reaction}
+                reducedMotion={reducedMotion || preview === 'audience-reaction'}
+              />
             ))}
           </View>
 
-          <View style={styles.bottomOverlay}>
-            <View style={styles.sessionSummary}>
+          <View style={[styles.bottomOverlay, { bottom: Math.max(insets.bottom + 6, 10) }]}>
+            <View style={[styles.sessionSummary, !isHost && styles.sessionSummaryAudience]}>
               <Text style={styles.sessionTitle} numberOfLines={1}>
                 {session?.title ?? 'Live Room'}
               </Text>
-              <Text style={styles.sessionSubtitle} numberOfLines={2}>
-                {session?.description || `${roleLabel(session?.profiles)} room with real-time chat, gifts, and stage requests.`}
-              </Text>
-
-              <View style={styles.signalRow}>
-                <SignalPill icon="graphic-eq" label={`${energyScore}% pulse`} />
-                <SignalPill icon="groups" label={`${stageParticipants.length + (streamRole === 'host' ? 1 : 0)} on stage`} />
-                {latestGift ? (
-                  <SignalPill
-                    icon="card-giftcard"
-                    label={`${latestGift.gift?.label ?? 'Gift'} ${latestGift.total_credits} cr`}
-                  />
-                ) : null}
-              </View>
             </View>
 
-            <View style={styles.primaryActions}>
-              {streamRole === 'host' ? (
-                <Pressable style={styles.primaryActionButton} onPress={endLive}>
-                  <MaterialIcons name="stop-circle" size={18} color="#FFFFFF" />
-                  <Text style={styles.primaryActionText}>End live</Text>
-                </Pressable>
+            <View pointerEvents="none" style={styles.liveChatFeed}>
+              {messages.length === 0 ? (
+                <Text style={styles.emptyChat}>Tap Comment to join the conversation.</Text>
               ) : (
-                <Pressable style={styles.primaryActionButton} onPress={() => sendReaction('heart')}>
-                  <MaterialIcons name="favorite" size={18} color="#FFFFFF" />
-                  <Text style={styles.primaryActionText}>Support</Text>
-                </Pressable>
+                messages.slice(-4).map((message) => (
+                  <View key={message.id} style={styles.messageRow}>
+                    <View style={styles.messageAvatar}>
+                      <Text style={styles.messageAvatarText}>{initials(messageName(message))}</Text>
+                    </View>
+                    <Text style={styles.messageText} numberOfLines={2}>
+                      <Text style={styles.messageMeta}>{messageName(message)}  </Text>
+                      {message.content}
+                    </Text>
+                  </View>
+                ))
               )}
-
-              <Pressable style={styles.secondaryActionButton} onPress={sendGift}>
-                <MaterialIcons name="card-giftcard" size={18} color={PLUGGD_ORANGE} />
-                <Text style={styles.secondaryActionText}>
-                  {giftCatalog[0] ? `Gift ${giftCatalog[0].credit_cost} cr` : 'Send gift'}
-                </Text>
-              </Pressable>
             </View>
 
-            {!isHostRoute && stageSupported && session?.status === 'live' ? (
-              <View style={styles.stageRequestBox}>
-                <Text style={styles.stageRequestTitle}>
-                  {stageRequest?.status === 'pending'
-                    ? 'Stage request pending'
-                    : stageRequest?.status === 'approved'
-                      ? 'Stage access approved'
-                      : 'Request stage access'}
-                </Text>
-                {stageRequest?.status ? (
-                  <>
-                    <Text style={styles.stageRequestBody}>
-                      {stageRequest.status === 'approved'
-                        ? 'Leave and rejoin to publish audio/video as a collaborator.'
-                        : 'The host will review your request.'}
-                    </Text>
-                    {stageRequest.status === 'pending' ? (
-                      <Pressable style={styles.stageRequestButton} onPress={withdrawStageRequest} disabled={withdrawingStage}>
-                        {withdrawingStage ? (
-                          <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                          <Text style={styles.stageRequestButtonText}>Withdraw</Text>
-                        )}
-                      </Pressable>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <TextInput
-                      value={stageRequestNote}
-                      onChangeText={(value) => setStageRequestNote(value.slice(0, 180))}
-                      placeholder="Optional note to host"
-                      placeholderTextColor="#8A8A8A"
-                      style={styles.stageRequestInput}
-                    />
-                    <Pressable style={styles.stageRequestButton} onPress={requestStageAccess} disabled={requestingStage}>
-                      {requestingStage ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.stageRequestButtonText}>Request</Text>
-                      )}
-                    </Pressable>
-                  </>
-                )}
-              </View>
-            ) : null}
-
-            {streamRole === 'host' && stageSupported ? (
-              <View style={styles.hostOpsRow}>
-                <SignalPill icon="person-add-alt-1" label={`${pendingStageCount} requests`} />
-                <SignalPill icon="radio" label={session?.recording_status ?? 'recording idle'} />
-                <SignalPill icon="closed-caption" label={session?.captions_enabled ? 'captions on' : 'captions off'} />
-              </View>
-            ) : null}
-
-            {streamRole === 'host' ? (
-              <View style={styles.runtimePanel}>
-                <View style={styles.runtimeHeader}>
-                  <Text style={styles.stageRequestTitle}>Host controls</Text>
-                  {runtimeSaving || runtimeActionLoading ? <ActivityIndicator color={PLUGGD_ORANGE} size="small" /> : null}
-                </View>
-                <View style={styles.runtimeGrid}>
-                  <RuntimeButton
-                    icon={session?.recording_enabled ? 'fiber-manual-record' : 'radio-button-unchecked'}
-                    label={session?.recording_enabled ? 'Recording On' : 'Enable Rec'}
-                    active={Boolean(session?.recording_enabled)}
-                    disabled={runtimeSaving}
-                    onPress={() => saveRuntimePreferences({ recordingEnabled: !session?.recording_enabled })}
-                  />
-                  <RuntimeButton
-                    icon={session?.captions_enabled ? 'closed-caption' : 'closed-caption-disabled'}
-                    label={session?.captions_enabled ? 'Captions On' : 'Captions Off'}
-                    active={Boolean(session?.captions_enabled)}
-                    disabled={runtimeSaving}
-                    onPress={() => saveRuntimePreferences({ captionsEnabled: !session?.captions_enabled })}
-                  />
-                  <RuntimeButton
-                    icon="radio"
-                    label={session?.recording_status === 'recording' ? 'Stop Rec' : 'Start Rec'}
-                    active={session?.recording_status === 'recording'}
-                    disabled={Boolean(runtimeActionLoading)}
-                    onPress={() => runRuntimeAction(session?.recording_status === 'recording' ? 'stop_recording' : 'start_recording')}
-                  />
-                  <RuntimeButton
-                    icon="cell-tower"
-                    label={session?.restream_status === 'live' ? 'Stop Restream' : 'Restream'}
-                    active={session?.restream_status === 'live'}
-                    disabled={Boolean(runtimeActionLoading)}
-                    onPress={() => runRuntimeAction(session?.restream_status === 'live' ? 'stop_restream' : 'start_restream')}
-                  />
-                </View>
-              </View>
-            ) : null}
-
-            {streamRole === 'host' && stageSupported && pendingStageRequests.length > 0 ? (
-              <View style={styles.stageRequestBox}>
-                <Text style={styles.stageRequestTitle}>Stage requests</Text>
-                {pendingStageRequests.slice(0, 3).map((request) => (
-                  <View key={request.id} style={styles.hostRequestRow}>
-                    <View style={styles.hostRequestText}>
-                      <Text style={styles.hostRequestName}>
-                        User {request.requester_id.slice(0, 6)}
-                      </Text>
-                      <Text style={styles.hostRequestNote} numberOfLines={1}>
-                        {request.request_message || 'Wants to join the stage'}
-                      </Text>
-                    </View>
-                    <Pressable
-                      style={styles.approveButton}
-                      onPress={() => reviewStageRequest(request.id, true)}
-                    >
-                      <MaterialIcons name="check" size={16} color="#0a0806" />
-                    </Pressable>
-                    <Pressable
-                      style={styles.declineButton}
-                      onPress={() => reviewStageRequest(request.id, false)}
-                    >
-                      <MaterialIcons name="close" size={16} color="#FFFFFF" />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {streamRole === 'host' && stageSupported && stageParticipants.length > 0 ? (
-              <View style={styles.stageRequestBox}>
-                <Text style={styles.stageRequestTitle}>On stage</Text>
-                {stageParticipants.slice(0, 4).map((participant) => (
-                  <View key={participant.user_id} style={styles.hostRequestRow}>
-                    <View style={styles.hostRequestText}>
-                      <Text style={styles.hostRequestName}>User {participant.user_id.slice(0, 6)}</Text>
-                      <Text style={styles.hostRequestNote} numberOfLines={1}>{participant.role || 'Collaborator'}</Text>
-                    </View>
-                    <Pressable
-                      style={styles.declineButton}
-                      disabled={removingStageUserId === participant.user_id}
-                      onPress={() => removeStageParticipant(participant.user_id)}
-                    >
-                      {removingStageUserId === participant.user_id ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <MaterialIcons name="person-remove" size={16} color="#FFFFFF" />
-                      )}
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            <PluggdGlassSurface
-              glassEffectStyle="regular"
-              blurIntensity={62}
-              fallbackColor="rgba(10,10,10,0.9)"
-              borderColor="rgba(255,255,255,0.13)"
-              style={styles.chatPanel}
-            >
-              <View style={styles.chatHeader}>
-                <Text style={styles.chatTitle}>Live chat</Text>
-                <Text style={styles.chatFilter}>Top</Text>
-              </View>
-
-              <ScrollView
-                style={styles.messageList}
-                contentContainerStyle={styles.messageListContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {messages.length === 0 ? (
-                  <Text style={styles.emptyChat}>No messages yet. Say hi.</Text>
-                ) : (
-                  messages.slice(-18).map((message) => (
-                    <View key={message.id} style={styles.messageRow}>
-                      <View style={styles.messageAvatar}>
-                        <Text style={styles.messageAvatarText}>{initials(messageName(message))}</Text>
-                      </View>
-                      <View style={styles.messageContent}>
-                        <Text style={styles.messageMeta} numberOfLines={1}>
-                          {messageName(message)} - {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                        <Text style={styles.messageText}>{message.content}</Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-
-              <View style={styles.composerRow}>
-                <PluggdGlassSurface
-                  glassEffectStyle="clear"
-                  fallbackColor="#171310"
-                  borderColor="#303030"
-                  style={styles.inputWrap}
+            {commentComposerOpen ? (
+              <View style={styles.activeComposerRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close comment composer"
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setCommentComposerOpen(false);
+                  }}
+                  style={styles.composerCloseButton}
                 >
+                  <MaterialIcons name="keyboard-arrow-down" size={25} color="#FFFFFF" />
+                </Pressable>
+                <View style={styles.activeInputWrap}>
                   <TextInput
+                    ref={commentInputRef}
+                    autoFocus
                     value={messageInput}
                     onChangeText={setMessageInput}
                     onSubmitEditing={sendMessage}
-                    placeholder={session?.status === 'ended' ? 'Session ended' : 'Message...'}
-                    placeholderTextColor="#8A8A8A"
+                    placeholder={session?.status === 'ended' ? 'Session ended' : 'Add a comment...'}
+                    placeholderTextColor="rgba(255,255,255,0.55)"
                     editable={session?.status !== 'ended'}
+                    returnKeyType="send"
                     style={styles.input}
                   />
-                  <Pressable style={styles.emojiButton} onPress={() => sendReaction('boost')}>
-                    <MaterialIcons name="bolt" size={22} color="#BDBDBD" />
+                  <Pressable accessibilityRole="button" accessibilityLabel="Send boost reaction" style={styles.emojiButton} onPress={() => sendReaction('boost')}>
+                    <MaterialIcons name="bolt" size={22} color={PLUGGD_ORANGE} />
                   </Pressable>
-                </PluggdGlassSurface>
-
-                <Pressable style={styles.sendButton} onPress={sendMessage}>
-                  <MaterialIcons name="send" size={20} color="#FFFFFF" />
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel="Send chat message" style={styles.sendButton} onPress={sendMessage}>
+                  <MaterialIcons name="send" size={20} color="#0A0806" />
                 </Pressable>
               </View>
-            </PluggdGlassSurface>
+            ) : (
+              <View style={styles.liveDock}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open comment composer"
+                  disabled={session?.status === 'ended'}
+                  onPress={() => {
+                    setControlSheet(null);
+                    setGiftTrayOpen(false);
+                    setCommentComposerOpen(true);
+                  }}
+                  style={styles.commentPill}
+                >
+                  <MaterialIcons name="chat-bubble-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.commentPillText}>{session?.status === 'ended' ? 'Session ended' : 'Comment...'}</Text>
+                </Pressable>
+                {isHost ? (
+                  <>
+                    <DockIconButton icon="tune" label="Manage live" onPress={() => openControlSheet('host')} />
+                    <DockIconButton icon={muted ? 'mic-off' : 'mic'} label={muted ? 'Unmute' : 'Mute'} onPress={toggleMute} />
+                    {!isAudioRoom ? <DockIconButton icon={videoMuted ? 'videocam-off' : 'videocam'} label={videoMuted ? 'Turn camera on' : 'Turn camera off'} onPress={toggleVideo} /> : null}
+                  </>
+                ) : (
+                  <>
+                    <DockIconButton icon="card-giftcard" label="Send gift" onPress={openGiftTray} />
+                    {stageSupported && session?.status === 'live' ? (
+                      <DockIconButton icon="groups" label="Request stage" onPress={() => openControlSheet('stage')} />
+                    ) : null}
+                    <DockIconButton icon="ios-share" label="Share live" onPress={() => void shareRoom()} />
+                    <DockIconButton icon="more-horiz" label="Live safety" onPress={openRoomSafety} />
+                  </>
+                )}
+              </View>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <Modal
+        transparent
+        visible={controlSheet !== null}
+        animationType="slide"
+        onRequestClose={closeControlSheet}
+      >
+        <View style={styles.controlModalRoot}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close live controls"
+            onPress={closeControlSheet}
+            style={styles.controlModalBackdrop}
+          />
+          <KeyboardAvoidingView
+            pointerEvents="box-none"
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.controlSheetKeyboard}
+          >
+            <View style={styles.controlSheet}>
+              <View style={styles.controlSheetHandle} />
+              <View style={styles.controlSheetHeader}>
+                <View style={styles.controlSheetHeading}>
+                  <Text style={styles.controlSheetEyebrow}>
+                    {controlSheet === 'host' ? 'LIVE CONTROL' : 'JOIN THE STAGE'}
+                  </Text>
+                  <Text style={styles.controlSheetTitle}>
+                    {controlSheet === 'host' ? 'Manage this room' : 'Request stage access'}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close live controls"
+                  onPress={closeControlSheet}
+                  style={styles.controlSheetClose}
+                >
+                  <MaterialIcons name="close" size={23} color={theme.colors.text} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.controlSheetContent, { paddingBottom: Math.max(insets.bottom + 24, 28) }]}
+              >
+                {controlSheet === 'stage' ? (
+                  <View style={styles.sheetSection}>
+                    <Text style={styles.stageRequestTitle}>
+                      {stageRequest?.status === 'pending'
+                        ? 'Stage request pending'
+                        : stageRequest?.status === 'approved'
+                          ? 'Stage access approved'
+                          : 'Ask the host to join'}
+                    </Text>
+                    {stageRequest?.status ? (
+                      <>
+                        <Text style={styles.stageRequestBody}>
+                          {stageRequest.status === 'approved'
+                            ? 'Leave and rejoin to publish audio or video as a collaborator.'
+                            : 'The host will review your request.'}
+                        </Text>
+                        {stageRequest.status === 'pending' ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Withdraw stage request"
+                            style={styles.stageRequestButton}
+                            onPress={withdrawStageRequest}
+                            disabled={withdrawingStage}
+                          >
+                            {withdrawingStage ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.stageRequestButtonText}>Withdraw request</Text>}
+                          </Pressable>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.stageRequestBody}>Add an optional note so the host knows what you want to contribute.</Text>
+                        <TextInput
+                          value={stageRequestNote}
+                          onChangeText={(value) => setStageRequestNote(value.slice(0, 180))}
+                          placeholder="Optional note to host"
+                          placeholderTextColor={theme.colors.textSubtle}
+                          style={styles.stageRequestInput}
+                        />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Request stage access"
+                          style={styles.stageRequestButton}
+                          onPress={requestStageAccess}
+                          disabled={requestingStage}
+                        >
+                          {requestingStage ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.stageRequestButtonText}>Send request</Text>}
+                        </Pressable>
+                      </>
+                    )}
+                  </View>
+                ) : null}
+
+                {controlSheet === 'host' ? (
+                  <>
+                    <View style={styles.sheetSignalRow}>
+                      <SignalPill icon="graphic-eq" label={`${energyScore}% energy`} />
+                      <SignalPill icon="groups" label={`${stageParticipants.length + (streamRole === 'host' ? 1 : 0)} on stage`} />
+                      <SignalPill icon="person-add-alt-1" label={`${pendingStageCount} requests`} />
+                      {latestGift ? <SignalPill icon="card-giftcard" label={`${latestGift.gift?.label ?? 'Gift'} ${latestGift.total_credits} cr`} /> : null}
+                    </View>
+
+                    <View style={styles.sheetSection}>
+                      <View style={styles.runtimeHeader}>
+                        <Text style={styles.stageRequestTitle}>Broadcast controls</Text>
+                        {runtimeSaving || runtimeActionLoading ? <ActivityIndicator color={theme.colors.accentText} size="small" /> : null}
+                      </View>
+                      <View style={styles.runtimeGrid}>
+                        <RuntimeButton
+                          icon={muted ? 'mic-off' : 'mic'}
+                          label={muted ? 'Mic Off' : 'Mic On'}
+                          active={!muted}
+                          onPress={toggleMute}
+                        />
+                        {!isAudioRoom ? <RuntimeButton
+                          icon={videoMuted ? 'videocam-off' : 'videocam'}
+                          label={videoMuted ? 'Camera Off' : 'Camera On'}
+                          active={!videoMuted}
+                          onPress={toggleVideo}
+                        /> : null}
+                        {!isAudioRoom ? <RuntimeButton
+                          icon="flip-camera-ios"
+                          label={frontCamera ? 'Front Camera' : 'Back Camera'}
+                          disabled={videoMuted}
+                          onPress={flipCamera}
+                        /> : null}
+                        <RuntimeButton
+                          icon={speakerOn ? 'volume-up' : 'phone-in-talk'}
+                          label={speakerOn ? 'Speaker' : 'Receiver'}
+                          active={speakerOn}
+                          onPress={toggleAudioRoute}
+                        />
+                        <RuntimeButton
+                          icon="ios-share"
+                          label="Share Room"
+                          onPress={() => void shareRoom()}
+                        />
+                        <RuntimeButton
+                          icon={session?.recording_enabled ? 'fiber-manual-record' : 'radio-button-unchecked'}
+                          label={session?.recording_enabled ? 'Auto-record On' : 'Auto-record Off'}
+                          active={Boolean(session?.recording_enabled)}
+                          disabled={runtimeSaving}
+                          onPress={() => saveRuntimePreferences({ recordingEnabled: !session?.recording_enabled })}
+                        />
+                        <RuntimeButton
+                          icon={session?.captions_enabled ? 'closed-caption' : 'closed-caption-disabled'}
+                          label={session?.captions_enabled ? 'Captions On' : 'Captions Off'}
+                          active={Boolean(session?.captions_enabled)}
+                          disabled={runtimeSaving}
+                          onPress={() => saveRuntimePreferences({ captionsEnabled: !session?.captions_enabled })}
+                        />
+                        <RuntimeButton
+                          icon="radio"
+                          label={session?.recording_status === 'recording' ? 'Stop Recording' : 'Start Recording'}
+                          active={session?.recording_status === 'recording'}
+                          disabled={Boolean(runtimeActionLoading)}
+                          onPress={() => runRuntimeAction(session?.recording_status === 'recording' ? 'stop_recording' : 'start_recording')}
+                        />
+                        <RuntimeButton
+                          icon="cell-tower"
+                          label={session?.restream_status === 'live' ? 'Stop Restream' : 'Restream'}
+                          active={session?.restream_status === 'live'}
+                          disabled={Boolean(runtimeActionLoading)}
+                          onPress={() => runRuntimeAction(session?.restream_status === 'live' ? 'stop_restream' : 'start_restream')}
+                        />
+                      </View>
+                    </View>
+
+                    {stageSupported ? (
+                      <View style={styles.sheetSection}>
+                        <Text style={styles.stageRequestTitle}>Stage requests</Text>
+                        {pendingStageRequests.length ? pendingStageRequests.slice(0, 8).map((request) => (
+                          <View key={request.id} style={styles.hostRequestRow}>
+                            <View style={styles.hostRequestText}>
+                              <Text style={styles.hostRequestName}>User {request.requester_id.slice(0, 6)}</Text>
+                              <Text style={styles.hostRequestNote} numberOfLines={2}>{request.request_message || 'Wants to join the stage'}</Text>
+                            </View>
+                            <Pressable accessibilityRole="button" accessibilityLabel={`Approve stage request from user ${request.requester_id.slice(0, 6)}`} style={styles.approveButton} onPress={() => reviewStageRequest(request.id, true)}>
+                              <MaterialIcons name="check" size={16} color={theme.colors.onAccent} />
+                            </Pressable>
+                            <Pressable accessibilityRole="button" accessibilityLabel={`Decline stage request from user ${request.requester_id.slice(0, 6)}`} style={styles.declineButton} onPress={() => reviewStageRequest(request.id, false)}>
+                              <MaterialIcons name="close" size={16} color={theme.colors.mediaText} />
+                            </Pressable>
+                          </View>
+                        )) : <Text style={styles.sheetEmptyText}>No pending requests.</Text>}
+                      </View>
+                    ) : null}
+
+                    {stageSupported ? (
+                      <View style={styles.sheetSection}>
+                        <Text style={styles.stageRequestTitle}>On stage</Text>
+                        {stageParticipants.length ? stageParticipants.slice(0, 12).map((participant) => (
+                          <View key={participant.user_id} style={styles.hostRequestRow}>
+                            <View style={styles.hostRequestText}>
+                              <Text style={styles.hostRequestName}>User {participant.user_id.slice(0, 6)}</Text>
+                              <Text style={styles.hostRequestNote} numberOfLines={1}>{participant.role || 'Collaborator'}</Text>
+                            </View>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Remove user ${participant.user_id.slice(0, 6)} from stage`}
+                              accessibilityState={{ disabled: removingStageUserId === participant.user_id }}
+                              style={styles.declineButton}
+                              disabled={removingStageUserId === participant.user_id}
+                              onPress={() => removeStageParticipant(participant.user_id)}
+                            >
+                              {removingStageUserId === participant.user_id ? <ActivityIndicator color={theme.colors.mediaText} size="small" /> : <MaterialIcons name="person-remove" size={16} color={theme.colors.mediaText} />}
+                            </Pressable>
+                          </View>
+                        )) : <Text style={styles.sheetEmptyText}>Only the host is on stage.</Text>}
+                      </View>
+                    ) : null}
+
+                    <Pressable accessibilityRole="button" accessibilityLabel="End live session" style={styles.endLiveButton} onPress={endLive}>
+                      <MaterialIcons name="stop-circle" size={19} color={theme.colors.mediaText} />
+                      <Text style={styles.endLiveText}>End live</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={creatorSheetOpen}
+        animationType="slide"
+        onRequestClose={() => setCreatorSheetOpen(false)}
+      >
+        <View style={styles.creatorModalRoot}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close creator card"
+            onPress={() => setCreatorSheetOpen(false)}
+            style={styles.creatorModalBackdrop}
+          />
+          <View style={[styles.creatorSheet, { paddingBottom: Math.max(insets.bottom + 18, 30) }]}>
+            <View style={styles.creatorSheetHandle} />
+            <View style={styles.creatorSheetIdentity}>
+              <View style={styles.creatorSheetAvatar}>
+                {session?.profiles?.avatar_url ? (
+                  <PluggdImage uri={session.profiles.avatar_url} style={styles.creatorSheetAvatarImage} />
+                ) : (
+                  <Text style={styles.creatorSheetAvatarText}>{initials(host)}</Text>
+                )}
+              </View>
+              <View style={styles.creatorSheetNameWrap}>
+                <View style={styles.creatorSheetNameRow}>
+                  <Text style={styles.creatorSheetName} numberOfLines={1}>{host}</Text>
+                  {hostIsVerified ? <MaterialIcons name="verified" size={20} color={theme.colors.accentText} /> : null}
+                </View>
+                {session?.profiles?.username ? <Text style={styles.creatorSheetHandleText}>@{session.profiles.username}</Text> : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close creator card"
+                onPress={() => setCreatorSheetOpen(false)}
+                style={styles.creatorSheetClose}
+              >
+                <MaterialIcons name="close" size={23} color={theme.colors.text} />
+              </Pressable>
+            </View>
+
+            <View style={styles.creatorSheetMetaRow}>
+              {hostFollowerCount !== null ? <Text style={styles.creatorSheetFollowers}>{hostFollowerCount.toLocaleString()} followers</Text> : null}
+              <Text style={styles.creatorSheetType}>{session?.profiles?.profile_type || modeLabel(session?.live_mode)}</Text>
+            </View>
+            {session?.profiles?.bio ? <Text style={styles.creatorSheetBio}>{session.profiles.bio}</Text> : null}
+
+            <View style={styles.creatorSheetActions}>
+              {!isHost ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${followingHost ? 'Unfollow' : 'Follow'} ${host}`}
+                  accessibilityState={{ selected: followingHost, busy: followBusy }}
+                  disabled={followBusy}
+                  onPress={() => void toggleHostFollow()}
+                  style={[styles.creatorSheetFollow, followingHost && styles.creatorSheetFollowing]}
+                >
+                  {followBusy ? <ActivityIndicator color={theme.colors.onAccent} /> : (
+                    <Text style={[styles.creatorSheetFollowText, followingHost && styles.creatorSheetFollowingText]}>{followingHost ? 'Following' : 'Follow'}</Text>
+                  )}
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${host} full profile`}
+                onPress={openHostProfile}
+                style={styles.creatorSheetProfile}
+              >
+                <Text style={styles.creatorSheetProfileText}>{isHost ? 'View my public page' : 'View full profile'}</Text>
+                <MaterialIcons name="arrow-forward" size={19} color={theme.colors.text} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <LiveGiftTray
+        visible={giftTrayOpen}
+        gifts={giftCatalog}
+        selectedGiftId={selectedGiftId}
+        quantity={giftQuantity}
+        balance={wallet.balance.available_credits}
+        host={host}
+        sending={sendingGift}
+        onClose={() => setGiftTrayOpen(false)}
+        onSelect={setSelectedGiftId}
+        onQuantity={setGiftQuantity}
+        onConfirm={() => {
+          const gift = giftCatalog.find((item) => item.id === selectedGiftId);
+          if (gift) void sendGift(gift, giftQuantity);
+        }}
+      />
+    </View>
   );
 }
 
-function RailButton({
+function LiveGiftTray({
+  visible,
+  gifts,
+  selectedGiftId,
+  quantity,
+  balance,
+  host,
+  sending,
+  onClose,
+  onSelect,
+  onQuantity,
+  onConfirm,
+}: {
+  visible: boolean;
+  gifts: LiveGiftCatalogItem[];
+  selectedGiftId: string | null;
+  quantity: number;
+  balance: number;
+  host: string;
+  sending: boolean;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+  onQuantity: (quantity: number) => void;
+  onConfirm: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const theme = usePluggdTheme();
+  const styles = useLiveSessionStyles();
+  const selected = gifts.find((gift) => gift.id === selectedGiftId) ?? gifts[0];
+  const total = (selected?.credit_cost ?? 0) * quantity;
+  const enough = balance >= total;
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={styles.giftModalRoot}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close live gift tray" onPress={onClose} style={styles.giftModalBackdrop} />
+        <View style={[styles.giftTray, { paddingBottom: Math.max(insets.bottom + 14, 28) }]}>
+          <View style={styles.giftTrayHandle} />
+          <View style={styles.giftTrayHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.giftTrayEyebrow}>SUPPORT {host.toUpperCase()}</Text>
+              <Text style={styles.giftTrayTitle}>Send a live gift</Text>
+            </View>
+            <View style={styles.giftBalance}>
+              <MaterialIcons name="account-balance-wallet" size={16} color={theme.colors.accentText} />
+              <Text style={styles.giftBalanceText}>{balance.toLocaleString()} cr</Text>
+            </View>
+          </View>
+          <Text style={styles.giftTrayCopy}>Every gift has a fixed credit price. There are no randomized rewards.</Text>
+
+          {gifts.length ? (
+            <ScrollView style={styles.giftCatalogViewport} showsVerticalScrollIndicator={false} contentContainerStyle={styles.giftCatalogGrid}>
+              {gifts.map((gift) => {
+                const active = gift.id === selected?.id;
+                return (
+                  <Pressable
+                    key={gift.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${gift.label}, ${gift.credit_cost} credits`}
+                    onPress={() => { selectionHaptic(); onSelect(gift.id); }}
+                    style={[styles.giftCard, active && styles.giftCardActive]}
+                  >
+                    <LiveGiftArtwork gift={gift} size={92} style={styles.giftArt} />
+                    {active ? <Text style={styles.giftSelectedBadge}>SELECTED</Text> : null}
+                    <Text style={styles.giftLabel} numberOfLines={1}>{gift.label}</Text>
+                    <View style={styles.giftCostRow}>
+                      <MaterialIcons name="toll" size={14} color={theme.colors.accentText} />
+                      <Text style={styles.giftCost}>{gift.credit_cost.toLocaleString()} credits</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.giftEmpty}><Text style={styles.giftEmptyTitle}>Gifts are not available in this room yet.</Text><Text style={styles.giftEmptyCopy}>You can still react, chat, follow and share.</Text></View>
+          )}
+
+          {selected ? (
+            <>
+              <View style={styles.giftQuantityRow}>
+                <Text style={styles.giftFieldLabel}>Quantity</Text>
+                {[1, 2, 5].map((value) => (
+                  <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: value === quantity }} accessibilityLabel={`${value} gifts`} onPress={() => onQuantity(value)} style={[styles.giftQuantity, value === quantity && styles.giftQuantityActive]}>
+                    <Text style={[styles.giftQuantityText, value === quantity && styles.giftQuantityTextActive]}>×{value}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={enough ? `Confirm ${selected.label} gift for ${total} credits` : `Open Wallet for ${selected.label} gift`}
+                accessibilityState={{ disabled: sending }}
+                disabled={sending}
+                onPress={onConfirm}
+                style={[styles.giftConfirm, !enough && styles.giftConfirmShort]}
+              >
+                {sending ? <ActivityIndicator color={theme.colors.onAccent} /> : <>
+                  <Text style={styles.giftConfirmText}>{enough ? `Send ${selected.label}` : 'Add credits in Wallet'}</Text>
+                  <Text style={styles.giftConfirmPrice}>{total.toLocaleString()} cr</Text>
+                </>}
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function DockIconButton({
   icon,
   label,
   loading,
@@ -1386,36 +2100,74 @@ function RailButton({
   loading?: boolean;
   onPress: () => void;
 }) {
+  const styles = useLiveSessionStyles();
   return (
-    <Pressable onPress={onPress} disabled={loading} accessibilityRole="button" accessibilityLabel={label}>
-      <PluggdGlassSurface
-        interactive
-        disabled={loading}
-        glassEffectStyle="clear"
-        fallbackColor="rgba(0,0,0,0.38)"
-        borderColor="rgba(255,255,255,0.14)"
-        style={styles.railButton}
-      >
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.dockIconButton, pressed && styles.dockIconButtonPressed]}
+    >
       {loading ? (
         <ActivityIndicator color={PLUGGD_ORANGE} size="small" />
       ) : (
-        <MaterialIcons name={icon} size={24} color="#FFFFFF" />
+        <MaterialIcons name={icon} size={25} color="#FFFFFF" />
       )}
-      <Text style={styles.railLabel}>{label}</Text>
-      </PluggdGlassSurface>
     </Pressable>
   );
 }
 
+function FloatingReaction({ reaction, reducedMotion }: { reaction: LiveReaction; reducedMotion: boolean }) {
+  const styles = useLiveSessionStyles();
+  const progress = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: REACTION_TTL_MS - 120,
+      useNativeDriver: true,
+    }).start();
+  }, [progress, reducedMotion]);
+
+  const color = reaction.kind === 'heart' ? '#FF4757' : reaction.kind === 'fire' ? PLUGGD_ORANGE : '#F7C84B';
+  return (
+    <Animated.View
+      style={[
+        styles.reactionBubble,
+        {
+          right: 18 + reaction.lane * 12,
+          bottom: 164 + reaction.lane * 24,
+          opacity: reducedMotion ? 1 : progress.interpolate({ inputRange: [0, 0.12, 0.78, 1], outputRange: [0, 1, 1, 0] }),
+          transform: reducedMotion ? [] : [
+            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [28, -148] }) },
+            { translateX: progress.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, reaction.lane % 2 ? -12 : 12, 0] }) },
+            { scale: progress.interpolate({ inputRange: [0, 0.18, 1], outputRange: [0.72, 1.16, 0.92] }) },
+          ],
+        },
+      ]}
+    >
+      <MaterialIcons
+        name={reaction.kind === 'fire' ? 'local-fire-department' : reaction.kind === 'boost' ? 'bolt' : 'favorite'}
+        size={25}
+        color={color}
+      />
+    </Animated.View>
+  );
+}
+
 function SignalPill({ icon, label }: { icon: keyof typeof MaterialIcons.glyphMap; label: string }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveSessionStyles();
   return (
     <PluggdGlassSurface
       glassEffectStyle="clear"
-      fallbackColor="rgba(0,0,0,0.42)"
-      borderColor="rgba(255,255,255,0.13)"
+      fallbackColor={theme.colors.surface}
+      borderColor={theme.colors.border}
       style={styles.signalPill}
     >
-      <MaterialIcons name={icon} size={14} color={PLUGGD_ORANGE} />
+      <MaterialIcons name={icon} size={14} color={theme.colors.accentText} />
       <Text style={styles.signalText} numberOfLines={1}>
         {label}
       </Text>
@@ -1436,6 +2188,8 @@ function RuntimeButton({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveSessionStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -1447,17 +2201,19 @@ function RuntimeButton({
         onPress();
       }}
     >
-      <MaterialIcons name={icon} size={17} color={active ? '#0a0806' : '#FFFFFF'} />
+      <MaterialIcons name={icon} size={17} color={active ? theme.colors.onAccent : theme.colors.text} />
       <Text style={[styles.runtimeButtonText, active && styles.runtimeButtonTextActive]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
 }
 
 function AudioRoomStage({ title, host, status }: { title: string; host: string; status: JoinStatus }) {
+  const theme = usePluggdTheme();
+  const styles = useLiveSessionStyles();
   return (
     <View style={styles.audioStage}>
       <View style={styles.audioHalo}>
-        <MaterialIcons name="podcasts" size={54} color="#FFFFFF" />
+        <MaterialIcons name="podcasts" size={54} color={theme.colors.text} />
       </View>
       <Text style={styles.audioTitle} numberOfLines={1}>
         {title}
@@ -1483,10 +2239,12 @@ function AudioRoomStage({ title, host, status }: { title: string; host: string; 
   );
 }
 
-const styles = StyleSheet.create({
+function useLiveSessionStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#050505',
+    backgroundColor: theme.colors.background,
   },
   stage: {
     flex: 1,
@@ -1495,10 +2253,32 @@ const styles = StyleSheet.create({
   },
   mediaLayer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#100A07',
+    backgroundColor: theme.colors.background,
   },
   videoSurface: {
     flex: 1,
+  },
+  previewMedia: {
+    flex: 1,
+  },
+  previewMediaWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(7,5,4,0.22)',
+  },
+  previewDisclosure: {
+    position: 'absolute',
+    top: '48%',
+    alignSelf: 'center',
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  previewDisclosureText: {
+    color: 'rgba(255,255,255,0.82)',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 9,
+    letterSpacing: 1,
   },
   pictureInPicture: {
     position: 'absolute',
@@ -1554,7 +2334,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
+    overflow: 'hidden',
   },
+  hostAvatarImage: { width: '100%', height: '100%' },
   hostAvatarText: {
     color: '#FFFFFF',
     fontSize: 15,
@@ -1630,13 +2412,45 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
-  closeButton: {
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 8,
+  },
+  topFollowButton: {
+    minWidth: 68,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: PLUGGD_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 11,
+    marginLeft: 7,
+  },
+  topFollowButtonActive: {
+    backgroundColor: 'rgba(0,0,0,0.34)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.56)',
+  },
+  topFollowText: {
+    color: '#0A0806',
+    fontFamily: pluggdFonts.satoshiBlack,
+    fontSize: 11.5,
+  },
+  topFollowTextActive: { color: '#FFFFFF' },
+  topActionButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 10,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mediaPlaceholder: {
     flex: 1,
@@ -1645,39 +2459,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 42,
   },
   placeholderTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 24,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginTop: 14,
     textAlign: 'center',
   },
   placeholderBody: {
-    color: '#B8B8B8',
+    color: theme.colors.textMuted,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
     textAlign: 'center',
-  },
-  rightRail: {
-    position: 'absolute',
-    right: 12,
-    top: 122,
-    alignItems: 'center',
-    gap: 12,
-  },
-  railButton: {
-    width: 58,
-    minHeight: 58,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 7,
-  },
-  railLabel: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-    marginTop: 3,
   },
   reactionLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -1697,29 +2490,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     right: 12,
-    bottom: 12,
+    bottom: 6,
   },
   sessionSummary: {
     paddingRight: 72,
     marginBottom: 10,
   },
+  sessionSummaryAudience: {
+    marginBottom: 6,
+  },
   sessionTitle: {
     color: '#FFFFFF',
-    fontSize: 25,
-    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
-  },
-  sessionSubtitle: {
-    color: '#D1D1D1',
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
-    marginTop: 3,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-  },
-  signalRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginTop: 10,
+    fontFamily: pluggdFonts.displayBold, fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.72)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   signalPill: {
     height: 30,
@@ -1731,104 +2518,45 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   signalText: {
-    color: '#EDEDED',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
-  primaryActions: {
-    height: 52,
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
-  },
-  primaryActionButton: {
-    flex: 1,
-    borderRadius: 8,
-    backgroundColor: PLUGGD_ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 7,
-  },
-  primaryActionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-  },
-  secondaryActionButton: {
-    flex: 1,
-    borderRadius: 8,
-    backgroundColor: 'rgba(21,21,21,0.92)',
-    borderWidth: 1,
-    borderColor: '#303030',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 7,
-  },
-  secondaryActionText: {
-    color: PLUGGD_ORANGE,
-    fontSize: 16,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-  },
-  stageRequestBox: {
-    borderRadius: 8,
-    backgroundColor: 'rgba(10,10,10,0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    padding: 10,
-    marginBottom: 10,
-  },
   stageRequestTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestBody: {
-    color: '#B8B8B8',
+    color: theme.colors.textMuted,
     fontSize: 12,
     marginTop: 5,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestInput: {
-    minHeight: 38,
+    minHeight: 44,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#303030',
-    backgroundColor: '#171310',
-    color: '#FFFFFF',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
     paddingHorizontal: 10,
     marginTop: 8,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stageRequestButton: {
-    height: 38,
+    minHeight: 44,
     borderRadius: 8,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
   },
   stageRequestButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.onAccent,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-  },
-  hostOpsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginBottom: 10,
-  },
-  runtimePanel: {
-    borderRadius: 10,
-    backgroundColor: 'rgba(10,10,10,0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    padding: 10,
-    marginBottom: 10,
-    gap: 9,
   },
   runtimeHeader: {
     minHeight: 20,
@@ -1842,13 +2570,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   runtimeButton: {
-    minHeight: 34,
+    minHeight: 44,
     minWidth: '47%',
     flex: 1,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1856,19 +2584,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   runtimeButtonActive: {
-    backgroundColor: PLUGGD_ORANGE,
-    borderColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
+    borderColor: theme.colors.controlBorder,
   },
   runtimeButtonDisabled: {
     opacity: 0.55,
   },
   runtimeButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   runtimeButtonTextActive: {
-    color: '#0a0806',
+    color: theme.colors.onAccent,
   },
   hostRequestRow: {
     minHeight: 44,
@@ -1882,31 +2610,31 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   hostRequestName: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   hostRequestNote: {
-    color: '#AFAFAF',
+    color: theme.colors.textMuted,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 2,
   },
   approveButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 8,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   declineButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 8,
-    backgroundColor: '#202020',
+    backgroundColor: theme.colors.danger,
     borderWidth: 1,
-    borderColor: '#3A3A3A',
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1915,6 +2643,14 @@ const styles = StyleSheet.create({
     minHeight: 208,
     borderRadius: 16,
     padding: 10,
+  },
+  liveChatFeed: {
+    width: '84%',
+    minHeight: 44,
+    maxHeight: 190,
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginBottom: 10,
   },
   chatHeader: {
     flexDirection: 'row',
@@ -1947,15 +2683,15 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1D1D1D',
-    borderWidth: 1,
-    borderColor: PLUGGD_ORANGE,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(18,18,18,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.42)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -1970,16 +2706,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   messageMeta: {
-    color: '#A8A8A8',
-    fontSize: 12,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
+    color: '#FFB17A',
+    fontFamily: pluggdFonts.satoshiBlack,
   },
   messageText: {
+    flex: 1,
     color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 19,
-    fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
-    marginTop: 1,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.82)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   composerRow: {
     height: 46,
@@ -1987,6 +2725,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 10,
+  },
+  activeComposerRow: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  composerCloseButton: {
+    width: 44,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(0,0,0,0.56)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeInputWrap: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 15,
+    backgroundColor: 'rgba(20,20,20,0.94)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  liveDock: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  commentPill: {
+    flex: 1,
+    minWidth: 118,
+    height: 48,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 15,
+    backgroundColor: 'rgba(18,18,18,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  commentPillText: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 14,
+    fontFamily: pluggdFonts.satoshiBold,
+    fontWeight: '700',
+  },
+  dockIconButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dockIconButtonPressed: {
+    opacity: 0.62,
+    transform: [{ scale: 0.94 }],
   },
   inputWrap: {
     flex: 1,
@@ -2004,7 +2806,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   emojiButton: {
-    width: 42,
+    width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2022,26 +2824,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    backgroundColor: '#100A07',
+    backgroundColor: theme.colors.background,
   },
   audioHalo: {
     width: 146,
     height: 146,
     borderRadius: 73,
     borderWidth: 1,
-    borderColor: 'rgba(255,102,0,0.52)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.borderAccent,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
   },
   audioTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 28,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   audioSubtitle: {
-    color: '#C9C9C9',
+    color: theme.colors.textMuted,
     fontSize: 15,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 5,
@@ -2056,6 +2858,88 @@ const styles = StyleSheet.create({
   waveBar: {
     width: 5,
     borderRadius: 4,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
   },
-});
+  controlModalRoot: { flex: 1, justifyContent: 'flex-end' },
+  controlModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)' },
+  controlSheetKeyboard: { flex: 1, justifyContent: 'flex-end' },
+  controlSheet: {
+    maxHeight: '82%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: theme.colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+  },
+  controlSheetHandle: { width: 46, height: 5, borderRadius: 3, backgroundColor: theme.colors.controlBorder, alignSelf: 'center', marginBottom: 14 },
+  controlSheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 14 },
+  controlSheetHeading: { flex: 1, minWidth: 0 },
+  controlSheetEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.2 },
+  controlSheetTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 25, lineHeight: 30, letterSpacing: -0.6, marginTop: 2 },
+  controlSheetClose: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
+  controlSheetContent: { gap: 18 },
+  sheetSignalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  sheetSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border, paddingTop: 16, gap: 9 },
+  sheetEmptyText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiRegular, fontSize: 13, lineHeight: 18 },
+  endLiveButton: { minHeight: 52, borderRadius: 16, backgroundColor: theme.colors.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  endLiveText: { color: theme.colors.mediaText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.4 },
+  creatorModalRoot: { flex: 1, justifyContent: 'flex-end' },
+  creatorModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.48)' },
+  creatorSheet: { borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: theme.colors.background, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, paddingHorizontal: 20, paddingTop: 10 },
+  creatorSheetHandle: { width: 46, height: 5, borderRadius: 3, backgroundColor: theme.colors.controlBorder, alignSelf: 'center', marginBottom: 18 },
+  creatorSheetIdentity: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  creatorSheetAvatar: { width: 76, height: 76, borderRadius: 38, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceAlt, borderWidth: 2, borderColor: theme.colors.borderAccent },
+  creatorSheetAvatarImage: { width: '100%', height: '100%' },
+  creatorSheetAvatarText: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 24 },
+  creatorSheetNameWrap: { flex: 1, minWidth: 0 },
+  creatorSheetNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  creatorSheetName: { flexShrink: 1, color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 27, lineHeight: 32 },
+  creatorSheetHandleText: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, marginTop: 3 },
+  creatorSheetClose: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
+  creatorSheetMetaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 9, marginTop: 18 },
+  creatorSheetFollowers: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
+  creatorSheetType: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  creatorSheetBio: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiRegular, fontSize: 14, lineHeight: 20, marginTop: 10 },
+  creatorSheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  creatorSheetFollow: { minHeight: 52, minWidth: 120, borderRadius: 17, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  creatorSheetFollowing: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.controlBorder },
+  creatorSheetFollowText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14 },
+  creatorSheetFollowingText: { color: theme.colors.text },
+  creatorSheetProfile: { minHeight: 52, flex: 1, borderRadius: 17, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.controlBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14 },
+  creatorSheetProfileText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
+  giftModalRoot: { flex: 1, justifyContent: 'flex-end' },
+  giftModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.62)' },
+  giftTray: { maxHeight: '86%', borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: theme.colors.background, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28 },
+  giftTrayHandle: { width: 46, height: 5, borderRadius: 3, backgroundColor: theme.colors.controlBorder, alignSelf: 'center', marginBottom: 14 },
+  giftTrayHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  giftTrayEyebrow: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 9, letterSpacing: 1.2 },
+  giftTrayTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 26, lineHeight: 31, letterSpacing: -0.7 },
+  giftBalance: { minHeight: 44, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, backgroundColor: theme.colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.controlBorder },
+  giftBalanceText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
+  giftTrayCopy: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiRegular, fontSize: 11.5, lineHeight: 16, marginTop: 7 },
+  giftCatalogViewport: { maxHeight: 346, marginTop: 12 },
+  giftCatalogGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 12 },
+  giftCard: { width: '48%', minHeight: 174, borderRadius: 20, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 11, gap: 7 },
+  giftCardActive: { borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.accentSoft },
+  giftArt: { width: '100%', height: 92, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  giftSelectedBadge: { position: 'absolute', top: 14, right: 14, color: theme.colors.onAccent, backgroundColor: theme.colors.accentFill, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 3, fontFamily: pluggdFonts.satoshiBlack, fontSize: 8, letterSpacing: 0.5 },
+  giftLabel: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
+  giftCostRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  giftCost: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 10.5 },
+  giftEmpty: { minHeight: 128, marginVertical: 16, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 18 },
+  giftEmptyTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 16, textAlign: 'center' },
+  giftEmptyCopy: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiRegular, fontSize: 12, textAlign: 'center' },
+  giftQuantityRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border },
+  giftFieldLabel: { flex: 1, color: theme.colors.text, fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
+  giftQuantity: { minWidth: 48, height: 44, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.controlBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface },
+  giftQuantityActive: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.controlBorder },
+  giftQuantityText: { color: theme.colors.text, fontFamily: pluggdFonts.satoshiBlack, fontSize: 13 },
+  giftQuantityTextActive: { color: theme.colors.onAccent },
+  giftConfirm: { minHeight: 56, marginTop: 12, borderRadius: 16, backgroundColor: theme.colors.accentFill, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  giftConfirmShort: { backgroundColor: theme.colors.accentFill },
+  giftConfirmText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.3 },
+  giftConfirmPrice: { color: theme.colors.onAccent, fontFamily: pluggdFonts.displayExtraBold, fontSize: 16 },
+}), [theme]);
+}

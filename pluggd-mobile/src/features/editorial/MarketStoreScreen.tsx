@@ -1,17 +1,14 @@
 /**
- * Market — selected mobile culture-shop system (/market resolves to
- * /store): Sora-led "PLUGGD Store" hierarchy
- * with trust chips, Featured collection panel, What's Next drops,
- * Creator shops, the Digital shelf, Book talent services, From the
- * scene, and the full product grid. BeatPlug stays its own floor at
- * /market/beats.
+ * PLUGGD Store — a real-data storefront for official merchandise,
+ * creator goods and sample-pack previews. Physical checkout remains
+ * owned by the product detail route and its commerce-policy gate.
  */
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -19,13 +16,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
-import { ed, edFonts } from '../../design/editorial';
-import { safeList } from '../culture/mobileServices';
+import { edFonts } from '../../design/editorial';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { supabase } from '../../lib/supabase';
 import { formatGBP, type SamplePackItem } from '../../lib/mobileContent';
+import { loadPublicCreatorIdentityMap, type PublicCreatorIdentity } from '../culture/publicCreatorIdentity';
+import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
+import { physicalBasketCount, usePhysicalBasketStore } from '../store/physicalBasket';
 import { Enter, EdPressable } from './EditorialBits';
 
 type StoreProductRow = {
@@ -39,18 +39,25 @@ type StoreProductRow = {
   price?: number | null;
   product_type?: string | null;
   category?: string | null;
+  requires_shipping?: boolean | null;
+  stock_quantity?: number | null;
   created_at?: string | null;
+  user_id?: string | null;
+  creator_identity?: PublicCreatorIdentity | null;
   source: 'store_products' | 'creator_merchandise';
 };
 
-const TRUST_CHIPS = ['Worldwide shipping', 'Secure payments', 'Support creators'] as const;
+type StoreSamplePack = SamplePackItem & {
+  creator_identity?: PublicCreatorIdentity | null;
+};
 
-const SERVICES = [
-  { key: 'production', icon: 'multitrack-audio', title: 'Music Production', copy: 'Custom tracks, beat edits and session-ready production.', price: 'From £250' },
-  { key: 'mixing', icon: 'tune', title: 'Mixing & Mastering', copy: 'Polished masters and release-ready mix engineering.', price: 'From £120' },
-  { key: 'artwork', icon: 'palette', title: 'Artwork & Design', copy: 'Cover art, branding, release assets and campaign visuals.', price: 'From £80' },
-  { key: 'djSets', icon: 'headphones', title: 'DJ Sets', copy: 'Live, virtual, radio and event-ready DJ bookings.', price: 'From £200' },
-] as const;
+type ShelfFilter = 'all' | 'official' | 'creator';
+
+const SHELF_FILTERS: Array<{ key: ShelfFilter; label: string }> = [
+  { key: 'all', label: 'All products' },
+  { key: 'official', label: 'PLUGGD' },
+  { key: 'creator', label: 'Creator shops' },
+];
 
 function productTitle(product: StoreProductRow) {
   return product.title || product.name || 'Store item';
@@ -63,7 +70,7 @@ function productImage(product: StoreProductRow) {
 function productPrice(product: StoreProductRow) {
   if (product.price_cents != null) return formatGBP(product.price_cents, { cents: true });
   if (product.price != null) return formatGBP(product.price);
-  return 'Free';
+  return 'Price shown inside';
 }
 
 function productRoute(product: StoreProductRow) {
@@ -74,7 +81,18 @@ function productTypeLabel(product: StoreProductRow) {
   return (product.product_type || product.category || 'Store item').replace(/_/g, ' ');
 }
 
+function creatorIdentityLabel(identity?: PublicCreatorIdentity | null) {
+  if (identity?.username) return `@${identity.username}`;
+  return identity?.full_name || null;
+}
+
+function productOwnerLabel(product: StoreProductRow) {
+  if (product.source === 'store_products') return 'PLUGGD';
+  return creatorIdentityLabel(product.creator_identity);
+}
+
 function StoreSectionHead({ eyebrow, title, copy }: { eyebrow?: string; title: string; copy?: string }) {
+  const styles = useMarketStoreStyles();
   return (
     <View style={{ gap: 5 }}>
       {eyebrow ? <Text style={styles.sectionEyebrow}>{eyebrow.toUpperCase()}</Text> : null}
@@ -84,96 +102,146 @@ function StoreSectionHead({ eyebrow, title, copy }: { eyebrow?: string; title: s
   );
 }
 
-function EmptyPanel({ title, copy }: { title: string; copy: string }) {
+function StoreState({ icon, eyebrow, title, copy, actionLabel, onAction }: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  eyebrow: string;
+  title: string;
+  copy: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  const theme = usePluggdTheme();
+  const styles = useMarketStoreStyles();
   return (
     <View style={styles.emptyPanel}>
-      <MaterialIcons name="inventory-2" size={20} color="rgba(255,248,237,0.4)" />
+      <MaterialIcons name={icon} size={22} color={theme.colors.accentText} />
+      <Text style={styles.emptyEyebrow}>{eyebrow}</Text>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyCopy}>{copy}</Text>
+      <EdPressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction}>
+        <View style={styles.emptyAction}>
+          <Text style={styles.emptyActionText}>{actionLabel}</Text>
+          <MaterialIcons name="arrow-forward" size={15} color={theme.colors.onAccent} />
+        </View>
+      </EdPressable>
     </View>
   );
 }
 
-function ProductCard({ product, wide = false }: { product: StoreProductRow; wide?: boolean }) {
+function ProductArtwork({ product, style }: { product: StoreProductRow; style: object }) {
+  const styles = useMarketStoreStyles();
+  if (productImage(product)) return <PluggdImage uri={productImage(product)!} style={style as any} />;
+
+  return (
+    <LinearGradient colors={['#342116', '#17100c']} style={[style, styles.artFallback]}>
+      <MaterialIcons name="local-mall" size={28} color="rgba(255,248,237,0.56)" />
+      <Text style={styles.artFallbackLabel}>{productTypeLabel(product).toUpperCase()}</Text>
+    </LinearGradient>
+  );
+}
+
+function ProductCard({ product }: { product: StoreProductRow }) {
+  const styles = useMarketStoreStyles();
   const router = useRouter();
+  const soldOut = product.stock_quantity != null && product.stock_quantity <= 0;
+  const ownerLabel = productOwnerLabel(product);
   return (
     <EdPressable
       accessibilityRole="button"
       accessibilityLabel={`Open ${productTitle(product)}`}
       onPress={() => router.push(productRoute(product) as any)}
-      style={wide ? { width: 220 } : styles.gridCardWrap}
+      style={styles.gridCardWrap}
     >
       <View style={styles.productCard}>
         <View style={styles.productArtWrap}>
-          {productImage(product) ? (
-            <PluggdImage uri={productImage(product)!} style={styles.productArt} />
-          ) : (
-            <LinearGradient colors={['#2b1c10', '#171009']} style={styles.productArt} />
-          )}
+          <ProductArtwork product={product} style={styles.productArt} />
+          {soldOut ? <View style={styles.soldOutFlag}><Text style={styles.soldOutText}>SOLD OUT</Text></View> : null}
         </View>
         <Text style={styles.productType}>{productTypeLabel(product).toUpperCase()}</Text>
         <Text style={styles.productTitle} numberOfLines={2}>{productTitle(product)}</Text>
-        <View style={styles.productFootRow}>
-          <Text style={styles.productOwner} numberOfLines={1}>
-            {product.source === 'store_products' ? 'Official store' : 'Creator shop'}
-          </Text>
-          <Text style={styles.productPrice}>{productPrice(product)}</Text>
-        </View>
+        {ownerLabel ? <Text style={styles.productOwner} numberOfLines={1}>{ownerLabel}</Text> : null}
+        <Text style={styles.productPrice}>{productPrice(product)}</Text>
       </View>
     </EdPressable>
   );
 }
 
 export function MarketStoreScreen() {
-  const insets = useSafeAreaInsets();
+  const theme = usePluggdTheme();
+  const styles = useMarketStoreStyles();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
+  const [shelfFilter, setShelfFilter] = useState<ShelfFilter>('all');
+  const basketLines = usePhysicalBasketStore((state) => state.lines);
+  const basketCount = useMemo(() => physicalBasketCount(basketLines), [basketLines]);
 
   const productsQuery = useQuery({
     queryKey: ['store', 'products'],
     queryFn: async () => {
       const [official, merch] = await Promise.all([
-        safeList<any>(
-          (supabase as any)
-            .from('store_products')
-            .select('id,title,description,image_url,price,product_type,created_at,is_active,stock_quantity')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(12),
-        ),
-        safeList<any>(
-          (supabase as any)
-            .from('creator_merchandise')
-            .select('id,title,description,image_url,gallery_images,price,product_type,category,status,created_at,stock_quantity')
-            .in('status', ['approved', 'active', 'published', 'live'])
-            .order('created_at', { ascending: false })
-            .limit(12),
-        ),
+        (supabase as any)
+          .from('store_products')
+          .select('id,title,description,image_url,price,product_type,created_at,is_active,stock_quantity,visibility,moderation_status,currency')
+          .eq('is_active', true)
+          .eq('visibility', 'public')
+          .eq('moderation_status', 'approved')
+          .eq('currency', 'GBP')
+          .in('product_type', ['physical', 'merchandise', 'merch', 'creator_merch'])
+          .order('created_at', { ascending: false })
+          .limit(24),
+        (supabase as any)
+          .from('creator_merchandise')
+          .select('id,user_id,title,description,image_url,gallery_images,price,product_type,category,requires_shipping,status,created_at,stock_quantity')
+          .in('status', ['approved', 'active', 'published', 'live'])
+          .eq('requires_shipping', true)
+          .order('created_at', { ascending: false })
+          .limit(24),
       ]);
-      return [
-        ...official.map((item) => ({ ...item, source: 'store_products' as const })),
-        ...merch.map((item) => ({ ...item, source: 'creator_merchandise' as const })),
+      if (official.error && merch.error) throw official.error;
+      const products = [
+        ...(official.data ?? []).map((item: any) => ({ ...item, source: 'store_products' as const })),
+        ...(merch.data ?? []).map((item: any) => ({ ...item, source: 'creator_merchandise' as const })),
       ] as StoreProductRow[];
+      const creatorMap = await loadPublicCreatorIdentityMap(products.map((product) => product.user_id));
+      return products.map((product) => ({
+        ...product,
+        creator_identity: product.user_id ? creatorMap.get(product.user_id) ?? null : null,
+      }));
     },
     staleTime: 1000 * 60 * 3,
   });
 
   const packsQuery = useQuery({
     queryKey: ['store', 'sample-packs'],
-    queryFn: () =>
-      safeList<SamplePackItem>(
-        (supabase as any)
-          .from('sample_packs')
-          .select('id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
-          .order('created_at', { ascending: false })
-          .limit(6),
-      ),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('sample_packs')
+        .select('id,user_id,owner_id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      const packs = (data ?? []) as StoreSamplePack[];
+      const creatorMap = await loadPublicCreatorIdentityMap(packs.map((pack) => pack.user_id || pack.owner_id));
+      return packs.map((pack) => {
+        const creatorId = pack.user_id || pack.owner_id;
+        return {
+          ...pack,
+          creator_identity: creatorId ? creatorMap.get(creatorId) ?? null : null,
+        };
+      });
+    },
     staleTime: 1000 * 60 * 3,
   });
 
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
   const featured = products[0];
-  const dropFocus = products.find((product) => product.id !== featured?.id) || null;
-  const creatorShops = products.filter((product) => product.source === 'creator_merchandise');
+  const featuredOwner = featured ? productOwnerLabel(featured) : null;
+  const shelfProducts = useMemo(() => {
+    const remaining = products.filter((product) => product.id !== featured?.id);
+    if (shelfFilter === 'official') return remaining.filter((product) => product.source === 'store_products');
+    if (shelfFilter === 'creator') return remaining.filter((product) => product.source === 'creator_merchandise');
+    return remaining;
+  }, [featured?.id, products, shelfFilter]);
 
   const refreshing = productsQuery.isRefetching || packsQuery.isRefetching;
   const refresh = () => {
@@ -183,360 +251,323 @@ export function MarketStoreScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" translucent />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} translucent />
+      <DiscoveryHeader backToDiscovery />
       <ScrollView
         style={styles.screen}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentFill} />}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 76, 96),
-          paddingBottom: insets.bottom + 210,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 30,
         }}
       >
-        {/* Hero */}
         <Enter delay={0}>
-        <View style={{ gap: 12 }}>
-          <Text style={styles.heroKicker}>THE CULTURE SHOP.</Text>
-          <Text style={styles.heroTitle}>PLUGGD{'\n'}Store</Text>
-          <Text style={styles.heroCopy}>
-            Official merch. Creator goods. Exclusive drops. Digital products. Services. Built for the culture.
-          </Text>
-          <View style={styles.heroCtaRow}>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Shop all" onPress={() => router.push('/marketplace' as any)}>
-              <View style={styles.heroPrimary}>
-                <Text style={styles.heroPrimaryText}>Shop all</Text>
+          <View style={styles.masthead}>
+            <View style={styles.mastheadTopRow}>
+              <View style={styles.storeIdentity}>
+                <View style={styles.storeMark}><MaterialIcons name="storefront" size={20} color={theme.colors.onAccent} /></View>
+                <Text style={styles.storeEdition}>PLUGGD GOODS / CREATOR SHOPS</Text>
               </View>
-            </EdPressable>
-            <EdPressable accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
-              <View style={styles.heroSecondary}>
-                <Text style={styles.heroSecondaryText}>BeatPlug</Text>
+              <View style={styles.mastheadActions}>
+                <EdPressable accessibilityRole="button" accessibilityLabel="Open purchases" onPress={() => router.push('/purchases' as any)}>
+                  <View style={styles.ordersButton}>
+                    <MaterialIcons name="receipt-long" size={19} color={theme.colors.text} />
+                  </View>
+                </EdPressable>
+                <EdPressable accessibilityRole="button" accessibilityLabel={`Open basket with ${basketCount} items`} onPress={() => router.push('/commerce/basket' as any)}>
+                  <View style={styles.basketButton}>
+                    <MaterialIcons name="shopping-bag" size={19} color={theme.colors.onAccent} />
+                    {basketCount ? <Text style={styles.basketCount}>{basketCount}</Text> : null}
+                  </View>
+                </EdPressable>
               </View>
-            </EdPressable>
+            </View>
+            <View style={styles.mastheadRule} />
+            <Text style={styles.heroTitle}>Wear the culture.{`\n`}Back the makers.</Text>
+            <Text style={styles.heroCopy}>Official PLUGGD pieces and goods from independent creators, selected from live store listings.</Text>
+            <View style={styles.heroCtaRow}>
+              <EdPressable haptic="impact" accessibilityRole="button" accessibilityLabel="Explore BeatPlug" onPress={() => router.push('/market/beats' as any)}>
+                <View style={styles.heroPrimary}>
+                  <Text style={styles.heroPrimaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Explore BeatPlug</Text>
+                  <MaterialIcons name="arrow-forward" size={16} color={theme.colors.onAccent} />
+                </View>
+              </EdPressable>
+              <EdPressable accessibilityRole="button" accessibilityLabel="Browse sample packs" onPress={() => router.push('/sample-packs' as any)}>
+                <View style={styles.heroSecondary}><Text style={styles.heroSecondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Sample packs</Text></View>
+              </EdPressable>
+            </View>
           </View>
-          <View style={styles.trustRow}>
-            {TRUST_CHIPS.map((chip) => (
-              <View key={chip} style={styles.trustChip}>
-                <MaterialIcons
-                  name={chip === 'Worldwide shipping' ? 'public' : chip === 'Secure payments' ? 'lock-outline' : 'favorite-border'}
-                  size={12.5}
-                  color="rgba(255,248,237,0.7)"
-                />
-                <Text style={styles.trustChipText}>{chip}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
         </Enter>
 
-        {/* Featured collection */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead eyebrow="Featured collection" title="Worldwide Lookbook" copy="A global uniform for the creators, dreamers and builders shaping what comes next." />
+        <View style={styles.sectionRule} />
+
+        <View style={styles.storeSection}>
+          <StoreSectionHead eyebrow="The front window" title="Featured now" />
           {productsQuery.isLoading ? (
-            <PremiumSkeleton compact label="Loading the culture shop..." />
+            <PremiumSkeleton compact label="Loading the store…" />
+          ) : productsQuery.isError ? (
+            <StoreState
+              icon="wifi-off"
+              eyebrow="STORE UNAVAILABLE"
+              title="We couldn't load the shelves"
+              copy="Check your connection and try the store again."
+              actionLabel="Try again"
+              onAction={() => void productsQuery.refetch()}
+            />
           ) : featured ? (
-            <EdPressable
-              accessibilityRole="button"
-              accessibilityLabel={`Shop ${productTitle(featured)}`}
-              onPress={() => router.push(productRoute(featured) as any)}
-            >
+            <EdPressable haptic="impact" accessibilityRole="button" accessibilityLabel={`Open featured product ${productTitle(featured)}`} onPress={() => router.push(productRoute(featured) as any)}>
               <View style={styles.featuredPanel}>
-                {productImage(featured) ? (
-                  <PluggdImage uri={productImage(featured)!} style={StyleSheet.absoluteFillObject as any} />
-                ) : (
-                  <LinearGradient colors={['#31200f', '#12100b']} style={StyleSheet.absoluteFillObject} />
-                )}
-                <LinearGradient colors={['rgba(10,8,6,0.2)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFillObject} />
+                <ProductArtwork product={featured} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={['rgba(10,8,6,0.08)', 'rgba(10,8,6,0.92)']} style={StyleSheet.absoluteFillObject} />
+                <View style={styles.featuredFlag}><Text style={styles.featuredFlagText}>FEATURED</Text></View>
                 <View style={styles.featuredBody}>
-                  <Text style={styles.featuredEyebrow}>FEATURED DROP</Text>
-                  <Text style={styles.featuredTitle} numberOfLines={3}>{productTitle(featured).toUpperCase()}</Text>
+                  <Text style={styles.featuredEyebrow}>{productTypeLabel(featured).toUpperCase()}</Text>
+                  <Text style={styles.featuredTitle} numberOfLines={3}>{productTitle(featured)}</Text>
                   <View style={styles.featuredFootRow}>
-                    <Text style={styles.featuredPrice}>{productPrice(featured)}</Text>
+                    <View>
+                      {featuredOwner ? <Text style={styles.featuredShop}>{featuredOwner}</Text> : null}
+                      <Text style={styles.featuredPrice}>{productPrice(featured)}</Text>
+                    </View>
                     <View style={styles.shopCollection}>
-                      <Text style={styles.shopCollectionText}>Shop collection</Text>
-                      <MaterialIcons name="arrow-forward" size={15} color={ed.onOrange} />
+                      <Text style={styles.shopCollectionText}>View product</Text>
+                      <MaterialIcons name="arrow-forward" size={15} color={theme.colors.onAccent} />
                     </View>
                   </View>
                 </View>
               </View>
             </EdPressable>
           ) : (
-            <EmptyPanel title="No featured merch yet" copy="Approved merch will appear here once it is published." />
-          )}
-        </View>
-
-        {/* What's Next */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead eyebrow="New drops" title="What's Next" copy="Fresh drops. Limited runs. Don't sleep." />
-          {dropFocus ? (
-            <EdPressable
-              accessibilityRole="button"
-              accessibilityLabel={`View drop ${productTitle(dropFocus)}`}
-              onPress={() => router.push(productRoute(dropFocus) as any)}
-            >
-              <View style={styles.dropFocus}>
-                <View style={styles.dropFocusArtWrap}>
-                  {productImage(dropFocus) ? (
-                    <PluggdImage uri={productImage(dropFocus)!} style={styles.dropFocusArt} />
-                  ) : (
-                    <LinearGradient colors={['#2b1c10', '#171009']} style={styles.dropFocusArt} />
-                  )}
-                </View>
-                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                  <Text style={styles.dropFocusEyebrow}>DROP FOCUS</Text>
-                  <Text style={styles.dropFocusTitle} numberOfLines={2}>{productTitle(dropFocus)}</Text>
-                  <Text style={styles.dropFocusPrice}>{productPrice(dropFocus)}</Text>
-                  <View style={styles.viewDrop}>
-                    <Text style={styles.viewDropText}>View drop</Text>
-                  </View>
-                </View>
-              </View>
-            </EdPressable>
-          ) : (
-            <EmptyPanel title="Drops coming soon" copy="Limited Store drops will be curated here." />
-          )}
-        </View>
-
-        {/* Creator shops */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead
-            eyebrow="Creator shops"
-            title="Official creator storefronts"
-            copy="Creator-led shops with approved merch, bundles and direct-to-fan goods."
-          />
-          {creatorShops.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={232} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
-              {creatorShops.slice(0, 6).map((product) => (
-                <ProductCard key={`${product.source}-${product.id}`} product={product} wide />
-              ))}
-            </ScrollView>
-          ) : (
-            <EmptyPanel
-              title="Creator shops are being approved"
-              copy="Approved creator merchandise will appear here without duplicating releases or BeatPlug."
+            <StoreState
+              icon="inventory-2"
+              eyebrow="STORE UPDATE"
+              title="The next physical drop is being prepared"
+              copy="Sample packs and BeatPlug are still open while new merchandise is published."
+              actionLabel="Browse sample packs"
+              onAction={() => router.push('/sample-packs' as any)}
             />
           )}
         </View>
 
-        {/* Digital shelf */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead eyebrow="Sample packs & digital goods" title="Digital shelf" />
-          {(packsQuery.data ?? []).length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={202} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+        {products.length > 1 ? (
+          <View style={styles.storeSection}>
+            <StoreSectionHead eyebrow="The shelves" title="Shop merchandise" copy={`${products.length} ${products.length === 1 ? 'product' : 'products'} live now`} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" contentContainerStyle={styles.filterRow}>
+              {SHELF_FILTERS.map((filter) => {
+                const selected = shelfFilter === filter.key;
+                return (
+                  <EdPressable
+                    key={filter.key}
+                    accessibilityRole="tab"
+                    accessibilityLabel={`Show ${filter.label}`}
+                    accessibilityState={{ selected }}
+                    onPress={() => setShelfFilter(filter.key)}
+                  >
+                    <View style={[styles.filterChip, selected && styles.filterChipSelected]}>
+                      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{filter.label}</Text>
+                    </View>
+                  </EdPressable>
+                );
+              })}
+            </ScrollView>
+            {shelfProducts.length ? (
+              <View style={styles.productGrid}>
+                {shelfProducts.map((product) => <ProductCard key={`${product.source}-${product.id}`} product={product} />)}
+              </View>
+            ) : <Text style={styles.filterEmpty}>No products are live on this shelf yet.</Text>}
+          </View>
+        ) : null}
+
+        <View style={styles.sectionRule} />
+
+        <View style={styles.storeSection}>
+          <StoreSectionHead eyebrow="Make something new" title="Sample packs" copy="Preview sounds from PLUGGD creators before opening the full pack." />
+          {packsQuery.isLoading ? (
+            <PremiumSkeleton compact label="Loading sample packs…" />
+          ) : packsQuery.isError ? (
+            <View style={styles.inlineState}>
+              <Text style={styles.inlineStateText}>Sample packs couldn't load.</Text>
+              <EdPressable accessibilityRole="button" accessibilityLabel="Retry sample packs" onPress={() => void packsQuery.refetch()}>
+                <Text style={styles.inlineAction}>Try again</Text>
+              </EdPressable>
+            </View>
+          ) : (packsQuery.data ?? []).length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={178} decelerationRate="fast" contentContainerStyle={styles.packRail}>
               {(packsQuery.data ?? []).map((pack) => (
-                <EdPressable
-                  key={pack.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${pack.title || 'sample pack'}`}
-                  onPress={() => router.push(`/sample-pack/${pack.id}` as any)}
-                >
-                  <View style={{ width: 190, gap: 4 }}>
+                <EdPressable key={pack.id} accessibilityRole="button" accessibilityLabel={`Open ${pack.title || 'sample pack'}`} onPress={() => router.push(`/sample-pack/${pack.id}` as any)}>
+                  <View style={styles.packCard}>
                     <View style={styles.packArtWrap}>
                       {pack.cover_art_url ? (
                         <PluggdImage uri={pack.cover_art_url} style={styles.packArt} />
                       ) : (
-                        <LinearGradient colors={['#2b1c10', '#171009']} style={styles.packArt} />
+                        <LinearGradient colors={['#342116', '#17100c']} style={[styles.packArt, styles.artFallback]}>
+                          <MaterialIcons name="graphic-eq" size={28} color="rgba(255,248,237,0.56)" />
+                        </LinearGradient>
                       )}
                     </View>
                     <Text style={styles.productType}>SAMPLE PACK</Text>
-                    <Text style={styles.productTitle} numberOfLines={1}>{pack.title || 'Sample pack'}</Text>
+                    <Text style={styles.packTitle} numberOfLines={2}>{pack.title || 'Sample pack'}</Text>
                     <View style={styles.productFootRow}>
-                      <Text style={styles.productOwner} numberOfLines={1}>{pack.genre || 'Digital goods'}</Text>
-                      <Text style={styles.productPrice}>{formatGBP(pack.price)}</Text>
+                      <Text style={styles.productOwner} numberOfLines={1}>{creatorIdentityLabel(pack.creator_identity) || pack.genre || 'Sounds'}</Text>
+                      <Text style={Number(pack.price ?? 0) > 0 ? styles.productPreviewOnly : styles.productPrice}>
+                        {Number(pack.price ?? 0) > 0 ? 'Preview' : 'Free'}
+                      </Text>
                     </View>
                   </View>
                 </EdPressable>
               ))}
             </ScrollView>
           ) : (
-            <EmptyPanel title="Digital goods coming soon" copy="Sample packs, kits, MIDI collections and digital bundles will appear here." />
-          )}
-        </View>
-
-        {/* Book talent */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead eyebrow="Services" title="Book talent" />
-          <View style={styles.serviceGrid}>
-            {SERVICES.map((service) => (
-              <EdPressable
-                key={service.key}
-                accessibilityRole="button"
-                accessibilityLabel={`Book ${service.title}`}
-                onPress={() => router.push('/search' as any)}
-                style={styles.serviceCardWrap}
-              >
-                <View style={styles.serviceCard}>
-                  <MaterialIcons name={service.icon as any} size={20} color={ed.orange} />
-                  <Text style={styles.serviceTitle}>{service.title}</Text>
-                  <Text style={styles.serviceCopy}>{service.copy}</Text>
-                  <View style={styles.serviceFootRow}>
-                    <Text style={styles.servicePrice}>{service.price}</Text>
-                    <Text style={styles.serviceBook}>Book</Text>
-                  </View>
-                </View>
-              </EdPressable>
-            ))}
-          </View>
-        </View>
-
-        {/* From the scene */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead
-            eyebrow="From the scene"
-            title="Event merch. Real moments."
-            copy="Exclusive gear from the shows, scenes and culture moments fans had to be at."
-          />
-          <EmptyPanel title="Event merch coming soon" copy="Event-linked products will be curated here." />
-        </View>
-
-        {/* Full store grid */}
-        <View style={{ gap: 12 }}>
-          <StoreSectionHead eyebrow="All store products" title="Browse the full store" />
-          {products.length ? (
-            <View style={styles.productGrid}>
-              {products.slice(0, 10).map((product) => (
-                <ProductCard key={`${product.source}-${product.id}`} product={product} />
-              ))}
+            <View style={styles.inlineState}>
+              <MaterialIcons name="graphic-eq" size={20} color={theme.colors.accentText} />
+              <Text style={styles.inlineStateText}>New sample packs will appear here when creators publish them.</Text>
             </View>
-          ) : (
-            <EmptyPanel title="The shelves are being stocked" copy="Official products and approved creator goods land here as they go live." />
           )}
+          <EdPressable accessibilityRole="button" accessibilityLabel="Open all sample packs" onPress={() => router.push('/sample-packs' as any)}>
+            <View style={styles.sectionLink}>
+              <Text style={styles.sectionLinkText}>Browse all sample packs</Text>
+              <MaterialIcons name="arrow-forward" size={16} color={theme.colors.accentText} />
+            </View>
+          </EdPressable>
+        </View>
+
+        <View style={styles.beatPlugFeature}>
+          <View style={styles.beatPlugIcon}><MaterialIcons name="headphones" size={23} color={theme.colors.accentText} /></View>
+          <View style={styles.beatPlugCopy}>
+            <Text style={styles.beatPlugEyebrow}>BEATS & LICENCES</Text>
+            <Text style={styles.beatPlugTitle}>Looking for your next sound?</Text>
+            <Text style={styles.beatPlugBody}>Preview real beats and review available licence options in BeatPlug.</Text>
+          </View>
+          <EdPressable haptic="impact" accessibilityRole="button" accessibilityLabel="Open BeatPlug" onPress={() => router.push('/market/beats' as any)}>
+            <View style={styles.beatPlugAction}><MaterialIcons name="arrow-forward" size={20} color={theme.colors.onAccent} /></View>
+          </EdPressable>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806' },
-
-  heroKicker: { fontFamily: edFonts.mono, fontSize: 11, letterSpacing: 2.2, color: ed.orange },
-  heroTitle: { fontFamily: edFonts.serif, fontSize: 62, lineHeight: 56, letterSpacing: -2, color: ed.paper },
-  heroCopy: { fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: 'rgba(255,248,237,0.68)' },
-  heroCtaRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+function useMarketStoreStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  masthead: { gap: 14, paddingTop: 4 },
+  mastheadTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  storeIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  storeMark: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
+  storeEdition: { flex: 1, fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.3, color: theme.colors.textSecondary },
+  mastheadActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ordersButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface },
+  basketButton: { minWidth: 44, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: theme.colors.accentFill, paddingHorizontal: 9 },
+  basketCount: { fontFamily: edFonts.bodyBlack, fontSize: 11, color: theme.colors.onAccent },
+  mastheadRule: { height: 3, backgroundColor: theme.colors.accentFill },
+  heroTitle: { fontFamily: edFonts.serif, fontSize: 37, lineHeight: 39, letterSpacing: -1.1, color: theme.colors.text },
+  heroCopy: { maxWidth: 340, fontFamily: edFonts.bodyMedium, fontSize: 14, lineHeight: 20, color: theme.colors.textSecondary },
+  heroCtaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 2 },
   heroPrimary: {
-    minHeight: 48,
-    borderRadius: 999,
-    backgroundColor: ed.orange,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroPrimaryText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.onOrange },
-  heroSecondary: {
-    minHeight: 48,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.28)',
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroSecondaryText: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.cream },
-  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  trustChip: {
+    minHeight: 46,
     flexDirection: 'row',
+    gap: 8,
+    backgroundColor: theme.colors.accentFill,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,248,237,0.25)',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    justifyContent: 'center',
   },
-  trustChipText: { fontFamily: edFonts.bodyBold, fontSize: 11, color: 'rgba(255,248,237,0.75)' },
+  heroPrimaryText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: theme.colors.onAccent },
+  heroSecondary: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroSecondaryText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: theme.colors.text },
+  sectionRule: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.divider },
+  storeSection: { gap: 14 },
+  sectionEyebrow: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.8, color: theme.colors.accentText },
+  sectionTitle: { fontFamily: edFonts.serif, fontSize: 28, lineHeight: 31, color: theme.colors.text },
+  sectionCopy: { maxWidth: 330, fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
 
-  sectionEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: ed.orange },
-  sectionTitle: { fontFamily: edFonts.serif, fontSize: 27, lineHeight: 30, color: ed.cream },
-  sectionCopy: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.6)' },
-
-  featuredPanel: { borderRadius: 14, overflow: 'hidden', minHeight: 340, justifyContent: 'flex-end' },
-  featuredBody: { padding: 18, gap: 8 },
-  featuredEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2, color: ed.orange },
-  featuredTitle: { fontFamily: edFonts.bodyBlack, fontSize: 32, lineHeight: 33, letterSpacing: -0.8, color: '#ffffff' },
-  featuredFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
-  featuredPrice: { fontFamily: edFonts.bodyBlack, fontSize: 18, color: ed.cream },
+  featuredPanel: { overflow: 'hidden', minHeight: 370, justifyContent: 'flex-end', borderWidth: 1, borderColor: theme.colors.border },
+  featuredFlag: { position: 'absolute', top: 14, left: 14, backgroundColor: theme.colors.accentFill, paddingHorizontal: 9, paddingVertical: 6 },
+  featuredFlagText: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.4, color: theme.colors.onAccent },
+  featuredBody: { padding: 16, gap: 6 },
+  featuredEyebrow: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.6, color: theme.colors.accentFill },
+  featuredTitle: { maxWidth: 300, fontFamily: edFonts.bodyBlack, fontSize: 29, lineHeight: 31, letterSpacing: -0.5, color: theme.colors.mediaText },
+  featuredFootRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 7 },
+  featuredShop: { fontFamily: edFonts.bodyMedium, fontSize: 11, color: 'rgba(255,248,237,0.56)' },
+  featuredPrice: { marginTop: 2, fontFamily: edFonts.bodyBlack, fontSize: 17, color: theme.colors.mediaText },
   shopCollection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    minHeight: 46,
-    borderRadius: 999,
-    backgroundColor: ed.orange,
-    paddingHorizontal: 16,
+    gap: 6,
+    minHeight: 44,
+    backgroundColor: theme.colors.accentFill,
+    paddingHorizontal: 13,
   },
-  shopCollectionText: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.onOrange },
+  shopCollectionText: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, color: theme.colors.onAccent },
 
-  dropFocus: {
-    flexDirection: 'row',
-    gap: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    padding: 14,
-    alignItems: 'center',
-  },
-  dropFocusArtWrap: { width: 110, height: 110, borderRadius: 10, overflow: 'hidden' },
-  dropFocusArt: { width: '100%', height: '100%' },
-  dropFocusEyebrow: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.6, color: ed.orange },
-  dropFocusTitle: { fontFamily: edFonts.bodyBold, fontSize: 17, lineHeight: 22, color: ed.cream },
-  dropFocusPrice: { fontFamily: edFonts.bodyBlack, fontSize: 14, color: ed.cream },
-  viewDrop: {
-    alignSelf: 'flex-start',
-    minHeight: 38,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.3)',
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  viewDropText: { fontFamily: edFonts.bodyBold, fontSize: 12, color: ed.cream },
+  filterRow: { gap: 8, paddingRight: 20 },
+  filterChip: { minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, paddingHorizontal: 13 },
+  filterChipSelected: { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill },
+  filterChipText: { fontFamily: edFonts.bodyBold, fontSize: 11.5, color: theme.colors.textSecondary },
+  filterChipTextSelected: { color: theme.colors.onAccent },
+  filterEmpty: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.divider, paddingVertical: 18, fontFamily: edFonts.bodyMedium, fontSize: 12.5, color: theme.colors.textSecondary },
 
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  gridCardWrap: { width: '47.5%', flexGrow: 1 },
-  productCard: { gap: 3 },
-  productArtWrap: { borderRadius: 10, overflow: 'hidden' },
-  productArt: { width: '100%', height: 160 },
-  productType: { fontFamily: edFonts.bodyBlack, fontSize: 9.5, letterSpacing: 1.4, color: ed.orange, marginTop: 6 },
-  productTitle: { fontFamily: edFonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: ed.cream },
+  gridCardWrap: { width: '47.5%', flexGrow: 1, maxWidth: '48.5%' },
+  productCard: { minHeight: 294 },
+  productArtWrap: { aspectRatio: 0.86, overflow: 'hidden', backgroundColor: '#17100c' },
+  productArt: { width: '100%', height: '100%' },
+  artFallback: { alignItems: 'center', justifyContent: 'center', gap: 8 },
+  artFallbackLabel: { maxWidth: 120, paddingHorizontal: 8, fontFamily: edFonts.mono, fontSize: 8.5, letterSpacing: 1.2, textAlign: 'center', color: 'rgba(255,248,237,0.52)' },
+  soldOutFlag: { position: 'absolute', top: 8, right: 8, backgroundColor: '#0a0806', paddingHorizontal: 7, paddingVertical: 5 },
+  soldOutText: { fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 1.1, color: theme.colors.mediaText },
+  productType: { fontFamily: edFonts.mono, fontSize: 8.5, letterSpacing: 1.2, color: theme.colors.accentText, marginTop: 8 },
+  productTitle: { minHeight: 36, marginTop: 3, fontFamily: edFonts.bodyBold, fontSize: 14, lineHeight: 18, color: theme.colors.text },
   productFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
-  productOwner: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: 'rgba(255,248,237,0.55)' },
-  productPrice: { fontFamily: edFonts.bodyBlack, fontSize: 13, color: ed.cream },
+  productOwner: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 10.5, color: theme.colors.textMuted },
+  productPrice: { marginTop: 3, fontFamily: edFonts.bodyBlack, fontSize: 13, color: theme.colors.text },
+  productPreviewOnly: { marginTop: 3, fontFamily: edFonts.bodyBlack, fontSize: 11, letterSpacing: 0.4, color: theme.colors.accentText },
 
-  packArtWrap: { borderRadius: 10, overflow: 'hidden' },
-  packArt: { width: '100%', height: 130 },
+  packRail: { gap: 12, paddingRight: 20 },
+  packCard: { width: 166 },
+  packArtWrap: { width: 166, height: 150, overflow: 'hidden', backgroundColor: '#17100c' },
+  packArt: { width: '100%', height: '100%' },
+  packTitle: { minHeight: 38, marginTop: 3, fontFamily: edFonts.bodyBold, fontSize: 14, lineHeight: 18, color: theme.colors.text },
+  inlineState: { minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.divider },
+  inlineStateText: { flex: 1, fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
+  inlineAction: { fontFamily: edFonts.bodyBlack, fontSize: 12, color: theme.colors.accentText },
+  sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.divider },
+  sectionLinkText: { fontFamily: edFonts.bodyBlack, fontSize: 12.5, color: theme.colors.text },
 
-  serviceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  serviceCardWrap: { width: '47.5%', flexGrow: 1 },
-  serviceCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    padding: 14,
-    gap: 6,
-    minHeight: 150,
-  },
-  serviceTitle: { fontFamily: edFonts.bodyBlack, fontSize: 14.5, color: ed.cream, marginTop: 2 },
-  serviceCopy: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, lineHeight: 16, color: 'rgba(255,248,237,0.6)', flex: 1 },
-  serviceFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  servicePrice: { fontFamily: edFonts.bodyBlack, fontSize: 12.5, color: ed.cream },
-  serviceBook: { fontFamily: edFonts.bodyBlack, fontSize: 12.5, color: ed.orange },
+  beatPlugFeature: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 3, borderTopColor: theme.colors.accentFill, borderBottomWidth: 1, borderBottomColor: theme.colors.divider, paddingVertical: 18 },
+  beatPlugIcon: { width: 44, height: 44, borderWidth: 1, borderColor: theme.colors.controlBorder, alignItems: 'center', justifyContent: 'center' },
+  beatPlugCopy: { flex: 1, minWidth: 0, gap: 3 },
+  beatPlugEyebrow: { fontFamily: edFonts.mono, fontSize: 8.5, letterSpacing: 1.4, color: theme.colors.accentText },
+  beatPlugTitle: { fontFamily: edFonts.bodyBlack, fontSize: 15, color: theme.colors.text },
+  beatPlugBody: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, lineHeight: 16, color: theme.colors.textSecondary },
+  beatPlugAction: { width: 44, height: 44, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
 
   emptyPanel: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,248,237,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 20,
-    gap: 6,
-    alignItems: 'center',
+    minHeight: 220,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 24,
+    gap: 7,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  emptyTitle: { fontFamily: edFonts.bodyBlack, fontSize: 15.5, color: ed.cream, textAlign: 'center', marginTop: 4 },
-  emptyCopy: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: 'rgba(255,248,237,0.56)', textAlign: 'center', maxWidth: 300 },
-});
+  emptyEyebrow: { marginTop: 3, fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.6, color: theme.colors.accentText },
+  emptyTitle: { maxWidth: 300, fontFamily: edFonts.serif, fontSize: 25, lineHeight: 28, color: theme.colors.text },
+  emptyCopy: { maxWidth: 310, fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
+  emptyAction: { minHeight: 44, marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: theme.colors.accentFill, paddingHorizontal: 14 },
+  emptyActionText: { fontFamily: edFonts.bodyBlack, fontSize: 12, color: theme.colors.onAccent },
+  }), [theme]);
+}

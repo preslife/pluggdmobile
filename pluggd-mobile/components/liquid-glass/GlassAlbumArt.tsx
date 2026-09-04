@@ -16,7 +16,7 @@ type GlassAlbumArtProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function GlassAlbumArt({ imageUrl, fallbackSource, tone = 'violet', compact, style }: GlassAlbumArtProps) {
+export function GlassAlbumArt({ imageUrl, fallbackSource, tone = 'accent', compact, style }: GlassAlbumArtProps) {
   const colors = liquidGlassToneColors[tone] ?? liquidGlassToneColors.violet;
   const sizeStyle = compact ? styles.compact : styles.regular;
 

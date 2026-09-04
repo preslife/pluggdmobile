@@ -20,6 +20,26 @@ const uuid = (value: unknown) =>
     ? value
     : null;
 
+function storageLocation(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    if (/^https:\/\//i.test(value)) {
+      const parts = new URL(value).pathname.split("/").filter(Boolean);
+      const objectIndex = parts.indexOf("object");
+      if (objectIndex < 0 || parts.length <= objectIndex + 3) return null;
+      return {
+        bucket: parts[objectIndex + 2],
+        path: parts.slice(objectIndex + 3).join("/"),
+      };
+    }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(value) || value.includes("..")) return null;
+    const [bucket, ...path] = value.replace(/^\/+/, "").split("/");
+    return bucket && path.length ? { bucket, path: path.join("/") } : null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -57,6 +77,40 @@ serve(async (req) => {
       !Number.isSafeInteger(amount) || amount <= 0
     ) {
       return json({ error: "Invalid credit transaction" }, 400);
+    }
+
+    if (kind === "spend_unlock") {
+      if (refType !== "release") {
+        return json({ error: "CREDITS_CAN_ONLY_UNLOCK_RELEASES" }, 400);
+      }
+      const { data: release, error: releaseError } = await (service as any)
+        .from("releases")
+        .select("id,user_id,owner_id,status,approved,visibility_status,catalogue_mode,catalogue_import_job_id,rights_status,approval_status,download_url,credits_price,price")
+        .eq("id", refId)
+        .maybeSingle();
+      const rights = String(release?.rights_status ?? "").toLowerCase();
+      const approval = String(release?.approval_status ?? "approved").toLowerCase();
+      const expected = Number(release?.credits_price) > 0
+        ? Math.ceil(Number(release.credits_price))
+        : Math.ceil(Number(release?.price ?? 0) * 100);
+      const deliverable = storageLocation(release?.download_url);
+      if (
+        releaseError || !release || release.approved !== true ||
+        !["published", "live", "approved"].includes(String(release.status ?? "")) ||
+        String(release.visibility_status ?? "visible") !== "visible" ||
+        String(release.catalogue_mode ?? "pluggd") !== "pluggd" ||
+        Boolean(release.catalogue_import_job_id) ||
+        ["blocked", "rejected", "takedown", "unlicensed"].includes(rights) ||
+        ["blocked", "rejected"].includes(approval) || !deliverable ||
+        !Number.isSafeInteger(expected) || expected <= 0 || expected !== amount
+      ) {
+        return json({ error: "RELEASE_PRICE_OR_AVAILABILITY_CHANGED" }, 409);
+      }
+      const probe = await service.storage.from(deliverable.bucket)
+        .createSignedUrl(deliverable.path, 30);
+      if (probe.error || !probe.data?.signedUrl) {
+        return json({ error: "RELEASE_DELIVERY_UNAVAILABLE" }, 409);
+      }
     }
 
     const { data, error } = await service.rpc("spend_mobile_credits", {

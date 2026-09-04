@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { supabase } from '../../src/lib/supabase';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type EcosystemRole =
   | 'artist'
@@ -155,13 +157,16 @@ async function syncRoleSelection(
 ) {
   const db = supabase as any;
 
-  const { error: clearPrimaryError } = await db
+  // Replace the saved role set so legacy roles cannot silently retain access.
+  // Merely clearing the old primary flag leaves obsolete creator roles behind
+  // and can incorrectly grant Studio access to a fan account.
+  const { error: clearRolesError } = await db
     .from('profile_roles')
-    .update({ is_primary: false })
+    .delete()
     .eq('user_id', userId);
 
-  if (clearPrimaryError && !ROLE_FALLBACK_CODES.has(clearPrimaryError.code)) {
-    throw clearPrimaryError;
+  if (clearRolesError && !ROLE_FALLBACK_CODES.has(clearRolesError.code)) {
+    throw clearRolesError;
   }
 
   const rows = selectedRoles.map((role) => ({
@@ -176,7 +181,7 @@ async function syncRoleSelection(
 
   const { error: upsertError } = await db
     .from('profile_roles')
-    .upsert(rows, { onConflict: 'user_id,role' });
+    .insert(rows);
 
   if (upsertError && !ROLE_FALLBACK_CODES.has(upsertError.code)) {
     throw upsertError;
@@ -184,11 +189,14 @@ async function syncRoleSelection(
 }
 
 function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={122} height={44} />;
+  return <BrandLogo variant="auto" width={122} height={44} />;
 }
 
 export default function RoleSelection() {
+  const theme = usePluggdTheme();
+  const styles = useRoleStyles();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { fontScale } = useWindowDimensions();
   const usesAccessibilityLayout = fontScale >= 1.5;
   const [primaryRole, setPrimaryRole] = useState<EcosystemRole | null>(null);
@@ -266,6 +274,9 @@ export default function RoleSelection() {
 
       await syncRoleSelection(user.id, selectedRoles, primaryRole);
 
+      await queryClient.invalidateQueries({ queryKey: ['mobile', 'account-identity', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['studio', 'native-command'] });
+
       router.replace(hasCreatorAccess ? '/creator/onboarding' : '/auth/fan-setup');
     } catch (error: any) {
       console.error('Error updating roles:', error);
@@ -280,7 +291,7 @@ export default function RoleSelection() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -324,6 +335,9 @@ export default function RoleSelection() {
             return (
               <Pressable
                 key={role.value}
+                accessibilityRole="radio"
+                accessibilityLabel={`${role.label}, ${role.description}`}
+                accessibilityState={{ selected }}
                 onPress={() => choosePrimaryRole(role.value)}
                 style={[
                   styles.roleCard,
@@ -335,7 +349,7 @@ export default function RoleSelection() {
                   <MaterialIcons
                     name={role.icon}
                     size={24}
-                    color={selected ? PLUGGD_ORANGE : '#F5F5F5'}
+                    color={selected ? theme.colors.accentText : theme.colors.text}
                   />
                 </View>
 
@@ -364,7 +378,7 @@ export default function RoleSelection() {
 
                   <View style={[styles.radio, selected && styles.radioSelected]}>
                     {selected && (
-                      <MaterialIcons name="check" size={18} color="#0a0806" />
+                      <MaterialIcons name="check" size={18} color={theme.colors.onAccent} />
                     )}
                   </View>
                 </View>
@@ -391,6 +405,9 @@ export default function RoleSelection() {
                 return (
                   <Pressable
                     key={role.value}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={role.label}
+                    accessibilityState={{ checked: selected }}
                     onPress={() => toggleSecondaryRole(role.value)}
                     style={[
                       styles.secondaryChip,
@@ -400,7 +417,7 @@ export default function RoleSelection() {
                     <MaterialIcons
                       name={role.icon}
                       size={18}
-                      color={selected ? PLUGGD_ORANGE : '#D8D8D8'}
+                      color={selected ? theme.colors.accentText : theme.colors.textSecondary}
                     />
                     <Text
                       style={[
@@ -415,7 +432,7 @@ export default function RoleSelection() {
 
                     <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
                       {selected && (
-                        <MaterialIcons name="check" size={14} color="#0a0806" />
+                        <MaterialIcons name="check" size={14} color={theme.colors.onAccent} />
                       )}
                     </View>
                   </Pressable>
@@ -428,12 +445,14 @@ export default function RoleSelection() {
 
       <View style={styles.footer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={loading ? 'Saving roles' : 'Continue with selected roles'}
           style={[styles.cta, (!primaryRole || loading) && styles.ctaDisabled]}
           onPress={handleContinue}
           disabled={!primaryRole || loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.onAccent} />
           ) : (
             <Text
               style={[
@@ -451,7 +470,7 @@ export default function RoleSelection() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#0a0806',
@@ -637,7 +656,7 @@ const styles = StyleSheet.create({
   },
   secondaryChip: {
     width: '48.8%',
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: '#2A2A2A',
@@ -706,3 +725,42 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
   },
 });
+
+function useRoleStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => ({
+    ...baseStyles,
+    screen: [baseStyles.screen, { backgroundColor: theme.colors.background }],
+    logoText: [baseStyles.logoText, { color: theme.colors.text }],
+    logoAccent: [baseStyles.logoAccent, { color: theme.colors.accentText }],
+    progressTrack: [baseStyles.progressTrack, { backgroundColor: theme.colors.border }],
+    progressFill: [baseStyles.progressFill, { backgroundColor: theme.colors.accentFill }],
+    progressDot: [baseStyles.progressDot, { backgroundColor: theme.colors.surfaceAlt }],
+    progressDotActive: [baseStyles.progressDotActive, { backgroundColor: theme.colors.background, borderColor: theme.colors.accentFill }],
+    stepText: [baseStyles.stepText, { color: theme.colors.textMuted }],
+    title: [baseStyles.title, { color: theme.colors.text }],
+    subtitle: [baseStyles.subtitle, { color: theme.colors.textSecondary }],
+    sectionTitle: [baseStyles.sectionTitle, { color: theme.colors.text }],
+    roleCard: [baseStyles.roleCard, { borderColor: theme.colors.border }],
+    roleCardSelected: [baseStyles.roleCardSelected, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }],
+    roleIconBox: [baseStyles.roleIconBox, { backgroundColor: theme.colors.surfaceAlt }],
+    roleName: [baseStyles.roleName, { color: theme.colors.text }],
+    roleDescription: [baseStyles.roleDescription, { color: theme.colors.textSecondary }],
+    categoryBadge: [baseStyles.categoryBadge, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }],
+    categoryBadgeText: [baseStyles.categoryBadgeText, { color: theme.colors.accentText }],
+    radio: [baseStyles.radio, { borderColor: theme.colors.textMuted }],
+    radioSelected: [baseStyles.radioSelected, { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill }],
+    helperText: [baseStyles.helperText, { color: theme.colors.textMuted }],
+    secondaryChip: [baseStyles.secondaryChip, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }],
+    secondaryChipSelected: [baseStyles.secondaryChipSelected, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }],
+    secondaryChipText: [baseStyles.secondaryChipText, { color: theme.colors.textSecondary }],
+    secondaryChipTextSelected: [baseStyles.secondaryChipTextSelected, { color: theme.colors.text }],
+    checkbox: [baseStyles.checkbox, { borderColor: theme.colors.textMuted }],
+    checkboxSelected: [baseStyles.checkboxSelected, { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.accentFill }],
+    footer: [baseStyles.footer, { backgroundColor: theme.colors.headerGlass, borderTopColor: theme.colors.border }],
+    cta: [baseStyles.cta, { backgroundColor: theme.colors.accentFill }],
+    ctaDisabled: [baseStyles.ctaDisabled, { backgroundColor: theme.colors.surfaceAlt }],
+    ctaText: [baseStyles.ctaText, { color: theme.colors.onAccent }],
+    ctaTextDisabled: [baseStyles.ctaTextDisabled, { color: theme.colors.textMuted }],
+  }), [theme]);
+}

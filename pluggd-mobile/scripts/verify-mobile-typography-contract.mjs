@@ -30,7 +30,7 @@ const liquidGlassSheet = read('components/liquid-glass/GlassSheet.tsx');
 const liquidHeroCard = read('components/liquid-glass/GlassHeroCard.tsx');
 const packageJson = read('package.json');
 
-assert.match(typography, /appTitle:\s*'Sora-ExtraBold'/, 'page/app titles must use the same Sora display family as web');
+assert.match(typography, /appTitle:\s*'Sora-ExtraBold'/, 'page/app titles must use the selected mobile Sora display family');
 assert.match(typography, /displaySemiBold:\s*'Sora-SemiBold'/, 'Sora SemiBold display font must be exposed');
 assert.match(typography, /displayBold:\s*'Sora-Bold'/, 'Sora Bold display font must be exposed');
 assert.match(typography, /displayExtraBold:\s*'Sora-ExtraBold'/, 'Sora ExtraBold display font must be exposed');
@@ -54,7 +54,7 @@ assert.doesNotMatch(
   'retired display-font dependencies must not remain installed',
 );
 assert.doesNotMatch(layout, /Inter_600SemiBold|Inter-SemiBold/, 'retired Inter font must not be loaded');
-assert.match(packageJson, /@expo-google-fonts\/sora/, 'Sora font package must be installed to match web display typography');
+assert.match(packageJson, /@expo-google-fonts\/sora/, 'Sora font package must be installed for the selected mobile display typography');
 for (const [importName, family] of [
   ['Sora_600SemiBold', 'Sora-SemiBold'],
   ['Sora_700Bold', 'Sora-Bold'],
@@ -67,8 +67,8 @@ for (const [importName, family] of [
 assert.match(tokens, /PLUGGD_ORANGE\s*=\s*'#ff6600'/, 'canonical app orange must be the editorial #ff6600');
 assert.match(tokens, /PLUGGD_LIGHT_ORANGE\s*=\s*'#E84F00'/, 'light mode orange must be contrast-adjusted');
 assert.match(tokens, /PLUGGD_BACKSTAGE_VIOLET\s*=\s*PLUGGD_VIOLET/, 'Backstage must expose a dedicated violet sub-accent token');
-assert.match(tokens, /#0a0806/, 'dark canvas token must be present');
-assert.match(tokens, /#F7F7F9/, 'light canvas token must be present');
+assert.match(tokens, /backgroundDeep:\s*'#070605'/, 'Night canvas token must be present');
+assert.match(tokens, /background:\s*'#FFF8ED'/, 'Editorial Light cream canvas token must be present');
 
 for (const primitive of ['PluggdTitle', 'PluggdHeading', 'PluggdSectionTitle', 'PluggdBody', 'PluggdMeta', 'PluggdCTA']) {
   assert.match(primitives, new RegExp(`export const ${primitive}`), `${primitive} text primitive must be exported`);

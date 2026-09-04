@@ -83,7 +83,7 @@ function hashIndex(value: string | null | undefined, modulo: number) {
 }
 
 function profileName(profile: ProfileItem) {
-  return profile.display_name || profile.full_name || profile.username || 'PLUGGD user';
+  return profile.display_name || profile.full_name || profile.username || 'Community member';
 }
 
 function profileSubtitle(profile: ProfileItem) {
@@ -143,13 +143,13 @@ function Header() {
     >
       <View style={styles.exploreHeaderRow}>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <Text style={styles.exploreEyebrow}>SEARCH</Text>
-          <Text style={styles.exploreTitle}>Explore</Text>
-          <Text style={styles.exploreSub} numberOfLines={2}>
+          <Text style={[styles.exploreEyebrow, { color: theme.colors.accentText }]}>SEARCH</Text>
+          <Text style={[styles.exploreTitle, { color: theme.colors.text }]}>Explore</Text>
+          <Text style={[styles.exploreSub, { color: theme.colors.textMuted }]} numberOfLines={2}>
             {'Universal discovery for releases, beats, mixes, events, creators, live rooms and communities.'.toUpperCase()}
           </Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={styles.headerIcon}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open wallet" onPress={() => go('/wallet')} style={[styles.headerIcon, { borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface }]}>
           <MaterialIcons name="account-balance-wallet" size={21} color={theme.colors.textSecondary} />
         </Pressable>
         <Pressable
@@ -172,22 +172,23 @@ function SearchInput({
   term: string;
   onTerm: (value: string) => void;
 }) {
+  const theme = usePluggdTheme();
   return (
-    <View style={styles.searchInputShell}>
-      <MaterialIcons name="search" size={22} color={COLORS.muted} />
+    <View style={[styles.searchInputShell, { borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface }]}>
+      <MaterialIcons name="search" size={22} color={theme.colors.textMuted} />
       <TextInput
         value={term}
         onChangeText={onTerm}
         autoCapitalize="none"
         autoCorrect={false}
         placeholder="Artists, tracks, events, communities"
-        placeholderTextColor={COLORS.dim}
+        placeholderTextColor={theme.colors.textSubtle}
         returnKeyType="search"
-        style={styles.searchInput}
+        style={[styles.searchInput, { color: theme.colors.text }]}
       />
       {term.length > 0 ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onTerm('')} hitSlop={10}>
-          <MaterialIcons name="close" size={20} color={COLORS.muted} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onTerm('')} style={styles.clearButton}>
+          <MaterialIcons name="close" size={20} color={theme.colors.textMuted} />
         </Pressable>
       ) : null}
     </View>
@@ -201,6 +202,7 @@ function FilterPills({
   active: SearchFilter;
   onChange: (filter: SearchFilter) => void;
 }) {
+  const theme = usePluggdTheme();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
       {FILTERS.map((filter) => {
@@ -214,9 +216,14 @@ function FilterPills({
               selectionHaptic();
               onChange(filter);
             }}
-            style={[styles.filterPill, selected && styles.filterPillActive]}
+            style={[
+              styles.filterPill,
+              { borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceAlt },
+              selected && styles.filterPillActive,
+              selected && { borderColor: theme.colors.accentText, backgroundColor: theme.colors.accentSoft },
+            ]}
           >
-            <Text style={[styles.filterText, selected && styles.filterTextActive]}>{filter}</Text>
+            <Text style={[styles.filterText, { color: theme.colors.textMuted }, selected && { color: theme.colors.accentText }]}>{filter}</Text>
           </Pressable>
         );
       })}
@@ -245,22 +252,24 @@ function Artwork({
 }
 
 function SectionHeader({ title, count }: { title: string; count?: number }) {
+  const theme = usePluggdTheme();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {typeof count === 'number' ? <Text style={styles.sectionCount}>{resultCountLabel(count)}</Text> : null}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
+      {typeof count === 'number' ? <Text style={[styles.sectionCount, { color: theme.colors.textMuted }]}>{resultCountLabel(count)}</Text> : null}
     </View>
   );
 }
 
 function EmptyBlock({ title, body }: { title: string; body: string }) {
+  const theme = usePluggdTheme();
   return (
-    <View style={styles.emptyBlock}>
-      <View style={styles.emptyIcon}>
-        <MaterialIcons name="travel-explore" size={22} color={COLORS.orange} />
+    <View style={[styles.emptyBlock, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.accentSoft }]}>
+        <MaterialIcons name="travel-explore" size={22} color={theme.colors.accentText} />
       </View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text>
+      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>{body}</Text>
     </View>
   );
 }
@@ -278,15 +287,16 @@ function DiscoveryTile({
   icon: keyof typeof MaterialIcons.glyphMap;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.discoveryTile}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.discoveryTile, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
       <Artwork uri={imageUrl} title={title} size={82} radius={16} />
       <View style={styles.discoveryCopy}>
         <View style={styles.discoveryIconRow}>
-          <MaterialIcons name={icon} size={15} color={COLORS.orange} />
-          <Text style={styles.discoveryMeta} numberOfLines={1}>{subtitle}</Text>
+          <MaterialIcons name={icon} size={15} color={theme.colors.accentText} />
+          <Text style={[styles.discoveryMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
         </View>
-        <Text style={styles.discoveryTitle} numberOfLines={2}>{title}</Text>
+        <Text style={[styles.discoveryTitle, { color: theme.colors.text }]} numberOfLines={2}>{title}</Text>
       </View>
     </Pressable>
   );
@@ -309,10 +319,11 @@ function ResultRow({
   onPress: () => void;
   action?: React.ReactNode;
 }) {
+  const theme = usePluggdTheme();
   // The row and its trailing action are sibling pressables (nesting them
   // would render nested <button> elements on web).
   return (
-    <View style={styles.resultRow}>
+    <View style={[styles.resultRow, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
@@ -321,14 +332,14 @@ function ResultRow({
         <Artwork uri={imageUrl} title={title} size={52} radius={13} />
         <View style={styles.resultCopy}>
           <View style={styles.resultMetaRow}>
-            <MaterialIcons name={icon} size={14} color={COLORS.muted} />
-            <Text style={styles.resultMeta} numberOfLines={1}>{subtitle}</Text>
+            <MaterialIcons name={icon} size={14} color={theme.colors.textMuted} />
+            <Text style={[styles.resultMeta, { color: theme.colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
           </View>
-          <Text style={styles.resultTitle} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.resultTitle, { color: theme.colors.text }]} numberOfLines={1}>{title}</Text>
         </View>
-        {rightLabel ? <Text style={styles.rightLabel}>{rightLabel}</Text> : null}
+        {rightLabel ? <Text style={[styles.rightLabel, { color: theme.colors.accentText, backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.borderAccent }]}>{rightLabel}</Text> : null}
       </Pressable>
-      {action ?? <MaterialIcons name="chevron-right" size={22} color={COLORS.dim} />}
+      {action ?? <MaterialIcons name="chevron-right" size={22} color={theme.colors.textSubtle} />}
     </View>
   );
 }
@@ -336,6 +347,7 @@ function ResultRow({
 function ReleaseRow({ release }: { release: ReleaseItem }) {
   const router = useRouter();
   const { playTrack } = usePlayback();
+  const theme = usePluggdTheme();
   const playable = releasePlayableUrl(release);
   return (
     <ResultRow
@@ -356,9 +368,9 @@ function ReleaseRow({ release }: { release: ReleaseItem }) {
             impactHaptic();
             playTrack(track);
           }}
-          style={[styles.playButton, !playable && styles.disabledButton]}
+          style={[styles.playButton, { backgroundColor: theme.colors.accentFill }, !playable && styles.disabledButton]}
         >
-          <MaterialIcons name="play-arrow" size={21} color={COLORS.canvas} />
+          <MaterialIcons name="play-arrow" size={21} color={theme.colors.onAccent} />
         </Pressable>
       }
     />
@@ -368,6 +380,7 @@ function ReleaseRow({ release }: { release: ReleaseItem }) {
 function MixRow({ mix }: { mix: MixItem }) {
   const router = useRouter();
   const { playTrack } = usePlayback();
+  const theme = usePluggdTheme();
   const playable = Boolean(mix.audio_url);
   return (
     <ResultRow
@@ -388,9 +401,9 @@ function MixRow({ mix }: { mix: MixItem }) {
             impactHaptic();
             playTrack(track);
           }}
-          style={[styles.playButton, !playable && styles.disabledButton]}
+          style={[styles.playButton, { backgroundColor: theme.colors.accentFill }, !playable && styles.disabledButton]}
         >
-          <MaterialIcons name="play-arrow" size={21} color={COLORS.canvas} />
+          <MaterialIcons name="play-arrow" size={21} color={theme.colors.onAccent} />
         </Pressable>
       }
     />
@@ -400,6 +413,7 @@ function MixRow({ mix }: { mix: MixItem }) {
 function BeatRow({ beat }: { beat: BeatItem }) {
   const router = useRouter();
   const { playTrack } = usePlayback();
+  const theme = usePluggdTheme();
   const playable = Boolean(beat.tagged_url || beat.audio_url);
   return (
     <ResultRow
@@ -420,9 +434,9 @@ function BeatRow({ beat }: { beat: BeatItem }) {
             impactHaptic();
             playTrack(track);
           }}
-          style={[styles.playButton, !playable && styles.disabledButton]}
+          style={[styles.playButton, { backgroundColor: theme.colors.accentFill }, !playable && styles.disabledButton]}
         >
-          <MaterialIcons name="play-arrow" size={21} color={COLORS.canvas} />
+          <MaterialIcons name="play-arrow" size={21} color={theme.colors.onAccent} />
         </Pressable>
       }
     />
@@ -476,7 +490,7 @@ function SocialPostRow({ post }: { post: MobileSocialPost }) {
   return (
     <ResultRow
       title={post.content || 'Social post'}
-      subtitle={`${post.display_name || post.username || 'PLUGGD user'} · ${formatCompact(post.comments_count)} replies`}
+      subtitle={`${post.display_name || post.username || 'Community member'} · ${formatCompact(post.comments_count)} replies`}
       imageUrl={post.images[0] || post.avatar_url}
       icon="forum"
       rightLabel={post.destinations[0]?.label}
@@ -604,6 +618,7 @@ function ResultSection({
 }
 
 export function SearchDiscoveryScreen() {
+  const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; term?: string }>();
@@ -668,14 +683,14 @@ export function SearchDiscoveryScreen() {
   const show = (filter: SearchFilter, count?: number) => activeFilter === 'Top' || activeFilter === filter || Boolean(count && activeFilter === filter);
 
   return (
-    <PremiumScreenBackdrop tone="community" style={styles.screen}>
+    <PremiumScreenBackdrop tone="community" style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
-      <LinearGradient colors={[COLORS.canvas, '#0A0A10', COLORS.canvas]} style={StyleSheet.absoluteFill} />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+      <LinearGradient colors={[theme.colors.background, theme.colors.canvas, theme.colors.background]} style={StyleSheet.absoluteFill} />
       <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.orange} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentText} />}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -686,15 +701,13 @@ export function SearchDiscoveryScreen() {
 
         {!hasSearch ? (
           <>
-            <View style={styles.intentPanel}>
-              <Text style={styles.intentEyebrow}>UNIVERSAL DISCOVERY</Text>
-              <Text style={styles.intentTitle}>Find the people, tracks, events and rooms moving PLUGGD right now.</Text>
+            <View style={[styles.intentPanel, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.intentEyebrow, { color: theme.colors.accentText }]}>UNIVERSAL DISCOVERY</Text>
+              <Text style={[styles.intentTitle, { color: theme.colors.text }]}>Find the people, tracks, events and rooms moving PLUGGD right now.</Text>
               <View style={styles.intentChips}>
-                <Text style={styles.intentChip}>Events</Text>
-                <Text style={styles.intentChip}>Creators</Text>
-                <Text style={styles.intentChip}>Posts</Text>
-                <Text style={styles.intentChip}>Community</Text>
-                <Text style={styles.intentChip}>Live</Text>
+                {['Events', 'Creators', 'Posts', 'Community', 'Live'].map((label) => (
+                  <Text key={label} style={[styles.intentChip, { color: theme.colors.textSecondary, backgroundColor: theme.colors.surfaceAlt }]}>{label}</Text>
+                ))}
               </View>
             </View>
 
@@ -739,7 +752,7 @@ export function SearchDiscoveryScreen() {
             <ResultSection title="Communities And Creators">
               <View style={styles.resultList}>
                 {discoveryCommunities.slice(0, 3).map((community) => <CommunityRow key={`community-${community.id}`} community={community} />)}
-                {discoveryCreators.slice(0, 4).map((profile) => <ProfileRow key={`profile-${profile.user_id || profile.id || profile.username}`} profile={profile} />)}
+                {discoveryCreators.slice(0, 4).map((profile, index) => <ProfileRow key={`profile-${profile.user_id || profile.id || profile.username || index}`} profile={profile} />)}
               </View>
               {discoveryCommunities.length === 0 && discoveryCreators.length === 0 ? (
                 <EmptyBlock title="No communities surfaced yet." body="Creator communities and profiles will appear here as they become active." />
@@ -749,7 +762,7 @@ export function SearchDiscoveryScreen() {
         ) : null}
 
         {hasSearch && search.isLoading ? (
-          <PremiumSkeleton compact label="Searching PLUGGD..." style={styles.loadingBlock} />
+          <PremiumSkeleton compact label="Searching PLUGGD..." style={[styles.loadingBlock, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} />
         ) : null}
 
         {hasSearch && !search.isLoading && totals === 0 ? (
@@ -758,9 +771,9 @@ export function SearchDiscoveryScreen() {
 
         {hasSearch && results ? (
           <>
-            <View style={styles.summaryBar}>
-              <Text style={styles.summaryTitle}>{resultCountLabel(totals)}</Text>
-              <Text style={styles.summaryBody} numberOfLines={1}>Grouped across posts, boards, music, events, live, communities and people.</Text>
+            <View style={[styles.summaryBar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>{resultCountLabel(totals)}</Text>
+              <Text style={[styles.summaryBody, { color: theme.colors.textMuted }]} numberOfLines={1}>Grouped across posts, boards, music, events, live, communities and people.</Text>
             </View>
 
             {show('Posts', results.posts.length) && results.posts.length > 0 ? (
@@ -779,8 +792,8 @@ export function SearchDiscoveryScreen() {
               <ResultSection title="Trending Hashtags" count={results.hashtags.length}>
                 <View style={styles.hashtagWrap}>
                   {results.hashtags.slice(0, 12).map((tag) => (
-                    <Pressable key={tag} style={styles.hashtagPill} onPress={() => setTerm(`#${tag}`)}>
-                      <Text style={styles.hashtagText}>#{tag}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Search hashtag ${tag}`} key={tag} style={[styles.hashtagPill, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }]} onPress={() => setTerm(`#${tag}`)}>
+                      <Text style={[styles.hashtagText, { color: theme.colors.accentText }]}>#{tag}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -795,8 +808,8 @@ export function SearchDiscoveryScreen() {
 
             {show('Creators', results.creators.length) && results.creators.length > 0 ? (
               <ResultSection title="Creators" count={results.creators.length}>
-                {results.creators.slice(0, activeFilter === 'Creators' ? 12 : 4).map((profile) => (
-                  <ProfileRow key={`creator-${profile.user_id || profile.id || profile.username}`} profile={profile} />
+                {results.creators.slice(0, activeFilter === 'Creators' ? 12 : 4).map((profile, index) => (
+                  <ProfileRow key={`creator-${profile.user_id || profile.id || profile.username || index}`} profile={profile} />
                 ))}
               </ResultSection>
             ) : null}
@@ -865,8 +878,8 @@ export function SearchDiscoveryScreen() {
 
             {show('Users', results.users.length) && results.users.length > 0 ? (
               <ResultSection title="Users" count={results.users.length}>
-                {results.users.slice(0, activeFilter === 'Users' ? 12 : 4).map((profile) => (
-                  <ProfileRow key={`user-${profile.user_id || profile.id || profile.username}`} profile={profile} userMode />
+                {results.users.slice(0, activeFilter === 'Users' ? 12 : 4).map((profile, index) => (
+                  <ProfileRow key={`user-${profile.user_id || profile.id || profile.username || index}`} profile={profile} userMode />
                 ))}
               </ResultSection>
             ) : null}
@@ -986,6 +999,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '800',
+  },
+  clearButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterRow: {
     paddingHorizontal: 16,

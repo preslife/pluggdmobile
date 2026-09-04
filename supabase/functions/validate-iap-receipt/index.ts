@@ -8,61 +8,24 @@
  * Uses Apple's App Store Server API (v2) to verify transactions.
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { verifyAppleTransaction } from "../_shared/appleSignedData.ts";
+import {
+  APPLE_CREDIT_PACKS,
+  type AppleCreditPack,
+} from "../_shared/appleCreditPacks.ts";
+import {
+  applePlatformPlan,
+  type ApplePlatformPlan,
+} from "../_shared/applePlatformPlans.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
-};
-
-// ─── Credit pack SKU → credit amounts ────────────────────────────────
-// Matches PLUGGD_NEW/src/lib/creditPricing.ts and the mobile useCredits hook.
-type CreditPackConfig = {
-  label: string;
-  priceGBP: number;
-  baseCredits: number;
-  bonusCredits: number;
-  totalCredits: number;
-};
-
-const CREDIT_PACKS: Record<string, CreditPackConfig> = {
-  pluggd_credits_starter: {
-    label: "Starter",
-    priceGBP: 5,
-    baseCredits: 500,
-    bonusCredits: 0,
-    totalCredits: 500,
-  },
-  pluggd_credits_popular: {
-    label: "Popular",
-    priceGBP: 10,
-    baseCredits: 1000,
-    bonusCredits: 50,
-    totalCredits: 1050,
-  },
-  pluggd_credits_value: {
-    label: "Value",
-    priceGBP: 25,
-    baseCredits: 2500,
-    bonusCredits: 250,
-    totalCredits: 2750,
-  },
-  pluggd_credits_premium: {
-    label: "Premium",
-    priceGBP: 50,
-    baseCredits: 5000,
-    bonusCredits: 750,
-    totalCredits: 5750,
-  },
-  pluggd_credits_ultimate: {
-    label: "Ultimate",
-    priceGBP: 100,
-    baseCredits: 10000,
-    bonusCredits: 2000,
-    totalCredits: 12000,
-  },
 };
 
 type MembershipProductRecord = {
@@ -93,7 +56,7 @@ interface TransactionInfo {
   revocationDate?: number;
 }
 
-type SupabaseServiceClient = ReturnType<typeof createClient>;
+type SupabaseServiceClient = SupabaseClient<any, "public", any>;
 
 async function getWalletBalance(
   supabaseClient: SupabaseServiceClient,
@@ -148,7 +111,7 @@ async function insertCreditLedgerEntry(
   userId: string,
   productId: string,
   transactionId: string,
-  pack: CreditPackConfig,
+  pack: AppleCreditPack,
 ) {
   const balanceBefore = await getWalletBalance(supabaseClient, userId);
   const balanceAfterCredits =
@@ -157,7 +120,7 @@ async function insertCreditLedgerEntry(
   const basePayload = {
     user_id: userId,
     amount_credits: pack.totalCredits,
-    kind: "topup",
+    kind: "topup_iap",
     ref_type: "apple_iap",
     ref_id: null,
     meta: {
@@ -240,27 +203,34 @@ async function resolveMembershipProduct(
   if (legacyError) {
     throw new Error(`Legacy membership lookup failed: ${legacyError.message}`);
   }
-  if (!legacySubscription?.tier_id || !legacySubscription.creator_id) {
+  const legacyTierId = typeof legacySubscription?.tier_id === "string"
+    ? legacySubscription.tier_id.trim()
+    : "";
+  const legacyCreatorId = typeof legacySubscription?.creator_id === "string"
+    ? legacySubscription.creator_id.trim()
+    : "";
+  if (!legacyTierId || !legacyCreatorId) {
     return null;
   }
 
   const { data: tier } = await supabaseClient
     .from("membership_tiers")
     .select("name")
-    .eq("id", legacySubscription.tier_id)
+    .eq("id", legacyTierId)
     .maybeSingle();
+  const tierName = typeof tier?.name === "string" ? tier.name : null;
 
   return {
     id: `legacy:${originalTransactionId}`,
-    creator_id: legacySubscription.creator_id,
-    membership_tier_id: legacySubscription.tier_id,
+    creator_id: legacyCreatorId,
+    membership_tier_id: legacyTierId,
     product_id: productId,
     legacy_product_id: productId,
-    price_point_cents: Number(legacySubscription.price_cents ?? 0),
-    currency: String(legacySubscription.currency ?? "USD").toUpperCase(),
+    price_point_cents: Number(legacySubscription?.price_cents ?? 0),
+    currency: String(legacySubscription?.currency ?? "USD").toUpperCase(),
     billing_period: "monthly",
     status: "legacy_mapped",
-    membership_tiers: tier ?? null,
+    membership_tiers: tierName ? { name: tierName } : null,
   };
 }
 
@@ -306,8 +276,9 @@ serve(async (req) => {
       throw new Error("A StoreKit 2 signed transaction is required");
     }
 
-    // Verify the JWS certificate chain, signature, bundle ID and App Apple ID
-    // before trusting any client-supplied transaction fields.
+    // Verify the JWS certificate chain, signature, bundle ID and environment
+    // before trusting any client-supplied transaction fields. Apple supplies
+    // appAppleId on notification/app envelopes, not transaction payloads.
     const verified = await verifyAppleTransaction(receipt_data);
     const decodedTx = verified.payload as TransactionInfo;
     if (
@@ -323,8 +294,31 @@ serve(async (req) => {
       throw new Error("This transaction has been revoked");
     }
 
-    const creditPack = CREDIT_PACKS[product_id] ?? null;
-    const membershipProduct = creditPack
+    const creditPack = APPLE_CREDIT_PACKS[product_id] ?? null;
+    const allowlistedPlatformPlan = applePlatformPlan(product_id);
+    let platformPlan: ApplePlatformPlan | null = null;
+    if (allowlistedPlatformPlan) {
+      const { data: mappedProduct, error: mappedProductError } =
+        await supabaseClient
+          .from("platform_subscription_products")
+          .select("tier,billing_cycle,service_level,is_active")
+          .eq("provider", "apple")
+          .eq("product_id", product_id)
+          .eq("is_active", true)
+          .maybeSingle();
+      if (mappedProductError) {
+        throw new Error(`PLUGGD plan catalogue lookup failed: ${mappedProductError.message}`);
+      }
+      if (mappedProduct) {
+        platformPlan = {
+          ...allowlistedPlatformPlan,
+          tier: mappedProduct.tier as ApplePlatformPlan["tier"],
+          billingCycle: mappedProduct.billing_cycle as ApplePlatformPlan["billingCycle"],
+          serviceLevel: mappedProduct.service_level as ApplePlatformPlan["serviceLevel"],
+        };
+      }
+    }
+    const membershipProduct = creditPack || platformPlan
       ? null
       : await resolveMembershipProduct(
         supabaseClient,
@@ -334,6 +328,8 @@ serve(async (req) => {
       );
     const inferredType = creditPack
       ? "credits"
+      : platformPlan
+      ? "platform_subscription"
       : membershipProduct
       ? "subscription"
       : null;
@@ -392,7 +388,12 @@ serve(async (req) => {
           transaction_id,
           original_transaction_id: decodedTx?.originalTransactionId ?? transaction_id,
           product_id,
-          type: inferredType,
+          type: inferredType === "credits" ? "credits" : "subscription",
+          product_kind: inferredType === "platform_subscription"
+            ? "platform_subscription"
+            : inferredType === "credits"
+            ? "credits"
+            : "fan_membership",
           environment: decodedTx.environment ?? verified.verifiedEnvironment,
           purchase_date: decodedTx.purchaseDate
             ? new Date(decodedTx.purchaseDate).toISOString()
@@ -438,7 +439,62 @@ serve(async (req) => {
       );
     }
 
-    // ── Handle subscription purchases ──
+    // ── Handle PLUGGD platform plan purchases ──
+    if (inferredType === "platform_subscription" && platformPlan) {
+      const expiresDate = decodedTx.expiresDate
+        ? new Date(decodedTx.expiresDate).toISOString()
+        : null;
+      if (!expiresDate || new Date(expiresDate).getTime() <= Date.now()) {
+        throw new Error("This PLUGGD plan transaction is no longer active");
+      }
+
+      const originalTransactionId =
+        decodedTx.originalTransactionId ?? transaction_id;
+      const purchaseDate = decodedTx.purchaseDate
+        ? new Date(decodedTx.purchaseDate).toISOString()
+        : new Date().toISOString();
+      const { data: entitlement, error: entitlementError } =
+        await supabaseClient.rpc("platform_sync_apple_subscription", {
+          p_user_id: user.id,
+          p_product_id: product_id,
+          p_transaction_id: transaction_id,
+          p_original_transaction_id: originalTransactionId,
+          p_status: "active",
+          p_period_start: purchaseDate,
+          p_period_end: expiresDate,
+          p_environment: decodedTx.environment ?? verified.verifiedEnvironment,
+          p_auto_renew_status: true,
+          p_grace_period_end: null,
+        });
+
+      if (entitlementError || !entitlement) {
+        throw new Error(
+          `Failed to activate verified PLUGGD plan: ${
+            entitlementError?.message ?? "missing entitlement record"
+          }`,
+        );
+      }
+
+      console.log(
+        `[validate-iap] Activated PLUGGD ${platformPlan.tier} plan for ${user.id}`,
+      );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          duplicate: alreadyLoggedTransaction,
+          type: "platform_subscription",
+          tier: entitlement.tier,
+          subscription_id: entitlement.id,
+          current_period_end: entitlement.current_period_end,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
+      );
+    }
+
+    // ── Handle creator membership subscription purchases ──
     if (inferredType === "subscription" && membershipProduct) {
       const tierName = membershipProduct.membership_tiers?.name ??
         "Creator membership";

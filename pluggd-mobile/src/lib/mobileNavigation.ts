@@ -98,18 +98,26 @@ export function resolveProfileRoles(
   profile?: NavProfile | null,
   roleRows: ProfileRoleRow[] = [],
 ): EcosystemRole[] {
-  const roles = [
-    normalizeRole(profile?.profile_type),
-    normalizeRole(profile?.user_type),
-    ...onboardingRoles(profile),
-    ...roleRows.map((row) => normalizeRole(row.role)),
-  ].filter(Boolean) as EcosystemRole[];
+  // A completed role selection is authoritative. Do not union it with legacy
+  // creator flags: older accounts can retain stale user_type/is_creator values
+  // after explicitly choosing Fan.
+  const selectedRoles = onboardingRoles(profile);
+  if (selectedRoles.length > 0) return Array.from(new Set(selectedRoles));
 
-  if (profile?.is_creator && roles.length === 0) roles.push('artist');
+  // The normalized role table is the next source of truth for accounts created
+  // outside mobile onboarding.
+  const normalizedRows = roleRows.map((row) => normalizeRole(row.role)).filter(Boolean) as EcosystemRole[];
+  if (normalizedRows.length > 0) return Array.from(new Set(normalizedRows));
+
+  // Fall back through progressively older profile fields. An explicit
+  // profile_type (including Fan) wins over legacy user_type and booleans.
+  const profileType = normalizeRole(profile?.profile_type);
+  if (profileType) return profile?.is_label && profileType !== 'manager' ? [profileType, 'manager'] : [profileType];
+
+  const legacyType = normalizeRole(profile?.user_type);
+  const roles: EcosystemRole[] = legacyType ? [legacyType] : profile?.is_creator ? ['artist'] : [];
   if (profile?.is_label) roles.push('manager');
-  if (roles.length === 0) roles.push('fan');
-
-  return Array.from(new Set(roles));
+  return roles.length > 0 ? Array.from(new Set(roles)) : ['fan'];
 }
 
 export function hasCreatorAccess(roles: EcosystemRole[] = []) {

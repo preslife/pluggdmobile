@@ -10,6 +10,7 @@ const beatLicence = read('app/commerce/license-preview.tsx');
 const event = read('app/events/[id].tsx');
 const wallet = read('app/wallet.tsx');
 const membership = read('app/membership/[creatorId].tsx');
+const subscriptions = read('src/hooks/useSubscription.ts');
 const tickets = read('app/tickets.tsx');
 
 assert.match(contentUi, /PremiumScreenHeader/, 'shared ScreenShell must use the premium app header');
@@ -31,11 +32,11 @@ for (const [name, source] of [
   assert.doesNotMatch(source, /PremiumScreenBackdrop/, `${name} must not reintroduce the obsolete promotional backdrop`);
 }
 
-// Release detail is the mobile discovery editorial page: art and identity
-// lead into an immediate playback decision, then contextual credits and
-// community/support layers. This deliberately replaces the old web section
+// Release detail is the mobile discovery editorial page: art and release
+// identity lead into an immediate playback decision, then contextual credits
+// and community/support layers. This deliberately replaces the old web section
 // order assertion with the approved mobile discovery hierarchy.
-assert.match(release, /SUPPORT THIS RELEASE/, 'release detail must open with the full-bleed art + support pill (web parity)');
+assert.match(release, /PLUGGD RELEASE/, 'release detail must open with the full-bleed art and release identity pill');
 assert.match(release, /AccentTitle/, 'release detail title must carry the web orange last-word treatment');
 assert.match(release, /PLAYBACK[\s\S]*FULL CREDITS[\s\S]*DISCUSSION[\s\S]*WHERE TO STREAM[\s\S]*THE WORDS/, 'release detail must put playback before contextual credits, discussion and supporting material');
 assert.match(release, /spendCredits[\s\S]*spend_unlock/, 'release detail must keep credit unlock wired through the wallet ledger');
@@ -50,7 +51,7 @@ assert.match(beatLicence, /openHostedCheckout/, 'eligible professional beat lice
 
 assert.match(event, /EventTicketPurchase/, 'event detail must preserve policy-gated ticket purchase');
 assert.match(event, /setEventRsvp/, 'event detail must preserve free RSVP');
-assert.match(event, /Event thread/, 'event detail must preserve event-thread social handoff');
+assert.match(event, /Event discussion[\s\S]*Start an event thread/, 'event detail must preserve event-thread social handoff');
 assert.match(event, /useCommercePolicy/, 'paid event tickets must be server-policy gated');
 assert.match(event, /ticketTypeId/, 'paid event tickets must submit a trusted ticket-type identifier');
 
@@ -66,9 +67,22 @@ for (const sku of [
   assert.match(wallet + read('src/hooks/useCredits.ts'), new RegExp(sku), `wallet credits flow must preserve ${sku}`);
 }
 
-assert.match(membership, /Apple[\s\S]*Settings[\s\S]*Subscriptions/, 'membership screen must keep Apple subscription cancel/manage guidance');
-assert.match(membership, /membership_iap_products/, 'membership screen must load unique creator-tier Apple product mappings');
+assert.match(membership, /storeName[\s\S]*(?:subscription settings|store account settings)/, 'membership screen must keep provider-aware subscription cancel/manage guidance');
+assert.match(subscriptions, /membership_iap_products/, 'membership billing must preserve unique creator-tier Apple product mappings');
+assert.match(subscriptions, /store_commerce_products/, 'membership billing must load verified Google Play product and base-plan mappings');
 assert.doesNotMatch(membership, /pluggd_tier_(?:299|499|999|1999|4999)/, 'membership screen must not use shared price SKUs as creator identity');
+assert.match(
+  membership,
+  /<View\s+key=\{tier\.id\}[\s\S]*?<Pressable[\s\S]*?accessibilityRole="radio"/,
+  'tier expansion and purchase actions must be sibling controls rather than nested Pressables',
+);
+assert.match(
+  membership,
+  /joinButton:\s*\{[\s\S]*?backgroundColor:\s*'#ff6600'/,
+  'the membership purchase CTA must render with an explicit visible PLUGGD-orange surface',
+);
+assert.match(membership, /SWITCH TO/, 'membership screen must support same-creator tier changes');
+assert.match(membership, /isCurrentTier/, 'membership screen must identify the active creator tier');
 
 assert.match(tickets, /Entry codes appear only for eligible tickets/, 'tickets must keep honest QR/pass limitations');
 assert.match(tickets, /issueTicketEntryToken/, 'tickets must keep rotating entry token integration');

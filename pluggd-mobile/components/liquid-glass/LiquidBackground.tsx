@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { liquidGlassColors, type LiquidGlassTone } from '../../src/design/liquidGlassTokens';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type LiquidBackgroundProps = {
   children?: ReactNode;
@@ -18,22 +19,21 @@ function bottomGlowForTone(tone: LiquidGlassTone) {
 }
 
 export function LiquidBackground({ children, style, tone = 'accent' }: LiquidBackgroundProps) {
+  const theme = usePluggdTheme();
+  const light = theme.scheme === 'light';
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, style]}>
+    <View pointerEvents="box-none" style={[styles.wrap, { backgroundColor: theme.colors.background }, style]}>
       <LinearGradient
-        colors={[
-          liquidGlassColors.backgroundTop,
-          liquidGlassColors.backgroundMid,
-          '#100c08',
-          liquidGlassColors.backgroundDeep,
-        ]}
+        colors={light
+          ? ['#FFFCF7', '#FFF8ED', '#F8ECD9', '#FFF8ED']
+          : [liquidGlassColors.backgroundTop, liquidGlassColors.backgroundMid, '#100c08', liquidGlassColors.backgroundDeep]}
         locations={[0, 0.32, 0.72, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <View pointerEvents="none" style={[styles.violetWash, { backgroundColor: liquidGlassColors.violetGlow }]} />
-      <View pointerEvents="none" style={[styles.blueWash, { backgroundColor: liquidGlassColors.blueGlow }]} />
-      <View pointerEvents="none" style={[styles.bottomWash, { backgroundColor: bottomGlowForTone(tone) }]} />
-      <View pointerEvents="none" style={styles.vignette} />
+      <View pointerEvents="none" style={[styles.violetWash, { backgroundColor: light ? 'rgba(124,58,237,0.025)' : liquidGlassColors.violetGlow }]} />
+      <View pointerEvents="none" style={[styles.blueWash, { backgroundColor: light ? 'rgba(83,112,230,0.018)' : liquidGlassColors.blueGlow }]} />
+      <View pointerEvents="none" style={[styles.bottomWash, { backgroundColor: light ? 'rgba(232,79,0,0.045)' : bottomGlowForTone(tone) }]} />
+      <View pointerEvents="none" style={[styles.vignette, light && styles.vignetteLight]} />
       {children}
     </View>
   );
@@ -77,5 +77,8 @@ const styles = StyleSheet.create({
   vignette: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.16)',
+  },
+  vignetteLight: {
+    backgroundColor: 'rgba(91,56,31,0.018)',
   },
 });

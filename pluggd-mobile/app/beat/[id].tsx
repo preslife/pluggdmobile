@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { EditorialTitle, type EditorialSegment } from '../../components/EditorialTitle';
@@ -10,7 +10,9 @@ import { RecoveryState } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
-import { BeatItem, PLUGGD_ORANGE, formatGBP, toTrack } from '../../src/lib/mobileContent';
+import { BeatItem, formatGBP, toTrack } from '../../src/lib/mobileContent';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 function accentLastWord(value?: string | null): EditorialSegment[] {
   const trimmed = (value || '').trim();
@@ -21,6 +23,9 @@ function accentLastWord(value?: string | null): EditorialSegment[] {
 }
 
 export default function BeatDetailScreen() {
+  const theme = usePluggdTheme();
+  const styles = useBeatStyles();
+  const bottomInset = useBottomChromeInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { playTrack, addToQueue } = usePlayback();
@@ -78,16 +83,16 @@ export default function BeatDetailScreen() {
 
   return (
     <PremiumScreenBackdrop tone="accent" style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
-          <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/market/beats' as any))}>
+          <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
         </Pressable>
 
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={PLUGGD_ORANGE} />
+            <ActivityIndicator color={theme.colors.accentFill} />
           </View>
         ) : null}
 
@@ -100,7 +105,7 @@ export default function BeatDetailScreen() {
             primaryLabel="Explore beats"
             onPrimary={() => router.replace('/market' as any)}
             secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            onSecondary={() => (router.canGoBack() ? router.back() : router.replace('/market/beats' as any))}
           />
         ) : null}
 
@@ -108,10 +113,10 @@ export default function BeatDetailScreen() {
           <>
             <View style={styles.hero}>
               {beat.image_url ? <Image source={{ uri: beat.image_url }} style={styles.heroImage} /> : null}
-              {!beat.image_url ? <MaterialIcons name="headphones" size={58} color={PLUGGD_ORANGE} /> : null}
+              {!beat.image_url ? <MaterialIcons name="headphones" size={58} color={theme.colors.accentText} /> : null}
             </View>
             <Text style={styles.eyebrow}>Market / Beats</Text>
-            <EditorialTitle segments={accentLastWord(beat.title || 'Untitled beat')} size={34} lineHeight={39} color="#FFFFFF" accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
+            <EditorialTitle segments={accentLastWord(beat.title || 'Untitled beat')} size={34} lineHeight={39} color={theme.colors.text} accentColor={theme.colors.accentText} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>{beat.producer_name || 'Producer'}</Text>
 
             <View style={styles.metaRow}>
@@ -133,7 +138,7 @@ export default function BeatDetailScreen() {
                   if (track) playTrack(track);
                 }}
               >
-                <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
+                <MaterialIcons name="play-arrow" size={22} color={theme.colors.onAccent} />
                 <Text style={styles.primaryButtonText}>Preview</Text>
               </Pressable>
               <Pressable
@@ -146,26 +151,26 @@ export default function BeatDetailScreen() {
                   if (track) addToQueue(track);
                 }}
               >
-                <MaterialIcons name="queue-music" size={20} color={PLUGGD_ORANGE} />
+                <MaterialIcons name="queue-music" size={20} color={theme.colors.accentText} />
                 <Text style={styles.secondaryButtonText}>Queue</Text>
               </Pressable>
             </View>
 
             <View style={styles.quickActions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Save beat" accessibilityState={{ busy: saving }} style={styles.quickActionButton} onPress={saveBeat} disabled={saving}>
-                <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
+                <MaterialIcons name="bookmark-border" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Post beat to community" style={styles.quickActionButton} onPress={() => router.push({ pathname: '/create-post', params: { attachmentType: 'beat', beatId: beat.id, type: 'beat_feedback' } } as any)}>
-                <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
+                <MaterialIcons name="post-add" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Share beat" style={styles.quickActionButton} onPress={shareBeat}>
-                <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
+                <MaterialIcons name="ios-share" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Open Market" style={styles.quickActionButton} onPress={() => router.push('/market' as any)}>
-                <MaterialIcons name="storefront" size={19} color={PLUGGD_ORANGE} />
+                <MaterialIcons name="storefront" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>Market</Text>
               </Pressable>
             </View>
@@ -195,7 +200,7 @@ export default function BeatDetailScreen() {
                         <Text style={styles.licenseHint}>Review rights and licence agreement</Text>
                       </View>
                       <Text style={styles.licensePrice}>{formatGBP(option.price)}</Text>
-                      <MaterialIcons name="arrow-forward" size={18} color={PLUGGD_ORANGE} />
+                      <MaterialIcons name="arrow-forward" size={18} color={theme.colors.accentText} />
                     </Pressable>
                   ))}
                 </View>
@@ -213,6 +218,7 @@ export default function BeatDetailScreen() {
 }
 
 function Meta({ label, value }: { label: string; value: string }) {
+  const styles = useBeatStyles();
   return (
     <View style={styles.metaCard}>
       <Text style={styles.metaLabel}>{label}</Text>
@@ -221,14 +227,18 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806' },
+function useBeatStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { padding: 16, paddingTop: 54, paddingBottom: 220 },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 4,
-    backgroundColor: '#171310',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.controlBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -238,37 +248,38 @@ const styles = StyleSheet.create({
   hero: {
     height: 310,
     borderRadius: 6,
-    backgroundColor: '#171310',
+    backgroundColor: theme.colors.artworkBase,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   heroImage: { width: '100%', height: '100%' },
-  eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase', marginTop: 18, letterSpacing: 0.8 },
-  title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
-  subtitle: { color: '#B8B8B8', fontSize: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
-  metaRow: { flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
+  eyebrow: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase', marginTop: 18, letterSpacing: 0.8 },
+  title: { color: theme.colors.text, fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
+  subtitle: { color: theme.colors.textSecondary, fontSize: 17, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
+  metaRow: { flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.divider },
   metaCard: { flex: 1, paddingVertical: 13, paddingRight: 8 },
-  metaLabel: { color: '#8E8E8E', fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase' },
-  metaValue: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 5 },
-  description: { color: '#D4D4D4', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
+  metaLabel: { color: theme.colors.textMuted, fontSize: 11, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase' },
+  metaValue: { color: theme.colors.text, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', marginTop: 5 },
+  description: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
   buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
-  primaryButton: { flex: 1.35, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  secondaryButton: { flex: 0.65, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  quickActions: { flexDirection: 'row', marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
+  primaryButton: { flex: 1.35, height: 54, borderRadius: 5, backgroundColor: theme.colors.accentFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  primaryButtonText: { color: theme.colors.onAccent, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  secondaryButton: { flex: 0.65, height: 54, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButtonText: { color: theme.colors.accentText, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  quickActions: { flexDirection: 'row', marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.divider },
   quickActionButton: { minHeight: 48, flex: 1, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  licenseCard: { marginTop: 28, borderTopWidth: 1, borderColor: '#2B2723', paddingTop: 18 },
-  licenseEyebrow: { color: PLUGGD_ORANGE, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  cardTitle: { color: '#FFFFFF', fontSize: 23, lineHeight: 28, fontFamily: pluggdFonts.displayBold, marginTop: 7 },
-  cardBody: { color: '#B8B8B8', fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
-  licenseList: { marginTop: 16, borderTopWidth: 1, borderColor: '#2B2723' },
-  licenseRow: { minHeight: 70, borderBottomWidth: 1, borderColor: '#2B2723', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  licenseIndex: { width: 22, color: '#716961', fontSize: 9, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  quickActionText: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  licenseCard: { marginTop: 28, borderTopWidth: 1, borderColor: theme.colors.divider, paddingTop: 18 },
+  licenseEyebrow: { color: theme.colors.accentText, fontSize: 10, letterSpacing: 1.5, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  cardTitle: { color: theme.colors.text, fontSize: 23, lineHeight: 28, fontFamily: pluggdFonts.displayBold, marginTop: 7 },
+  cardBody: { color: theme.colors.textSecondary, fontSize: 14, lineHeight: 20, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 6 },
+  licenseList: { marginTop: 16, borderTopWidth: 1, borderColor: theme.colors.divider },
+  licenseRow: { minHeight: 70, borderBottomWidth: 1, borderColor: theme.colors.divider, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  licenseIndex: { width: 22, color: theme.colors.textSubtle, fontSize: 9, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   licenseCopy: { flex: 1, minWidth: 0 },
-  licenseName: { color: '#FFFFFF', fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'capitalize' },
-  licenseHint: { color: '#8E8782', fontSize: 11, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
-  licensePrice: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-});
+  licenseName: { color: theme.colors.text, fontSize: 14, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', textTransform: 'capitalize' },
+  licenseHint: { color: theme.colors.textMuted, fontSize: 11, fontFamily: pluggdFonts.satoshiMedium, marginTop: 3 },
+  licensePrice: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  }), [theme]);
+}

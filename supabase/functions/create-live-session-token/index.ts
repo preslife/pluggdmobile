@@ -59,7 +59,6 @@ serve(async (req) => {
 
     const body = await req.json();
     const roomId: string | undefined = body?.room_id ?? body?.roomId;
-    const requestedRole: string = (body?.role || "audience").toLowerCase();
     const ttlSeconds: number = Math.min(Math.max(Number(body?.ttl_seconds) || TOKEN_DEFAULT_TTL_SECONDS, 300), 60 * 60 * 3);
 
     if (!roomId) {
@@ -68,12 +67,19 @@ serve(async (req) => {
 
     const { data: room, error: roomError } = await serviceClient
       .from("session_rooms")
-      .select("id, host_id, title, status, is_public, agora_channel_name, agora_host_uid")
+      .select("id, host_id, title, status, is_public, mode_config, agora_channel_name, agora_host_uid, agora_live_started_at")
       .eq("id", roomId)
       .maybeSingle();
 
     if (roomError || !room) {
       throw new Error(roomError?.message || "Session room not found");
+    }
+
+    const modeConfig = room.mode_config && typeof room.mode_config === "object" && !Array.isArray(room.mode_config)
+      ? room.mode_config as Record<string, unknown>
+      : {};
+    if (modeConfig.removed_at) {
+      throw new Error("This live session has been removed");
     }
 
     const isHost = room.host_id === user.id;
@@ -100,7 +106,7 @@ serve(async (req) => {
 
       if (participant && !participant.left_at) {
         allowJoin = true;
-        participantRole = (participant.role as typeof participantRole) || "viewer";
+        participantRole = participant.role === "collaborator" ? "collaborator" : "viewer";
       } else if (room.is_public === true) {
         allowJoin = true;
         participantRole = "viewer";
@@ -112,7 +118,9 @@ serve(async (req) => {
     }
 
     const channelName = room.agora_channel_name || `room_${room.id.replace(/-/g, "")}`;
-    const agoraRole = (isHost || requestedRole === "host") ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const agoraRole = participantRole === "host" || participantRole === "collaborator"
+      ? RtcRole.PUBLISHER
+      : RtcRole.SUBSCRIBER;
     const agoraUid = uuidToUint32(user.id);
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpireTs = currentTimestamp + ttlSeconds;

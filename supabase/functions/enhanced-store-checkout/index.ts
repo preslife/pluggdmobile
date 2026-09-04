@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  cancelIosPhysicalBasket,
+  handleIosPhysicalBasket,
+} from "./iosPhysicalBasket.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,13 +26,15 @@ serve(async (req) => {
   try {
     logStep('Request received', { method: req.method });
 
+    const requestBody = await req.json();
     const {
       cartItems = [],
       shippingAddress,
       manualAmountCredits,
       paymentMetadata = {},
-      crowdfundingContribution
-    } = await req.json();
+      crowdfundingContribution,
+      clientContext,
+    } = requestBody;
     logStep('Parsed request body', {
       cartItemsCount: cartItems?.length,
       manualAmountCredits,
@@ -42,7 +48,13 @@ serve(async (req) => {
     );
 
     // Get user from auth header
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'User not authenticated' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
     const token = authHeader.replace('Bearer ', '');
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
@@ -51,12 +63,47 @@ serve(async (req) => {
       throw new Error('User not authenticated');
     }
 
+    const metadataItems = Array.isArray(paymentMetadata?.items)
+      ? paymentMetadata.items
+      : [];
+    if (metadataItems.some((item: any) => item?.type === 'beat')) {
+      return new Response(JSON.stringify({
+        error: 'Beat licences must use the verified professional licensing checkout.',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
     logStep('User authenticated', { userId: user.id, email: user.email });
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
+
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
+    if (clientContext === 'ios_physical_basket') {
+      return await handleIosPhysicalBasket({
+        body: requestBody,
+        user: { id: user.id, email: user.email },
+        service: supabaseService,
+        stripe,
+      });
+    }
+    if (clientContext === 'ios_physical_basket_cancel') {
+      return await cancelIosPhysicalBasket({
+        body: requestBody,
+        user: { id: user.id },
+        service: supabaseService,
+        stripe,
+      });
+    }
 
     // Check for existing Stripe customer
     const customers = await stripe.customers.list({
@@ -218,13 +265,6 @@ serve(async (req) => {
     let hasPhysicalProducts = false;
     let orderSubtotal = 0;
 
-    // Create Supabase service client for data operations
-    const supabaseService = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
-
     for (const item of cartItems) {
       let productData: any = null;
       let productType = 'digital';
@@ -252,6 +292,12 @@ serve(async (req) => {
           .single();
 
         if (beat) {
+          return new Response(JSON.stringify({
+            error: 'Beat licences must use the verified professional licensing checkout.',
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
           productData = {
             id: beat.id,
             title: beat.title,

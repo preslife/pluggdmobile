@@ -70,6 +70,11 @@ export const PurchaseButton = ({
       return;
     }
 
+    if (item.type === 'beat') {
+      window.location.href = `/beat/${item.id}`;
+      return;
+    }
+
     setCheckoutOpen(true);
   };
 
@@ -149,6 +154,20 @@ export const PurchaseButton = ({
   }
 
   // Paid item
+  if (item.type === 'beat') {
+    return (
+      <Button
+        variant={variant}
+        size={size}
+        className={className}
+        onClick={handleClick}
+      >
+        <ShoppingCart className="h-4 w-4 mr-2" />
+        Review licences
+      </Button>
+    );
+  }
+
   return (
     <>
       <Button

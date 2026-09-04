@@ -1,15 +1,17 @@
 
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function AuthLayout() {
+    const theme = usePluggdTheme();
     return (
         <>
-            <StatusBar style="light" />
+            <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
             <Stack
                 screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: '#221910' } // Background dark
+                    contentStyle: { backgroundColor: theme.colors.background },
                 }}
             />
         </>

@@ -22,7 +22,7 @@ function sizeValue(size: GlassAvatarProps['size']) {
   return 48;
 }
 
-export function GlassAvatar({ imageUrl, name, tone = 'violet', size = 'md', status = 'none' }: GlassAvatarProps) {
+export function GlassAvatar({ imageUrl, name, tone = 'accent', size = 'md', status = 'none' }: GlassAvatarProps) {
   const dimension = sizeValue(size);
   const initial = name.trim().charAt(0).toUpperCase() || 'P';
   const colors = liquidGlassToneColors[tone] ?? liquidGlassToneColors.violet;

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PremiumScreenBackdrop } from '../components/PluggdPrimitives';
 import { PluggdImage } from '../src/components/PluggdImage';
 import { selectionHaptic } from '../src/design/haptics';
+import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 import { formatDate, PLUGGD_ORANGE } from '../src/lib/mobileContent';
 import { issueTicketEntryToken, loadWalletTickets } from '../src/features/culture/mobileServices';
@@ -19,6 +20,7 @@ export default function TicketsScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const tickets = useQuery({ queryKey: ['culture', 'wallet-tickets'], queryFn: loadWalletTickets });
   const [dynamicTokens, setDynamicTokens] = useState<Record<string, { payload: string; expiresAt: string | null }>>({});
   const issueToken = useMutation({
@@ -43,10 +45,10 @@ export default function TicketsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 150 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: bottomInset }]}
       >
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/my-pluggd' as any))}>
             <MaterialIcons name="arrow-back-ios-new" size={19} color={theme.colors.text} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Find events" style={styles.iconButton} onPress={() => router.push('/events' as any)}>
@@ -87,8 +89,8 @@ export default function TicketsScreen() {
             <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>
               Tickets and RSVPs will appear here after an event purchase, invite, or verified RSVP is linked to your account.
             </Text>
-            <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]} onPress={() => router.push('/events' as any)}>
-              <Text style={styles.primaryButtonText}>Browse events</Text>
+            <Pressable accessibilityRole="button" style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }]} onPress={() => router.push('/events' as any)}>
+              <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Browse events</Text>
             </Pressable>
           </View>
         ) : null}

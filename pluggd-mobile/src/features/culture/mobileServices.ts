@@ -1,6 +1,9 @@
 import { supabase } from '../../lib/supabase';
+import { uploadFileToSupabaseStorage } from '../../lib/storageUpload';
 import type { MobileFeedAttachment } from '../community-feed/communityFeedTypes';
 import {
+  CREATOR_RELEASE_LIST_SELECT,
+  RELEASE_LIST_SELECT,
   loadFeedBundle,
   type BeatItem,
   type EventItem,
@@ -21,7 +24,11 @@ import type {
   BackstageThread,
   ChallengeVoteState,
   CreatorGalleryItem,
+  CreatorConnectCardSummary,
   CreatorProfileBundle,
+  CreatorProfileModuleId,
+  CreatorProfilePublicConfig,
+  CreatorProfileVideo,
   CreatorModePulse,
   EventComment,
   EventAttendanceState,
@@ -33,6 +40,7 @@ import type {
   InboxThread,
   EventRsvpState,
   LibraryBundle,
+  LiveDiscoveryCategory,
   LiveRoomItem,
   MembershipSummary,
   MobileNotification,
@@ -58,6 +66,12 @@ import type {
   WalletEntitlementItem,
 } from './mobileTypes';
 import {
+  loadConnectCard,
+  loadConnectCardByUserId,
+  type ConnectCardPayload,
+  type ConnectCardViewType,
+} from '../connect/connect-card-data';
+import {
   addSocialComment,
   createMobileSocialPost,
   loadBackstageDestinationFeed,
@@ -69,6 +83,138 @@ import { loadBlockedUserIds } from '../safety/accountSafety';
 
 type SupabaseListResult = { data: unknown; error: unknown };
 
+type ProfileListResult<T> = { rows: T[]; error: string | null };
+
+const CREATOR_PROFILE_MODULES = new Set<CreatorProfileModuleId>([
+  'featured', 'player', 'discography', 'beats', 'soundboards', 'gallery', 'video',
+  'community', 'membership', 'store', 'shows', 'live', 'about', 'stats', 'support',
+  'booking', 'links',
+]);
+
+async function profileList<T>(label: string, query: PromiseLike<SupabaseListResult>): Promise<ProfileListResult<T>> {
+  const { data, error } = await query;
+  if (error) {
+    console.error(`[CreatorProfile] ${label} query failed`, error);
+    return { rows: [], error: label };
+  }
+  if (!Array.isArray(data)) return { rows: [], error: label };
+  return { rows: data as T[], error: null };
+}
+
+function hexLuminance(hex: string) {
+  const channels = hex.slice(1).match(/.{2}/g)?.map((channel) => {
+    const value = Number.parseInt(channel, 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  }) || [0, 0, 0];
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+function readableCreatorAccent(value: unknown) {
+  if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.trim())) return '#ff6600';
+  const accent = value.trim();
+  const brighter = Math.max(hexLuminance(accent), hexLuminance('#0a0806'));
+  const darker = Math.min(hexLuminance(accent), hexLuminance('#0a0806'));
+  return (brighter + 0.05) / (darker + 0.05) >= 3 ? accent : '#ff6600';
+}
+
+function normalizePublicCreatorProfileConfig(value: unknown): CreatorProfilePublicConfig | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const theme = row.theme && typeof row.theme === 'object' && !Array.isArray(row.theme)
+    ? row.theme as Record<string, unknown>
+    : {};
+  const presets = ['stage', 'studio', 'club', 'editorial', 'venue'] as const;
+  const preset = presets.includes(row.preset as typeof presets[number])
+    ? row.preset as CreatorProfilePublicConfig['preset']
+    : 'stage';
+  const defaultsByPreset: Record<CreatorProfilePublicConfig['preset'], Pick<CreatorProfilePublicConfig, 'imagery' | 'density' | 'typography' | 'motion'>> = {
+    stage: { imagery: 'cinematic', density: 'comfortable', typography: 'display', motion: 'subtle' },
+    studio: { imagery: 'clean', density: 'comfortable', typography: 'modern', motion: 'subtle' },
+    club: { imagery: 'cinematic', density: 'comfortable', typography: 'modern', motion: 'subtle' },
+    editorial: { imagery: 'editorial', density: 'compact', typography: 'editorial', motion: 'subtle' },
+    venue: { imagery: 'cinematic', density: 'comfortable', typography: 'modern', motion: 'subtle' },
+  };
+  const defaults = defaultsByPreset[preset];
+  const imageryOptions = ['cinematic', 'clean', 'editorial'] as const;
+  const densityOptions = ['comfortable', 'compact'] as const;
+  const typographyOptions = ['modern', 'display', 'editorial'] as const;
+  const motionOptions = ['minimal', 'subtle', 'signature'] as const;
+  const imagery = imageryOptions.includes(theme.imagery as typeof imageryOptions[number])
+    ? theme.imagery as CreatorProfilePublicConfig['imagery']
+    : defaults.imagery;
+  const density = densityOptions.includes(theme.density as typeof densityOptions[number])
+    ? theme.density as CreatorProfilePublicConfig['density']
+    : defaults.density;
+  const typography = typographyOptions.includes(theme.typography as typeof typographyOptions[number])
+    ? theme.typography as CreatorProfilePublicConfig['typography']
+    : defaults.typography;
+  const motion = motionOptions.includes(theme.motion as typeof motionOptions[number])
+    ? theme.motion as CreatorProfilePublicConfig['motion']
+    : defaults.motion;
+  const seen = new Set<CreatorProfileModuleId>();
+  const modules = (Array.isArray(row.modules) ? row.modules : [])
+    .map((candidate, index) => {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+      const module = candidate as Record<string, unknown>;
+      if (typeof module.id !== 'string' || !CREATOR_PROFILE_MODULES.has(module.id as CreatorProfileModuleId)) return null;
+      const id = module.id as CreatorProfileModuleId;
+      if (seen.has(id)) return null;
+      seen.add(id);
+      const variants = ['default', 'compact', 'feature'] as const;
+      const settings = module.settings && typeof module.settings === 'object' && !Array.isArray(module.settings)
+        ? module.settings as Record<string, unknown>
+        : null;
+      const featuredContentTypes = ['automatic', 'release', 'beat', 'soundboard'] as const;
+      const featuredContentType = id === 'featured' && featuredContentTypes.includes(settings?.featuredContentType as typeof featuredContentTypes[number])
+        ? settings?.featuredContentType as typeof featuredContentTypes[number]
+        : null;
+      const rawFeaturedContentId = typeof settings?.featuredContentId === 'string'
+        ? settings.featuredContentId.trim()
+        : '';
+      const featuredContentId = featuredContentType && featuredContentType !== 'automatic' && /^[a-z0-9_-]{1,128}$/i.test(rawFeaturedContentId)
+        ? rawFeaturedContentId
+        : null;
+      return {
+        id,
+        visible: id === 'about' || id === 'featured' ? true : module.visible !== false,
+        order: Number.isFinite(Number(module.order)) ? Math.max(0, Math.round(Number(module.order))) : index,
+        variant: variants.includes(module.variant as typeof variants[number])
+          ? module.variant as 'default' | 'compact' | 'feature'
+          : 'default' as const,
+        ...(featuredContentType ? {
+          settings: {
+            featuredContentType,
+            ...(featuredContentId ? { featuredContentId } : {}),
+          },
+        } : {}),
+      };
+    })
+    .filter((module): module is NonNullable<typeof module> => Boolean(module))
+    .sort((first, second) => first.order - second.order)
+    .map((module, order) => ({ ...module, order }));
+  return {
+    accentColor: readableCreatorAccent(theme.accentColor),
+    preset,
+    imagery,
+    density,
+    typography,
+    motion,
+    modules,
+  };
+}
+
+async function loadPublicCreatorProfileConfig(userId: string): Promise<CreatorProfilePublicConfig | null> {
+  const { data, error } = await (supabase as any).rpc('get_public_creator_profile_page', {
+    p_profile_user_id: userId,
+  });
+  if (error) {
+    console.warn('[CreatorProfile] published page configuration unavailable', error);
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return normalizePublicCreatorProfileConfig(row?.published_config);
+}
+
 export async function safeList<T>(query: PromiseLike<SupabaseListResult>, fallback: T[] = []) {
   const { data, error } = await query;
   if (error || !Array.isArray(data)) return fallback;
@@ -79,6 +225,75 @@ export async function safeMaybe<T>(query: PromiseLike<{ data: unknown; error: an
   const { data, error } = await query;
   if (error || !data || Array.isArray(data)) return fallback;
   return data as T;
+}
+
+async function loadCreatorAchievementCount(userId: string) {
+  const { count, error } = await (supabase as any)
+    .from('user_achievements')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  return error ? 0 : count ?? 0;
+}
+
+function summarizeCreatorConnectCard(
+  payload: ConnectCardPayload,
+  viewType: Extract<ConnectCardViewType, 'business' | 'public'>,
+  fallbackSlug?: string | null,
+): CreatorConnectCardSummary | null {
+  if (payload.status !== 'ok' || payload.enabled === false || payload.requiresToken) return null;
+  const slug = normalizeText(payload.profile?.slug) || normalizeText(fallbackSlug);
+  if (!slug) return null;
+  const fields = payload.fields;
+  const bookingAvailable = viewType === 'business' && Boolean(
+    fields?.booking_url
+    || fields?.email_business
+    || fields?.phone_business
+    || fields?.contact_email
+    || fields?.services?.some((service) => service.available !== false),
+  );
+  return {
+    slug,
+    route: `/connect/${encodeURIComponent(slug)}${viewType === 'business' ? '/business' : ''}`,
+    label: bookingAvailable ? 'Message / Book' : 'Connect',
+    bookingAvailable,
+  };
+}
+
+async function loadCreatorConnectCard(profileRow: any, ownerId: string): Promise<CreatorConnectCardSummary | null> {
+  const slugs = Array.from(new Set(
+    [profileRow?.custom_url, profileRow?.username, profileRow?.slug]
+      .map(normalizeText)
+      .filter((value): value is string => Boolean(value)),
+  ));
+
+  // The Connect Card slug can intentionally differ from the public profile
+  // username. Resolve the server-owned canonical identity first, then retain
+  // slug lookup for legacy cards that predate the user-ID contract.
+  for (const viewType of ['business', 'public'] as const) {
+    try {
+      const card = await loadConnectCardByUserId(ownerId, viewType);
+      const summary = summarizeCreatorConnectCard(card, viewType);
+      if (summary) return summary;
+    } catch {
+      // A disabled or unavailable business view must not prevent a creator's
+      // enabled public card from resolving through the next safe view.
+    }
+  }
+
+  for (const slug of slugs) {
+    for (const viewType of ['business', 'public'] as const) {
+      try {
+        const card = await loadConnectCard(slug, viewType);
+        const summary = summarizeCreatorConnectCard(card, viewType, slug);
+        if (summary) return summary;
+      } catch {
+        // Connect Card is optional. A missing/disabled view must never fail the
+        // creator's catalogue or expose private contact fields directly.
+      }
+    }
+  }
+
+  return null;
 }
 
 export async function getCurrentUserId() {
@@ -160,15 +375,13 @@ export async function uploadSocialMediaAsset(input: {
   const bucket = input.quarantine ? 'ugc-quarantine' : 'social-media';
   const storagePath = `${userId}/${folder}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   try {
-    const response = await fetch(input.uri);
-    const blob = await response.blob();
-    const { error } = await (supabase as any).storage
-      .from(bucket)
-      .upload(storagePath, blob, {
-        contentType: input.mimeType || 'application/octet-stream',
-        upsert: false,
-      });
-    if (error) throw error;
+    await uploadFileToSupabaseStorage({
+      bucket,
+      path: storagePath,
+      uri: input.uri,
+      contentType: input.mimeType || 'application/octet-stream',
+      upsert: false,
+    });
     if (input.quarantine) {
       return { success: true, url: `storage://${bucket}/${storagePath}`, storagePath };
     }
@@ -277,11 +490,11 @@ export async function resolveMobileFeedAttachment(input: {
     const profile = await safeMaybe<any>(
       (supabase as any)
         .from('profiles')
-        .select('user_id,username,slug,full_name,display_name,custom_url')
+        .select('user_id,username,slug,full_name,custom_url')
         .eq('user_id', gallery.user_id)
         .maybeSingle(),
     );
-    const creatorName = profile?.display_name || profile?.full_name || profile?.username || 'Creator';
+    const creatorName = profile?.full_name || profile?.username || 'Creator';
     return {
       type: 'gallery_item',
       id: gallery.id,
@@ -315,7 +528,7 @@ function communityTitle(row: any) {
   return String(row.name || row.title || row.slug || 'Community');
 }
 
-function mapCommunity(row: any, membership?: BackstageMembership | null): BackstageCommunity {
+function mapCommunity(row: any, membership?: BackstageMembership | null, profile?: ProfileItem | null): BackstageCommunity {
   return {
     id: row.id,
     slug: row.slug,
@@ -325,8 +538,8 @@ function mapCommunity(row: any, membership?: BackstageMembership | null): Backst
     avatar_url: row.avatar_url || null,
     hub_type: row.hub_type || row.visibility || 'community',
     creator_id: row.creator_id || row.created_by || null,
-    creator_name: null,
-    username: row.slug || null,
+    creator_name: profile?.display_name || profile?.full_name || profile?.username || null,
+    username: profile?.username || null,
     member_count: Number.isFinite(Number(row.member_count)) ? Number(row.member_count) : null,
     online_count: row.online_count == null ? null : Number(row.online_count),
     is_verified: row.is_verified ?? null,
@@ -348,13 +561,13 @@ function mapThread(row: any): BackstageThread {
     author_handle: typeof author?.username === 'string' ? author.username : null,
     created_at: row.updated_at || row.created_at,
     like_count: row.like_count ?? row.likes_count ?? null,
-    comment_count: row.reply_count ?? row.comments_count ?? null,
+    comment_count: row.reply_count ?? row.comments_count ?? row.entry_count ?? null,
     is_pinned: row.is_pinned ?? null,
     is_locked: row.is_locked ?? null,
     attached_release_id: row.attached_release_id ?? null,
     attached_event_id: row.attached_event_id ?? null,
     community_id: row.community_id ?? null,
-    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/backstage',
+    route: row.content ? `/post/${row.id}` : row.community_id ? `/backstage/${row.community_id}` : '/community',
   };
 }
 
@@ -387,6 +600,13 @@ function mapCommunityEvent(row: any): BackstageCommunityEvent {
 }
 
 function mapLiveRoom(row: any, profile?: ProfileItem | null): LiveRoomItem {
+  const modeConfig = row.mode_config && typeof row.mode_config === 'object' && !Array.isArray(row.mode_config)
+    ? row.mode_config as Record<string, unknown>
+    : {};
+  const rawDiscoveryCategory = normalizeText(modeConfig.discovery_category);
+  const discoveryCategory: LiveDiscoveryCategory | null = rawDiscoveryCategory && ['community_room', 'listening_party', 'studio_cook_up', 'event_linked'].includes(rawDiscoveryCategory)
+    ? rawDiscoveryCategory as LiveDiscoveryCategory
+    : null;
   return {
     id: row.id,
     source: row.__source || 'session_room',
@@ -394,6 +614,9 @@ function mapLiveRoom(row: any, profile?: ProfileItem | null): LiveRoomItem {
     description: row.description,
     status: row.status,
     category: row.live_mode || row.room_type || null,
+    live_mode: row.live_mode || null,
+    discovery_category: discoveryCategory,
+    linked_event_id: normalizeText(modeConfig.linked_event_id),
     viewer_count: row.participant_count ?? row.viewer_count ?? null,
     scheduled_for: row.scheduled_for ?? null,
     started_at: row.agora_live_started_at ?? row.started_at ?? row.created_at,
@@ -434,6 +657,24 @@ async function loadProfileMap(userIds: Array<string | null | undefined>) {
       .in('user_id', ids),
   );
   return new Map(rows.map((row) => [row.user_id || row.id, mapProfile(row)]));
+}
+
+async function loadCanonicalPublicProfileMap(userIds: Array<string | null | undefined>) {
+  const ids = Array.from(new Set(userIds.filter(Boolean) as string[]));
+  if (!ids.length) return new Map<string, ProfileItem>();
+
+  const [profileRows, publicProfileRows] = await Promise.all([
+    safeList<any>((supabase as any).from('profiles').select('*').in('user_id', ids)),
+    safeList<any>((supabase as any).from('public_profiles').select('*').in('user_id', ids)),
+  ]);
+  const byOwner = new Map<string, ProfileItem>();
+  [...profileRows, ...publicProfileRows].forEach((row) => {
+    const ownerId = row.user_id || row.id;
+    if (!ownerId) return;
+    const canonicalHandle = row.custom_url || row.username || row.slug || null;
+    byOwner.set(ownerId, mapProfile({ ...row, username: canonicalHandle }));
+  });
+  return byOwner;
 }
 
 function mapStory(row: any, profile?: ProfileItem | null, viewed = false): MobileStory {
@@ -541,7 +782,8 @@ export async function loadLiveRooms() {
     safeList<any>(
       (supabase as any)
         .from('session_rooms')
-        .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,agora_live_ended_at,host_id,is_public,live_mode,participant_count')
+        .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,agora_live_ended_at,host_id,is_public,live_mode,mode_config,participant_count')
+        .eq('is_public', true)
         .in('status', ['live', 'scheduled'])
         .order('created_at', { ascending: false })
         .limit(24),
@@ -591,6 +833,23 @@ export async function loadLiveRooms() {
     if (!room.id || seen.has(room.id)) return false;
     seen.add(room.id);
     return true;
+  });
+}
+
+export async function loadEligibleLiveEvents(userId: string): Promise<EventItem[]> {
+  const events = await safeList<EventItem>(
+    (supabase as any)
+      .from('events')
+      .select('id,title,description,cover_image_url,location,starts_at,ends_at,created_at')
+      .eq('created_by', userId)
+      .eq('discoverable', true)
+      .order('starts_at', { ascending: true })
+      .limit(24),
+  );
+  const now = Date.now();
+  return events.filter((event) => {
+    const closesAt = new Date(event.ends_at || event.starts_at || '').getTime();
+    return Number.isFinite(closesAt) && closesAt >= now;
   });
 }
 
@@ -808,6 +1067,8 @@ function mapHubEvent(row: any): EventItem | null {
     ends_at: row.ends_at || row.end_at || null,
     price_cents: row.price_cents ?? null,
     rsvp_count: row.rsvp_count ?? null,
+    ticket_url: row.ticket_url || null,
+    commerce_classification: row.commerce_classification || 'unclassified',
     stream_url: row.stream_url || null,
     playback_url: row.playback_url || null,
     created_at: row.created_at || null,
@@ -865,7 +1126,8 @@ export async function loadMyPluggdHub(): Promise<MyPluggdHub> {
     safeList<any>(
       (supabase as any)
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,slug,title,description,cover_image_url,location,city,venue_id,lineup_headline,genre_tags,event_tags,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at,occurrence_status')
+        .eq('discoverable', true)
         .gte('starts_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('starts_at', { ascending: true })
         .limit(12),
@@ -1163,7 +1425,7 @@ export async function togglePlaylistFollow(playlistId: string): Promise<Playlist
 }
 
 export async function loadCreatorStorefront(creatorId: string): Promise<StorefrontItem[]> {
-  const [storeRows, merchRows] = await Promise.all([
+  const [storeRows, merchRows, creatorMerchRows, bundleRows, collectibleRows] = await Promise.all([
     safeList<any>(
       (supabase as any)
         .from('store_products')
@@ -1178,29 +1440,63 @@ export async function loadCreatorStorefront(creatorId: string): Promise<Storefro
         .eq('creator_id', creatorId)
         .limit(12),
     ),
+    safeList<any>(
+      (supabase as any)
+        .from('creator_merchandise')
+        .select('*')
+        .eq('user_id', creatorId)
+        .in('status', ['live', 'approved', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(12),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('creator_bundles')
+        .select('*')
+        .eq('user_id', creatorId)
+        .in('status', ['live', 'approved', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(8),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('creator_collectibles')
+        .select('*')
+        .eq('user_id', creatorId)
+        .in('status', ['live', 'approved', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(8),
+    ),
   ]);
-  return [...storeRows, ...merchRows].map((row) => ({
+  const publicRows = [...storeRows, ...merchRows, ...creatorMerchRows, ...bundleRows, ...collectibleRows]
+    .filter((row) => !row.status || ['live', 'approved', 'active', 'published'].includes(String(row.status).toLowerCase()));
+  const seen = new Set<string>();
+  return publicRows.filter((row) => {
+    if (!row.id || seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  }).map((row) => ({
     id: row.id,
     creator_id: row.creator_id || row.user_id || creatorId,
     title: row.title || row.name || 'Store item',
     description: row.description || null,
-    image_url: row.image_url || row.cover_image_url || null,
-    price_cents: row.price_cents ?? (row.price ? Number(row.price) * 100 : null),
+    image_url: row.image_url || row.cover_image_url || row.cover_url || null,
+    price_cents: row.price_cents ?? (row.price ? Number(row.price) * 100 : row.bundle_price ? Number(row.bundle_price) * 100 : null),
     currency: row.currency || 'GBP',
-    kind: row.kind || row.product_type || 'merch',
-    route: row.route || null,
-    purchaseSupported: !/digital|credit|unlock/i.test(String(row.kind || row.product_type || '')),
+    kind: row.kind || row.product_type || (row.bundle_price ? 'bundle' : row.digital_assets ? 'collectible' : 'merch'),
+    route: row.route || `/product/${row.id}`,
+    purchaseSupported: !/digital|credit|unlock|bundle|collectible/i.test(String(row.kind || row.product_type || (row.bundle_price ? 'bundle' : row.digital_assets ? 'collectible' : 'merch'))),
   }));
 }
 
-export async function loadCreatorMemberships(creatorId: string): Promise<MembershipSummary[]> {
-  const [tierRows, membershipRows] = await Promise.all([
+export async function loadCreatorMemberships(profileId: string, creatorUserId = profileId, viewerId?: string | null): Promise<MembershipSummary[]> {
+  const [tierRows, membershipRows, activeSubscriptions] = await Promise.all([
     safeList<any>(
       (supabase as any)
         .from('membership_tiers')
         .select('*')
         .eq('owner_type', 'profile')
-        .eq('owner_id', creatorId)
+        .eq('owner_id', profileId)
         .eq('status', 'active')
         .order('tier_order', { ascending: true })
         .limit(12),
@@ -1209,25 +1505,41 @@ export async function loadCreatorMemberships(creatorId: string): Promise<Members
       (supabase as any)
         .from('creator_memberships')
         .select('*')
-        .eq('creator_id', creatorId)
+        .eq('creator_id', creatorUserId)
         .limit(12),
     ),
+    viewerId
+      ? safeList<any>(
+          (supabase as any)
+            .from('fan_subscriptions')
+            .select('tier_id,status')
+            .eq('fan_id', viewerId)
+            .eq('creator_id', creatorUserId)
+            .eq('status', 'active'),
+        )
+      : Promise.resolve([]),
   ]);
-  return [...tierRows, ...membershipRows].map((row) => ({
+  const activeTierIds = new Set(activeSubscriptions.map((row) => row.tier_id).filter(Boolean));
+  const sourceRows = tierRows.length ? tierRows : membershipRows;
+  return sourceRows.map((row) => ({
     id: row.id,
-    creator_id: row.creator_id || row.owner_id || creatorId,
+    creator_id: row.creator_id || creatorUserId,
     title: row.title || row.name || 'Membership',
     description: row.description || row.summary || null,
+    features: Array.isArray(row.features) ? row.features.filter((feature: unknown): feature is string => typeof feature === 'string' && feature.trim().length > 0) : [],
     price_cents: row.price_cents ?? row.price_monthly ?? null,
+    price_yearly_cents: row.price_yearly ?? null,
     currency: row.currency || 'GBP',
     member_count: row.member_count ?? row.members_count ?? row.current_members ?? null,
-    is_member: Boolean(row.is_member),
-    route: `/membership/${creatorId}`,
+    is_member: activeTierIds.has(row.id) || Boolean(row.is_member),
+    image_url: row.image_url || null,
+    tier_order: row.tier_order ?? null,
+    route: `/membership/${creatorUserId}`,
   }));
 }
 
 async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]> {
-  const selects = 'id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at';
+  const selects = 'id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at';
   const columns = ['created_by', 'creator_id', 'user_id', 'promoter_id'];
   const results = await Promise.all(
     columns.map((column) =>
@@ -1235,6 +1547,7 @@ async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]
         (supabase as any)
           .from('events')
           .select(selects)
+          .eq('discoverable', true)
           .eq(column, ownerId)
           .order('starts_at', { ascending: true })
           .limit(12),
@@ -1250,7 +1563,7 @@ async function loadCreatorEventsForProfile(ownerId: string): Promise<EventItem[]
 }
 
 async function loadCreatorSoundboardsForProfile(ownerId: string) {
-  const selects = 'id,title,cover_image_url,item_count,created_at';
+  const selects = 'id,title,cover_image_url,item_count,created_at,is_published,visibility';
   const results = await Promise.all(
     ['creator_id', 'user_id'].map((column) =>
       safeList<any>(
@@ -1258,6 +1571,8 @@ async function loadCreatorSoundboardsForProfile(ownerId: string) {
           .from('soundboards')
           .select(selects)
           .eq(column, ownerId)
+          .eq('is_published', true)
+          .in('visibility', ['public', 'link'])
           .order('created_at', { ascending: false })
           .limit(12),
       ),
@@ -1269,6 +1584,38 @@ async function loadCreatorSoundboardsForProfile(ownerId: string) {
     seen.add(board.id);
     return true;
   }).slice(0, 12);
+}
+
+async function loadCreatorPublicPlaylists(ownerId: string, profile: ProfileItem | null) {
+  const [playlistRows, legacyRows] = await Promise.all([
+    safeList<any>(
+      (supabase as any)
+        .from('playlists')
+        .select('*')
+        .eq('user_id', ownerId)
+        .or('is_public.eq.true,visibility.eq.public')
+        .order('updated_at', { ascending: false })
+        .limit(12),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('user_playlists')
+        .select('*')
+        .eq('user_id', ownerId)
+        .or('is_public.eq.true,visibility.eq.public')
+        .order('updated_at', { ascending: false })
+        .limit(12),
+    ),
+  ]);
+  const seen = new Set<string>();
+  return [...playlistRows, ...legacyRows]
+    .filter((row) => {
+      if (!row.id || seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    })
+    .map((row) => mapPlaylist(row, profile))
+    .slice(0, 12);
 }
 
 export async function loadCreatorProfileBundle(input: { username?: string | null; userId?: string | null }): Promise<CreatorProfileBundle> {
@@ -1291,6 +1638,22 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     }
   }
 
+  // Public search is backed by `public_profiles`, and legacy creator accounts
+  // may legitimately exist there without a corresponding private Studio
+  // `profiles` row. Resolve the public view as a fallback so search, creator
+  // profiles and their membership storefront all agree on the same creator.
+  if (!profileRow) {
+    profileRow = lookupUserId
+      ? await safeMaybe<any>(
+          (supabase as any).from('public_profiles').select('*').eq('user_id', lookupUserId).maybeSingle(),
+        )
+      : lookupUsername
+        ? await safeMaybe<any>(
+            (supabase as any).from('public_profiles').select('*').ilike('username', lookupUsername).maybeSingle(),
+          )
+        : null;
+  }
+
   if (!profileRow) {
     return {
       profile: null,
@@ -1310,14 +1673,25 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
       playlists: [],
       storefront: [],
       memberships: [],
+      pageConfig: null,
+      connectCard: null,
+      achievementCount: 0,
+      diagnostics: [],
     };
   }
 
   const profile = mapProfile(profileRow);
   const ownerId = profile.user_id || profile.id || '';
+  const profileId = profile.id || profileRow.id || ownerId;
+  const artistAliases = Array.from(new Set(
+    [profileRow.full_name, profileRow.display_name, profileRow.username]
+      .map(normalizeText)
+      .filter((value): value is string => Boolean(value)),
+  ));
   const [
-    releases,
-    mixes,
+    releasesByOwner,
+    releasesByArtist,
+    mixResult,
     beats,
     samplePacks,
     soundboards,
@@ -1330,37 +1704,68 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     playlists,
     storefront,
     memberships,
+    pageConfig,
+    connectCard,
+    achievementCount,
     followerCount,
     following,
   ] = await Promise.all([
-    safeList<ReleaseItem>(
-      supabase
+    profileList<ReleaseItem>(
+      'Music catalogue',
+      (supabase as any)
         .from('releases')
-        .select('id,title,artist,cover_art_url,audio_url,preview_url,download_url,genre,price,download_price,minimum_price,created_at')
-        .eq('user_id', ownerId)
+        .select(CREATOR_RELEASE_LIST_SELECT)
+        .or(`user_id.eq.${ownerId},owner_id.eq.${ownerId}`)
+        .eq('approved', true)
+        .eq('status', 'live')
+        .eq('catalogue_mode', 'pluggd')
+        .eq('visibility_status', 'visible')
+        .order('release_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .limit(12),
+        .limit(48),
     ),
-    safeList<MixItem>(
+    artistAliases.length
+      ? profileList<ReleaseItem>(
+          'Artist-linked catalogue',
+          (supabase as any)
+            .from('releases')
+            .select(CREATOR_RELEASE_LIST_SELECT)
+            .in('artist', artistAliases)
+            .eq('approved', true)
+            .eq('status', 'live')
+            .eq('catalogue_mode', 'pluggd')
+            .eq('visibility_status', 'visible')
+            .order('release_date', { ascending: false, nullsFirst: false })
+            .order('created_at', { ascending: false })
+            .limit(48),
+        )
+      : Promise.resolve({ rows: [], error: null } as ProfileListResult<ReleaseItem>),
+    profileList<MixItem>(
+      'Mix catalogue',
       (supabase as any)
         .from('mixes')
         .select('id,slug,title,description,cover_url,audio_url,duration_seconds,city,genre_tags,mood_tags,recording_type,event_name,like_count,repost_count,save_count,play_count,published_at,created_at')
-        .eq('user_id', ownerId)
-        .limit(12),
+        .eq('owner_user_id', ownerId)
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(24),
     ),
     safeList<BeatItem>(
       (supabase as any)
         .from('beats')
-        .select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at')
-        .eq('user_id', ownerId)
+        .select('id,user_id,owner_id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,is_featured,created_at')
+        .or(`user_id.eq.${ownerId},owner_id.eq.${ownerId}`)
+        .eq('is_published', true)
         .order('created_at', { ascending: false })
-        .limit(12),
+        .limit(24),
     ),
     safeList<SamplePackItem>(
       (supabase as any)
         .from('sample_packs')
-        .select('id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
-        .eq('user_id', ownerId)
+        .select('id,user_id,owner_id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at')
+        .or(`user_id.eq.${ownerId},owner_id.eq.${ownerId}`)
         .order('created_at', { ascending: false })
         .limit(12),
     ),
@@ -1369,8 +1774,9 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     safeList<any>(
       (supabase as any)
         .from('session_rooms')
-        .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,host_id,is_public,live_mode,participant_count')
+        .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,host_id,is_public,live_mode,mode_config,participant_count')
         .eq('host_id', ownerId)
+        .eq('is_public', true)
         .in('status', ['live', 'scheduled'])
         .order('created_at', { ascending: false })
         .limit(8),
@@ -1380,26 +1786,78 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
         .from('communities')
         .select('id,creator_id,name,slug,description,tagline,avatar_url,banner_url,cover_image_url,visibility,join_policy,status,is_primary,member_count,created_at,updated_at')
         .eq('creator_id', ownerId)
+        .eq('status', 'active')
+        .order('is_primary', { ascending: false })
         .limit(8),
     ).then((rows) => rows.map((row) => mapCommunity(row, null))),
     loadMobileStories({ creatorId: ownerId, limit: 12 }),
     loadCreatorGalleryItems(ownerId),
-    safeList<any>(
+    safeList<CreatorProfileVideo>(
       (supabase as any)
-        .from('videos')
-        .select('id,title,description,thumbnail_url,youtube_url,artist_id,created_at')
-        .eq('artist_id', ownerId)
+        .from('creator_videos')
+        .select('id,title,description,thumbnail_url,youtube_url,video_url,is_featured,is_published,view_count,created_at')
+        .eq('user_id', ownerId)
+        .eq('is_published', true)
+        .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(12),
     ),
-    loadMobilePlaylists(null, 16).then((rows) => rows.filter((playlist) => playlist.owner_id === ownerId).slice(0, 8)),
+    loadCreatorPublicPlaylists(ownerId, profile),
     loadCreatorStorefront(ownerId),
-    loadCreatorMemberships(ownerId),
+    loadCreatorMemberships(profileId, ownerId, viewerId),
+    loadPublicCreatorProfileConfig(ownerId),
+    loadCreatorConnectCard(profileRow, ownerId),
+    loadCreatorAchievementCount(ownerId),
     (supabase as any).from('user_follows').select('id', { count: 'exact', head: true }).eq('following_id', ownerId),
     viewerId
       ? safeMaybe<any>((supabase as any).from('user_follows').select('id').eq('follower_id', viewerId).eq('following_id', ownerId).maybeSingle())
       : Promise.resolve(null),
   ]);
+
+  const releaseMap = new Map<string, ReleaseItem>();
+  [...releasesByOwner.rows, ...releasesByArtist.rows].forEach((release) => {
+    if (release.id) releaseMap.set(release.id, release);
+  });
+  const releases = Array.from(releaseMap.values()).sort((first, second) => {
+    const firstDate = new Date(first.release_date || first.created_at || 0).getTime();
+    const secondDate = new Date(second.release_date || second.created_at || 0).getTime();
+    return secondDate - firstDate;
+  });
+  const mixes = mixResult.rows;
+  const diagnostics = [releasesByOwner.error, releasesByArtist.error, mixResult.error].filter((value): value is string => Boolean(value));
+  const isPublicVideoUrl = (value?: string | null) => Boolean(
+    value && (/(youtube\.com|youtu\.be|vimeo\.com)/i.test(value) || /\.(mp4|webm|ogg|m3u8)(\?|#|$)/i.test(value)),
+  );
+  const releaseVideos: CreatorProfileVideo[] = releases
+    .filter((release) => isPublicVideoUrl(release.youtube_url) || isPublicVideoUrl(release.preview_url))
+    .slice(0, 12)
+    .map((release) => ({
+      id: `release-${release.id}`,
+      release_id: release.id,
+      title: release.title || 'Release video',
+      description: release.description,
+      thumbnail_url: release.cover_art_url,
+      youtube_url: isPublicVideoUrl(release.youtube_url) ? release.youtube_url : null,
+      video_url: isPublicVideoUrl(release.preview_url) ? release.preview_url : null,
+      is_featured: release.is_featured,
+      created_at: release.release_date || release.created_at,
+      route: `/release/${release.id}`,
+      source_type: 'release_video',
+    }));
+  const videoKeys = new Set<string>();
+  const combinedClips = [
+    ...clips.map((clip) => ({
+      ...clip,
+      route: clip.route || `/videos/${clip.id}`,
+      source_type: 'creator_video' as const,
+    })),
+    ...releaseVideos,
+  ].filter((clip) => {
+    const mediaKey = String(clip.youtube_url || clip.video_url || clip.id).trim().toLowerCase();
+    if (!mediaKey || videoKeys.has(mediaKey)) return false;
+    videoKeys.add(mediaKey);
+    return true;
+  }).slice(0, 16);
 
   return {
     profile,
@@ -1415,10 +1873,14 @@ export async function loadCreatorProfileBundle(input: { username?: string | null
     communities,
     stories,
     galleryItems,
-    clips,
+    clips: combinedClips,
     playlists,
     storefront,
     memberships,
+    pageConfig,
+    connectCard,
+    achievementCount,
+    diagnostics,
   };
 }
 
@@ -1488,9 +1950,13 @@ export async function loadBackstageOverview(): Promise<BackstageOverview> {
     loadCommunityBoards(),
   ]);
 
+  const creatorProfiles = await loadCanonicalPublicProfileMap([
+    ...communityRows.map((row) => row.creator_id),
+    ...hubRows.map((row) => row.created_by),
+  ]);
   const communities = [
-    ...communityRows.map((row) => mapCommunity(row, membershipByCommunity.get(row.id) ?? null)),
-    ...hubRows.map((row) => mapCommunity(row, null)),
+    ...communityRows.map((row) => mapCommunity(row, membershipByCommunity.get(row.id) ?? null, creatorProfiles.get(row.creator_id) ?? null)),
+    ...hubRows.map((row) => mapCommunity(row, null, creatorProfiles.get(row.created_by) ?? null)),
   ];
 
   const joinedCommunities = communities.filter((community) => community.membership?.status && community.membership.status !== 'left');
@@ -1536,8 +2002,9 @@ export async function loadBackstageDetail(idOrSlug: string): Promise<BackstageDe
         .eq(looksUuid(idOrSlug) ? 'id' : 'slug', idOrSlug)
         .maybeSingle(),
     );
+    const hubProfiles = hub ? await loadCanonicalPublicProfileMap([hub.created_by]) : new Map<string, ProfileItem>();
     return {
-      community: hub ? mapCommunity(hub, null) : null,
+      community: hub ? mapCommunity(hub, null, hubProfiles.get(hub.created_by) ?? null) : null,
       membership: null,
       boards: [],
       posts: [],
@@ -1545,8 +2012,8 @@ export async function loadBackstageDetail(idOrSlug: string): Promise<BackstageDe
       threads: [],
       rooms: [],
       events: [],
-      soundboards: [],
-      drops: [],
+      liveSessions: [],
+      latestRelease: null,
     };
   }
 
@@ -1561,7 +2028,7 @@ export async function loadBackstageDetail(idOrSlug: string): Promise<BackstageDe
       )
     : null;
 
-  const [destinationFeed, rooms, events, challenges, soundboards, dropsBundle, boards] = await Promise.all([
+  const [destinationFeed, rooms, events, challenges, latestReleases, linkedSessionRooms, linkedLiveSessions, creatorProfiles] = await Promise.all([
     loadBackstageDestinationFeed({ destination_type: 'creator_community', destination_id: communityRow.id }),
     safeList<any>(
       (supabase as any)
@@ -1590,16 +2057,54 @@ export async function loadBackstageDetail(idOrSlug: string): Promise<BackstageDe
         .order('updated_at', { ascending: false })
         .limit(20),
     ),
-    communityRow.creator_id ? loadCreatorSoundboardsForProfile(communityRow.creator_id) : Promise.resolve([]),
-    loadFeedBundle(10),
-    loadCommunityBoards(),
+    safeList<ReleaseItem>(
+      (supabase as any)
+        .from('releases')
+        .select(RELEASE_LIST_SELECT)
+        .eq('community_id', communityRow.id)
+        .eq('approved', true)
+        .eq('status', 'live')
+        .eq('catalogue_mode', 'pluggd')
+        .eq('visibility_status', 'visible')
+        .order('release_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(1),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('session_rooms')
+        .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,host_id,is_public,live_mode,mode_config,participant_count')
+        .contains('mode_config', { community_id: communityRow.id })
+        .in('status', ['live', 'idle'])
+        .order('scheduled_for', { ascending: true, nullsFirst: false })
+        .limit(12),
+    ),
+    safeList<any>(
+      (supabase as any)
+        .from('live_sessions')
+        .select('id,community_id,title,description,status,scheduled_for,recording_url,stream_url,thumbnail_url,creator_id,created_at')
+        .eq('community_id', communityRow.id)
+        .in('status', ['live', 'scheduled', 'ended'])
+        .order('scheduled_for', { ascending: true })
+        .limit(12),
+    ),
+    loadCanonicalPublicProfileMap([communityRow.creator_id]),
   ]);
 
   const challengeThreads = challenges.map(mapThread);
+  const creatorProfile = creatorProfiles.get(communityRow.creator_id) ?? null;
+  const liveSessions = [
+    ...linkedSessionRooms.map((row) => mapLiveRoom({ ...row, community_id: communityRow.id, __source: 'session_room' }, creatorProfile)),
+    ...linkedLiveSessions.map((row) => mapLiveRoom({ ...row, __source: 'live_session' }, creatorProfile)),
+  ].filter((room) => {
+    if (room.status === 'live' || room.status === 'scheduled') return true;
+    if (room.status === 'idle' && room.scheduled_for) return true;
+    return room.status === 'ended' && Boolean(room.replay_url);
+  });
   return {
-    community: mapCommunity(communityRow, membership),
+    community: mapCommunity(communityRow, membership, creatorProfile),
     membership,
-    boards,
+    boards: [],
     posts: destinationFeed.posts.map((post) => ({
       id: post.id,
       body: post.content,
@@ -1620,11 +2125,11 @@ export async function loadBackstageDetail(idOrSlug: string): Promise<BackstageDe
       created_at: post.created_at,
     })),
     socialPosts: destinationFeed.posts,
-    threads: [...destinationFeed.posts.map(mapThread), ...challengeThreads],
+    threads: challengeThreads,
     rooms: rooms.map(mapRoom),
     events: events.map(mapCommunityEvent),
-    soundboards,
-    drops: [...dropsBundle.releases, ...dropsBundle.beats, ...dropsBundle.mixes].slice(0, 12),
+    liveSessions,
+    latestRelease: latestReleases[0] ?? null,
   };
 }
 
@@ -1663,7 +2168,7 @@ export async function loadEventDetail(eventId: string) {
     safeMaybe<EventItem>(
       supabase
         .from('events')
-        .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+        .select('id,slug,title,description,cover_image_url,location,city,venue_id,lineup_headline,genre_tags,event_tags,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at,occurrence_status')
         .eq('id', eventId)
         .maybeSingle(),
     ),
@@ -2117,7 +2622,7 @@ export async function loadWalletTickets(): Promise<TicketWalletItem[]> {
     ? await safeList<EventItem>(
         supabase
           .from('events')
-          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
           .in('id', eventIds),
       )
     : [];
@@ -2267,7 +2772,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         source: owned ? 'playlists' : 'playlist_follows',
       };
     });
-  const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, tickets] = await Promise.all([
+  const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, storeOrders, tickets] = await Promise.all([
     safeList<any>((supabase as any).from('favorites').select('id,beat_id,release_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('saved_content').select('id,content_type,content_id,metadata,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100)),
     safeList<any>((supabase as any).from('event_rsvps').select('id,event_id,status,created_at,updated_at').eq('user_id', userId).in('status', ['interested', 'going']).order('updated_at', { ascending: false }).limit(50)),
@@ -2279,8 +2784,19 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     safeList<any>((supabase as any).from('licensing_contracts').select('id,beat_id,status,license_fee,contract_pdf_url,transaction_id,signed_at,created_at').eq('artist_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('fan_subscriptions').select('id,creator_id,tier_id,apple_sku,status,current_period_end,last_payment_at,created_at,updated_at,membership_tiers(name)').eq('fan_id', userId).order('updated_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('external_checkout_sessions').select('id,resource_id,status,quantity,amount_cents,currency,provider_metadata,pricing_snapshot,completed_at,created_at').eq('user_id', userId).eq('purchase_kind', 'physical_merch').order('created_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('orders').select('id,user_id,status,total_amount,paid_at,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
     loadWalletTickets(),
   ]);
+
+  const storeOrderIds = storeOrders.map((order) => order.id).filter(Boolean);
+  const storeOrderItems = storeOrderIds.length
+    ? await safeList<any>(
+      (supabase as any)
+        .from('order_items')
+        .select('id,order_id,product_id,quantity,store_products:product_id(id,title,image_url)')
+        .in('order_id', storeOrderIds),
+    )
+    : [];
 
   const genericByType = genericSaved.reduce<Record<string, any[]>>((groups, item) => {
     const type = String(item.content_type || '');
@@ -2343,7 +2859,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
       ? safeList<any>((supabase as any).from('videos').select('id,title,description,thumbnail_url,youtube_url,artist_id,created_at').in('id', videoIds))
       : Promise.resolve([]),
     eventIds.length
-      ? safeList<EventItem>(supabase.from('events').select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at').in('id', eventIds))
+      ? safeList<EventItem>(supabase.from('events').select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at').in('id', eventIds))
       : Promise.resolve([]),
     communityIds.length
       ? safeList<any>((supabase as any).from('communities').select('id,creator_id,name,slug,description,tagline,avatar_url,banner_url,cover_image_url,visibility,join_policy,status,is_primary,member_count,created_at,updated_at').in('id', communityIds))
@@ -2645,6 +3161,25 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         downloadAvailable: false,
       };
     }),
+    ...storeOrders.map<SavedContentItem>((order) => {
+      const items = storeOrderItems.filter((item) => item.order_id === order.id);
+      const count = items.reduce((total, item) => total + Number(item.quantity || 1), 0);
+      const firstRelation = items[0]?.store_products;
+      const firstProduct = Array.isArray(firstRelation) ? firstRelation[0] : firstRelation;
+      return {
+        id: order.id,
+        kind: 'physical_merch',
+        title: firstProduct?.title || 'PLUGGD Store order',
+        subtitle: `${count || 'Store'} item${count === 1 ? '' : 's'} · ${order.status || 'pending'}`,
+        imageUrl: firstProduct?.image_url || null,
+        route: `/commerce/order?id=${order.id}&kind=store_order`,
+        source: 'orders',
+        status: order.status || 'pending',
+        acquiredAt: order.paid_at || order.created_at,
+        documentAvailable: false,
+        downloadAvailable: false,
+      };
+    }),
   ];
 
   const entitlements = [
@@ -2931,7 +3466,7 @@ export async function loadFanIdentitySummary(userId?: string | null): Promise<Fa
       ? safeList<EventItem>(
           supabase
             .from('events')
-            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
             .in('id', ticketRows.map((row) => row.event_id).filter(Boolean)),
         )
       : Promise.resolve([]),

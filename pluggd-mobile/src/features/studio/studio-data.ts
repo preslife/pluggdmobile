@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../lib/supabase';
 import { formatCompact } from '../../lib/mobileContent';
 import {
@@ -9,10 +8,17 @@ import {
   type ProfileRoleRow,
 } from '../../lib/mobileNavigation';
 import { getCurrentUserId, safeList, safeMaybe } from '../culture/mobileServices';
+import {
+  cacheStudioModulePreferences,
+  loadServerStudioModulePreferences,
+  readLocalStudioModulePreferences,
+  saveServerStudioModulePreferences,
+} from './studioModulePreferences';
 
 export type StudioRole = Exclude<EcosystemRole, 'fan'>;
 
 export type StudioModuleStatus = 'native' | 'limited' | 'web_only';
+export type StudioModulePresentationMode = 'native' | 'embedded';
 
 export type StudioModuleSection =
   | 'create'
@@ -32,11 +38,16 @@ export type StudioModuleId =
   | 'beats'
   | 'mixes'
   | 'events'
+  | 'event_applications'
+  | 'opportunities'
   | 'venues'
   | 'soundboards'
+  | 'the_plug'
   | 'videos'
   | 'analytics_engagement'
   | 'analytics_audience'
+  | 'analytics_revenue'
+  | 'embeds'
   | 'financials'
   | 'live'
   | 'collaborations'
@@ -65,6 +76,9 @@ export type StudioModuleDefinition = {
   title: string;
   shortTitle?: string;
   route?: string;
+  studioPath?: string;
+  presentationMode?: StudioModulePresentationMode;
+  publicPreviewRoute?: string;
   icon: string;
   section: StudioModuleSection;
   status: StudioModuleStatus;
@@ -78,6 +92,7 @@ export type StudioModuleDefinition = {
 };
 
 export type StudioModuleState = StudioModuleDefinition & {
+  presentationMode: StudioModulePresentationMode;
   plugged: boolean;
   defaultForRole: boolean;
   recommendedForRole: boolean;
@@ -91,6 +106,7 @@ export type StudioCatalogItem = {
   imageUrl?: string | null;
   createdAt?: string | null;
   kind: 'release' | 'beat' | 'mix' | 'soundboard' | 'event';
+  managementFacts?: Array<{ label: string; value: string }>;
 };
 
 export type StudioConnectProfile = {
@@ -126,6 +142,7 @@ export type StudioStats = {
   beatCount: number;
   mixCount: number;
   soundboardCount: number;
+  videoCount: number;
   eventCount: number;
   liveCount: number;
   audienceCount: number;
@@ -143,6 +160,8 @@ export type StudioData = {
   roles: EcosystemRole[];
   primaryRole: StudioRole;
   enabledModuleIds: StudioModuleId[];
+  modulePreferencesSynced: boolean;
+  modulePreferencesError: string | null;
   modules: StudioModuleState[];
   stats: StudioStats;
   catalogItems: StudioCatalogItem[];
@@ -164,6 +183,14 @@ type ReleaseRow = {
   artist?: string | null;
   cover_art_url?: string | null;
   created_at?: string | null;
+  release_date?: string | null;
+  release_type?: string | null;
+  genre?: string | null;
+  status?: string | null;
+  approval_status?: string | null;
+  distribution_status?: string | null;
+  approved?: boolean | null;
+  total_plays?: number | null;
 };
 
 type BeatRow = {
@@ -172,6 +199,12 @@ type BeatRow = {
   producer_name?: string | null;
   image_url?: string | null;
   created_at?: string | null;
+  genre?: string | null;
+  bpm?: number | null;
+  key?: string | null;
+  price?: number | null;
+  is_published?: boolean | null;
+  moderation_status?: string | null;
 };
 
 type MixRow = {
@@ -181,6 +214,12 @@ type MixRow = {
   cover_url?: string | null;
   created_at?: string | null;
   published_at?: string | null;
+  city?: string | null;
+  recording_type?: string | null;
+  duration_seconds?: number | null;
+  play_count?: number | null;
+  status?: string | null;
+  visibility?: string | null;
 };
 
 type SoundboardRow = {
@@ -215,8 +254,6 @@ const ALL_STUDIO_ROLES: StudioRole[] = [
 
 const allExcept = (...roles: StudioRole[]) => ALL_STUDIO_ROLES.filter((role) => !roles.includes(role));
 
-const STUDIO_ENABLED_MODULES_STORAGE_PREFIX = 'pluggd:studio-enabled-modules';
-
 export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'upload_release',
@@ -228,7 +265,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     status: 'limited',
     defaultRoles: ['artist'],
     description: 'Prepare release drafts, tracks, artwork, credits, and rights context.',
-    addsToStudio: 'Create a complete mobile release draft. Distribution review remains on desktop.',
+    addsToStudio: 'Create a complete release draft. Advanced distribution review opens inside Studio.',
   },
   {
     id: 'upload_beat',
@@ -240,7 +277,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     status: 'limited',
     defaultRoles: ['producer'],
     description: 'Prepare beat audio, artwork, previews, and license tiers.',
-    addsToStudio: 'Create a complete mobile beat draft. Licence publishing remains on desktop.',
+    addsToStudio: 'Create a complete beat draft. Advanced licence publishing opens inside Studio.',
   },
   {
     id: 'upload_mix',
@@ -252,47 +289,47 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     status: 'limited',
     defaultRoles: ['dj'],
     description: 'Prepare DJ mixes, artwork, tracklist context, and publishing state.',
-    addsToStudio: 'Create a complete mobile mix draft. Final publishing remains on desktop.',
+    addsToStudio: 'Create a complete mix draft. Advanced publishing opens inside Studio.',
   },
   {
     id: 'releases',
     title: 'Releases',
-    route: '/releases',
+    route: '/studio/catalog?tab=releases',
     icon: 'library-music',
     section: 'catalog',
     status: 'limited',
     defaultRoles: ['artist'],
     optionalRoles: allExcept('artist'),
     recommendedRoles: ['artist', 'manager'],
-    description: 'Review release marketplace visibility and owned catalog presence.',
-    addsToStudio: 'Adds release overview. Use desktop Studio for builder, distribution, exports, and rights.',
+    description: 'Manage your owned releases, catalogue status, artwork, and next release draft.',
+    addsToStudio: 'Adds release management to Studio.',
   },
   {
     id: 'beats',
     title: 'Beat Store',
     shortTitle: 'Beats',
-    route: '/market/beats',
+    route: '/studio/catalog?tab=beats',
     icon: 'headset',
     section: 'catalog',
     status: 'limited',
     defaultRoles: ['producer'],
     optionalRoles: allExcept('producer'),
     recommendedRoles: ['producer', 'artist'],
-    description: 'Review beat inventory and buyer-facing previews.',
-    addsToStudio: 'Adds beat-market visibility. Use desktop Studio for license purchasing.',
+    description: 'Manage your beat inventory and prepare the next beat upload.',
+    addsToStudio: 'Adds beat management to Studio.',
   },
   {
     id: 'mixes',
     title: 'Mixes',
-    route: '/mixes',
+    route: '/studio/catalog?tab=mixes',
     icon: 'album',
     section: 'catalog',
     status: 'limited',
     defaultRoles: ['dj'],
     optionalRoles: allExcept('dj'),
     recommendedRoles: ['dj', 'curator'],
-    description: 'Review mix catalog, public pages, and listening surfaces.',
-    addsToStudio: 'Adds mix visibility. Use desktop Studio for upload and advanced edits.',
+    description: 'Manage your mixes, tracklist context, publishing state, and next upload.',
+    addsToStudio: 'Adds mix management to Studio.',
   },
   {
     id: 'events',
@@ -310,6 +347,8 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'venues',
     title: 'Venues',
+    studioPath: '/studio/events?tab=venues',
+    presentationMode: 'embedded',
     icon: 'location-on',
     section: 'operations',
     status: 'web_only',
@@ -318,32 +357,78 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['venue', 'promoter'],
     description: 'Manage venue context, booking details, and event operations.',
     addsToStudio: 'Adds venue planning to Studio.',
-    unavailableReason: 'Use desktop Studio for venue management.',
+    unavailableReason: 'Open the full venue workspace securely inside Studio.',
+  },
+  {
+    id: 'event_applications',
+    title: 'Event Applications',
+    studioPath: '/studio/events?tab=applications',
+    presentationMode: 'embedded',
+    icon: 'assignment-turned-in',
+    section: 'operations',
+    status: 'web_only',
+    defaultRoles: ['promoter', 'venue'],
+    optionalRoles: ['artist', 'producer', 'dj', 'curator', 'service_provider', 'manager'],
+    recommendedRoles: ['promoter', 'venue'],
+    description: 'Review, shortlist, and manage applications to creator events.',
+    addsToStudio: 'Adds the complete event-applications workspace to Studio.',
+    unavailableReason: 'Open the full applications workspace securely inside Studio.',
+  },
+  {
+    id: 'opportunities',
+    title: 'Opportunities',
+    studioPath: '/studio/opportunities',
+    presentationMode: 'embedded',
+    icon: 'work',
+    section: 'operations',
+    status: 'web_only',
+    optionalRoles: ALL_STUDIO_ROLES,
+    recommendedRoles: ['promoter', 'venue', 'curator', 'manager'],
+    description: 'Create and manage creator opportunities, criteria, and applications.',
+    addsToStudio: 'Adds the owner Opportunities workspace to Studio.',
+    unavailableReason: 'Open the full Opportunities workspace securely inside Studio.',
   },
   {
     id: 'soundboards',
     title: 'Soundboards',
-    route: '/soundboards',
+    route: '/studio/catalog?tab=soundboards',
     icon: 'view-list',
     section: 'catalog',
     status: 'limited',
     defaultRoles: ['artist', 'producer', 'dj', 'curator'],
     optionalRoles: allExcept('artist', 'producer', 'dj', 'curator'),
     recommendedRoles: ['artist', 'producer', 'dj', 'curator'],
-    description: 'Review soundboards, references, ideas, and community feedback.',
-    addsToStudio: 'Adds soundboard browsing. Full creation lives in desktop Studio.',
+    description: 'Manage your soundboards, canvas ideas, references, and community feedback.',
+    addsToStudio: 'Adds soundboard management to Studio.',
   },
   {
     id: 'videos',
     title: 'Videos',
+    route: '/studio/videos',
+    studioPath: '/studio/videos',
+    presentationMode: 'native',
     icon: 'videocam',
     section: 'catalog',
     status: 'limited',
     defaultRoles: ['curator'],
     optionalRoles: allExcept('curator'),
     recommendedRoles: ['curator'],
-    description: 'Review editorial and creator video surfaces.',
-    addsToStudio: 'Adds video visibility. Use desktop Studio for video upload tools.',
+    description: 'Upload and manage creator videos; open advanced editing and distribution in Studio.',
+    addsToStudio: 'Adds video publishing controls and the advanced video workspace.',
+  },
+  {
+    id: 'the_plug',
+    title: 'THE PLUG',
+    studioPath: '/studio/the-plug',
+    presentationMode: 'embedded',
+    icon: 'article',
+    section: 'catalog',
+    status: 'web_only',
+    optionalRoles: ALL_STUDIO_ROLES,
+    recommendedRoles: ['curator', 'manager'],
+    description: 'Manage complete editorial articles, editions, artwork, and publishing state.',
+    addsToStudio: 'Adds the editorial publishing workspace to Studio.',
+    unavailableReason: 'Open the full editorial workspace securely inside Studio.',
   },
   {
     id: 'analytics_engagement',
@@ -370,17 +455,48 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     addsToStudio: 'Adds audience signals.',
   },
   {
+    id: 'analytics_revenue',
+    title: 'Revenue Analytics',
+    studioPath: '/studio/analytics/revenue',
+    presentationMode: 'embedded',
+    icon: 'paid',
+    section: 'growth',
+    status: 'web_only',
+    optionalRoles: ALL_STUDIO_ROLES,
+    recommendedRoles: ['artist', 'producer', 'promoter', 'venue', 'manager'],
+    description: 'Inspect detailed revenue, attribution, exports, and performance trends.',
+    addsToStudio: 'Adds advanced revenue analytics to Studio.',
+    unavailableReason: 'Open advanced revenue analytics securely inside Studio.',
+  },
+  {
+    id: 'embeds',
+    title: 'Embeds',
+    studioPath: '/studio/embeds',
+    presentationMode: 'embedded',
+    icon: 'code',
+    section: 'growth',
+    status: 'web_only',
+    optionalRoles: ALL_STUDIO_ROLES,
+    recommendedRoles: ['artist', 'producer', 'dj', 'curator'],
+    description: 'Configure embeddable players, cards, and campaign surfaces.',
+    addsToStudio: 'Adds the full embed builder to Studio.',
+    unavailableReason: 'Open the full embed builder securely inside Studio.',
+  },
+  {
     id: 'financials',
     title: 'Financials',
-    route: '/wallet',
+    route: '/studio/financials',
+    studioPath: '/studio/financials',
+    presentationMode: 'native',
     icon: 'account-balance-wallet',
     section: 'money',
     status: 'limited',
     defaultRoles: ['artist', 'producer', 'promoter', 'venue', 'service_provider', 'manager'],
     optionalRoles: ['dj', 'curator'],
     recommendedRoles: ['artist', 'producer', 'promoter', 'venue', 'manager'],
-    description: 'Open wallet and credit context.',
-    addsToStudio: 'Adds wallet access. Use desktop Studio for payouts, tax, statements, and exports.',
+    description: 'Review Wallet balance, recent activity and payout lifecycle in one place.',
+    addsToStudio: 'Adds a financial overview with secure tax and statement tools.',
+    unavailableReason: 'Use the financial summary or open the full Financials workspace securely in Studio.',
   },
   {
     id: 'live',
@@ -398,6 +514,8 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'collaborations',
     title: 'Collaborations',
+    studioPath: '/studio/collaborations/gigs',
+    presentationMode: 'embedded',
     icon: 'handshake',
     section: 'operations',
     status: 'web_only',
@@ -406,11 +524,13 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['service_provider', 'manager', 'curator'],
     description: 'Manage opportunities, applications, rooms, and project pipelines.',
     addsToStudio: 'Adds collaboration planning to Studio.',
-    unavailableReason: 'Use desktop Studio for collaboration workflows.',
+    unavailableReason: 'Open the full collaboration workspace securely inside Studio.',
   },
   {
     id: 'crm',
     title: 'CRM',
+    studioPath: '/studio/crm/contacts',
+    presentationMode: 'embedded',
     icon: 'contacts',
     section: 'operations',
     status: 'web_only',
@@ -419,19 +539,22 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['promoter', 'venue', 'service_provider', 'manager'],
     description: 'Manage contacts, supporters, campaigns, and business relationships.',
     addsToStudio: 'Adds CRM planning to Studio.',
-    unavailableReason: 'Use desktop Studio for CRM.',
+    unavailableReason: 'Open the full CRM workspace securely inside Studio.',
   },
   {
     id: 'store',
     title: 'Store',
-    route: '/market/store',
+    route: '/studio/commerce?tab=store',
+    studioPath: '/studio/store',
+    presentationMode: 'native',
     icon: 'shopping-bag',
     section: 'commerce',
     status: 'limited',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer'],
-    description: 'Review store and merch-facing market surfaces.',
-    addsToStudio: 'Adds store visibility. Use desktop Studio for inventory, orders, and fulfillment.',
+    description: 'Review owner products, publication state and frequent Store actions in one place.',
+    addsToStudio: 'Adds Store summaries with secure inventory and fulfilment tools.',
+    unavailableReason: 'Use owner summaries or open the full Store workspace securely in Studio.',
   },
   {
     id: 'my_pluggd',
@@ -447,30 +570,37 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'storefront',
     title: 'Public Page',
-    route: '/profile',
+    studioPath: '/studio/storefront/themes',
+    presentationMode: 'embedded',
     icon: 'storefront',
     section: 'commerce',
-    status: 'limited',
+    status: 'web_only',
     defaultRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ALL_STUDIO_ROLES,
-    description: 'Review profile and public-page readiness.',
-    addsToStudio: 'Adds public identity access. Use desktop Studio for theme building.',
+    description: 'Build the theme, structure, and presentation of your public creator page.',
+    addsToStudio: 'Adds the complete public-page builder.',
+    unavailableReason: 'Open the full page builder securely inside Studio.',
   },
   {
     id: 'memberships',
     title: 'Memberships',
-    route: '/membership',
+    route: '/studio/commerce?tab=memberships',
+    studioPath: '/studio/memberships/plans',
+    presentationMode: 'native',
     icon: 'workspace-premium',
     section: 'commerce',
     status: 'limited',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer'],
-    description: 'Review membership surfaces where available.',
-    addsToStudio: 'Adds membership visibility. Use desktop Studio for tiers and subscriber tools.',
+    description: 'Review tiers, members, billing status and availability.',
+    addsToStudio: 'Adds Membership summaries with secure tier building.',
+    unavailableReason: 'Use owner summaries or open the tier builder securely in Studio.',
   },
   {
     id: 'crowdfunding',
     title: 'Crowdfunding',
+    studioPath: '/studio/crowdfunding/campaigns',
+    presentationMode: 'embedded',
     icon: 'campaign',
     section: 'commerce',
     status: 'web_only',
@@ -478,11 +608,13 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['artist', 'producer'],
     description: 'Launch campaign pages with rewards, supporters, and funding status.',
     addsToStudio: 'Adds crowdfunding planning to Studio.',
-    unavailableReason: 'Use desktop Studio for campaign creation and checkout.',
+    unavailableReason: 'Open the full campaign workspace securely inside Studio.',
   },
   {
     id: 'courses',
     title: 'Courses',
+    studioPath: '/studio/courses/builder',
+    presentationMode: 'embedded',
     icon: 'school',
     section: 'commerce',
     status: 'web_only',
@@ -490,35 +622,43 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['producer', 'service_provider'],
     description: 'Build educational products with lessons and learner access.',
     addsToStudio: 'Adds course planning to Studio.',
-    unavailableReason: 'Use desktop Studio for course building.',
+    unavailableReason: 'Open the full course builder securely inside Studio.',
   },
   {
     id: 'sound_packs',
     title: 'Sound Packs',
-    route: '/sample-packs',
+    route: '/studio/commerce?tab=packs',
+    studioPath: '/studio/catalog?tab=sound-packs',
+    presentationMode: 'native',
     icon: 'inventory-2',
     section: 'catalog',
     status: 'limited',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['producer'],
-    description: 'Review sample packs and producer-facing catalog visibility.',
-    addsToStudio: 'Adds sound-pack visibility. Use desktop Studio for pack upload and pricing.',
+    description: 'Review owned packs, approval, availability, downloads and pricing in one place.',
+    addsToStudio: 'Adds pack summaries with secure asset and licence management.',
+    unavailableReason: 'Use owner summaries or open the full Pack workspace securely in Studio.',
   },
   {
     id: 'merch',
     title: 'Merchandise',
-    route: '/market/store',
+    route: '/studio/commerce?tab=store',
+    studioPath: '/studio/catalog?tab=merch',
+    presentationMode: 'native',
     icon: 'card-giftcard',
     section: 'commerce',
     status: 'limited',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'dj'],
-    description: 'Review merchandise and store product visibility.',
-    addsToStudio: 'Adds merch visibility. Use desktop Studio for fulfillment and inventory.',
+    description: 'Review merchandise publication, moderation, stock and sales in one place.',
+    addsToStudio: 'Adds Merchandise summaries with secure inventory and fulfilment tools.',
+    unavailableReason: 'Use owner summaries or open Merchandise securely in Studio.',
   },
   {
     id: 'bundles',
     title: 'Bundles',
+    studioPath: '/studio/catalog?tab=bundles',
+    presentationMode: 'embedded',
     icon: 'shopping-basket',
     section: 'commerce',
     status: 'web_only',
@@ -526,11 +666,13 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['artist', 'producer'],
     description: 'Bundle music, merch, samples, and services into offers.',
     addsToStudio: 'Adds bundle planning to Studio.',
-    unavailableReason: 'Use desktop Studio for bundle creation.',
+    unavailableReason: 'Open the full bundle builder securely inside Studio.',
   },
   {
     id: 'collectibles',
     title: 'Collectibles',
+    studioPath: '/studio/catalog?tab=collectibles',
+    presentationMode: 'embedded',
     icon: 'collections-bookmark',
     section: 'commerce',
     status: 'web_only',
@@ -538,11 +680,13 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['artist', 'producer'],
     description: 'Manage limited digital collectibles, inventory, and readiness.',
     addsToStudio: 'Adds collectible planning to Studio.',
-    unavailableReason: 'Use desktop Studio for collectible inventory and checkout.',
+    unavailableReason: 'Open the full Collectibles workspace securely inside Studio.',
   },
   {
     id: 'licenses',
     title: 'Licenses',
+    studioPath: '/studio/licenses',
+    presentationMode: 'embedded',
     icon: 'verified-user',
     section: 'money',
     status: 'web_only',
@@ -551,7 +695,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['producer'],
     description: 'Manage license templates and rights terms for catalog sales.',
     addsToStudio: 'Adds license planning to Studio.',
-    unavailableReason: 'Use desktop Studio for license templates and purchasing setup.',
+    unavailableReason: 'Open the full licensing workspace securely inside Studio.',
   },
   {
     id: 'splits',
@@ -559,7 +703,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     route: '/studio/splits',
     icon: 'account-tree',
     section: 'money',
-    status: 'limited',
+    status: 'native',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'producer', 'manager'],
     description: 'Create split sheets, payout shares, and collaborator rights records.',
@@ -581,6 +725,8 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
   {
     id: 'plugins',
     title: 'Connected Accounts',
+    studioPath: '/studio/plugins/connect',
+    presentationMode: 'embedded',
     icon: 'extension',
     section: 'connect',
     status: 'web_only',
@@ -588,31 +734,35 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     recommendedRoles: ['artist', 'producer', 'dj'],
     description: 'Connect external accounts and integrations for Studio workflows.',
     addsToStudio: 'Adds connected-account planning to Studio.',
-    unavailableReason: 'Use desktop Studio for connected-account setup.',
+    unavailableReason: 'Open the full connected-accounts workspace securely inside Studio.',
   },
   {
     id: 'shows',
     title: 'Shows Manager',
-    route: '/creator/events',
+    studioPath: '/studio/shows',
+    presentationMode: 'embedded',
     icon: 'calendar-month',
     section: 'operations',
-    status: 'limited',
+    status: 'web_only',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['artist', 'dj', 'manager'],
-    description: 'Manage creator shows, tour dates, and public show context.',
-    addsToStudio: 'Adds event and show visibility. Use desktop Studio for full show widgets.',
+    description: 'Manage creator shows, tour dates, widgets, and public show context.',
+    addsToStudio: 'Adds the complete Shows workspace.',
+    unavailableReason: 'Open the full Shows workspace securely inside Studio.',
   },
   {
     id: 'partnerships',
     title: 'Market',
-    route: '/market',
+    studioPath: '/studio/partnerships/marketplace',
+    presentationMode: 'embedded',
     icon: 'store',
     section: 'operations',
-    status: 'limited',
+    status: 'web_only',
     optionalRoles: ALL_STUDIO_ROLES,
     recommendedRoles: ['manager', 'service_provider'],
-    description: 'Review marketplace and partnership opportunities.',
-    addsToStudio: 'Adds market access. Use desktop Studio for partnership deal operations.',
+    description: 'Manage partnership opportunities, proposals, and deal operations.',
+    addsToStudio: 'Adds the complete partnership workspace.',
+    unavailableReason: 'Open the full partnership workspace securely inside Studio.',
   },
   {
     id: 'studio_apps',
@@ -634,7 +784,7 @@ export const STUDIO_MODULES: StudioModuleDefinition[] = [
     status: 'limited',
     alwaysVisible: true,
     description: 'Manage account privacy, profile basics, and data settings.',
-    addsToStudio: 'Adds account settings. Use desktop Studio for defaults and legal documents.',
+    addsToStudio: 'Adds account privacy and settings. Advanced defaults open inside Studio.',
   },
 ];
 
@@ -652,10 +802,6 @@ function moduleHasRole(roles: StudioRole[] | undefined, role: StudioRole) {
   return Boolean(roles?.includes(role));
 }
 
-function storageKey(userId: string | null | undefined) {
-  return `${STUDIO_ENABLED_MODULES_STORAGE_PREFIX}:${userId || 'anonymous'}`;
-}
-
 function isStudioModuleId(value: unknown): value is StudioModuleId {
   return typeof value === 'string' && STUDIO_MODULE_MAP.has(value as StudioModuleId);
 }
@@ -664,25 +810,50 @@ function normalizeModuleIds(moduleIds: readonly unknown[]): StudioModuleId[] {
   return Array.from(new Set(moduleIds.filter(isStudioModuleId)));
 }
 
-async function readEnabledStudioModules(userId: string | null | undefined): Promise<StudioModuleId[]> {
-  try {
-    const raw = await AsyncStorage.getItem(storageKey(userId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? normalizeModuleIds(parsed) : [];
-  } catch {
-    return [];
+const ALL_STUDIO_MODULE_IDS = STUDIO_MODULES.map((module) => module.id);
+
+export function isAllowlistedStudioPath(value: string) {
+  return value === '/studio' || value.startsWith('/studio/') || value.startsWith('/studio?');
+}
+
+export function buildEmbeddedStudioRoute(
+  studioPath: string,
+  title: string,
+  returnTo = '/studio/apps',
+) {
+  if (!isAllowlistedStudioPath(studioPath)) {
+    throw new Error(`Unsupported Studio destination: ${studioPath}`);
   }
+  return `/studio/browser?targetPath=${encodeURIComponent(studioPath)}&title=${encodeURIComponent(title)}&returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+async function loadEnabledStudioModules(userId: string | null | undefined) {
+  if (!userId) {
+    return {
+      moduleIds: await readLocalStudioModulePreferences(userId, isStudioModuleId),
+      synced: false,
+      error: null,
+    };
+  }
+  return loadServerStudioModulePreferences({
+    userId,
+    allModuleIds: ALL_STUDIO_MODULE_IDS,
+    isValid: isStudioModuleId,
+  });
 }
 
 export async function writeEnabledStudioModules(userId: string | null | undefined, moduleIds: readonly StudioModuleId[]) {
   const normalized = normalizeModuleIds(moduleIds);
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(normalized));
-  return normalized;
+  if (!userId) return cacheStudioModulePreferences(userId, normalized);
+  return saveServerStudioModulePreferences({
+    userId,
+    moduleIds: normalized,
+    allModuleIds: ALL_STUDIO_MODULE_IDS,
+  });
 }
 
 export async function setStudioModulePlugged(userId: string | null | undefined, moduleId: StudioModuleId, plugged: boolean) {
-  const current = await readEnabledStudioModules(userId);
+  const current = (await loadEnabledStudioModules(userId)).moduleIds;
   const next = plugged
     ? Array.from(new Set([...current, moduleId]))
     : current.filter((id) => id !== moduleId);
@@ -694,8 +865,14 @@ function buildModuleStates(primaryRole: StudioRole, enabledModuleIds: StudioModu
   return STUDIO_MODULES.map((module) => {
     const defaultForRole = Boolean(module.alwaysVisible || moduleHasRole(module.defaultRoles, primaryRole));
     const recommendedForRole = moduleHasRole(module.recommendedRoles, primaryRole);
+    const presentationMode = module.presentationMode ?? (module.status === 'web_only' ? 'embedded' : 'native');
+    const route = presentationMode === 'embedded' && module.studioPath
+      ? buildEmbeddedStudioRoute(module.studioPath, module.title)
+      : module.route;
     return {
       ...module,
+      route,
+      presentationMode,
       plugged: defaultForRole || enabledSet.has(module.id),
       defaultForRole,
       recommendedForRole,
@@ -718,6 +895,19 @@ function latestDate(value?: string | null) {
   if (!value) return 0;
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : 0;
+}
+
+function catalogLabel(value?: string | null) {
+  if (!value) return null;
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function catalogFacts(...facts: Array<{ label: string; value?: string | number | null | false }>) {
+  return facts
+    .filter((fact): fact is { label: string; value: string | number } => fact.value !== null && fact.value !== undefined && fact.value !== '' && fact.value !== false)
+    .map((fact) => ({ label: fact.label, value: String(fact.value) }));
 }
 
 function buildSetupTasks(input: {
@@ -834,6 +1024,7 @@ function buildWebOnlyActions(modules: StudioModuleState[]): StudioAction[] {
       id: module.id,
       title: module.title,
       detail: module.unavailableReason || module.addsToStudio,
+      route: module.route,
       icon: module.icon,
       status: 'web_only',
       unavailableReason: module.unavailableReason,
@@ -851,34 +1042,57 @@ function mapCatalogItems(input: {
     id: item.id,
     title: item.title || 'Untitled release',
     subtitle: item.artist || 'Release',
-    route: `/release/${item.id}`,
+    route: `/studio/catalog/release/${item.id}`,
     imageUrl: item.cover_art_url,
     createdAt: item.created_at,
     kind: 'release',
+    managementFacts: catalogFacts(
+      { label: 'Status', value: catalogLabel(item.status || item.approval_status || item.distribution_status) || (item.approved ? 'Approved' : 'Draft') },
+      { label: 'Format', value: catalogLabel(item.release_type) },
+      { label: 'Release date', value: compactDate(item.release_date) },
+      { label: 'Genre', value: item.genre },
+      { label: 'Plays', value: item.total_plays ? formatCompact(item.total_plays) : null },
+      { label: 'Lyrics', value: 'Managed per track' },
+    ),
   }));
   const beats = input.beats.map<StudioCatalogItem>((item) => ({
     id: item.id,
     title: item.title || 'Untitled beat',
     subtitle: item.producer_name || 'Beat',
-    route: `/beat/${item.id}`,
+    route: `/studio/catalog/beat/${item.id}`,
     imageUrl: item.image_url,
     createdAt: item.created_at,
     kind: 'beat',
+    managementFacts: catalogFacts(
+      { label: 'Status', value: item.is_published ? 'Published' : catalogLabel(item.moderation_status) || 'Draft' },
+      { label: 'Genre', value: item.genre },
+      { label: 'BPM', value: item.bpm },
+      { label: 'Key', value: item.key },
+      { label: 'Price', value: typeof item.price === 'number' ? `£${item.price.toFixed(2)}` : null },
+    ),
   }));
   const mixes = input.mixes.map<StudioCatalogItem>((item) => ({
     id: item.id,
     title: item.title || 'Untitled mix',
     subtitle: 'Mix',
-    route: `/mixes/${item.slug || item.id}`,
+    route: `/studio/catalog/mix/${item.id}`,
     imageUrl: item.cover_url,
     createdAt: item.published_at || item.created_at,
     kind: 'mix',
+    managementFacts: catalogFacts(
+      { label: 'Status', value: catalogLabel(item.status) || (item.published_at ? 'Published' : 'Draft') },
+      { label: 'Visibility', value: catalogLabel(item.visibility) },
+      { label: 'Published', value: compactDate(item.published_at) },
+      { label: 'Location', value: item.city },
+      { label: 'Format', value: catalogLabel(item.recording_type) },
+      { label: 'Plays', value: item.play_count ? formatCompact(item.play_count) : null },
+    ),
   }));
   const soundboards = input.soundboards.map<StudioCatalogItem>((item) => ({
     id: item.id,
     title: item.title || 'Untitled soundboard',
     subtitle: item.item_count ? `${formatCompact(item.item_count)} items` : 'Soundboard',
-    route: `/soundboards/${item.slug || item.id}`,
+    route: `/studio/soundboards/${item.slug || item.id}`,
     imageUrl: item.cover_image_url,
     createdAt: item.last_activity_at || item.created_at,
     kind: 'soundboard',
@@ -887,15 +1101,14 @@ function mapCatalogItems(input: {
     id: item.id,
     title: item.title || 'Untitled event',
     subtitle: [compactDate(item.starts_at), item.location].filter(Boolean).join(' · ') || 'Event',
-    route: `/events/${item.id}`,
+    route: '/creator/events',
     imageUrl: item.cover_image_url,
     createdAt: item.starts_at || item.created_at,
     kind: 'event',
   }));
 
   return [...releases, ...beats, ...mixes, ...soundboards, ...events]
-    .sort((a, b) => latestDate(b.createdAt) - latestDate(a.createdAt))
-    .slice(0, 12);
+    .sort((a, b) => latestDate(b.createdAt) - latestDate(a.createdAt));
 }
 
 function emptyStats(): StudioStats {
@@ -905,6 +1118,7 @@ function emptyStats(): StudioStats {
     beatCount: 0,
     mixCount: 0,
     soundboardCount: 0,
+    videoCount: 0,
     eventCount: 0,
     liveCount: 0,
     audienceCount: 0,
@@ -950,10 +1164,10 @@ export function createStudioPreviewData(): StudioData {
   const enabledModuleIds: StudioModuleId[] = ['events', 'soundboards', 'analytics_audience', 'memberships'];
   const modules = buildModuleStates(primaryRole, enabledModuleIds);
   const catalogItems: StudioCatalogItem[] = [
-    { id: 'preview-release', title: 'Afterimage', subtitle: 'Release · 18 Jul', route: '/releases', kind: 'release', createdAt: '2026-07-18T12:00:00Z' },
-    { id: 'preview-mix', title: 'Night Signal 004', subtitle: 'Mix · 11 Jul', route: '/mixes', kind: 'mix', createdAt: '2026-07-11T12:00:00Z' },
-    { id: 'preview-board', title: 'Warehouse Heat', subtitle: '12 items', route: '/soundboards', kind: 'soundboard', createdAt: '2026-06-21T12:00:00Z' },
-    { id: 'preview-event', title: 'Signal Room: London', subtitle: '2 Aug · Dalston', route: '/events', kind: 'event', createdAt: '2026-05-09T12:00:00Z' },
+    { id: 'preview-release', title: 'Afterimage', subtitle: 'Release · 18 Jul', route: '/studio/catalog?tab=releases&item=preview-release', kind: 'release', createdAt: '2026-07-18T12:00:00Z' },
+    { id: 'preview-mix', title: 'Night Signal 004', subtitle: 'Mix · 11 Jul', route: '/studio/catalog?tab=mixes&item=preview-mix', kind: 'mix', createdAt: '2026-07-11T12:00:00Z' },
+    { id: 'preview-board', title: 'Warehouse Heat', subtitle: '12 items', route: '/studio/soundboards/preview-board', kind: 'soundboard', createdAt: '2026-06-21T12:00:00Z' },
+    { id: 'preview-event', title: 'Signal Room: London', subtitle: '2 Aug · Dalston', route: '/creator/events', kind: 'event', createdAt: '2026-05-09T12:00:00Z' },
   ];
   const connectProfile: StudioConnectProfile = {
     id: 'preview-connect',
@@ -977,6 +1191,7 @@ export function createStudioPreviewData(): StudioData {
     beatCount: 1,
     mixCount: 2,
     soundboardCount: 2,
+    videoCount: 1,
     eventCount: 2,
     liveCount: 1,
     audienceCount: 1284,
@@ -994,6 +1209,8 @@ export function createStudioPreviewData(): StudioData {
     roles: ['artist', 'producer'],
     primaryRole,
     enabledModuleIds,
+    modulePreferencesSynced: true,
+    modulePreferencesError: null,
     modules,
     stats,
     catalogItems,
@@ -1008,7 +1225,7 @@ export function createStudioPreviewData(): StudioData {
 export async function loadStudioData(): Promise<StudioData> {
   const userId = await getCurrentUserId();
   if (!userId) {
-    const enabledModuleIds = await readEnabledStudioModules(null);
+    const enabledModuleIds = await readLocalStudioModulePreferences(null, isStudioModuleId);
     const modules = buildModuleStates('artist', enabledModuleIds);
     return {
       signedIn: false,
@@ -1018,6 +1235,8 @@ export async function loadStudioData(): Promise<StudioData> {
       roles: ['fan'],
       primaryRole: 'artist',
       enabledModuleIds,
+      modulePreferencesSynced: false,
+      modulePreferencesError: null,
       modules,
       stats: emptyStats(),
       catalogItems: [],
@@ -1036,28 +1255,31 @@ export async function loadStudioData(): Promise<StudioData> {
     };
   }
 
-  const [profile, roleRows, enabledModuleIds] = await Promise.all([
+  const [profile, roleRows, modulePreferences] = await Promise.all([
     safeMaybe<ProfileRow>(
       (supabase as any)
         .from('profiles')
-        .select('id,user_id,display_name,full_name,username,avatar_url,cover_image_url,bio,custom_url,website_url,instagram_url,twitter_url,youtube_url,tiktok_url,soundcloud_url,spotify_url,embed_settings,user_type,profile_type,is_creator,is_label,onboarding_progress,city')
+        .select('id,user_id,full_name,username,avatar_url,cover_image_url,bio,custom_url,website_url,instagram_url,twitter_url,youtube_url,tiktok_url,soundcloud_url,spotify_url,embed_settings,user_type,profile_type,is_creator,is_label,onboarding_progress,city')
         .eq('user_id', userId)
         .maybeSingle(),
     ),
     safeList<ProfileRoleRow>((supabase as any).from('profile_roles').select('role,is_primary').eq('user_id', userId)),
-    readEnabledStudioModules(userId),
+    loadEnabledStudioModules(userId),
   ]);
+
+  const enabledModuleIds = modulePreferences.moduleIds;
 
   const roles = resolveProfileRoles(profile, roleRows);
   const primaryRole = resolvePrimaryRole(roles);
   const creatorAccess = hasCreatorAccess(roles);
   const modules = buildModuleStates(primaryRole, enabledModuleIds);
 
-  const [releases, beats, mixes, soundboards, events, lives, followers, connectProfiles] = await Promise.all([
-    safeList<ReleaseRow>((supabase as any).from('releases').select('id,title,artist,cover_art_url,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)),
-    safeList<BeatRow>((supabase as any).from('beats').select('id,title,producer_name,image_url,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)),
-    safeList<MixRow>((supabase as any).from('mixes').select('id,slug,title,cover_url,published_at,created_at').eq('creator_id', userId).order('created_at', { ascending: false }).limit(20)),
+  const [releases, beats, mixes, soundboards, videos, events, lives, followers, connectProfiles] = await Promise.all([
+    safeList<ReleaseRow>((supabase as any).from('releases').select('id,title,artist,cover_art_url,created_at,release_date,release_type,genre,status,approval_status,distribution_status,approved,total_plays').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)),
+    safeList<BeatRow>((supabase as any).from('beats').select('id,title,producer_name,image_url,created_at,genre,bpm,key,price,is_published,moderation_status').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)),
+    safeList<MixRow>((supabase as any).from('mixes').select('id,slug,title,cover_url,published_at,created_at,city,recording_type,duration_seconds,play_count,status,visibility').eq('owner_user_id', userId).order('created_at', { ascending: false }).limit(20)),
     safeList<SoundboardRow>((supabase as any).from('soundboards').select('id,slug,title,cover_image_url,item_count,last_activity_at,created_at').eq('creator_id', userId).order('created_at', { ascending: false }).limit(20)),
+    safeList<{ id: string }>((supabase as any).from('creator_videos').select('id').eq('user_id', userId).limit(100)),
     safeList<EventRow>((supabase as any).from('events').select('id,title,cover_image_url,starts_at,location,created_at').eq('created_by', userId).order('starts_at', { ascending: false }).limit(20)),
     safeList<{ id: string }>((supabase as any).from('session_rooms').select('id').eq('creator_id', userId).limit(100)),
     safeList<{ id: string }>((supabase as any).from('user_follows').select('id').eq('following_id', userId).limit(1000)),
@@ -1066,7 +1288,7 @@ export async function loadStudioData(): Promise<StudioData> {
 
   const catalogItems = mapCatalogItems({ releases, beats, mixes, soundboards, events });
   const connectProfile = connectProfiles[0] ?? null;
-  const catalogCount = releases.length + beats.length + mixes.length + soundboards.length;
+  const catalogCount = releases.length + beats.length + mixes.length + soundboards.length + videos.length;
   const setupTasks = buildSetupTasks({
     profile,
     catalogCount,
@@ -1082,6 +1304,7 @@ export async function loadStudioData(): Promise<StudioData> {
     beatCount: beats.length,
     mixCount: mixes.length,
     soundboardCount: soundboards.length,
+    videoCount: videos.length,
     eventCount: events.length,
     liveCount: lives.length,
     audienceCount: followers.length,
@@ -1099,6 +1322,8 @@ export async function loadStudioData(): Promise<StudioData> {
     roles,
     primaryRole,
     enabledModuleIds,
+    modulePreferencesSynced: modulePreferences.synced,
+    modulePreferencesError: modulePreferences.error,
     modules,
     stats,
     catalogItems,

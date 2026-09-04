@@ -2,16 +2,21 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard, RecoveryState } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
-import { PLUGGD_ORANGE, SampleItem, SamplePackItem, formatGBP, toTrack } from '../../src/lib/mobileContent';
+import { SampleItem, SamplePackItem, formatGBP, toTrack } from '../../src/lib/mobileContent';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function SamplePackDetailScreen() {
+  const theme = usePluggdTheme();
+  const styles = useSamplePackStyles();
+  const bottomInset = useBottomChromeInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { playTrack, playQueue } = usePlayback();
@@ -130,16 +135,16 @@ export default function SamplePackDetailScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/market/sample-packs' as any))}>
+          <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
         </Pressable>
 
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={PLUGGD_ORANGE} />
+            <ActivityIndicator color={theme.colors.accentFill} />
           </View>
         ) : null}
 
@@ -147,37 +152,37 @@ export default function SamplePackDetailScreen() {
           <>
             <View style={styles.hero}>
               {pack.cover_art_url ? <Image source={{ uri: pack.cover_art_url }} style={styles.heroImage} /> : null}
-              {!pack.cover_art_url ? <MaterialIcons name="graphic-eq" size={58} color={PLUGGD_ORANGE} /> : null}
+              {!pack.cover_art_url ? <MaterialIcons name="graphic-eq" size={58} color={theme.colors.accentText} /> : null}
             </View>
             <Text style={styles.eyebrow}>Sample Pack</Text>
-            <DetailTitle title={pack.title || 'Untitled pack'} accentColor={PLUGGD_ORANGE} style={{ marginTop: 5 }} />
+            <DetailTitle title={pack.title || 'Untitled pack'} accentColor={theme.colors.accentText} style={{ marginTop: 5 }} />
             <Text style={styles.subtitle}>
               {pack.genre || 'Samples'} · {pack.bpm_range || 'Any BPM'} · {formatGBP(pack.price)}
             </Text>
             {pack.description ? <Text style={styles.description}>{pack.description}</Text> : null}
 
             <View style={styles.buttonRow}>
-              <Pressable style={styles.primaryButton} onPress={playPreview}>
-                <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
+              <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={playPreview}>
+                <MaterialIcons name="play-arrow" size={22} color={theme.colors.onAccent} />
                 <Text style={styles.primaryButtonText}>Preview pack</Text>
               </Pressable>
-              <Pressable style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
-                {claiming ? <ActivityIndicator color={PLUGGD_ORANGE} /> : <MaterialIcons name="shopping-bag" size={20} color={PLUGGD_ORANGE} />}
+              <Pressable accessibilityRole="button" style={[styles.secondaryButton, claiming && styles.disabledButton]} onPress={handlePackAccess} disabled={claiming}>
+                {claiming ? <ActivityIndicator color={theme.colors.accentFill} /> : <MaterialIcons name="shopping-bag" size={20} color={theme.colors.accentText} />}
                 <Text style={styles.secondaryButtonText}>{pack.price ? 'Preview only' : 'Claim free pack'}</Text>
               </Pressable>
             </View>
 
             <View style={styles.quickActions}>
-              <Pressable style={styles.quickActionButton} onPress={savePack} disabled={saving}>
-                <MaterialIcons name="bookmark-border" size={19} color={PLUGGD_ORANGE} />
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={savePack} disabled={saving}>
+                <MaterialIcons name="bookmark-border" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>{saving ? 'Saving' : 'Save'}</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
-                <MaterialIcons name="post-add" size={19} color={PLUGGD_ORANGE} />
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={() => router.push('/create-post' as any)}>
+                <MaterialIcons name="post-add" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>Post</Text>
               </Pressable>
-              <Pressable style={styles.quickActionButton} onPress={sharePack}>
-                <MaterialIcons name="ios-share" size={19} color={PLUGGD_ORANGE} />
+              <Pressable accessibilityRole="button" style={styles.quickActionButton} onPress={sharePack}>
+                <MaterialIcons name="ios-share" size={19} color={theme.colors.accentText} />
                 <Text style={styles.quickActionText}>Share</Text>
               </Pressable>
             </View>
@@ -206,7 +211,7 @@ export default function SamplePackDetailScreen() {
             primaryLabel="Explore market"
             onPrimary={() => router.replace('/market' as any)}
             secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            onSecondary={() => (router.canGoBack() ? router.back() : router.replace('/market/sample-packs' as any))}
           />
         ) : null}
       </ScrollView>
@@ -214,27 +219,30 @@ export default function SamplePackDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806' },
+function useSamplePackStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { padding: 16, paddingTop: 54, paddingBottom: 220 },
-  backButton: { width: 44, height: 44, borderRadius: 4, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  backButton: { width: 44, height: 44, borderRadius: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.controlBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   empty: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  hero: { height: 310, borderRadius: 6, backgroundColor: '#171310', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  hero: { height: 310, borderRadius: 6, backgroundColor: theme.colors.artworkBase, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   heroImage: { width: '100%', height: '100%' },
-  eyebrow: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase', marginTop: 18, letterSpacing: 0.8 },
-  title: { color: '#FFFFFF', fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
-  subtitle: { color: '#B8B8B8', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
-  description: { color: '#D4D4D4', fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
+  eyebrow: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800', textTransform: 'uppercase', marginTop: 18, letterSpacing: 0.8 },
+  title: { color: theme.colors.text, fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
+  subtitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
+  description: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
   buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
-  primaryButton: { flex: 1.2, height: 54, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  secondaryButton: { flex: 0.8, height: 54, borderRadius: 5, borderWidth: 1, borderColor: '#54463C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  secondaryButtonText: { color: PLUGGD_ORANGE, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
-  quickActions: { flexDirection: 'row', marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2B2723' },
+  primaryButton: { flex: 1.2, height: 54, borderRadius: 5, backgroundColor: theme.colors.accentFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  primaryButtonText: { color: theme.colors.onAccent, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  secondaryButton: { flex: 0.8, height: 54, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  secondaryButtonText: { color: theme.colors.accentText, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '800' },
+  quickActions: { flexDirection: 'row', marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.divider },
   quickActionButton: { minHeight: 48, flex: 1, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  quickActionText: { color: PLUGGD_ORANGE, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
+  quickActionText: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   disabledButton: { opacity: 0.62 },
-  sectionTitle: { color: '#FFFFFF', fontSize: 22, fontFamily: pluggdFonts.displayBold, fontWeight: '700', marginTop: 24, marginBottom: 11 },
-  emptyText: { color: '#AFAFAF', fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-});
+  sectionTitle: { color: theme.colors.text, fontSize: 22, fontFamily: pluggdFonts.displayBold, fontWeight: '700', marginTop: 24, marginBottom: 11 },
+  emptyText: { color: theme.colors.textMuted, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
+  }), [theme]);
+}

@@ -10,6 +10,8 @@ import { useAuth } from '../../context/AuthProvider';
 import { createMobileStory, loadMobileStories } from './mobileServices';
 import type { MobileStory } from './mobileTypes';
 import { GlassStoryRing } from '../../../components/liquid-glass';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { useReducedMotion } from '../../design/useReducedMotion';
 
 type Props = {
   creatorId?: string | null;
@@ -86,6 +88,9 @@ function isTooLarge(asset: PickedStoryMedia) {
 }
 
 export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'Stories', compact = false, userAvatarUrl }: Props) {
+  const styles = useStoryStyles();
+  const theme = usePluggdTheme();
+  const reducedMotion = useReducedMotion();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -226,7 +231,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               </View>
             )}
             <View style={[styles.createBadge, !user?.id && styles.createBadgeQuiet]}>
-              <MaterialIcons name="add" size={16} color={user?.id ? '#0a0806' : '#E4E4E9'} />
+              <MaterialIcons name="add" size={16} color={user?.id ? theme.colors.onAccent : theme.colors.textMuted} />
             </View>
           </View>
           <Text style={styles.label} numberOfLines={1}>{user ? 'Your story' : 'Stories'}</Text>
@@ -261,11 +266,11 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
         )}
       </ScrollView>
 
-      <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCreateOpen(false)}>
+      <Modal visible={createOpen} animationType={reducedMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setCreateOpen(false)}>
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
             <Pressable accessibilityRole="button" accessibilityLabel="Close story creator" style={styles.sheetIcon} onPress={() => setCreateOpen(false)}>
-              <MaterialIcons name="close" size={24} color="#FFFFFF" />
+              <MaterialIcons name="close" size={24} color={theme.colors.text} />
             </Pressable>
             <View style={styles.sheetTitleWrap}>
               <Text style={styles.sheetTitle}>Create Story</Text>
@@ -278,7 +283,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               disabled={!media || createMutation.isPending}
               onPress={() => createMutation.mutate()}
             >
-              {createMutation.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.shareText}>Share</Text>}
+              {createMutation.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.shareText}>Share</Text>}
             </Pressable>
           </View>
 
@@ -288,13 +293,13 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
                 <PluggdImage uri={media.uri} style={StyleSheet.absoluteFill} resizeMode="cover" />
               ) : media ? (
                 <View style={styles.mediaPreview}>
-                  <MaterialIcons name={media.mediaType === 'video' ? 'videocam' : 'graphic-eq'} size={44} color="#ff6600" />
+                  <MaterialIcons name={media.mediaType === 'video' ? 'videocam' : 'graphic-eq'} size={44} color={theme.colors.accentText} />
                   <Text style={styles.mediaPreviewTitle}>{media.fileName || `${media.mediaType} story`}</Text>
                   <Text style={styles.mediaPreviewMeta}>{media.mimeType || media.mediaType}</Text>
                 </View>
               ) : (
                 <View style={styles.mediaPreview}>
-                  <MaterialIcons name="auto-awesome" size={44} color="#ff6600" />
+                  <MaterialIcons name="auto-awesome" size={44} color={theme.colors.accentText} />
                   <Text style={styles.mediaPreviewTitle}>Choose a story moment</Text>
                   <Text style={styles.mediaPreviewMeta}>Image, video or audio from your library.</Text>
                 </View>
@@ -302,16 +307,16 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
             </View>
 
             <View style={styles.pickGrid}>
-              <Pressable style={styles.pickButton} onPress={() => pickVisual('image')} disabled={picking}>
-                <MaterialIcons name="image" size={24} color="#ff6600" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose a story photo" style={styles.pickButton} onPress={() => pickVisual('image')} disabled={picking}>
+                <MaterialIcons name="image" size={24} color={theme.colors.accentText} />
                 <Text style={styles.pickText}>Photo</Text>
               </Pressable>
-              <Pressable style={styles.pickButton} onPress={() => pickVisual('video')} disabled={picking}>
-                <MaterialIcons name="videocam" size={24} color="#ff6600" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose a story video" style={styles.pickButton} onPress={() => pickVisual('video')} disabled={picking}>
+                <MaterialIcons name="videocam" size={24} color={theme.colors.accentText} />
                 <Text style={styles.pickText}>Video</Text>
               </Pressable>
-              <Pressable style={styles.pickButton} onPress={pickAudio} disabled={picking}>
-                <MaterialIcons name="graphic-eq" size={24} color="#ff6600" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Choose story audio" style={styles.pickButton} onPress={pickAudio} disabled={picking}>
+                <MaterialIcons name="graphic-eq" size={24} color={theme.colors.accentText} />
                 <Text style={styles.pickText}>Audio</Text>
               </Pressable>
             </View>
@@ -320,7 +325,7 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
               value={caption}
               onChangeText={setCaption}
               placeholder="Add a caption..."
-              placeholderTextColor="#62627A"
+              placeholderTextColor={theme.colors.textSubtle}
               style={styles.captionInput}
               maxLength={150}
             />
@@ -334,12 +339,14 @@ export function MobileStoriesRail({ creatorId, communityId, eventId, title = 'St
   );
 }
 
-const styles = StyleSheet.create({
+function useStoryStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
   wrap: { marginTop: 10, gap: 10 },
   wrapCompact: { marginTop: 0, minHeight: 92, justifyContent: 'center' },
   header: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.8 },
-  meta: { color: '#737382', fontSize: 11, fontFamily: 'Satoshi-Bold' },
+  title: { color: theme.colors.text, fontFamily: 'Satoshi-Black', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.8 },
+  meta: { color: theme.colors.textMuted, fontSize: 11, fontFamily: 'Satoshi-Bold' },
   rail: { gap: 14, paddingHorizontal: 16, paddingBottom: 2 },
   railCompact: { gap: 12, minHeight: 90, alignItems: 'center', paddingTop: 4, paddingBottom: 6 },
   story: { width: 78, gap: 7, alignItems: 'center' },
@@ -351,52 +358,53 @@ const styles = StyleSheet.create({
     padding: 3,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   createRingCompact: { width: 62, height: 62, borderRadius: 31, padding: 2 },
   createRingQuiet: {
-    borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
-  createInner: { flex: 1, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#171310' },
+  createInner: { flex: 1, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceAlt },
   createInnerCompact: { borderRadius: 29 },
-  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#E4E4E9', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0a0806' },
-  createBadgeQuiet: { backgroundColor: '#2B2C38' },
-  ring: { width: 74, height: 74, borderRadius: 37, padding: 3, backgroundColor: '#ff6600' },
+  createBadge: { position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: theme.colors.background },
+  createBadgeQuiet: { backgroundColor: theme.colors.surfaceAlt },
+  ring: { width: 74, height: 74, borderRadius: 37, padding: 3, backgroundColor: theme.colors.accentFill },
   ringCompact: { width: 62, height: 62, borderRadius: 31, padding: 2 },
-  ringViewed: { backgroundColor: '#2A2A33' },
+  ringViewed: { backgroundColor: theme.colors.inactive },
   image: { width: '100%', height: '100%', borderRadius: 34 },
   imageCompact: { borderRadius: 29 },
-  fallback: { width: '100%', height: '100%', borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#241d15' },
+  fallback: { width: '100%', height: '100%', borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceAlt },
   fallbackCompact: { borderRadius: 29 },
-  fallbackText: { color: '#FFFFFF', fontFamily: 'Satoshi-Black', fontSize: 22 },
-  label: { color: '#E4E4E9', fontSize: 11, fontFamily: 'Satoshi-Bold', textAlign: 'center' },
-  skeletonRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#151520', borderWidth: 1, borderColor: '#2a221a' },
+  fallbackText: { color: theme.colors.text, fontFamily: 'Satoshi-Black', fontSize: 22 },
+  label: { color: theme.colors.textSecondary, fontSize: 11, fontFamily: 'Satoshi-Bold', textAlign: 'center' },
+  skeletonRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
   skeletonRingCompact: { width: 62, height: 62, borderRadius: 31 },
-  skeletonLabel: { width: 48, height: 9, borderRadius: 5, backgroundColor: '#151520' },
+  skeletonLabel: { width: 48, height: 9, borderRadius: 5, backgroundColor: theme.colors.surface },
   // Web-parity quiet empty state: plain text beside the create ring, no card chrome.
   emptyStoryHint: { maxWidth: 230, justifyContent: 'center', paddingVertical: 6 },
   emptyStoryHintCompact: { maxWidth: 230 },
-  emptyStoryText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  emptyStoryMeta: { color: '#8E8E9F', marginTop: 3, fontSize: 11, lineHeight: 15 },
-  sheet: { flex: 1, backgroundColor: '#0a0806' },
-  sheetHeader: { minHeight: 92, paddingTop: 18, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  emptyStoryText: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  emptyStoryMeta: { color: theme.colors.textMuted, marginTop: 3, fontSize: 11, lineHeight: 15 },
+  sheet: { flex: 1, backgroundColor: theme.colors.background },
+  sheetHeader: { minHeight: 92, paddingTop: 18, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sheetTitleWrap: { flex: 1, minWidth: 0 },
-  sheetTitle: { color: '#FFFFFF', fontFamily: 'Sora-Bold', fontSize: 22 },
-  sheetSubtitle: { color: '#8E8E9F', marginTop: 2, fontSize: 12 },
-  shareButton: { minWidth: 74, height: 44, borderRadius: 5, backgroundColor: '#ff6600', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  sheetTitle: { color: theme.colors.text, fontFamily: 'Sora-Bold', fontSize: 22 },
+  sheetSubtitle: { color: theme.colors.textMuted, marginTop: 2, fontSize: 12 },
+  shareButton: { minWidth: 74, height: 44, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
   disabled: { opacity: 0.45 },
-  shareText: { color: '#0a0806', fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  shareText: { color: theme.colors.onAccent, fontFamily: 'Satoshi-Bold', fontSize: 13 },
   sheetContent: { padding: 16, gap: 16, paddingBottom: 44 },
-  previewCard: { height: 430, borderRadius: 5, overflow: 'hidden', backgroundColor: '#171310', borderWidth: 1, borderColor: '#302A26' },
+  previewCard: { height: 430, borderRadius: 5, overflow: 'hidden', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
   mediaPreview: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  mediaPreviewTitle: { color: '#FFFFFF', marginTop: 13, fontFamily: 'Sora-Bold', fontSize: 20, textAlign: 'center' },
-  mediaPreviewMeta: { color: '#8E8E9F', marginTop: 5, fontSize: 13, textAlign: 'center' },
+  mediaPreviewTitle: { color: theme.colors.text, marginTop: 13, fontFamily: 'Sora-Bold', fontSize: 20, textAlign: 'center' },
+  mediaPreviewMeta: { color: theme.colors.textMuted, marginTop: 5, fontSize: 13, textAlign: 'center' },
   pickGrid: { flexDirection: 'row', gap: 10 },
-  pickButton: { flex: 1, minHeight: 74, borderRadius: 5, backgroundColor: '#171310', borderWidth: 1, borderColor: '#302A26', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  pickText: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 13 },
-  captionInput: { minHeight: 50, borderRadius: 5, backgroundColor: '#171310', borderWidth: 1, borderColor: '#302A26', color: '#FFFFFF', paddingHorizontal: 14, fontSize: 15 },
-  storyRules: { color: '#737373', fontSize: 12, lineHeight: 18 },
-});
+  pickButton: { flex: 1, minHeight: 74, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', gap: 7 },
+  pickText: { color: theme.colors.text, fontFamily: 'Satoshi-Bold', fontSize: 13 },
+  captionInput: { minHeight: 50, borderRadius: 5, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, color: theme.colors.text, paddingHorizontal: 14, fontSize: 15 },
+  storyRules: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 18 },
+  }), [theme]);
+}

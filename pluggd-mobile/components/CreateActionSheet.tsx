@@ -5,6 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useAuth } from '../src/context/AuthProvider';
 import { selectionHaptic } from '../src/design/haptics';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
+import { useReducedMotion } from '../src/design/useReducedMotion';
 import {
   getCreateActions,
   hasCreatorAccess,
@@ -60,6 +61,7 @@ export function CreateActionSheet() {
   const router = useRouter();
   const { user } = useAuth();
   const theme = usePluggdTheme();
+  const reducedMotion = useReducedMotion();
   const [profile, setProfile] = useState<NavProfile | null>(null);
   const [roleRows, setRoleRows] = useState<ProfileRoleRow[]>([]);
   const [open, setOpen] = useState(false);
@@ -118,18 +120,18 @@ export function CreateActionSheet() {
           }}
           style={({ pressed }) => [
             styles.floatingButton,
-            { backgroundColor: theme.colors.accent },
+            { backgroundColor: theme.colors.accentFill, borderColor: theme.colors.borderAccent },
             pressed && styles.floatingButtonPressed,
           ]}
         >
-          <MaterialIcons name="add" size={20} color="#0a0806" />
-          <Text style={styles.floatingText}>Create</Text>
+          <MaterialIcons name="add" size={20} color={theme.colors.onAccent} />
+          <Text style={[styles.floatingText, { color: theme.colors.onAccent }]}>Create</Text>
         </Pressable>
       </LiftSurface>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable onPress={(event) => event.stopPropagation()}>
+      <Modal visible={open} transparent animationType={reducedMotion ? 'none' : 'slide'} onRequestClose={() => setOpen(false)}>
+        <Pressable accessible={false} style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]} onPress={() => setOpen(false)}>
+          <Pressable accessible={false} onPress={(event) => event.stopPropagation()}>
             <GlassSheet title="Create" subtitle="Start posts, uploads, live sessions and Studio tools.">
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
                 {actions.map((action) => (

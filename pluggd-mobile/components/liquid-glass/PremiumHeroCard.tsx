@@ -83,13 +83,13 @@ export function PremiumHeroCard({
         </View>
         {onPlay ? (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={canPlay ? `${playing ? 'Pause' : 'Play'} ${title}` : `Open ${title}`}
             onPress={() => {
               selectionHaptic();
               onPlay();
             }}
             hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={canPlay ? (playing ? 'Pause' : 'Play') : 'Open'}
             style={({ pressed }) => pressed && { opacity: 0.85 }}
           >
             <View style={styles.play}>

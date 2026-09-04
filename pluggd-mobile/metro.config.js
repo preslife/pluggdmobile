@@ -1,8 +1,14 @@
-const { getDefaultConfig } = require("expo/metro-config");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
 
-const config = getDefaultConfig(__dirname);
+// Sentry must create Expo's base config so its pre-serialization Debug ID
+// plugin participates in Expo's custom serializer. Wrapping NativeWind's final
+// config with `withSentryConfig` installs a serializer callback that Expo's
+// serializer does not invoke, causing real Android bundles to fail.
+const config = getSentryExpoConfig(__dirname, {
+  includeWebReplay: false,
+});
 const nativeWindConfig = withNativeWind(config, { input: "./global.css" });
 const defaultResolveRequest = nativeWindConfig.resolver.resolveRequest;
 

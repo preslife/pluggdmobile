@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { pluggdFonts } from '../../src/design/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
@@ -22,10 +23,9 @@ import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { useAuth } from '../../src/context/AuthProvider';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
-import { LAUNCH_ACCESS_REQUIRED, LEGAL_URLS, MINIMUM_AGE } from '../../src/config/environment';
+import { LAUNCH_ACCESS_REQUIRED, MINIMUM_AGE } from '../../src/config/environment';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
-import * as Linking from 'expo-linking';
 import {
   isAppleSignInCancellation,
   signInWithApple,
@@ -48,6 +48,28 @@ function getPasswordStrength(password: string): { level: number; label: string; 
   return { level: 4, label: 'Strong', color: '#22C55E' };
 }
 
+function latestEligibleBirthDate() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setFullYear(date.getFullYear() - MINIMUM_AGE);
+  return date;
+}
+
+function formatBirthDateForStorage(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatBirthDateForDisplay(date: Date) {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
 export default function SignUp() {
   const router = useRouter();
   const theme = usePluggdTheme();
@@ -58,10 +80,15 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [dateDraft, setDateDraft] = useState(latestEligibleBirthDate);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const strength = getPasswordStrength(password);
+  const maximumBirthDate = latestEligibleBirthDate();
+  const minimumBirthDate = new Date(1900, 0, 1, 12);
+  const ageConfirmed = Boolean(dateOfBirth && dateOfBirth <= maximumBirthDate);
   const gradient =
     theme.scheme === 'dark'
       ? (['#050505', '#090909', '#0F0A07'] as const)
@@ -76,8 +103,14 @@ export default function SignUp() {
       const normalizedEmail = email.trim();
       const code = accessCode.trim();
 
+      if (!dateOfBirth) {
+        setError('Choose your date of birth to create an account.');
+        setLoading(false);
+        return;
+      }
+
       if (!ageConfirmed) {
-        setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+        setError(`You must be at least ${MINIMUM_AGE} to create an account.`);
         setLoading(false);
         return;
       }
@@ -98,7 +131,7 @@ export default function SignUp() {
       }
       if (LAUNCH_ACCESS_REQUIRED) await storePendingAccessCode(validation.code);
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
         options: {
@@ -107,12 +140,19 @@ export default function SignUp() {
             access_code: LAUNCH_ACCESS_REQUIRED ? validation.code : undefined,
             age_band: '16_plus',
             minimum_age_confirmed: true,
+            date_of_birth: formatBirthDateForStorage(dateOfBirth),
           },
         },
       });
 
-      if (signUpError) setError(signUpError.message);
-      else router.replace('/auth/role' as any);
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        if (signUpData.user) {
+          await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', signUpData.user.id);
+        }
+        router.replace('/auth/role' as any);
+      }
     } catch (authError: any) {
       setError(authError?.message ?? 'Unable to create account.');
     } finally {
@@ -122,15 +162,23 @@ export default function SignUp() {
 
   const handleAppleSignUp = async () => {
     setError('');
+    if (!dateOfBirth) {
+      setError('Choose your date of birth to create an account.');
+      return;
+    }
     if (!ageConfirmed) {
-      setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+      setError(`You must be at least ${MINIMUM_AGE} to create an account.`);
       return;
     }
 
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithApple();
+      await signInWithApple({ minimumAgeConfirmed: true });
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', authData.user.id);
+      }
       router.replace('/auth/role' as any);
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
@@ -143,15 +191,23 @@ export default function SignUp() {
 
   const handleGoogleSignUp = async () => {
     setError('');
+    if (!dateOfBirth) {
+      setError('Choose your date of birth to create an account.');
+      return;
+    }
     if (!ageConfirmed) {
-      setError(`Confirm that you are at least ${MINIMUM_AGE} to create an account.`);
+      setError(`You must be at least ${MINIMUM_AGE} to create an account.`);
       return;
     }
 
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle({ minimumAgeConfirmed: true });
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', authData.user.id);
+      }
       router.replace('/auth/role' as any);
     } catch (authError: any) {
       if (!isGoogleSignInCancellation(authError)) {
@@ -164,6 +220,18 @@ export default function SignUp() {
   const cycleThemeMode = () => {
     const nextMode: PluggdThemeMode = mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system';
     setMode(nextMode);
+  };
+
+  const openDatePicker = () => {
+    setDateDraft(dateOfBirth ?? maximumBirthDate);
+    setDatePickerVisible(true);
+  };
+
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS !== 'ios') setDatePickerVisible(false);
+    if (event.type === 'dismissed' || !selectedDate) return;
+    setDateDraft(selectedDate);
+    if (Platform.OS !== 'ios') setDateOfBirth(selectedDate);
   };
 
   return (
@@ -260,26 +328,52 @@ export default function SignUp() {
               />
             ) : null}
 
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: ageConfirmed }}
-              accessibilityLabel={`I confirm that I am at least ${MINIMUM_AGE}`}
-              onPress={() => setAgeConfirmed((value) => !value)}
-              style={styles.consentRow}
-            >
-              <View style={[styles.checkbox, { borderColor: ageConfirmed ? theme.colors.accent : theme.colors.border, backgroundColor: ageConfirmed ? theme.colors.accent : 'transparent' }]}>
-                {ageConfirmed ? <MaterialIcons name="check" size={16} color="#120B06" /> : null}
-              </View>
-              <Text style={[styles.consentText, { color: theme.colors.textMuted }]}>
-                I confirm that I am at least {MINIMUM_AGE}.
-              </Text>
-            </Pressable>
+            <View style={styles.inputGroup}>
+              <Text maxFontSizeMultiplier={1.5} style={[styles.inputLabel, { color: theme.colors.textMuted }]}>Date of birth</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={dateOfBirth ? `Date of birth, ${formatBirthDateForDisplay(dateOfBirth)}` : 'Choose date of birth'}
+                accessibilityHint="Opens the date selector"
+                onPress={openDatePicker}
+                style={[styles.dateButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+              >
+                <MaterialIcons name="calendar-month" size={20} color={theme.colors.accent} />
+                <Text style={[styles.dateButtonText, { color: dateOfBirth ? theme.colors.text : theme.colors.textSubtle }]}>
+                  {dateOfBirth ? formatBirthDateForDisplay(dateOfBirth) : 'Choose your date'}
+                </Text>
+                <MaterialIcons name="expand-more" size={22} color={theme.colors.textMuted} />
+              </Pressable>
+              <Text style={[styles.dateHelp, { color: theme.colors.textSubtle }]}>You must be at least {MINIMUM_AGE}. Your full date is kept private.</Text>
+              {datePickerVisible ? (
+                <View style={[styles.datePickerPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                  <DateTimePicker
+                    value={dateDraft}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    minimumDate={minimumBirthDate}
+                    maximumDate={maximumBirthDate}
+                    onChange={onDateChange}
+                    themeVariant={theme.scheme}
+                  />
+                  {Platform.OS === 'ios' ? (
+                    <View style={styles.datePickerActions}>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Cancel date selection" style={styles.datePickerAction} onPress={() => setDatePickerVisible(false)}>
+                        <Text style={[styles.datePickerActionText, { color: theme.colors.textMuted }]}>Cancel</Text>
+                      </Pressable>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Confirm date of birth" style={[styles.datePickerAction, styles.datePickerDone]} onPress={() => { setDateOfBirth(dateDraft); setDatePickerVisible(false); }}>
+                        <Text style={styles.datePickerDoneText}>Done</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
 
             <Text style={[styles.legalText, { color: theme.colors.textSubtle }]}>
               By creating an account you agree to the{' '}
-              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => Linking.openURL(LEGAL_URLS.terms)}>Terms</Text>
+              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => router.push('/legal/terms' as any)}>Terms</Text>
               {' '}and acknowledge the{' '}
-              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => Linking.openURL(LEGAL_URLS.privacy)}>Privacy Policy</Text>.
+              <Text accessibilityRole="link" style={{ color: theme.colors.accent }} onPress={() => router.push('/legal/privacy' as any)}>Privacy Policy</Text>.
             </Text>
 
             {password.length > 0 ? (
@@ -309,6 +403,8 @@ export default function SignUp() {
             ) : null}
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={loading ? 'Creating account' : 'Create account'}
               onPress={handleSignUp}
               disabled={loading}
               style={[styles.cta, { opacity: loading ? 0.62 : 1 }]}
@@ -409,7 +505,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   topRow: {
-    height: 42,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -417,7 +513,7 @@ const styles = StyleSheet.create({
   },
   topButton: {
     minWidth: 78,
-    height: 40,
+    minHeight: 44,
     borderRadius: 5,
     borderWidth: 1,
     alignItems: 'center',
@@ -431,7 +527,7 @@ const styles = StyleSheet.create({
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
   modeButton: {
-    height: 40,
+    minHeight: 44,
     borderRadius: 5,
     borderWidth: 1,
     alignItems: 'center',
@@ -561,26 +657,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     fontFamily: pluggdFonts.satoshiBlack,
   },
-  consentRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 1,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  consentText: {
-    flex: 1,
-    fontFamily: pluggdFonts.satoshiMedium,
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  dateButton: { minHeight: 54, borderRadius: 5, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 13 },
+  dateButtonText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 15, fontWeight: '600' },
+  dateHelp: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 10.5, lineHeight: 15, marginTop: 6 },
+  datePickerPanel: { borderRadius: 8, borderWidth: 1, overflow: 'hidden', marginTop: 8, paddingBottom: 10 },
+  datePickerActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingHorizontal: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(128,128,128,0.24)', paddingTop: 10 },
+  datePickerAction: { minWidth: 72, minHeight: 42, borderRadius: 5, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  datePickerActionText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12, fontWeight: '800' },
+  datePickerDone: { backgroundColor: PLUGGD_ORANGE },
+  datePickerDoneText: { color: '#120B06', fontFamily: pluggdFonts.satoshiBlack, fontSize: 12 },
   legalText: {
     fontFamily: pluggdFonts.satoshiMedium,
     fontSize: 11.5,

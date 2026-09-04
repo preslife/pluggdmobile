@@ -20,10 +20,16 @@ import {
 } from './mobileServices';
 import { searchSocialContent } from './mobileSocial';
 import {
+  activeEventWindowFilter,
+  loadPublicActiveEvents,
+  PUBLIC_EVENT_SELECT,
+} from '../events/eventDiscoveryData';
+import {
   canShowSensitiveContent,
   loadBlockedUserIds,
   loadSafetySettings,
 } from '../safety/accountSafety';
+import { loadPublicCreatorIdentityMap } from './publicCreatorIdentity';
 export type {
   BackstageCommunity,
   BackstageBoard,
@@ -39,10 +45,45 @@ import type { CultureSearchResults, CultureTabKey as CultureTabKeyModel, StageMe
 
 export type CultureTabKey = CultureTabKeyModel;
 
+async function loadIdentityEnrichedFeedBundle(limit: number): Promise<FeedBundle> {
+  const bundle = await loadFeedBundle(limit);
+  const identityMap = await loadPublicCreatorIdentityMap([
+    ...bundle.releases.map((item) => item.user_id || item.owner_id),
+    ...bundle.beats.map((item) => item.user_id || item.owner_id),
+    ...bundle.soundboards.map((item) => item.creator_id),
+  ]);
+  const credit = (userId?: string | null) => {
+    if (!userId) return null;
+    const identity = identityMap.get(userId);
+    if (identity?.username) return `@${identity.username}`;
+    return identity?.full_name || null;
+  };
+
+  return {
+    ...bundle,
+    releases: bundle.releases.map((item) => ({
+      ...item,
+      artist: item.artist?.trim() || credit(item.user_id || item.owner_id),
+    })),
+    beats: bundle.beats.map((item) => ({
+      ...item,
+      producer_name: item.producer_name?.trim() || credit(item.user_id || item.owner_id),
+    })),
+    soundboards: bundle.soundboards.map((item) => {
+      const identity = item.creator_id ? identityMap.get(item.creator_id) : null;
+      return {
+        ...item,
+        creator_display_name: identity?.full_name || null,
+        creator_username: identity?.username || null,
+      };
+    }),
+  };
+}
+
 export function useHomeFeed() {
   return useQuery({
     queryKey: ['culture', 'home-feed'],
-    queryFn: () => loadFeedBundle(16),
+    queryFn: () => loadIdentityEnrichedFeedBundle(16),
     staleTime: 1000 * 60 * 2,
   });
 }
@@ -50,7 +91,7 @@ export function useHomeFeed() {
 export function useStageContent() {
   const query = useQuery({
     queryKey: ['culture', 'stage'],
-    queryFn: () => loadFeedBundle(18),
+    queryFn: () => loadIdentityEnrichedFeedBundle(18),
     staleTime: 1000 * 60 * 2,
   });
 
@@ -62,7 +103,7 @@ export function useStageContent() {
       id: release.id,
       kind: 'release',
       title: release.title || 'Untitled release',
-      creator: release.artist || 'PLUGGD Creator',
+      creator: release.artist || '',
       image_url: release.cover_art_url,
       audio_url: release.preview_url || release.audio_url || release.download_url,
       genre: release.genre,
@@ -74,7 +115,7 @@ export function useStageContent() {
       id: mix.id,
       kind: 'mix',
       title: mix.title || 'Untitled mix',
-      creator: mix.city || 'PLUGGD DJ',
+      creator: mix.event_name || mix.city || '',
       image_url: mix.cover_url,
       audio_url: mix.audio_url,
       genre: mix.genre_tags?.[0] ?? mix.recording_type,
@@ -112,12 +153,21 @@ export function useEventLayer(limit = 16) {
       safeList<EventItem>(
         supabase
           .from('events')
-          .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
-          .gte('starts_at', new Date().toISOString())
+          .select(PUBLIC_EVENT_SELECT)
+          .eq('discoverable', true)
+          .or(activeEventWindowFilter())
           .order('starts_at', { ascending: true })
           .limit(limit),
       ),
     staleTime: 1000 * 60 * 3,
+  });
+}
+
+export function usePublicActiveEvents() {
+  return useQuery({
+    queryKey: ['culture', 'events', 'all-active'],
+    queryFn: () => loadPublicActiveEvents(),
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -154,7 +204,7 @@ export function useUniversalSearch(term: string) {
       ] = await Promise.all([
         safeList<any>(
           (supabase as any)
-            .from('profiles')
+            .from('public_profiles')
             .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
             .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
             .eq('is_creator', true)
@@ -200,7 +250,8 @@ export function useUniversalSearch(term: string) {
         safeList<EventItem>(
           supabase
             .from('events')
-            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,stream_url,playback_url,created_at')
+            .select('id,title,description,cover_image_url,location,starts_at,ends_at,price_cents,rsvp_count,ticket_url,commerce_classification,stream_url,playback_url,created_at')
+            .eq('discoverable', true)
             .or(`title.ilike.${pattern},location.ilike.${pattern},description.ilike.${pattern}`)
             .order('starts_at', { ascending: true })
             .limit(12),
@@ -259,7 +310,7 @@ export function useUniversalSearch(term: string) {
         ),
         safeList<any>(
           (supabase as any)
-            .from('profiles')
+            .from('public_profiles')
             .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
             .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
             .limit(12),

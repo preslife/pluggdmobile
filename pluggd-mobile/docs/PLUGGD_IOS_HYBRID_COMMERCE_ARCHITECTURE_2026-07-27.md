@@ -18,6 +18,7 @@ access, refunds and creator settlement.
 | Release unlock | PLUGGD credits | Available in every storefront |
 | Release cash purchase | Hosted external checkout | US storefront initially; approved entitled storefronts only thereafter |
 | Tip or live gift | PLUGGD credits | No direct Stripe payment in iOS |
+| PLUGGD Creator or Pro plan | Apple auto-renewable subscription | Platform creator tools; separate group and entitlement from creator memberships |
 | Creator membership | Apple auto-renewable subscription | One unique Apple product per creator tier |
 | Beat licence | Hosted Stripe Checkout | Professional licence for off-app creative use; credits are not accepted |
 | Physical event ticket | Hosted Stripe Checkout | Only for a verified real-world event |
@@ -46,6 +47,19 @@ access, refunds and creator settlement.
 ## StoreKit catalogue
 
 - Credit packs use the approved consumable product catalogue.
+- PLUGGD platform plans use six permanent product IDs following
+  `com.pluggd.mobile.plan.{starter|creator|pro}.{monthly|yearly}` in one
+  `PLUGGD Creator Plans` subscription group. Pro is service level 1, Creator 2
+  and Starter 3; monthly and yearly variants share their tier's level. They
+  write the shared `user_subscriptions` entitlement and never create or replace
+  a fan-to-creator membership.
+- Platform-plan identity, tier, cycle and service level are resolved from the
+  server-owned `platform_subscription_products` catalogue. Commission and
+  feature definitions come from `platform_pricing_config`; the client supplies
+  the signed App Store transaction, never an authoritative tier or price.
+- A paid plan started outside the App Store remains managed at its original
+  billing source. Apple lifecycle notifications must not downgrade an active
+  externally billed entitlement.
 - Creator memberships use a fixed set of supported Apple price points, but every
   sellable creator tier has its own Apple product ID.
 - One Apple subscription group represents one creator's membership programme.
@@ -55,6 +69,15 @@ access, refunds and creator settlement.
   not a fallback purchase button.
 - Existing shared-price SKU subscriptions retain access during migration and
   must not be charged again.
+- Creator catalogue provisioning is queued only after PLUGGD approval. The
+  scheduled server worker creates or reconciles the creator's subscription
+  group, unique tier products, localisations, approved price point,
+  availability and App Review screenshot, then polls Apple for approval before
+  activating the mobile purchase control.
+- Fan purchases do not create subscription groups or products. A fan may hold
+  one product from each of many creator groups, which allows simultaneous
+  memberships to different creators at the same price without identity
+  collision.
 
 ## Hosted checkout and entitlement rules
 
@@ -72,6 +95,34 @@ access, refunds and creator settlement.
 - Previously acquired access works across web and app, regardless of whether its
   source was Apple, credits, Stripe or an approved administrative grant.
 
+## Beat agreement formation and delivery
+
+- The four platform catalogue agreements are `basic_lease`, `premium_lease`,
+  `unlimited_lease` and `exclusive_rights`. Their production wording is held in
+  `contract_templates`; an executed contract keeps an immutable legal snapshot.
+- Accepting licence terms and requesting immediate digital delivery are separate
+  affirmative actions. The delivery control is unticked by default and records
+  its exact wording, version, timestamp, client address and user agent.
+- An Exclusive offer is disabled until the authenticated beat owner deliberately
+  records the versioned producer authorisation. A generic pre-authorised string
+  is not sufficient.
+- Exclusive means an exclusive licence for future Beat use. Prior valid leases
+  survive. It does not silently assign the Beat copyright, composition interest
+  or moral rights. Any copyright assignment requires a separate signed instrument.
+- Checkout begins only after the server has resolved the trusted option, complete
+  agreement, buyer signature, delivery consent and current producer authorisation.
+  Credits and generic cart checkout are rejected for beat licences.
+- Verified Stripe webhook completion creates the purchase and settlement record,
+  stores the immutable licence PDF and enables the web delivery route. The mobile
+  record exposes the retained agreement but does not present the professional file
+  as an in-app digital unlock.
+- On 1 August 2026 the product owner approved the default 50/50
+  producer-side/artist-side composition assumption and PLUGGD's precise
+  marketplace/intermediary role as the launch commercial baseline.
+  Independent UK music/consumer counsel review remains recommended before
+  material transaction volume or any marketing claim based on those terms and
+  is not represented as having occurred.
+
 ## App Review posture
 
 The implementation follows the current Apple App Review categories: Apple IAP
@@ -87,7 +138,7 @@ the architecture as a loophole, bypass or way to avoid Apple fees.
 
 Do not submit or enable a rail in production until:
 
-1. StoreKit products and unique creator-tier mappings are provisioned.
+1. StoreKit products, the PLUGGD Plans group and unique creator-tier mappings are provisioned.
 2. Apple signed-transaction and server-notification verification pass in sandbox.
 3. Stripe production checkout, webhook signing, Apple Pay availability and
    mobile return links pass end to end.
@@ -97,4 +148,3 @@ Do not submit or enable a rail in production until:
    tests pass.
 6. Storefront default-deny and all remote kill switches are tested.
 7. Product/legal has approved the beat-licensing and event-classification stance.
-

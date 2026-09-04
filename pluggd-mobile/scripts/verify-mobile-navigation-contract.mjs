@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const dockSource = read('components/PluggdDock.tsx');
 const glassDockSource = read('components/liquid-glass/GlassDock.tsx');
 const tabsSource = read('app/(tabs)/_layout.tsx');
-const chromeSource = read('components/AppChrome.tsx');
+const chromeSource = read('components/AppChrome.tsx') + read('src/lib/appChromeVisibility.ts');
 const profileSource = read('src/features/profile/my-profile-screen.tsx');
 const studioSource = read('src/features/studio/StudioScreens.tsx');
 const tabDiscoverSource = read('app/(tabs)/discover.tsx');

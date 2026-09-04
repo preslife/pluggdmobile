@@ -9,11 +9,14 @@ import { useContracts } from '@/hooks/useContracts';
 import { useAuth } from '@/hooks/useAuth';
 import ContractViewer from './ContractViewer';
 import { formatCurrency } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 const ContractsHistory = () => {
   const { user } = useAuth();
   const { contracts, loading } = useContracts();
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const { toast } = useToast();
 
   if (!user) {
     return (
@@ -50,6 +53,22 @@ const ContractsHistory = () => {
   const handleViewContract = (contract: any) => {
     setSelectedContract(contract);
     setIsViewerOpen(true);
+  };
+
+  const openContractPdf = async (contract: any) => {
+    const { data, error } = await supabase.functions.invoke('commerce-document-url', {
+      body: { orderId: contract.id, kind: 'beat_license' },
+    });
+    const signedUrl = typeof data?.signedUrl === 'string' ? data.signedUrl : '';
+    if (error || !/^https:\/\//i.test(signedUrl)) {
+      toast({
+        title: 'Document unavailable',
+        description: 'The retained licence PDF is still being prepared or is not available for this account.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    window.open(signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const ContractsList = ({ contractsList, role }: { contractsList: any[], role: 'artist' | 'producer' }) => (
@@ -106,17 +125,11 @@ const ContractsHistory = () => {
                   View Contract
                 </Button>
                 
-                {contract.status === 'signed' && (
-                  <>
-                    <Button variant="outline" size="sm">
+                {contract.status === 'completed' && contract.contract_pdf_url && (
+                    <Button variant="outline" size="sm" onClick={() => openContractPdf(contract)}>
                       <Download className="h-4 w-4 mr-1" />
-                      Download PDF
+                      Open retained PDF
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-1" />
-                      Email Copy
-                    </Button>
-                  </>
                 )}
               </div>
             </CardContent>
@@ -194,7 +207,8 @@ const ContractsHistory = () => {
               <ContractViewer
                 contract={selectedContract}
                 userRole={selectedContract.artist_id === user.id ? 'artist' : 'producer'}
-                showSignature={selectedContract.status === 'pending'}
+                showSignature={false}
+                onDownload={() => openContractPdf(selectedContract)}
               />
             </div>
           </div>

@@ -11,6 +11,7 @@ import { pluggdFonts } from '../../src/design/typography';
 import { GlassPanel } from './GlassPanel';
 import { LiftSurface } from './LiftSurface';
 import { GlassAlbumArt } from './GlassAlbumArt';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type GlassHeroCardProps = {
   eyebrow?: string;
@@ -39,6 +40,7 @@ export function GlassHeroCard({
   onPress,
   style,
 }: GlassHeroCardProps) {
+  const theme = usePluggdTheme();
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : 'text'}
@@ -54,12 +56,12 @@ export function GlassHeroCard({
         <GlassPanel intensity="strong" radius={5} style={styles.card} contentStyle={styles.content}>
           <View style={styles.heroGrid}>
             <View style={styles.copy}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{eyebrow || 'Featured Drop'}</Text>
+              <View style={[styles.badge, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}>
+                <Text style={[styles.badgeText, { color: theme.colors.textSecondary }]}>{eyebrow || 'Featured Drop'}</Text>
               </View>
-              <Text style={styles.title} numberOfLines={3}>{title}</Text>
-              {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
-              {description ? <Text style={styles.description} numberOfLines={3}>{description}</Text> : null}
+              <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={3}>{title}</Text>
+              {subtitle ? <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>{subtitle}</Text> : null}
+              {description ? <Text style={[styles.description, { color: theme.colors.textSubtle }]} numberOfLines={3}>{description}</Text> : null}
               <View style={styles.footer}>
                 <LiftSurface depth="low" style={styles.playLift}>
                   <LinearGradient
@@ -72,13 +74,14 @@ export function GlassHeroCard({
                   </LinearGradient>
                 </LiftSurface>
                 <View style={styles.metaStack}>
-                  {metadata ? <Text style={styles.metadata} numberOfLines={1}>{metadata}</Text> : null}
+                  {metadata ? <Text style={[styles.metadata, { color: theme.colors.textMuted }]} numberOfLines={1}>{metadata}</Text> : null}
                   <View style={styles.waveform}>
                     {[8, 14, 20, 12, 26, 18, 10, 24, 16, 14, 20, 8].map((height, index) => (
                       <View
                         key={`hero-wave-${index}`}
                         style={[
                           styles.waveBar,
+                          { backgroundColor: theme.colors.text },
                           {
                             height,
                             opacity: index >= 4 && index <= 9 ? 0.58 : 0.16,

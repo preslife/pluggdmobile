@@ -29,6 +29,33 @@ export const liquidGlassColors = {
   blueGlow: 'rgba(255,255,255,0.025)',
 };
 
+export const liquidGlassLightColors = {
+  backgroundTop: '#FFFDF9',
+  backgroundMid: '#FFF8ED',
+  backgroundDeep: '#F4E7D2',
+  surfaceSubtle: 'rgba(255,252,247,0.72)',
+  surfaceDefault: 'rgba(255,252,247,0.84)',
+  surfaceStrong: 'rgba(255,255,255,0.94)',
+  surfaceDark: 'rgba(244,231,210,0.92)',
+  surfacePressed: 'rgba(91,56,31,0.09)',
+  borderTop: 'rgba(255,255,255,0.92)',
+  borderLeft: 'rgba(255,255,255,0.68)',
+  borderSoft: 'rgba(91,56,31,0.20)',
+  borderDark: 'rgba(91,56,31,0.30)',
+  textPrimary: '#22170F',
+  textSecondary: '#49382C',
+  textMuted: '#6B584A',
+  textSubtle: '#745E4F',
+  accent: '#C84400',
+  accentGlow: 'rgba(232,79,0,0.28)',
+  violetGlow: 'rgba(124,58,237,0.035)',
+  blueGlow: 'rgba(83,112,230,0.025)',
+};
+
+export function liquidGlassColorsForScheme(scheme: 'light' | 'dark') {
+  return scheme === 'light' ? liquidGlassLightColors : liquidGlassColors;
+}
+
 export const liquidGlassRadii = {
   sm: 12,
   md: 16,

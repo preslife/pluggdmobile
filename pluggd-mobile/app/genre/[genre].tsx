@@ -1,15 +1,21 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { pluggdFonts } from '../../src/design/typography';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { useUniversalSearch } from '../../src/features/culture/useCultureData';
 import { contentInitials } from '../../src/lib/mobileContent';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function GenreDetailRoute() {
+  const theme = usePluggdTheme();
+  const styles = useGenreStyles();
   const { genre } = useLocalSearchParams<{ genre: string }>();
   const router = useRouter();
+  const bottomInset = useBottomChromeInset();
   const label = decodeURIComponent(String(genre || 'Genre'));
   const results = useUniversalSearch(label);
   const data = results.data;
@@ -24,20 +30,20 @@ export default function GenreDetailRoute() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.back()}>
-          <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/discover' as any))}>
+          <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
         </Pressable>
         <Text style={styles.title}>{label.toUpperCase()}</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
         <Text style={styles.eyebrow}>SCENE INDEX · VERIFIED RESULTS</Text>
         <Text style={styles.subtitle}>Releases, beats, mixes, video and creator signals indexed directly from PLUGGD.</Text>
         {results.isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color="#FF6600" />
+            <ActivityIndicator color={theme.colors.accentText} />
             <Text style={styles.loadingLabel}>TUNING THE SCENE</Text>
           </View>
         ) : leadRelease ? (
@@ -59,7 +65,7 @@ export default function GenreDetailRoute() {
               <Text style={styles.featureTitle} numberOfLines={3}>{leadRelease.title}</Text>
               {leadRelease.meta ? <Text style={styles.featureMeta} numberOfLines={1}>{leadRelease.meta}</Text> : null}
               <View style={styles.featureAction}>
-                <MaterialIcons name="arrow-forward" size={18} color="#0A0806" />
+                <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
                 <Text style={styles.featureActionText}>Open release</Text>
               </View>
             </View>
@@ -77,6 +83,7 @@ export default function GenreDetailRoute() {
 }
 
 function GenreSection({ title, rows }: { title: string; rows: Array<{ id: string; title: string; meta?: string | null; image?: string | null; route: string }> }) {
+  const styles = useGenreStyles();
   const router = useRouter();
   return (
     <View style={styles.section}>
@@ -116,7 +123,7 @@ function GenreSection({ title, rows }: { title: string; rows: Array<{ id: string
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0a0806' },
   header: { paddingHorizontal: 16, paddingTop: 42, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15', flexDirection: 'row', alignItems: 'center', gap: 10 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -150,3 +157,33 @@ const styles = StyleSheet.create({
   rowMeta: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 11.5, marginTop: 3 },
   empty: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19, borderBottomWidth: 1, borderColor: '#302A26', paddingBottom: 18 },
 });
+
+function useGenreStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => ({
+    ...baseStyles,
+    screen: [baseStyles.screen, { backgroundColor: theme.colors.background }],
+    header: [baseStyles.header, { borderBottomColor: theme.colors.border }],
+    title: [baseStyles.title, { color: theme.colors.text }],
+    eyebrow: [baseStyles.eyebrow, { color: theme.colors.accentText }],
+    subtitle: [baseStyles.subtitle, { color: theme.colors.textSecondary }],
+    loading: [baseStyles.loading, { borderColor: theme.colors.border }],
+    loadingLabel: [baseStyles.loadingLabel, { color: theme.colors.textMuted }],
+    feature: [baseStyles.feature, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }],
+    featureArt: [baseStyles.featureArt, { backgroundColor: theme.colors.artworkBase }],
+    featureInitial: [baseStyles.featureInitial, { color: theme.colors.text }],
+    featureKicker: [baseStyles.featureKicker, { color: theme.colors.accentText }],
+    featureTitle: [baseStyles.featureTitle, { color: theme.colors.text }],
+    featureMeta: [baseStyles.featureMeta, { color: theme.colors.textMuted }],
+    featureAction: [baseStyles.featureAction, { backgroundColor: theme.colors.accentFill }],
+    featureActionText: [baseStyles.featureActionText, { color: theme.colors.onAccent }],
+    sectionHead: [baseStyles.sectionHead, { borderColor: theme.colors.border }],
+    sectionTitle: [baseStyles.sectionTitle, { color: theme.colors.text }],
+    sectionCount: [baseStyles.sectionCount, { color: theme.colors.textSubtle }],
+    art: [baseStyles.art, { backgroundColor: theme.colors.artworkBase }],
+    initial: [baseStyles.initial, { color: theme.colors.text }],
+    rowTitle: [baseStyles.rowTitle, { color: theme.colors.text }],
+    rowMeta: [baseStyles.rowMeta, { color: theme.colors.textMuted }],
+    empty: [baseStyles.empty, { color: theme.colors.textMuted, borderColor: theme.colors.border }],
+  }), [theme]);
+}

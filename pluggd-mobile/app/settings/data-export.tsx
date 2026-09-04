@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { pluggdFonts } from '../../src/design/typography';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { requestDataExport } from '../../src/features/safety/accountSafety';
 
@@ -17,6 +18,7 @@ const DATA_ITEMS = [
 export default function DataExportScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const bottomInset = useBottomChromeInset();
   const [loading, setLoading] = useState(false);
 
   const requestExport = async () => {
@@ -38,8 +40,8 @@ export default function DataExportScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.back, { borderColor: theme.colors.border }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/settings' as any))} style={[styles.back, { borderColor: theme.colors.border }]}>
           <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
         </Pressable>
 
@@ -49,7 +51,7 @@ export default function DataExportScreen() {
             <Text style={[styles.signalText, { color: theme.colors.textSubtle }]}>SECURE ARCHIVE</Text>
           </View>
           <Text style={[styles.kicker, { color: theme.colors.accent }]}>DATA EXPORT</Text>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Take your PLUGGD history<Text style={styles.titleAccent}> with you.</Text></Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Take your PLUGGD history<Text style={[styles.titleAccent, { color: theme.colors.accentText }]}> with you.</Text></Text>
           <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Request a portable copy of the personal data connected to your account. We verify every request before preparing the archive.</Text>
         </View>
 
@@ -72,9 +74,9 @@ export default function DataExportScreen() {
           <Text style={[styles.noteText, { color: theme.colors.textMuted }]}>The download link is sent only to your verified account email and expires for your protection.</Text>
         </View>
 
-        <Pressable accessibilityRole="button" disabled={loading} onPress={requestExport} style={[styles.primary, { opacity: loading ? 0.6 : 1 }]}>
-          <Text style={styles.primaryText}>{loading ? 'PREPARING ARCHIVE…' : 'REQUEST MY ARCHIVE'}</Text>
-          {!loading ? <MaterialIcons name="arrow-forward" size={19} color="#120B06" /> : null}
+        <Pressable accessibilityRole="button" disabled={loading} onPress={requestExport} style={[styles.primary, { backgroundColor: theme.colors.accentFill, opacity: loading ? 0.6 : 1 }]}>
+          <Text style={[styles.primaryText, { color: theme.colors.onAccent }]}>{loading ? 'PREPARING ARCHIVE…' : 'REQUEST MY ARCHIVE'}</Text>
+          {!loading ? <MaterialIcons name="arrow-forward" size={19} color={theme.colors.onAccent} /> : null}
         </Pressable>
       </ScrollView>
     </View>
@@ -84,13 +86,13 @@ export default function DataExportScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 58, paddingBottom: 176 },
-  back: { width: 42, height: 42, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, borderRadius: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { marginTop: 24, marginBottom: 34 },
   signal: { width: 112, height: 112, borderWidth: 1, borderRadius: 5, justifyContent: 'center', alignItems: 'center', gap: 9, marginBottom: 24 },
   signalText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 8, letterSpacing: 1.4 },
   kicker: { fontFamily: pluggdFonts.satoshiBold, fontSize: 11, lineHeight: 14, letterSpacing: 1.8, marginBottom: 9 },
   title: { fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, letterSpacing: -0.6, maxWidth: 355 },
-  titleAccent: { color: '#F46A1B', fontFamily: pluggdFonts.displayBold },
+  titleAccent: { fontFamily: pluggdFonts.displayBold },
   intro: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 14, lineHeight: 21, marginTop: 11, maxWidth: 350 },
   sectionTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 10, letterSpacing: 1.7, marginBottom: 10 },
   ledger: { borderTopWidth: StyleSheet.hairlineWidth },
@@ -101,6 +103,6 @@ const styles = StyleSheet.create({
   rowDetail: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 11.5, lineHeight: 16 },
   note: { marginTop: 24, borderWidth: 1, borderRadius: 5, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
   noteText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 18 },
-  primary: { minHeight: 52, marginTop: 16, borderRadius: 5, backgroundColor: '#F46A1B', paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryText: { color: '#120B06', fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 0.8 },
+  primary: { minHeight: 52, marginTop: 16, borderRadius: 5, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  primaryText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 0.8 },
 });

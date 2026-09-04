@@ -1,8 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { pluggdFonts } from '../../design/typography';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { COMMUNITY_TABS, type CommunityTabKey } from './communityFeedTypes';
+import { type CommunityTabKey } from './communityFeedTypes';
+import { useAuth } from '../../context/AuthProvider';
+import { selectionHaptic } from '../../design/haptics';
+import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { useMemo } from 'react';
 
 const COLORS = {
   surface: '#171310',
@@ -19,30 +24,63 @@ export function CommunityInternalSwitcher({
   value: CommunityTabKey;
   onChange: (next: CommunityTabKey) => void;
 }) {
+  const styles = useCommunitySwitcherStyles();
+  const theme = usePluggdTheme();
+  const router = useRouter();
+  const { user } = useAuth();
+  const dockItems = [
+    { id: 'feed', label: 'Feed', icon: 'local-fire-department', active: value === 'feed', action: () => onChange('feed') },
+    { id: 'boards', label: 'Boards', icon: 'forum', active: value === 'boards', action: () => onChange('boards') },
+    { id: 'post', label: 'Post', icon: 'add', active: false, action: () => router.push(user?.id ? { pathname: '/create-post', params: { returnTo: '/community' } } as any : '/auth/login' as any) },
+    { id: 'explore', label: 'Explore', icon: 'explore', active: value === 'explore' || value === 'communities', action: () => onChange('explore') },
+    { id: 'maps', label: 'Maps', icon: 'public', active: false, action: () => router.push('/maps' as any) },
+  ] as const;
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {COMMUNITY_TABS.map((tab) => {
-        const active = tab.key === value;
+    <View style={styles.dockShell}>
+      {dockItems.map((item) => {
+        const isPost = item.id === 'post';
         return (
-          <Pressable
-            key={tab.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={`${tab.label} community tab`}
-            style={[styles.pill, active && styles.pillActive]}
-            onPress={() => onChange(tab.key)}
-          >
-            <MaterialIcons name={tab.icon as any} size={17} color={active ? COLORS.orange : COLORS.muted} />
-            <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
-            {active ? <View style={styles.activeLine} /> : null}
-          </Pressable>
+          <View key={item.id} style={styles.dockSlot}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={isPost ? undefined : { selected: item.active }}
+              accessibilityLabel={isPost ? (user?.id ? 'Create post' : 'Sign in to create a post') : `${item.label} community tab`}
+              accessibilityHint={isPost ? 'Opens the community post composer' : undefined}
+              style={({ pressed }) => [styles.dockItem, isPost && styles.postItem, pressed && styles.dockItemPressed]}
+              onPress={() => {
+                selectionHaptic();
+                item.action();
+              }}
+            >
+              {isPost ? (
+                <View style={styles.postButtonStage}>
+                  <View style={styles.postButtonDepth} />
+                  <LinearGradient colors={['#ffad63', '#ff7614', '#ed5200']} locations={[0, 0.5, 1]} style={styles.postIconShell}>
+                    <MaterialIcons name="add" size={28} color="#120a04" />
+                  </LinearGradient>
+                </View>
+              ) : (
+                <View style={[styles.iconShell, item.active && styles.iconShellActive]}>
+                  <MaterialIcons name={item.icon as any} size={19} color={item.active ? theme.colors.text : theme.colors.textMuted} />
+                </View>
+              )}
+              {!isPost ? (
+                <Text maxFontSizeMultiplier={1.2} style={[styles.dockLabel, item.active && styles.dockLabelActive]}>
+                  {item.label}
+                </Text>
+              ) : null}
+            </Pressable>
+          </View>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
 export function CommunityBottomDockControls({ onChange }: { onChange: (next: CommunityTabKey) => void }) {
+  const styles = useCommunitySwitcherStyles();
+  const theme = usePluggdTheme();
   const router = useRouter();
   const controls = [
     { id: 'stories', label: 'Stories', icon: 'auto-stories', action: () => onChange('feed') },
@@ -57,10 +95,19 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
       {controls.map((item, index) => (
-        <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} style={styles.quickButton} onPress={item.action}>
+        <Pressable
+          key={item.id}
+          accessibilityRole="button"
+          accessibilityLabel={item.label}
+          style={styles.quickButton}
+          onPress={() => {
+            selectionHaptic();
+            item.action();
+          }}
+        >
           <Text style={styles.quickIndex}>{String(index + 1).padStart(2, '0')}</Text>
           <View style={styles.quickIcon}>
-            <MaterialIcons name={item.icon as any} size={20} color={COLORS.orange} />
+            <MaterialIcons name={item.icon as any} size={20} color={theme.colors.accentText} />
           </View>
           <Text style={styles.quickLabel}>{item.label}</Text>
         </Pressable>
@@ -69,34 +116,94 @@ export function CommunityBottomDockControls({ onChange }: { onChange: (next: Com
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    paddingHorizontal: 20,
-    paddingVertical: 5,
-    gap: 8,
-  },
-  pill: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    borderRadius: 22,
+function useCommunitySwitcherStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  dockShell: {
+    height: 68,
+    marginHorizontal: 10,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: 'rgba(23,19,16,0.72)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceStrong,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    shadowColor: theme.colors.shadow,
+    shadowOpacity: 0.48,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
-  pillActive: { borderColor: 'rgba(255,102,0,0.5)', backgroundColor: 'rgba(255,102,0,0.10)' },
-  label: {
-    color: COLORS.muted,
-    fontSize: 11,
+  dockSlot: {
+    flex: 1,
+    minWidth: 0,
+    height: 56,
+    alignItems: 'stretch',
+  },
+  dockItem: {
+    width: '100%',
+    height: 56,
+    paddingHorizontal: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  dockItemPressed: { opacity: 0.76, transform: [{ scale: 0.96 }] },
+  postItem: { marginTop: -10 },
+  iconShell: { alignSelf: 'center', width: 44, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconShellActive: {
+    backgroundColor: theme.scheme === 'light' ? 'rgba(232,79,0,0.10)' : 'rgba(255,102,0,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.borderAccent,
+  },
+  postButtonStage: {
+    width: 54,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    shadowColor: COLORS.orange,
+    shadowOpacity: theme.scheme === 'light' ? 0.3 : 0.46,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 9 },
+  },
+  postButtonDepth: {
+    position: 'absolute',
+    top: 40,
+    width: 50,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#9b3100',
+    borderWidth: 1,
+    borderColor: 'rgba(76,25,0,0.72)',
+  },
+  postIconShell: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,211,173,0.82)',
+    zIndex: 1,
+  },
+  dockLabel: {
+    alignSelf: 'stretch',
+    width: '100%',
+    paddingHorizontal: 0,
+    textAlign: 'center',
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
-  labelActive: {
-    color: COLORS.white,
+  dockLabelActive: {
+    color: theme.colors.text,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
-  activeLine: { position: 'absolute', left: 14, right: 14, bottom: 4, height: 2, borderRadius: 1, backgroundColor: COLORS.orange },
   quickRow: {
     paddingHorizontal: 20,
     paddingTop: 2,
@@ -108,26 +215,27 @@ const styles = StyleSheet.create({
     minHeight: 92,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: 'rgba(18,20,32,0.44)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 11,
     paddingVertical: 10,
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 5,
   },
-  quickIndex: { color: COLORS.muted, fontSize: 8.5, fontFamily: pluggdFonts.satoshiBlack, letterSpacing: 1 },
+  quickIndex: { color: theme.colors.textMuted, fontSize: 8.5, fontFamily: pluggdFonts.satoshiBlack, letterSpacing: 1 },
   quickIcon: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,102,0,0.1)',
+    backgroundColor: theme.scheme === 'light' ? 'rgba(232,79,0,0.10)' : 'rgba(255,102,0,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickLabel: {
-    color: COLORS.white,
+    color: theme.colors.text,
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
-});
+  }), [theme]);
+}

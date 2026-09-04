@@ -4,6 +4,7 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { selectionHaptic } from '../src/design/haptics';
 import { usePlayback, type PluggdTrack } from '../src/context/PlaybackProvider';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
+import { formatDuration } from '../src/lib/mobileContent';
 import { GlassMiniPlayer } from './liquid-glass';
 
 const QA_TRACK: PluggdTrack = {
@@ -15,6 +16,20 @@ const QA_TRACK: PluggdTrack = {
   sourceType: 'preview',
   duration: 272,
 };
+
+function shouldDefaultCollapseMiniPlayer(pathname: string): boolean {
+  return (
+    pathname.startsWith('/soundboards/') ||
+    pathname === '/releases' ||
+    pathname.startsWith('/release/') ||
+    pathname === '/store' ||
+    pathname === '/market' ||
+    pathname.startsWith('/market/') ||
+    pathname === '/sample-packs' ||
+    pathname.startsWith('/sample-pack/') ||
+    pathname.startsWith('/product/')
+  );
+}
 
 export default function MiniPlayer() {
   const router = useRouter();
@@ -29,9 +44,13 @@ export default function MiniPlayer() {
     togglePlayPause,
     skipToNext,
     skipToPrevious,
+    seekTo,
+    closePlayer,
   } = usePlayback();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => shouldDefaultCollapseMiniPlayer(normalizedPathname));
   const [savedLocally, setSavedLocally] = useState(false);
+  // Native builds must never invent a current track. The fixture remains
+  // opt-in on web for screenshot QA via ?qaPlayer=1/localStorage only.
   const [qaPlayerEnabled, setQaPlayerEnabled] = useState(false);
   const [qaPlaying, setQaPlaying] = useState(true);
 
@@ -58,8 +77,17 @@ export default function MiniPlayer() {
 
   useEffect(() => {
     setSavedLocally(false);
-    setCollapsed(false);
-  }, [currentTrack?.id, normalizedPathname]);
+    if (currentTrack?.id) setCollapsed(false);
+  }, [currentTrack?.id]);
+
+  useEffect(() => {
+    // A route transition may make the player less intrusive, but it must never
+    // auto-expand a player the listener deliberately collapsed. Paused players
+    // also yield the destination canvas until the listener expands them again.
+    if (!isPlaying || shouldDefaultCollapseMiniPlayer(normalizedPathname)) {
+      setCollapsed(true);
+    }
+  }, [currentTrack?.id, isPlaying, normalizedPathname]);
 
   const activeTrack = currentTrack ?? (qaPlayerEnabled ? QA_TRACK : null);
   const isQaTrack = !currentTrack && Boolean(activeTrack);
@@ -80,9 +108,12 @@ export default function MiniPlayer() {
   };
 
   const progressPercent =
-    currentTrack && progress.duration > 0
+    progress.duration > 0
       ? Math.min((progress.position / progress.duration) * 100, 100)
-      : 38;
+      : 0;
+  const progressLabel = currentTrack && progress.duration > 0
+    ? `${progress.position > 0 ? formatDuration(progress.position) : '0:00'} / ${formatDuration(progress.duration)}`
+    : undefined;
   const backstageRoute = activeTrack?.backstageRoute || (activeTrack?.backstageId ? `/backstage/${activeTrack.backstageId}` : undefined);
   const backstageLabel =
     typeof activeTrack?.backstageActiveCount === 'number' && activeTrack.backstageActiveCount > 0
@@ -101,17 +132,6 @@ export default function MiniPlayer() {
         focus: 'queue',
       },
     });
-  };
-
-  const openLyrics = () => {
-    selectionHaptic();
-    router.push({
-      pathname: '/studio/action',
-      params: {
-        tool: 'barflow',
-        track: activeTrack.id,
-      },
-    } as any);
   };
 
   const saveCurrentTrack = async () => {
@@ -139,17 +159,17 @@ export default function MiniPlayer() {
     Alert.alert(activeTrack.title, activeTrack.isLocked ? 'Locked preview controls' : 'Player options', [
       { text: 'Open full player', onPress: openPlayer },
       { text: `Queue (${queue.length})`, onPress: openQueue },
-      { text: 'Lyrics / BarFlow', onPress: openLyrics },
       favoriteTarget ? { text: savedLocally ? 'Remove saved' : 'Save track', onPress: saveCurrentTrack } : undefined,
       backstageRoute ? { text: backstageLabel, onPress: () => router.push(backstageRoute as any) } : undefined,
       hasLockedPurchaseRoute ? { text: 'Unlock details', onPress: () => router.push(activeTrack.purchaseRoute as any) } : undefined,
       { text: 'Collapse player', onPress: () => setCollapsed(true) },
+      { text: 'Close player', style: 'destructive', onPress: () => void closePlayer() },
       { text: 'Cancel', style: 'cancel' },
     ].filter(Boolean) as any);
   };
 
   return (
-    <View style={styles.wrap}>
+    <View pointerEvents="box-none" style={styles.wrap}>
       <GlassMiniPlayer
         title={activeTrack.title}
         artist={activeTrack.artist}
@@ -161,6 +181,7 @@ export default function MiniPlayer() {
         isPlaying={playerIsPlaying}
         isBuffering={isQaTrack ? false : isBuffering}
         progressPercent={progressPercent}
+        progressLabel={progressLabel}
         onOpen={openPlayer}
         onToggleCollapse={() => setCollapsed((value) => !value)}
         onLikePress={saveCurrentTrack}
@@ -174,6 +195,7 @@ export default function MiniPlayer() {
           }
           togglePlayPause();
         }}
+        onSeek={currentTrack && progress.duration > 0 ? (ratio) => void seekTo(ratio * progress.duration) : undefined}
       />
     </View>
   );

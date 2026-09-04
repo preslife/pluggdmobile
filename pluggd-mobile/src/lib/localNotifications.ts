@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { Linking, Platform } from 'react-native';
+import { router, type Href } from 'expo-router';
+import { Platform } from 'react-native';
+import { matchesAllowedNotificationUrl, notificationRoutePath } from './notificationUrlPolicy';
 import { supabase } from './supabase';
 
 const STORAGE_PREFIX = 'pluggd.localReminder';
@@ -15,6 +17,7 @@ export type LocalReminderResult =
   | { success: false; scheduled: false; error: string };
 
 let notificationHandlerConfigured = false;
+const handledNotificationResponses = new Set<string>();
 
 function storageKey(kind: 'event' | 'live-session', id: string) {
   return `${STORAGE_PREFIX}.${kind}.${id}`;
@@ -56,6 +59,59 @@ function expoProjectId() {
     (Constants.expoConfig?.extra as any)?.projectId ||
     null
   );
+}
+
+function notificationWebHosts() {
+  const configured = (Constants.expoConfig?.extra as any)?.notificationLinkHosts;
+  const hosts = Array.isArray(configured) ? configured : ['pluggd.fm', 'www.pluggd.fm'];
+
+  return new Set(
+    hosts
+      .filter((host): host is string => typeof host === 'string')
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * Notification data is remote input. Only open first-party app routes and
+ * verified PLUGGD web hosts; never hand arbitrary schemes to the OS.
+ */
+export function isAllowedNotificationUrl(value: unknown): value is string {
+  return matchesAllowedNotificationUrl(value, notificationWebHosts());
+}
+
+export async function openNotificationUrl(value: unknown) {
+  if (!isAllowedNotificationUrl(value)) {
+    console.warn('Ignored unsafe notification URL');
+    return false;
+  }
+
+  // Stay inside the mounted Router. Re-opening the custom scheme from a cold
+  // notification response can create a second Android intent before the
+  // initial route is ready, leaving MainActivity on a blank surface.
+  router.push(notificationRoutePath(value) as Href);
+  return true;
+}
+
+async function handleNotificationResponse(response: Notifications.NotificationResponse) {
+  const responseKey = `${response.notification.request.identifier}:${response.actionIdentifier}`;
+  if (handledNotificationResponses.has(responseKey)) return;
+
+  handledNotificationResponses.add(responseKey);
+  if (handledNotificationResponses.size > 32) {
+    const oldest = handledNotificationResponses.values().next().value;
+    if (oldest) handledNotificationResponses.delete(oldest);
+  }
+
+  const url = response.notification.request.content.data?.url;
+  try {
+    const opened = await openNotificationUrl(url);
+    if (opened) await Notifications.clearLastNotificationResponseAsync();
+  } catch (error) {
+    handledNotificationResponses.delete(responseKey);
+    console.warn('Notification URL could not be opened', error);
+  }
 }
 
 export async function registerMobilePushToken(options: { requestPermission?: boolean } = {}) {
@@ -131,11 +187,16 @@ export function configureLocalNotificationHandler() {
 
 export function addLocalNotificationResponseListener() {
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    const url = response.notification.request.content.data?.url;
-    if (typeof url === 'string' && url.length > 0) {
-      void Linking.openURL(url);
-    }
+    void handleNotificationResponse(response);
   });
+
+  void Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (response) return handleNotificationResponse(response);
+    })
+    .catch((error) => {
+      console.warn('Initial notification response could not be read', error);
+    });
 
   return () => subscription.remove();
 }

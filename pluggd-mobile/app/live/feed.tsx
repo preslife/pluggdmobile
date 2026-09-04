@@ -19,6 +19,7 @@ import { impactHaptic, selectionHaptic } from '../../src/design/haptics';
 import { contentInitials, formatCompact } from '../../src/lib/mobileContent';
 import { loadLiveRoomMessagePreview } from '../../src/features/culture/mobileServices';
 import { useLiveRooms, type LiveRoomItem } from '../../src/features/culture/useCultureData';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -49,6 +50,8 @@ function roomImage(room: LiveRoomItem) {
 
 export default function LiveFeedScreen() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useLiveFeedStyles();
   const { height } = useWindowDimensions();
   const roomsQuery = useLiveRooms();
   const [index, setIndex] = useState(0);
@@ -91,16 +94,16 @@ export default function LiveFeedScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
+      <StatusBar style={activeRoom || theme.scheme === 'dark' ? 'light' : 'dark'} />
       {!activeRoom ? (
         <View style={styles.empty}>
-          <View style={styles.emptyMark}><MaterialIcons name="sensors" size={31} color={COLORS.canvas} /></View>
+          <View style={styles.emptyMark}><MaterialIcons name="sensors" size={31} color={theme.colors.onAccent} /></View>
           <Text style={styles.emptyKicker}>LIVE SIGNAL</Text>
           <Text style={styles.emptyTitle}>The room opens when the culture moves.</Text>
           <Text style={styles.emptyBody}>There are no verified live sessions right now. PLUGGD will never fabricate a room, audience or live status to fill this feed.</Text>
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.emptyAction}>
             <Text style={styles.emptyActionText}>Return to Live</Text>
-            <MaterialIcons name="arrow-forward" size={18} color={COLORS.canvas} />
+            <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
           </Pressable>
         </View>
       ) : (
@@ -159,8 +162,10 @@ export default function LiveFeedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.canvas },
+function useLiveFeedStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   card: { flex: 1, backgroundColor: COLORS.canvas },
   initials: { fontFamily: pluggdFonts.satoshiBlack, marginTop: 220, textAlign: 'center', color: COLORS.white, fontSize: 54, fontWeight: '900' },
   topBar: { position: 'absolute', left: 16, right: 16, top: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -180,13 +185,14 @@ const styles = StyleSheet.create({
   meta: { fontFamily: pluggdFonts.satoshiBold, marginTop: 5, color: COLORS.muted, fontSize: 12, fontWeight: '800' },
   chatPreview: { marginTop: 14, minHeight: 56, borderRadius: 16, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: 'rgba(23,19,16,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' },
   chatText: { fontFamily: pluggdFonts.satoshiMedium, flex: 1, color: COLORS.soft, fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  joinButton: { marginTop: 14, minHeight: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.coral },
-  joinText: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
+  joinButton: { marginTop: 14, minHeight: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill },
+  joinText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBold, fontSize: 14 },
   empty: { flex: 1, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 26 },
-  emptyMark: { width: 58, height: 58, borderRadius: 5, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  emptyKicker: { color: COLORS.orange, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', fontSize: 11, letterSpacing: 1.8 },
-  emptyTitle: { color: COLORS.white, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', fontSize: 36, lineHeight: 40, letterSpacing: -1.2, maxWidth: 345, marginTop: 8 },
-  emptyBody: { marginTop: 14, color: COLORS.muted, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', fontSize: 14, lineHeight: 21, maxWidth: 340 },
-  emptyAction: { marginTop: 24, minHeight: 52, borderRadius: 5, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: COLORS.orange },
-  emptyActionText: { color: COLORS.canvas, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', fontSize: 14 },
-});
+  emptyMark: { width: 58, height: 58, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  emptyKicker: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', fontSize: 11, letterSpacing: 1.8 },
+  emptyTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', fontSize: 36, lineHeight: 40, letterSpacing: -1.2, maxWidth: 345, marginTop: 8 },
+  emptyBody: { marginTop: 14, color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', fontSize: 14, lineHeight: 21, maxWidth: 340 },
+  emptyAction: { marginTop: 24, minHeight: 52, borderRadius: 5, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: theme.colors.accentFill },
+  emptyActionText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900', fontSize: 14 },
+}), [theme]);
+}

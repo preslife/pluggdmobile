@@ -28,6 +28,10 @@ export const PURCHASE_ITEM_TYPES = [
 ] as const;
 
 export type PurchaseItemType = (typeof PURCHASE_ITEM_TYPES)[number];
+export const CREDIT_PURCHASE_ITEM_TYPES = ['release'] as const;
+
+export const isCreditPurchaseItem = (item: Pick<PurchaseItem, 'type'>) =>
+  (CREDIT_PURCHASE_ITEM_TYPES as readonly string[]).includes(item.type);
 
 export interface CreditTransaction {
   id: string;
@@ -181,6 +185,9 @@ class CreditSystemService {
     cartTotal: number;
   }> {
     const totalCost = items.reduce((sum, item) => sum + item.price, 0);
+    const creditEligibleTotal = items
+      .filter(isCreditPurchaseItem)
+      .reduce((sum, item) => sum + item.price, 0);
 
     if (totalCost === 0) {
       if (!options.previewOnly) {
@@ -214,7 +221,11 @@ class CreditSystemService {
 
     const maxCreditsByPolicy = Math.floor(cartTotal * effectiveMaxPercent);
     const maxCreditsAllowed = Math.max(
-      Math.min(maxCreditsByPolicy, balanceSummary.available_credits, totalCost),
+      Math.min(
+        maxCreditsByPolicy,
+        balanceSummary.available_credits,
+        creditEligibleTotal,
+      ),
       0,
     );
 
@@ -231,7 +242,7 @@ class CreditSystemService {
       let remainingCredits = creditsToUse;
 
       for (const item of items) {
-        if (item.price <= 0 || remainingCredits <= 0) {
+        if (!isCreditPurchaseItem(item) || item.price <= 0 || remainingCredits <= 0) {
           continue;
         }
 

@@ -1,14 +1,14 @@
 /**
- * useStorefront — detects the user's Apple App Store storefront/region.
+ * useStorefront — detects the active App Store / Google Play storefront.
  *
  * Used for future region-aware compliance decisions. Digital purchase CTAs in
  * the iOS app still default to no external checkout unless PLUGGD has a
  * confirmed native entitlement/payment contract for that item.
  *
- * Uses react-native-iap's getStorefront() which wraps SKStorefront.
+ * expo-iap normalizes the platform billing storefront country code.
  */
 import { useEffect, useState } from 'react';
-import { detectAppleStorefront } from '../commerce/policy';
+import { detectStorefront } from '../commerce/policy';
 
 export function useStorefront() {
   const [countryCode, setCountryCode] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export function useStorefront() {
 
   useEffect(() => {
     let mounted = true;
-    void detectAppleStorefront().then((code) => {
+    void detectStorefront().then((code) => {
       if (!mounted) return;
       setCountryCode(code);
       setLoading(false);

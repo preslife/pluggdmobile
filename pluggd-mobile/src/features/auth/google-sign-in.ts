@@ -1,6 +1,10 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../../lib/supabase';
+import {
+  requireSocialAuthConsent,
+  type SocialAuthConsent,
+} from './social-auth-consent';
 
 export type GoogleSignInResult = {
   isNewUser: boolean;
@@ -36,7 +40,8 @@ export const isGoogleSignInCancellation = (error: unknown) =>
   'code' in error &&
   (error as GoogleSignInError).code === 'ERR_REQUEST_CANCELED';
 
-export async function signInWithGoogle(): Promise<GoogleSignInResult> {
+export async function signInWithGoogle(consent: SocialAuthConsent): Promise<GoogleSignInResult> {
+  requireSocialAuthConsent(consent);
   const redirectTo = Linking.createURL('auth/callback');
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

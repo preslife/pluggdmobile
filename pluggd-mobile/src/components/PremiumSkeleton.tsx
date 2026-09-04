@@ -1,14 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { pluggdFonts } from '../design/typography';
 import { useReducedMotion } from '../design/useReducedMotion';
-import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-
-const COLORS = {
-  surface: '#171310',
-  surface2: '#241d15',
-  border: '#2a221a',
-  muted: '#8E8E9F',
-};
+import { Animated, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { usePluggdTheme } from '../design/usePluggdTheme';
 
 export function PremiumSkeleton({
   label = 'Loading live data...',
@@ -17,8 +11,9 @@ export function PremiumSkeleton({
 }: {
   label?: string;
   compact?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const styles = useSkeletonStyles();
   const opacity = useRef(new Animated.Value(0.46)).current;
   const reducedMotion = useReducedMotion();
 
@@ -60,13 +55,15 @@ export function PremiumSkeleton({
   );
 }
 
-const styles = StyleSheet.create({
+function useSkeletonStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
   wrap: {
     minHeight: 82,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
     padding: 12,
     overflow: 'hidden',
   },
@@ -81,7 +78,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: theme.colors.surfaceAlt,
   },
   artCompact: {
     width: 30,
@@ -95,7 +92,7 @@ const styles = StyleSheet.create({
   line: {
     height: 10,
     borderRadius: 999,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: theme.colors.surfaceAlt,
   },
   lineCompact: {
     height: 8,
@@ -115,14 +112,15 @@ const styles = StyleSheet.create({
     width: 52,
     height: 8,
     borderRadius: 999,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: theme.colors.surfaceAlt,
   },
   label: {
     position: 'absolute',
     right: 12,
     bottom: 10,
-    color: COLORS.muted,
+    color: theme.colors.textMuted,
     fontSize: 11,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
-});
+  }), [theme]);
+}

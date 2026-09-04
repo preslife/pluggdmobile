@@ -9,6 +9,8 @@
  *  - cashOutCredits() calls the same edge function as web
  */
 import { useEffect, useCallback } from 'react';
+import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { resolveCommercePolicy } from '../commerce/policy';
@@ -180,13 +182,25 @@ export function useWallet() {
           if (metadata[key] === undefined) delete metadata[key];
         });
 
+        // One key identifies this user gesture across every server-side ledger
+        // layer. It is created once before the request and reused for all names
+        // accepted during the provider-neutral migration.
+        const idempotencyKey = [
+          Platform.OS,
+          kind,
+          user.id,
+          ref_id ?? 'none',
+          Crypto.randomUUID(),
+        ].join(':');
         const { data, error } = await supabase.functions.invoke(
           'spend-credits',
           {
             body: {
               amount_credits: amount,
               kind,
-              request_id: `${kind}:${ref_id}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+              request_id: idempotencyKey,
+              idempotency_key: idempotencyKey,
+              ...(Platform.OS === 'android' ? { commerce_platform: 'android' } : {}),
               ...metadata,
             },
           },

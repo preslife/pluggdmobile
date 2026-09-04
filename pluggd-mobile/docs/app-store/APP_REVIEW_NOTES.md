@@ -1,85 +1,83 @@
-# App Review Notes
+# App Review Notes — Build 8 submission draft
 
-## Review focus
+> Do not save this draft in App Store Connect until Build 8 is processed and
+> selected, the final physical-device recording and signed rights statement are
+> attached, and every bracketed field below has been replaced with verified
+> current evidence.
 
-PLUGGD is an iPhone music-discovery and creator-community app. The opening Home
-screen contains playable music immediately. Discover explores releases, mixes,
-beats, soundboards, scenes and cities. Community includes user-generated posts.
-Events surfaces verified live culture, with saved music and purchases available
-from the account area. A persistent mini-player opens the full player.
+1. **Physical-device recording**
+   Attachment: `PLUGGD_Build8_Physical_Device_Walkthrough.mov`. The recording
+   begins with a cold launch of Pluggd 1.0.0 (8) on a physical iPhone 15 Pro Max
+   running `[LATEST VERIFIED iOS VERSION AND BUILD]`. It shows registration and
+   login, core discovery and background audio, Community reporting/blocking,
+   Apple-priced credit and membership purchase entry points, Live, contextual
+   permission prompts, Creator Studio and completed in-app deletion of a
+   disposable account.
 
-## Account access
+2. **Devices and operating systems tested**
+   Physical iPhone 15 Pro Max / iOS 26.6 (23G71): upgrade install, exact
+   PLUGGD 1.0.0 (8) identity read-back and launch passed. Apple has since
+   released iOS 26.6.1, so the latest-OS complete review flow and continuous
+   recording remain pending founder evidence.
+   iPhone SE (3rd generation) Simulator / iOS 26.3.1: compact-layout and
+   accessibility checks. iPhone 17 Pro Max Simulator / iOS 26.3.1:
+   large-layout and appearance checks. PLUGGD is
+   submitted as an iPhone app; no iPad platform is submitted.
 
-Production registration is open and does not require an invite code. Supply a dedicated review account in App Store Connect immediately before submission; do not commit its credentials to the repository.
+3. **Functions, audience and value**
+   PLUGGD is a music platform for fans and independent creators. Fans discover
+   and play creator-authorized releases, mixes and beats; explore scenes,
+   editorial and events; join Community and Live; and support creators.
+   Creators manage their catalogue, publish work, host Live rooms and use
+   Creator Studio. PLUGGD combines discovery, community, live participation and
+   creator-owned commerce in one native service.
 
-Recommended reviewer path:
+4. **Setup, access and navigation**
+   Use the username and password stored in the secure App Review Sign-In
+   Information fields. The reviewer account must be verified immediately before
+   submission for both fan and creator access; no invite or sample file is
+   required. Registration is open. Home contains playback. Discover contains
+   Listening Floor, Mixes/Listening Rooms, BeatPlug, PLUGGD DJ and editorial
+   destinations. Community post/profile menus contain Report and Block. Events
+   contains Search and Map. Avatar > Studio opens creator tools. Avatar >
+   Purchases & Access contains Restore Purchases. Avatar > Settings > Privacy &
+   safety > Delete account opens permanent in-app deletion.
 
-1. Create an account or sign in with the App Review account.
-2. On Home, tap the first play control.
-3. Move between Home, Discover, Community and Events to confirm uninterrupted playback.
-4. Open Discover to inspect scene, genre, city, event, mix, beat and soundboard routes.
-5. Open a Community post’s overflow menu to see Report and Block.
-6. Open Settings → Privacy & safety to see age-aware filters, blocked accounts, data export and account deletion.
-7. Open Wallet or a creator Membership to test StoreKit products and Restore Purchases.
-8. Open a published beat, choose a professional usage licence, review its terms
-   and continue to the reviewer-ready hosted checkout.
-9. Open a verified real-world event, choose a ticket tier and continue to the
-   reviewer-ready hosted ticket checkout.
+5. **External services**
+   Supabase provides authentication, database, storage and server functions;
+   Apple and Google provide sign-in; StoreKit and App Store Server API provide
+   native purchases and entitlement updates; Agora provides Live; Mapbox
+   provides event maps without requesting the user's location; Expo/APNs
+   provides notifications. Stripe-hosted checkout is used only for
+   policy-eligible professional licences, verified real-world tickets or
+   physical goods. Sentry diagnostics are used only if the production DSN is
+   enabled. No generative AI service is required for the reviewed core flow.
 
-## User-generated content safety
+6. **Regional differences**
+   Apple prices are localized by storefront. Credits and creator memberships
+   use Apple billing. External release checkout is limited to server-authorized
+   storefronts. Professional beat licences, verified real-world event tickets
+   and physical merchandise appear only where server policy allows; unknown
+   storefronts fail closed. Other core functions operate consistently across
+   regions.
 
-- Report with a specific reason is available on community posts, comments, stories,
-  public profiles and live rooms.
-- Block is available from those same safety menus, with unblock management in
-  Settings → Privacy & safety → Blocked accounts.
-- Blocked authors are removed from Home and Community feeds, search,
-  recommendations, stories, notifications, comments and live-room chat.
-- Text and media submissions receive server-side pre-publication moderation. Media and risk-signalled submissions are held in a private moderation queue.
-- Community Guidelines: https://www.pluggd.fm/community-guidelines
-- Safety contact: support@pluggd.fm
+7. **Protected third-party material and safety**
+   Attachment: `PLUGGD_Content_Rights_Statement_Build8_SIGNED.pdf`. Media shown
+   in the submitted recording and screenshots is PLUGGD-owned or covered by
+   retrievable creator/partner authorization for product and App Store use.
+   Non-playable third-party catalogue metadata cannot enter the native player.
+   Uploaders warrant rights; PLUGGD provides pre-publication moderation,
+   reporting, blocking, filtering and takedown. Content Rights is declared Yes
+   in App Store Connect. Community Guidelines:
+   https://www.pluggd.fm/community-guidelines. Contact: support@pluggd.fm.
 
-## Purchases
-
-PLUGGD uses a category-specific hybrid commerce model:
-
-- Credit packs are Apple consumable in-app purchases. Credits do not expire and
-  can be used for release unlocks, tips and live gifts.
-- Creator memberships are Apple auto-renewable subscriptions. Every sellable
-  creator tier maps to its own App Store product.
-- Professional beat licences use hosted Stripe Checkout. The purchase grants
-  usage rights and professional files for creative work outside the app; credits
-  cannot purchase beat licences.
-- Eligible ticket checkout is limited to verified real-world events. Paid
-  virtual events are not routed through Stripe.
-- Physical merchandise may use hosted checkout. Paid digital sample packs and
-  downloads are not sold through external checkout in iOS v1.
-- Release access always has an Apple-backed credit unlock path. An optional
-  external release CTA is enabled in the United States storefront initially and
-  only in separately approved entitled storefronts thereafter.
-- Stripe Connect supports creator settlement and payouts; it is not an
-  alternative in-app digital unlock method.
-
-External actions are resolved by server-owned policy and fail closed when the
-storefront, entitlement or item classification cannot be confirmed. The app does
-not include the native Stripe SDK; eligible external purchases use secure hosted
-checkout and return to PLUGGD, where access is refreshed after the signed
-provider webhook completes.
-
-The app includes Restore Purchases and a link to Apple subscription management.
-App Store Server Notification V2 and client StoreKit 2 transactions are
-cryptographically verified using Apple's official server library before
-entitlements are granted.
-
-## Account deletion
-
-Settings → Privacy & safety → Delete account performs immediate server-side deletion after recent authentication and typing `DELETE`. The screen explains that Apple subscriptions must be cancelled separately and links to Apple subscription settings.
-
-## Hardware permissions
-
-- Camera: event ticket scanning or user-created live/profile content.
-- Microphone: joining or hosting live audio rooms.
-- Photo library: selecting profile/creator media; saving an export only on request.
-
-## External dependencies for review
-
-The Supabase production deployment, Apple IAP products, App Store Server Notification URL, Apple root certificates and App Apple ID must be configured before the review build is uploaded. The release checklist documents the exact gate.
+8. **In-App Purchases and navigation**
+   Apple consumables provide 500, 1,050, 2,750, 5,750 or 12,000 credits.
+   Credits are used only for release unlocks and fixed-value tips/Live gifts;
+   they do not expire. Creator memberships are Apple auto-renewable
+   subscriptions. Paths: Avatar > Wallet/Credits > Buy; Release > Unlock; Live
+   > Gifts; Creator profile > Shop > VIP supporters. Membership displays its
+   title, monthly period, localized price, renewal/cancellation wording,
+   Restore Purchases, Terms (https://www.pluggd.fm/terms) and Privacy
+   (https://www.pluggd.fm/privacy). Professional beat licences, eligible
+   real-world tickets and physical merchandise are not bought with credits.

@@ -16,8 +16,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
+import { AccountMenuButton } from '../../../components/AccountMenuButton';
 import { PluggdImage } from '../../components/PluggdImage';
-import { PremiumScreenBackdrop, PremiumScreenHeader } from '../../../components/PluggdPrimitives';
+import { PremiumScreenBackdrop } from '../../../components/PluggdPrimitives';
 import { useAuth } from '../../context/AuthProvider';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { pluggdTextStyles } from '../../design/typography';
@@ -151,13 +153,13 @@ function MyPluggdTabRow({ active, onChange }: { active: MyPluggdTab; onChange: (
 export function MyPluggdScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomChromeInset();
   const theme = usePluggdTheme();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MyPluggdTab>('feed');
   const [feedMode, setFeedMode] = useState<MobileSocialFeedMode>('for-you');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('All');
   const [fanMapOpen, setFanMapOpen] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const profile = useQuery({
@@ -283,30 +285,44 @@ export function MyPluggdScreen() {
           },
         ]}
       >
-        <PremiumScreenHeader
-          eyebrow="YOUR WORLD"
-          title="My PLUGGD"
-          subtitle="Your feed, circles, collection and activity—kept in one place."
-          tone="community"
-          style={styles.communityHeaderTitle}
-        />
-        <View style={styles.headerActions}>
-          <HeaderAction icon="search" label="Search PLUGGD" onPress={() => go('/search')} />
-          <HeaderAction icon="mail-outline" label="Open inbox" onPress={() => go('/inbox')} badge={Boolean(inbox.data?.some((item) => item.unread_count))} />
-          <HeaderAction icon="notifications-none" label="Open notifications" onPress={() => go('/notifications')} badge={unreadCount} />
-          <Pressable accessibilityRole="button" accessibilityLabel="Open profile menu" style={styles.avatarTap} onPress={() => (user ? setAvatarMenuOpen(true) : go('/auth/login'))}>
-            <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.divider }]}>
-              {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
-            </View>
-          </Pressable>
+        <View style={styles.headerTopLine}>
+          <Text style={[styles.headerEyebrow, { color: theme.colors.accent }]}>YOUR WORLD</Text>
+          <View style={styles.headerActions}>
+            <HeaderAction icon="search" label="Search PLUGGD" onPress={() => go('/search')} />
+            <HeaderAction icon="mail-outline" label="Open inbox" onPress={() => go('/inbox')} badge={Boolean(inbox.data?.some((item) => item.unread_count))} />
+            <HeaderAction icon="notifications-none" label="Open notifications" onPress={() => go('/notifications')} badge={unreadCount} />
+            <AccountMenuButton accessibilityLabel="Open account menu" style={styles.avatarTap}>
+              {() => (
+              <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.divider }]}>
+                {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
+              </View>
+              )}
+            </AccountMenuButton>
+          </View>
         </View>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.9}
+          numberOfLines={1}
+          style={[styles.headerTitle, { color: theme.colors.text }]}
+        >
+          My PLUGGD
+        </Text>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.86}
+          numberOfLines={1}
+          style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}
+        >
+          Your feed, circles, library and activity in one place.
+        </Text>
       </View>
 
       <ScrollView
         stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={theme.colors.accent} />}
-        contentContainerStyle={{ paddingBottom: 148 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
       >
         <MyPluggdTabRow active={activeTab} onChange={setActiveTab} />
 
@@ -408,19 +424,6 @@ export function MyPluggdScreen() {
           go(profileRoute(plug.user_id || plug.creator_id, plug.profile_slug || plug.username));
         }}
       />
-      <AvatarMenuModal
-        open={avatarMenuOpen}
-        onClose={() => setAvatarMenuOpen(false)}
-        onRoute={(route) => {
-          setAvatarMenuOpen(false);
-          go(route);
-        }}
-        onSignOut={async () => {
-          setAvatarMenuOpen(false);
-          await signOut();
-          router.replace('/auth/login' as any);
-        }}
-      />
     </PremiumScreenBackdrop>
   );
 }
@@ -428,13 +431,35 @@ export function MyPluggdScreen() {
 function FeedSwitch({ active, onChange }: { active: MobileSocialFeedMode; onChange: (mode: MobileSocialFeedMode) => void }) {
   const theme = usePluggdTheme();
   return (
-    <View style={[styles.feedSwitch, { borderBottomColor: theme.colors.divider }]}>
+    <View style={[styles.feedSwitch, { backgroundColor: theme.colors.surface, borderColor: theme.colors.controlBorder }]}>
       {FEED_SWITCH.map((mode) => {
         const selected = active === mode.key;
         return (
-          <Pressable key={mode.key} accessibilityRole="button" accessibilityLabel={`${mode.label} feed`} accessibilityState={{ selected }} style={styles.feedSwitchButton} onPress={() => onChange(mode.key)}>
-            <Text style={[styles.feedSwitchLabel, { color: selected ? theme.colors.text : theme.colors.textMuted }]}>{mode.label}</Text>
-            <View style={[styles.feedUnderline, { backgroundColor: selected ? theme.colors.accent : 'transparent' }]} />
+          <Pressable
+            key={mode.key}
+            accessibilityRole="tab"
+            accessibilityLabel={`${mode.label} feed`}
+            accessibilityState={{ selected }}
+            style={[
+              styles.feedSwitchButton,
+              {
+                backgroundColor: selected ? theme.colors.accentSoft : 'transparent',
+                borderColor: selected ? theme.colors.accent : 'transparent',
+              },
+            ]}
+            onPress={() => {
+              selectionHaptic();
+              onChange(mode.key);
+            }}
+          >
+            <Text
+              style={[
+                styles.feedSwitchLabel,
+                { color: selected ? theme.colors.accentText : theme.colors.textMuted },
+              ]}
+            >
+              {mode.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -459,15 +484,21 @@ function CompactComposer({
 }) {
   const theme = usePluggdTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={onOpen}>
-      <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
-        {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
-      </View>
-      <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+    // The three quick actions are siblings of the open-composer target, not
+    // children of it. Nesting them inside a Pressable made every action a
+    // button within a button — ambiguous for VoiceOver, and invalid markup on
+    // web — and needed stopPropagation to behave.
+    <View style={[styles.compactComposer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open composer" style={styles.composerOpen} onPress={onOpen}>
+        <View style={[styles.composerAvatar, { backgroundColor: theme.colors.surfaceAlt }]}>
+          {avatarUrl ? <PluggdImage uri={avatarUrl} style={styles.avatarImage} /> : <Text style={[styles.avatarText, { color: theme.colors.text }]}>{avatarLabel}</Text>}
+        </View>
+        <Text style={[styles.composerPlaceholder, { color: theme.colors.textMuted }]}>What's happening?</Text>
+      </Pressable>
       <QuickComposerAction icon="image" label="Add image or video" onPress={onImage} />
       <QuickComposerAction icon="graphic-eq" label="Share music or audio" onPress={onMusic} />
       <QuickComposerAction icon="forum" label="Start event or thread" onPress={onThread} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -590,59 +621,9 @@ function ActivitySection({ title, terms, notifications, onRoute }: { title: stri
 function ActivityFilterPill({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const theme = usePluggdTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${label} activity`} accessibilityState={{ selected }} style={[styles.filterPill, { backgroundColor: selected ? theme.colors.accent : theme.colors.surface, borderColor: selected ? theme.colors.accent : theme.colors.border }]} onPress={onPress}>
-      <Text style={[styles.filterPillText, { color: selected ? '#0a0806' : theme.colors.textMuted }]}>{label}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${label} activity`} accessibilityState={{ selected }} style={[styles.filterPill, { backgroundColor: selected ? theme.colors.accentFill : theme.colors.surface, borderColor: selected ? theme.colors.accentFill : theme.colors.border }]} onPress={onPress}>
+      <Text style={[styles.filterPillText, { color: selected ? theme.colors.onAccent : theme.colors.textMuted }]}>{label}</Text>
     </Pressable>
-  );
-}
-
-function AvatarMenuModal({
-  open,
-  onClose,
-  onRoute,
-  onSignOut,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onRoute: (route: string) => void;
-  onSignOut: () => Promise<void>;
-}) {
-  const theme = usePluggdTheme();
-  const menu: Array<{ label: string; icon: keyof typeof MaterialIcons.glyphMap; route?: string; destructive?: boolean }> = [
-    { label: 'View Profile', icon: 'person-outline', route: '/profile' },
-    { label: 'Edit Profile', icon: 'edit', route: '/edit-profile' },
-    { label: 'Inbox', icon: 'mail-outline', route: '/inbox' },
-    { label: 'Wallet', icon: 'account-balance-wallet', route: '/wallet' },
-    { label: 'Tickets', icon: 'confirmation-number', route: '/tickets' },
-    { label: 'Saved', icon: 'bookmark-border', route: '/favorites' },
-    { label: 'Settings', icon: 'settings', route: '/settings' },
-    { label: 'Creator Mode', icon: 'auto-awesome', route: '/creator-mode' },
-    { label: 'Sign Out', icon: 'logout', destructive: true },
-  ];
-  return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close profile menu" style={styles.menuOverlay} onPress={onClose}>
-        <Pressable style={[styles.menuSheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={(event) => event.stopPropagation()}>
-          <Text style={[styles.menuTitle, { color: theme.colors.text }]}>MY PLUGGD</Text>
-          {menu.map((item) => (
-            <Pressable
-              key={item.label}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              style={[styles.menuItem, { borderBottomColor: theme.colors.divider }]}
-              onPress={() => {
-                if (item.destructive) void onSignOut();
-                else if (item.route) onRoute(item.route);
-              }}
-            >
-              <MaterialIcons name={item.icon} size={21} color={item.destructive ? theme.colors.live : theme.colors.text} />
-              <Text style={[styles.menuItemText, { color: item.destructive ? theme.colors.live : theme.colors.text }]}>{item.label}</Text>
-              {!item.destructive ? <MaterialIcons name="chevron-right" size={20} color={theme.colors.textSubtle} /> : null}
-            </Pressable>
-          ))}
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -730,7 +711,7 @@ function FanMapSheet({
             <View style={styles.mapGridVertical} />
             <Text style={styles.mapWatermark}>PLUGGD MAP</Text>
             {plugs.map((plug) => (
-              <Pressable key={plug.id} accessibilityRole="button" accessibilityLabel={`Open ${plug.display_name}`} style={[styles.mapMarker, markerStyle(plug.lat, plug.lng)]} onPress={(event) => {
+              <Pressable key={plug.id} accessibilityRole="button" accessibilityLabel={`Open ${plug.display_name}`} hitSlop={8} style={[styles.mapMarker, markerStyle(plug.lat, plug.lng)]} onPress={(event) => {
                 event.stopPropagation();
                 onOpenProfile(plug);
               }}>
@@ -751,8 +732,8 @@ function FanMapSheet({
               <TextInput value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor={theme.colors.textSubtle} style={[styles.formInputHalf, { color: theme.colors.text, borderColor: theme.colors.border }]} />
             </View>
             <TextInput value={message} onChangeText={setMessage} placeholder="Say hello to the PLUGGD map..." placeholderTextColor={theme.colors.textSubtle} style={[styles.formInput, styles.messageInput, { color: theme.colors.text, borderColor: theme.colors.border }]} multiline maxLength={180} />
-            <Pressable accessibilityRole="button" accessibilityLabel="Add my Fan Map plug" disabled={!user?.id || createPlug.isPending} style={[styles.plugButton, { backgroundColor: theme.colors.accent }, (!user?.id || createPlug.isPending) && styles.disabled]} onPress={() => createPlug.mutate()}>
-              {createPlug.isPending ? <ActivityIndicator color="#0a0806" /> : <Text style={styles.plugButtonText}>{user?.id ? 'Plug In' : 'Sign in to Plug In'}</Text>}
+            <Pressable accessibilityRole="button" accessibilityLabel="Add my Fan Map plug" disabled={!user?.id || createPlug.isPending} style={[styles.plugButton, { backgroundColor: theme.colors.accentFill }, (!user?.id || createPlug.isPending) && styles.disabled]} onPress={() => createPlug.mutate()}>
+              {createPlug.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={[styles.plugButtonText, { color: theme.colors.onAccent }]}>{user?.id ? 'Plug In' : 'Sign in to Plug In'}</Text>}
             </Pressable>
           </View>
 
@@ -884,8 +865,8 @@ function BuildFeedPanel({ onFind, onCircles }: { onFind: () => void; onCircles: 
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Build your feed</Text>
       <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Follow creators, join circles, and save music to make My PLUGGD yours.</Text>
       <View style={styles.emptyActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Find creators" style={[styles.primarySmall, { backgroundColor: theme.colors.accent }]} onPress={onFind}>
-          <Text style={styles.primarySmallText}>Find creators</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Find creators" style={[styles.primarySmall, { backgroundColor: theme.colors.accentFill }]} onPress={onFind}>
+          <Text style={[styles.primarySmallText, { color: theme.colors.onAccent }]}>Find creators</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Join circles" style={[styles.secondarySmall, { borderColor: theme.colors.border }]} onPress={onCircles}>
           <Text style={[styles.secondarySmallText, { color: theme.colors.text }]}>Join circles</Text>
@@ -928,9 +909,11 @@ function LoadingRows() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 0, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { ...pluggdTextStyles.appTitle, fontSize: 30, lineHeight: 34 },
-  communityHeaderTitle: { flex: 1, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 },
+  header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerTopLine: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerEyebrow: { fontFamily: 'Satoshi-Black', fontSize: 11, lineHeight: 14, letterSpacing: 1.1 },
+  headerTitle: { ...pluggdTextStyles.appTitle, fontSize: 31, lineHeight: 35 },
+  headerSubtitle: { marginTop: 2, fontFamily: 'Satoshi-Medium', fontSize: 13, lineHeight: 18 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 1 },
   headerAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   badgeDot: { position: 'absolute', right: 9, top: 9, width: 7, height: 7, borderRadius: 4 },
@@ -945,12 +928,12 @@ const styles = StyleSheet.create({
   feedStack: { paddingBottom: 10 },
   compactComposer: { marginHorizontal: 16, height: 54, borderRadius: 16, borderWidth: 1, paddingLeft: 10, paddingRight: 2, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  composerOpen: { flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composerPlaceholder: { flex: 1, fontSize: 15, fontFamily: 'Satoshi-Medium' },
   quickAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  feedSwitch: { height: 44, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', paddingHorizontal: 16, marginTop: 4 },
-  feedSwitchButton: { minHeight: 44, marginRight: 28, justifyContent: 'center' },
-  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 15 },
-  feedUnderline: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, borderRadius: 2 },
+  feedSwitch: { flexDirection: 'row', gap: 4, minHeight: 48, marginHorizontal: 16, marginTop: 12, marginBottom: 2, padding: 4, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth },
+  feedSwitchButton: { flex: 1, minHeight: 40, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 13, letterSpacing: 0.2 },
   pageStack: { padding: 16, gap: 12 },
   sectionHeader: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22 },
@@ -979,7 +962,7 @@ const styles = StyleSheet.create({
   badgeTitle: { color: '#FFFFFF', fontFamily: 'Satoshi-Bold', fontSize: 14, marginTop: 8 },
   badgeMeta: { color: '#8E8E9F', fontSize: 11, marginTop: 3 },
   filterRail: { minHeight: 44, gap: 8, paddingRight: 16 },
-  filterPill: { height: 34, minWidth: 70, borderRadius: 17, borderWidth: 1, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
+  filterPill: { minHeight: 44, minWidth: 70, borderRadius: 22, borderWidth: 1, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
   filterPillText: { fontFamily: 'Satoshi-Bold', fontSize: 12 },
   activitySection: { gap: 8 },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.58)', justifyContent: 'flex-end', padding: 16 },

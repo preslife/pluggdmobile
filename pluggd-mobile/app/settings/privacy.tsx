@@ -15,7 +15,10 @@ import {
   View,
 } from 'react-native';
 import { LEGAL_URLS, MINIMUM_AGE } from '../../src/config/environment';
+import { useAuth } from '../../src/context/AuthProvider';
+import { useStoreBilling } from '../../src/context/StoreBillingProvider';
 import { pluggdFonts } from '../../src/design/typography';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import {
   deleteMyAccount,
@@ -28,6 +31,11 @@ import {
 export default function PrivacySettingsScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const bottomInset = useBottomChromeInset();
+  const { signOut } = useAuth();
+  const { adapter } = useStoreBilling();
+  const storeName = adapter?.storeName ?? 'your app store';
+  const subscriptionManagementUrl = adapter?.subscriptionManagementUrl() ?? null;
   const [settings, setSettings] = useState<AccountSafetySettings>({
     ageBand: null,
     sensitiveContentEnabled: false,
@@ -71,6 +79,7 @@ export default function PrivacySettingsScreen() {
         confirmation: deleteText,
         acknowledgeSubscription: subscriptionAcknowledged,
       });
+      await signOut();
       setDeleteOpen(false);
       router.replace('/auth/login' as any);
       Alert.alert('Account deleted', 'Your PLUGGD account has been permanently deleted.');
@@ -84,8 +93,8 @@ export default function PrivacySettingsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.back, { borderColor: theme.colors.border }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/settings' as any))} style={[styles.back, { borderColor: theme.colors.border }]}>
           <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
         </Pressable>
 
@@ -133,8 +142,8 @@ export default function PrivacySettingsScreen() {
         </Section>
 
         <View style={styles.legalLinks}>
-          <Text accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_URLS.privacy)} style={[styles.legalLink, { color: theme.colors.accent }]}>Privacy Policy</Text>
-          <Text accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_URLS.terms)} style={[styles.legalLink, { color: theme.colors.accent }]}>Terms of Service</Text>
+          <Text accessibilityRole="link" onPress={() => router.push('/legal/privacy' as any)} style={[styles.legalLink, { color: theme.colors.accent }]}>Privacy Policy</Text>
+          <Text accessibilityRole="link" onPress={() => router.push('/legal/terms' as any)} style={[styles.legalLink, { color: theme.colors.accent }]}>Terms of Service</Text>
           <Text accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_URLS.support)} style={[styles.legalLink, { color: theme.colors.accent }]}>Support</Text>
         </View>
       </ScrollView>
@@ -145,9 +154,9 @@ export default function PrivacySettingsScreen() {
             <View style={styles.dangerIcon}><MaterialIcons name="delete-forever" size={28} color="#FFFFFF" /></View>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Permanently delete account?</Text>
             <Text style={[styles.modalBody, { color: theme.colors.textMuted }]}>Your profile and personal content will be removed immediately. Financial, fraud-prevention and safety records may be retained where legally required. This cannot be undone.</Text>
-            <Pressable onPress={() => Linking.openURL(LEGAL_URLS.subscriptions)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
+            <Pressable accessibilityRole="link" disabled={!subscriptionManagementUrl} onPress={() => subscriptionManagementUrl && Linking.openURL(subscriptionManagementUrl)} style={[styles.renewalNote, { borderColor: theme.colors.border }]}>
               <MaterialIcons name="open-in-new" size={18} color={theme.colors.accent} />
-              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Deleting PLUGGD does not cancel subscriptions managed by Apple. Open Apple subscriptions.</Text>
+              <Text style={[styles.renewalText, { color: theme.colors.textMuted }]}>Deleting PLUGGD does not cancel subscriptions managed by {storeName}. Open subscription settings.</Text>
             </Pressable>
             <Pressable
               accessibilityRole="checkbox"
@@ -156,7 +165,7 @@ export default function PrivacySettingsScreen() {
               style={styles.ackRow}
             >
               <MaterialIcons name={subscriptionAcknowledged ? 'check-box' : 'check-box-outline-blank'} size={24} color={theme.colors.accent} />
-              <Text style={[styles.ackText, { color: theme.colors.text }]}>I understand I must cancel Apple subscriptions separately.</Text>
+              <Text style={[styles.ackText, { color: theme.colors.text }]}>I understand I must cancel store subscriptions separately.</Text>
             </Pressable>
             <TextInput
               accessibilityLabel="Type DELETE to confirm"
@@ -168,8 +177,8 @@ export default function PrivacySettingsScreen() {
               style={[styles.deleteInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
             />
             <View style={styles.modalActions}>
-              <Pressable onPress={() => setDeleteOpen(false)} style={[styles.cancel, { borderColor: theme.colors.border }]}><Text style={{ color: theme.colors.text }}>Cancel</Text></Pressable>
-              <Pressable disabled={deleteText !== 'DELETE' || deleting} onPress={confirmDeletion} style={[styles.deleteButton, { opacity: deleteText === 'DELETE' && !deleting ? 1 : 0.4 }]}>
+              <Pressable accessibilityRole="button" onPress={() => setDeleteOpen(false)} style={[styles.cancel, { borderColor: theme.colors.border }]}><Text style={{ color: theme.colors.text }}>Cancel</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={deleting ? 'Deleting account' : 'Delete account permanently'} disabled={deleteText !== 'DELETE' || deleting} onPress={confirmDeletion} style={[styles.deleteButton, { opacity: deleteText === 'DELETE' && !deleting ? 1 : 0.4 }]}>
                 <Text style={styles.deleteButtonText}>{deleting ? 'Deleting…' : 'Delete forever'}</Text>
               </Pressable>
             </View>

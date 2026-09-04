@@ -7,9 +7,12 @@ import { impactHaptic } from '../../src/design/haptics';
 import { pluggdFonts } from '../../src/design/typography';
 import { createMobilePlaylist } from '../../src/features/culture/mobileServices';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 export default function NewPlaylistRoute() {
+  const theme = usePluggdTheme();
+  const styles = usePlaylistFormStyles();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -31,11 +34,11 @@ export default function NewPlaylistRoute() {
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconButton} onPress={() => router.back()}>
-          <MaterialIcons name="chevron-left" size={28} color="#FFFFFF" />
+          <MaterialIcons name="chevron-left" size={28} color={theme.colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>NEW PLAYLIST</Text>
         <View style={styles.iconButton} />
@@ -52,7 +55,7 @@ export default function NewPlaylistRoute() {
             value={name}
             onChangeText={setName}
             placeholder="Late night garage"
-            placeholderTextColor="#62627A"
+            placeholderTextColor={theme.colors.textSubtle}
             style={styles.input}
             autoCapitalize="words"
             maxLength={80}
@@ -62,7 +65,7 @@ export default function NewPlaylistRoute() {
             value={description}
             onChangeText={setDescription}
             placeholder="What this playlist is for..."
-            placeholderTextColor="#62627A"
+            placeholderTextColor={theme.colors.textSubtle}
             style={[styles.input, styles.textArea]}
             multiline
             maxLength={240}
@@ -83,20 +86,23 @@ export default function NewPlaylistRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0806' },
-  header: { height: 92, paddingHorizontal: 16, paddingTop: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#241d15' },
+function usePlaylistFormStyles() {
+  const theme = usePluggdTheme();
+  return useMemo(() => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  header: { height: 92, paddingHorizontal: 16, paddingTop: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontFamily: pluggdFonts.displayBold, fontSize: 28, lineHeight: 32 },
+  headerTitle: { color: theme.colors.text, fontFamily: pluggdFonts.displayBold, fontSize: 28, lineHeight: 32 },
   content: { flex: 1, padding: 16, paddingTop: 26 },
-  kicker: { color: PLUGGD_ORANGE, fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 1.1 },
-  title: { color: '#FFFFFF', fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, marginTop: 8 },
-  body: { color: '#B3B3B3', fontFamily: pluggdFonts.satoshiMedium, fontSize: 15, lineHeight: 22, marginTop: 8 },
+  kicker: { color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBlack, fontSize: 12, letterSpacing: 1.1 },
+  title: { color: theme.colors.text, fontFamily: pluggdFonts.displayExtraBold, fontSize: 34, lineHeight: 38, marginTop: 8 },
+  body: { color: theme.colors.textSecondary, fontFamily: pluggdFonts.satoshiMedium, fontSize: 15, lineHeight: 22, marginTop: 8 },
   form: { marginTop: 28, gap: 10 },
-  label: { color: '#8E8E9F', fontFamily: pluggdFonts.satoshiBold, fontSize: 13, textTransform: 'uppercase' },
-  input: { minHeight: 52, borderRadius: 5, borderWidth: 1, borderColor: '#262626', backgroundColor: '#111116', color: '#FFFFFF', paddingHorizontal: 14, fontFamily: pluggdFonts.satoshiMedium, fontSize: 16 },
+  label: { color: theme.colors.textMuted, fontFamily: pluggdFonts.satoshiBold, fontSize: 13, textTransform: 'uppercase' },
+  input: { minHeight: 52, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text, paddingHorizontal: 14, fontFamily: pluggdFonts.satoshiMedium, fontSize: 16 },
   textArea: { minHeight: 116, paddingTop: 14, textAlignVertical: 'top' },
-  primaryButton: { minHeight: 52, borderRadius: 5, backgroundColor: PLUGGD_ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: 26 },
-  primaryText: { color: '#0a0806', fontFamily: pluggdFonts.satoshiBold, fontSize: 15, textTransform: 'uppercase' },
+  primaryButton: { minHeight: 52, borderRadius: 5, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', marginTop: 26 },
+  primaryText: { color: theme.colors.onAccent, fontFamily: pluggdFonts.satoshiBold, fontSize: 15, textTransform: 'uppercase' },
   disabled: { opacity: 0.48 },
-});
+}), [theme]);
+}

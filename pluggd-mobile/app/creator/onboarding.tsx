@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,6 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
+import type { PluggdTheme } from '../../src/design/tokens';
+import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
 
 type EcosystemRole =
@@ -58,7 +61,6 @@ type ChecklistItem = {
   params?: Record<string, string>;
 };
 
-const PLUGGD_ORANGE = '#ff6600';
 const REQUIRED_TASKS: TaskId[] = ['profile_basics', 'first_role_action'];
 
 const ROLE_LABELS: Record<EcosystemRole, string> = {
@@ -164,11 +166,13 @@ function getRoleAction(role: EcosystemRole) {
 }
 
 function PluggdWordmark() {
-  return <BrandLogo variant="dark" width={122} height={44} />;
+  return <BrandLogo width={122} height={44} />;
 }
 
 export default function CreatorOnboarding() {
   const router = useRouter();
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [primaryRole, setPrimaryRole] = useState<EcosystemRole>('artist');
@@ -358,14 +362,16 @@ export default function CreatorOnboarding() {
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
+        <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator color={PLUGGD_ORANGE} />
+        <ActivityIndicator color={theme.colors.accentText} />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.screen}>
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
@@ -381,11 +387,11 @@ export default function CreatorOnboarding() {
             <View style={styles.progressFill} />
 
             <View style={[styles.progressStep, styles.progressDone, { left: 0 }]}>
-              <MaterialIcons name="check" size={13} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="check" size={13} color={theme.colors.accentText} />
             </View>
 
             <View style={[styles.progressStep, styles.progressDone, styles.progressMiddle]}>
-              <MaterialIcons name="check" size={13} color={PLUGGD_ORANGE} />
+              <MaterialIcons name="check" size={13} color={theme.colors.accentText} />
             </View>
 
             <View style={[styles.progressStep, styles.progressActive, { right: 0 }]}>
@@ -400,6 +406,8 @@ export default function CreatorOnboarding() {
         <Text style={styles.subtitle} maxFontSizeMultiplier={1.45}>Complete the basics for your primary role.</Text>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit your creator roles"
           style={styles.roleSummaryCard}
           onPress={() => router.push('/profile' as any)}
         >
@@ -407,7 +415,7 @@ export default function CreatorOnboarding() {
             <MaterialIcons
               name={ROLE_ICONS[primaryRole] ?? 'person-outline'}
               size={34}
-              color={PLUGGD_ORANGE}
+              color={theme.colors.accentText}
             />
           </View>
 
@@ -429,7 +437,7 @@ export default function CreatorOnboarding() {
             </View>
           </View>
 
-          <MaterialIcons name="chevron-right" size={25} color="#8E8E8E" />
+          <MaterialIcons name="chevron-right" size={25} color={theme.colors.textMuted} />
         </Pressable>
 
         <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.35}>Setup checklist</Text>
@@ -455,7 +463,7 @@ export default function CreatorOnboarding() {
 
         <View style={styles.helperCard}>
           <View style={styles.helperIcon}>
-            <MaterialIcons name="info-outline" size={22} color={PLUGGD_ORANGE} />
+            <MaterialIcons name="info-outline" size={22} color={theme.colors.accentText} />
           </View>
           <Text style={styles.helperText} maxFontSizeMultiplier={1.4}>
             You can update roles, profile fields, and tools later in{' '}
@@ -465,9 +473,9 @@ export default function CreatorOnboarding() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={handleContinue} disabled={saving}>
+        <Pressable accessibilityRole="button" accessibilityLabel={saving ? 'Saving creator profile' : 'Continue creator setup'} style={styles.cta} onPress={handleContinue} disabled={saving}>
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.onAccent} />
           ) : (
             <Text style={styles.ctaText} maxFontSizeMultiplier={1.35}>Continue setup</Text>
           )}
@@ -486,6 +494,8 @@ function ChecklistRow({
   isLast: boolean;
   onPress: () => void;
 }) {
+  const theme = usePluggdTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const statusStyle =
     item.status === 'Done'
       ? styles.statusDone
@@ -502,13 +512,15 @@ function ChecklistRow({
 
   const iconColor =
     item.status === 'Done'
-      ? '#41D17D'
+      ? theme.colors.success
       : item.status === 'In progress'
-        ? PLUGGD_ORANGE
-        : '#BDBDBD';
+        ? theme.colors.accentText
+        : theme.colors.textMuted;
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}. ${item.status}. ${item.subtitle}`}
       style={[styles.checklistRow, !isLast && styles.checklistBorder]}
       onPress={onPress}
     >
@@ -526,20 +538,21 @@ function ChecklistRow({
           <Text style={[styles.statusText, statusTextStyle]} maxFontSizeMultiplier={1.25}>{item.status}</Text>
         </View>
 
-        <MaterialIcons name="chevron-right" size={24} color="#737373" />
+        <MaterialIcons name="chevron-right" size={24} color={theme.colors.textMuted} />
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: PluggdTheme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0a0806',
+    backgroundColor: theme.colors.background,
   },
   loadingScreen: {
     flex: 1,
-    backgroundColor: '#0a0806',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -557,14 +570,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoText: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 30,
     lineHeight: 44,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
   },
   logoAccent: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
   },
   progressWrap: {
     marginTop: 16,
@@ -574,7 +587,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: '84%',
     height: 2,
-    backgroundColor: '#323232',
+    backgroundColor: theme.colors.borderStrong,
     position: 'relative',
     justifyContent: 'center',
   },
@@ -583,7 +596,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: 2,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
   },
   progressStep: {
     position: 'absolute',
@@ -599,32 +612,32 @@ const styles = StyleSheet.create({
     marginLeft: -17,
   },
   progressDone: {
-    backgroundColor: '#0a0806',
+    backgroundColor: theme.colors.background,
     borderWidth: 2,
-    borderColor: PLUGGD_ORANGE,
+    borderColor: theme.colors.accentFill,
   },
   progressActive: {
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
   },
   progressActiveText: {
-    color: '#FFFFFF',
+    color: theme.colors.onAccent,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   stepText: {
-    color: '#A9A9A9',
+    color: theme.colors.textMuted,
     fontSize: 16,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 28,
   },
   title: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 36,
     letterSpacing: -1.2,
     fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800',
   },
   subtitle: {
-    color: '#B3B3B3',
+    color: theme.colors.textSecondary,
     fontSize: 15,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginTop: 10,
@@ -634,7 +647,7 @@ const styles = StyleSheet.create({
     minHeight: 116,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -644,9 +657,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 5,
-    backgroundColor: '#20130E',
+    backgroundColor: theme.colors.accentSoft,
     borderWidth: 1,
-    borderColor: PLUGGD_ORANGE,
+    borderColor: theme.colors.borderAccent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -656,7 +669,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   overline: {
-    color: '#8E8E8E',
+    color: theme.colors.textMuted,
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     letterSpacing: 1,
@@ -672,23 +685,23 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   roleSummaryLabel: {
-    color: '#9F9F9F',
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
     marginBottom: 4,
   },
   primaryRole: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 22,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   secondaryRoles: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 15,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 22,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
     marginBottom: 12,
@@ -696,7 +709,7 @@ const styles = StyleSheet.create({
   checklist: {
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
   },
   checklistRow: {
     minHeight: 86,
@@ -707,13 +720,13 @@ const styles = StyleSheet.create({
   },
   checklistBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: theme.colors.divider,
   },
   checklistIconBox: {
     width: 44,
     height: 44,
     borderRadius: 4,
-    backgroundColor: '#1C1714',
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 13,
@@ -724,12 +737,12 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   checklistTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 17,
     fontFamily: pluggdFonts.displayBold, fontWeight: '700',
   },
   checklistDescription: {
-    color: '#A8A8A8',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
     marginTop: 4,
@@ -746,35 +759,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusProgress: {
-    backgroundColor: '#24150E',
-    borderColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.borderAccent,
   },
   statusNotStarted: {
-    backgroundColor: '#101010',
-    borderColor: '#414141',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.controlBorder,
   },
   statusDone: {
-    backgroundColor: '#0E2418',
-    borderColor: '#41D17D',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.success,
   },
   statusText: {
     fontSize: 12,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   statusProgressText: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
   },
   statusNotStartedText: {
-    color: '#BDBDBD',
+    color: theme.colors.textMuted,
   },
   statusDoneText: {
-    color: '#41D17D',
+    color: theme.colors.success,
   },
   helperCard: {
     marginTop: 18,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#302A26',
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -783,19 +796,19 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 4,
-    backgroundColor: '#21130E',
+    backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   helperText: {
     flex: 1,
-    color: '#B9B9B9',
+    color: theme.colors.textSecondary,
     fontSize: 15,
     fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600',
   },
   helperLink: {
-    color: PLUGGD_ORANGE,
+    color: theme.colors.accentText,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '700',
   },
   footer: {
@@ -806,20 +819,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 22,
-    backgroundColor: 'rgba(8,8,8,0.96)',
+    backgroundColor: theme.colors.headerGlass,
     borderTopWidth: 1,
-    borderTopColor: '#171310',
+    borderTopColor: theme.colors.border,
   },
   cta: {
     height: 58,
     borderRadius: 5,
-    backgroundColor: PLUGGD_ORANGE,
+    backgroundColor: theme.colors.accentFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaText: {
-    color: '#0A0806',
+    color: theme.colors.onAccent,
     fontSize: 16,
     fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900',
   },
-});
+  });
+}

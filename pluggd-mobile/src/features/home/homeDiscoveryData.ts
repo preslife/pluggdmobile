@@ -8,6 +8,9 @@ import {
 import { supabase } from '../../lib/supabase';
 import type { BackstageCommunity, LiveRoomItem } from '../culture/mobileTypes';
 import { getCurrentUserId, safeList } from '../culture/mobileServices';
+import { loadCuratedPublicItems } from '../discovery/siteCuration';
+import { resolveThePlugArtwork } from '../editorial/thePlugArticleService';
+import type { HomeDestination } from './homeDestinations';
 
 export type HomeEditorialStory = {
   id: string;
@@ -16,6 +19,9 @@ export type HomeEditorialStory = {
   featured_image_url: string | null;
   tags: string[] | null;
   created_at: string | null;
+  published_at: string | null;
+  is_featured?: boolean | null;
+  feature_rank?: number | null;
 };
 
 export type HomeMarketSignal = {
@@ -47,29 +53,68 @@ export type HomeNextWaveItem = {
   label: string;
   imageUrl: string;
   route: string;
+  destination: HomeDestination;
 };
 
-export async function loadHomeEditorialStories(limit = 2): Promise<HomeEditorialStory[]> {
+async function hydrateMissingEditorialArtwork(stories: HomeEditorialStory[]) {
+  const missingIds = stories.filter((story) => !story.featured_image_url?.trim()).map((story) => story.id);
+  if (!missingIds.length) return stories;
+
+  const { data, error } = await (supabase as any)
+    .from('blog_posts')
+    .select('id,featured_image_url,metadata,editor_document,html_content,content,content_blocks')
+    .in('id', missingIds);
+  if (error) return stories;
+
+  const payloadById = new Map<string, Record<string, unknown>>(
+    ((data ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => typeof row.id === 'string')
+      .map((row) => [row.id as string, row]),
+  );
+  return stories.map((story) => {
+    const payload = payloadById.get(story.id);
+    if (!payload) return story;
+    return { ...story, featured_image_url: resolveThePlugArtwork({ ...payload, ...story }) };
+  });
+}
+
+export async function loadThePlugEditorialStories(limit = 100): Promise<HomeEditorialStory[]> {
   const db = supabase as any;
   const editorial = await db
     .from('blog_posts')
-    .select('id,title,excerpt,featured_image_url,tags,created_at')
+    .select('id,title,excerpt,featured_image_url,tags,created_at,published_at,is_featured,feature_rank')
     .eq('is_published', true)
     .eq('is_global_editorial', true)
     .eq('global_feature_status', 'approved')
-    .not('featured_image_url', 'is', null)
+    .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(limit);
-  if (!editorial.error) return (editorial.data ?? []) as HomeEditorialStory[];
+  if (!editorial.error) return hydrateMissingEditorialArtwork((editorial.data ?? []) as HomeEditorialStory[]);
 
   const schemaFallback = await db
     .from('blog_posts')
-    .select('id,title,excerpt,featured_image_url,tags,created_at')
+    .select('id,title,excerpt,featured_image_url,tags,created_at,published_at')
     .eq('is_published', true)
-    .not('featured_image_url', 'is', null)
+    .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(limit);
-  return schemaFallback.error ? [] : ((schemaFallback.data ?? []) as HomeEditorialStory[]);
+  return schemaFallback.error ? [] : hydrateMissingEditorialArtwork((schemaFallback.data ?? []) as HomeEditorialStory[]);
+}
+
+export async function loadHomeEditorialStories(limit = 2): Promise<HomeEditorialStory[]> {
+  const [curated, latest] = await Promise.all([
+    loadCuratedPublicItems('homepage_editorial', Math.max(limit, 1)).catch(() => []),
+    loadThePlugEditorialStories(Math.max(limit * 3, limit)),
+  ]);
+  const ordered = [
+    ...curated.flatMap((item) => item.article ? [item.article as HomeEditorialStory] : []),
+    ...latest,
+  ];
+  const unique = new Map<string, HomeEditorialStory>();
+  ordered.forEach((story) => {
+    if (!unique.has(story.id)) unique.set(story.id, story);
+  });
+  return [...unique.values()].slice(0, limit);
 }
 
 export async function loadHomeMarketSignals(releaseIds: string[]): Promise<Map<string, HomeMarketSignal>> {
@@ -165,6 +210,7 @@ export async function loadHomeRecentlyPlayed(limit = 8): Promise<HomeRecentItem[
         artist: creator,
         artwork: release.cover_art_url || undefined,
         releaseId: release.id,
+        trackId: trackRow?.id || undefined,
         type: 'release',
         sourceType: 'release',
       },
@@ -193,42 +239,56 @@ export function buildHomeSignals(
   communities: BackstageCommunity[],
 ): HomeSignalItem[] {
   const signals: HomeSignalItem[] = [];
-  liveRooms
-    .filter((room) => room.status === 'live')
-    .slice(0, 2)
-    .forEach((room) => signals.push({ id: `live:${room.id}`, label: `${room.title || 'A PLUGGD room'} is live now` }));
-  (bundle?.releases ?? []).slice(0, 3).forEach((release) => {
+
+  // Match the live web home: one current signal from each PLUGGD world,
+  // rather than letting the first few releases consume the entire marquee.
+  // FeedBundle is backed by the same production content tables, while keeping
+  // the mobile safeguard that excludes metadata-only catalogue releases.
+  const release = bundle?.releases?.[0];
+  if (release) {
     signals.push({
       id: `release:${release.id}`,
       label: `${release.artist || 'A creator'} released ${release.title || 'new music'}`,
     });
-  });
-  (bundle?.beats ?? []).slice(0, 1).forEach((beat) => {
-    signals.push({
-      id: `beat:${beat.id}`,
-      label: `${beat.producer_name || 'A producer'} shared ${beat.title || 'a new beat'}`,
-    });
-  });
-  (bundle?.soundboards ?? []).slice(0, 1).forEach((board) => {
+  }
+
+  const liveRoom = liveRooms.find((room) => room.status === 'live');
+  if (liveRoom) {
+    signals.push({ id: `live:${liveRoom.id}`, label: `${liveRoom.title || 'A PLUGGD room'} is live now` });
+  }
+
+  const board = bundle?.soundboards?.[0];
+  if (board) {
     signals.push({
       id: `soundboard:${board.id}`,
       label: `${board.title || 'A soundboard'} is building in public`,
     });
-  });
-  (bundle?.events ?? []).slice(0, 2).forEach((event) => {
+  }
+
+  const event = bundle?.events?.[0];
+  if (event) {
     const timing = startsInLabel(event.starts_at);
     signals.push({
       id: `event:${event.id}`,
       label: timing ? `${event.title || 'A PLUGGD event'} ${timing}` : `${event.title || 'A PLUGGD event'} is upcoming`,
     });
-  });
-  communities
-    .filter((community) => community.cover_image_url || community.avatar_url)
-    .slice(0, 1)
-    .forEach((community) => signals.push({ id: `community:${community.id}`, label: `${community.title} room is open` }));
+  }
+
+  const community = communities.find((item) => item.cover_image_url || item.avatar_url) ?? communities[0];
+  if (community) {
+    signals.push({ id: `community:${community.id}`, label: `${community.title} community is active` });
+  }
+
+  const beat = bundle?.beats?.[0];
+  if (beat) {
+    signals.push({
+      id: `beat:${beat.id}`,
+      label: `${beat.producer_name || 'A producer'} shared ${beat.title || 'a new beat'}`,
+    });
+  }
 
   const unique = new Map(signals.map((signal) => [signal.label.toLowerCase(), signal]));
-  return [...unique.values()].slice(0, 8);
+  return [...unique.values()].slice(0, 6);
 }
 
 export function buildNextWaveItems(
@@ -241,7 +301,7 @@ export function buildNextWaveItems(
 
   [...bundle.releases]
     .map((release) => ({ release, signal: marketSignals.get(release.id) }))
-    .filter(({ release, signal }) => Boolean(release.cover_art_url && signal && signal.supporter_count > 0))
+    .filter(({ release }) => Boolean(release.cover_art_url))
     .sort((a, b) => (b.signal?.supporter_count ?? 0) - (a.signal?.supporter_count ?? 0))
     .slice(0, 2)
     .forEach(({ release, signal }) => {
@@ -251,9 +311,10 @@ export function buildNextWaveItems(
         kind: 'supported_release',
         title: release.artist || release.title || 'PLUGGD release',
         subtitle: `${release.title || 'Independent release'}${release.genre ? ` · ${release.genre}` : ''}`,
-        label: `${supporters} SUPPORTER${supporters === 1 ? '' : 'S'}`,
+        label: supporters > 0 ? `${supporters} SUPPORTER${supporters === 1 ? '' : 'S'}` : 'NEW RELEASE',
         imageUrl: release.cover_art_url!,
         route: `/release/${release.id}`,
+        destination: { kind: 'release', id: release.id },
       });
     });
 
@@ -268,19 +329,21 @@ export function buildNextWaveItems(
       label: 'PRODUCER SIGNAL',
       imageUrl: beat.image_url!,
       route: `/beat/${beat.id}`,
+      destination: { kind: 'beat', id: beat.id },
     }));
 
   communities
-    .filter((community) => Boolean(community.cover_image_url || community.avatar_url))
+    .filter((community) => Boolean((community.cover_image_url || community.avatar_url) && community.username))
     .slice(0, 2)
     .forEach((community) => candidates.push({
       id: `community:${community.id}`,
       kind: 'community',
-      title: community.title,
-      subtitle: community.description || `${community.member_count || 0} members`,
-      label: 'ROOM OPEN',
+      title: community.creator_name || community.title,
+      subtitle: community.description || `${community.member_count || 0} community members`,
+      label: 'CREATOR COMMUNITY',
       imageUrl: (community.cover_image_url || community.avatar_url)!,
-      route: `/community/${community.slug || community.id}`,
+      route: `/creator/${community.username}`,
+      destination: { kind: 'creator', username: community.username! },
     }));
 
   bundle.profiles
@@ -294,10 +357,26 @@ export function buildNextWaveItems(
       label: 'CREATOR TO KNOW',
       imageUrl: profile.avatar_url!,
       route: `/creator/${profile.username}`,
+      destination: { kind: 'creator', username: profile.username! },
     }));
 
+  // Keep the visible mosaic human-led. The prior source order could fill all
+  // five slots with releases/beats before a real creator or community room
+  // was reached, despite both being available in the same current bundle.
+  const peopleAndRooms = candidates.filter((item) => item.kind === 'creator' || item.kind === 'community');
+  const musicSignals = candidates.filter((item) => item.kind === 'supported_release' || item.kind === 'beat');
+  const ordered = [
+    peopleAndRooms[0],
+    peopleAndRooms[1],
+    musicSignals[0],
+    peopleAndRooms[2],
+    musicSignals[1],
+    ...peopleAndRooms.slice(3),
+    ...musicSignals.slice(2),
+  ].filter((item): item is HomeNextWaveItem => Boolean(item));
+
   const seen = new Set<string>();
-  return candidates.filter((item) => {
+  return ordered.filter((item) => {
     if (seen.has(item.route)) return false;
     seen.add(item.route);
     return true;

@@ -3,12 +3,14 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { pluggdFonts } from '../../src/design/typography';
+import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { listBlockedAccounts, unblockUser, type BlockedAccount } from '../../src/features/safety/accountSafety';
 
 export default function BlockedAccountsScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
+  const bottomInset = useBottomChromeInset();
   const [accounts, setAccounts] = useState<BlockedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,8 +47,8 @@ export default function BlockedAccountsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.back, { borderColor: theme.colors.border }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/settings/privacy' as any))} style={[styles.back, { borderColor: theme.colors.border }]}>
           <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
         </Pressable>
         <View style={styles.hero}>
@@ -60,7 +62,7 @@ export default function BlockedAccountsScreen() {
               <View key={account.blockId} style={[styles.row, { borderBottomColor: theme.colors.border }]}>
                 {account.avatarUrl ? <Image source={{ uri: account.avatarUrl }} style={styles.avatar} /> : <View style={[styles.avatar, styles.fallback, { backgroundColor: theme.colors.surfaceAlt }]}><MaterialIcons name="person" size={22} color={theme.colors.textSubtle} /></View>}
                 <View style={styles.copy}><Text style={[styles.name, { color: theme.colors.text }]}>{account.name}</Text>{account.username ? <Text style={[styles.handle, { color: theme.colors.textMuted }]}>@{account.username}</Text> : null}</View>
-                <Pressable disabled={busyId === account.userId} onPress={() => confirmUnblock(account)} style={[styles.unblock, { borderColor: theme.colors.accent }]}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Unblock ${account.name}`} disabled={busyId === account.userId} onPress={() => confirmUnblock(account)} style={[styles.unblock, { borderColor: theme.colors.accent }]}>
                   <Text style={[styles.unblockText, { color: theme.colors.accent }]}>{busyId === account.userId ? 'WAIT' : 'UNBLOCK'}</Text>
                 </Pressable>
               </View>

@@ -7,7 +7,6 @@
  */
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
@@ -17,23 +16,24 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PluggdImage } from '../../components/PluggdImage';
 import { PremiumSkeleton } from '../../components/PremiumSkeleton';
 import { ed, edFonts } from '../../design/editorial';
+import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
 import { safeList } from '../culture/mobileServices';
+import { loadPublicCreatorIdentityMap } from '../culture/publicCreatorIdentity';
 import { supabase } from '../../lib/supabase';
-import { formatCompact, type ProfileItem, type SoundboardItem } from '../../lib/mobileContent';
+import { formatCompact, formatDate, type SoundboardItem } from '../../lib/mobileContent';
 import { Enter, EdPressable } from './EditorialBits';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
+import { NativeSoundboardCanvas } from '../soundboards/NativeSoundboardCanvas';
+import type { NativeSoundboardItem } from '../soundboards/nativeSoundboardLayout';
 
 const SORT_CHIPS = ['Updated', 'Trending', 'Featured'] as const;
-
-type BoardWithPlays = SoundboardItem & { play_total?: number };
 
 function boardDate(board: SoundboardItem) {
   const value = board.last_activity_at || board.created_at;
@@ -44,7 +44,8 @@ function boardDate(board: SoundboardItem) {
 }
 
 export function SoundboardsIndexScreen() {
-  const insets = useSafeAreaInsets();
+  const { width: viewportWidth } = useWindowDimensions();
+  const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const { user } = useAuth();
   const theme = usePluggdTheme();
@@ -86,7 +87,7 @@ export function SoundboardsIndexScreen() {
       safeList<SoundboardItem>(
         (supabase as any)
           .from('soundboards')
-          .select('id,creator_id,slug,title,description,cover_image_url,item_count,like_count,comment_count,follower_count,last_activity_at,created_at')
+          .select('id,creator_id,slug,title,description,cover_image_url,metadata,item_count,like_count,comment_count,follower_count,last_activity_at,created_at')
           .eq('is_published', true)
           .in('visibility', ['public', 'link'])
           .order('last_activity_at', { ascending: false })
@@ -96,29 +97,41 @@ export function SoundboardsIndexScreen() {
   });
 
   const boards = useMemo(() => boardsQuery.data ?? [], [boardsQuery.data]);
+  const boardIds = useMemo(() => boards.map((board) => board.id), [boards]);
+  const previewItemsQuery = useQuery({
+    queryKey: ['soundboards-index', 'canvas-items', boardIds.join(':')],
+    enabled: boardIds.length > 0,
+    queryFn: () =>
+      safeList<NativeSoundboardItem>(
+        (supabase as any)
+          .from('soundboard_items')
+          .select('*')
+          .in('soundboard_id', boardIds)
+          .order('is_pinned', { ascending: false })
+          .order('position', { ascending: true })
+          .limit(Math.max(48, boardIds.length * 9)),
+      ),
+    staleTime: 1000 * 60 * 2,
+  });
+  const previewItemsByBoard = useMemo(() => (previewItemsQuery.data ?? []).reduce<Record<string, NativeSoundboardItem[]>>((groups, item) => {
+    groups[item.soundboard_id] = [...(groups[item.soundboard_id] || []), item];
+    return groups;
+  }, {}), [previewItemsQuery.data]);
 
   const creatorIds = useMemo(
     () => Array.from(new Set(boards.map((board) => board.creator_id).filter(Boolean))) as string[],
     [boards],
   );
   const profilesQuery = useQuery({
-    queryKey: ['soundboards-index', 'creators', creatorIds.length],
+    queryKey: ['soundboards-index', 'creators', creatorIds.join(':')],
     enabled: creatorIds.length > 0,
-    queryFn: () =>
-      safeList<ProfileItem>(
-        (supabase as any)
-          .from('profiles')
-          .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
-          .in('user_id', creatorIds),
-      ),
+    queryFn: () => loadPublicCreatorIdentityMap(creatorIds),
     staleTime: 1000 * 60 * 5,
   });
 
   const creatorFor = (creatorId?: string | null) => {
     if (!creatorId) return null;
-    return (profilesQuery.data ?? []).find(
-      (profile) => profile.user_id === creatorId || profile.id === creatorId,
-    );
+    return profilesQuery.data?.get(creatorId) ?? null;
   };
 
   const filtered = useMemo(() => {
@@ -150,12 +163,13 @@ export function SoundboardsIndexScreen() {
   const refresh = () => {
     void boardsQuery.refetch();
     void profilesQuery.refetch();
+    void previewItemsQuery.refetch();
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: pal.screen }]}>
       <StatusBar style={light ? 'dark' : 'light'} translucent />
-      <DiscoveryHeader />
+      <DiscoveryHeader backToDiscovery />
       <ScrollView
         style={[styles.screen, { backgroundColor: pal.screen }]}
         contentInsetAdjustmentBehavior="never"
@@ -163,7 +177,7 @@ export function SoundboardsIndexScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ed.orange} />}
         contentContainerStyle={{
           paddingTop: 4,
-          paddingBottom: insets.bottom + 210,
+          paddingBottom: bottomInset,
           paddingHorizontal: 20,
           gap: 18,
         }}
@@ -178,6 +192,31 @@ export function SoundboardsIndexScreen() {
           <View style={styles.boardMark}><MaterialIcons name="dashboard-customize" size={23} color={ed.orange} /></View>
         </View>
         </Enter>
+
+        <View style={styles.actionRow}>
+          <EdPressable
+            haptic="impact"
+            accessibilityRole="button"
+            accessibilityLabel={user ? 'Manage your Soundboards' : 'Open Creator Studio'}
+            onPress={() => router.push((user ? '/studio/catalog?tab=soundboards' : '/auth/login?redirect=%2Fstudio%2Fcatalog%3Ftab%3Dsoundboards') as any)}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.studioPrimary}>
+              <MaterialIcons name="add" size={19} color="#fff" />
+              <Text style={styles.studioPrimaryText}>{user ? 'Manage your boards' : 'Open Creator Studio'}</Text>
+            </View>
+          </EdPressable>
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel={user ? 'Create a new Soundboard' : 'Open collections'}
+            onPress={() => router.push((user ? '/studio/soundboards/new' : '/library') as any)}
+          >
+            <View style={styles.collectionButton}>
+              <MaterialIcons name={user ? 'add-box' : 'bookmarks'} size={18} color={pal.chipText} />
+              <Text style={[styles.collectionButtonText, { color: pal.chipText }]}>{user ? 'New board' : 'Collections'}</Text>
+            </View>
+          </EdPressable>
+        </View>
 
         {/* Search + sort */}
         <View style={[styles.searchPanel, panelOverride]}>
@@ -207,33 +246,50 @@ export function SoundboardsIndexScreen() {
           </View>
         </View>
 
-        {/* Board cards */}
+        {/* The real canvas is the product: each board begins with its saved items, not a generic cover card. */}
         {boardsQuery.isLoading ? (
           <PremiumSkeleton compact label="Loading Soundboards..." />
         ) : filtered.length ? (
-          <View style={styles.boardGrid}>
-            {Array.from({ length: Math.ceil(filtered.length / 2) }).map((_, rowIndex) => (
-              <View key={`board-row-${rowIndex}`} style={styles.boardGridRow}>
-                {filtered.slice(rowIndex * 2, rowIndex * 2 + 2).map((board) => {
+          <View style={styles.canvasList}>
+            {filtered.map((board) => {
                   const creator = creatorFor(board.creator_id);
-                  const creatorName = creator ? creator.full_name || creator.username || 'Creator' : 'Creator';
+                  // profiles is unreadable for signed-out readers (RLS allows
+                  // SELECT only when auth.uid() is not null), so the lookup
+                  // returns nothing and every card used to print the literal
+                  // word "Creator". Show the real name when we have it, and the
+                  // board's own activity when we don't, rather than a
+                  // placeholder that reads like a missing name.
+                  const creatorName = creator?.full_name || (creator?.username ? `@${creator.username}` : null);
                   return (
-                    <EdPressable key={board.id} accessibilityRole="button" accessibilityLabel={`Open ${board.title || 'soundboard'}`} onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)} style={styles.boardTilePressable}>
-                      <View style={styles.boardTile}>
-                        <View style={styles.boardTileCoverWrap}>
-                          {board.cover_image_url ? <PluggdImage uri={board.cover_image_url} style={styles.boardTileCover} /> : <LinearGradient colors={['#2b1c10', '#171009']} style={styles.boardTileCover} />}
+                    <EdPressable key={board.id} accessibilityRole="button" accessibilityLabel={`Open ${board.title || 'soundboard'} canvas`} onPress={() => router.push(`/soundboards/${board.slug || board.id}` as any)} style={styles.canvasCardPressable}>
+                      <View style={[styles.canvasCard, panelOverride]}>
+                        <View pointerEvents="none" style={styles.canvasPreviewWrap}>
+                          <NativeSoundboardCanvas
+                            items={previewItemsByBoard[board.id] || []}
+                            boardMetadata={(board as any).metadata || null}
+                            boardArtwork={board.cover_image_url}
+                            width={Math.max(280, viewportWidth - 42)}
+                            height={210}
+                            mode="preview"
+                          />
                           <View style={styles.boardTileBadge}><Text style={styles.boardTileBadgeText}>{formatCompact(board.item_count)} PIECES</Text></View>
                         </View>
-                        <Text style={[styles.boardTileTitle, { color: pal.title }]} numberOfLines={2}>{board.title || 'Untitled board'}</Text>
-                        <Text style={[styles.boardTileCreator, { color: pal.body }]} numberOfLines={1}>{creatorName}</Text>
-                        <View style={styles.boardTileStats}><MaterialIcons name="favorite-border" size={14} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text><MaterialIcons name="chat-bubble-outline" size={13} color={pal.stat} /><Text style={[styles.boardTileStat, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text></View>
+                        <View style={styles.canvasCardMeta}>
+                          <View style={styles.canvasCardCopy}>
+                            <Text style={[styles.canvasCardTitle, { color: pal.title }]} numberOfLines={2}>{board.title || 'Untitled board'}</Text>
+                            <Text style={[styles.canvasCardCreator, { color: pal.body }]} numberOfLines={1}>{creatorName ? `${creatorName} · ` : ''}{boardDate(board)}</Text>
+                          </View>
+                          <View style={styles.canvasCardOpen}><MaterialIcons name="arrow-forward" size={18} color="#fff" /></View>
+                        </View>
+                        <View style={styles.canvasCardStats}>
+                          <View style={styles.canvasStat}><MaterialIcons name="headphones" size={15} color={pal.stat} /><Text style={[styles.canvasStatText, { color: pal.stat }]}>{formatCompact((previewItemsByBoard[board.id] || []).reduce((sum, item) => sum + Number(item.plays_count || 0), 0))}</Text></View>
+                          <View style={styles.canvasStat}><MaterialIcons name="favorite-border" size={15} color={pal.stat} /><Text style={[styles.canvasStatText, { color: pal.stat }]}>{formatCompact(board.like_count)}</Text></View>
+                          <View style={styles.canvasStat}><MaterialIcons name="chat-bubble-outline" size={14} color={pal.stat} /><Text style={[styles.canvasStatText, { color: pal.stat }]}>{formatCompact(board.comment_count)}</Text></View>
+                        </View>
                       </View>
                     </EdPressable>
                   );
-                })}
-                {filtered.slice(rowIndex * 2, rowIndex * 2 + 2).length === 1 ? <View style={styles.boardTilePressable} /> : null}
-              </View>
-            ))}
+            })}
           </View>
         ) : (
           <View style={[styles.emptyPanel, panelOverride]}>
@@ -284,10 +340,33 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   headEyebrow: { fontFamily: edFonts.bodyBlack, fontSize: 11.5, letterSpacing: 1.6, color: ed.orange },
-  headTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 31, lineHeight: 36, letterSpacing: -1.1, color: '#ffffff', marginTop: 3 },
+  headTitle: { fontFamily: 'Sora-ExtraBold', fontSize: 32, lineHeight: 36, letterSpacing: -1.1, color: '#ffffff', marginTop: 3 },
   headSub: { fontFamily: edFonts.bodyMedium, fontSize: 13, lineHeight: 19, color: 'rgba(255,248,237,0.55)' },
 
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  studioPrimary: {
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  studioPrimaryText: { fontFamily: edFonts.bodyBlack, fontSize: 12.5, color: '#fff' },
+  collectionButton: {
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,248,237,0.18)',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  collectionButtonText: { fontFamily: edFonts.bodyBold, fontSize: 12 },
   actionGhost: {
     minHeight: 46,
     borderRadius: 12,
@@ -348,6 +427,18 @@ const styles = StyleSheet.create({
   boardTileCreator: { fontFamily: edFonts.bodyMedium, fontSize: 10.5, marginTop: 3 },
   boardTileStats: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 7 },
   boardTileStat: { fontFamily: edFonts.bodyMedium, fontSize: 10, marginRight: 6 },
+  canvasList: { gap: 18 },
+  canvasCardPressable: { width: '100%' },
+  canvasCard: { width: '100%', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,248,237,0.12)', backgroundColor: 'rgba(24,20,29,0.76)', overflow: 'hidden', padding: 1 },
+  canvasPreviewWrap: { position: 'relative' },
+  canvasCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 13, paddingTop: 12 },
+  canvasCardCopy: { flex: 1, minWidth: 0 },
+  canvasCardTitle: { fontFamily: 'Sora-Bold', fontSize: 18, lineHeight: 22 },
+  canvasCardCreator: { fontFamily: edFonts.bodyMedium, fontSize: 11.5, marginTop: 3 },
+  canvasCardOpen: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center' },
+  canvasCardStats: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 13, paddingTop: 10, paddingBottom: 13 },
+  canvasStat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  canvasStatText: { fontFamily: edFonts.bodyBold, fontSize: 11 },
   footerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
 
   boardCard: {

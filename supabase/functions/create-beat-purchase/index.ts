@@ -38,7 +38,7 @@ const deps: BeatCheckoutDependencies = {
         .eq("id", licenseOptionId).eq("beat_id", beatId).maybeSingle(),
       service.from("licensing_contracts")
         .select(
-          "id,beat_id,producer_id,artist_id,template_type,status,amount_cents,currency,producer_signature,artist_signature,contract_data,pricing_snapshot",
+          "id,beat_id,producer_id,artist_id,template_type,status,amount_cents,currency,producer_signature,artist_signature,digital_delivery_requested,digital_delivery_consent_text,digital_delivery_consent_version,digital_delivery_consented_at,contract_data,pricing_snapshot",
         )
         .eq("id", contractId).maybeSingle(),
     ]);
@@ -90,6 +90,19 @@ const deps: BeatCheckoutDependencies = {
     if (error) throw error;
   },
   now: () => new Date(),
+  allowedWebOrigins: [
+    Deno.env.get("SITE_URL") ?? "https://pluggd.fm",
+    ...(Deno.env.get("ADDITIONAL_WEB_ORIGINS") ?? "")
+      .split(",").map((value) => value.trim()).filter(Boolean),
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+  ].map((value) => {
+    try {
+      return new URL(value).origin;
+    } catch {
+      return "";
+    }
+  }).filter(Boolean),
 };
 
 serve((req) =>
