@@ -1,7 +1,7 @@
 # Native protected playback incident
 
-CURRENT_PHASE=RELEASE_CARD_QUICK_PLAY
-NEXT_ACTION=Run focused TypeScript/UI checks for the native Releases and Home card play controls, then build and install the updated iPhone candidate for physical one-tap playback.
+CURRENT_PHASE=DEVICE_VERIFICATION
+NEXT_ACTION=Collect physical Build 15 Releases/Home card Play and Open results; if they pass, update final evidence and merge exact PR #4, then confirm native main.
 AUDIT_REQUIRED=false
 BRANCH=codex/native-release-card-play
 WORKTREE=/private/tmp/pluggd-native-playback-incident
@@ -20,3 +20,5 @@ PRESERVE=Original dirty mobile checkout, existing Build 13 binary and App Review
 2026-09-29 follow-up: Founder tested physical Build 14 and confirmed a Beat, Channel One, Still ah Link, and Glass Moon all play fine. They found that release cards lack visible one-tap Play. The native Releases wall cards kept Play behind long press, ledger/chart rows only opened details, and the Home release rail derived playback eligibility from a separate discovery subset. Current read-only production data shows all 31 visible live PLUGGD releases have previews and playable track rows. Scope extended to visible release-card playback on these native surfaces only. New branch `codex/native-release-card-play` starts from merged main and carries the task-owned device evidence commit; Build 14 stays installed until the updated candidate is checked.
 
 2026-09-29 source gate: Native TypeScript, Home, Home destination, commerce, and protected playback contracts pass. The product-pages source contract fails at an unchanged release-detail copy assertion (`Starting ${release.title}…` versus `Starting…` on `origin/main`), not at the new cards. Root `test:a11y` cannot run without root Vitest; PR CI remains required. New Play controls are separate sibling targets from Open controls, with 44-point hit areas, loading feedback, and no fallback to protected masters. Physical Build 15 card tap remains the acceptance gate.
+
+2026-09-29 Build 15 gate: Production-configured signed iOS `1.0.0 (15)` compiled from `578729e92abe852358b4d1fdde93824d30c05843` with Sentry auto-upload disabled; app bundle ID `com.pluggd.mobile`, Team `37X2468U5U`, JS bundle SHA-256 `908c035c3a4e96a041491e730c01444b548d8e825b9b618461a56137e8cfe647`. The working Build 14 app was copied to `/private/tmp/pluggd-build14-retained/Pluggd.app` before rebuilding. `devicectl` installed and launched Build 15 on the paired iPhone and read back version `1.0.0 (15)`. PR #4 at the exact source head has passing a11y/i18n CI and no review comments. The user is checking card taps; no App Store Connect upload/submission occurred.
