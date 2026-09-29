@@ -12,6 +12,7 @@
 | Native TypeScript | PASS after fresh `npm ci`: `npx tsc --noEmit --pretty false`. Prior node_modules gap was local and is resolved. |
 | Existing broad player/global-shell source contracts | BLOCKED by stale generated Info.plist and unrelated dock baseline assertions. |
 | Local iOS Build 14 | PASS: production-configured signed `1.0.0 (14)` `xcodebuild` completed; `Pluggd.app` exists in isolated DerivedData. This is not App Store upload or device playback. |
-| Physical device | BLOCKED: paired iPhone is locked; `devicectl` install fails `kAMDMobileImageMounterDeviceLocked`. No Build 14 install occurred. |
+| Physical device install | PASS: `devicectl` installed and launched `com.pluggd.mobile` on the paired iPhone; installed-app readback reports `1.0.0 (14)`. Audible playback remains pending. |
 | Still ah Link / Glass Moon tap-to-sound | PENDING: founder reported about two minutes in Build 13; time both on replacement physical iPhone before video. |
-| Native main, replacement build and App Review video | PENDING. |
+| Native main | PASS: PR #3 squash-merged as `9a0e5300d580104e46718ba11482ff24c4d0b99d`; merged tree matches the built source. |
+| App Review video | PENDING: physical playback acceptance first; no Build 14 App Store upload/submission. |
