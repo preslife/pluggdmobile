@@ -228,7 +228,7 @@ assert.match(playbackProvider, /minBuffer:\s*5/);
 assert.match(playbackProvider, /maxBuffer:\s*10/);
 assert.match(playbackProvider, /playBuffer:\s*1/);
 assert.match(playbackProvider, /backBuffer:\s*0/);
-assert.match(playbackProvider, /tracks\.filter\(isPlayableTrack\)\.map\(\(track\) => trackForNativePlayback\(track\)\)/);
+assert.match(playbackProvider, /resolved\.filter\(isPlayableTrack\)\.map\(\(track\) => trackForNativePlayback\(track\)\)/);
 
 // Device evidence must be collected against an explicitly selected serial and
 // fail on API drift, a backgrounded/crashed activity, or fatal native logs.
