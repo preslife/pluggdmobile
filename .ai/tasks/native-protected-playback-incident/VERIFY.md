@@ -13,6 +13,10 @@
 | Existing broad player/global-shell source contracts | BLOCKED by stale generated Info.plist and unrelated dock baseline assertions. |
 | Local iOS Build 14 | PASS: production-configured signed `1.0.0 (14)` `xcodebuild` completed; `Pluggd.app` exists in isolated DerivedData. This is not App Store upload or device playback. |
 | Physical device install | PASS: `devicectl` installed and launched `com.pluggd.mobile` on the paired iPhone; installed-app readback reports `1.0.0 (14)`. Audible playback remains pending. |
-| Still ah Link / Glass Moon tap-to-sound | PENDING: founder reported about two minutes in Build 13; time both on replacement physical iPhone before video. |
+| Physical Build 14 playback | PASS by founder: Beat, Channel One Mix, Still ah Link, and Glass Moon all play fine on the installed iPhone candidate. Exact tap-to-sound seconds were not recorded. |
+| Release-card one-tap Play | PENDING: new native Releases/Home UI change needs source and physical device checks. |
+| Release-card source checks | PASS: native TypeScript; Home, Home destination, commerce and protected playback contracts. Visible Play is a separate 44-point control on Releases wall/ledger/chart/pressing cards and Home New releases; source alone does not prove device taps. |
+| Existing product-pages contract | PRE-EXISTING FAIL: detail-screen script expects `Starting ${release.title}…`, while unchanged `origin/main` detail source renders `Starting…`; this follow-up does not edit that screen. |
+| Root Vitest accessibility command | BLOCKED locally: root checkout lacks Vitest (`sh: vitest: command not found`); PR CI will run required a11y/i18n. |
 | Native main | PASS: PR #3 squash-merged as `9a0e5300d580104e46718ba11482ff24c4d0b99d`; merged tree matches the built source. |
 | App Review video | PENDING: physical playback acceptance first; no Build 14 App Store upload/submission. |
