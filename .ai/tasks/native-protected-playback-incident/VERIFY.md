@@ -9,8 +9,9 @@
 | Production audio metadata and objects | PASS read-only: 14/14 published Beats linked to retained previews and objects; 6/6 public Mixes have objects. |
 | Protected native source scenarios | PASS: Beat/Mix/release identity signer, failed signer without master fallback, unrelated CDN unchanged. |
 | Android foundation source contract | PASS. |
-| Native TypeScript | BLOCKED by pre-existing missing `@react-native-community/datetimepicker` in local node_modules and errors only in unrelated auth/upload/live routes; no changed-file diagnostic. |
+| Native TypeScript | PASS after fresh `npm ci`: `npx tsc --noEmit --pretty false`. Prior node_modules gap was local and is resolved. |
 | Existing broad player/global-shell source contracts | BLOCKED by stale generated Info.plist and unrelated dock baseline assertions. |
-| iOS Simulator and physical device | PENDING: no Simulator booted; replacement build/physical test required. |
+| Local iOS Build 14 | PASS: production-configured signed `1.0.0 (14)` `xcodebuild` completed; `Pluggd.app` exists in isolated DerivedData. This is not App Store upload or device playback. |
+| Physical device | BLOCKED: paired iPhone is locked; `devicectl` install fails `kAMDMobileImageMounterDeviceLocked`. No Build 14 install occurred. |
 | Still ah Link / Glass Moon tap-to-sound | PENDING: founder reported about two minutes in Build 13; time both on replacement physical iPhone before video. |
 | Native main, replacement build and App Review video | PENDING. |
