@@ -32,6 +32,7 @@ import TrackPlayer, {
 import { Alert, Platform } from 'react-native';
 import { transformedUri } from '../components/PluggdImage';
 import { isConstrainedAndroidRuntime } from '../components/lowMemoryImagePolicy';
+import { resolvePlaybackSource } from '../features/playback/resolvePlaybackSource';
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type PluggdTrackKind =
@@ -154,8 +155,16 @@ async function setupPlayer(): Promise<boolean> {
             backBuffer: 0,
             maxCacheSize: 0,
           }
+        : Platform.OS === 'ios'
+          ? {
+              // Large published WAVs need a bounded forward buffer. Verify the
+              // actual start time on the replacement iPhone build.
+              minBuffer: 8,
+              iosCategory: IOSCategory.Playback,
+              autoHandleInterruptions: true,
+            }
         : {
-            // Preserve the submitted iOS and modern-Android behavior.
+            // Preserve the modern-Android behavior.
             backBuffer: 30,
             iosCategory: IOSCategory.Playback,
             autoHandleInterruptions: true,
@@ -201,6 +210,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>(RepeatMode.Off);
   const originalQueue = useRef<PluggdTrack[]>([]);
   const lastPlaybackError = useRef('');
+  const playbackRequestRef = useRef(0);
 
   const playbackState = usePlaybackState();
   const progress = useProgress(250); // update every 250ms
@@ -248,13 +258,19 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playTrack = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return null;
-      if (!isPlayableTrack(track)) {
-        Alert.alert('Audio unavailable', 'This item does not include a playable audio upload.');
+      const request = ++playbackRequestRef.current;
+      const url = await resolvePlaybackSource(track);
+      if (request !== playbackRequestRef.current) return null;
+      const playable = url ? { ...track, url } : null;
+      if (!isPlayableTrack(playable)) {
+        Alert.alert('Audio unavailable', track.url?.trim()
+          ? 'This audio cannot be reached right now. Please try again.'
+          : 'This item does not include a playable audio upload.');
         return null;
       }
       lastPlaybackError.current = '';
       await TrackPlayer.reset();
-      const nativeTrack = trackForNativePlayback(track);
+      const nativeTrack = trackForNativePlayback(playable);
       await TrackPlayer.add(nativeTrack as any);
       originalQueue.current = [nativeTrack];
       await TrackPlayer.play();
@@ -267,10 +283,18 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
       if (!isReady || tracks.length === 0) return null;
+      const request = ++playbackRequestRef.current;
       const requestedTrack = tracks[Math.min(Math.max(startIndex, 0), tracks.length - 1)] ?? null;
-      const playableTracks = tracks.filter(isPlayableTrack).map((track) => trackForNativePlayback(track));
+      const resolved = await Promise.all(tracks.map(async (track) => {
+        const url = await resolvePlaybackSource(track);
+        return url ? { ...track, url } : null;
+      }));
+      if (request !== playbackRequestRef.current) return null;
+      const playableTracks = resolved.filter(isPlayableTrack).map((track) => trackForNativePlayback(track));
       if (playableTracks.length === 0) {
-        Alert.alert('Audio unavailable', 'These items do not include playable audio uploads.');
+        Alert.alert('Audio unavailable', tracks.some((track) => track.url?.trim())
+          ? 'These audio previews cannot be reached right now. Please try again.'
+          : 'These items do not include playable audio uploads.');
         return null;
       }
       lastPlaybackError.current = '';
@@ -349,20 +373,24 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const addToQueue = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
-      if (!isPlayableTrack(track)) return;
-      await TrackPlayer.add(trackForNativePlayback(track) as any);
+      const url = await resolvePlaybackSource(track);
+      const playable = url ? { ...track, url } : null;
+      if (!isPlayableTrack(playable)) return;
+      await TrackPlayer.add(trackForNativePlayback(playable) as any);
       syncQueue();
     },
     [isReady, syncQueue],
   );
 
   const clearQueue = useCallback(async () => {
+    playbackRequestRef.current += 1;
     await TrackPlayer.reset();
     setQueue([]);
     originalQueue.current = [];
   }, []);
 
   const closePlayer = useCallback(async () => {
+    playbackRequestRef.current += 1;
     await TrackPlayer.reset();
     setQueue([]);
     originalQueue.current = [];

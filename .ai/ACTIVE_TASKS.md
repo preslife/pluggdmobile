@@ -5,6 +5,7 @@ This is the controlling task registry for this mobile worktree. Match both branc
 | Status | Task | Task folder | Branch | Worktree | Base | Target | Next action | Cleanup |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ACTIVE | iOS Complete-Parity Integration | `.ai/tasks/ios-native-parity-build8-recovery` | `codex/ios-build12-live-community-carnival` | `/private/tmp/pluggd-ios-build12-live-community` | `f9dc4194` | `main` | Complete the bounded Build 13 PLUGGD Plans lane: secure provider-neutral Free/Starter/Creator/Pro entitlement source, six-product StoreKit lifecycle, native Plans screen and Account/Studio entry points; then run focused source/render gates before one replacement phone build. | Preserve the original dirty web/mobile checkouts, Build 11/12/13 rollback artifacts, local `.env`, `.playwright-cli/` and the now-stale successful pre-Plans Build 13 archive. No production deploy/migration, merge, push, archive upload, App Store mutation or submission outside its recorded gate. |
+| ACTIVE | Native protected playback incident | `.ai/tasks/native-protected-playback-incident` | `codex/native-playback-incident` | `/private/tmp/pluggd-native-playback-incident` | `ce2e1f6f` | `main` | Finish focused source checks, review exact diff and open the native fix PR; then obtain the required native integration/build gate. | Preserve the dirty original mobile checkout and Build 13. Retire this isolated worktree only after merge and final release evidence. |
 
 ## Status values
 
