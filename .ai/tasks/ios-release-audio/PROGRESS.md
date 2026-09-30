@@ -1,14 +1,14 @@
 # Progress
 
-Phase: READY_FOR_USER_REVIEW — checked native implementation and signed Build 16 candidate; live/device acceptance remains pending.
-NEXT_ACTION: On the pending scoped QA access approval, run actual native catalogue/audition/private publish/readback. Prepare the authorised TestFlight handoff and verify physical finger scrubbing/audio/background/camera before native release. Do not restart discovery or passing checks.
+Phase: Connected-phone Build 16 integration approved; add recent Live recovery and install the checked candidate.
+NEXT_ACTION: Verify the narrow Live error/cache recovery, build/sign the final Build 16 with the existing phone-enabled ad hoc profile, update the connected iPhone in place, launch/read back, and collect physical audio-editor acceptance.
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
 Base: a9a647d545763bcc90d2c6babb1473f59870b86b, installed Build 15 source; native main 9a0e5300 and parent playback PR #4 remain unchanged.
 Edit authority: new native music modules and narrow integration in CONTRACT only. Primary native checkout is heavily dirty and was not edited.
 Latest implementation checkpoint: 631e46e0d1734e671552c410245bf278d5b2be56. Final signed artifact built at that exact source; only evidence records change afterward.
-Approved actions: scoped native implementation, reversible local verification and task checkpoint. No native main merge, physical phone replacement or App Store upload/submission authorised in this extension.
+Approved actions: scoped native implementation/checkpoint, recent Live recovery parity, local signed Build 16 and in-place install/launch on the connected iPhone (direct user approval 2026-09-30). No native main merge or App Store/TestFlight upload/submission authorised.
 Cleanup: ignored local UI fixture and binaries/logs outside history; preserve original checkout, Build 13–15 artifacts and all existing branches. No production credentials downloaded.
 
 Implemented: media-first native photo/video editor; persistent own-media/draft recovery through sandbox moves; catalogue search and real device saved/recent; server waveform/excerpt adapter, native scrolling and 0.1s/VoiceOver adjustments; 5/15/30 presets; original/music volume and content timeline placement; independent preview audio that pauses the global queue; private upload/render/ready-only preview/publication with persisted idempotency; release/feed reuse, attribution and fresh-session protected derivative playback. Only this editor hides app chrome. No new dependencies, schema migration or policy change.
@@ -20,3 +20,5 @@ Native findings fixed: NativeWind callback-style Pressable styles were absent; c
 Remaining proof: CUA drag dispatched only the initial touch (duration changed at touch point; pointer stayed at drag origin). Finger scrubbing is not verified; do not claim pass. Live native authenticated render/publish needs the pending narrowly scoped QA-key approval. Automatic review rejected full production env extraction; do not retry it or bypass it. Physical device audio sync, camera capture, background/navigation and VoiceOver experience require device testing. Installed Build 15 and native main are unchanged.
 
 Candidate: /private/tmp/pluggd-ios-audio-device/Build/Products/Release-iphoneos/Pluggd.app. Receipt: /private/tmp/pluggd-ios-audio-candidate-receipt.json. Screenshot: /private/tmp/pluggd-ios-audio-trim.png (isolated fixture). Read HANDOFF.md for exact remaining gates. Original phone/store builds and both repositories main remain unchanged.
+
+Recent-work check: native main remains 9a0e5300; only open native PR is #4, already included in this baseline. Latest web public playback signer lifetime (#201) is inherited from the server; creator/admin/catalogue/library/metadata fixes are web-specific. Web #200 exposed one applicable missing native lobby error/retry path, now included. Community Relevance v3 remains explicitly deferred. Primary phone reports Build 15; paired iPhone 15 Pro Max developer mode enabled. Existing PLUGGD ad hoc profile includes this phone and same distribution team/certificate. Production App Store Build 16 bundle is retained; signing clone separately for local phone. Prior Build 14/15 binary paths in old records no longer exist; source a9a647d5 is retained for rebuilding rollback. Do not claim those old binaries are available.

@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -20,6 +21,7 @@ import { contentInitials, formatCompact } from '../../src/lib/mobileContent';
 import { loadLiveRoomMessagePreview } from '../../src/features/culture/mobileServices';
 import { useLiveRooms, type LiveRoomItem } from '../../src/features/culture/useCultureData';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { LiveRoomsLoadError } from '../../src/features/live/LiveRoomsLoadError';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -97,10 +99,13 @@ export default function LiveFeedScreen() {
       <StatusBar style={activeRoom || theme.scheme === 'dark' ? 'light' : 'dark'} />
       {!activeRoom ? (
         <View style={styles.empty}>
+          {roomsQuery.isPending ? <><ActivityIndicator color={theme.colors.accentText} /><Text style={styles.emptyBody}>Loading live rooms…</Text></>
+          : roomsQuery.isError ? <LiveRoomsLoadError onRetry={() => { void roomsQuery.refetch(); }} retrying={roomsQuery.isFetching} /> : <>
           <View style={styles.emptyMark}><MaterialIcons name="sensors" size={31} color={theme.colors.onAccent} /></View>
           <Text style={styles.emptyKicker}>LIVE SIGNAL</Text>
           <Text style={styles.emptyTitle}>The room opens when the culture moves.</Text>
           <Text style={styles.emptyBody}>There are no verified live sessions right now. PLUGGD will never fabricate a room, audience or live status to fill this feed.</Text>
+          </>}
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.emptyAction}>
             <Text style={styles.emptyActionText}>Return to Live</Text>
             <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
@@ -122,6 +127,7 @@ export default function LiveFeedScreen() {
             </Pressable>
             <Text style={styles.position}>{index + 1} / {liveRooms.length}</Text>
           </View>
+          {roomsQuery.isError ? <View style={{ position: 'absolute', top: 110, left: 20, right: 20 }}><LiveRoomsLoadError onRetry={() => { void roomsQuery.refetch(); }} retrying={roomsQuery.isFetching} hasRooms /></View> : null}
 
           <View style={styles.sideRail}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Open ${roomHost(activeRoom)}`} onPress={() => openCreator(activeRoom)} style={styles.creatorButton}>

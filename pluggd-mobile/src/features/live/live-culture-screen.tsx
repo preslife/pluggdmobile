@@ -64,6 +64,7 @@ import {
 import { DiscoveryReturnBar } from '../discovery/DiscoveryReturnBar';
 import { loadPluggdTvFeed, type PluggdTvVideo } from '../video/pluggdTvService';
 import { loadBattleSummaries, type BattleSummary } from './battleService';
+import { LiveRoomsLoadError } from './LiveRoomsLoadError';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -1376,8 +1377,9 @@ export function LiveCultureScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
       >
         {loading ? <PremiumSkeleton compact label="Loading real Live sessions..." style={styles.loadingBlock} /> : null}
+        {roomsQuery.isError ? <LiveRoomsLoadError onRetry={() => { void roomsQuery.refetch(); }} retrying={roomsQuery.isFetching} hasRooms={rooms.length > 0} /> : null}
 
-        <View style={styles.featuredHeader}>
+        {!roomsQuery.isError || rooms.length > 0 ? <><View style={styles.featuredHeader}>
           <Text style={styles.featuredEyebrow}>FEATURED LIVE</Text>
           <View style={styles.featuredRule} />
         </View>
@@ -1393,7 +1395,7 @@ export function LiveCultureScreen() {
             currentUserId={user?.id}
             onRemoveRoom={removeOwnedRoom}
           />
-        </View>
+        </View></> : null}
 
         <View style={styles.categoryGrid}>
           <View style={styles.categoryRow}>
