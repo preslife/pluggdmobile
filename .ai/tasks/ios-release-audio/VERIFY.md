@@ -8,7 +8,7 @@ Local source gate, 2026-09-30:
 
 Native builds:
 - PASS: production-configured ARM64 Release simulator app, iPhone 17 Pro/iOS 26.3. Initial Mapbox asset tool failure resolved with ARM64-only four-job build; canonical PROJECT_ROOT fixed /tmp versus /private/tmp bundler resolution.
-- PASS: signed iPhone Release Build 16, com.pluggd.mobile, version 1.0.0, team 37X2468U5U, current microphone purpose text. Final source changes require one incremental rebuild and artifact receipt at the checked source head.
+- PASS: signed iPhone Release Build 16, com.pluggd.mobile, version 1.0.0, team 37X2468U5U, current microphone purpose text. Final incremental build PASS from source 631e46e0d1734e671552c410245bf278d5b2be56; codesign --verify --deep --strict PASS (valid on disk/designated requirement). JS bundle SHA256 3cb32c30a641ab3a9058d90d8a070545b2c8d5b91d54a7f72fb18fc395933bbf. Candidate receipt /private/tmp/pluggd-ios-audio-candidate-receipt.json. No fixture soundtrack/token strings in production bundle.
 - NOT RELEASED: no native main merge, phone installation, App Store archive/export/upload or submission. Existing Build 15 stays installed.
 
 Actual native UI, isolated simulator fixture:
@@ -26,4 +26,8 @@ Live/service gate:
 - PENDING: physical camera/video capture, finger scrub smoothness, audible exact segment/mix placement, queue/background/navigation and VoiceOver usage.
 - BASELINE: parent native playback PR #4 remains open with separate physical-tap proof outstanding. Do not silently claim/merge its acceptance.
 
-Acceptance mapping: 1–4 native controls and media path implemented with above simulator boundaries; 5 real adapters/retry behavior implemented but native live gate pending; 6 release/feed/protected playback integrated with focused source checks but authenticated native readback pending; 7 protected baseline and no migrations verified; 8 TypeScript/focused checks/build/native UI evidence available, physical and final exact-source artifact gate remain explicit.
+Acceptance mapping: 1–4 native controls and media path implemented with above simulator boundaries; 5 real adapters/retry behavior implemented but native live gate pending; 6 release/feed/protected playback integrated with focused source checks but authenticated native readback pending; 7 protected baseline and no migrations verified; 8 TypeScript/focused checks/build/native UI evidence available, final exact-source artifact gate passed; live and physical acceptance remain explicit.
+
+Final native display: 0:00.1 start / 0:15.1 end correctly rendered after the precision fix. Screenshot /private/tmp/pluggd-ios-audio-trim.png. Temporary UI fixture was replaced on the simulator with a production-configured candidate using the signed candidate JS bundle, retaining the compiled simulator native executable. No fixture override is enabled in the retained actual candidate.
+
+Production simulator startup: PASS actual PLUGGD home/catalogue loaded signed out after replacing the fixture. No QA authentication or live native music publication claimed.
