@@ -20,6 +20,7 @@ const HIDDEN_EXACT = new Set([
   '/creator/upload',
   '/creator/onboarding',
   '/edit-profile',
+  '/create-music-post',
 ]);
 
 const BOTTOM_HIDDEN_EXACT = new Set(['/wallet', '/creator/events']);

@@ -46,7 +46,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSCameraUsageDescription: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
       NSLocationWhenInUseUsageDescription:
         'PLUGGD uses your location only when you choose nearby events, maps or directions, so it can show music experiences and routes near you.',
-      NSMicrophoneUsageDescription: 'PLUGGD uses the microphone when you join or host a live audio room.',
+      NSMicrophoneUsageDescription: 'PLUGGD uses the microphone when you record a video or join or host a live audio room.',
       NSPhotoLibraryUsageDescription: 'PLUGGD lets you choose images and media for your profile and creator content.',
       NSPhotoLibraryAddUsageDescription: 'PLUGGD saves an exported creator asset only when you ask it to.',
       NSContactsUsageDescription: 'PLUGGD opens the iPhone contact form only when you choose to save a creator Connect Card.',
@@ -201,7 +201,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-camera',
       {
         cameraPermission: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
-        microphonePermission: 'PLUGGD uses the microphone when you join or host a live audio room.',
+        microphonePermission: 'PLUGGD uses the microphone when you record a video or join or host a live audio room.',
       },
     ],
     [

@@ -2,11 +2,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { pluggdFonts } from '../../design/typography';
 import type { MobileSocialPostPreview } from './mobileTypes';
+import { usePlayback } from '../../context/PlaybackProvider';
+import { musicError, musicPostId } from '../social-music/model';
+import { musicPlayback } from '../social-music/service';
 
 export type MobileSocialMediaSelection =
   | { kind: 'image'; index: number }
@@ -20,10 +23,38 @@ type MobileSocialMediaViewerProps = {
 };
 
 function FullScreenVideo({ uri }: { uri: string }) {
-  const player = useVideoPlayer(uri, (instance) => {
+  const { pause } = usePlayback();
+  const [source, setSource] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const player = useVideoPlayer(null, (instance) => {
     instance.loop = false;
+    instance.staysActiveInBackground = false;
+    instance.audioMixingMode = 'doNotMix';
   });
-
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setSource(null); setError(''); player.pause();
+    const postId = musicPostId(uri);
+    const load = async () => {
+      const next = postId ? await musicPlayback(postId, controller.signal) : uri;
+      if (!active) return;
+      await player.replaceAsync(next);
+      if (active) setSource(next);
+    };
+    void load().catch(error => { if (active) setError(musicError(error)); });
+    const playing = player.addListener('playingChange', event => { if (event.isPlaying) void pause(); });
+    const status = player.addListener('statusChange', event => { if (event.status === 'error' && active) setError('This video could not be played. Please try again.'); });
+    const background = AppState.addEventListener('change', state => { if (state !== 'active') player.pause(); });
+    // The hook stops/releases its native player on unmount; it may already be released here.
+    return () => { active = false; controller.abort(); playing.remove(); status.remove(); background.remove(); };
+  }, [uri, retry, player, pause]);
+  if (error) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }]}>
+    <Text accessibilityRole="alert" style={{ color: '#FFFFFF', textAlign: 'center' }}>{error}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="Retry video playback" onPress={() => setRetry(value => value + 1)} style={{ minHeight: 44, padding: 12 }}><Text style={{ color: '#FF6600' }}>Try again</Text></Pressable>
+  </View>;
+  if (!source) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color="#FF6600" accessibilityLabel="Loading video" /></View>;
   return <VideoView player={player} style={styles.media} nativeControls contentFit="contain" />;
 }
 

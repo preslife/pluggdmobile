@@ -31,6 +31,7 @@ import { openHostedCheckout, reconcileHostedCheckout, useCommercePolicy } from '
 import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { ReleaseMusicAction } from '../../src/features/social-music/ReleaseMusicAction';
 
 interface ReleaseDetail {
   id: string;
@@ -870,6 +871,8 @@ export default function ReleaseDetailScreen() {
               </View>
             </EdPressable>
             </View>
+
+            <ReleaseMusicAction releaseId={release.id} />
 
             {canUnlock && externalPolicy.permittedRail === 'stripe_checkout' ? (
               <EdPressable

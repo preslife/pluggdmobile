@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Pressable, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
+import { PostMusicAttribution } from '../social-music/PostMusicAttribution';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { contentInitials, formatCompact, formatDate } from '../../lib/mobileContent';
 import { GlassAvatar, GlassPanel } from '../../../components/liquid-glass';
@@ -509,6 +510,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
             <>
               <MediaGrid post={post} expanded={variant === 'thread'} onOpen={(index) => setMediaSelection({ kind: 'image', index })} />
               <VideoAttachment post={post} onOpen={() => setMediaSelection({ kind: 'video' })} />
+              <PostMusicAttribution music={post.music} />
               <AudioAttachment post={post} />
               <LinkPreview post={post} />
               {post.original_post ? <QuoteCard post={post.original_post} /> : null}
