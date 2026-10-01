@@ -581,6 +581,7 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
             accessibilityLabel={`Open ${release.title || 'release'}`}
             onPress={() => router.push(`/release/${release.id}` as any)}
             style={styles.chartArtworkTap}
+            hitSlop={{ left: 2, right: 2 }}
           >
             <View style={styles.chartThumbWrap}>
               {release.cover_art_url ? (
@@ -1307,7 +1308,7 @@ function useListeningFloorStyles() {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.divider,
   },
-  chartMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chartMain: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
   chartArtworkTap: { width: 40, minHeight: 44, justifyContent: 'center' },
   chartRank: { width: 30, fontFamily: edFonts.serifItalic, fontSize: 19, color: theme.colors.textMuted },
   chartThumbWrap: { width: 40, height: 40, borderRadius: 3, overflow: 'hidden' },

@@ -7,7 +7,7 @@ Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
 Base: a9a647d545763bcc90d2c6babb1473f59870b86b, installed Build 15 source; native main 9a0e5300 and parent playback PR #4 remain unchanged.
 Edit authority: new native music modules and narrow integration in CONTRACT only. Primary native checkout is heavily dirty and was not edited.
-Latest implementation checkpoint: f95bf3df5657c8d1250b79cd3aa950cfe1a10816. Final signed artifact built at that exact source; only evidence records change afterward.
+Latest implementation checkpoint: e967922eaf8d333133d77a7021fef98eb3241c7b. Build 17 archive is being produced from this exact source; only evidence records change afterward.
 Approved actions: scoped native implementation/checkpoint, recent Live recovery parity, local signed Build 16 and in-place install/launch on the connected iPhone (direct user approval 2026-09-30). No native main merge or App Store/TestFlight upload/submission authorised.
 Cleanup: simulator fault fixture replaced with final production JS/assets. Fixtures/binaries/logs remain ignored/outside history; original checkout/branches preserved. Historical Build 14/15 binary paths no longer exist; retain rollback source a9a647d5 and final candidates. No production credentials downloaded.
 
@@ -26,3 +26,5 @@ Recent-work check: native main remains 9a0e5300; only open native PR is #4, alre
 Installed receipt: Ishola's iPhone (iPhone 15 Pro Max) independently reports 1.0.0 (16). Launch and later running-process readback passed (PID 1200). Final source f95bf3d; production JS SHA256 e2b39897c570bc7f4b3474aeee724072c1e709b631cd0d15d928634f26825109. Phone clone /private/tmp/pluggd-ios-audio-phone/Pluggd.app. This proves installation/startup, not audible media or publication acceptance.
 
 Correction: shared EdPressable now sends static native styles while preserving pressed/haptic callbacks; chart Play sits beside artwork with original columns and active-theme background; Home fits three square cards and complete artwork-overlay controls. Actual native light/dark Home and light chart checks and focused source checks pass. Phone connection reset is the only current installation blocker; user reconnect request pending. Local archive preparation authorised by today's correction/App Store readiness request; no store upload/submission.
+
+Disk recovery: failed archive retained in /private/tmp/pluggd-ios-layout-build17-disk-failure.log. Removed only unused task simulator compiler Intermediates.noindex and ModuleCache.noindex after open-file check returned none; filesystem free space rose from 131 MiB to 5.1 GiB. Retained simulator Products, actual app copies, source, screenshots and Build 16 recovery. Archive retry running with no source changes.
