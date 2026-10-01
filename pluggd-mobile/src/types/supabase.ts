@@ -534,6 +534,14 @@ export type Database = {
       }
       battle_entries: {
         Row: {
+          moderation_status: string
+          moderation_item_id: string | null
+          accepted_rules_version: string | null
+          accepted_at: string | null
+          adult_confirmed: boolean
+          rights_confirmed: boolean
+          audio_object_id: string | null
+          audio_updated_at: string | null
           audio_path: string
           battle_id: string
           created_at: string | null
@@ -542,6 +550,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          moderation_status?: string
+          moderation_item_id?: string | null
+          accepted_rules_version?: string | null
+          accepted_at?: string | null
+          adult_confirmed?: boolean
+          rights_confirmed?: boolean
+          audio_object_id?: string | null
+          audio_updated_at?: string | null
           audio_path: string
           battle_id: string
           created_at?: string | null
@@ -550,6 +566,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          moderation_status?: string
+          moderation_item_id?: string | null
+          accepted_rules_version?: string | null
+          accepted_at?: string | null
+          adult_confirmed?: boolean
+          rights_confirmed?: boolean
+          audio_object_id?: string | null
+          audio_updated_at?: string | null
           audio_path?: string
           battle_id?: string
           created_at?: string | null
@@ -569,28 +593,34 @@ export type Database = {
       }
       battle_matchups: {
         Row: {
+          winner_reason: string | null
+          bracket_position: number | null
           battle_id: string
           created_at: string | null
           entry_a_id: string
-          entry_b_id: string
+          entry_b_id: string | null
           id: string
           round_number: number
           winner_entry_id: string | null
         }
         Insert: {
+          winner_reason?: string | null
+          bracket_position?: number | null
           battle_id: string
           created_at?: string | null
           entry_a_id: string
-          entry_b_id: string
+          entry_b_id: string | null
           id?: string
           round_number: number
           winner_entry_id?: string | null
         }
         Update: {
+          winner_reason?: string | null
+          bracket_position?: number | null
           battle_id?: string
           created_at?: string | null
           entry_a_id?: string
-          entry_b_id?: string
+          entry_b_id?: string | null
           id?: string
           round_number?: number
           winner_entry_id?: string | null
@@ -701,6 +731,8 @@ export type Database = {
       }
       battle_votes: {
         Row: {
+          accepted_rules_version: string | null
+          adult_confirmed: boolean
           battle_id: string
           created_at: string | null
           entry_id: string
@@ -709,6 +741,8 @@ export type Database = {
           voter_user_id: string
         }
         Insert: {
+          accepted_rules_version?: string | null
+          adult_confirmed?: boolean
           battle_id: string
           created_at?: string | null
           entry_id: string
@@ -717,6 +751,8 @@ export type Database = {
           voter_user_id: string
         }
         Update: {
+          accepted_rules_version?: string | null
+          adult_confirmed?: boolean
           battle_id?: string
           created_at?: string | null
           entry_id?: string
@@ -750,6 +786,11 @@ export type Database = {
       }
       battles: {
         Row: {
+          competition_format: string | null
+          challenge_brief: string | null
+          rules_version: string | null
+          official_rules: string | null
+          result_note: string | null
           created_at: string | null
           created_by: string
           ends_at: string
@@ -763,6 +804,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          competition_format?: string | null
+          challenge_brief?: string | null
+          rules_version?: string | null
+          official_rules?: string | null
+          result_note?: string | null
           created_at?: string | null
           created_by: string
           ends_at: string
@@ -776,6 +822,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          competition_format?: string | null
+          challenge_brief?: string | null
+          rules_version?: string | null
+          official_rules?: string | null
+          result_note?: string | null
           created_at?: string | null
           created_by?: string
           ends_at?: string
@@ -9580,6 +9631,16 @@ export type Database = {
       }
     }
     Functions: {
+      battle_vote_counts: { Args: { p_battle_id: string }; Returns: { matchup_id: string; entry_id: string; votes: number }[] }
+      set_battle_featured: { Args: { p_battle_id: string; p_featured: boolean }; Returns: undefined }
+      create_free_battle: { Args: { p_title: string; p_starts_at: string; p_ends_at: string; p_format: string; p_brief: string }; Returns: string }
+      submit_free_battle_entry: { Args: { p_battle_id: string; p_title: string; p_audio_path: string; p_rules_version: string; p_adult: boolean; p_rights: boolean }; Returns: string }
+      vote_free_battle: { Args: { p_matchup_id: string; p_entry_id: string; p_rules_version: string; p_adult: boolean }; Returns: undefined }
+      start_free_battle: { Args: { p_battle_id: string }; Returns: undefined }
+      advance_free_battle: { Args: { p_battle_id: string }; Returns: undefined }
+      judge_battle_tie: { Args: { p_matchup_id: string; p_winner_id: string; p_reason: string }; Returns: undefined }
+      battle_official_rules: { Args: Record<PropertyKey, never>; Returns: string }
+
       _normalize_owner_type: { Args: { p: string }; Returns: string }
       _set_search_path: { Args: never; Returns: undefined }
       accept_artist_link: {

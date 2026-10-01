@@ -1,7 +1,7 @@
 # Progress
 
-Phase: LOCAL_MODERATION_CHECKPOINT — final candidate awaits Battle product choice and integration gates.
-NEXT_ACTION: Resolve the owner’s pending track-tournament versus intended live-stream battle choice; implement that choice, verify pending-review controls and the integrated backend candidate, then prepare the final numbered local build (expected Build18).
+Phase: BATTLE_IMPLEMENTATION — owner confirmed the existing uploaded-beat tournament.
+NEXT_ACTION: Resolve sponsor naming and approved backend/web review/release gates; verify the deployed services and final native controls, then archive/install Build18 before recording.
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
@@ -29,3 +29,7 @@ Cleanup: after disk-full archive failure, removed only task-owned simulator comp
 2026-10-01 safety repair: publishMusicDraft distinguishes pending_review from confirmed publication; editor retains persisted media/caption/audience and stable post/job IDs, exposes check-review/retry and fresh-preview recovery after expiry, resets pending state on edits. Web/backend companion enforces exact approved payload/media and connected admin queue. Native TypeScript and focused pending/rejected/approved/lost-response/recovery suite PASS. No archive, install, upload or source/main merge this phase; installed/exported Build17 remains prior code. Existing valid unchanged Home/playback layout proof retained; new pending controls need rendered/physical and live proof after backend gate.
 
 Owner chose iPhone only; confirmed organiser PLUGGD Ltd,18+,free entry, audience votes and company-funded prizes if offered. Actual Battle Arena is a track-upload tournament while owner intended paired live-stream battles; async product choice pending. No dependent Battle edits applied.
+
+Owner explicitly authorised completing the beat tournament. Native lane now includes official rules, age/rights consent, guarded entry/vote RPCs, private fresh signed audio, pending/rejected status and report/block controls. Verification pending; no new binary or production change.
+
+Current phase: LOCAL_BATTLE_CANDIDATE_CHECKPOINT. Owner approved artists as well as producers, with categories and short90-second challenges. Implemented actual rules/consent, private guarded submissions, pending/rejected statuses, protected vote RPCs/aggregate counts, fresh audio, round refresh, profile navigation, sharing, winner spotlight and existing report/block actions. Full native TypeScript, actual service fixtures and existing music editor fixtures PASS. Production iOS JS/assets export PASS at /private/tmp/pluggd-battle-native-export; HBC SHA256 4c53cf78ab8fed6784733361555bd734ec51811512f9892ec1685b0433b68a54. No new archive, signed18 binary, install, main merge, upload or submission this phase. Current phone/exported binary remains17. Backend/web production unchanged; new controls require the companion rollout and physical/live acceptance. Sponsor identity and full-history/review/CI gates remain pending. Use the last scoped Battle checkpoint for current source, not fa463390 (the retained17 source).

@@ -1,7 +1,7 @@
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { reportContent } from './accountSafety';
 
-export type ReportableTarget = 'release' | 'beat' | 'post' | 'profile' | 'comment' | 'blog_post' | 'story';
+export type ReportableTarget = 'release' | 'beat' | 'post' | 'profile' | 'comment' | 'blog_post' | 'story' | 'battle_entry';
 
 const REASONS = [
   { label: 'Inappropriate content', value: 'inappropriate_content' },
