@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,8 +25,11 @@ import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { pluggdFonts } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { showReportActions } from '../safety/reportActions';
+import { blockUser } from '../safety/accountSafety';
 import { WEB_PARITY_ASSETS } from '../parity/webAssets';
 import {
+  battleAudioUrl,
   loadBattleDetail,
   loadBattleSummaries,
   submitBattleEntry,
@@ -266,19 +270,21 @@ export function BattleArenaScreen() {
   );
 }
 
-function EntryModal({ battleId, visible, onClose, onSaved }: { battleId: string; visible: boolean; onClose: () => void; onSaved: () => void }) {
+function EntryModal({ battleId, rules, rulesVersion, visible, onClose, onSaved }: { battleId: string; rules: string; rulesVersion: string; visible: boolean; onClose: () => void; onSaved: () => void }) {
   const theme = usePluggdTheme();
   const [title, setTitle] = useState('');
   const [audio, setAudio] = useState<BattleAudioAsset | null>(null);
+  const [consent, setConsent] = useState(false);
   const mutation = useMutation({
-    mutationFn: () => submitBattleEntry({ battleId, title, audio: audio as BattleAudioAsset }),
+    mutationFn: () => submitBattleEntry({ battleId, title, audio: audio as BattleAudioAsset, rulesVersion, consent }),
     onSuccess: () => {
       impactHaptic();
       setTitle('');
       setAudio(null);
+      setConsent(false);
       onSaved();
       onClose();
-      Alert.alert('Entry locked in', 'Your track is now in the arena.');
+      Alert.alert('Entry awaiting review', 'Your entry is private until PLUGGD approves it. Refresh the battle to check its status.');
     },
     onError: (error) => Alert.alert('Entry not submitted', error instanceof Error ? error.message : 'Please try again.'),
   });
@@ -298,16 +304,22 @@ function EntryModal({ battleId, visible, onClose, onSaved }: { battleId: string;
           <View style={styles.modalHeaderButton} />
         </View>
         <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.modalIntro}><BattleMark size={72} /><Text style={[styles.modalHeroTitle, { color: theme.colors.text }]}>Bring your strongest track.</Text><Text style={[styles.modalBody, { color: theme.colors.textSecondary }]}>One entry per artist. Your title and audio are public when the entry is accepted.</Text></View>
+          <View style={styles.modalIntro}><BattleMark size={72} /><Text style={[styles.modalHeroTitle, { color: theme.colors.text }]}>Bring your strongest 90 seconds.</Text><Text style={[styles.modalBody, { color: theme.colors.textSecondary }]}>One entry per artist. Your title and audio are public when the entry is accepted.</Text></View>
           <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>ENTRY TITLE</Text>
           <TextInput value={title} onChangeText={setTitle} placeholder="Track title" placeholderTextColor={theme.colors.textSubtle} maxLength={120} style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surfaceStrong }]} />
           <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>AUDIO</Text>
           <Pressable accessibilityRole="button" onPress={() => void pick()} style={[styles.audioPicker, { borderColor: audio ? theme.colors.accent : theme.colors.borderStrong, backgroundColor: theme.colors.surfaceStrong }]}>
             <View style={[styles.audioPickerIcon, { backgroundColor: theme.colors.accentSoft }]}><MaterialIcons name={audio ? 'graphic-eq' : 'upload-file'} size={25} color={theme.colors.accentText} /></View>
-            <View style={styles.audioPickerCopy}><Text style={[styles.audioPickerTitle, { color: theme.colors.text }]} numberOfLines={1}>{audio?.name || 'Choose audio file'}</Text><Text style={[styles.audioPickerBody, { color: theme.colors.textMuted }]}>{audio ? 'Tap to replace' : 'MP3, WAV or M4A'}</Text></View>
+            <View style={styles.audioPickerCopy}><Text style={[styles.audioPickerTitle, { color: theme.colors.text }]} numberOfLines={1}>{audio?.name || 'Choose audio file'}</Text><Text style={[styles.audioPickerBody, { color: theme.colors.textMuted }]}>{audio ? 'Tap to replace' : 'MP3, WAV or M4A · up to 90 seconds'}</Text></View>
             <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: mutation.isPending || !title.trim() || !audio }} disabled={mutation.isPending || !title.trim() || !audio} onPress={() => mutation.mutate()} style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }, (mutation.isPending || !title.trim() || !audio) && styles.disabled]}>
+          <Text style={[styles.fieldLabel, {color:theme.colors.textMuted}]}>OFFICIAL RULES</Text>
+          <Text style={[styles.modalBody,{color:theme.colors.textSecondary}]}>{rules}</Text>
+          <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}} onPress={()=>setConsent(!consent)} style={[styles.notice,{borderColor:theme.colors.borderStrong}]}>
+            <MaterialIcons name={consent ? 'check-box' : 'check-box-outline-blank'} size={24} color={theme.colors.accentText}/>
+            <Text style={[styles.noticeText,{color:theme.colors.text}]}>I am 18 or older, have all audio and sample rights, and accept these rules.</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: mutation.isPending || !title.trim() || !audio || !consent }} disabled={mutation.isPending || !title.trim() || !audio || !consent} onPress={() => mutation.mutate()} style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }, (mutation.isPending || !title.trim() || !audio || !consent) && styles.disabled]}>
             {mutation.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <><Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Submit your track</Text><MaterialIcons name="arrow-forward" size={22} color={theme.colors.onAccent} /></>}
           </Pressable>
         </ScrollView>
@@ -318,28 +330,37 @@ function EntryModal({ battleId, visible, onClose, onSaved }: { battleId: string;
 
 function EntryIdentity({ entry }: { entry: BattleEntry }) {
   const theme = usePluggdTheme();
+  const router=useRouter();
   const initial = entry.creatorName.trim().charAt(0).toUpperCase() || 'P';
   return (
-    <View style={styles.entryIdentity}>
+    <Pressable accessibilityRole="link" accessibilityLabel={`Open ${entry.creatorName} profile`} disabled={!entry.creatorHandle} onPress={()=>{if(entry.creatorHandle)router.push(`/creator/${encodeURIComponent(entry.creatorHandle)}` as any);}} style={[styles.entryIdentity,{minHeight:44}]}>
       <View style={[styles.entryAvatar, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.borderStrong }]}><Text style={[styles.entryAvatarText, { color: theme.colors.accentText }]}>{initial}</Text></View>
       <View style={styles.entryIdentityCopy}><Text style={[styles.entryTitle, { color: theme.colors.text }]} numberOfLines={1}>{entry.title}</Text><Text style={[styles.entryCreator, { color: theme.colors.textMuted }]} numberOfLines={1}>{entry.creatorName}</Text></View>
-    </View>
+    </Pressable>
   );
+}
+
+function BattleEntrySafety({entry}:{entry:BattleEntry}) {
+ const theme=usePluggdTheme();
+ return <View style={{flexDirection:'row',gap:12,marginTop:8}}>
+ <Pressable accessibilityRole="button" accessibilityLabel={`Report ${entry.title}`} style={{minHeight:44,justifyContent:'center'}} onPress={()=>showReportActions({targetType:'battle_entry',targetId:entry.id,label:entry.title})}><Text style={{color:theme.colors.textSecondary}}>Report</Text></Pressable>
+ <Pressable accessibilityRole="button" accessibilityLabel={`Block ${entry.creatorName}`} style={{minHeight:44,justifyContent:'center'}} onPress={()=>Alert.alert('Block creator?', 'Their entries will be hidden after you refresh.',[{text:'Cancel',style:'cancel'},{text:'Block',style:'destructive',onPress:()=>{void blockUser(entry.user_id).then(()=>Alert.alert('Creator blocked','Refresh the battle to hide their entries.')).catch(()=>Alert.alert('Block unavailable','Sign in and try again.'));}}])}><Text style={{color:theme.colors.textSecondary}}>Block creator</Text></Pressable>
+ </View>;
 }
 
 function MatchupCard({ matchup, canVote, play, vote, votePending }: { matchup: BattleMatchup; canVote: boolean; play: (entry: BattleEntry) => void; vote: (entryId: string) => void; votePending: boolean }) {
   const theme = usePluggdTheme();
   const total = matchup.voteCountA + matchup.voteCountB;
   const renderEntry = (entry: BattleEntry | null, votes: number) => {
-    if (!entry) return <View style={[styles.matchupEntry, { borderColor: theme.colors.border }]}><Text style={[styles.entryCreator, { color: theme.colors.textMuted }]}>Entry unavailable</Text></View>;
+    if (!entry) return <View style={[styles.matchupEntry, { borderColor: theme.colors.border }]}><Text style={[styles.entryCreator, { color: theme.colors.textMuted }]}>{matchup.entry_b_id === null ? 'Bye: unpaired seed advances' : 'Entry unavailable'}</Text></View>;
     const selected = matchup.viewerVoteEntryId === entry.id;
     const winner = matchup.winner_entry_id === entry.id;
     return (
       <View style={[styles.matchupEntry, { borderColor: winner ? theme.colors.accent : theme.colors.border, backgroundColor: selected ? theme.colors.accentSoft : theme.colors.surfaceStrong }]}>
-        <EntryIdentity entry={entry} />
+        <EntryIdentity entry={entry} /><BattleEntrySafety entry={entry} />
         <View style={styles.matchupActions}>
           <Pressable accessibilityRole="button" accessibilityLabel={`Play ${entry.title}`} onPress={() => play(entry)} style={[styles.playButton, { borderColor: theme.colors.borderStrong }]}><MaterialIcons name="play-arrow" size={20} color={theme.colors.text} /></Pressable>
-          {canVote && !matchup.viewerVoteEntryId ? <Pressable accessibilityRole="button" accessibilityLabel={`Vote for ${entry.title}`} disabled={votePending} onPress={() => vote(entry.id)} style={[styles.voteButton, { backgroundColor: theme.colors.accentFill }]}><Text style={[styles.voteButtonText, { color: theme.colors.onAccent }]}>Vote</Text></Pressable> : null}
+          {canVote && !matchup.winner_entry_id && matchup.entry_b_id && !matchup.viewerVoteEntryId ? <Pressable accessibilityRole="button" accessibilityLabel={`Vote for ${entry.title}`} disabled={votePending} onPress={() => vote(entry.id)} style={[styles.voteButton, { backgroundColor: theme.colors.accentFill }]}><Text style={[styles.voteButtonText, { color: theme.colors.onAccent }]}>Vote</Text></Pressable> : null}
           {selected ? <View style={[styles.votedPill, { backgroundColor: theme.colors.accentSoft }]}><MaterialIcons name="check" size={15} color={theme.colors.accentText} /><Text style={[styles.votedText, { color: theme.colors.accentText }]}>Your vote</Text></View> : null}
           {winner ? <View style={[styles.votedPill, { backgroundColor: theme.colors.accentSoft }]}><MaterialIcons name="emoji-events" size={15} color={theme.colors.accentText} /><Text style={[styles.votedText, { color: theme.colors.accentText }]}>Winner</Text></View> : null}
         </View>
@@ -347,7 +368,7 @@ function MatchupCard({ matchup, canVote, play, vote, votePending }: { matchup: B
       </View>
     );
   };
-  return <View style={styles.matchupCard}>{renderEntry(matchup.entryA, matchup.voteCountA)}<View style={[styles.versus, { backgroundColor: theme.colors.surface }]}><Text style={[styles.versusText, { color: theme.colors.textMuted }]}>VS</Text></View>{renderEntry(matchup.entryB, matchup.voteCountB)}</View>;
+  return <View style={styles.matchupCard}>{matchup.winner_reason ? <Text style={[styles.noticeText,{color:theme.colors.textSecondary}]}>{matchup.winner_reason}</Text> : null}{renderEntry(matchup.entryA, matchup.voteCountA)}<View style={[styles.versus, { backgroundColor: theme.colors.surface }]}><Text style={[styles.versusText, { color: theme.colors.textMuted }]}>VS</Text></View>{renderEntry(matchup.entryB, matchup.voteCountB)}</View>;
 }
 
 export function BattleDetailScreen() {
@@ -360,14 +381,14 @@ export function BattleDetailScreen() {
   const queryClient = useQueryClient();
   const playback = usePlayback();
   const [entryOpen, setEntryOpen] = useState(false);
-  const detailQuery = useQuery({ queryKey: ['live', 'battle', battleId], queryFn: () => loadBattleDetail(battleId), enabled: Boolean(battleId), staleTime: 10_000 });
+  const detailQuery = useQuery({ queryKey: ['live', 'battle', battleId], queryFn: () => loadBattleDetail(battleId), enabled: Boolean(battleId), staleTime: 10_000, refetchInterval:15_000 });
   const detail = detailQuery.data;
   const activeRound = useMemo(() => {
     const now = Date.now();
     return detail?.rounds.find((round) => new Date(round.starts_at).getTime() <= now && new Date(round.ends_at).getTime() >= now) ?? null;
   }, [detail?.rounds]);
   const voteMutation = useMutation({
-    mutationFn: (entry: { matchupId: string; entryId: string }) => submitBattleVote({ battleId, ...entry }),
+    mutationFn: (entry: { matchupId: string; entryId: string }) => submitBattleVote({ battleId, ...entry, rulesVersion: detail?.battle.rules_version || '', consent: true }),
     onSuccess: async () => {
       impactHaptic();
       await queryClient.invalidateQueries({ queryKey: ['live', 'battle', battleId] });
@@ -377,7 +398,7 @@ export function BattleDetailScreen() {
   });
   const play = async (entry: BattleEntry) => {
     impactHaptic();
-    await playback.playTrack({ id: `battle-${entry.id}`, url: entry.audioUrl, title: entry.title, artist: entry.creatorName, type: 'preview', sourceType: 'preview' });
+    await playback.playTrack({ id: `battle-${entry.id}`, url: await battleAudioUrl(entry.audio_path), title: entry.title, artist: entry.creatorName, type: 'preview', sourceType: 'preview' });
   };
 
   if (detailQuery.isLoading) {
@@ -394,12 +415,16 @@ export function BattleDetailScreen() {
   }
 
   const { battle } = detail;
-  const canEnter = battle.status === 'upcoming' && new Date(battle.starts_at).getTime() > Date.now() && !detail.currentUserEntryId;
+  const ownEntry=detail.entries.find(entry=>entry.id===detail.currentUserEntryId);
+  const canEnter = Boolean(battle.rules_version && battle.official_rules) && battle.status === 'upcoming' && new Date(battle.starts_at).getTime() > Date.now() && (!ownEntry || ownEntry.moderation_status==='rejected');
   const groupedMatchups = detail.matchups.reduce<Record<number, BattleMatchup[]>>((groups, matchup) => {
     groups[matchup.round_number] = [...(groups[matchup.round_number] ?? []), matchup];
     return groups;
   }, {});
-  const leaderboard = [...detail.entries].sort((left, right) => right.voteCount - left.voteCount || new Date(left.created_at || 0).getTime() - new Date(right.created_at || 0).getTime());
+  const lastRound = Math.max(0,...detail.matchups.map(m=>m.round_number));
+  const finalMatchups=detail.matchups.filter(m=>m.round_number===lastRound);
+  const champion=!battle.result_note?.startsWith('Closed without a winner') && battle.status==='finished'&&finalMatchups.length===1 ? detail.entries.find(e=>e.id===finalMatchups[0].winner_entry_id) : null;
+  const leaderboard = detail.entries.filter(entry=>entry.moderation_status==='approved').sort((left, right) => right.voteCount - left.voteCount || new Date(left.created_at || 0).getTime() - new Date(right.created_at || 0).getTime());
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
@@ -414,29 +439,38 @@ export function BattleDetailScreen() {
           <LinearGradient colors={theme.scheme === 'dark' ? ['rgba(255,102,0,0.20)', 'rgba(18,13,8,0.88)', 'rgba(7,6,5,0.96)'] : ['rgba(232,79,0,0.16)', '#F4E7D2', '#FFFCF7']} style={StyleSheet.absoluteFill} />
           <View style={styles.heroTopRow}><View style={[styles.heroStatus, { backgroundColor: battle.status === 'live' ? theme.colors.live : theme.colors.accentFill }]}>{battle.status === 'live' ? <View style={styles.liveDot} /> : null}<Text style={styles.heroStatusText}>{statusCopy(battle.status)}</Text></View><BattleMark size={64} /></View>
           <Text style={[styles.detailTitle, { color: theme.colors.text }]}>{battle.title}</Text>
+          <Text style={[styles.modalBody,{color:theme.colors.textSecondary}]}>{battle.challenge_brief}</Text>
+          <Pressable accessibilityRole="button" style={[styles.outlineButton,{borderColor:theme.colors.borderStrong}]} onPress={()=>{void Share.share({message:`${battle.title} · ${battle.challenge_brief||'PLUGGD Battle Arena'} https://pluggd.fm/live/battles/${battle.id}`}).catch(()=>Alert.alert('Sharing unavailable','Please try again.'));}}><Text style={[styles.outlineButtonText,{color:theme.colors.text}]}>Share battle</Text></Pressable>
+          {champion ? <View style={[styles.notice,{borderColor:theme.colors.accent}]}><Text style={[styles.noticeText,{color:theme.colors.text}]}>Battle winner: {champion.title} · {champion.creatorName}{'\n'}{finalMatchups[0].winner_reason}</Text></View> : null}
           <Text style={[styles.heroTiming, { color: theme.colors.textSecondary }]}>{timingLabel(battle)} · {formatDate(battle.ends_at)}</Text>
           <View style={styles.heroMetrics}><View><Text style={[styles.heroMetricLabel, { color: theme.colors.textMuted }]}>PRIZE</Text><Text style={[styles.heroMetricValue, { color: theme.colors.text }]}>{formatPrize(battle.prize_pool_cents)}</Text></View><View><Text style={[styles.heroMetricLabel, { color: theme.colors.textMuted }]}>ENTRY</Text><Text style={[styles.heroMetricValue, { color: theme.colors.text }]}>{formatMoney(battle.entry_fee_cents)}</Text></View><View><Text style={[styles.heroMetricLabel, { color: theme.colors.textMuted }]}>ENTRIES</Text><Text style={[styles.heroMetricValue, { color: theme.colors.text }]}>{battle.entryCount}</Text></View></View>
           {canEnter && (battle.entry_fee_cents ?? 0) === 0 ? <Pressable accessibilityRole="button" onPress={() => setEntryOpen(true)} style={[styles.primaryButton, { backgroundColor: theme.colors.accentFill }]}><Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Submit your track</Text><MaterialIcons name="arrow-forward" size={22} color={theme.colors.onAccent} /></Pressable> : null}
-          {canEnter && (battle.entry_fee_cents ?? 0) > 0 ? <View style={[styles.notice, { borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surface }]}><MaterialIcons name="confirmation-number" size={20} color={theme.colors.accentText} /><Text style={[styles.noticeText, { color: theme.colors.textSecondary }]}>This battle requires an entry pass. Complete entry on PLUGGD web before {formatDate(battle.starts_at)}.</Text></View> : null}
-          {detail.currentUserEntryId ? <View style={[styles.notice, { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft }]}><MaterialIcons name="check-circle" size={20} color={theme.colors.accentText} /><Text style={[styles.noticeText, { color: theme.colors.text }]}>Your entry is locked into this battle.</Text></View> : null}
+
+          {detail.currentUserEntryId ? <View style={[styles.notice, { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft }]}><MaterialIcons name="check-circle" size={20} color={theme.colors.accentText} /><Text style={[styles.noticeText, { color: theme.colors.text }]}>{ownEntry?.moderation_status==='pending' ? 'Your entry is private and awaiting review.' : ownEntry?.moderation_status==='rejected' ? 'Your entry was rejected. You may replace it before the entry deadline, or contact support@pluggd.fm.' : 'Your entry is approved for this battle.'}</Text></View> : null}
         </View>
 
+        <View style={styles.section}>
+          <SectionHeading kicker="FREE COMPETITION · 18+" title="Official rules" />
+          <Text style={[styles.modalBody,{color:theme.colors.textSecondary}]}>{battle.official_rules || 'Rules have not been published. Entries and voting are closed.'}</Text>
+          <Text style={[styles.modalBody,{color:theme.colors.textSecondary}]}>Entry deadline: {new Date(battle.starts_at).toLocaleString()}. {battle.result_note || ''}</Text>
+          {detail.rounds.map(round=><Text key={round.id} style={[styles.modalBody,{color:theme.colors.textSecondary}]}>Round {round.round_number}: {new Date(round.starts_at).toLocaleString()} – {new Date(round.ends_at).toLocaleString()}</Text>)}
+        </View>
         <View style={styles.section}>
           <SectionHeading kicker="TOURNAMENT" title="Battle bracket" aside={activeRound ? `Round ${activeRound.round_number} live` : battle.status === 'finished' ? 'Complete' : 'Awaiting draw'} />
           {Object.keys(groupedMatchups).length ? Object.entries(groupedMatchups).sort(([left], [right]) => Number(left) - Number(right)).map(([round, matchups]) => (
             <View key={round} style={styles.roundBlock}>
               <Text style={[styles.roundTitle, { color: theme.colors.textMuted }]}>ROUND {round}</Text>
-              {matchups.map((matchup) => <MatchupCard key={matchup.id} matchup={matchup} canVote={battle.status === 'live' && activeRound?.round_number === matchup.round_number} votePending={voteMutation.isPending} play={play} vote={(entryId) => voteMutation.mutate({ matchupId: matchup.id, entryId })} />)}
+              {matchups.map((matchup) => <MatchupCard key={matchup.id} matchup={matchup} canVote={Boolean(battle.rules_version) && battle.status === 'live' && activeRound?.round_number === matchup.round_number} votePending={voteMutation.isPending} play={(entry)=>{void play(entry).catch(()=>Alert.alert('Audio unavailable','Refresh and try again.'));}} vote={(entryId) => Alert.alert('Confirm your vote', 'I am 18+, have listened to both entries, and accept the official rules below. This vote is final.', [{text:'Cancel',style:'cancel'},{text:'Confirm vote',onPress:()=>voteMutation.mutate({matchupId:matchup.id,entryId})}])} />)}
             </View>
           )) : <View style={[styles.emptyInline, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}><MaterialIcons name="account-tree" size={25} color={theme.colors.textMuted} /><Text style={[styles.emptyInlineText, { color: theme.colors.textSecondary }]}>The bracket appears when the draw is confirmed.</Text></View>}
         </View>
 
         <View style={styles.section}>
-          <SectionHeading kicker="LIVE LEADERBOARD" title="Crowd ranking" aside={`${leaderboard.length} entries`} />
-          {leaderboard.length ? <View style={[styles.leaderboard, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceStrong }]}>{leaderboard.map((entry, index) => <View key={entry.id} style={[styles.leaderRow, index > 0 && { borderTopColor: theme.colors.divider, borderTopWidth: StyleSheet.hairlineWidth }]}><Text style={[styles.rank, { color: index < 3 ? theme.colors.accentText : theme.colors.textMuted }]}>{String(index + 1).padStart(2, '0')}</Text><View style={styles.leaderIdentity}><EntryIdentity entry={entry} /></View><Pressable accessibilityRole="button" accessibilityLabel={`Play ${entry.title}`} onPress={() => void play(entry)} style={[styles.playButton, { borderColor: theme.colors.borderStrong }]}><MaterialIcons name="play-arrow" size={20} color={theme.colors.text} /></Pressable><Text style={[styles.leaderVotes, { color: theme.colors.text }]}>{entry.voteCount}</Text></View>)}</View> : <View style={[styles.emptyInline, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}><MaterialIcons name="graphic-eq" size={25} color={theme.colors.textMuted} /><Text style={[styles.emptyInlineText, { color: theme.colors.textSecondary }]}>No tracks have entered the arena yet.</Text></View>}
+          <SectionHeading kicker="ACROSS ALL ROUNDS" title="Audience votes" aside={`${leaderboard.length} entries`} />
+          {leaderboard.length ? <View style={[styles.leaderboard, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceStrong }]}>{leaderboard.map((entry, index) => <View key={entry.id} style={[styles.leaderRow, index > 0 && { borderTopColor: theme.colors.divider, borderTopWidth: StyleSheet.hairlineWidth }]}><Text style={[styles.rank, { color: index < 3 ? theme.colors.accentText : theme.colors.textMuted }]}>{String(index + 1).padStart(2, '0')}</Text><View style={styles.leaderIdentity}><EntryIdentity entry={entry} /></View><Pressable accessibilityRole="button" accessibilityLabel={`Play ${entry.title}`} onPress={() => {void play(entry).catch(()=>Alert.alert('Audio unavailable','Refresh and try again.'));}} style={[styles.playButton, { borderColor: theme.colors.borderStrong }]}><MaterialIcons name="play-arrow" size={20} color={theme.colors.text} /></Pressable><Text style={[styles.leaderVotes, { color: theme.colors.text }]}>{entry.voteCount}</Text></View>)}</View> : <View style={[styles.emptyInline, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}><MaterialIcons name="graphic-eq" size={25} color={theme.colors.textMuted} /><Text style={[styles.emptyInlineText, { color: theme.colors.textSecondary }]}>No tracks have entered the arena yet.</Text></View>}
         </View>
       </ScrollView>
-      <EntryModal battleId={battleId} visible={entryOpen} onClose={() => setEntryOpen(false)} onSaved={() => { void queryClient.invalidateQueries({ queryKey: ['live', 'battle', battleId] }); void queryClient.invalidateQueries({ queryKey: ['live', 'battles'] }); }} />
+      <EntryModal battleId={battleId} rules={battle.official_rules || ''} rulesVersion={battle.rules_version || ''} visible={entryOpen} onClose={() => setEntryOpen(false)} onSaved={() => { void queryClient.invalidateQueries({ queryKey: ['live', 'battle', battleId] }); void queryClient.invalidateQueries({ queryKey: ['live', 'battles'] }); }} />
     </View>
   );
 }

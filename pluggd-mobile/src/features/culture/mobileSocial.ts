@@ -1,4 +1,7 @@
 import { supabase } from '../../lib/supabase';
+import { postMusicSummaries } from '../social-music/service';
+import type { PostMusic } from '../social-music/model';
+import { musicPostId } from '../social-music/model';
 import { isNonPublicTestProfileName } from '../../lib/publicAudienceFilters';
 import { loadBlockedUserIds, moderateUserContent } from '../safety/accountSafety';
 import {
@@ -255,6 +258,7 @@ function mapPostPreview(
   profile: ProfileRow | undefined,
   destinationMap: Map<string, MobileSocialDestination[]>,
   interactions: Awaited<ReturnType<typeof loadInteractionSets>>,
+  music: Map<string, PostMusic>,
 ): MobileSocialPostPreview {
   const actionPostId = row.is_repost && row.original_post_id ? row.original_post_id : row.id;
   return {
@@ -265,6 +269,7 @@ function mapPostPreview(
     destinations: destinationMap.get(row.id) || [],
     images: Array.isArray(row.images) ? row.images : [],
     video: row.video ?? null,
+    music: music.get(actionPostId),
     audio: row.audio ?? null,
     audio_duration: Number(row.audio_duration ?? 0),
     gif: row.gif ?? null,
@@ -303,19 +308,20 @@ async function enrichPosts(rows: SocialPostRow[], userId: string | null): Promis
   const profileMap = await loadProfiles(allRows.map((row) => row.user_id));
   const destinationMap = await buildDestinationMap(allRows.map((row) => row.id));
   const interactions = await loadInteractionSets(userId, allRows.map((row) => row.id));
+  const music = await postMusicSummaries(allRows.filter(row => typeof row.video === 'string' && musicPostId(row.video)).map(row => row.id));
 
   const publicOriginals = originals.filter(
     (row) => row.user_id === userId || !isNonPublicTestIdentity(profileMap.get(row.user_id)),
   );
   const originalMap = new Map<string, MobileSocialPostPreview>();
   for (const original of publicOriginals) {
-    originalMap.set(original.id, mapPostPreview(original, profileMap.get(original.user_id), destinationMap, interactions));
+    originalMap.set(original.id, mapPostPreview(original, profileMap.get(original.user_id), destinationMap, interactions, music));
   }
 
   return rows
     .filter((row) => row.user_id === userId || !isNonPublicTestIdentity(profileMap.get(row.user_id)))
     .map((row) => ({
-    ...mapPostPreview(row, profileMap.get(row.user_id), destinationMap, interactions),
+    ...mapPostPreview(row, profileMap.get(row.user_id), destinationMap, interactions, music),
     original_post: row.original_post_id ? originalMap.get(row.original_post_id) ?? null : null,
     }));
 }

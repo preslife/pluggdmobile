@@ -1,0 +1,2 @@
+
+2026-10-01 — iOS Home/Releases regression correction: source fa463390, final Build 17 production archive and local App Store IPA verified; existing-profile clone installed in place on paired iPhone, independent 1.0.0 (17), launch/running PID 2522 confirmed. Actual native real-data Home/chart/wall/ledger rendered checks and focused checks pass. Build 16 recovery retained. Native main/store upload/submission unchanged; physical/live music acceptance remains pending. Continuity: .ai/tasks/ios-release-audio/HANDOFF.md.

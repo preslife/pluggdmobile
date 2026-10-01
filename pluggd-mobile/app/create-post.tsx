@@ -454,6 +454,15 @@ export default function CreatePostRoute() {
             <Pressable accessibilityRole="button" accessibilityLabel="Add audio" style={styles.toolButton} onPress={pickAudio} disabled={isPoll}>
               <MaterialIcons name="graphic-eq" size={22} color={isPoll ? theme.colors.textMuted : theme.colors.accentText} />
             </Pressable>
+            {!isPoll && !params.quotePostId && postType === 'post' ? <Pressable accessibilityRole="button" accessibilityLabel="Create photo or video with release music" style={styles.toolButton}
+              onPress={() => {
+                if (media.length > 1 || media[0]?.kind === 'audio') { Alert.alert('One photo or video', 'Music posts use one photo or video. Keep this draft, or choose one visual before adding music.'); return; }
+                const visual = media[0];
+                router.push({ pathname: '/create-music-post', params: {
+                  content, destinations: JSON.stringify(destinations), releaseId: params.releaseId,
+                  ...(visual ? { mediaUri: visual.uri, mediaKind: visual.kind === 'image' ? 'photo' : 'video', mimeType: visual.mimeType, mediaDuration: String(visual.durationSeconds || 15) } : {}),
+                } } as any);
+              }}><MaterialIcons name="library-music" size={22} color={theme.colors.accentText} /></Pressable> : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Create poll" style={styles.toolButton} onPress={() => router.setParams({ type: 'poll' } as any)}>
               <MaterialIcons name="poll" size={22} color={theme.colors.accentText} />
             </Pressable>

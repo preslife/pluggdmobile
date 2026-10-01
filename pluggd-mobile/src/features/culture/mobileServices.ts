@@ -14,6 +14,7 @@ import {
   type SocialPostItem,
 } from '../../lib/mobileContent';
 import { MOBILE_CAPABILITIES } from './mobileCapabilities';
+import { requireLiveRooms } from '../live/liveRoomLoading';
 import type {
   BackstageCommunity,
   BackstageCommunityEvent,
@@ -779,7 +780,7 @@ async function loadMemberships(userId: string | null) {
 export async function loadLiveRooms() {
   const blockedUserIds = await loadBlockedUserIds().catch(() => new Set<string>());
   const [sessionRooms, liveSessions, scheduledSessions, communityRooms] = await Promise.all([
-    safeList<any>(
+    requireLiveRooms<any>(
       (supabase as any)
         .from('session_rooms')
         .select('id,title,description,status,created_at,scheduled_for,agora_live_started_at,agora_live_ended_at,host_id,is_public,live_mode,mode_config,participant_count')

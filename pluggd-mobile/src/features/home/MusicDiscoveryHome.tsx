@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Animated as RNAnimated,
   Pressable,
   RefreshControl,
@@ -41,6 +43,7 @@ import { loadPublicDiscoveryFeatures } from '../discovery/publicDiscoveryFeature
 import { loadCuratedPublicItems } from '../discovery/siteCuration';
 import { EdPressable, Enter } from '../editorial/EditorialBits';
 import { isHappeningNowEvent } from '../events/eventDiscoveryData';
+import { toTrack } from '../../lib/mobileContent';
 import {
   buildHomeSignals,
   buildNextWaveItems,
@@ -124,7 +127,8 @@ export function MusicDiscoveryHome() {
   const feed = useHomeFeed();
   const live = useLiveRooms();
   const backstage = useBackstage();
-  const { playQueue, playTrack } = usePlayback();
+  const { playQueue, playTrack, play: resumePlayback, pause, currentTrack, isPlaying, isBuffering, isReady } = usePlayback();
+  const [startingReleaseId, setStartingReleaseId] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
@@ -588,25 +592,57 @@ export function MusicDiscoveryHome() {
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.releaseRail}>
               {newReleases.map((release) => {
-                const playable = items.find((entry) => entry.kind === 'release' && entry.track.releaseId === release.id);
+                const track = toTrack(release, 'release');
+                const active = currentTrack?.releaseId === release.id;
+                const playing = active && isPlaying;
+                const busy = startingReleaseId === release.id || (active && isBuffering);
                 return (
                   <View key={release.id} style={styles.releaseCard}>
-                    <EdPressable
-                      haptic={false}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${playable ? 'Play' : 'Open'} ${release.title || 'release'}`}
-                      onPress={() => playable ? void play(playable) : router.push(`/release/${release.id}` as any)}
-                      style={styles.releaseArtSurface}
-                    >
-                      {release.cover_art_url ? (
-                        <ReleaseArtwork uri={release.cover_art_url} style={styles.releaseArt} displayWidth={420} />
-                      ) : (
-                        <View style={[styles.releaseArt, styles.artFallback]}><MaterialIcons name="album" size={28} color={theme.colors.accentText} /></View>
-                      )}
-                      <View style={styles.releasePlay}>
-                        <MaterialIcons name={playable ? 'play-arrow' : 'arrow-forward'} size={19} color="#100B07" />
-                      </View>
-                    </EdPressable>
+                    <View style={styles.releaseArtSurface}>
+                      <EdPressable
+                        haptic={false}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Open ${release.title || 'release'}`}
+                        onPress={() => openHomeDestination({ kind: 'release', id: release.id })}
+                      >
+                        {release.cover_art_url ? (
+                          <ReleaseArtwork uri={release.cover_art_url} style={styles.releaseArt} displayWidth={420} />
+                        ) : (
+                          <View style={[styles.releaseArt, styles.artFallback]}><MaterialIcons name="album" size={28} color={theme.colors.accentText} /></View>
+                        )}
+                      </EdPressable>
+                      {track ? (
+                        <EdPressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`${playing ? 'Pause' : 'Play'} ${release.title || 'release'}`}
+                          accessibilityState={{ disabled: busy, busy }}
+                          disabled={busy}
+                          onPress={() => {
+                            if (!isReady) {
+                              Alert.alert('Player loading', 'Please try again in a moment.');
+                              return;
+                            }
+                            setStartingReleaseId(release.id);
+                            void (async () => {
+                              try {
+                                if (playing) await pause();
+                                else if (active) await resumePlayback();
+                                else await playTrack(track);
+                              } catch {
+                                Alert.alert('Audio unavailable', 'This release could not start. Please try again.');
+                              } finally {
+                                setStartingReleaseId(null);
+                              }
+                            })();
+                          }}
+                          style={styles.releasePlayTap}
+                        >
+                          <View style={styles.releasePlay}>
+                            {busy ? <ActivityIndicator size="small" color={theme.colors.onAccent} /> : <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={21} color={theme.colors.onAccent} />}
+                          </View>
+                        </EdPressable>
+                      ) : null}
+                    </View>
                     <EdPressable
                       accessibilityRole="button"
                       accessibilityLabel={`Open ${release.title || 'release'}`}
@@ -1161,7 +1197,9 @@ function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; i
 
 function useHomeStyles() {
   const theme = usePluggdTheme();
+  const { width } = useWindowDimensions();
   return useMemo(() => {
+    const releaseSize = Math.min(126, (width - 64) / 3);
     const INK = theme.colors.text;
     const MUTED = theme.colors.textMuted;
     const ORANGE = theme.colors.accentText;
@@ -1301,10 +1339,11 @@ function useHomeStyles() {
   mixTitle: { color: MEDIA_INK, fontFamily: 'Sora-ExtraBold', fontSize: 18, lineHeight: 21, marginTop: 4 },
   mixCreator: { color: MEDIA_MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10.5, marginTop: 4 },
   releaseRail: { gap: 12, paddingRight: 20 },
-  releaseCard: { width: 126, position: 'relative' },
-  releaseArtSurface: { width: 126, height: 126, position: 'relative' },
-  releaseArt: { width: 126, height: 126, borderRadius: 4, backgroundColor: theme.colors.artworkBase },
-  releasePlay: { position: 'absolute', bottom: 6, right: 6, width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
+  releaseCard: { width: releaseSize, position: 'relative' },
+  releaseArtSurface: { width: releaseSize, height: releaseSize, position: 'relative' },
+  releaseArt: { width: releaseSize, height: releaseSize, borderRadius: 4, backgroundColor: theme.colors.artworkBase },
+  releasePlayTap: { position: 'absolute', bottom: 6, right: 6, width: 44, height: 44 },
+  releasePlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
   releaseCopy: { minHeight: 48, justifyContent: 'center' },
   releaseCopyText: { flex: 1, minWidth: 0 },
   releaseTitle: { color: INK, fontFamily: 'Satoshi-Bold', fontSize: 12 },
@@ -1412,5 +1451,5 @@ function useHomeStyles() {
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.82, transform: [{ scale: 0.96 }] },
     });
-  }, [theme]);
+  }, [theme, width]);
 }

@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   RefreshControl,
@@ -365,6 +366,56 @@ function ListeningDeck({ releases }: { releases: FloorRelease[] }) {
 /* Wall tile + editors quote                                           */
 /* ------------------------------------------------------------------ */
 
+function ReleaseCardPlay({ release, overlay = false }: { release: FloorRelease; overlay?: boolean }) {
+  const theme = usePluggdTheme();
+  const styles = useListeningFloorStyles();
+  const playback = usePlayback();
+  const [starting, setStarting] = useState(false);
+  const track = toTrack(release as any, 'release');
+  if (!track) return null;
+
+  const active = playback.currentTrack?.releaseId === release.id;
+  const playing = active && playback.isPlaying;
+  const busy = starting || (active && playback.isBuffering);
+
+  return (
+    <EdPressable
+      accessibilityRole="button"
+      accessibilityLabel={`${playing ? 'Pause' : 'Play'} ${release.title || 'release'}`}
+      accessibilityState={{ disabled: busy, busy }}
+      disabled={busy}
+      onPress={(event) => {
+        event.stopPropagation();
+        if (!playback.isReady) {
+          Alert.alert('Player loading', 'Please try again in a moment.');
+          return;
+        }
+        setStarting(true);
+        void (async () => {
+          try {
+            if (playing) await playback.pause();
+            else if (active) await playback.play();
+            else await playback.playTrack(track);
+          } catch {
+            Alert.alert('Audio unavailable', 'This release could not start. Please try again.');
+          } finally {
+            setStarting(false);
+          }
+        })();
+      }}
+      style={[styles.quickPlayTap, overlay && styles.quickPlayOverlay]}
+    >
+      <View style={styles.quickPlayFill}>
+        {busy ? (
+          <ActivityIndicator color={theme.colors.onAccent} size="small" />
+        ) : (
+          <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={23} color={theme.colors.onAccent} />
+        )}
+      </View>
+    </EdPressable>
+  );
+}
+
 function WallTile({ release }: { release: FloorRelease; tall?: boolean }) {
   const theme = usePluggdTheme();
   const styles = useListeningFloorStyles();
@@ -387,15 +438,14 @@ function WallTile({ release }: { release: FloorRelease; tall?: boolean }) {
     ]);
   };
   return (
-    <EdPressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${release.title || 'release'}`}
-      onPress={() => router.push(`/release/${release.id}` as any)}
-      onLongPress={quickActions}
-      style={{ flex: 1 }}
-    >
-      <View style={styles.wallTile}>
-        <View style={styles.wallArtWrap}>
+    <View style={[styles.wallTile, { flex: 1 }]}>
+      <View style={styles.wallArtWrap}>
+        <EdPressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${release.title || 'release'}`}
+          onPress={() => router.push(`/release/${release.id}` as any)}
+          onLongPress={quickActions}
+        >
           {release.cover_art_url ? (
             <ReleaseArtwork uri={release.cover_art_url} style={styles.wallArt} />
           ) : (
@@ -406,7 +456,15 @@ function WallTile({ release }: { release: FloorRelease; tall?: boolean }) {
               <Text style={styles.wallAgeText}>{daysAgoLabel(release.created_at)}</Text>
             </View>
           ) : null}
-        </View>
+        </EdPressable>
+        <ReleaseCardPlay release={release} overlay />
+      </View>
+      <EdPressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${release.title || 'release'}`}
+        onPress={() => router.push(`/release/${release.id}` as any)}
+        onLongPress={quickActions}
+      >
         <View style={styles.wallTitleRow}>
           <Text style={styles.wallTitle} numberOfLines={1}>{release.title || 'Untitled'}</Text>
           <View style={styles.wallPriceChip}>
@@ -414,8 +472,8 @@ function WallTile({ release }: { release: FloorRelease; tall?: boolean }) {
           </View>
         </View>
         {releaseCreator(release) ? <Text style={styles.wallArtist} numberOfLines={2}>{releaseCreator(release)!.toUpperCase()}</Text> : null}
-      </View>
-    </EdPressable>
+      </EdPressable>
+    </View>
   );
 }
 
@@ -466,13 +524,13 @@ function LedgerRows({ releases }: { releases: FloorRelease[] }) {
   return (
     <View style={styles.ledgerList}>
       {releases.map((release) => (
-        <EdPressable
-          key={release.id}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${release.title || 'release'}`}
-          onPress={() => router.push(`/release/${release.id}` as any)}
-        >
-          <View style={styles.ledgerRow}>
+        <View key={release.id} style={styles.ledgerRow}>
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${release.title || 'release'}`}
+            onPress={() => router.push(`/release/${release.id}` as any)}
+            style={styles.ledgerMain}
+          >
             <View style={styles.ledgerThumbWrap}>
               {release.cover_art_url ? (
                 <ReleaseArtwork uri={release.cover_art_url} style={styles.ledgerThumb} />
@@ -487,8 +545,9 @@ function LedgerRows({ releases }: { releases: FloorRelease[] }) {
               </Text>
             </View>
             <Text style={styles.ledgerPrice}>{priceLabel(release)}</Text>
-          </View>
-        </EdPressable>
+          </EdPressable>
+          <ReleaseCardPlay release={release} />
+        </View>
       ))}
     </View>
   );
@@ -510,19 +569,20 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
     <View style={{ gap: 0 }}>
       <View style={styles.chartHead}>
         <Text style={[styles.chartHeadText, { width: 30 }]}>#</Text>
+        <View style={{ width: 92 }} />
         <Text style={[styles.chartHeadText, { flex: 1 }]}>TITLE / ARTIST</Text>
         <Text style={[styles.chartHeadText, { width: 52, textAlign: 'right' }]}>PLAYS</Text>
-        <Text style={[styles.chartHeadText, { width: 44, textAlign: 'right' }]}>Δ WK</Text>
       </View>
       {rows.map((release, index) => (
-        <EdPressable
-          key={release.id}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${release.title || 'release'}`}
-          onPress={() => router.push(`/release/${release.id}` as any)}
-        >
-          <View style={styles.chartRow}>
-            <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
+        <View key={release.id} style={styles.chartRow}>
+          <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${release.title || 'release'}`}
+            onPress={() => router.push(`/release/${release.id}` as any)}
+            style={styles.chartArtworkTap}
+            hitSlop={{ left: 2, right: 2 }}
+          >
             <View style={styles.chartThumbWrap}>
               {release.cover_art_url ? (
                 <ReleaseArtwork uri={release.cover_art_url} style={styles.chartThumb} />
@@ -530,14 +590,21 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
                 <View style={[styles.chartThumb, { backgroundColor: theme.colors.artworkBase }]} />
               )}
             </View>
+          </EdPressable>
+          <ReleaseCardPlay release={release} />
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${release.title || 'release'}`}
+            onPress={() => router.push(`/release/${release.id}` as any)}
+            style={styles.chartMain}
+          >
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.chartTitle} numberOfLines={1}>{release.title || 'Untitled'}</Text>
               <Text style={styles.chartArtist} numberOfLines={1}>{(release.artist || '').toUpperCase()}</Text>
             </View>
-            <Text style={styles.chartPlays}>{formatCompact(release.total_plays)}</Text>
-            <Text style={styles.chartDelta}>–</Text>
-          </View>
-        </EdPressable>
+          </EdPressable>
+          <Text style={styles.chartPlays}>{formatCompact(release.total_plays)}</Text>
+        </View>
       ))}
     </View>
   );
@@ -572,6 +639,7 @@ function PressingOrders({ releases, signals }: { releases: FloorRelease[]; signa
               ) : (
                 <View style={[styles.pressingArt, { backgroundColor: theme.colors.artworkBase }]} />
               )}
+              <ReleaseCardPlay release={release} overlay />
             </View>
             <Text style={styles.pressingTitle} numberOfLines={1}>{release.title || 'Untitled'}</Text>
             {releaseCreator(release) ? <Text style={styles.pressingArtist} numberOfLines={1}>{releaseCreator(release)!.toUpperCase()}</Text> : null}
@@ -984,7 +1052,7 @@ export function ListeningFloorScreen() {
 function useListeningFloorStyles() {
   const theme = usePluggdTheme();
   return useMemo(() => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#070605' },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   horizontalRail: { gap: 12, paddingRight: 20 },
 
   floorIntro: { paddingTop: 6, gap: 7 },
@@ -1176,6 +1244,9 @@ function useListeningFloorStyles() {
   wallTile: { gap: 6 },
   wallArtWrap: { borderRadius: 3, overflow: 'hidden' },
   wallArt: { width: '100%', aspectRatio: 1 },
+  quickPlayTap: { width: 44, height: 44 },
+  quickPlayOverlay: { position: 'absolute', bottom: 8, right: 8 },
+  quickPlayFill: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
   wallAgeChip: {
     position: 'absolute',
     top: 8,
@@ -1212,6 +1283,7 @@ function useListeningFloorStyles() {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.divider,
   },
+  ledgerMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
   ledgerThumbWrap: { width: 46, height: 46, overflow: 'hidden', borderRadius: 3 },
   ledgerThumb: { width: '100%', height: '100%' },
   ledgerTitle: { fontFamily: edFonts.serif, fontSize: 16.5, color: theme.colors.text },
@@ -1236,13 +1308,14 @@ function useListeningFloorStyles() {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.divider,
   },
+  chartMain: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chartArtworkTap: { width: 40, minHeight: 44, justifyContent: 'center' },
   chartRank: { width: 30, fontFamily: edFonts.serifItalic, fontSize: 19, color: theme.colors.textMuted },
   chartThumbWrap: { width: 40, height: 40, borderRadius: 3, overflow: 'hidden' },
   chartThumb: { width: '100%', height: '100%' },
   chartTitle: { fontFamily: edFonts.serif, fontSize: 16, color: theme.colors.text },
   chartArtist: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.2, color: theme.colors.textMuted },
   chartPlays: { width: 52, textAlign: 'right', fontFamily: edFonts.mono, fontSize: 11, color: theme.colors.text },
-  chartDelta: { width: 44, textAlign: 'right', fontFamily: edFonts.mono, fontSize: 11, color: theme.colors.textMuted },
 
   /* Pressing orders */
   pressingCard: {

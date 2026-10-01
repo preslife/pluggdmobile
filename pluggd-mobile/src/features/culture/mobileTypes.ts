@@ -7,6 +7,7 @@ import type {
   SamplePackItem,
   SocialPostItem,
 } from '../../lib/mobileContent';
+import type { PostMusic } from '../social-music/model';
 
 export type CultureTabKey = 'home' | 'stage' | 'live' | 'backstage' | 'my-pluggd';
 
@@ -80,6 +81,7 @@ export type MobileSocialPostPreview = {
   destinations: MobileSocialDestination[];
   images: string[];
   video: string | null;
+  music?: PostMusic;
   audio: string | null;
   audio_duration: number;
   gif: string | null;

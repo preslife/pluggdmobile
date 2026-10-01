@@ -12,6 +12,13 @@
 | Native TypeScript | PASS after fresh `npm ci`: `npx tsc --noEmit --pretty false`. Prior node_modules gap was local and is resolved. |
 | Existing broad player/global-shell source contracts | BLOCKED by stale generated Info.plist and unrelated dock baseline assertions. |
 | Local iOS Build 14 | PASS: production-configured signed `1.0.0 (14)` `xcodebuild` completed; `Pluggd.app` exists in isolated DerivedData. This is not App Store upload or device playback. |
-| Physical device | BLOCKED: paired iPhone is locked; `devicectl` install fails `kAMDMobileImageMounterDeviceLocked`. No Build 14 install occurred. |
-| Still ah Link / Glass Moon tap-to-sound | PENDING: founder reported about two minutes in Build 13; time both on replacement physical iPhone before video. |
-| Native main, replacement build and App Review video | PENDING. |
+| Physical device install | PASS: `devicectl` installed and launched `com.pluggd.mobile` on the paired iPhone; installed-app readback reports `1.0.0 (14)`. Audible playback remains pending. |
+| Physical Build 14 playback | PASS by founder: Beat, Channel One Mix, Still ah Link, and Glass Moon all play fine on the installed iPhone candidate. Exact tap-to-sound seconds were not recorded. |
+| Build 15 local compile and install | PASS: signed production-configured `1.0.0 (15)` from `578729e`; `devicectl` installed, read back build 15, and launched on the paired iPhone. Build 14 app retained locally. |
+| Release-card one-tap Play | PENDING: user physical tap on Releases and Home cards and Open navigation; installation alone does not prove interaction or audible playback. |
+| Release-card source checks | PASS: native TypeScript; Home, Home destination, commerce and protected playback contracts. Visible Play is a separate 44-point control on Releases wall/ledger/chart/pressing cards and Home New releases; source alone does not prove device taps. |
+| Existing product-pages contract | PRE-EXISTING FAIL: detail-screen script expects `Starting ${release.title}…`, while unchanged `origin/main` detail source renders `Starting…`; this follow-up does not edit that screen. |
+| Root Vitest accessibility command | BLOCKED locally: root checkout lacks Vitest (`sh: vitest: command not found`); PR CI will run required a11y/i18n. |
+| PR #4 CI and review | PASS exact head `578729e`: a11y/i18n successful; no review or issue comments. Merge waits on physical card acceptance. |
+| Native main | PASS: PR #3 squash-merged as `9a0e5300d580104e46718ba11482ff24c4d0b99d`; merged tree matches the built source. |
+| App Review video | PENDING: physical playback acceptance first; no Build 14 App Store upload/submission. |
