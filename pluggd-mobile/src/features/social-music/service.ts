@@ -174,8 +174,9 @@ export async function readyMusicPreview(userId: string, jobId: string) {
 export async function publishMusicDraft(draft: MusicDraft) {
   if (!draft.jobId) throw new Error('Prepare your finished preview first.');
   const result = await api('social-music-publish', { jobId: draft.jobId, postId: draft.postId, content: draft.content.trim(), destinations: draft.destinations });
+  if (result.postId === draft.postId && result.status === 'pending_review') return { status: 'pending_review' as const, postId: draft.postId };
   if (result.postId !== draft.postId || result.status !== 'published') throw new Error('Publication was not confirmed. Please retry this draft.');
-  return draft.postId;
+  return { status: 'published' as const, postId: draft.postId };
 }
 export async function musicPlayback(postId: string, signal?: AbortSignal) {
   const { data, error } = await supabase.auth.getSession();

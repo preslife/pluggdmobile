@@ -19,7 +19,7 @@ export type MusicDraft = {
   version: 1; userId: string; uploadId: string; requestId: string; postId: string;
   media: MusicMedia | null; track: MusicTrack | null; recipe: MusicRecipe;
   content: string; destinations: MobileSocialDestinationInput[];
-  sourcePath?: string; jobId?: string; updatedAt: number;
+  sourcePath?: string; jobId?: string; reviewPending?: boolean; updatedAt: number;
 };
 export const MAX_MUSIC_SECONDS = 30;
 export const MAX_MEDIA_BYTES = 104_857_600;

@@ -1,12 +1,12 @@
 # Progress
 
-Phase: READY_FOR_USER_REVIEW — corrected Build 17 installed; local App Store export prepared.
-NEXT_ACTION: Complete physical/live media acceptance on installed Build 17, then obtain the applicable native release/store handoff approval before push/merge/upload/submission.
+Phase: LOCAL_MODERATION_CHECKPOINT — final candidate awaits Battle product choice and integration gates.
+NEXT_ACTION: Resolve the owner’s pending track-tournament versus intended live-stream battle choice; implement that choice, verify pending-review controls and the integrated backend candidate, then prepare the final numbered local build (expected Build18).
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
 Base: a9a647d545763bcc90d2c6babb1473f59870b86b (installed Build 15 source). Native main remains 9a0e5300; parent playback PR #4 remains independently open.
-Latest implementation checkpoint: fa463390edf2655968a7a63f67f617acb1a3c6c9. Final archive, IPA and phone clone share production JS SHA256 e567a863d32c5397364f378583937e3d8e3f6af0d43d29650618ec0f27aa69c9. Subsequent edits are evidence records only.
+Build17 archived source checkpoint: fa463390edf2655968a7a63f67f617acb1a3c6c9. Current source adds local moderation safety repair; resolve its scoped checkpoint with git log -1 -- pluggd-mobile/src/features/social-music/service.ts. Final archive, IPA and phone clone share production JS SHA256 e567a863d32c5397364f378583937e3d8e3f6af0d43d29650618ec0f27aa69c9. Subsequent edits are evidence records only.
 Edit authority: native music editor and narrow Live/Home/Releases corrections in CONTRACT. Primary heavily dirty native checkout was not edited.
 Approved actions: local production-configured candidate, existing-profile signing, in-place paired-phone update and launch/readback; local archive/export preparation. No native main merge or TestFlight/App Store upload/submission authorised.
 
@@ -25,3 +25,7 @@ Remaining acceptance: physical finger waveform scrubbing, audible exact excerpt/
 Release boundary: no push, native main merge, Apple upload or submission. Local export reported an expired Apple account session warning but succeeded with existing manual signing; future upload authentication is not verified. See HANDOFF.md for remaining gates.
 
 Cleanup: after disk-full archive failure, removed only task-owned simulator compiler caches/products after no-user checks and confirmation of an identical retained native executable. Source, app copies, screenshots, archive/dSYMs, device products and Build 16 recovery preserved. Test fixture excluded from production bundles. Task simulator shut down after final verification to release memory. Docker was not started or used; independent Docker Desktop status query did not respond and was terminated without altering Docker.
+
+2026-10-01 safety repair: publishMusicDraft distinguishes pending_review from confirmed publication; editor retains persisted media/caption/audience and stable post/job IDs, exposes check-review/retry and fresh-preview recovery after expiry, resets pending state on edits. Web/backend companion enforces exact approved payload/media and connected admin queue. Native TypeScript and focused pending/rejected/approved/lost-response/recovery suite PASS. No archive, install, upload or source/main merge this phase; installed/exported Build17 remains prior code. Existing valid unchanged Home/playback layout proof retained; new pending controls need rendered/physical and live proof after backend gate.
+
+Owner chose iPhone only; confirmed organiser PLUGGD Ltd,18+,free entry, audience votes and company-funded prizes if offered. Actual Battle Arena is a track-upload tournament while owner intended paired live-stream battles; async product choice pending. No dependent Battle edits applied.

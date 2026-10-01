@@ -208,7 +208,7 @@ export function MusicPostEditor() {
     const current = draftRef.current;
     if (!current || busyRef.current) return;
     if (recipeChange) { stop(); setReadyUri(null); setPreviewError(false); }
-    update({ ...current, ...patch, ...(recipeChange ? { requestId: Crypto.randomUUID(), postId: Crypto.randomUUID(), jobId: undefined } : {}) });
+    update({ ...current, ...patch, reviewPending: false, ...(recipeChange ? { requestId: Crypto.randomUUID(), postId: Crypto.randomUUID(), jobId: undefined } : {}) });
   };
   const changeRecipe = (patch: Partial<MusicRecipe>) => {
     if (!draft) return;
@@ -278,7 +278,9 @@ export function MusicPostEditor() {
     try {
       const current = draftRef.current;
       await checkpoint(current);
-      const postId = await publishMusicDraft(current);
+      const result = await publishMusicDraft(current);
+      if (result.status === 'pending_review') { await checkpoint({ ...current, reviewPending: true }); return; }
+      const postId = result.postId;
       completed.current = true; await persistQueue.current; await clearMusicDraft(current.userId); removeMusicMedia(current.media);
       await Promise.all(['community-feed', 'culture'].map(query => queryClient.invalidateQueries({ queryKey: [query] })));
       impactHaptic(); if (mounted.current) router.replace(`/post/${postId}` as any);
@@ -339,11 +341,13 @@ export function MusicPostEditor() {
         <MusicTool icon="tune" label="Mix" onPress={() => { stop(); setMixSheet(true); }} disabled={!track || Boolean(busy)} />
         <MusicTool icon="photo-library" label="Media" onPress={() => void pickMedia()} disabled={Boolean(busy)} />
       </View> : null}
+      {draft.reviewPending ? <Text accessibilityLiveRegion="polite" style={[styles.body, { marginHorizontal: 24, marginBottom: 12, textAlign: 'center' }]}>Your finished post is awaiting review. Your draft is saved. Check again here before publishing. Editing the caption or audience requires a new review. Unfinished previews expire after seven days.</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {review && /expired|new preview/i.test(error) ? <MusicButton label="Prepare a new preview" onPress={() => { edit({}, true); setReview(false); setError(''); }} /> : null}
       {!review && auditionError ? <Text accessibilityRole="alert" style={styles.error}>{auditionError}</Text> : null}
       <View style={styles.bottom}>
         {busy ? <View style={styles.processing}><ActivityIndicator color={colors.accentText} /><Text accessibilityLiveRegion="polite" style={styles.body}>{busy === 'render' ? 'Preparing your finished preview…' : busy === 'publish' ? 'Sharing your post…' : 'Preparing your media…'}</Text><Text style={styles.meta}>{busy === 'render' ? 'Keep this screen open. Your draft is saved.' : 'Just a moment.'}</Text></View>
-          : <MusicButton primary icon={review ? 'arrow-upward' : 'play-circle-outline'} label={review ? 'Share post' : 'Preview post'} onPress={() => void (review ? publish() : finish())} disabled={review ? !readyUri || previewError : !draft.media || !track || auditionBusy || !waveform.length} />}
+          : <MusicButton primary icon={review ? 'arrow-upward' : 'play-circle-outline'} label={review ? draft.reviewPending ? 'Check review and publish' : 'Submit for review' : 'Preview post'} onPress={() => void (review ? publish() : finish())} disabled={review ? !readyUri || previewError : !draft.media || !track || auditionBusy || !waveform.length} />}
         {!review && draft.media ? <Text style={[styles.meta, { textAlign: 'center', marginTop: 10 }]}>Watch the finished mix before sharing.</Text> : null}
       </View>
     </ScrollView>
