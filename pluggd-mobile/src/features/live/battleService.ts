@@ -55,7 +55,7 @@ function normaliseStatus(value: string): BattleStatus {
 export async function battleAudioUrl(path: string) {
   const { data, error } = await supabase.storage.from('battle-audio').createSignedUrl(path, 300);
   if (error || !data?.signedUrl)
-    throw new Error('This beat is unavailable. Refresh and try again.');
+    throw new Error('This audio is unavailable. Refresh and try again.');
   return data.signedUrl;
 }
 

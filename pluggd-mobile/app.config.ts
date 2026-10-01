@@ -34,7 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     requireFullScreen: true,
     usesAppleSignIn: true,
-    buildNumber: process.env.IOS_BUILD_NUMBER ?? '13',
+    buildNumber: process.env.IOS_BUILD_NUMBER ?? '18',
     bundleIdentifier: 'com.pluggd.mobile',
     entitlements: {
       'aps-environment': IS_PRODUCTION ? 'production' : 'development',
