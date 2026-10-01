@@ -1,7 +1,7 @@
 # Progress
 
-Phase: BATTLE_IMPLEMENTATION — owner confirmed the existing uploaded-beat tournament.
-NEXT_ACTION: Resolve sponsor naming and approved backend/web review/release gates; verify the deployed services and final native controls, then archive/install Build18 before recording.
+Phase: BUILD18_INSTALLED_APPLE_SESSION_HANDOFF
+NEXT_ACTION: Complete companion live publication repair, refresh existing Xcode Apple sign-in, then upload Build18 and prepare the existing draft; physical acceptance/latest-OS recordings remain pending.
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
@@ -37,3 +37,7 @@ Current phase: LOCAL_BATTLE_CANDIDATE_CHECKPOINT. Owner approved artists as well
 2026-10-01 direct owner instruction: complete approval to finish the scoped work. Authorises task branch pushes/PRs, scoped failure fixes, current checks/review, integration/merge and matching backend/web deployment, final native archive/existing signing and in-place phone install, then Apple upload/draft preparation as needed to reach the video-and-final-submission handoff. Do not ask again for those steps. Final Submit for Review remains the owner handoff after real recordings; no unrelated destructive cleanup or invented legal sponsor/prize terms.
 
 Owner full-release authority resolves the implementation choice: sponsor is the verified registered developer ROWSON GROUP LTD; organiser is owner-confirmed PLUGGD Ltd. These are roles for this developer-hosted recognition-only competition, with no inferred corporate affiliation, cash prize or changed developer account. Copy includes artists consistently. Build 18 is the native default; no renumbering of old binaries.
+
+## Superseding Build18 release receipt, 2026-10-02
+Native PR5 merged main11abf8fca1309404df8900ed07b5e37b4243374e after exact-head a11y/i18n pass. Signed source212caf484a9a23089e0ed85f87bc9fd4e07538b8 matches fetched origin/main for all pluggd-mobile source. Archive and manual App Store export PASS: /private/tmp/pluggd-ios-final-build18/Pluggd.xcarchive and /private/tmp/pluggd-ios-final-build18-export/Pluggd.ipa. Identitycom.pluggd.mobile1.0.0(18), UIDeviceFamily[1], strict signature pass; JS SHA256c851f760835d2e7a1aa36b83f93b1a0931b65958c0c2e387982d942a7e1eb15a; IPA SHA2560337c3c8ba15e80675658187af1331c77a3972decf7db6f5a82d389459ed94bd. Existing ad hoc profile phone clone has identical JS. In-place wireless install PASS; independent apps list confirms1.0.0(18), launch PASS, process1715 running from installed path. Device2FAD1D76-6CEA-5EC5-BB81-43B0F64BB124, iPhone15ProMax, iOS26.6.1(23G83). Receipts /private/tmp/pluggd-ios-final-build18-receipt.json and /private/tmp/pluggd-ios-final-phone18-receipt.json. Startup is not audible/touch/live-flow acceptance. Latest Apple iOS27.0.1 required for requested final footage.
+Backend/web PR208 main21a4 deployed schema and5JWT-protected edges; publication API ESM import failure found live, narrow PR209 repair in progress. No native rebuild required by that API-only fix. App Store Mac/Vision options savedOFF; Contests Frequent saved, existing16+ app rating retained while Battles require18+. Xcode Apple Accounts cannot retrieve teams; sign-in refresh requested privately in Apple UI, no credentials extracted. Upload not yet performed. App Store draft still selects13; final videos, actual rights evidence and screenshots pending. Existing full owner release authority above supersedes all historical no-merge/upload limits. Preserve Build13/16/17/18 and primary dirty native checkout.
