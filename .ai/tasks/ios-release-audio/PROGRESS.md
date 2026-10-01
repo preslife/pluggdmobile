@@ -1,7 +1,7 @@
 # Progress
 
-Phase: Build 16 installed and running on the connected iPhone; physical audio-editor acceptance remains.
-NEXT_ACTION: Verify finger scrubbing, audible segment/mix, media capture, background/navigation and one-tap release playback on installed Build 16; collect native authenticated publication evidence before the native merge/store gate.
+Phase: Releases/Home correction implemented and native-rendered; prepare Build 17 archive and phone update.
+NEXT_ACTION: Archive corrected Build 17 from the checked source; sign existing-profile phone clone and install/read back once user reconnects the currently unreachable iPhone.
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
@@ -24,3 +24,5 @@ Candidate: /private/tmp/pluggd-ios-audio-device/Build/Products/Release-iphoneos/
 Recent-work check: native main remains 9a0e5300; only open native PR is #4, already included in this baseline. Latest web public playback signer lifetime (#201) is inherited from the server; creator/admin/catalogue/library/metadata fixes are web-specific. Web #200 exposed one applicable missing native lobby error/retry path, now included. Community Relevance v3 remains explicitly deferred. Primary phone reports Build 15; paired iPhone 15 Pro Max developer mode enabled. Existing PLUGGD ad hoc profile includes this phone and same distribution team/certificate. Production App Store Build 16 bundle is retained; signing clone separately for local phone. Prior Build 14/15 binary paths in old records no longer exist; source a9a647d5 is retained for rebuilding rollback. Do not claim those old binaries are available.
 
 Installed receipt: Ishola's iPhone (iPhone 15 Pro Max) independently reports 1.0.0 (16). Launch and later running-process readback passed (PID 1200). Final source f95bf3d; production JS SHA256 e2b39897c570bc7f4b3474aeee724072c1e709b631cd0d15d928634f26825109. Phone clone /private/tmp/pluggd-ios-audio-phone/Pluggd.app. This proves installation/startup, not audible media or publication acceptance.
+
+Correction: shared EdPressable now sends static native styles while preserving pressed/haptic callbacks; chart Play sits beside artwork with original columns and active-theme background; Home fits three square cards and complete artwork-overlay controls. Actual native light/dark Home and light chart checks and focused source checks pass. Phone connection reset is the only current installation blocker; user reconnect request pending. Local archive preparation authorised by today's correction/App Store readiness request; no store upload/submission.

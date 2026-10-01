@@ -569,19 +569,19 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
     <View style={{ gap: 0 }}>
       <View style={styles.chartHead}>
         <Text style={[styles.chartHeadText, { width: 30 }]}>#</Text>
+        <View style={{ width: 92 }} />
         <Text style={[styles.chartHeadText, { flex: 1 }]}>TITLE / ARTIST</Text>
         <Text style={[styles.chartHeadText, { width: 52, textAlign: 'right' }]}>PLAYS</Text>
-        <Text style={[styles.chartHeadText, { width: 44, textAlign: 'center' }]}>PLAY</Text>
       </View>
       {rows.map((release, index) => (
         <View key={release.id} style={styles.chartRow}>
+          <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
           <EdPressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${release.title || 'release'}`}
             onPress={() => router.push(`/release/${release.id}` as any)}
-            style={styles.chartMain}
+            style={styles.chartArtworkTap}
           >
-            <Text style={styles.chartRank}>{String(index + 1).padStart(2, '0')}</Text>
             <View style={styles.chartThumbWrap}>
               {release.cover_art_url ? (
                 <ReleaseArtwork uri={release.cover_art_url} style={styles.chartThumb} />
@@ -589,13 +589,20 @@ function ChartTable({ releases }: { releases: FloorRelease[] }) {
                 <View style={[styles.chartThumb, { backgroundColor: theme.colors.artworkBase }]} />
               )}
             </View>
+          </EdPressable>
+          <ReleaseCardPlay release={release} />
+          <EdPressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${release.title || 'release'}`}
+            onPress={() => router.push(`/release/${release.id}` as any)}
+            style={styles.chartMain}
+          >
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.chartTitle} numberOfLines={1}>{release.title || 'Untitled'}</Text>
               <Text style={styles.chartArtist} numberOfLines={1}>{(release.artist || '').toUpperCase()}</Text>
             </View>
-            <Text style={styles.chartPlays}>{formatCompact(release.total_plays)}</Text>
           </EdPressable>
-          <ReleaseCardPlay release={release} />
+          <Text style={styles.chartPlays}>{formatCompact(release.total_plays)}</Text>
         </View>
       ))}
     </View>
@@ -1044,7 +1051,7 @@ export function ListeningFloorScreen() {
 function useListeningFloorStyles() {
   const theme = usePluggdTheme();
   return useMemo(() => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#070605' },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
   horizontalRail: { gap: 12, paddingRight: 20 },
 
   floorIntro: { paddingTop: 6, gap: 7 },
@@ -1301,6 +1308,7 @@ function useListeningFloorStyles() {
     borderBottomColor: theme.colors.divider,
   },
   chartMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chartArtworkTap: { width: 40, minHeight: 44, justifyContent: 'center' },
   chartRank: { width: 30, fontFamily: edFonts.serifItalic, fontSize: 19, color: theme.colors.textMuted },
   chartThumbWrap: { width: 40, height: 40, borderRadius: 3, overflow: 'hidden' },
   chartThumb: { width: '100%', height: '100%' },

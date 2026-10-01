@@ -1197,7 +1197,9 @@ function Artwork({ item, style, iconSize }: { item: DiscoveryItem; style: any; i
 
 function useHomeStyles() {
   const theme = usePluggdTheme();
+  const { width } = useWindowDimensions();
   return useMemo(() => {
+    const releaseSize = Math.min(126, (width - 64) / 3);
     const INK = theme.colors.text;
     const MUTED = theme.colors.textMuted;
     const ORANGE = theme.colors.accentText;
@@ -1337,9 +1339,9 @@ function useHomeStyles() {
   mixTitle: { color: MEDIA_INK, fontFamily: 'Sora-ExtraBold', fontSize: 18, lineHeight: 21, marginTop: 4 },
   mixCreator: { color: MEDIA_MUTED, fontFamily: 'Satoshi-Medium', fontSize: 10.5, marginTop: 4 },
   releaseRail: { gap: 12, paddingRight: 20 },
-  releaseCard: { width: 126, position: 'relative' },
-  releaseArtSurface: { width: 126, height: 126, position: 'relative' },
-  releaseArt: { width: 126, height: 126, borderRadius: 4, backgroundColor: theme.colors.artworkBase },
+  releaseCard: { width: releaseSize, position: 'relative' },
+  releaseArtSurface: { width: releaseSize, height: releaseSize, position: 'relative' },
+  releaseArt: { width: releaseSize, height: releaseSize, borderRadius: 4, backgroundColor: theme.colors.artworkBase },
   releasePlayTap: { position: 'absolute', bottom: 6, right: 6, width: 44, height: 44 },
   releasePlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
   releaseCopy: { minHeight: 48, justifyContent: 'center' },
@@ -1449,5 +1451,5 @@ function useHomeStyles() {
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.82, transform: [{ scale: 0.96 }] },
     });
-  }, [theme]);
+  }, [theme, width]);
 }

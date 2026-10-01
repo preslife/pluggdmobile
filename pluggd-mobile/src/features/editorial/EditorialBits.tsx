@@ -3,6 +3,7 @@
  * redesign system: Sora hierarchy, Satoshi copy and disciplined orange.
  */
 import { MaterialIcons } from '@expo/vector-icons';
+import { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -59,21 +60,35 @@ export const ED_PRESSED = { opacity: 0.86, transform: [{ scale: 0.985 }] } as co
 export function EdPressable({
   style,
   onPress,
+  onPressIn,
+  onPressOut,
   haptic = 'selection',
   ...props
 }: PressableProps & { haptic?: boolean | 'selection' | 'impact' }) {
+  const [pressed, setPressed] = useState(false);
+  const state = { pressed };
   return (
     <Pressable
       accessibilityRole="button"
       {...props}
+      onPressIn={(event) => {
+        setPressed(true);
+        onPressIn?.(event);
+      }}
+      onPressOut={(event) => {
+        setPressed(false);
+        onPressOut?.(event);
+      }}
       onPress={(event: GestureResponderEvent) => {
         if (haptic === 'impact') impactHaptic();
         else if (haptic) selectionHaptic();
         onPress?.(event);
       }}
-      style={(state) => [
+      // NativeWind's native interop drops callback styles. Resolve before
+      // passing to Pressable so sizing, rows and overlays reach native layout.
+      style={[
         StyleSheet.flatten(typeof style === 'function' ? style(state) : style),
-        state.pressed ? ED_PRESSED : null,
+        pressed ? ED_PRESSED : null,
       ]}
     />
   );
