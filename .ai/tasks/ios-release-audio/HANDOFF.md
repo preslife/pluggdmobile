@@ -1,18 +1,23 @@
-# Installed iOS Build 16
+# Corrected Build 17 installed; local store artifact prepared
 
-Source f95bf3df5657c8d1250b79cd3aa950cfe1a10816 on codex/ios-release-audio, based on Build 15 a9a647d5. Worktree /private/tmp/pluggd-ios-release-audio; primary dirty checkout and native main unchanged.
+Source fa463390edf2655968a7a63f67f617acb1a3c6c9 on codex/ios-release-audio, based on installed Build 15 a9a647d5. Worktree /private/tmp/pluggd-ios-release-audio. Primary dirty checkout and native main remain unchanged.
 
-Build 16 is installed in place on Ishola's iPhone (iPhone 15 Pro Max), com.pluggd.mobile, version 1.0.0. Independent installed-version, launch and running-process readback passed. Includes the native release music editor, existing protected Beat/Mix and release-card playback fixes, and narrow Live lobby/swipe-feed retry recovery. Recent-work check found no other completed native work missing; applicable server fixes are already inherited. Community Relevance v3 remains deferred.
+Build 17 is installed in place and running on Ishola's iPhone (iPhone 15 Pro Max), com.pluggd.mobile 1.0.0. Independent app-version readback and launch/running-process readback passed (PID 2522). App data preserved; no uninstall. Includes the native release music editor, protected playback/release-card fixes and relevant Live retry parity from Build 16, plus corrected Home/Releases layouts.
 
-Production-signed candidate /private/tmp/pluggd-ios-audio-device/Build/Products/Release-iphoneos/Pluggd.app is retained. Existing phone-enabled ad hoc profile signed a separate clone /private/tmp/pluggd-ios-audio-phone/Pluggd.app; signature verified. Receipt /private/tmp/pluggd-ios-audio-candidate-receipt.json. Production JS SHA256 e2b39897c570bc7f4b3474aeee724072c1e709b631cd0d15d928634f26825109. Final simulator fixture replaced with exact production JS/assets and existing compiled simulator executable. No TestFlight/App Store upload/submission or native main merge.
+Chart Play is directly beside artwork, with original title/artist/rank/plays structure and readable themed background. Home shows three complete square covers with full artwork-overlay Play buttons and clear title/artist copy. Native real-data light/dark Home, chart, wall and ledger visual checks passed; Play/Pause stays independent from Open navigation. Final chart Open touch areas meet 44pt. Screenshots:
+- /Users/apple/.codex/visualizations/2026/09/27/01a0e23e-284e-7480-8940-d96579080b36/ios-build17/home-corrected.png
+- /Users/apple/.codex/visualizations/2026/09/27/01a0e23e-284e-7480-8940-d96579080b36/ios-build17/chart-corrected.png
+
+Production-signed archive /private/tmp/pluggd-ios-layout-build17/Pluggd.xcarchive passed strict signature verification. Local App Store export /private/tmp/pluggd-ios-layout-build17-export/Pluggd.ipa passed; identity/version/production bundle confirmed. Separate existing ad hoc clone /private/tmp/pluggd-ios-layout-phone17/Pluggd.app signed and verified for phone. Receipt /private/tmp/pluggd-ios-build17-receipt.json. Production JS SHA256 e567a863d32c5397364f378583937e3d8e3f6af0d43d29650618ec0f27aa69c9. IPA SHA256 a6b8c82c6b3daef86f36ae0dab7bcd19150901c26ab900dcd428ac3a09c7562b. No fixture/authentication override in final bundle. Retained simulator launched the same final JS/assets before shutdown.
 
 Remaining physical/live acceptance on installed phone:
-1. Community composer → Music: choose photo/video; search/select a real track and drag to a recognisable section. Confirm explicit start/end, ±0.1s adjustment, 15/30 durations, smooth finger movement and VoiceOver.
-2. Confirm visible media, original/music volume and timing placement. Listen to the exact finished segment and mix.
-3. Start global music then audition. Confirm competing audio stops; background/navigation and finished-preview return stop without crash.
-4. Publish into the task private QA community and check recipe/attribution, feed/release reuse, private member access and non-member denial. Existing phone authentication may be used. No native live publication is claimed.
-5. Confirm ordinary posts/polls and release/Home one-tap Play/Pause; parent PR #4 physical gate remains outstanding.
+1. Confirm Home/chart appearance and independent Play versus title Open on physical phone.
+2. Community composer → Music: choose photo/video, find a real track and finger-drag to recognisable section; verify explicit start/end, precise adjustment, duration and VoiceOver controls.
+3. Listen to exact finished excerpt with original/music volume and timing placement; verify global music pauses during audition and preview/background/navigation cleanup.
+4. Publish in private QA community and verify attribution/reuse, member access and non-member denial using existing phone authentication. No live native publication is claimed.
 
-Automated QA sign-in still needs the pending narrow existing-key approval. Automatic review rejected a full production env pull; no secrets downloaded. Do not bypass/repeat it or reset accounts. Phone installation used no credential extraction.
+Automated private QA authentication still requires pending narrowly scoped approval. Automatic review rejected full production env extraction; no credentials downloaded and no bypass/retry permitted. Native fixture checks and installation receipts do not replace remaining physical/live acceptance.
 
-Next gate: physical/native live acceptance, task-only PR/current checks/review and applicable native merge/store authority. Current approval covered the local phone update only. Rollback source a9a647d5 is retained, but historical Build 14/15 binaries no longer exist; rollback needs reconstruction. Preserve original checkout and candidates. Passing checks are in VERIFY.md; no broad re-audit/rebuild is needed for remaining device checks.
+Next gate: physical/native live acceptance, task-only PR/current checks/review and applicable native merge/store authority. Current approval covers local artifacts and in-place phone update. No native push/merge or TestFlight/App Store upload/submission. Local export succeeded despite expired Apple account-session warning; upload authentication remains unverified. Recent-work reconciliation found no other completed native change missing; Community Relevance v3 remains deferred.
+
+Recovery: retain production-signed Build 16 at /private/tmp/pluggd-ios-build16-retained/Pluggd.app and source a9a647d5; old Build 14/15 binaries unavailable. Only unused task simulator compiler caches/products removed to recover disk space, after confirming identical retained executable. App copies, source, device products, archive/dSYMs and evidence preserved. Task simulator shut down to release memory. Docker Desktop is independent and was not altered. Passing checks in VERIFY.md; no broad re-audit/rebuild needed for remaining device checks.
