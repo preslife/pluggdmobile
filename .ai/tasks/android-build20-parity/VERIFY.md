@@ -9,7 +9,7 @@ Mark only current, exact-source evidence as passed.
 | TypeScript / Expo Doctor | PASS: tsc; Doctor 18/18 |
 | Production Android JS export | PASS: Build21 upload carryover, 3,165 modules/94 assets; `index-1babd61a070277ff54a861bf326faf0a.hbc` |
 | Clean Android config / merged manifest | CNG/config PASS: min24/target36, blocked permissions, both existing HTTPS hosts; e0 compiled manifest PASS for old apex-only source, final compiled two-host manifest PENDING |
-| Signed AAB / Billing / 16 KB native inspection | e0 signature/Billing9.1.0/manifest/BundleConfig/LOAD PASS; conservative GNU_RELRO end-modulo flags (40 arm64, 41 x86_64) under full-layout/suffix-rule review, runtime PENDING; AAB predates Build21 carryover |
+| Signed AAB / Billing / 16 KB native inspection | e0 signature/Billing9.1.0/manifest/BundleConfig PASS; all105 libraries pass complete pinned Google analyzer predicates, LOAD congruence and independent rounded-RELRO writable-overlap inspection. Initial81 end-modulo flags were accepted whole-LOAD cases, not incompatibility. Final APK ZIP alignment/runtime PENDING; AAB predates Build21 carryover and WWW filter |
 | Current phone/tablet/foldable rendered QA | PENDING |
 | Google credits / memberships / platform plans / restoration | PENDING |
 | Audio, media editor, Maps, Battle and lifecycle checks | PENDING |
@@ -21,11 +21,12 @@ Do not reuse the historical August checkbox results as verification of this upda
 
 ## Reproducible local evidence
 
-- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Complete runner exited 0; after the equal-admin guard correction, latest hook fixture passes 46/46, full source-only runner passes 109/109 and TypeScript passes. Doctor 18/18 remains valid because dependencies/config are unchanged by that narrow correction.
+- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Latest exact-source source gate passes110/110, platform-plan fixture46/46 and shared upload fixtures18/18. TypeScript and fresh Doctor18/18 pass after the Android WWW App Links fix.
 - `node scripts/verify-android-contact-form-contract.mjs` and `patch --dry-run -p1 -i .../patches/expo-contacts+15.0.11.patch` pass. Dry-run did not modify shared iOS dependencies.
 - `EXPO_PUBLIC_APP_ENV=production ANDROID_VERSION_CODE=14 node node_modules/expo/bin/cli prebuild --platform android --no-install` passes. Ignored generated Android project is not a source patch.
 - Current production export is `/private/tmp/pluggd-android-build21-export-current`; export uses production public configuration without printing secret values. The earlier Build20 export belongs to e0 candidate provenance only.
 - `git diff --check` passes. No iOS/main changes, backend deployment, signed build, real purchase or submission is inferred from these checks.
+- Static native inspection: `node /private/tmp/pluggd-android14-artifact.dVIOZr/inspect-aab-google-pagealign.mjs /private/tmp/pluggd-android14-artifact.dVIOZr/pluggd-android14-58368d79.aab /Users/apple/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-readelf`. Report independently identifies AAB SHA256d206aa50670fe39fd8037d62ff1698ab6a71ff73dd536af77726acb7b905973e;105 libraries/346LOADs/105RELROs/13 fixtures pass. Primary pinned predicates: https://android.googlesource.com/platform/tools/base/+/98d74cacf9e66ccd3df10108a095156383502870/sdk-common/src/main/java/com/android/ide/common/pagealign/PageAlignUtils.kt . Run the checker again against the final exact-source AAB; this is not Play-generated APK ZIP alignment or16KB runtime proof.
 
 Backend check commands and migration/activation/rollback gates are recorded independently in `.worktrees/android-build20-commerce/.ai/tasks/android-build20-commerce/VERIFY.md`; they must be reviewed at its final exact SHA before deployment.
 
