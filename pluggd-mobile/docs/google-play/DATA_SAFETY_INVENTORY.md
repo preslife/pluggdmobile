@@ -34,11 +34,11 @@ vendor data-use terms. See Google's [Data safety guidance](https://support.googl
 | Audio files and voice | User optional | No | Music uploads and Live | User-selected uploads/live transport |
 | Messages, posts, comments | User optional | User-selected recipients/public audience | Community and support | Moderated UGC and support correspondence linked to account |
 | Contacts/address book | No | Explicit system-form transfer only | Connect Card save action | Android new-contact form; READ_CONTACTS/WRITE_CONTACTS blocked; PLUGGD does not read or upload the address book |
-| Precise location | User optional | Mapbox processing; explicitly chosen venue visibility | Maps discovery, directions and signal publication | Device or selected coordinates; submitted signal coordinates stored privately with account; no background location |
-| Approximate location/country | Yes; Maps location optional | Approved approximate signals visible publicly | Regional discovery and commerce policy | Public signals use coarse area unless a venue is explicitly selected; storefront/locale/IP-derived market where required |
+| Precise location | User optional | Yes: Mapbox location/telemetry processing; explicitly chosen venue visibility | App functionality and Mapbox analytics | Device or selected coordinates; submitted signal coordinates stored privately with account; no background location; SDK attribution supplies telemetry opt-out |
+| Approximate location/country | Yes; Maps location optional, other regional collection may be required | Yes: Mapbox processing; approved approximate signals visible publicly | App functionality, regional commerce policy and Mapbox analytics | Public signals use coarse area unless a venue is explicitly selected; storefront/locale/IP-derived market where required; do not mark the whole category optional without checking every collection path |
 | App interactions | Yes | Analytics processors if configured | Reliability and product analytics | No cross-company advertising tracking |
 | Crash diagnostics | Conditional | Sentry/Google | Reliability and security | Sentry activates only when its DSN is configured; default PII, screenshots, view hierarchy, logs, and replay are disabled; production retention policy required |
-| Device identifiers | Yes | Google/notification provider | Push, security, billing | Expo/FCM push token and Play billing identifiers |
+| Device identifiers | Yes; required when Firebase auto-init is configured | Yes for Mapbox telemetry session IDs; Firebase/Expo processing may qualify as an on-behalf-of service-provider exemption | App functionality, push, security, billing and Mapbox analytics | Expo/FCM push token, Firebase installation ID, Play billing identifiers and rotating Mapbox telemetry session IDs; declining notification permission alone does not stop Firebase installation-ID collection |
 | Files and documents | User optional | No | Beat licences, exports, uploads | App-scoped or signed URLs; access-controlled |
 
 Evidence: `src/features/maps/mapSignalsService.ts` submits `p_latitude` and
@@ -48,14 +48,26 @@ system form; `src/features/legal/legalContent.ts` section 11 describes these
 flows. Sentry's production DSN was absent during the 2026-10-02 environment
 check; installed SDK presence alone is not evidence of active Sentry collection.
 
+Mapbox telemetry is transferred before anonymisation and is used for Mapbox's
+own service improvement; do not omit it under a blanket processor, ephemeral or
+fully-anonymous exemption. Both native MapViews retain attribution controls in
+source, but the user-facing opt-out still needs rendered device verification.
+FCM/Firebase Installations auto-init is not disabled in source; confirm its
+Google-services configuration in the exact compiled candidate. References:
+[Mapbox privacy FAQ](https://www.mapbox.com/legal/legal-faq),
+[Mapbox telemetry](https://www.mapbox.com/telemetry), and
+[Firebase Play disclosure](https://firebase.google.com/docs/android/play-data-disclosure).
+
 ## Security and deletion assertions
 
 - Data is encrypted in transit; sensitive server-held data must use provider
   encryption at rest and least-privilege access.
 - PLUGGD does not sell personal data or use app data for cross-app advertising
   tracking.
-- Users can initiate permanent account deletion in the app and from
-  `https://www.pluggd.fm/account-deletion`. Statutory transaction, fraud, tax,
+- Users can initiate permanent account deletion in the app. The intended public
+  URL `https://www.pluggd.fm/account-deletion` currently renders NotFound in the
+  2026-10-02 live check and must be restored and rendered before the Play form
+  can claim it as a working deletion page. Statutory transaction, fraud, tax,
   and licence records may be retained only as described by the privacy policy.
 - Notification URLs, OAuth callbacks, and hosted-checkout callbacks accept only
   PLUGGD-owned hosts and approved internal routes.

@@ -13,7 +13,7 @@ Mark only current, exact-source evidence as passed.
 | Current phone/tablet/foldable rendered QA | PENDING |
 | Google credits / memberships / platform plans / restoration | PENDING |
 | Audio, media editor, Maps, Battle and lifecycle checks | PENDING |
-| Privacy / Data Safety / Play app declarations | PENDING |
+| Privacy / Data Safety / Play app declarations | PENDING: updated SDK inventory; current canonical deletion page renders NotFound, existing Play preview URL returns 410 |
 | Internal Play upload and exact-build test | PENDING |
 | Public update submission / 100% / automatic publication | PENDING |
 
@@ -28,3 +28,10 @@ Do not reuse the historical August checkbox results as verification of this upda
 - `git diff --check` passes. No iOS/main changes, backend deployment, signed build, real purchase or submission is inferred from these checks.
 
 Backend check commands and migration/activation/rollback gates are recorded independently in `.worktrees/android-build20-commerce/.ai/tasks/android-build20-commerce/VERIFY.md`; they must be reviewed at its final exact SHA before deployment.
+
+## Play and public-page preparation
+
+- Correct Chrome PLUGGD owner account: verified. Production v13 remains at 100%, managed publishing off; no update submitted.
+- Starter monthly: saved Draft, exact UK GBP4.99 / US USD5.99 / 23 named EUR regions EUR5.49 verified in Console. Other regional prices and remaining five products still require provisioning/verification; no plan activated.
+- Canonical deletion page: HTTP200 is not proof. Current Chrome shows NotFound; Console detects old preview URL HTTP410. Selective page/privacy restoration is in the isolated web lane and is not live. No destructive live account-deletion test is authorised.
+- Mapbox 10.3.5/Android Maps11.20.1 telemetry is collected/shared for independent Mapbox analytics; device/session IDs included. Both MapView attribution controls are retained, but device opt-out operation is not yet verified. Firebase installation-ID/FCM activation needs exact compiled Google-services proof; notification refusal is not an installation-ID opt-out.
