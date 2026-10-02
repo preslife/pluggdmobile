@@ -5,9 +5,9 @@ Mark only current, exact-source evidence as passed.
 | Gate | Current result |
 | --- | --- |
 | Build 20 source identity and isolated branch | PASS |
-| Shared and Android source/behavior suites | PASS: 109/109 source checks; 45/45 actual platform-plan hook/adapter fixtures |
+| Shared and Android source/behavior suites | PASS: 109/109 source checks; 46/46 actual platform-plan hook/adapter fixtures |
 | TypeScript / Expo Doctor | PASS: tsc; Doctor 18/18 |
-| Production Android JS export | PASS: current 3,165-module Hermes export; `index-0240c24f7b4d4be4e583c10b3ae0f8a6.hbc` |
+| Production Android JS export | PASS: current 3,165-module Hermes export; `index-9ef72024c409c0f608652f0d9041da07.hbc` |
 | Clean Android config / merged manifest | CNG/config PASS: min 24, target/compile 36, address-book reads blocked; compiled merged manifest PENDING |
 | Signed AAB / Billing / 16 KB native inspection | PENDING |
 | Current phone/tablet/foldable rendered QA | PENDING |
@@ -21,7 +21,7 @@ Do not reuse the historical August checkbox results as verification of this upda
 
 ## Reproducible local evidence
 
-- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Final complete runner exited 0; latest hook fixture explicitly rerun after its final case addition, 45/45 passed.
+- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Complete runner exited 0; after the equal-admin guard correction, latest hook fixture passes 46/46, full source-only runner passes 109/109 and TypeScript passes. Doctor 18/18 remains valid because dependencies/config are unchanged by that narrow correction.
 - `node scripts/verify-android-contact-form-contract.mjs` and `patch --dry-run -p1 -i .../patches/expo-contacts+15.0.11.patch` pass. Dry-run did not modify shared iOS dependencies.
 - `EXPO_PUBLIC_APP_ENV=production ANDROID_VERSION_CODE=14 node node_modules/expo/bin/cli prebuild --platform android --no-install` passes. Ignored generated Android project is not a source patch.
 - Current production export is `/private/tmp/pluggd-android-build20-export-current`; export uses production public configuration without printing secret values.

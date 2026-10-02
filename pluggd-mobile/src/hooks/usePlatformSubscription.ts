@@ -397,8 +397,8 @@ export function usePlatformSubscription() {
       const tierRank = { free: 0, starter: 1, creator: 2, pro: 3 };
       if (isGoogle && targetGooglePlan && entitlement.source === 'admin_grant' && entitlement.status === 'active'
         && (!entitlement.currentPeriodEnd || !Number.isFinite(Date.parse(entitlement.currentPeriodEnd)) || Date.parse(entitlement.currentPeriodEnd) > Date.now())
-        && tierRank[targetGooglePlan.tier] > tierRank[entitlement.tier]) {
-        throw new Error('You already have complimentary PLUGGD access. Contact support before changing to a higher paid plan so your existing access is protected.');
+        && tierRank[targetGooglePlan.tier] >= tierRank[entitlement.tier]) {
+        throw new Error('You already have complimentary PLUGGD access. Contact support before buying this paid plan so your existing access is protected.');
       }
       if (isGoogle && (entitlement.hasNonGooglePaidSource || (entitlement.tier !== 'free' && ['apple', 'stripe'].includes(entitlement.billingProvider ?? '')))) {
         throw new Error('This plan was started with another billing provider. Manage it where you originally subscribed.');

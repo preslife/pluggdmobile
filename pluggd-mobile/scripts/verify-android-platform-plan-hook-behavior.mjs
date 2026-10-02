@@ -313,6 +313,13 @@ await check('higher Google purchase cannot overwrite a lower active admin grant'
   await f.subscribe(); noStorePurchase(f);
   assert.ok(f.plans.error, 'Missing explanation for the protected admin grant');
 });
+await check('equal Google purchase cannot overwrite a permanent admin grant', {}, async (f) => {
+  f.model.row = paidRow('admin_grant', {
+    tier: 'starter', source: 'admin_grant', billing_cycle: 'comped', current_period_end: null,
+  });
+  await f.subscribe(googleSku); noStorePurchase(f);
+  assert.match(f.plans.error, /complimentary PLUGGD access/);
+});
 await check('fresh entitlement read failure', {}, async (f) => {
   f.model.queryError = new Error('Fixture current plan lookup failed');
   await f.subscribe(); noStorePurchase(f); assert.match(f.plans.error, /lookup failed/);
