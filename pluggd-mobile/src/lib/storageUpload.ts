@@ -8,6 +8,7 @@ type StorageUploadInput = {
   uri: string;
   contentType?: string | null;
   upsert?: boolean;
+  foreground?: boolean;
 };
 
 function storageObjectUrl(bucket: string, path: string) {
@@ -44,16 +45,25 @@ export async function uploadFileToSupabaseStorage(input: StorageUploadInput) {
   const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   if (!anonKey) throw new Error('Supabase client key is not configured.');
 
-  const result = await FileSystem.uploadAsync(storageObjectUrl(input.bucket, input.path), input.uri, {
-    httpMethod: 'POST',
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-    headers: {
-      apikey: anonKey,
-      authorization: `Bearer ${session.access_token}`,
-      'content-type': input.contentType || 'application/octet-stream',
-      'x-upsert': input.upsert ? 'true' : 'false',
-    },
-  });
+  let result: FileSystem.FileSystemUploadResult;
+  try {
+    result = await FileSystem.uploadAsync(storageObjectUrl(input.bucket, input.path), input.uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      sessionType: input.foreground
+        ? FileSystem.FileSystemSessionType.FOREGROUND
+        : FileSystem.FileSystemSessionType.BACKGROUND,
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${session.access_token}`,
+        'content-type': input.contentType || 'application/octet-stream',
+        'x-upsert': input.upsert ? 'true' : 'false',
+      },
+    });
+  } catch {
+    // Native transport errors can include internal URLs and filesystem paths.
+    throw new Error('Your media could not be uploaded. Check your connection and try again.');
+  }
 
   if (result.status < 200 || result.status >= 300) {
     let serverMessage = '';
