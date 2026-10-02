@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useAccountMenuIdentity } from '../../components/AccountMenuButton';
 import { usePluggdTheme, usePluggdThemeMode, type PluggdThemeMode } from '../../src/design/usePluggdTheme';
 import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
@@ -28,7 +28,7 @@ const SETTINGS = [
 ] as const;
 
 const APPEARANCE_CHOICES: Array<{ id: PluggdThemeMode; label: string; detail: string; compactDetail: string; icon: keyof typeof MaterialIcons.glyphMap }> = [
-  { id: 'system', label: 'System', detail: 'Follow your iPhone appearance', compactDetail: 'Follows iPhone', icon: 'brightness-auto' },
+  { id: 'system', label: 'System', detail: Platform.OS === 'android' ? 'Follow your device appearance' : 'Follow your iPhone appearance', compactDetail: Platform.OS === 'android' ? 'Follows device' : 'Follows iPhone', icon: 'brightness-auto' },
   { id: 'light', label: 'Editorial Light', detail: 'Cream paper, dark ink and orange highlights', compactDetail: 'Cream + ink', icon: 'light-mode' },
   { id: 'dark', label: 'Night', detail: 'The original PLUGGD dark canvas', compactDetail: 'Dark canvas', icon: 'dark-mode' },
 ];

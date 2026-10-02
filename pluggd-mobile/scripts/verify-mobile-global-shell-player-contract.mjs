@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { evaluateExpression, jsxAttribute, jsxOpenings } from './contract-source-tools.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -23,7 +24,16 @@ for (const source of [mobileHeader, discoveryHeader]) {
 
 assert.match(mobileHeader, /avatarTap:\s*\{[\s\S]*?width:\s*44,[\s\S]*?height:\s*44,[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',[\s\S]*?\}/, 'the shared 36-point avatar must remain centred in its 44-point target');
 assert.doesNotMatch(mobileHeader, /avatarTap:\s*\{[^}]*translateY:\s*-1/, 'the shared header avatar must not be pulled into the clipped rounded edge');
-assert.match(glassDock, /tabRow:\s*\{[\s\S]*?height:\s*60,[\s\S]*?transform:\s*\[\{\s*translateY:\s*5\s*\}\]/, 'the complete public dock row must use the approved five-point optical centring in every appearance');
+assert.match(glassDock, /tabRow:\s*\{[\s\S]*?height:\s*60/, 'the dock must retain its 60-point layout row');
+const dockRow = jsxOpenings(glassDock, 'View').find((node) => /styles\.tabRow/.test(jsxAttribute(node, 'style')?.getText() ?? ''));
+assert.ok(dockRow, 'the actual dock row must retain its reviewed style composition');
+const dockStyle = jsxAttribute(dockRow, 'style').initializer.expression.getText();
+for (const bottomInset of [0, 10, 16, 24, 48]) {
+  const rowStyles = evaluateExpression(dockStyle, { styles: { tabRow: {} }, bottomInset });
+  const translation = rowStyles[1].transform[0].translateY;
+  assert.equal(translation, bottomInset / 2, 'dock row must stay centred inside its actual safe-area shell');
+  assert.equal(60 + bottomInset - (translation + 60), translation, 'upper and lower shell clearance must remain equal');
+}
 assert.doesNotMatch(glassDock, /tabRowLight|light\s*&&\s*styles\.tabRow/, 'dock centring must not be limited to Editorial Light');
 assert.match(glassDock, /height:\s*60\s*\+\s*bottomInset/, 'dock optical centring must preserve the safe-area shell height');
 assert.match(glassDock, /tabPressable:\s*\{[\s\S]*?height:\s*54/, 'dock optical centring must preserve 54-point press targets');
@@ -67,7 +77,7 @@ assert.match(player, /isCompactPortrait && styles\.compactControls/, 'compact fu
 assert.match(player, /compactPlayButton:\s*\{[^}]*width:\s*64,[^}]*height:\s*64/, 'compact primary playback must remain visually prominent while fitting the viewport');
 assert.match(playbackService, /from\('soundboard_items'\)[\s\S]*waveform_data/, 'Soundboard waveform must come from the real item field through the shared playback service');
 assert.match(playbackService, /rpc\('get_public_playback_metadata'/, 'track, beat and mix waveforms must use the public-safe canonical metadata interface');
-assert.match(player, /RealWaveform[\s\S]*progressPercent[\s\S]*onPress=\{onSeek\}/, 'real waveform must reflect playback progress and support seeking');
+assert.match(player, /RealWaveform[\s\S]*<PlaybackSeekBar[\s\S]*ratio=\{progressPercent \/ 100\}[\s\S]*onSeek=\{onSeek\}/, 'real waveform must reflect playback progress and delegate interactive seeking to the shared seek bar');
 assert.match(player, /waveformBars\.length > 0[\s\S]*Seek playback/, 'tracks without real waveform data must retain an honest progress rail');
 assert.doesNotMatch(player, /Math\.random|mockWaveform|fakeWaveform|generatedWaveform/i, 'player must not fabricate waveform amplitudes');
 assert.match(playbackService, /from\('published_track_lyrics'\)[\s\S]*\.eq\('track_id', trackId\)/, 'published lyrics must come from the real selected-track field');

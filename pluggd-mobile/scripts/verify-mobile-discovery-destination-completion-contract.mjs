@@ -40,7 +40,7 @@ assert.ok(identity.indexOf("readIdentityRows('social_author_profiles'") < identi
 assert.ok(identity.indexOf("readIdentityRows('public_profiles'") < identity.indexOf("readIdentityRows('profiles'"), 'Public creator identity must resolve before authenticated profile fallback');
 assert.match(social, /loadPublicCreatorIdentityMap/, 'Community posts and comments must use the shared public creator identity adapter');
 assert.match(publicAudienceFilters, /isNonPublicTestProfileName/, 'Public feeds must retain an explicit review-test identity filter');
-assert.match(social, /filter\(\(row\) => !isNonPublicTestIdentity/, 'Community posts must exclude non-public review-test identities');
+assert.match(social, /filter\(\(row\) => row\.user_id === userId \|\| !isNonPublicTestIdentity\(profileMap\.get\(row\.user_id\)\)\)/, 'Public Community posts must exclude reviewer identities while retaining a viewer\'s own private posts');
 assert.match(social, /if \(isNonPublicTestIdentity\(profile\)\) return \[\]/, 'Community comments must exclude non-public review-test identities');
 assert.match(discover, /loadMobileSocialFeed\(\{ mode: 'trending', limit: 6 \}\)/, 'Community Pulse must continue to use real public social content');
 assert.doesNotMatch(discoveryModel, /PLUGGD community|PLUGGD creator|PLUGGD producer/i, 'Discovery catalogue cards must not manufacture generic creator credits');

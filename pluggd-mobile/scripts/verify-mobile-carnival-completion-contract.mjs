@@ -36,9 +36,10 @@ assert.match(hub, /mobileWebRailWidth = Math\.min\(Math\.round\(viewportWidth \*
 assert.match(hub, /snapToInterval=\{mobileWebRailWidth \+ 9\}/, 'Carnival editorial rails must preserve the mobile-web snap rhythm.');
 assert.match(hub, /storyFrame: \{ height: 432[\s\S]*storySurface: \{ \.\.\.StyleSheet\.absoluteFillObject[\s\S]*storyImage: \{ \.\.\.StyleSheet\.absoluteFillObject/, 'Carnival story cards must use a layout-owning mobile-web full-image composition.');
 assert.match(hub, /storyCopy: \{ position: 'absolute'[\s\S]*left: 18, right: 18[\s\S]*minWidth: 0/, 'Carnival story copy must be bounded inside the card.');
-assert.match(hub, /storyTitle: \{ flexShrink: 1[\s\S]*fontFamily: edFonts\.serif[\s\S]*lineHeight: 39/, 'Carnival story titles must wrap in the current mobile-web editorial treatment.');
+assert.match(hub, /storyTitle: \{ flexShrink: 1[^\n]*fontFamily: edFonts\.serif[^\n]*fontSize: 30, lineHeight: 31/, 'Carnival story titles must retain the reviewed compact serif treatment without clamping.');
 assert.match(hub, /weekendCard: \{ height: 464, flexShrink: 0/, 'Carnival weekend cards must retain the mobile-web 82vw visual rail height without compression.');
-assert.match(hub, /viewportWidth < 390 && styles\.heroTitleCompact[\s\S]*heroTitleCompact: \{ fontSize: 54/, 'Compact iPhones must preserve the deliberate two-line Carnival masthead.');
+assert.match(hub, /viewportWidth < 390 && styles\.heroTitleCompact[\s\S]*heroTitleCompact: \{ fontSize: 38, lineHeight: 37/, 'Compact phones must retain the reviewed fitting Carnival masthead.');
+assert.match(hub, /Notting Hill\{`\\n`\}Carnival/, 'the compact masthead must preserve its deliberate two-line composition');
 
 assert.match(hub, /signals=\{bundle\.signals\}/, 'The route builder must receive the real published Carnival places.');
 assert.match(hub, /buildCarnivalRoute\(signals, preferences\)/, 'Route preview must use the existing real route builder.');

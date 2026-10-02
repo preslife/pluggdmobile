@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   composerPlaceholder: { flex: 1, fontSize: 15, fontFamily: 'Satoshi-Medium' },
   quickAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   feedSwitch: { flexDirection: 'row', gap: 4, minHeight: 48, marginHorizontal: 16, marginTop: 12, marginBottom: 2, padding: 4, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth },
-  feedSwitchButton: { flex: 1, minHeight: 40, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  feedSwitchButton: { flex: 1, minHeight: 44, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   feedSwitchLabel: { fontFamily: 'Satoshi-Bold', fontSize: 13, letterSpacing: 0.2 },
   pageStack: { padding: 16, gap: 12 },
   sectionHeader: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

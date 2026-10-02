@@ -189,8 +189,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     allowBackup: false,
     blockedPermissions: [
       'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION',
+      'android.permission.READ_CONTACTS',
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.WRITE_CONTACTS',
       'android.permission.WRITE_EXTERNAL_STORAGE',
     ],
     ...(GOOGLE_SERVICES_FILE ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
@@ -209,7 +211,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     predictiveBackGestureEnabled: true,
-    versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
+    versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 14),
     permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET', 'POST_NOTIFICATIONS'],
     package: 'com.pluggd.mobile',
   },
@@ -232,6 +234,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         android: {
           minSdkVersion: 24,
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
           enableMinifyInReleaseBuilds: true,
           enableShrinkResourcesInReleaseBuilds: true,
         },

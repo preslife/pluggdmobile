@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { storeProductId, storeProductPrice } from '../src/billing';
+import { storeProductId } from '../src/billing';
 import { PurchaseLegalLinks } from '../src/components/PurchaseLegalLinks';
 import { useAuth } from '../src/context/AuthProvider';
 import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
@@ -149,7 +150,7 @@ export default function PlansScreen() {
             </View>
             {plans.loading ? <ActivityIndicator color={theme.colors.accent} /> : (
               <View style={[styles.activePill, { borderColor: theme.colors.borderAccent, backgroundColor: theme.colors.accentSoft }]}>
-                <View style={[styles.activeDot, { backgroundColor: theme.colors.accent }]} />
+                <View style={[styles.activeDot, { backgroundColor: theme.colors.accentFill }]} />
                 <Text style={[styles.activeText, { color: theme.colors.accent }]}>{plans.entitlement.status.replaceAll('_', ' ').toUpperCase()}</Text>
               </View>
             )}
@@ -162,14 +163,14 @@ export default function PlansScreen() {
           ) : null}
           {!plans.loading ? (
             <Text style={[styles.periodText, { color: theme.colors.textMuted }]}>
-              {plans.entitlement.tier === 'free' ? 'Included with PLUGGD' : plans.entitlement.billingProvider === 'apple' ? 'Billed by Apple' : plans.entitlement.billingProvider === 'stripe' ? 'Billed on the web' : plans.entitlement.source === 'access_code' || plans.entitlement.source === 'combined' ? 'Promotional access' : 'Included with PLUGGD'}
+              {plans.entitlement.tier === 'free' ? 'Included with PLUGGD' : plans.entitlement.billingProvider === 'apple' ? 'Billed by Apple' : plans.entitlement.billingProvider === 'google_play' ? 'Billed by Google Play' : plans.entitlement.billingProvider === 'stripe' ? 'Billed on the web' : plans.entitlement.source === 'access_code' || plans.entitlement.source === 'combined' ? 'Promotional access' : 'Included with PLUGGD'}
               {' · '}{plans.entitlement.commissionRate}% commission
             </Text>
           ) : null}
-          {plans.entitlement.billingProvider === 'stripe' && plans.entitlement.tier !== 'free' ? (
+          {plans.hasOtherPaidProvider ? (
             <View style={[styles.originNote, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
               <MaterialIcons name="info-outline" size={17} color={theme.colors.accent} />
-              <Text style={[styles.originText, { color: theme.colors.textSecondary }]}>This plan was started outside the App Store. Manage it where you originally subscribed.</Text>
+              <Text style={[styles.originText, { color: theme.colors.textSecondary }]}>This plan was started with another billing provider. Manage it where you originally subscribed.</Text>
             </View>
           ) : null}
         </View>
@@ -195,22 +196,21 @@ export default function PlansScreen() {
             const isCurrentTier = plans.entitlement.tier === plan.tier;
             const isCurrent = plan.tier === 'free'
               ? isCurrentTier
-              : isCurrentTier && (
-                  plans.entitlement.billingProvider !== 'apple'
-                  || plans.entitlement.appleProductId === sku
-                );
+              : isCurrentTier && (plans.entitlement.billingProvider !== (Platform.OS === 'android' ? 'google_play' : 'apple') || plans.isCurrentPlan(sku));
+            const displayPrice = plans.priceForProduct(product, sku);
             return (
               <PlanCard
                 key={`${plan.tier}-${billingCycle}`}
                 plan={plan}
                 billingCycle={billingCycle}
-                displayPrice={product ? storeProductPrice(product) : null}
+                displayPrice={displayPrice}
+                storeName={plans.storeName}
                 isCurrent={isCurrent}
                 isCurrentTier={isCurrentTier}
                 signedIn={Boolean(user)}
-                unavailable={Boolean(sku) && !plans.loadingProducts && !product}
+                unavailable={Boolean(sku) && (!product || !displayPrice || plans.purchaseBlocked)}
                 busy={Boolean(sku && plans.purchasingSku === sku)}
-                lockedByExternalBilling={plans.entitlement.billingProvider === 'stripe' && plans.entitlement.tier !== 'free'}
+                lockedByExternalBilling={plans.hasOtherPaidProvider}
                 onChoose={() => {
                   plans.clearMessage();
                   if (!user) router.push('/auth/login' as any);
@@ -242,11 +242,11 @@ export default function PlansScreen() {
         <View style={[styles.restoreCard, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
           <View style={styles.restoreCopy}>
             <Text style={[styles.restoreTitle, { color: theme.colors.text }]}>Already subscribed?</Text>
-            <Text style={[styles.restoreBody, { color: theme.colors.textMuted }]}>Restore a PLUGGD plan bought with this Apple ID.</Text>
+            <Text style={[styles.restoreBody, { color: theme.colors.textMuted }]}>Restore a PLUGGD plan bought with this {plans.accountName}.</Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Restore App Store purchases"
+            accessibilityLabel={`Restore ${plans.storeName} purchases`}
             disabled={plans.restoring}
             onPress={() => void plans.restore()}
             style={({ pressed }) => [
@@ -260,19 +260,21 @@ export default function PlansScreen() {
           </Pressable>
         </View>
 
-        {plans.entitlement.billingProvider === 'apple' && plans.entitlement.tier !== 'free' && plans.managementUrl ? (
+        {!plans.hasOtherPaidProvider && (plans.entitlement.billingProvider === 'apple' || plans.entitlement.billingProvider === 'google_play') && plans.entitlement.tier !== 'free' && plans.managementUrl ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Manage App Store subscription"
+            accessibilityLabel={`Manage ${plans.storeName} subscription`}
             onPress={() => void Linking.openURL(plans.managementUrl!)}
             style={({ pressed }) => [styles.manageLink, pressed && styles.pressed]}
           >
-            <Text style={[styles.manageLinkText, { color: theme.colors.accent }]}>Manage App Store subscription</Text>
+            <Text style={[styles.manageLinkText, { color: theme.colors.accent }]}>Manage {plans.storeName} subscription</Text>
             <MaterialIcons name="open-in-new" size={16} color={theme.colors.accent} />
           </Pressable>
         ) : null}
 
-        <PurchaseLegalLinks note="Payment is charged to your Apple ID. Starter, Creator and Pro renew for the selected monthly or yearly period at the App Store price shown unless cancelled at least 24 hours before the current period ends. Manage or cancel in App Store subscriptions." />
+        <PurchaseLegalLinks note={plans.storeName === 'Google Play'
+          ? 'Payment is charged to your Google Play account. Starter, Creator and Pro renew for the selected monthly or yearly period at the Google Play price shown unless cancelled before renewal. Manage or cancel in Google Play subscriptions. Changing a plan replaces the existing plan; Google Play shows the payment and adjusted renewal terms before you confirm.'
+          : 'Payment is charged to your Apple ID. Starter, Creator and Pro renew for the selected monthly or yearly period at the App Store price shown unless cancelled at least 24 hours before the current period ends. Manage or cancel in App Store subscriptions.'} />
       </ScrollView>
       {showStickyBilling ? (
         <View
@@ -303,6 +305,7 @@ function PlanCard({
   plan,
   billingCycle,
   displayPrice,
+  storeName,
   isCurrent,
   isCurrentTier,
   signedIn,
@@ -315,6 +318,7 @@ function PlanCard({
   plan: PlatformPlanDefinition;
   billingCycle: PlatformBillingCycle;
   displayPrice: string | null;
+  storeName: string;
   isCurrent: boolean;
   isCurrentTier: boolean;
   signedIn: boolean;
@@ -335,9 +339,9 @@ function PlanCard({
     : lockedByExternalBilling
     ? 'Manage original plan'
     : busy
-    ? 'Connecting to App Store'
+    ? `Connecting to ${storeName}`
     : unavailable
-    ? 'Not available in App Store yet'
+    ? `Not available in ${storeName} yet`
     : signedIn
     ? `Choose ${plan.name}`
     : 'Sign in to choose';

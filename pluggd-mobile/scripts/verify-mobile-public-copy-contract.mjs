@@ -100,8 +100,14 @@ for (const file of roots.flatMap((dir) => collectFiles(dir))) {
   function visit(node) {
     const text = literalText(node);
     if (text && !isNonCopyToken(text) && !insideConsoleCall(node) && !webCopyAllowlist.has(text)) {
+      // A contractual business phone is a user-data category, not a software
+      // contract. Only exempt that reviewed legal phrase; keep scanning the
+      // rest of the same paragraph and every other legal/public string.
+      const copy = rel === 'src/features/legal/legalContent.ts'
+        ? text.replace(/\bbusiness or contract phone number\b/g, 'business phone number')
+        : text;
       for (const pattern of banned) {
-        if (pattern.test(text)) {
+        if (pattern.test(copy)) {
           const { line, character } = ast.getLineAndCharacterOfPosition(node.getStart(ast));
           failures.push(`${rel}:${line + 1}:${character + 1} contains public/internal copy "${text}"`);
         }

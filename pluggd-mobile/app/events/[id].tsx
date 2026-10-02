@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PremiumScreenBackdrop } from '../../components/PluggdPrimitives';
 import { DetailTitle } from '../../components/DetailTitle';
 import { RecoveryState } from '../../components/ContentUI';
@@ -104,7 +104,7 @@ export default function EventDetailScreen() {
     onSuccess: (result) => {
       if (!result.success) throw new Error(result.error);
       if ('notificationError' in result && result.notificationError) {
-        Alert.alert('RSVP saved', 'Your RSVP was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
+        Alert.alert('RSVP saved', Platform.OS === 'android' ? 'Your RSVP was saved in PLUGGD. Enable PLUGGD notifications in Android Settings to receive a local alert.' : 'Your RSVP was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
       }
       void queryClient.invalidateQueries({ queryKey: ['culture', 'event-detail', id] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'events'] });

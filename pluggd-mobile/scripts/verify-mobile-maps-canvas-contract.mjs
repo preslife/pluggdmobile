@@ -24,7 +24,8 @@ assert.match(screen, /accessibilityLabel="Locate me"[\s\S]*onPress=\{\(\) => voi
 assert.match(screen, /showUserLocation \? \([\s\S]*<UserLocation/, 'user location must stay hidden until explicitly requested');
 assert.match(screen, /selectedSheet[\s\S]*Tune In[\s\S]*Like signal[\s\S]*Directions to/, 'selected signals must expose Tune In, like and directions actions');
 assert.match(screen, /mutationFn: createAndPublishMapSignal/, 'signal creation must use the canonical create-and-publish service');
-assert.match(screen, /Create a signal[\s\S]*Publish signal/, 'signed-in users must have a native signal composer');
+assert.match(screen, /Create a signal[\s\S]*onPress=\{publishSignal\}[\s\S]*Send for review/, 'signed-in users must have a real review-submission composer');
+assert.match(screen, /result\.pendingReview \? 'Signal sent for review' : 'Signal is live'/, 'signal feedback must distinguish pending moderation from actual publication');
 assert.match(screen, /loadSavedCarnivalRoute[\s\S]*carnival-route-line/, 'saved Carnival routes must render as a map overlay');
 assert.match(screen, /refetchInterval: 30_000/, 'live movement must refresh without a manual reload');
 assert.match(screen, /Map canvas unavailable[\s\S]*Open signal list/, 'map failure must retain a usable list fallback');

@@ -10,6 +10,7 @@ import {
   Animated,
   Image,
   type ImageSourcePropType,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -1288,7 +1289,7 @@ export function LiveCultureScreen() {
       await cancelEventLocalReminder(event.id);
     } else {
       const notification = await scheduleEventLocalReminder({ eventId: event.id, title: eventTitle(event), startsAt: event.starts_at });
-      if (!notification.success) Alert.alert('Reminder saved', 'Your RSVP was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
+      if (!notification.success) Alert.alert('Reminder saved', Platform.OS === 'android' ? 'Your RSVP was saved in PLUGGD. Enable PLUGGD notifications in Android Settings to receive a local alert.' : 'Your RSVP was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
     }
     void remindersQuery.refetch();
     void eventsQuery.refetch();
@@ -1316,7 +1317,7 @@ export function LiveCultureScreen() {
       await cancelLiveSessionLocalReminder(room.id);
     } else {
       const notification = await scheduleLiveSessionLocalReminder({ sessionId: room.id, title: roomTitle(room), startsAt: room.scheduled_for });
-      if (!notification.success) Alert.alert('Reminder saved', 'Your live reminder was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
+      if (!notification.success) Alert.alert('Reminder saved', Platform.OS === 'android' ? 'Your live reminder was saved in PLUGGD. Enable PLUGGD notifications in Android Settings to receive a local alert.' : 'Your live reminder was saved in PLUGGD. Enable notifications in iOS Settings to receive a local alert.');
     }
     void remindersQuery.refetch();
   };

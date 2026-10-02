@@ -26,7 +26,7 @@ for (const token of [
   "route: '/library'",
   "label: 'Purchases & Access'",
   "route: '/purchases'",
-  "label: 'Memberships'",
+  "label: 'Creator memberships'",
   "label: 'Tickets'",
   "label: 'Analytics'",
   "label: 'Appearance'",
@@ -44,6 +44,7 @@ assert.doesNotMatch(source, /label:\s*'Wallet'[,}]/, 'Wallet label must follow w
 assert.doesNotMatch(source, /label:\s*'Badges \/ Rewards'/, 'Progress should use web AccountMenu copy: PLUGGD Progress');
 assert.doesNotMatch(source, /label:\s*'Restore Purchases'/, 'Restore Purchases belongs inside Purchases & Access, not as a duplicate account row');
 assert.match(source, /label:\s*'Purchases & Access'[\s\S]*detail:\s*'Purchases, receipts and restore'/, 'Purchases & Access must retain truthful restore discoverability');
+assert.match(source, /label: 'Creator memberships'[^\n]*route: '\/membership'/, 'Creator support memberships must keep their own destination, separate from platform plans');
 assert.match(source, /creatorAccess[\s\S]*label: 'Studio'/, 'Studio must only be added for creator-capable accounts');
 assert.match(source, /else \{[\s\S]*label: 'Become a Creator'[\s\S]*route: '\/auth\/role'/, 'Fan accounts must receive creator onboarding instead of Studio');
 

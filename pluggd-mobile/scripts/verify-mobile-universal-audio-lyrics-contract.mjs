@@ -12,13 +12,16 @@ const service = read('src/features/playback/publicPlaybackService.ts');
 const release = read('app/release/[id].tsx');
 const miniPlayer = read('components/MiniPlayer.tsx');
 const glassMiniPlayer = read('components/liquid-glass/GlassMiniPlayer.tsx');
+const seekBar = read('src/components/PlaybackSeekBar.tsx');
 
 assert.match(provider, /trackId\?: string/, 'queue metadata must retain the canonical release-track identity');
 assert.match(provider, /skipToQueueIndex/, 'the player must support selecting a track from a multi-track queue');
 assert.match(provider, /resolvePlaybackDuration\(progress\.duration, currentTrack\?\.duration\)/, 'long-form playback must fall back to real catalogue duration while native duration is loading');
 assert.match(miniPlayer, /progress\.duration > 0[\s\S]*progress\.position \/ progress\.duration[\s\S]*: 0/, 'mini-player progress must use live position and never a fake frozen percentage');
 assert.match(miniPlayer, /progressLabel[\s\S]*formatDuration\(progress\.position\)/, 'long mixes must expose visibly changing elapsed time');
-assert.match(glassMiniPlayer, /accessibilityRole="progressbar"[\s\S]*accessibilityValue=\{\{[\s\S]*progressPercent/, 'mini-player progress must expose its live state accessibly');
+assert.match(glassMiniPlayer, /<PlaybackSeekBar[\s\S]*ratio=\{progressPercent \/ 100\}[\s\S]*position=\{progressPercent\}[\s\S]*accessibilityLabel="Playback progress"/, 'mini-player progress must pass its live state to the actual seek control');
+assert.match(seekBar, /accessibilityRole="adjustable"[\s\S]*accessibilityValue=\{\{[^\n]*now: Math\.max\(0, Math\.round\(position\)\)/, 'interactive progress must expose its live position accessibly');
+assert.match(seekBar, /accessibilityActions=[\s\S]*decrement[\s\S]*increment[\s\S]*onAccessibilityAction=\{handleAccessibilityAction\}/, 'interactive progress must retain screen-reader seeking actions');
 assert.match(release, /trackId: t\.id/, 'release queues must carry the selected release-track identity');
 assert.match(release, /tracks\.length === 1 \? release\.lyrics/, 'legacy release lyrics may only follow a known single-track queue');
 

@@ -149,6 +149,9 @@ for (const required of [
   expect(provider.includes(required), `appearance provider is missing ${required}`);
 }
 
+// Only generated iOS launch artifacts are platform-specific. All shared theme,
+// route, palette, typography and hit-target checks below still run on Android.
+if (process.env.ANDROID_VERIFY !== '1') {
 const appDelegate = source('ios/Pluggd/AppDelegate.swift');
 for (const required of [
   'private static let appearanceModeKey = "pluggd.themeMode"',
@@ -195,6 +198,9 @@ expect(splashStoryboard.includes('firstAttribute="centerY" secondItem="EXPO-Cont
 expect(splashStoryboard.includes('firstAttribute="width" constant="240"'), 'native splash wordmark must remain inside the 240-point safe lockup');
 expect(splashStoryboard.includes('secondAttribute="height" multiplier="150:53"'), 'native splash wordmark must preserve the supplied aspect ratio');
 expect(!splashStoryboard.includes('firstAttribute="leading" secondItem="EXPO-ContainerView"'), 'native splash wordmark must not be stretched to the launch-screen edges');
+} else {
+  console.log('Android source gate: generated iOS AppDelegate, asset-catalog and launch-storyboard assertions remain iOS-only.');
+}
 const appConfig = source('app.config.ts');
 expect(appConfig.includes("backgroundColor: '#FF6600'"), 'future native generation must preserve the appearance-neutral PLUGGD launch canvas');
 

@@ -3,7 +3,7 @@ import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { ListCard, RecoveryState } from '../../components/ContentUI';
 import { DetailTitle } from '../../components/DetailTitle';
 import { usePlayback } from '../../src/context/PlaybackProvider';
@@ -71,8 +71,8 @@ export default function SamplePackDetailScreen() {
 
     if (price > 0) {
       Alert.alert(
-        'Preview only on iPhone',
-        'Paid digital sample-pack purchasing is not available in this version of the iOS app. You can still audition every published preview and save the pack for later.',
+        Platform.OS === 'android' ? 'Preview only in this app' : 'Preview only on iPhone',
+        Platform.OS === 'android' ? 'Paid digital sample-pack purchasing is not available in this version of the Android app. You can still audition every published preview and save the pack for later.' : 'Paid digital sample-pack purchasing is not available in this version of the iOS app. You can still audition every published preview and save the pack for later.',
       );
       return;
     }

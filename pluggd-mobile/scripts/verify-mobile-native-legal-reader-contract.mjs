@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertSignupBirthDateGate } from './contract-source-tools.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -29,7 +30,8 @@ assert.match(purchaseLinks, /router\.push\('\/legal\/privacy'/, 'purchase Privac
 assert.match(privacySettings, /router\.push\('\/legal\/terms'/, 'Privacy settings Terms action must route internally');
 assert.match(privacySettings, /router\.push\('\/legal\/privacy'/, 'Privacy settings policy action must route internally');
 assert.match(signup, /By creating an account you agree to the/, 'signup consent copy must be preserved');
-assert.match(signup, /I confirm that I am at least \{MINIMUM_AGE\}/, 'signup age consent semantics must be preserved');
+await assertSignupBirthDateGate(signup);
+assert.match(signup, /You must be at least \{MINIMUM_AGE\}\. Your full date is kept private\./, 'signup must explain the minimum-age DOB gate and privacy');
 
 for (const heading of [
   'Who we are',
@@ -66,7 +68,7 @@ for (const heading of [
 ]) assert.ok(content.includes(`title: '${heading}'`), `Privacy must include ${heading}`);
 
 assert.match(content, /Last updated: 08 Dec 2025/, 'Terms canonical update date must be preserved');
-assert.match(content, /Last updated: December 2025/, 'Privacy canonical update date must be preserved');
+assert.match(content, /Last updated: 2 October 2026/, 'Privacy must retain the reviewed Build 20 update date');
 assert.match(content, /support@pluggd\.fm/, 'canonical legal contact must be preserved');
 assert.doesNotMatch(content, /lorem ipsum|coming soon|placeholder|\.\.\./i, 'legal content must not be abbreviated or placeholder copy');
 

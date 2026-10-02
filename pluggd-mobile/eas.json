@@ -47,9 +47,25 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "android-update": {
+      "extends": "production",
+      "autoIncrement": false
     }
   },
   "submit": {
+    "android-internal": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
+    "android-production": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "completed"
+      }
+    },
     "production": {
       "ios": {
         "ascAppId": "6765738727"

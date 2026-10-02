@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { assertSignupBirthDateGate } from './contract-source-tools.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const androidVerify = process.env.ANDROID_VERIFY === '1';
 const packageJson = JSON.parse(read('package.json'));
 const config = read('app.config.ts');
-const nativeInfoPlist = read('ios/Pluggd/Info.plist');
+const nativeInfoPlist = androidVerify ? null : read('ios/Pluggd/Info.plist');
 const auth = read('src/context/AuthProvider.tsx');
 const login = read('app/auth/login.tsx');
 const signup = read('app/auth/signup.tsx');
@@ -16,7 +18,7 @@ const safety = read('src/features/safety/accountSafety.ts');
 const social = read('src/features/culture/mobileSocial.ts');
 const storeKit = read('src/context/StoreKitProvider.tsx') + read('src/context/StoreBillingProvider.tsx');
 const appleBilling = read('src/billing/adapters/apple.ts');
-const manifest = read('ios/Pluggd/PrivacyInfo.xcprivacy');
+const manifest = androidVerify ? null : read('ios/Pluggd/PrivacyInfo.xcprivacy');
 const verifier = read('../supabase/functions/_shared/appleSignedData.ts');
 const appleIdentity = read('../supabase/functions/_shared/appleIdentity.ts');
 const receipt = read('../supabase/functions/validate-iap-receipt/index.ts');
@@ -33,12 +35,13 @@ assert.match(config, /supportsTablet:\s*false/, 'release must be iPhone-only');
 assert.match(config, /ITSAppUsesNonExemptEncryption:\s*false/, 'export compliance must be explicit');
 assert.match(
   config,
-  /NSLocationWhenInUseUsageDescription:[\s\S]*nearby events, maps or directions/,
+  /NSLocationWhenInUseUsageDescription:[\s\S]*location when you choose nearby music, directions or a Maps signal/,
   'Expo config must provide a clear location-in-use purpose string',
 );
-assert.match(
+if (!androidVerify) {
+  assert.match(
   nativeInfoPlist,
-  /<key>NSLocationWhenInUseUsageDescription<\/key>[\s\S]*nearby events, maps or directions/,
+  /<key>NSLocationWhenInUseUsageDescription<\/key>[\s\S]*location when you choose nearby music, directions or a Maps signal/,
   'the native Info.plist must contain the location-in-use purpose string shipped to Apple',
 );
 assert.match(
@@ -46,6 +49,7 @@ assert.match(
   /<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/,
   'the archived build number must come from CURRENT_PROJECT_VERSION instead of a stale hard-coded value',
 );
+}
 assert.doesNotMatch(config, /merchantIdentifier|stripe-react-native/i, 'native config must not contain Stripe or Apple Pay');
 assert.match(policy, /useCommercePolicy/, 'App Store build must route commerce through the unified policy');
 assert.match(policy, /resolve-commerce-policy/, 'commerce eligibility must be server resolved');
@@ -66,7 +70,7 @@ assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field m
 assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');
 assert.match(signup, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'signup access-code field must be development-only');
 assert.match(signup, /minimum_age_confirmed:\s*true/, 'signup must persist age confirmation');
-assert.match(signup, /accessibilityRole="checkbox"/, 'signup must require explicit accessible age confirmation');
+await assertSignupBirthDateGate(signup);
 assert.match(socialConsent, /requireSocialAuthConsent/, 'social provider boundary must enforce age confirmation');
 assert.match(signup, /router\.push\('\/legal\/terms'/, 'signup must expose native legal terms');
 assert.match(signup, /router\.push\('\/legal\/privacy'/, 'signup must expose native privacy policy');
@@ -111,8 +115,12 @@ assert.match(notifications, /notificationType === "ONE_TIME_CHARGE"/, 'Apple one
 assert.match(notifications, /idempotencyKey = `apple-iap:\$\{txInfo\.transactionId\}`/, 'server notification credit fulfilment must be replay safe');
 assert.match(notifications, /kind: "topup_iap"/, 'Apple credit packs must be immediately available instead of entering the web top-up hold');
 assert.match(creditPacks, /pluggd_credits_popular:[\s\S]*totalCredits: 1050/, 'server-owned Apple credit catalogue must preserve the Plus pack amount');
-assert.match(manifest, /NSPrivacyCollectedDataTypeEmailAddress/, 'privacy manifest must declare linked email');
-assert.match(manifest, /NSPrivacyCollectedDataTypeOtherUserContent/, 'privacy manifest must declare UGC');
+assert.match(config, /NSPrivacyCollectedDataTypeEmailAddress/, 'shared iOS generation config must declare linked email');
+assert.match(config, /NSPrivacyCollectedDataTypeOtherUserContent/, 'shared iOS generation config must declare UGC');
+if (!androidVerify) {
+  assert.match(manifest, /NSPrivacyCollectedDataTypeEmailAddress/, 'generated iOS privacy manifest must declare linked email');
+  assert.match(manifest, /NSPrivacyCollectedDataTypeOtherUserContent/, 'generated iOS privacy manifest must declare UGC');
+}
 assert.match(
   hermesPrivacyPatch,
   /PrivacyInfo\.xcprivacy/,
@@ -125,4 +133,6 @@ assert.match(
 );
 assert.equal(existsSync(new URL('../app/auth/biometric.tsx', import.meta.url)), false, 'decorative biometric route must not ship');
 
-console.log('iOS App Store readiness contract passed');
+console.log(androidVerify
+  ? 'Shared auth, privacy-config, safety and Apple billing source checks passed; generated iOS Info.plist/PrivacyInfo.xcprivacy checks remain iOS-only.'
+  : 'iOS App Store readiness contract passed');

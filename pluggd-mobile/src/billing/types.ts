@@ -31,6 +31,11 @@ export type StoreBillingSubscriptionInput = StoreBillingPurchaseInput & {
   product: StoreProduct;
   basePlanId?: string | null;
   offerId?: string | null;
+  googleReplacement?: {
+    purchaseToken: string;
+    oldProductId: string;
+    replacementMode: 'with-time-proration';
+  } | null;
 };
 
 export type StoreBillingAdapter = {
@@ -43,7 +48,7 @@ export type StoreBillingAdapter = {
   connect: () => Promise<boolean>;
   disconnect: () => Promise<unknown>;
   fetchProducts: (skus: string[], type: StoreProductType) => Promise<StoreProduct[]>;
-  getAvailablePurchases: () => Promise<StorePurchase[]>;
+  getAvailablePurchases: (options?: { includeSuspendedAndroid?: boolean }) => Promise<StorePurchase[]>;
   finishTransaction: (purchase: StorePurchase, isConsumable: boolean) => Promise<void>;
   listenForPurchases: (listener: (purchase: StorePurchase) => void) => { remove: () => void };
   listenForErrors: (listener: (error: StorePurchaseError) => void) => { remove: () => void };

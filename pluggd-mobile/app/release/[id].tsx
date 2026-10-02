@@ -808,7 +808,7 @@ export default function ReleaseDetailScreen() {
               >
                 <View style={styles.primaryAction}>
                   {startingPlayback ? <ActivityIndicator size="small" color={theme.colors.accentText} /> : <MaterialIcons name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play-arrow'} size={20} color={theme.colors.accentText} />}
-                  <Text style={styles.primaryActionText}>{trackList.length ? (startingPlayback ? 'Starting…' : isCurrentlyPlaying && isPlaying ? 'Pause' : 'Listen now') : 'Unavailable'}</Text>
+                  <Text numberOfLines={2} style={styles.primaryActionText}>{trackList.length ? (startingPlayback ? `Starting ${release.title || 'release'}…` : isCurrentlyPlaying && isPlaying ? 'Pause' : 'Listen now') : 'Unavailable'}</Text>
                 </View>
               </EdPressable>
             </View>

@@ -2933,7 +2933,7 @@ function StudioConnectCardContent({
         <View style={styles.connectToolGrid}>
           {[
             { id: 'qr', icon: 'qr-code-2', title: 'Room-ready QR', detail: 'Open your card and show a full-screen code.', route: slug ? `/connect/${slug}${previewQuery}` : '/studio/connect-card/edit' },
-            { id: 'wallet', icon: 'wallet', title: 'Apple Wallet', detail: 'Keep your identity one tap from the Lock Screen.', route: buildEmbeddedStudioRoute('/studio/connect-card', 'Connect Card', '/studio/connect-card') },
+            { id: 'wallet', icon: 'wallet', title: Platform.OS === 'android' ? 'Card options' : 'Apple Wallet', detail: Platform.OS === 'android' ? 'Manage how your Connect Card is shared.' : 'Keep your identity one tap from the Lock Screen.', route: buildEmbeddedStudioRoute('/studio/connect-card', 'Connect Card', '/studio/connect-card') },
             { id: 'access', icon: 'shield', title: 'Private access', detail: 'Control collaborator and legal sharing links.', route: buildEmbeddedStudioRoute('/studio/connect-card', 'Connect Card', '/studio/connect-card') },
             { id: 'analytics', icon: 'insights', title: 'Card signals', detail: 'Review views, saves, shares and requests.', route: '/studio/analytics' },
           ].map((tool) => (

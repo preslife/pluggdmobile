@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { pluggdFonts } from '../src/design/typography';
 import { edFonts } from '../src/design/editorial';
@@ -31,7 +31,7 @@ export default function PluggdDjRoute() {
           <View style={styles.heroCopy}>
             <Text style={styles.kicker}>PLUGGD DJ</Text>
             <Text style={styles.title}>Your library.{`\n`}Ready for the booth.</Text>
-            <Text style={styles.body}>Build your mix catalogue on iPhone, then load the full PLUGGD DJ workspace when you are at your Mac.</Text>
+            <Text style={styles.body}>{Platform.OS === 'android' ? 'Build your mix catalogue on Android, then load the full PLUGGD DJ workspace when you are at your Mac.' : 'Build your mix catalogue on iPhone, then load the full PLUGGD DJ workspace when you are at your Mac.'}</Text>
           </View>
         </View>
         <View style={styles.actions}>

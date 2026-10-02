@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { jsxAttribute, jsxOpenings } from './contract-source-tools.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -60,12 +61,11 @@ assert.match(
 const inaccessiblePressables = [];
 for (const path of tsxFiles) {
   const source = read(path);
-  for (const match of source.matchAll(/<Pressable\b[\s\S]*?>/g)) {
-    const openingTag = match[0];
-    if (!openingTag.includes('onPress=')) continue;
-    if (openingTag.includes('accessibilityRole=')) continue;
-    if (openingTag.includes('accessible={false}')) continue;
-    const line = source.slice(0, match.index).split('\n').length;
+  for (const openingTag of jsxOpenings(source, 'Pressable')) {
+    if (!jsxAttribute(openingTag, 'onPress')) continue;
+    if (jsxAttribute(openingTag, 'accessibilityRole')) continue;
+    if (jsxAttribute(openingTag, 'accessible')?.getText() === 'accessible={false}') continue;
+    const line = source.slice(0, openingTag.getStart()).split('\n').length;
     inaccessiblePressables.push(`${path}:${line}`);
   }
 }

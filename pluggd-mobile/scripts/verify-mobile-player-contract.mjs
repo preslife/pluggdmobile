@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const androidVerify = process.env.ANDROID_VERIFY === '1';
 
 const miniSource = read('components/MiniPlayer.tsx');
 const playerSource = read('app/player.tsx');
 const providerSource = read('src/context/PlaybackProvider.tsx');
 const resolverSource = read('src/features/playback/resolvePlaybackSource.ts');
 const appConfigSource = read('app.config.ts');
-const iosInfoSource = read('ios/Pluggd/Info.plist');
+const iosInfoSource = androidVerify ? null : read('ios/Pluggd/Info.plist');
 const playbackServiceSource = read('src/lib/playback-service.ts');
 const contentSource = read('src/lib/mobileContent.ts');
 const releaseSource = read('app/release/[id].tsx');
@@ -34,7 +35,9 @@ assert.match(providerSource, /playQueue: \(tracks: PluggdTrack\[\], startIndex\?
 assert.match(providerSource, /await TrackPlayer\.play\(\);[\s\S]*?await syncQueue\(\);[\s\S]*?TrackPlayer\.getActiveTrack\(\)/, 'queue replacement must synchronise and confirm native playback before resolving');
 assert.match(providerSource, /playTrack: \(track: PluggdTrack\) => Promise<PluggdTrack \| null>/, 'single-track playback must return the actual native active track for caller verification');
 assert.match(appConfigSource, /UIBackgroundModes:\s*\['audio'\]/, 'Expo iOS configuration must declare music background audio');
-assert.match(iosInfoSource, /<key>UIBackgroundModes<\/key>[\s\S]*?<string>audio<\/string>/, 'checked-in native iOS configuration must declare music background audio');
+if (!androidVerify) {
+  assert.match(iosInfoSource, /<key>UIBackgroundModes<\/key>[\s\S]*?<string>audio<\/string>/, 'generated native iOS configuration must declare music background audio');
+}
 assert.match(providerSource, /iosCategory:\s*IOSCategory\.Playback/, 'TrackPlayer must use the iOS music playback audio-session category');
 assert.match(providerSource, /autoHandleInterruptions:\s*true/, 'TrackPlayer must handle native audio interruptions without app-state teardown');
 assert.doesNotMatch(providerSource, /AppState[\s\S]{0,500}(pause|reset)|(?:pause|reset)[\s\S]{0,500}AppState/, 'background app-state changes must not pause or reset the music queue');
@@ -44,4 +47,4 @@ for (const remoteEvent of ['RemotePlay', 'RemotePause', 'RemoteStop', 'RemoteNex
 assert.match(contentSource, /catalogue_import_job_id[\s\S]*catalogue_mode !== 'pluggd'[\s\S]*return null/, 'catalogue metadata must never resolve to a playable release URL');
 assert.match(releaseSource, /catalogue_import_job_id[\s\S]*catalogue_mode !== 'pluggd'[\s\S]*return \[\]/, 'release detail must keep imported catalogue tracks out of playback');
 
-console.log('mobile player contract verified');
+console.log(androidVerify ? 'mobile player source contract verified; generated iOS background-audio plist check remains iOS-only' : 'mobile player contract verified');

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { assertCommunityFeedComposition } from './contract-source-tools.mjs';
 
 const screen = readFileSync('src/features/community-feed/CommunityFeedScreen.tsx', 'utf8');
 
 const requireText = (text, message) => assert.ok(screen.includes(text), message);
 
-requireText("tab === 'feed' ? <MobileStoriesRail", 'The accepted stories rail must remain limited to the main feed.');
+assertCommunityFeedComposition(screen);
 requireText('<MobileSocialPostCard', 'The accepted social feed cards must remain unchanged.');
 requireText('kind="the_plug"', 'The accepted feed editorial placement must remain present.');
 requireText('kind="live_now"', 'The accepted feed Live placement must remain present.');

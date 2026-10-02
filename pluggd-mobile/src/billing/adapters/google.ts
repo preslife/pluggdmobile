@@ -118,6 +118,13 @@ export const googleBillingAdapter: StoreBillingAdapter = {
         google: {
           ...(await googleRequestFields(input)),
           subscriptionOffers: [{ sku: input.sku, offerToken: offer.offerTokenAndroid }],
+          ...(input.googleReplacement ? {
+            purchaseToken: input.googleReplacement.purchaseToken,
+            subscriptionProductReplacementParams: {
+              oldProductId: input.googleReplacement.oldProductId,
+              replacementMode: input.googleReplacement.replacementMode,
+            },
+          } : {}),
         },
       },
       type: 'subs',

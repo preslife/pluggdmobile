@@ -11,18 +11,33 @@ const eas = JSON.parse(read('eas.json'));
 const appConfig = read('app.config.ts');
 const mapbox = read('src/lib/mapbox.ts');
 const live = read('src/screens/LiveSessionScreen.tsx');
-const localEnvPath = path.join(root, '.env.local');
+const androidMap = read('components/EventsMap.android.tsx');
 
-for (const profile of ['development', 'preview', 'production']) {
-  const value = eas?.build?.[profile]?.env?.EXPO_PUBLIC_MAPBOX_TOKEN;
-  assert(typeof value === 'string' && value.startsWith('pk.') && value.length > 40, `${profile} EAS profile must provide the public Mapbox token`);
+function resolvedBuildProfile(name, parents = []) {
+  assert(!parents.includes(name), 'EAS build profile inheritance must not cycle');
+  const profile = eas.build[name];
+  assert(Boolean(profile), `EAS build profile ${name} must exist`);
+  const inherited = profile.extends ? resolvedBuildProfile(profile.extends, [...parents, name]) : {};
+  return { ...inherited, ...profile, env: { ...inherited.env, ...profile.env } };
 }
-assert(fs.existsSync(localEnvPath), 'local Expo environment must exist for the exact worktree/device candidate');
-assert(/^EXPO_PUBLIC_MAPBOX_TOKEN=.?pk\./m.test(read('.env.local')), 'local Expo environment must provide EXPO_PUBLIC_MAPBOX_TOKEN');
+for (const profile of Object.keys(eas.build)) {
+  const resolved = resolvedBuildProfile(profile);
+  const value = resolved.env?.EXPO_PUBLIC_MAPBOX_TOKEN;
+  assert(['development', 'preview', 'production'].includes(resolved.environment), `${profile} must resolve an explicit EAS environment`);
+  if (['development', 'preview', 'production'].includes(profile)) assert(resolved.environment === profile, `${profile} must select its matching EAS environment`);
+  assert(value === undefined || (typeof value === 'string' && value.startsWith('pk.') && value.length > 40), `${profile} inline token, if supplied, must be a public runtime token`);
+  assert(!resolved.env?.RNMAPBOX_MAPS_DOWNLOAD_TOKEN, `${profile} runtime config must never expose the native download secret`);
+}
+if (process.argv.includes('--candidate-runtime')) {
+  const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN?.trim();
+  assert(typeof token === 'string' && token.startsWith('pk.') && token.length > 40, 'exact candidate runtime must receive a configured public Mapbox token');
+  console.log('PASS Mapbox candidate runtime token presence/type (value not printed; artifact/runtime proof remains separate).');
+}
 assert(appConfig.includes("process.env.EXPO_PUBLIC_MAPBOX_TOKEN?.trim()"), 'Expo config must read only the public runtime token');
 assert(appConfig.includes('mapboxRuntimeConfigured: Boolean(MAPBOX_PUBLIC_TOKEN)'), 'Expo config must expose only Mapbox configuration presence');
 assert(mapbox.includes("TOKEN: process.env.EXPO_PUBLIC_MAPBOX_TOKEN || ''"), 'mobile geocoder must consume EXPO_PUBLIC_MAPBOX_TOKEN');
 assert(!eas.build.production.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN, 'EAS runtime profiles must not expose the native SDK download secret');
+assert(androidMap.includes('if (!MAPBOX_RUNTIME_TOKEN || mapLoadFailed)'), 'credential-free candidates must show the safe map fallback instead of instantiating an unconfigured native map');
 
 assert(live.includes("const isHost = streamRole === 'host'"), 'Live composition must derive the resolved host role');
 assert(live.includes('if (isHost) return;'), 'host must be blocked from live-room safety actions');
@@ -58,6 +73,6 @@ for (const required of [
 
 assert(live.includes("const previewRole = __DEV__ && preview === 'creator'"), 'role-specific visual fixture must remain development-only');
 assert(live.includes("preview.startsWith('audience')"), 'fan visual states must remain development-only');
-assert(live.includes('VISUAL PREVIEW · NO LIVE DATA'), 'development visual fixture must be clearly disclosed');
+assert(live.includes('if (previewRole) {') && live.includes('PREVIEW ONLY'), 'development visual fixture must remain guarded and visibly disclosed');
 
-console.log('PASS mobile Mapbox and role-correct Live polish contract');
+console.log('PASS Mapbox source wiring and role-correct Live polish; candidate runtime token presence requires --candidate-runtime and rendered map proof remains separate.');

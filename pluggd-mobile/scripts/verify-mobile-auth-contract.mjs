@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { assertSignupBirthDateGate } from './contract-source-tools.mjs';
 
 const root = new URL('../', import.meta.url);
 const pathFor = (path) => join(root.pathname, path);
@@ -89,8 +90,8 @@ assert.match(
   /if \(!consent\.minimumAgeConfirmed\)/,
   'social OAuth must fail closed without explicit minimum-age confirmation',
 );
-assert.match(signupSource, /accessibilityRole="checkbox"/, 'signup must expose an accessible explicit age checkbox');
-assert.match(signupSource, /minimumAgeConfirmed:\s*ageConfirmed/, 'signup social auth must pass the user-controlled age state');
+await assertSignupBirthDateGate(signupSource);
+assert.match(signupSource, /date_of_birth:\s*formatBirthDateForStorage\(dateOfBirth\)/, 'all signup providers must persist the confirmed date of birth');
 assert.match(loginSource, /performGoogleLogin\(true\)/, 'Google login must start only from the explicit confirmation action');
 assert.match(loginSource, /performAppleLogin\(true\)/, 'Apple login must start only from the explicit confirmation action');
 

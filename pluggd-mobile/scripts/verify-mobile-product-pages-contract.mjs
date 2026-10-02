@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { evaluateExpression, jsxAttribute, jsxOpenings, namedDeclaration } from './contract-source-tools.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -33,7 +34,17 @@ assert.match(
 assert.match(release, /sourceType: 'release' as const/, 'Release queue tracks must carry explicit source identity');
 assert.match(release, /if \(isCurrentlyPlaying\) void togglePlayPause\(\);[\s\S]*?else void handlePlayAll\(\);/, 'Release controls may toggle only the verified active release and must otherwise start the replacing queue');
 assert.match(release, /accessibilityState=\{\{ busy: startingPlayback, disabled: trackList\.length === 0 \|\| startingPlayback \}\}/, 'Release Listen must prevent a second action while its queue replacement is starting');
-assert.match(release, /startingPlayback \? `Starting \$\{release\.title\}…`/, 'Release Listen must identify the requested title while replacement is starting');
+assert.match(release, /startingPlayback \? `Starting \$\{release\.title(?: \|\| 'release')?\}…`/, 'Release Listen must identify the requested title while replacement is starting, with a safe fallback for an absent title');
+const pendingReleaseText = jsxOpenings(release, 'Text').find((node) => node.parent.getText().includes('startingPlayback ? `Starting'));
+assert.ok(pendingReleaseText, 'the pending release title must be rendered, not merely declared');
+assert.equal(jsxAttribute(pendingReleaseText, 'numberOfLines')?.getText(), 'numberOfLines={2}', 'the pending title must retain its two-line containment');
+const pendingReleaseExpression = pendingReleaseText.parent.children.find((node) => node.expression?.getText().includes('startingPlayback'))?.expression.getText();
+assert.ok(pendingReleaseExpression, 'the release action must retain its real pending-label expression');
+for (const title of ['Fixture title', '', null, undefined]) {
+  assert.equal(evaluateExpression(pendingReleaseExpression, {
+    release: { title }, trackList: [{}], startingPlayback: true, isCurrentlyPlaying: false, isPlaying: false,
+  }), `Starting ${title || 'release'}…`, 'pending playback must identify its requested release without undefined/null title copy');
+}
 assert.match(release, /\$\{requestedTitle\} did not start\. \$\{activeTitle\} is still playing\. Try again\./, 'Release queue mismatch must remain visible, name the unchanged playback, and offer an actionable retry');
 assert.match(release, /accessibilityRole="alert"[\s\S]*?accessibilityLabel=\{`Retry playing \$\{release\.title\}`\}/, 'Release playback errors must be announced and expose a labelled Retry action');
 assert.doesNotMatch(release, /Diagnostic:v3|diagnostic-v3/, 'Temporary Release playback diagnostics must not remain in product source');
@@ -45,11 +56,11 @@ assert.match(release, /release_artists/);
 assert.match(release, /claimed_profile_id/);
 assert.match(release, /creditedArtist\?\.profileRoute/);
 assert.doesNotMatch(release, /onPress=\{\(\) => release\.user_id && router\.push\(`\/user\//);
-assert.match(release, /Unlock download/);
+assert.match(release, /styles\.downloadCard[\s\S]*YOUR DOWNLOAD[\s\S]*OWN THE DROP[\s\S]*Download the full release[\s\S]*Get it · \$\{creditsNeeded\} credits/, 'credit unlock copy must sit in the explicit full-release download card, separate from listening');
 assert.match(release, /Buy download/);
 assert.match(release, /const canUnlock = !isOwned && creditsNeeded > 0/);
 assert.match(release, /!isOwned && canUnlock/);
-assert.match(release, /isOwned \? 'Your purchased files are unlocked\.'/);
+assert.match(release, /isOwned \? 'Your release is ready to download\.'/);
 assert.match(release, /creditsExpanded/);
 assert.match(release, /Linking\.openURL/);
 
@@ -99,8 +110,13 @@ assert.match(mixDetail, /catch \{[\s\S]*?tap Play mix to try again[\s\S]*?Alert\
 assert.match(mixDetail, /<Text accessibilityRole="alert" style=\{styles\.playbackError\}>/, 'Mix playback failures must remain visible and actionable after the alert closes');
 assert.match(mixDetail, /DIRECT DRIVE · PLG-01/, 'Portrait Listening Room must retain the accepted direct-drive deck identity');
 assert.match(mixDetail, /Animated\.loop\(/, 'Portrait Listening Room must animate the real record deck while audio plays');
-assert.match(mixDetail, /tonearmPosition[\s\S]*?tonearmTurn/, 'Portrait Listening Room must translate playback state into the tonearm position');
-assert.match(mixDetail, /tonearm:\s*\{[\s\S]*?transformOrigin: '29px 22px'[\s\S]*?tonearmPivot:\s*\{[\s\S]*?left: 10[\s\S]*?top: 3[\s\S]*?width: 38[\s\S]*?height: 38[\s\S]*?tonearmRod:\s*\{[\s\S]*?left: 17[\s\S]*?top: 22[\s\S]*?width: 24[\s\S]*?transformOrigin: '12px 0px'/, 'Portrait Listening Room tonearm rod and animated origin must share the exact centre of the circular pivot base');
+assert.match(mixDetail, /tonearmEngaged[\s\S]*?tonearmTurn[\s\S]*rotate: tonearmTurn/, 'Portrait Listening Room must translate real playback state into the tonearm position');
+const tonearmTurn = namedDeclaration(mixDetail, 'tonearmTurn').initializer.getText();
+for (const [tonearmEngaged, playedRatio, expected] of [[false, 0, '-6deg'], [true, 0, '12deg'], [true, 0.5, '18deg'], [true, 1, '24deg']]) {
+  assert.equal(evaluateExpression(tonearmTurn, { tonearmEngaged, playedRatio }), expected, 'the actual arm must rest off the record and follow playback progress while engaged');
+}
+assert.match(mixDetail, /tonearm:\s*\{[^\n]*transformOrigin: '53px 22px'[\s\S]*?tonearmPivot:\s*\{[^\n]*left: 33, top: 2, width: 40, height: 40/, 'the reviewed arm rotation origin must remain at the actual circular pivot centre (33 + 40/2, 2 + 40/2)');
+assert.match(mixDetail, /tonearmUpperBar:\s*\{[^\n]*left: 50, top: 22, width: 7[\s\S]*?tonearmElbow:\s*\{[^\n]*transformOrigin: '12px 0px'/, 'the articulated arm must keep its upper bar and elbow attached to the reviewed pivot');
 assert.doesNotMatch(mixDetail, /tonearmHead:\s*\{[^}]*marginLeft/, 'Portrait Listening Room cartridge must remain centred on the tonearm rod instead of being offset from its base');
 assert.match(mixDetail, /renderDeckSignal\('L'\)[\s\S]*?renderDeckSignal\('R'\)/, 'Portrait Listening Room must render both labelled deck signal meters');
 assert.match(mixDetail, /colors=\{\['#4caf50', '#4caf50', '#e4ed2d', '#ff4437'\]\}/, 'Deck meters must copy the current web green-yellow-red VU gradient');

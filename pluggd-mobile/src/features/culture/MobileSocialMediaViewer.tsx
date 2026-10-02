@@ -1,8 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { pluggdFonts } from '../../design/typography';
@@ -10,6 +12,8 @@ import type { MobileSocialPostPreview } from './mobileTypes';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { musicError, musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
+import { useReducedMotion } from '../../design/useReducedMotion';
+import { boundedMediaTransform, containedMediaSize, MAX_MEDIA_ZOOM, mediaPageDirection } from './mediaZoomGeometry';
 
 export type MobileSocialMediaSelection =
   | { kind: 'image'; index: number }
@@ -21,6 +25,97 @@ type MobileSocialMediaViewerProps = {
   selection: MobileSocialMediaSelection;
   onSelectionChange: (selection: MobileSocialMediaSelection) => void;
 };
+
+function AndroidZoomableImage({ uri, label, width, height, aspectRatio, onPage }: {
+  uri: string; label: string; width: number; height: number; aspectRatio: number; onPage: (direction: -1 | 1) => void;
+}) {
+  const reducedMotion = useReducedMotion();
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const scale = useSharedValue(1);
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
+  const pinchScale = useSharedValue(1);
+  const focalImageX = useSharedValue(0);
+  const focalImageY = useSharedValue(0);
+  const panX = useSharedValue(0);
+  const panY = useSharedValue(0);
+  const panWasZoomed = useSharedValue(false);
+  const image = containedMediaSize(width, height, aspectRatio);
+
+  useEffect(() => {
+    // Caption expansion and Android fold/rotation must not retain stale bounds.
+    scale.value = 1; x.value = 0; y.value = 0; setZoomLevel(1);
+  }, [width, height, aspectRatio, scale, x, y]);
+
+  const gestures = useMemo(() => {
+    const pinch = Gesture.Pinch()
+      .onStart((event) => {
+        pinchScale.value = scale.value;
+        focalImageX.value = (event.focalX - width / 2 - x.value) / scale.value;
+        focalImageY.value = (event.focalY - height / 2 - y.value) / scale.value;
+      })
+      .onUpdate((event) => {
+        const zoom = Math.min(MAX_MEDIA_ZOOM, Math.max(1, pinchScale.value * event.scale));
+        const next = boundedMediaTransform(zoom,
+          event.focalX - width / 2 - focalImageX.value * zoom,
+          event.focalY - height / 2 - focalImageY.value * zoom,
+          image.width, image.height, width, height);
+        scale.value = next.scale; x.value = next.x; y.value = next.y;
+      })
+      .onFinalize(() => {
+        if (scale.value <= 1.01) { scale.value = 1; x.value = 0; y.value = 0; }
+        runOnJS(setZoomLevel)(scale.value);
+      });
+    const pan = Gesture.Pan().maxPointers(1).minDistance(8)
+      .onStart(() => {
+        panX.value = x.value; panY.value = y.value; panWasZoomed.value = scale.value > 1.01;
+      })
+      .onUpdate((event) => {
+        if (!panWasZoomed.value) return;
+        const next = boundedMediaTransform(scale.value, panX.value + event.translationX, panY.value + event.translationY,
+          image.width, image.height, width, height);
+        x.value = next.x; y.value = next.y;
+      })
+      .onEnd((event, success) => {
+        if (!success || panWasZoomed.value) return;
+        const direction = mediaPageDirection(scale.value, event.translationX, event.translationY);
+        if (direction) runOnJS(onPage)(direction);
+      });
+    return Gesture.Simultaneous(pinch, pan);
+  }, [width, height, image.width, image.height, onPage, scale, x, y, pinchScale, focalImageX, focalImageY, panX, panY, panWasZoomed]);
+  const transform = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { translateY: y.value }, { scale: scale.value }] }));
+  const reset = () => {
+    scale.value = reducedMotion ? 1 : withTiming(1, { duration: 120 });
+    x.value = reducedMotion ? 0 : withTiming(0, { duration: 120 });
+    y.value = reducedMotion ? 0 : withTiming(0, { duration: 120 });
+    setZoomLevel(1);
+  };
+
+  return (
+    // Android Modal content needs its own native gesture root.
+    <GestureHandlerRootView style={styles.zoomViewport}>
+      <GestureDetector gesture={gestures}>
+        <View style={styles.androidZoomViewport} accessible accessibilityRole="adjustable" accessibilityLabel={label}
+          accessibilityHint="Pinch to zoom. Drag a zoomed image to pan. Swipe a normal-size image to change attachments."
+          accessibilityValue={{ min: 1, max: MAX_MEDIA_ZOOM, now: zoomLevel, text: `${zoomLevel.toFixed(1)} times zoom` }}
+          accessibilityActions={[{ name: 'increment', label: 'Zoom in' }, { name: 'decrement', label: 'Zoom out' }]}
+          onAccessibilityAction={(event) => {
+            const next = boundedMediaTransform(scale.value + (event.nativeEvent.actionName === 'increment' ? 1 : -1), x.value, y.value,
+              image.width, image.height, width, height);
+            scale.value = next.scale; x.value = next.x; y.value = next.y; setZoomLevel(next.scale);
+          }}>
+          <Animated.View style={[{ width: image.width, height: image.height }, transform]}>
+            <PluggdImage uri={uri} style={styles.media} resizeMode="contain" displayWidth={1800} accessible={false} />
+          </Animated.View>
+        </View>
+      </GestureDetector>
+      <Pressable accessibilityRole="button" accessibilityLabel="Reset image zoom" accessibilityState={{ disabled: zoomLevel === 1 }}
+        disabled={zoomLevel === 1} onPress={reset} style={[styles.zoomReset, zoomLevel === 1 && styles.zoomResetDisabled]}>
+        <MaterialIcons name="zoom-out-map" size={18} color="#FFFFFF" /><Text style={styles.zoomResetText}>Reset zoom</Text>
+      </Pressable>
+    </GestureHandlerRootView>
+  );
+}
 
 function FullScreenVideo({ uri }: { uri: string }) {
   const { pause } = usePlayback();
@@ -64,6 +159,7 @@ export function MobileSocialMediaViewer({
   onSelectionChange,
 }: MobileSocialMediaViewerProps) {
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const [mediaAspectRatio, setMediaAspectRatio] = useState(16 / 9);
   const [captionExpanded, setCaptionExpanded] = useState(false);
@@ -105,7 +201,7 @@ export function MobileSocialMediaViewer({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType={Platform.OS === 'android' && reducedMotion ? 'none' : 'fade'}
       presentationStyle="fullScreen"
       onRequestClose={close}
     >
@@ -181,7 +277,11 @@ export function MobileSocialMediaViewer({
           ) : null}
 
           <View style={[styles.stage, { height: mediaHeight }]}>
-            {activeImage ? (
+            {activeImage && Platform.OS === 'android' ? (
+              <AndroidZoomableImage key={`${post.id}:${imageIndex}:${activeImage}`} uri={activeImage}
+                label={`Image ${(imageIndex ?? 0) + 1} attached to ${authorName}`} width={viewportWidth} height={mediaHeight}
+                aspectRatio={mediaAspectRatio} onPage={moveImage} />
+            ) : activeImage ? (
               <ScrollView
                 key={activeImage}
                 style={styles.zoomViewport}
@@ -298,6 +398,28 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  androidZoomViewport: {
+    flex: 1,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomReset: {
+    position: 'absolute',
+    bottom: 12,
+    alignSelf: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  zoomResetDisabled: { opacity: 0.45 },
+  zoomResetText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiBold, fontSize: 12 },
   zoomContent: {
     flexGrow: 1,
     width: '100%',

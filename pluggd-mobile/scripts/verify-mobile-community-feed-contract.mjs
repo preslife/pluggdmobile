@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { assertCommunityFeedComposition } from './contract-source-tools.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -75,12 +76,7 @@ assert.match(screen, /kind="the_plug"/, 'Community must place THE PLUG inside th
 assert.match(service, /loadMobileSocialFeed\(\{ mode: 'latest'/, 'Community must request the latest social feed instead of an opaque ranked order');
 assert.match(service, /orderCommunityPostsNewestFirst/, 'Community must defensively keep posts newest-first after enrichment');
 assert.match(service, /createdAtMs\(right\) - createdAtMs\(left\)/, 'Community ordering must compare post timestamps in descending order');
-assert.ok(
-  screen.indexOf('<MobileStoriesRail') > 0 &&
-    screen.indexOf('<MobileStoriesRail') < screen.indexOf('<CommunityInternalSwitcher') &&
-    screen.indexOf('<CommunityInternalSwitcher') < screen.indexOf('<MobileSocialPostCard'),
-  'Community must lead directly with stories and feed navigation before social posts',
-);
+assertCommunityFeedComposition(screen);
 
 for (const token of [
   'loadMobileSocialFeed',

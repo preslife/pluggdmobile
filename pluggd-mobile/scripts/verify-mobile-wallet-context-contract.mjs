@@ -23,7 +23,7 @@ for (const label of ['Home', 'Discover', 'Community', 'Events', 'Store']) {
 assert.doesNotMatch(dockSource, /label:\s*'Search'/, 'Search must stay in top/header access, not bottom nav');
 assert.doesNotMatch(dockSource, /label:\s*'(Wallet|Marketplace|Explore|Create|Profile|Stage|Live|Backstage|MyPLUGGD)'/, 'wallet/old native tabs must not return as primary nav tabs');
 assert.match(headerSource, /Wallet \/ Credits|Wallet \/ Earnings/, 'wallet must be available from avatar menu with web account copy');
-assert.match(headerSource, /Memberships/, 'memberships must be available from avatar menu');
+assert.match(headerSource, /label: 'Creator memberships'[^\n]*route: '\/membership'/, 'creator memberships must be available from avatar menu separately from platform plans');
 assert.match(headerSource, /Tickets/, 'tickets must be available from avatar menu');
 assert.match(walletSource, /storeName[\s\S]*store currency/, 'wallet must explain that the active store localizes the final price');
 assert.doesNotMatch(walletSource, /100 credits = £1/, 'wallet must not mix a fixed GBP value with localized StoreKit prices');

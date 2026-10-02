@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { RecoveryState } from '../../components/ContentUI';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { impactHaptic } from '../../src/design/haptics';
@@ -459,7 +459,7 @@ export default function ProductDetailRoute() {
                   <Text style={styles.availabilityLabel}>{isPhysical && Number(product.stock_quantity ?? 1) <= 0 ? 'SOLD OUT' : isPhysical ? 'CHECKOUT STATUS' : 'BROWSE ONLY'}</Text>
                   <Text style={styles.availabilityTitle}>
                     {!isPhysical
-                      ? 'Digital products are preview-only on iPhone.'
+                      ? Platform.OS === 'android' ? 'Digital products are preview-only in this app.' : 'Digital products are preview-only on iPhone.'
                       : Number(product.stock_quantity ?? 1) <= 0
                         ? 'This item is currently sold out.'
                         : policy.loading

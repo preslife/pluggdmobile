@@ -24,20 +24,21 @@ for (const table of ['battles', 'battle_entries', 'battle_rounds', 'battle_match
 }
 assert.match(service, /bucket: 'battle-audio'/, 'entry audio must use the existing battle-audio bucket');
 assert.match(service, /auth\.getUser\(\)/, 'entry and voting actions must derive identity from current auth');
-assert.match(service, /existingResult\.data[\s\S]*already have an entry/, 'entry submission must enforce one current-user entry before upload');
-assert.match(service, /battleResult\.data\.status !== 'upcoming'/, 'entry submission must close outside the upcoming window');
-assert.match(service, /entry_fee_cents[\s\S]*requires an entry pass/, 'paid entry must not be silently bypassed in native');
+assert.match(service, /rpc\('submit_free_battle_entry'[\s\S]*p_battle_id: input\.battleId[\s\S]*p_rules_version: input\.rulesVersion[\s\S]*p_adult: input\.consent[\s\S]*p_rights: input\.consent/, 'entry identity, current rules, free-battle eligibility and duplicate-entry enforcement must use the server authority rather than a race-prone client insertion');
+assert.match(service, /if \(!input\.consent \|\| !input\.rulesVersion\)/, 'entry upload must fail closed without explicit adult/rights/rules acceptance');
+assert.doesNotMatch(service, /\.(?:insert|upsert|update)\(/, 'the native Battle client must not bypass server entry or vote enforcement with direct table writes');
 assert.match(service, /remove\(\[path\]\)/, 'a failed entry row write must attempt to remove its own upload');
-assert.match(service, /entry_a_id[\s\S]*entry_b_id[\s\S]*not part of this matchup/, 'votes must be restricted to the selected matchup entries');
-assert.match(service, /battleResult\.data\.status !== 'live'[\s\S]*Voting is not open for this matchup/, 'votes must be accepted only during the real active battle round');
-assert.match(service, /eq\('matchup_id', input\.matchupId\)[\s\S]*eq\('voter_user_id', user\.id\)/, 'voting must check the current user matchup vote before insertion');
-assert.match(service, /battle_id: input\.battleId/, 'vote insertion must persist the real battle id rather than relying on a missing trigger value');
+assert.match(service, /rpc\('vote_free_battle'[\s\S]*p_matchup_id: input\.matchupId[\s\S]*p_entry_id: input\.entryId[\s\S]*p_rules_version: input\.rulesVersion[\s\S]*p_adult: input\.consent/, 'the server vote authority must receive the real matchup, entry, accepted rules and adult consent');
+assert.match(service, /if \(error\) throw new Error\(errorMessage\(error, 'Your vote could not be saved\.'/, 'a rejected or already-locked vote must surface the server failure');
+assert.match(service, /rpc\('battle_vote_counts', \{ p_battle_id: battleId \}\)/, 'public audience counts must use the approved aggregate rather than exposing other viewers\' private vote rows');
 assert.doesNotMatch(service + screens, /advance-battle-rounds|createBattle|Create Battle/, 'unsafe user battle creation and round advancement must stay hidden');
 
 assert.match(screens, /ENTRIES OPEN|LIVE BATTLE|FINAL RESULT/, 'the arena must present upcoming, live and results states');
 assert.match(screens, /Submit your track/, 'eligible free battles must expose real entry submission');
 assert.match(screens, /Battle bracket/, 'battle detail must expose tournament rounds and matchups');
-assert.match(screens, /Crowd ranking/, 'battle detail must expose a real vote-backed leaderboard');
+assert.match(screens, /title="Audience votes"/, 'battle detail must expose real audience vote totals without implying a cross-round ranking determines the champion');
+assert.match(screens, /moderation_status==='approved'\)\.sort\(\(left, right\) => right\.voteCount - left\.voteCount/, 'only approved entries may appear in the real vote-backed leaderboard');
+assert.match(screens, /finalMatchups\[0\]\.winner_entry_id/, 'the champion must come from the final matchup winner, not aggregate audience totals');
 assert.match(screens, /playback\.playTrack/, 'entry audio controls must use the real global player');
 assert.match(screens, /viewerVoteEntryId/, 'the UI must show a viewer locked vote state');
 assert.match(screens, /isLoading|isError|isRefetching/, 'battle routes must expose loading, error and refresh states');
@@ -46,4 +47,4 @@ assert.match(liveLobby, /BattleArenaEntry[\s\S]*router\.push\('\/live\/battles'/
 assert.match(liveCreate, /Battle Mode[\s\S]*router\.push\('\/live\/battles'/, 'Live creation must expose Battle Mode as the dedicated arena');
 assert.doesNotMatch(liveCreate, /type LiveMode = [^\n]*battle/, 'Battle Mode must not be misrepresented as a session_rooms live mode');
 
-console.log('PASS mobile original Live battle parity contract');
+console.log('PASS mobile server-authoritative Live battle source contract; server/live enforcement remains a separate release gate');

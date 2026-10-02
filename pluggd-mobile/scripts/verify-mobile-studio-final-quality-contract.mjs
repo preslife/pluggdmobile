@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { jsxAttribute, jsxOpenings } from './contract-source-tools.mjs';
 
 const read = (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), 'utf8');
 
@@ -12,7 +13,10 @@ const upload = read('app/creator/upload.tsx');
 const video = read('src/features/studio/StudioVideoScreen.tsx');
 const glassPanel = read('components/liquid-glass/GlassPanel.tsx');
 
-assert.doesNotMatch(studio, /style=\{\(\{\s*pressed\s*\}\)/, 'Studio Pressables must not use the unsupported function-style class regression');
+for (const node of jsxOpenings(studio, 'Pressable')) {
+  if (!/=>/.test(jsxAttribute(node, 'style')?.getText() ?? '')) continue;
+  assert.equal(jsxAttribute(node, 'className'), undefined, 'function-style Pressables must not mix in the unsupported NativeWind class regression');
+}
 assert.match(studio, /const pathname = usePathname\(\)/, 'Studio shell must read the current pathname');
 assert.match(studio, /<ScrollView\s+key=\{pathname\}/, 'each Studio route must receive a fresh scroll container');
 assert.match(studio, /style=\{\[\s*styles\.studioMenuItem,/, 'Studio drawer rows must use stable static style arrays');

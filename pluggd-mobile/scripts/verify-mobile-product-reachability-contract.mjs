@@ -43,7 +43,7 @@ assert.match(discoveryHeader, /accessibilityLabel="Open PLUGGD Live"[\s\S]*?rout
 assert.match(header, /accessibilityLabel="Search PLUGGD"/, 'Global search must remain in the public header');
 assert.match(header, /label: 'Library'[\s\S]*?route: '\/library'/, 'Fan Library must remain reachable from Account');
 assert.match(header, /label: 'Purchases & Access'[\s\S]*?route: '\/purchases'/, 'Purchases must remain reachable from Account');
-assert.match(header, /label: 'Memberships'[\s\S]*?route: '\/membership'/, 'Memberships must remain reachable from Account');
+assert.match(header, /label: 'Creator memberships'[\s\S]*?route: '\/membership'/, 'Creator memberships must remain reachable from Account separately from platform plans');
 assert.match(header, /label: 'Tickets'[\s\S]*?route: '\/tickets'/, 'Tickets must remain reachable from Account');
 assert.match(header, /label: 'Connect Card'[\s\S]*?route: '\/studio\/connect-card'/, 'Connect Cards must remain reachable for creators');
 

@@ -103,6 +103,8 @@ export default function TicketsScreen() {
               return (
                 <Pressable
                   key={`${ticket.source}-${ticket.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ticket for ${ticket.event_title || 'this event'}`}
                   style={({ pressed }) => [styles.ticketCard, { borderColor: theme.colors.border }, pressed && { opacity: 0.82 }]}
                   onPress={() => {
                     selectionHaptic();

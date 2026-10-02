@@ -1,6 +1,6 @@
-# Build 8 appearance manifest
+# Build 20 appearance manifest
 
-This is the exact appearance authority for the Build 8 native route graph. It covers the three supported modes: **System**, **Editorial Light**, and **Night**. System resolves live from the device scheme; Editorial Light is the cream-paper/ink palette; Night preserves the accepted dark composition.
+This is the exact appearance authority for the Build 20 native route graph. It covers the three supported modes: **System**, **Editorial Light**, and **Night**. System resolves live from the device scheme; Editorial Light is the cream-paper/ink palette; Night preserves the accepted dark composition.
 
 ## Coverage rules
 
@@ -61,6 +61,7 @@ The contract test compares this block with the filesystem. A missing or stale en
 - `app/connect/[slug]/collab.tsx`
 - `app/connect/[slug]/contract.tsx`
 - `app/connect/[slug]/rates.tsx`
+- `app/create-music-post.tsx`
 - `app/create-post.tsx`
 - `app/create.tsx`
 - `app/creator-mode.tsx`
@@ -97,6 +98,8 @@ The contract test compares this block with the filesystem. A missing or stale en
 - `app/legal/privacy.tsx`
 - `app/legal/terms.tsx`
 - `app/library.tsx`
+- `app/live/battles/[id].tsx`
+- `app/live/battles/index.tsx`
 - `app/live/create.tsx`
 - `app/live/feed.tsx`
 - `app/live/index.tsx`
@@ -116,11 +119,13 @@ The contract test compares this block with the filesystem. A missing or stale en
 - `app/notifications.tsx`
 - `app/opportunities/[id].tsx`
 - `app/opportunities/index.tsx`
+- `app/plans.tsx`
 - `app/player.tsx`
 - `app/playlists/[id].tsx`
 - `app/playlists/new.tsx`
 - `app/plug/[id].tsx`
 - `app/plug/index.tsx`
+- `app/pluggd-tv.tsx`
 - `app/post/[id].tsx`
 - `app/pro/collab.tsx`
 - `app/pro/epk.tsx`
@@ -162,6 +167,7 @@ The contract test compares this block with the filesystem. A missing or stale en
 - `app/studio/splits/[id].tsx`
 - `app/studio/splits/new.tsx`
 - `app/studio/videos/index.tsx`
+- `app/support.tsx`
 - `app/swipe-beats.tsx`
 - `app/ticket-scan.tsx`
 - `app/tickets.tsx`
@@ -187,6 +193,9 @@ The contract test compares this block with the filesystem. A missing or stale en
 | Commerce and library | `app/commerce/**`, `src/commerce/CheckoutStatusScreen.tsx`, `app/{purchases,wallet,library,tickets}.tsx` | Semantic legal, basket, receipt, order and recovery states. |
 | Live, playback and culture tools | `app/{live,player,soundboards,dj,swipe-beats,carnival}/**`, `src/features/live/live-culture-screen.tsx`, `src/screens/LiveSessionScreen.tsx`, the reachable `CreateHubScreen` path in `src/features/culture/CultureScreens.tsx` | Semantic controls and surrounding chrome; video/artwork/player artwork is bounded media. |
 | Creator authoring and Studio | `app/creator/**`, `app/studio/**`, `src/features/studio/**`, including `SplitEngineScreens.tsx` | Semantic forms, menus, validation, loading and recovery states. |
+| Build 20 music-post authoring | `app/create-music-post.tsx` delegates to `src/features/social-music/MusicPostEditor.tsx` | Semantic editor, sound picker and recovery controls; media preview retains its bounded scrim. |
+| Build 20 Battle Arena | `app/live/battles/{index,[id]}.tsx` delegates to `src/features/live/BattleScreens.tsx` | Semantic entry, bracket, rules, moderation, voting and recovery chrome. |
+| Build 20 plans, TV and support | `app/plans.tsx`, `app/pluggd-tv.tsx`, `app/support.tsx` | Direct semantic route ownership; TV artwork is a bounded media region. |
 | Social, search, profile, settings and utility routes | The direct route or delegated screen named by each Expo entry, including `src/features/search/search-discovery-screen.tsx` | Semantic chrome; redirects render no surface of their own. |
 
 ## Approved component-level immersive regions

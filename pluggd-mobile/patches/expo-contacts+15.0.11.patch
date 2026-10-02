@@ -1,0 +1,19 @@
+diff --git a/node_modules/expo-contacts/android/src/main/java/expo/modules/contacts/ContactsModule.kt b/node_modules/expo-contacts/android/src/main/java/expo/modules/contacts/ContactsModule.kt
+--- a/node_modules/expo-contacts/android/src/main/java/expo/modules/contacts/ContactsModule.kt
++++ b/node_modules/expo-contacts/android/src/main/java/expo/modules/contacts/ContactsModule.kt
+@@ -274,12 +274,13 @@ class ContactsModule : Module() {
+ 
+     AsyncFunction("presentFormAsync") { contactId: String?, contactData: Map<String, Any>?, _: Map<String, Any?>?, promise: Promise ->
+-      ensureReadPermission()
+-
+       if (contactManipulationPromise != null) {
+         throw ContactManipulationInProgressException()
+       }
+ 
+       if (contactId != null) {
++        // Existing-contact lookup needs permission; ACTION_INSERT with supplied
++        // data delegates saving to the system UI without reading the address book.
++        ensureReadPermission()
+         val contact = getContactById(contactId, defaultFields) ?: throw ContactNotFoundException()
+         presentEditForm(contact, promise)
+       }

@@ -6,7 +6,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { useAuth } from '../../src/context/AuthProvider';
@@ -111,7 +111,7 @@ export default function StoryViewerRoute() {
           targetType: 'story',
           targetId: story.id,
           label: 'story',
-          details: `Reported from the iPhone story viewer. Creator: ${story.user_id}.`,
+          details: Platform.OS === 'android' ? `Reported from the Android story viewer. Creator: ${story.user_id}.` : `Reported from the iPhone story viewer. Creator: ${story.user_id}.`,
         }),
       },
     ];

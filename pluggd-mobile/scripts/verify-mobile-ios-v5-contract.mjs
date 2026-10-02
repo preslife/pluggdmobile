@@ -26,12 +26,13 @@ requireText(discover, "navigate(`/live/session?roomId=", 'Live Discover cards mu
 requireText(discover, "navigate('/live/create'", 'Discover must route Start a room to Live creation.');
 requireText(discover, "router.push(item.destinationRoute", 'Discover artwork must open the item destination.');
 requireText(playback, 'isPlayableTrack', 'The global player must retain URL validation.');
-requireText(playback, 'tracks.filter(isPlayableTrack)', 'The global queue must reject non-audio catalogue metadata.');
+requireText(playback, 'resolved.filter(isPlayableTrack)', 'The global queue must reject non-audio metadata after protected URL resolution.');
 
 requireText(carnival, '<CarnivalMap', 'Carnival must provide an interactive native map.');
 requireText(carnival, 'Build My Carnival', 'Carnival must provide a route builder.');
 requireText(carnival, 'Save road pack offline', 'Carnival must provide offline essentials.');
-requireText(carnival, 'No crowd-density or unofficial live-status claims', 'Carnival must reject invented live signals.');
+requireText(carnival, 'Only confirmed status updates are shown.', 'Carnival must limit status claims to confirmed information.');
+requireText(carnival, 'This is a discovery plan, not live navigation or an official operational map.', 'Carnival route previews must not claim live or official navigation.');
 requireText(carnivalService, "[1, 2].includes(data.schemaVersion)", 'Carnival must accept v1/v2 and fail closed on unsupported bundle versions.');
 requireText(carnivalService, 'buildCarnivalRoute', 'Carnival routes must be deterministic and persisted.');
 
@@ -58,11 +59,11 @@ requireText(live, 'pollRoomStatus', 'Live viewers must retain a polling fallback
 requireText(live, 'if (error) throw error;', 'Ending a live must surface backend failures instead of silently navigating away.');
 const giftTraySource = live.slice(live.indexOf('function LiveGiftTray'), live.indexOf('function DockIconButton'));
 if (giftTraySource.includes('<TextInput')) throw new Error('Opening the gift tray must not summon a keyboard.');
-requireText(config, "buildNumber: process.env.IOS_BUILD_NUMBER ?? '13'", 'The approved release branch must default to replacement iOS build 13.');
+requireText(config, "buildNumber: process.env.IOS_BUILD_NUMBER ?? '20'", 'The reviewed shared source must retain the iOS Build 20 default.');
 requireText(dock, "'/hubs'", 'Carnival hubs must belong to the Discover navigation family.');
 requireText(chrome, "normalized.startsWith('/carnival/')", 'Focused Carnival reader routes must not collide with global chrome.');
 requireText(publicAudienceFilters, 'NON_PUBLIC_TEST_PROFILE_NAMES', 'Private reviewer identities must be excluded from public recommendations.');
 requireText(communityFeed, 'isPublicProfileName(card.title)', 'Community recommendations must apply the public-profile filter.');
 requireText(liveLobby, '!isPublicProfileName(name)', 'Live creator recommendations must apply the public-profile filter.');
 
-console.log('PLUGGD iOS Discover, Carnival and Live contract verified for integrated Build 8');
+console.log('PLUGGD shared Discover, Carnival and Live Build 20 source contract verified');

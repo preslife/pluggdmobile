@@ -47,7 +47,7 @@ assert.match(communityFeed, /MobileStoriesRail[\s\S]*CommunityInternalSwitcher[\
 assert.match(communitySwitcher, /Feed[\s\S]*Boards[\s\S]*Post[\s\S]*Explore[\s\S]*Maps/, 'Community must use the approved web-parity internal dock');
 assert.match(communitySwitcher, /\/create-post/, 'Community internal dock must route its primary post action');
 assert.match(createSheet, /hasCreatorAccess[\s\S]*router\.push\('\/create'|Become a Creator|Studio/, 'Create must be exposed through role-aware floating action, not a dock tab');
-for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Memberships', 'Tickets', 'Settings', 'Inbox', 'Activity']) {
+for (const accountRoute of ['Wallet / Credits', 'Wallet / Earnings', 'Creator memberships', 'Tickets', 'Settings', 'Inbox', 'Activity']) {
   assert.match(accountHeader, new RegExp(escapeRegExp(accountRoute)), `Account menu must retain ${accountRoute}`);
 }
 

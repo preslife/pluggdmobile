@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreatorAccessGate } from '../../../components/CreatorAccessGate';
 import { PluggdImage } from '../../components/PluggdImage';
@@ -87,7 +87,7 @@ export function StudioCommerceScreen() {
 
       {tab === 'packs' ? <View style={styles.stack}><SectionHeader kicker="DIGITAL CATALOGUE" title="Sound packs" action="Pack workspace" onAction={() => router.push(buildEmbeddedStudioRoute('/studio/catalog?tab=sound-packs', 'Sound Packs', '/studio/commerce?tab=packs') as any)} />{workspace.packs.length ? workspace.packs.map((pack) => <PackCard key={pack.id} pack={pack} busy={Boolean(busy)} onToggle={(active) => void run(`pack-${pack.id}`, () => setSamplePackActive(pack.id, active), active ? 'Pack activated' : 'Pack paused')} onPublic={() => router.push(`/sample-pack/${pack.id}` as any)} onAdvanced={() => router.push(buildEmbeddedStudioRoute('/studio/catalog?tab=sound-packs', 'Sound Packs', '/studio/commerce?tab=packs') as any)} />) : <Empty icon="library-music" title="No Sound Packs yet" detail="Open the Pack workspace to upload assets, artwork and licence settings." />}</View> : null}
 
-      <View style={styles.boundary}><MaterialIcons name="verified-user" size={23} color={theme.colors.accentText} /><View style={styles.boundaryCopy}><Text style={styles.boundaryTitle}>Your shop controls stay separate from checkout</Text><Text style={styles.boundaryText}>Managing an item here never starts a purchase. Public previews open only when you choose them, while digital fan purchases keep their App Store checkout.</Text></View></View>
+      <View style={styles.boundary}><MaterialIcons name="verified-user" size={23} color={theme.colors.accentText} /><View style={styles.boundaryCopy}><Text style={styles.boundaryTitle}>Your shop controls stay separate from checkout</Text><Text style={styles.boundaryText}>{Platform.OS === 'android' ? 'Managing an item here never starts a purchase. Public previews open only when you choose them, while eligible in-app digital purchases use Google Play.' : 'Managing an item here never starts a purchase. Public previews open only when you choose them, while digital fan purchases keep their App Store checkout.'}</Text></View></View>
     </ScrollView>}
   </SafeAreaView></CreatorAccessGate>;
 }
