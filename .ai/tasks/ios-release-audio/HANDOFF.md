@@ -1,6 +1,12 @@
+## Signed Build 21 — current release phase
+
+PR9/main540d69db, checkedfa0f53e6/source equality and exact-head CI37054991921 PASS. Signed21 archive/export strict signatures, com.pluggd.mobile1.0.0(21), iPhone-only, production push/team37X2468U5U and17 linked/nontracking declarations PASS; JS/privacy bytes equal archive/export. Archive /private/tmp/pluggd-ios-final-build21/Pluggd.xcarchive; IPA /private/tmp/pluggd-ios-final-build21-export/Pluggd.ipa. IPA SHA256a8a2212f7c0b8059b21834a03a0353f327792dd460f95f5670f127235ea5db01; archiveJSaa8ae2f479fc5749b6301870a763afa1f82d651548484d788c0d34640be36794.
+
+Xcode explicitly confirmed21 uploaded; Apple processed21. Existing PLUGGD Submission QA internal group (1 tester) is assigned. Original Safari saves21 and exact3057-character factual notes, independently reloaded with Save disabled. Original August26 draft retains all15 items (app21,5 IAPs,2 groups,7 subscriptions); final Submit was not clicked. Proof /private/tmp/pluggd-build21-apple-draft.png; receipt /private/tmp/pluggd-build21-final-release-receipt.json. Official phone remains20; Mirroring locked after archive, owner unlock question pending. Exact archived21 JS in retained simulator native executable restores the same finished preview/caption/music/pending review without new upload/render/review; this does not establish physical21 or audible mix acceptance.
+
 ## Build 21 private-preview repair — 2 October 2026
 
-**IMPLEMENTED AND SERVICE-VERIFIED; NOT YET ARCHIVED OR UPLOADED.** This section supersedes the earlier Build20 pending upload/report/block/chart checks. Build20 remains the installed official TestFlight build and saved Apple draft until the replacement is actually processed and selected.
+**Historical implementation phase; signed21/upload/Apple replacement above supersedes its release status.** At that implementation checkpoint the official phone and saved Apple draft were20. Current release state is recorded above.
 
 - Scope: only the stay-open music editor requests a foreground native streaming upload; every other upload keeps its background session. Native transport failures show helpful copy without SDK URLs or local paths. Existing ownership, authentication, private buckets, identifiers, recovery and server review remain intact. No dependency, permission, privacy-category, payment or backend change.
 - Checks PASS: eight isolated tests execute the actual upload/helper/service source for interruption, missing object, lost acknowledgement, resume, auth and HTTP denial. Full native TypeScript and production Hermes export PASS; prebuild21 and generated17 linked/nontracking privacy categories PASS. CI now includes this actual-source test job.
