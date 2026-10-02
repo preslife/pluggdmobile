@@ -5,7 +5,7 @@ Mark only current, exact-source evidence as passed.
 | Gate | Current result |
 | --- | --- |
 | Build 20/21 source identity and isolated branch | PASS: reviewed two-file Build 21 carryover, no iOS build/config edits |
-| Shared and Android source/behavior suites | PASS: 110/110 source checks; 46/46 platform-plan hook/adapter fixtures; 18/18 iOS/Android upload/service mocks |
+| Shared and Android source/behavior suites | PASS: 111/111 source checks; 46/46 platform-plan hook/adapter fixtures; 18/18 iOS/Android upload/service mocks; 13 page-alignment synthetic fixtures |
 | TypeScript / Expo Doctor | PASS: tsc; Doctor 18/18 |
 | Production Android JS export | PASS: Build21 upload carryover, 3,165 modules/94 assets; `index-1babd61a070277ff54a861bf326faf0a.hbc` |
 | Clean Android config / merged manifest | CNG/config PASS: min24/target36, blocked permissions, both existing HTTPS hosts; e0 compiled manifest PASS for old apex-only source, final compiled two-host manifest PENDING |
@@ -21,7 +21,7 @@ Do not reuse the historical August checkbox results as verification of this upda
 
 ## Reproducible local evidence
 
-- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Latest exact-source source gate passes110/110, platform-plan fixture46/46 and shared upload fixtures18/18. TypeScript and fresh Doctor18/18 pass after the Android WWW App Links fix.
+- From `pluggd-mobile`: `npm run verify:android-update` runs the dynamic complete Android source list, TypeScript and official Expo Doctor. Latest source gate passes111/111, platform-plan fixture46/46 and shared upload fixtures18/18. TypeScript and fresh Doctor18/18 pass after the Android WWW App Links fix. New permanent inspector is only registered through its13-fixture synthetic wrapper; no artifact/runtime pass is inferred.
 - `node scripts/verify-android-contact-form-contract.mjs` and `patch --dry-run -p1 -i .../patches/expo-contacts+15.0.11.patch` pass. Dry-run did not modify shared iOS dependencies.
 - `EXPO_PUBLIC_APP_ENV=production ANDROID_VERSION_CODE=14 node node_modules/expo/bin/cli prebuild --platform android --no-install` passes. Ignored generated Android project is not a source patch.
 - Current production export is `/private/tmp/pluggd-android-build21-export-current`; export uses production public configuration without printing secret values. The earlier Build20 export belongs to e0 candidate provenance only.
@@ -33,6 +33,7 @@ Backend check commands and migration/activation/rollback gates are recorded inde
 ## Play and public-page preparation
 
 - Correct Chrome PLUGGD owner account: verified. Production v13 remains at 100%, managed publishing off; no update submitted.
-- Starter monthly and yearly: saved Draft, each persisted GBP/USD/EUR grid checked across 112 rows with zero mismatches. Monthly GBP4.99/USD5.99/EUR5.49; yearly GBP49.00/USD59.00/EUR54.00. Other currencies retain Google conversion. Four Creator/Pro products and real purchase tests remain required; no plan activated.
+- Starter monthly/yearly and Creator monthly/yearly: saved Draft, each persisted GBP/USD/EUR grid checked across112 rows with zero mismatches. Starter monthly GBP4.99/USD5.99/EUR5.49; yearly GBP49.00/USD59.00/EUR54.00. Creator monthly GBP12.99/USD14.99/EUR13.99; yearly GBP129.90/USD149.90/EUR139.90. Other currencies retain Google conversion. Creator yearly India renewing-price limit warning remains unresolved without silently changing prices. Pro products and real purchase tests remain required; no plan activated.
+- Maestro connection-only recovery flow PASS1/1 via identified direct emulator adbd endpoint5555; shared ADB/NTKDaemon untouched. Device still has Play13 on a4KB-page runtime, not signed14 acceptance. Exact command: `/private/tmp/pluggd-android-maestro.El3XH4/maestro/bin/maestro --host 127.0.0.1 --port 5555 --device 127.0.0.1:5555 test --format JUNIT --output /private/tmp/pluggd-maestro-connection.xml --test-output-dir /private/tmp/pluggd-maestro-connection-artifacts --debug-output /private/tmp/pluggd-maestro-connection-debug /private/tmp/pluggd-maestro-emulator-recovery.yaml`. No clearState/launch/permission grant used.
 - Canonical deletion page: HTTP200 is not proof. Current Chrome shows NotFound; Console detects old preview URL HTTP410. Selective page/privacy restoration is in the isolated web lane and is not live. No destructive live account-deletion test is authorised.
 - Mapbox 10.3.5/Android Maps11.20.1 telemetry is collected/shared for independent Mapbox analytics; device/session IDs included. Both MapView attribution controls are retained, but device opt-out operation is not yet verified. Firebase installation-ID/FCM activation needs exact compiled Google-services proof; notification refusal is not an installation-ID opt-out.
