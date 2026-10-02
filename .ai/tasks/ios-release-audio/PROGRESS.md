@@ -1,3 +1,7 @@
+CURRENT_PHASE=MAPS_PRIVACY_COMPLIANCE_REPAIR
+NEXT_ACTION=Checkpoint verified19 source; finish affected render, archive/export/sign/install and Apple19 preparation after backend integration.
+AUDIT_REQUIRED=false
+
 # Progress
 
 ## Current release evidence — 2 October 2026

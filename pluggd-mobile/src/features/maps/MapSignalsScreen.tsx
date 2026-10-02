@@ -36,6 +36,8 @@ import {
   tuneInMapSignal,
   type MapSignal,
 } from './mapSignalsService';
+import { showReportActions } from '../safety/reportActions';
+import { blockUser } from '../safety/accountSafety';
 import { DiscoveryReturnBar } from '../discovery/DiscoveryReturnBar';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 
@@ -199,7 +201,7 @@ export function MapSignalsScreen() {
   });
   const createMutation = useMutation({
     mutationFn: createAndPublishMapSignal,
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       impactHaptic();
       setComposerOpen(false);
       setDraftBody('');
@@ -209,7 +211,7 @@ export function MapSignalsScreen() {
       setDraftActivity([]);
       setDraftMood([]);
       await query.refetch();
-      Alert.alert('Signal is live', 'Your approximate map signal is now visible on PLUGGD Maps.');
+      Alert.alert(result.pendingReview ? 'Signal sent for review' : 'Signal is live', result.pendingReview ? 'Your signal is saved privately. It will appear on PLUGGD Maps after its text and any media are approved.' : 'Your approximate map signal is now visible on PLUGGD Maps.');
     },
     onError: (error: Error) => Alert.alert('Signal not published', error.message),
   });
@@ -373,7 +375,7 @@ export function MapSignalsScreen() {
       </View>
 
       {mode === 'map' ? (
-        <View style={[styles.mapControls, { bottom: Math.max(bottomInset, 100) + (selected ? 238 : 12) }]}>
+        <View style={[styles.mapControls, { bottom: Math.max(bottomInset, 100) + (selected ? 310 : 12) }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Locate me" accessibilityState={{ busy: locating }} onPress={() => void locateMe()} style={styles.mapControl}>{locating ? <ActivityIndicator size="small" color={theme.colors.text} /> : <MaterialIcons name="my-location" size={21} color={theme.colors.text} />}</Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Create a map signal" onPress={openComposer} style={[styles.mapControl, styles.createControl]}><MaterialIcons name="add" size={25} color={theme.colors.onAccent} /></Pressable>
         </View>
@@ -393,6 +395,10 @@ export function MapSignalsScreen() {
             <Pressable accessibilityRole="button" accessibilityState={{ selected: selected.tunedIn, busy: tuneMutation.isPending }} onPress={() => tuneMutation.mutate(selected.id)} style={[styles.tuneButton, selected.tunedIn && styles.tuneButtonActive]}><MaterialIcons name="sensors" size={19} color={selected.tunedIn ? theme.colors.onAccent : theme.colors.accentText} /><Text style={[styles.tuneText, selected.tunedIn && styles.tuneTextActive]}>{selected.tunedIn ? 'Tuned in' : 'Tune In'} · {formatCompact(selected.tuneInCount)}</Text></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={selected.liked ? 'Unlike signal' : 'Like signal'} accessibilityState={{ selected: selected.liked, busy: likeMutation.isPending }} onPress={() => likeMutation.mutate(selected.id)} style={styles.actionCircle}><MaterialIcons name={selected.liked ? 'favorite' : 'favorite-border'} size={21} color={selected.liked ? theme.colors.accentText : theme.colors.text} /></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={`Directions to ${label(selected)}`} onPress={() => openDirections(selected)} style={styles.actionCircle}><MaterialIcons name="directions" size={21} color={theme.colors.text} /></Pressable>
+          </View>
+          <View style={styles.selectedActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Report signal" style={{minHeight:44,justifyContent:'center',paddingHorizontal:12}} onPress={() => { if (!user) router.push('/auth/login' as never); else showReportActions({targetType:'map_signal',targetId:selected.id,label:'Maps signal'}); }}><Text style={{color:theme.colors.textSecondary}}>Report signal</Text></Pressable>
+            {selected.authorUserId && selected.authorUserId !== user?.id ? <Pressable accessibilityRole="button" accessibilityLabel={`Block ${selected.authorName}`} style={{minHeight:44,justifyContent:'center',paddingHorizontal:12}} onPress={() => { if (!user) {router.push('/auth/login' as never);return;} const authorId=selected.authorUserId!;Alert.alert('Block creator?', 'Their signals will be hidden from your map.', [{text:'Cancel',style:'cancel'},{text:'Block',style:'destructive',onPress:()=>{void blockUser(authorId).then(async()=>{setSelectedId(null);await query.refetch();Alert.alert('Creator blocked','You can manage blocked accounts in Settings.');}).catch(()=>Alert.alert('Block unavailable','Please try again.'));}}]); }}><Text style={{color:theme.colors.textSecondary}}>Block creator</Text></Pressable> : null}
           </View>
         </View>
       ) : null}
@@ -420,7 +426,7 @@ export function MapSignalsScreen() {
             <View style={styles.coordinateCard}><MaterialIcons name="privacy-tip" size={23} color={theme.colors.accentText} /><View style={styles.coordinateCopy}><Text style={styles.coordinateTitle}>{userCoordinate ? 'Using your approximate location' : 'Using the current map centre'}</Text><Text style={styles.coordinateBody}>PLUGGD publishes an approximate point unless a verified event or venue is linked. Location permission is requested only when you choose Locate me.</Text></View><Pressable accessibilityRole="button" onPress={() => void locateMe()} style={styles.locateTextButton}><Text style={styles.locateText}>{userCoordinate ? 'Update' : 'Locate me'}</Text></Pressable></View>
             <Text style={styles.inputLabel}>ACTIVITY</Text><View style={styles.wrapTags}>{ACTIVITY_FILTERS.map((tag) => <TagChip key={tag} label={tag} selected={draftActivity.includes(tag)} onPress={() => setDraftActivity((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} />)}</View>
             <Text style={styles.inputLabel}>MOOD</Text><View style={styles.wrapTags}>{MOOD_FILTERS.map((tag) => <TagChip key={tag} label={tag} selected={draftMood.includes(tag)} onPress={() => setDraftMood((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} />)}</View>
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !draftBody.trim(), busy: createMutation.isPending }} disabled={!draftBody.trim() || createMutation.isPending} onPress={publishSignal} style={[styles.publishButton, (!draftBody.trim() || createMutation.isPending) && styles.publishButtonDisabled]}>{createMutation.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <><Text style={styles.publishText}>Publish signal</Text><MaterialIcons name="north-east" size={20} color={theme.colors.onAccent} /></>}</Pressable>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !draftBody.trim(), busy: createMutation.isPending }} disabled={!draftBody.trim() || createMutation.isPending} onPress={publishSignal} style={[styles.publishButton, (!draftBody.trim() || createMutation.isPending) && styles.publishButtonDisabled]}>{createMutation.isPending ? <ActivityIndicator color={theme.colors.onAccent} /> : <><Text style={styles.publishText}>Send for review</Text><MaterialIcons name="north-east" size={20} color={theme.colors.onAccent} /></>}</Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>

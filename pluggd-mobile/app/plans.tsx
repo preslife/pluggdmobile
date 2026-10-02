@@ -162,7 +162,7 @@ export default function PlansScreen() {
           ) : null}
           {!plans.loading ? (
             <Text style={[styles.periodText, { color: theme.colors.textMuted }]}>
-              {plans.entitlement.billingProvider === 'apple' ? 'Billed by Apple' : plans.entitlement.billingProvider === 'stripe' ? 'Billed on the web' : plans.entitlement.source === 'access_code' || plans.entitlement.source === 'combined' ? 'Promotional access' : 'Included with PLUGGD'}
+              {plans.entitlement.tier === 'free' ? 'Included with PLUGGD' : plans.entitlement.billingProvider === 'apple' ? 'Billed by Apple' : plans.entitlement.billingProvider === 'stripe' ? 'Billed on the web' : plans.entitlement.source === 'access_code' || plans.entitlement.source === 'combined' ? 'Promotional access' : 'Included with PLUGGD'}
               {' · '}{plans.entitlement.commissionRate}% commission
             </Text>
           ) : null}
