@@ -1,3 +1,6 @@
+## Build20 explicit privacy alignment,2October
+Actual source: app/support.tsx persists named contact_messages; StudioConnectCardEditorScreen/connectCardEditorService persist external contact handles. App Privacy17 types published/read back in the recovered signed-in Safari window; no pending setup. Final appconfig20 and actual generated17-type plist validate the two explicit linked/functionality/nontracking categories; expo prebuild no-install PASS; full native TypeScript PASS. No behaviour/dependency change. Signed20/archive/upload and native current CI/main integration pending; physical/rights/regions/live gates retained.
+
 ## Current Build 19 release evidence — 2 October 2026
 
 **NOT CLEARED TO RECORD.** This section supersedes every earlier phase/status below; earlier evidence remains historical.

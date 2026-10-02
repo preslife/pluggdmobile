@@ -1,3 +1,10 @@
+CURRENT_PHASE=BUILD20_PRIVACY_ALIGNMENT
+NEXT_ACTION=Verify and merge explicit creator-contact/support manifest categories, archive/upload20 and replace the saved19 draft; phone/rights/live gates remain.
+AUDIT_REQUIRED=false
+
+## Superseding Safari correction and source alignment
+2026-10-02 user corrected the Safari-window assumption. Existing signed-in window recovered;19 processed/selected/saved and15-item draft retained. App Privacy17 categories published/read back (all linked, no tracking, functionality; existing Product Interaction also Analytics). Actual native support form persists named requests; Connect Card persists external contact/social handles. Declare both explicit categories in the app manifest as well as generic OtherData/UserContent: replacement20, no functional/dependency change. Existing scoped privacy/archive/upload authority persists. Final recording remains blocked.
+
 CURRENT_PHASE=BUILD19_UPLOADED_EVIDENCE_BLOCKED
 NEXT_ACTION=Restore paired-phone connectivity, install/read back19 and complete physical acceptance; verify Apple19/privacy/15items and resolve owner rights/China facts before recording.
 AUDIT_REQUIRED=false

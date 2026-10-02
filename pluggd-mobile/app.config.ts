@@ -34,7 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     requireFullScreen: true,
     usesAppleSignIn: true,
-    buildNumber: process.env.IOS_BUILD_NUMBER ?? '19',
+    buildNumber: process.env.IOS_BUILD_NUMBER ?? '20',
     bundleIdentifier: 'com.pluggd.mobile',
     entitlements: {
       'aps-environment': IS_PRODUCTION ? 'production' : 'development',
@@ -55,6 +55,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     privacyManifests: {
       NSPrivacyTracking: false,
       NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContactInfo',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCustomerSupport',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
         {
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhoneNumber',
           NSPrivacyCollectedDataTypeLinked: true,
