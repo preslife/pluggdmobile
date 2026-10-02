@@ -1,11 +1,23 @@
-CURRENT_PHASE=BUILD21_ADMIN_PRIVATE_MODERATION_VERIFIED_OWNER_GATES
-NEXT_ACTION=Resolve the exact Maps QA publication approval and complete controlled Battle/direct-phone/lifecycle/latest-OS acceptance, then owner rights/region facts and final footage/Submit handoff. Do not restart the audit or rebuild unchanged native source.
+CURRENT_PHASE=BUILD21_IOS27_PHYSICAL_MODERATION_VERIFIED_OWNER_GATES
+NEXT_ACTION=Await the owner-started PLUGGD QA BUILD21 public test, join through normal Safari as a viewer, verify picture and captured sound, then end the test. Direct-phone Green Room preview/scroll/controls pass. Continue the retained Battle/account/StoreKit, Maps/rights/storefront and footage gates without restarting the audit or rebuilding unchanged source.
 AUDIT_REQUIRED=false
 EDIT_AUTHORITY=Existing scoped release approval; do not ask for additional PR/release permission.
 BRANCH_WORKTREE=codex/ios-release-audio / /private/tmp/pluggd-ios-release-audio
 LATEST_TASK_COMMIT=540d69dbd098327b64b16b7eb8213029402096c3 (merged PR9/main); checked source fa0f53e61635c2c92dc3906d283f9e16b7e4236a.
 CHANGED_FILES=app.config.ts, music service, storageUpload helper, actual-source behavior test, CI and matching task records only.
 CLEANUP_STATE=Retain all source and signed20/earlier recovery; no destructive cleanup.
+
+## Build 21 on iOS 27.0.1 — 2 October 2026
+
+Fresh connected device details, the actual Settings version and a bundle-only installed-app query confirm iPhone 15 Pro Max / iOS 27.0.1 (24A446) / com.pluggd.mobile 1.0.0 (21). Official Build 21 retains reviewer login, real Home content, audible Glass Moon Play/progress/Pause, separate release Open, active Apple Starter access and 1,971 credits. The owner confirmed clear audio after the update. Full UI close/relaunch and Continue draft restored the revised 43-character caption, Glass Moon and eight-second preview.
+
+The physical caption replacement created a fresh immutable pending review, which normal Fly Jones Safari watched through 8/8 and rejected. Correct actor, social_music target and reject audit persisted; the dialog closed and queue counts updated. Official Build 21 displayed the Community Guidelines rejection and retained the editable draft. The old rejected review is unchanged and no public QA music post exists. Exact IDs, times and proofs are in VERIFY.md and the local consolidated receipt.
+
+DIRECT_GREEN_ROOM_OWNER_VERIFIED: the owner explicitly answered “Preview, scrolling and controls work” after checking the actual phone camera preview, finger scrolling, Camera on/off, Front/Back camera and Mic on/off. The prepared room was PLUGGD QA BUILD21 with Public room OFF and Go Live untapped at that confirmation. Mirroring's camera-unavailable notice is an Apple limitation. Local preview does not create a room; Go Live is a separate action. Initial default-public preparation was rejected without execution, then the source-verified private-preview retry was accepted. Captured microphone sound, host/viewer transmission, permission denial and VoiceOver are separate checks.
+
+LIVE_VIEWER_READY: the original Safari Live Sessions page is ready with its existing signed-in viewer account; the PLUGGD.fm admin identity is separate. Current production participant policies require prior access for private rooms. No viewer membership or permission was granted. The owner has been asked to change this exact QA room to public, point the camera at a blank wall, use only test words, start it directly on the phone and report when running. This action and actual viewer reception remain pending; do not infer a broadcast or approval from the earlier preview answer. Viewer proof: /private/tmp/pluggd-build21-live-viewer-ready.png.
+
+Recording remains on hold for controlled Live/Battle/account/StoreKit lifecycle acceptance, exact Maps publication approval, retrievable music/reuse/review/marketing rights and informed signature, mainland-China permits or explicit exclusion, cleared screenshots, actual footage/eight truthful answers and final Apple readback/Submit. Existing scoped release approval persists. Native source, CI, archive and saved Apple Build 21 evidence are unchanged. No rebuild, new deployment, new purchase, public QA video, deletion, signature or Submit occurred in this acceptance pass.
 
 ## Build 21 admin moderation — verified release and remaining owner gates, 2 October 2026
 
@@ -17,9 +29,9 @@ MAPS_APPROVAL_PENDING: normal Safari loaded exact controlled text-only signal c0
 
 Proofs: /private/tmp/pluggd-build21-report-context-verified.png, /private/tmp/pluggd-build21-private-admin-preview.png, /private/tmp/pluggd-build21-moderation-rejection-verified.png, /private/tmp/pluggd-build21-simulator-rejected-draft.png, /private/tmp/pluggd-build21-simulator-replacement-pending.png and /private/tmp/pluggd-build21-moderation-replacement-approved.png. Private signed preview URLs/tokens are excluded.
 
-Owner confirmed normal Fly Jones Safari sign-in; no access grant/reset. The physical iPhone update is still running per owner; leave it undisturbed until the pending completion reply. Remaining gates: controlled Battle entry/vote/progression with informed age/rights/rules acceptance; direct-phone Live/permissions/gestures/VoiceOver/background; disposable registration/deletion and StoreKit renewal/expiry; current OS/About proof; retrievable reuse/review/marketing rights and current informed signature; mainland-China permits or explicit exclusion; cleared screenshots, real Build21 footage/eight truthful answers and final Apple readback/Submit. Existing scoped release authority persists. Recording is not yet cleared. Preserve current and earlier recovery artifacts, all history, source worktrees and unrelated dirty files; no cleanup/deletion.
+Owner confirmed normal Fly Jones Safari sign-in; no access grant/reset. The owner completed the iPhone update; current iOS27 acceptance above supersedes that earlier update handoff. Remaining gates: controlled Battle entry/vote/progression with informed age/rights/rules acceptance; Live host/viewer, permission denial, VoiceOver/background; disposable registration/deletion and StoreKit renewal/expiry; retrievable reuse/review/marketing rights and current informed signature; mainland-China permits or explicit exclusion; cleared screenshots, real Build21 footage/eight truthful answers and final Apple readback/Submit. Existing scoped release authority persists. Recording is not yet cleared. Preserve current and earlier recovery artifacts, all history, source worktrees and unrelated dirty files; no cleanup/deletion.
 
-## Signed Build 21 — current release phase
+## Retained signed Build 21 preparation — OS and moderation acceptance superseded above
 
 PR9/main540d69db, checkedfa0f53e6/source equality and exact-head CI37054991921 PASS. Signed21 archive/export strict signatures, com.pluggd.mobile1.0.0(21), iPhone-only, production push/team37X2468U5U and17 linked/nontracking declarations PASS; JS/privacy bytes equal archive/export. Archive /private/tmp/pluggd-ios-final-build21/Pluggd.xcarchive; IPA /private/tmp/pluggd-ios-final-build21-export/Pluggd.ipa. IPA SHA256a8a2212f7c0b8059b21834a03a0353f327792dd460f95f5670f127235ea5db01; archiveJSaa8ae2f479fc5749b6301870a763afa1f82d651548484d788c0d34640be36794.
 
