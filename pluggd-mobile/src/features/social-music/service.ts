@@ -132,7 +132,9 @@ export async function renderMusicDraft(draft: MusicDraft, checkpoint: (draft: Mu
     const ext = current.media!.mimeType === 'image/png' ? 'png' : current.media!.kind === 'photo' ? 'jpg' : current.media!.mimeType === 'video/quicktime' ? 'mov' : 'mp4';
     const path = `${current.userId}/${current.uploadId}/source.${ext}`;
     try {
-      await uploadFileToSupabaseStorage({ bucket: 'social-music-drafts', path, uri: current.media!.uri, contentType: current.media!.mimeType });
+      // The editor stays open for preview preparation; interrupted uploads resume
+      // from this saved path without creating a second object or render job.
+      await uploadFileToSupabaseStorage({ bucket: 'social-music-drafts', path, uri: current.media!.uri, contentType: current.media!.mimeType, foreground: true });
     } catch (uploadError) {
       // A lost upload response must not cause a duplicate object or overwrite.
       const { data, error } = await supabase.storage.from('social-music-drafts').list(`${current.userId}/${current.uploadId}`, { search: `source.${ext}` });

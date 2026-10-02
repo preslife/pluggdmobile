@@ -35,3 +35,17 @@ jobs:
         run: npm ci
       - name: Run locale integration tests
         run: npm run test:integration
+  music-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify native upload interruption and draft recovery
+        run: node pluggd-mobile/scripts/verify-music-upload-behaviour.mjs

@@ -9,6 +9,7 @@ User instruction: update the Android application already live since 19 August to
 - Branch: `codex/android-build20-parity`.
 - Worktree: `/Users/apple/.codex/worktrees/android-build20-parity/pluggd-mobile-workspace`.
 - Starting source: `1089831508f492ce07a66aeb2cd77fbcc47a6f6b`, with Build 20 application source `bc5e72bf4a4d606a13b622e3521dd904a00925e9` equal to merged native main `ac22da2e1ac5da5f460f37aca589dce307efd60b`.
+- Current iOS finalisation advanced to Build 21 at `540d69dbd098327b64b16b7eb8213029402096c3`. Carry only its two reviewed shared upload changes and actual-source tests; do not import iOS build-number configuration or another agent's task records. Foreground session selection is an iOS-only transport setting; Android-relevant change is safe transport-error copy.
 - Historical Android source: `codex/android-v1` / `c1b387a3`, production version code 13. Current Play state still needs live confirmation.
 - Preserve the dirty primary mobile checkout, active iOS worktree, signed iOS candidates and production data. Never merge into main without explicit approval.
 - Any backend delta uses the current web/Supabase source in an isolated branch, never wholesale deployment of mobile's Supabase directory.

@@ -30,6 +30,7 @@ const requiredBehaviorChecks = [
   'verify-ios-live-room-recovery.mjs', 'verify-android-platform-plans.mjs',
   'verify-android-platform-plan-hook-behavior.mjs',
   'verify-android-contact-form-contract.mjs',
+  'verify-music-upload-behaviour.mjs',
   'verify-mobile-android-media-zoom-contract.mjs', 'verify-mobile-contract-source-tools.mjs',
 ];
 for (const check of requiredBehaviorChecks) assert.ok(scripts.includes(check), `Android source gate must include ${check}`);
