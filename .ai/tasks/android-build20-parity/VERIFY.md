@@ -8,8 +8,8 @@ Mark only current, exact-source evidence as passed.
 | Shared and Android source/behavior suites | PASS: 110/110 source checks; 46/46 platform-plan hook/adapter fixtures; 18/18 iOS/Android upload/service mocks |
 | TypeScript / Expo Doctor | PASS: tsc; Doctor 18/18 |
 | Production Android JS export | PASS: Build21 upload carryover, 3,165 modules/94 assets; `index-1babd61a070277ff54a861bf326faf0a.hbc` |
-| Clean Android config / merged manifest | CNG/config PASS: min 24, target/compile 36, address-book reads blocked; compiled merged manifest PENDING |
-| Signed AAB / Billing / 16 KB native inspection | e0 AAB signature/Billing9.1.0/manifest/BundleConfig/LOAD PASS; GNU_RELRO alignment FAIL (40 arm64, 41 x86_64), runtime PENDING; AAB predates Build 21 upload carryover |
+| Clean Android config / merged manifest | CNG/config PASS: min24/target36, blocked permissions, both existing HTTPS hosts; e0 compiled manifest PASS for old apex-only source, final compiled two-host manifest PENDING |
+| Signed AAB / Billing / 16 KB native inspection | e0 signature/Billing9.1.0/manifest/BundleConfig/LOAD PASS; conservative GNU_RELRO end-modulo flags (40 arm64, 41 x86_64) under full-layout/suffix-rule review, runtime PENDING; AAB predates Build21 carryover |
 | Current phone/tablet/foldable rendered QA | PENDING |
 | Google credits / memberships / platform plans / restoration | PENDING |
 | Audio, media editor, Maps, Battle and lifecycle checks | PENDING |

@@ -196,20 +196,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.WRITE_EXTERNAL_STORAGE',
     ],
     ...(GOOGLE_SERVICES_FILE ? { googleServicesFile: GOOGLE_SERVICES_FILE } : {}),
-    intentFilters: [
-      {
-        action: 'VIEW',
-        autoVerify: true,
-        category: ['BROWSABLE', 'DEFAULT'],
-        data: [
-          {
-            scheme: 'https',
-            host: APP_LINK_HOST,
-            pathPrefix: '/',
-          },
-        ],
-      },
-    ],
+    intentFilters: NOTIFICATION_LINK_HOSTS.map((host) => ({
+      action: 'VIEW',
+      autoVerify: true,
+      category: ['BROWSABLE', 'DEFAULT'],
+      data: [
+        {
+          scheme: 'https',
+          host,
+          pathPrefix: '/',
+        },
+      ],
+    })),
     predictiveBackGestureEnabled: true,
     versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 14),
     permissions: ['CAMERA', 'RECORD_AUDIO', 'INTERNET', 'POST_NOTIFICATIONS'],

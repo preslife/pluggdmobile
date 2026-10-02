@@ -108,6 +108,20 @@ assert.ok(
     filter.data?.some((item) => item.scheme === 'https' && item.host === 'pluggd.fm'),
   ),
 );
+// Public/canonical links and allowed push links use both PLUGGD hosts. A valid
+// association file alone cannot add a host missing from the native manifest.
+const verifiedLinkFilters = publicConfig.android.intentFilters.filter((filter) => filter.autoVerify);
+assert.deepEqual(
+  verifiedLinkFilters.flatMap((filter) => filter.data.map((item) => item.host)).sort(),
+  ['pluggd.fm', 'www.pluggd.fm'],
+);
+for (const filter of verifiedLinkFilters) {
+  assert.equal(filter.action, 'VIEW');
+  assert.deepEqual(filter.category, ['BROWSABLE', 'DEFAULT']);
+  assert.equal(filter.data.length, 1, 'each HTTPS host has an independent verified filter');
+  assert.equal(filter.data[0].scheme, 'https');
+  assert.equal(filter.data[0].pathPrefix, '/');
+}
 const pluginNames = publicConfig.plugins.map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin));
 assert.ok(pluginNames.includes('expo-notifications'));
 assert.ok(pluginNames.includes('expo-camera'));
