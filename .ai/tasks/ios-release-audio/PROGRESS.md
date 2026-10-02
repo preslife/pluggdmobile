@@ -1,14 +1,25 @@
-CURRENT_PHASE=BUILD20_PURCHASE_RESTORE_VERIFIED
-NEXT_ACTION=Continue controlled two-account safety/media/Live acceptance using the owner-provided second account; resolve rights/regions and remaining device/lifecycle evidence before recording/submission.
+CURRENT_PHASE=BUILD21_PRIVATE_PREVIEW_VERIFIED_RELEASE_PREPARATION
+NEXT_ACTION=Checkpoint the verified upload repair and21 identity; push the approved PR, verify exact-head CI, merge and archive/export/upload21, then replace Apple20 and install official TestFlight21 before final device/admin/owner gates.
 AUDIT_REQUIRED=false
-
-EDIT_AUTHORITY=Existing scoped release approval; no additional release permission required.
+EDIT_AUTHORITY=Existing scoped release approval; do not ask for additional PR/release permission.
 BRANCH_WORKTREE=codex/ios-release-audio / /private/tmp/pluggd-ios-release-audio
-LATEST_TASK_COMMIT=bc5e72bf4a4d606a13b622e3521dd904a00925e9 (checked PR8 head); merged application main ac22da2e1ac5da5f460f37aca589dce307efd60b.
-CHANGED_FILES=Task .ai registry/PROGRESS/VERIFY/HANDOFF only since source release; no additional product change.
-CLEANUP_STATE=Retain worktree and signed20/earlier recovery artifacts; no destructive cleanup.
+LATEST_TASK_COMMIT=1089831508f492ce07a66aeb2cd77fbcc47a6f6b (previous evidence checkpoint); new21 source checkpoint follows.
+CHANGED_FILES=app.config.ts, music service, storageUpload helper, actual-source behavior test, CI and matching task records only.
+CLEANUP_STATE=Retain all source and signed20/earlier recovery; no destructive cleanup.
 
-## Current Build 20 release evidence — 2 October 2026
+## Build 21 private-preview repair — 2 October 2026
+
+**IMPLEMENTED AND SERVICE-VERIFIED; NOT YET ARCHIVED OR UPLOADED.** This section supersedes the earlier Build20 pending upload/report/block/chart checks. Build20 remains the installed official TestFlight build and saved Apple draft until the replacement is actually processed and selected.
+
+- Scope: only the stay-open music editor requests a foreground native streaming upload; every other upload keeps its background session. Native transport failures show helpful copy without SDK URLs or local paths. Existing ownership, authentication, private buckets, identifiers, recovery and server review remain intact. No dependency, permission, privacy-category, payment or backend change.
+- Checks PASS: eight isolated tests execute the actual upload/helper/service source for interruption, missing object, lost acknowledgement, resume, auth and HTTP denial. Full native TypeScript and production Hermes export PASS; prebuild21 and generated17 linked/nontracking privacy categories PASS. CI now includes this actual-source test job.
+- Real service PASS: the retained generated58525-byte eight-second clip uploaded privately and rendered once. Job a22fb061-20f6-4d3e-ad08-2e8024a8fe07 ready in6.5seconds; exact recipe retained (start1s/duration5s/offset0.1s/music0.79/original0.61/content8s). Actual finished preview opened and its play/pause/progress controls worked. Simulator candidate uses the unchanged native20 executable plus repaired production JS; it is not official21 or physical upload proof. Audible mix remains a direct-device check.
+- Normal private queue PASS: actual app Submit for review showed saved-draft/awaiting-review guidance. Review7ba8ed68-d56d-4b6f-b218-d246041712f7, moderation48a6ff5e-0837-47ad-a5bd-9f5aa27ad92e, expected postcd20eddd-b35b-4090-9281-c1c3a9da8aaa. Database confirms pending, exact QA caption, zero public posts/published objects and both private buckets. One normal Check review retry retained the same pending draft. No approval, publication or music-rights clearance inferred. Evidence /private/tmp/pluggd-native-upload-repair-finished-preview.png and /private/tmp/pluggd-native-upload-repair-private-review.png.
+- Web safety now VERIFIED: PR211/main15fc897b repaired genuine authenticated INSERT/RETURNING; PR212/mainf8bc7fc8 repaired reciprocal profile reads. Required CI and all356 migrations PASS; production dpl_BCFbhVTEoQtjTvhk7D3xqZB51YSf serves exactf8bc7fc8. Physical20 report persisted once; physical block and normal simulator unblock plus the same reciprocal Safari profile readback PASS. Public text QA post82fed68c-ef2c-4c34-9920-01c8b159a507 and routine reportf20e9b3c-07e6-4fc9-83a7-a225cfccace9 retained. Earlier OlaKingdom block preserved. Physical20 Maps private pending-review and second-account absence PASS; physical chart Play/Open PASS with audible confirmation separate.
+- Recovery: retain signed20, all earlier release artifacts, source worktrees and provider/edge receipts. If21 fails acceptance, keep20 selected and repair the contained failure; no release submission or cleanup. Existing approved archive/upload/install/draft preparation sequence applies without another permission request.
+- Remaining gates: actual21 archive/signature/source/CI/upload/TestFlight/Apple readback; controlled admin review and Battle progression, direct-phone Live/camera/mic/mix/accessibility/background, disposable account lifecycle, StoreKit renewal/expiry and latest-OS evidence; informed rights/marketing asset clearance and mainland-China facts; exact final video and owner Submit for Review. Neither known QA identity has admin access; no roles granted.
+
+## Historical Build 20 release evidence — 2 October 2026
 
 **NOT CLEARED TO RECORD.** This supersedes older build, Safari-access and iCloud-sync blocker claims below. Existing scoped release approval persists.
 
