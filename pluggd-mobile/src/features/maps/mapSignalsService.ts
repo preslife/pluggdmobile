@@ -166,5 +166,6 @@ export async function createAndPublishMapSignal(input: CreateMapSignalInput) {
 
   const { data: published, error: publishError } = await (supabase as any).rpc('publish_map_signal', { p_signal_id: signalId });
   if (publishError) throw new Error(`Your signal was saved as a draft but could not be published. ${publishError.message || ''}`.trim());
-  return { id: clean((Array.isArray(published) ? published[0] : published)?.id) || signalId };
+  const result = Array.isArray(published) ? published[0] : published;
+  return { id: clean(result?.id) || signalId, pendingReview: result?.status !== 'published' || result?.moderation_status !== 'approved' };
 }

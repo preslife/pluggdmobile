@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import vm from 'node:vm';
+const require=createRequire(import.meta.url),ts=require('typescript');
+let publishError=null,status='draft',moderation='pending';const calls=[];
+const client={rpc:async(name,args)=>{calls.push({name,args});return name==='create_map_signal'?{data:{id:'saved-signal'},error:null}:{data:{id:'saved-signal',status,moderation_status:moderation},error:publishError};}};
+const code=ts.transpileModule(readFileSync(new URL('../src/features/maps/mapSignalsService.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const exports={};vm.runInNewContext(code,{exports,require:name=>{assert.equal(name,'../../lib/supabase');return{ supabase:client };},Date});
+const input={body:'Local music',latitude:51.507351,longitude:-0.127758,activityTags:[],moodTags:[],precision:'approximate'};
+assert.deepEqual(JSON.parse(JSON.stringify(await exports.createAndPublishMapSignal(input))),{id:'saved-signal',pendingReview:true});
+assert.equal(calls[0].args.p_location_precision,'approximate');assert.equal(calls[1].args.p_signal_id,'saved-signal');
+status='published';moderation='approved';assert.equal((await exports.createAndPublishMapSignal(input)).pendingReview,false);
+moderation='pending';assert.equal((await exports.createAndPublishMapSignal(input)).pendingReview,true);
+publishError={message:'Network unavailable'};await assert.rejects(exports.createAndPublishMapSignal(input),/saved as a draft/);
+console.log('PASS: native Maps pending/approved feedback and saved-draft publication failure');

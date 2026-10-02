@@ -60,7 +60,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
     commissionRate: 5,
     commission: '5% platform commission',
     summary: 'Grow your audience and operate with professional creator tools.',
-    features: ['Advanced live streaming', 'Full analytics', 'AI content tools', 'Host events', 'Private collaboration tools', 'Verified badge'],
+    features: ['Advanced live streaming', 'Full analytics', 'Host events', 'Private collaboration tools', 'Verified badge'],
     featured: true,
   },
   {
@@ -78,6 +78,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
 ];
 
 const RETIRED_PLATFORM_PLAN_COPY = new Set([
+  'ai content tools',
   'streaming payout pool',
   'advanced ai studio',
   'content id protection',

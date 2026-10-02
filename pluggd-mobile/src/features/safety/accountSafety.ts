@@ -41,7 +41,7 @@ export async function unblockUser(blockedUserId: string) {
 }
 
 export async function reportContent(input: {
-  targetType: 'release' | 'beat' | 'post' | 'profile' | 'comment' | 'blog_post' | 'story' | 'battle_entry';
+  targetType: 'release' | 'beat' | 'post' | 'profile' | 'comment' | 'blog_post' | 'story' | 'battle_entry' | 'map_signal';
   targetId: string;
   reason: string;
   details?: string;
