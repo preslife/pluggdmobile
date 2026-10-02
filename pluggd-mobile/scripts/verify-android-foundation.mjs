@@ -139,6 +139,9 @@ const notificationPlugin = publicConfig.plugins.find((plugin) => Array.isArray(p
 assert.equal(notificationPlugin?.[1]?.icon, './assets/notification-icon.png');
 
 const eas = JSON.parse(read('eas.json'));
+// EAS's Git client checks ignores('.git') before deleting clone metadata.
+// The directory-only '.git/' rule does not match that bare-name query.
+assert.match(read('../.easignore'), /^\.git$/m, 'EAS archive must exclude clone metadata, not only copied .git/ entries');
 assert.equal(eas.build.development.android.buildType, 'apk');
 assert.equal(eas.build.preview.android.buildType, 'apk');
 assert.equal(eas.build.production.android.buildType, 'app-bundle');

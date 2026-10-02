@@ -30,8 +30,11 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# EAS checks the bare .git name before removing clone metadata from the archive.
+# A trailing slash excludes copied files but misses that explicit deletion gate.
+.git
+
 # Repository-only tooling and history are not Android build inputs
-.git/
 .claude/
 .codex/
 .agents/
