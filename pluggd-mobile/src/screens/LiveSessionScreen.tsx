@@ -23,6 +23,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -197,6 +198,9 @@ export default function LiveSessionScreen() {
   const theme = usePluggdTheme();
   const styles = useLiveSessionStyles();
   const insets = useSafeAreaInsets();
+  const liveViewport = useWindowDimensions();
+  const liveViewportRef = useRef(liveViewport);
+  liveViewportRef.current = liveViewport;
   const { roomId, preview, previewSheet, previewReaction, initialCamera, initialMic, initialFacing, audioRoute } = useLocalSearchParams<{
     roomId?: string;
     preview?: string;
@@ -668,7 +672,7 @@ export default function LiveSessionScreen() {
       if (liveMode === 'audio_room') {
         (engine as any).disableVideo?.();
       } else {
-        if (nextRole !== 'audience') configurePortraitLiveVideo(engine);
+        if (nextRole !== 'audience') configurePortraitLiveVideo(engine, liveViewportRef.current);
         engine.enableVideo();
         if (nextRole !== 'audience') {
           if (!initialMediaRef.current.frontCamera) {
