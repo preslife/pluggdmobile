@@ -1,0 +1,64 @@
+appId: com.pluggd.mobile
+name: Android14 compact public shell and navigation only
+tags:
+  - android14
+  - public-smoke
+---
+# Verify installed code14 and Play certificate before candidate acceptance.
+# Omitting the empty map makes Maestro grant permissions by default.
+- launchApp:
+    clearState: false
+    clearKeychain: false
+    permissions: {}
+# The first Play cold start may still be initializing native/JS services.
+# Wait for the actual dock; a timeout remains a failed acceptance gate.
+- extendedWaitUntil:
+    visible:
+      id: dock-tab-home
+    timeout: 120000
+- assertVisible:
+    id: dock-tab-home
+- assertVisible:
+    id: dock-tab-discover
+- assertVisible:
+    id: dock-tab-community
+- assertVisible:
+    id: dock-tab-events
+- assertVisible:
+    id: dock-tab-store
+- tapOn:
+    id: dock-tab-home
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- takeScreenshot: 00-home
+- tapOn:
+    id: dock-tab-discover
+- assertVisible:
+    id: dock-tab-discover
+    selected: true
+- takeScreenshot: 01-discover
+- tapOn:
+    id: dock-tab-community
+- assertVisible:
+    id: dock-tab-community
+    selected: true
+- takeScreenshot: 02-community
+- tapOn:
+    id: dock-tab-events
+- assertVisible:
+    id: dock-tab-events
+    selected: true
+- takeScreenshot: 03-events
+- tapOn:
+    id: dock-tab-store
+- assertVisible:
+    id: dock-tab-store
+    selected: true
+- takeScreenshot: 04-store
+- tapOn:
+    id: dock-tab-home
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- takeScreenshot: 05-home-return

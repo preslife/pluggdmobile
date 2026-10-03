@@ -1,0 +1,48 @@
+appId: com.pluggd.mobile
+name: Android14 real release navigation and playback progress
+tags:
+  - android14
+  - public-media
+---
+# Run after the public shell leaves Home selected. No fixture/demo track.
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- assertNotVisible:
+    id: mini-player-open
+- tapOn: View release by Elevatetoday
+- extendedWaitUntil:
+    visible: Listen to Still ah Link
+    timeout: 60000
+- assertNotVisible:
+    id: mini-player-open
+- takeScreenshot: 00-release-open-without-play
+- back
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- tapOn: Play Still ah Link by Elevatetoday
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- runFlow:
+    when:
+      visible: Expand mini player
+    commands:
+      - tapOn: Expand mini player
+- extendedWaitUntil:
+    visible:
+      id: mini-player-open
+    timeout: 60000
+- assertVisible: Pause media
+- extendedWaitUntil:
+    visible:
+      text: ".*0:(0[1-9]|[1-5][0-9]) / [0-9]+:[0-5][0-9].*"
+    timeout: 60000
+- takeScreenshot: 01-home-real-playback-progress
+- tapOn: Pause media
+- assertVisible: Play media
+- assertVisible:
+    id: dock-tab-home
+    selected: true
+- takeScreenshot: 02-home-paused

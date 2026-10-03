@@ -5,7 +5,7 @@ network data-flow audit against the final AAB before submission. Regional hosted
 checkout does not remove the need to disclose purchase and transaction data
 processed by PLUGGD's backend.
 
-## Android update audit — 2026-10-02
+## Android update audit — 2026-10-02/03
 
 This update includes Build 20's Maps signals, date-of-birth age gate, private
 Connect Card views, support and creator financial tools. The August inventory
@@ -24,7 +24,7 @@ vendor data-use terms. See Google's [Data safety guidance](https://support.googl
 | Name and public profile | Yes | User-selected public visibility | Account and creator profile | Linked to account; encrypted in transit |
 | Email address | Yes | No | Authentication, safety, support | Linked; not public by default |
 | Phone number | User optional | User-selected Connect Card audience | Professional contact | Public/business/contract details follow view and token permissions |
-| Address | User optional | Authorised Connect Card audience | Professional contact and contracts | Protected business/contract details, not address-book import |
+| Address | User optional | On-behalf shipping/payment processing and user-selected professional audience | Physical fulfilment and professional account details | Stripe checkout returns shipping address to the PLUGGD orders ledger; the controlled hosted Connect Card saves optional company_address. Not address-book import |
 | Other personal information | Yes for age gate; professional fields optional | User-selected professional fields only | Age assurance and creator identity | Date of birth enforces 16+ accounts/18+ Battle participation; nationality and private professional details remain access-controlled |
 | User ID | Yes | No | Authentication, abuse prevention, entitlements | Supabase identifier and opaque billing binding |
 | Purchase history | Yes | With payment provider | Billing, fulfilment, fraud, refunds | Play/Stripe/Apple identifiers; no raw card data |
@@ -36,7 +36,7 @@ vendor data-use terms. See Google's [Data safety guidance](https://support.googl
 | Contacts/address book | No | Explicit system-form transfer only | Connect Card save action | Android new-contact form; READ_CONTACTS/WRITE_CONTACTS blocked; PLUGGD does not read or upload the address book |
 | Precise location | User optional | Yes: Mapbox location/telemetry processing; explicitly chosen venue visibility | App functionality and Mapbox analytics | Device or selected coordinates; submitted signal coordinates stored privately with account; no background location; SDK attribution supplies telemetry opt-out |
 | Approximate location/country | Yes; Maps location optional, other regional collection may be required | Yes: Mapbox processing; approved approximate signals visible publicly | App functionality, regional commerce policy and Mapbox analytics | Public signals use coarse area unless a venue is explicitly selected; storefront/locale/IP-derived market where required; do not mark the whole category optional without checking every collection path |
-| App interactions | Yes | Analytics processors if configured | Reliability and product analytics | No cross-company advertising tracking |
+| App interactions | Yes | Yes: Mapbox independent map-use analytics; other processors only if configured | Reliability and product analytics | Mapbox telemetry is not omitted under a blanket service-provider exemption; no cross-company advertising tracking |
 | Crash diagnostics | Conditional | Sentry/Google | Reliability and security | Sentry activates only when its DSN is configured; default PII, screenshots, view hierarchy, logs, and replay are disabled; production retention policy required |
 | Device identifiers | Yes; required when Firebase auto-init is configured | Yes for Mapbox telemetry session IDs; Firebase/Expo processing may qualify as an on-behalf-of service-provider exemption | App functionality, push, security, billing and Mapbox analytics | Expo/FCM push token, Firebase installation ID, Play billing identifiers and rotating Mapbox telemetry session IDs; declining notification permission alone does not stop Firebase installation-ID collection |
 | Files and documents | User optional | No | Beat licences, exports, uploads | App-scoped or signed URLs; access-controlled |
@@ -58,16 +58,33 @@ Google-services configuration in the exact compiled candidate. References:
 [Mapbox telemetry](https://www.mapbox.com/telemetry), and
 [Firebase Play disclosure](https://firebase.google.com/docs/android/play-data-disclosure).
 
+Hosted address evidence at deployed web source d2c754f0: the native basket calls
+enhanced-store-checkout; physical goods request shipping_address_collection.
+stripe-webhook receives shipping_details.address and passes it through
+storeInventoryAccounting to complete_store_order_with_inventory, which persists
+orders.shipping_address. CreatorStudio/modules/ConnectCardModule saves optional
+company_address from the first-party professional form opened by the native
+editor. A native-only input search would miss both controlled hosted paths.
+
+On 3 October the updated questionnaire was saved in Play Console for review,
+including optional address/phone/other personal/creator financial data, optional
+precise location, Mapbox location/interactions/IDs analytics sharing, and required
+device IDs. Existing v13 payment/crash disclosures were retained. This is not a
+claim that Sentry is active in v15 or that the app update has been submitted.
+Partial-data deletion remains a separate capability: the current form retains
+No; no new dedicated request URL or partial-deletion claim was introduced.
+Account deletion is available through the URL below.
+
 ## Security and deletion assertions
 
 - Data is encrypted in transit; sensitive server-held data must use provider
   encryption at rest and least-privilege access.
 - PLUGGD does not sell personal data or use app data for cross-app advertising
   tracking.
-- Users can initiate permanent account deletion in the app. The intended public
-  URL `https://www.pluggd.fm/account-deletion` currently renders NotFound in the
-  2026-10-02 live check and must be restored and rendered before the Play form
-  can claim it as a working deletion page. Statutory transaction, fraud, tax,
+- Users can initiate permanent account deletion in the app. The public URL
+  `https://www.pluggd.fm/account-deletion` was restored in web source d2c754f0,
+  verified HTTP200 and rendered at390/1440, and validated/saved in Play Console.
+  No destructive live-account test was performed. Statutory transaction, fraud, tax,
   and licence records may be retained only as described by the privacy policy.
 - Notification URLs, OAuth callbacks, and hosted-checkout callbacks accept only
   PLUGGD-owned hosts and approved internal routes.
