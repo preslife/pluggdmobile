@@ -219,6 +219,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     '@sentry/react-native',
     './plugins/withAndroidAdaptiveActivity.cjs',
+    './plugins/withAndroidReactBackBridge.cjs',
     './plugins/withAndroidGradleMemory.cjs',
     './plugins/withAndroidNoUnusedMediaProjection.cjs',
     [
