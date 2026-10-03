@@ -18,6 +18,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
@@ -26,6 +27,7 @@ import { useAuth } from '../../src/context/AuthProvider';
 import { loadEligibleLiveEvents } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { portraitPreviewDimensions } from '../../src/features/live/liveVideoFraming';
 
 type LiveMode = 'creator_live' | 'collab_live' | 'class_live' | 'audio_room';
 type LiveDiscoveryCategory = 'community_room' | 'listening_party' | 'studio_cook_up' | 'event_linked';
@@ -130,6 +132,14 @@ export default function CreateLiveRoomScreen() {
   const router = useRouter();
   const theme = usePluggdTheme();
   const styles = useLiveCreateStyles();
+  const liveViewport = useWindowDimensions();
+  const portraitPreviewStyle = {
+    ...portraitPreviewDimensions(liveViewport),
+    aspectRatio: undefined,
+    maxHeight: undefined,
+    minHeight: undefined,
+    alignSelf: 'center' as const,
+  };
   const { user } = useAuth();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
@@ -355,7 +365,7 @@ export default function CreateLiveRoomScreen() {
               <Text style={styles.heroBody}>Nothing is broadcasting yet. Your selected camera, microphone and listening route are applied when you enter the room.</Text>
             </View>
 
-            <View style={styles.previewFrame}>
+            <View style={[styles.previewFrame, selectedMode !== 'audio_room' && portraitPreviewStyle]}>
               {selectedMode !== 'audio_room' && cameraEnabled && cameraGranted ? (
                 <CameraView style={StyleSheet.absoluteFill} facing={cameraFacing} />
               ) : (
@@ -901,6 +911,8 @@ function useLiveCreateStyles() {
     left: 14,
     right: 14,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     alignItems: 'center',
     justifyContent: 'space-between',
   },

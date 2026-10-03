@@ -49,3 +49,5 @@ jobs:
         run: npm ci
       - name: Verify native upload interruption and draft recovery
         run: node pluggd-mobile/scripts/verify-music-upload-behaviour.mjs
+      - name: Verify native portrait capture and Green Room geometry
+        run: node pluggd-mobile/scripts/verify-live-video-framing.mjs
