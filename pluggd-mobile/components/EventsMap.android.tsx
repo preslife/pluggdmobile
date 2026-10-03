@@ -246,7 +246,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   previewPressed: { opacity: 0.9 },
-  previewMain: { flexDirection: 'row', alignItems: 'stretch', gap: 14 },
+  previewMain: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 14,
+    margin: -14,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: '#15100c',
+  },
   artWrap: {
     width: 112,
     height: 112,

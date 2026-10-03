@@ -47,6 +47,19 @@ assert.match(androidMapSource, /if \(!MAPBOX_RUNTIME_TOKEN \|\| mapLoadFailed\)/
 assert.match(androidMapSource, /Map temporarily unavailable/);
 assert.doesNotMatch(androidMapSource, /react-native-maps/);
 
+// Keep the event preview's light text on the same explicit inner dark canvas as iOS.
+// The outer Pressable alone is not sufficient in the light appearance mode.
+const previewMainStyle = (source) => source.match(/previewMain:\s*\{([^}]+)\}/)?.[1];
+assert.ok(previewMainStyle(androidMapSource), 'Android must retain an inner event-preview surface');
+assert.equal(
+  previewMainStyle(androidMapSource).replace(/\s+/g, ''),
+  previewMainStyle(iosMapSource)?.replace(/\s+/g, ''),
+  'Android event-preview contrast and inset must match the existing iOS surface',
+);
+assert.match(previewMainStyle(androidMapSource), /backgroundColor:\s*'#15100c'/);
+assert.match(previewMainStyle(androidMapSource), /margin:\s*-14/);
+assert.match(previewMainStyle(androidMapSource), /padding:\s*14/);
+
 // Preserve the already-submitted iOS native map while Android adopts Mapbox.
 assert.match(iosMapSource, /from 'react-native-maps'/);
 assert.match(iosMapSource, /<Marker/);
