@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import ts from 'typescript';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const packageJson = JSON.parse(read('package.json'));
@@ -28,13 +30,134 @@ for (const rail of ['apple_iap', 'apple_subscription', 'google_play_iap', 'googl
 assert.match(apple, /apple:\s*\{[\s\S]*sku[\s\S]*appAccountToken:\s*accountId/, 'iOS requests must preserve the StoreKit app account token');
 assert.match(apple, /receipt_data:\s*purchase\.purchaseToken/, 'expo-iap StoreKit 2 JWS must use the unified purchase token');
 assert.match(apple, /validate-iap-receipt/, 'iOS must retain its existing server verifier');
+assert.match(google, /CryptoDigestAlgorithm\.SHA256[\s\S]*`pluggd:\$\{accountId\}`[\s\S]*\.toLowerCase\(\)/, 'Play account binding must remain lowercase SHA-256 of pluggd:user-id');
 
-assert.match(google, /CryptoDigestAlgorithm\.SHA256[\s\S]*`pluggd:\$\{accountId\}`[\s\S]*\.toLowerCase\(\)/, 'Play account binding must be lowercase SHA-256 of pluggd:user-id');
-assert.match(google, /obfuscatedAccountId/, 'Play requests must include an obfuscated account identifier');
-assert.match(google, /obfuscatedProfileId/, 'Play requests must include an obfuscated profile identifier');
-assert.match(google, /google:\s*await googleRequestFields\(input\)/, 'Play one-time purchases must use the Google SKU-array request');
-assert.match(google, /offer\.basePlanIdAndroid === basePlanId[\s\S]*offer\.id === offerId[\s\S]*offer\.id === basePlanId/, 'Play subscriptions must match the exact provisioned base plan and optional offer');
-assert.match(google, /subscriptionOffers:\s*\[\{\s*sku:\s*input\.sku,\s*offerToken:\s*offer\.offerTokenAndroid\s*\}\]/, 'Play subscriptions must send only the exact selected base-plan offer token');
+function loadGoogleAdapter() {
+  const compiled = ts.transpileModule(google, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const calls = { requests: [] };
+  const imports = {
+    'expo-iap': {
+      endConnection: async () => true,
+      fetchProducts: async () => [],
+      finishTransaction: async () => {},
+      getAvailablePurchases: async () => [],
+      getStorefront: async () => 'GB',
+      initConnection: async () => true,
+      purchaseErrorListener: () => ({ remove() {} }),
+      purchaseUpdatedListener: () => ({ remove() {} }),
+      requestPurchase: async (request) => { calls.requests.push(request); },
+    },
+    'expo-crypto': {
+      CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+      digestStringAsync: async (algorithm, value) => {
+        assert.equal(algorithm, 'SHA-256', 'Play account binding must use SHA-256');
+        return createHash('sha256').update(value).digest('hex');
+      },
+    },
+  };
+  const requireMock = (id) => {
+    assert.ok(Object.hasOwn(imports, id), `Unexpected external import ${id} in Google adapter`);
+    return imports[id];
+  };
+  const module = { exports: {} };
+  Function('module', 'exports', 'require', compiled)(module, module.exports, requireMock);
+  return { adapter: module.exports.googleBillingAdapter, calls };
+}
+
+const { adapter: googleAdapter, calls: googleCalls } = loadGoogleAdapter();
+const hash = (value) => createHash('sha256').update(value).digest('hex');
+const accountId = 'billing-contract-account';
+const profileId = 'billing-contract-profile';
+await googleAdapter.requestProduct({ sku: 'credits.1050', accountId, profileId });
+assert.deepEqual(googleCalls.requests[0], {
+  request: { google: {
+    skus: ['credits.1050'],
+    obfuscatedAccountId: hash(`pluggd:${accountId}`),
+    obfuscatedProfileId: hash(`pluggd-profile:${profileId}`),
+  } },
+  type: 'in-app',
+}, 'Play one-time purchases must preserve SKU-array shape, type, and exact account digests');
+await googleAdapter.requestProduct({ sku: 'credits.6000', accountId });
+assert.deepEqual(googleCalls.requests[1], {
+  request: { google: {
+    skus: ['credits.6000'],
+    obfuscatedAccountId: hash(`pluggd:${accountId}`),
+    obfuscatedProfileId: hash(`pluggd-profile:${accountId}`),
+  } },
+  type: 'in-app',
+}, 'Play profile binding must fall back to the authenticated account when no profile is selected');
+
+const subscriptionProduct = {
+  id: 'plg_plan_creator_monthly',
+  platform: 'android',
+  type: 'subs',
+  subscriptionOffers: [
+    { id: 'monthly-intro', basePlanIdAndroid: 'yearly', offerTokenAndroid: 'wrong-base-decoy-token' },
+    { id: 'monthly', basePlanIdAndroid: 'monthly', offerTokenAndroid: 'exact-base-token' },
+    { id: 'monthly-intro', basePlanIdAndroid: 'monthly', offerTokenAndroid: 'exact-offer-token' },
+  ],
+};
+const replacement = {
+  purchaseToken: 'previous-purchase-token',
+  oldProductId: 'plg_plan_starter_monthly',
+  replacementMode: 'with-time-proration',
+};
+await googleAdapter.requestSubscription({
+  sku: subscriptionProduct.id,
+  accountId,
+  profileId,
+  product: subscriptionProduct,
+  basePlanId: 'monthly',
+  offerId: 'monthly-intro',
+  googleReplacement: replacement,
+});
+assert.deepEqual(googleCalls.requests[2], {
+  request: { google: {
+    skus: [subscriptionProduct.id],
+    obfuscatedAccountId: hash(`pluggd:${accountId}`),
+    obfuscatedProfileId: hash(`pluggd-profile:${profileId}`),
+    subscriptionOffers: [{ sku: subscriptionProduct.id, offerToken: 'exact-offer-token' }],
+    purchaseToken: replacement.purchaseToken,
+    subscriptionProductReplacementParams: {
+      oldProductId: replacement.oldProductId,
+      replacementMode: replacement.replacementMode,
+    },
+  } },
+  type: 'subs',
+}, 'Play subscriptions must preserve the selected offer token and replacement identifiers');
+await googleAdapter.requestSubscription({
+  sku: subscriptionProduct.id,
+  accountId,
+  profileId,
+  product: subscriptionProduct,
+  basePlanId: 'monthly',
+});
+assert.deepEqual(googleCalls.requests[3], {
+  request: { google: {
+    skus: [subscriptionProduct.id],
+    obfuscatedAccountId: hash(`pluggd:${accountId}`),
+    obfuscatedProfileId: hash(`pluggd-profile:${profileId}`),
+    subscriptionOffers: [{ sku: subscriptionProduct.id, offerToken: 'exact-base-token' }],
+  } },
+  type: 'subs',
+}, 'a subscription without an offer id must use only the exact selected base plan');
+await assert.rejects(googleAdapter.requestSubscription({
+  sku: subscriptionProduct.id,
+  accountId,
+  product: subscriptionProduct,
+  basePlanId: 'not-provisioned',
+}), /does not have an eligible Google Play base plan/);
+await assert.rejects(googleAdapter.requestSubscription({
+  sku: subscriptionProduct.id,
+  accountId,
+  product: subscriptionProduct,
+  basePlanId: 'monthly',
+  offerId: 'unprovisioned-offer',
+}), /does not have an eligible Google Play base plan/);
+assert.equal(googleCalls.requests.length, 4, 'unprovisioned Play plans or offers must not reach requestPurchase');
+
 assert.match(google, /purchase_token:\s*purchase\.purchaseToken/, 'Play verification must send the purchase token, not the order ID');
 assert.match(google, /validate-google-play-purchase/, 'Play purchases must use the server Play verifier');
 assert.match(google, /package_name:\s*ANDROID_PACKAGE_NAME/, 'Play verification must bind the token to the Android package');

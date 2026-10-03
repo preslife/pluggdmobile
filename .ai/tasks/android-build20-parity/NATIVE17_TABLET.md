@@ -2,6 +2,8 @@
 
 2026-10-03, same preserved PLUGGD_Tablet16K_API36 AVD. These are native runtime observations, not public release approval. Public13 and the phone's Play16 remain unchanged.
 
+Subsequent normal PLUGGD sign-in and actual commerce observations are recorded in NATIVE17_COMMERCE.md. That receipt supersedes the guest/consent-pending statements here without changing the accepted installed/static/media/Back/Mapbox evidence.
+
 ## Actual installed binding
 
 The owner completed normal Google sign-in. PLUGGD (Internal Beta) was normally installed from Google Play, not sideloaded. Package com.pluggd.mobile, code17/app1.0.0/min24/target36, installer and initiator com.android.vending, update21:39:46BST. Guest native session, not yet authenticated to PLUGGD/Supabase.

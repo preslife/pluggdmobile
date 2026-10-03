@@ -17,6 +17,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,6 +35,14 @@ import { resolveCommercePolicy } from '../../src/commerce/policy';
 // Product identity is loaded by useSubscription from the active platform's
 // server-owned catalogue; creator, tier, base plan and offer are never inferred
 // from a shared price point.
+
+function membershipBillingPeriodForPlatform(basePlanId: string | null, platform: string) {
+  // Google's legacy annual plan uses the yearly presentation choice. Keep the
+  // original catalogue ID for offer lookup, policy checks and purchase requests.
+  return platform === 'android' && basePlanId === 'annual'
+    ? 'yearly'
+    : basePlanId ?? 'monthly';
+}
 
 // ─── Tier colour accents (matching the tier names) ──────────────────
 const TIER_COLORS: Record<string, string> = {
@@ -106,7 +115,9 @@ export default function CreatorMembershipScreen() {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [selectedBillingPeriod, setSelectedBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const availableBillingPeriods = Array.from(new Set<'monthly' | 'yearly'>(
-    storeTiers.map((product) => product.basePlanId === 'yearly' ? 'yearly' : 'monthly'),
+    storeTiers.map((product) =>
+      membershipBillingPeriodForPlatform(product.basePlanId, Platform.OS) === 'yearly' ? 'yearly' : 'monthly',
+    ),
   ));
 
   useEffect(() => {
@@ -211,7 +222,7 @@ export default function CreatorMembershipScreen() {
 
       const storeProduct = storeTiers.find((product) =>
         product.tierId === tier.id &&
-        (product.basePlanId ?? 'monthly') === selectedBillingPeriod,
+        membershipBillingPeriodForPlatform(product.basePlanId, Platform.OS) === selectedBillingPeriod,
       );
       if (!storeProduct?.provisioned || !storeProduct.localizedPrice) {
         Alert.alert('Joining opens soon', 'You can explore this tier now. We’ll show the join option here as soon as it becomes available.');
@@ -450,7 +461,7 @@ export default function CreatorMembershipScreen() {
               const icon = TIER_ICONS[tier.name] ?? 'star';
               const storeProduct = storeTiers.find((product) =>
                 product.tierId === tier.id &&
-                (product.basePlanId ?? 'monthly') === selectedBillingPeriod,
+                membershipBillingPeriodForPlatform(product.basePlanId, Platform.OS) === selectedBillingPeriod,
               ) ?? null;
               const priceLabel = storeProduct?.provisioned && storeProduct.localizedPrice
                 ? storeProduct.localizedPrice

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   selectGoogleSubscriptionOffer,
   storeProductId,
@@ -54,6 +55,7 @@ type FanSubscriptionRow = {
   creator_id: string;
   tier_id?: string | null;
   apple_sku?: string | null;
+  billing_provider?: string | null;
   status: ActiveMembership['status'];
   current_period_end: string | null;
   provider_product_id?: string | null;
@@ -64,6 +66,25 @@ type FanSubscriptionRow = {
 
 function relatedName(value: CatalogRow['membership_tiers'] | FanSubscriptionRow['membership_tiers']) {
   return Array.isArray(value) ? value[0]?.name ?? null : value?.name ?? null;
+}
+
+function isElapsedGoogleMembershipForPresentation(
+  row: Pick<FanSubscriptionRow, 'billing_provider' | 'status' | 'current_period_end'>,
+  platform: string,
+  billingProvider: string | null,
+  now: number,
+) {
+  if (
+    platform !== 'android' ||
+    billingProvider !== 'google' ||
+    row.billing_provider !== 'google_play' ||
+    row.status !== 'active'
+  ) return false;
+
+  // This is current UI/recovery eligibility, not a provider-fresh revocation.
+  // Explicit past_due grace and unknown dates keep their existing behavior.
+  const periodEnd = Date.parse(row.current_period_end ?? '');
+  return Number.isFinite(periodEnd) && periodEnd <= now;
 }
 
 function localizedPrice(product: StoreProduct | null, catalog: CatalogRow): string | null {
@@ -243,12 +264,15 @@ export function useSubscription(options?: { creatorId?: string | null }) {
       }
       const { data, error: fetchError } = await (supabase as any)
         .from('fan_subscriptions')
-        .select('id,creator_id,tier_id,apple_sku,provider_product_id,provider_base_plan_id,status,current_period_end,metadata,membership_tiers(name)')
+        .select('id,creator_id,tier_id,apple_sku,billing_provider,provider_product_id,provider_base_plan_id,status,current_period_end,metadata,membership_tiers(name)')
         .eq('fan_id', user.id)
         .in('status', ['active', 'past_due'])
         .order('created_at', { ascending: false });
       if (fetchError) throw fetchError;
-      const rows = (data ?? []) as FanSubscriptionRow[];
+      const now = Date.now();
+      const rows = ((data ?? []) as FanSubscriptionRow[]).filter((row) =>
+        !isElapsedGoogleMembershipForPresentation(row, Platform.OS, adapter?.provider ?? null, now),
+      );
       const creatorIds = Array.from(new Set(rows.map((row) => row.creator_id).filter(Boolean)));
       const creators = creatorIds.length
         ? await (supabase as any).from('profiles').select('user_id,full_name,username').in('user_id', creatorIds)
@@ -297,7 +321,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
 
         let query = (supabase as any)
           .from('fan_subscriptions')
-          .select('id,status,current_period_end,apple_sku,metadata')
+          .select('id,status,current_period_end,apple_sku,billing_provider,metadata')
           .eq('fan_id', session.user.id)
           .in('status', ['active', 'past_due', 'cancelled'])
           .order('updated_at', { ascending: false })
@@ -315,6 +339,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
           return null;
         }
 
+        const now = Date.now();
         const periodEnd = subscription?.current_period_end
           ? new Date(subscription.current_period_end).getTime()
           : null;
@@ -326,7 +351,11 @@ export function useSubscription(options?: { creatorId?: string | null }) {
             Number.isFinite(periodEnd) &&
             periodEnd > Date.now());
 
-        if (subscription && remainsEntitled) {
+        if (
+          subscription &&
+          remainsEntitled &&
+          !isElapsedGoogleMembershipForPresentation(subscription, Platform.OS, billing.provider, now)
+        ) {
           return {
             success: true,
             recovered: true,
@@ -464,6 +493,7 @@ export function useSubscription(options?: { creatorId?: string | null }) {
   const restoreSubscriptions = useCallback(async () => {
     setRestoring(true);
     setError(null);
+    let membershipRefreshAttempted = false;
     try {
       if (!adapter) throw new Error('Store billing is unavailable on this device.');
       const purchases = await adapter.getAvailablePurchases();
@@ -477,8 +507,16 @@ export function useSubscription(options?: { creatorId?: string | null }) {
           await adapter.finishTransaction(purchase, false);
         }
       }
+      membershipRefreshAttempted = true;
       await refreshMemberships();
     } catch (restoreError) {
+      if (Platform.OS === 'android' && adapter?.provider === 'google' && !membershipRefreshAttempted) {
+        try {
+          await refreshMemberships();
+        } catch {
+          // Retain the original Restore error even if the UI refresh fails.
+        }
+      }
       setError(restoreError instanceof Error ? restoreError.message : 'Restore failed');
     } finally {
       setRestoring(false);
