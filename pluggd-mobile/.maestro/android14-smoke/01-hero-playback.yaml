@@ -1,7 +1,7 @@
 appId: com.pluggd.mobile
-name: Android14 real release navigation and playback progress
+name: PLUGGD Android real release navigation and playback progress
 tags:
-  - android14
+  - android-release
   - public-media
 ---
 # Run after the public shell leaves Home selected. No fixture/demo track.

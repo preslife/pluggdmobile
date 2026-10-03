@@ -1,7 +1,7 @@
 appId: com.pluggd.mobile
-name: Android14 compact public shell and navigation only
+name: PLUGGD Android compact public shell and navigation only
 tags:
-  - android14
+  - android-release
   - public-smoke
 ---
 # Verify installed code14 and Play certificate before candidate acceptance.

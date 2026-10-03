@@ -1,12 +1,19 @@
-# Android14 bounded native smoke
+# PLUGGD Android bounded native smoke
 
 `00-public-shell.yaml` checks only the compact five-tab shell and navigation.
 Its screenshots need current rendered inspection. Passing does not prove loaded
 catalogue contents, playback, commerce, push, upload, Maps SDK operation, Live,
 verified HTTPS associations, tablet/foldable layouts or physical acceptance.
 
+This directory retains its original Android14 name for evidence continuity.
+The14 hero test FAILED: native playback did not populate JS player controls.
+The corrected candidate is15; previous14 screenshots/results do not approve15.
+`01-hero-playback.yaml` requires the real current public hero, independent Open
+navigation, mini-player progress and pause controls. A diagnostic empty-player
+screen is not playback acceptance. Remote/background/lifecycle tests are separate.
+
 Before calling any result candidate evidence, record installed package
-`com.pluggd.mobile`, version code14, Play signing SHA256
+`com.pluggd.mobile`, the EXACT selected artifact's version code (currently15), Play signing SHA256
 `85:CA:AA:D2:51:68:6F:DE:A5:85:55:71:24:83:F4:21:05:90:59:61:40:07:D8:88:04:2C:69:E5:D1:57:12:73`,
 API level, screen configuration and actual page size. Locally re-signed builds
 are separate source-equivalent runtime evidence, not Play purchase proof.
