@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { selectionHaptic } from '../../src/design/haptics';
 import { liquidGlassRadii } from '../../src/design/liquidGlassTokens';
 import { GlassPanel } from './GlassPanel';
@@ -27,7 +27,8 @@ export function GlassDock({ items, bottomInset = 10 }: GlassDockProps) {
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <GlassPanel intensity="subtle" radius={liquidGlassRadii.xxl} style={styles.dock} />
           </View>
-          <View style={[styles.tabRow, { transform: [{ translateY: bottomInset / 2 }] }]}>
+          {/* Android controls stay above system navigation; only the material fills its safe inset. */}
+          <View style={[styles.tabRow, { transform: [{ translateY: Platform.OS === 'android' ? 0 : bottomInset / 2 }] }]}>
           {items.map((item) => (
             <Pressable
               key={item.label}

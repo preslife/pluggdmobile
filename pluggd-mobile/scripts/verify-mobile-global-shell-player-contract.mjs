@@ -28,15 +28,22 @@ assert.match(glassDock, /tabRow:\s*\{[\s\S]*?height:\s*60/, 'the dock must retai
 const dockRow = jsxOpenings(glassDock, 'View').find((node) => /styles\.tabRow/.test(jsxAttribute(node, 'style')?.getText() ?? ''));
 assert.ok(dockRow, 'the actual dock row must retain its reviewed style composition');
 const dockStyle = jsxAttribute(dockRow, 'style').initializer.expression.getText();
-for (const bottomInset of [0, 10, 16, 24, 48]) {
-  const rowStyles = evaluateExpression(dockStyle, { styles: { tabRow: {} }, bottomInset });
-  const translation = rowStyles[1].transform[0].translateY;
-  assert.equal(translation, bottomInset / 2, 'dock row must stay centred inside its actual safe-area shell');
-  assert.equal(60 + bottomInset - (translation + 60), translation, 'upper and lower shell clearance must remain equal');
+for (const platform of ['android', 'ios', 'web']) {
+  for (const bottomInset of [0, 10, 16, 18, 24, 48]) {
+    const rowStyles = evaluateExpression(dockStyle, { styles: { tabRow: {} }, bottomInset, Platform: { OS: platform } });
+    const translation = rowStyles[1].transform[0].translateY;
+    if (platform === 'android') {
+      assert.equal(translation, 0, 'Android dock controls must stay above the system-navigation inset');
+      assert.equal(60 + bottomInset - (translation + 60), bottomInset, 'Android safe-bottom material must not contain the interactive row');
+    } else {
+      assert.equal(translation, bottomInset / 2, 'iOS and web dock optical centring must remain unchanged');
+      assert.equal(60 + bottomInset - (translation + 60), translation, 'iOS and web upper and lower shell clearance must remain equal');
+    }
+  }
 }
 assert.doesNotMatch(glassDock, /tabRowLight|light\s*&&\s*styles\.tabRow/, 'dock centring must not be limited to Editorial Light');
-assert.match(glassDock, /height:\s*60\s*\+\s*bottomInset/, 'dock optical centring must preserve the safe-area shell height');
-assert.match(glassDock, /tabPressable:\s*\{[\s\S]*?height:\s*54/, 'dock optical centring must preserve 54-point press targets');
+assert.match(glassDock, /height:\s*60\s*\+\s*bottomInset/, 'dock platform positioning must preserve the safe-area shell height');
+assert.match(glassDock, /tabPressable:\s*\{[\s\S]*?height:\s*54/, 'dock platform positioning must preserve 54-point press targets');
 
 assert.match(provider, /closePlayer:\s*\(\)\s*=>\s*Promise<void>/, 'playback context must expose a distinct close action');
 assert.match(provider, /const closePlayer[\s\S]*TrackPlayer\.reset\(\)[\s\S]*setQueue\(\[\]\)[\s\S]*originalQueue\.current = \[\]/, 'close must stop media and clear the active queue context');
