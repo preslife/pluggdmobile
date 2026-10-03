@@ -1,11 +1,24 @@
-CURRENT_PHASE=BUILD21_IOS27_PHYSICAL_MODERATION_VERIFIED_OWNER_GATES
-NEXT_ACTION=Await the owner-started PLUGGD QA BUILD21 public test, join through normal Safari as a viewer, verify picture and captured sound, then end the test. Direct-phone Green Room preview/scroll/controls pass. Continue the retained Battle/account/StoreKit, Maps/rights/storefront and footage gates without restarting the audit or rebuilding unchanged source.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
-EDIT_AUTHORITY=Existing scoped release approval; do not ask for additional PR/release permission.
-BRANCH_WORKTREE=codex/ios-release-audio / /private/tmp/pluggd-ios-release-audio
-LATEST_TASK_COMMIT=540d69dbd098327b64b16b7eb8213029402096c3 (merged PR9/main); checked source fa0f53e61635c2c92dc3906d283f9e16b7e4236a.
-CHANGED_FILES=app.config.ts, music service, storageUpload helper, actual-source behavior test, CI and matching task records only.
-CLEANUP_STATE=Retain all source and signed20/earlier recovery; no destructive cleanup.
+
+
+## Checked Live portrait candidate — 3 October 2026
+This supersedes earlier21 recording/readiness and copy-only statements. Official21 Live audio, camera/mic toggles and normal end PASS, but owner screenshots prove portrait framing FAIL. Candidate22 configures portrait encoding/capture to the phone aspect, complete-frame native Fit, matching bounded Green Room geometry and gradual edge shading. The web renderer uses decoded incoming dimensions and contain, retains desktop landscape/studio geometry, and removes the non-publishing audience's empty local camera tile. The truthful Room details card is retained.
+Native actual-source configuration/geometry checks6 PASS; full native TypeScript PASS. Actual renderer/room tests9 PASS, focused renderer/types PASS, production-config Vite build PASS33.52s. Full web/route TypeScript is not claimed: the earlier route check reports12 unchanged origin/main files and0 SessionRoom diagnostics; broader app check was stopped incomplete under disk pressure. Current CI remains required. Generated calibration video through the actual component:1440x900 portrait267.7x580;390x844 portrait241.8x524;1440x900 landscape1031.1x580. Correct720x1560/1280x720 metadata, contain, all four edges visible and no horizontal overflow. Local layout fixtures are not transmitted-camera proof. Proofs: /private/tmp/pluggd-build22-live-desktop-portrait.png, /private/tmp/pluggd-build22-live-mobile-portrait.png, /private/tmp/pluggd-build22-live-desktop-landscape.png.
+Development-bundle simulator attempt showed a blank splash, not rendered evidence; retained21 simulator was restored. Official22 native render/capture/framing/audio/control acceptance remains required. Approved release authority covers checked PR/main/deployment/archive/upload/install/Apple draft preparation. Apple still21; no22 archive/install/readback or video clearance. Preserve signed21, all recovery/private drafts/history and remaining Maps exact-publication, Battle/lifecycle, permission/VoiceOver, rights/signature, regions/assets/video/Submit gates.
+DISK_BLOCKER: available124MiB after actual no-space write failures. Unused real directory /Users/apple/.npm/_cacache6.3GiB, lsof no open files. Owner asked to clear it in Finder or authorise this exact cache deletion. No cache/artifact deletion performed; existing specific simulator-cache authority does not include device outputs or npm cache. Receipt: /private/tmp/pluggd-build22-final-release-receipt.json.
+
+## Owner-reported Live framing correction — 3 October 2026
+Owner supplied actual official21 phone/Safari screenshots and requested a full vertical camera feed with matching host/viewer framing. Native LiveSessionScreen uses flat190-point/58-percent dark overlays, leaving the reported bright horizontal strip. Web VideoCallInterface forces aspect-video and cover, cropping the portrait input. Correct these surfaces in the existing lanes; do not mark audio/control success as framing acceptance. Exact QA room ended normally04:42:29.195Z after owner End live, and original Safari returned to Community with no active audio indicator; recording/restream idle. Retain history; participant left_at cleanup was not independently proved.
+
+## Actual Live transmission — 3 October 2026
+
+Official physical Build21/iOS27.0.1 host and normal Fly Jones Safari viewer PASS for received blank-wall camera frames, captured microphone sound and remote mic/camera changes. The owner explicitly answered “Yes—clear audio, and mic/camera changes work” after speaking into the physical phone and toggling its controls. Exact public owner-started QA room: a03b5567-63c4-4b03-88a9-57581e0b7161, created04:13:14.890238Z; viewer initially joined04:21:09.572Z. Recording/restream are idle; no gifts/payments/agent messages/recording/access grants. Proof: /private/tmp/pluggd-build21-live-viewer-connected.png. This supersedes earlier host/viewer-pending statements below; permission denial, VoiceOver/background and normal end remain distinct. End live has been requested and is not yet verified.
+
+Owner corrected the authentication assumption: PLUGGD.fm remained signed in; the Live-domain sign-in was incorrectly described as expired. Normal existing sign-in/navigation restored Fly Jones and connected the actual viewer without reset or new access. Do not repeat the expired-session investigation.
+
+Actual web viewer revealed a ten-minute stems/drops promise with no implemented reward and a progress bar based on room age. The existing web contract now includes only a truthful room-details replacement in SessionRoom.tsx. Two existing meaningful room interaction tests and production-config Vite build PASS; the affected SessionRoom route/import typecheck and current release checks are continuing. Broader app TypeScript was stopped unfinished under actual3GB disk/resource pressure and is not a pass. No native/service/schema/dependency change or new archive/upload. Existing official21 signing/Apple21/StoreKit/moderation evidence remains valid for unchanged surfaces. Existing scoped release approval persists; final footage/rights/regions/Submit and retained controlled Battle/account/StoreKit lifecycle gates remain. No recording clearance or final submission claimed.
 
 ## Build 21 on iOS 27.0.1 — 2 October 2026
 
@@ -78,15 +91,15 @@ Existing app administrator Fly Jones (@flyjones) was identified through a read-o
 
 ## Historical records (superseded)
 
-CURRENT_PHASE=BUILD20_PRIVACY_ALIGNMENT
-NEXT_ACTION=Verify and merge explicit creator-contact/support manifest categories, archive/upload20 and replace the saved19 draft; phone/rights/live gates remain.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
 
 ## Superseding Safari correction and source alignment
 2026-10-02 user corrected the Safari-window assumption. Existing signed-in window recovered;19 processed/selected/saved and15-item draft retained. App Privacy17 categories published/read back (all linked, no tracking, functionality; existing Product Interaction also Analytics). Actual native support form persists named requests; Connect Card persists external contact/social handles. Declare both explicit categories in the app manifest as well as generic OtherData/UserContent: replacement20, no functional/dependency change. Existing scoped privacy/archive/upload authority persists. Final recording remains blocked.
 
-CURRENT_PHASE=BUILD19_UPLOADED_EVIDENCE_BLOCKED
-NEXT_ACTION=Restore paired-phone connectivity, install/read back19 and complete physical acceptance; verify Apple19/privacy/15items and resolve owner rights/China facts before recording.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
 
 ## Current Build 19 release evidence — 2 October 2026
@@ -108,12 +121,12 @@ Receipt: `/private/tmp/pluggd-build19-final-release-receipt.json`; public bounda
 
 ## Historical records (superseded)
 
-CURRENT_PHASE=BUILD19_CREATOR_PRIVACY_COMPLETION
-NEXT_ACTION=Complete native follow-up CI and signed19-complete archive/export; matching backend/live and phone/store gates before recording.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
 
-CURRENT_PHASE=MAPS_PRIVACY_COMPLIANCE_REPAIR
-NEXT_ACTION=Checkpoint verified19 source; finish affected render, archive/export/sign/install and Apple19 preparation after backend integration.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
 
 # Progress
@@ -138,8 +151,8 @@ Task-owned temporary Vite PID68356 was verified by its exact /private/tmp/pluggd
 
 ## Historical phase records
 
-CURRENT_PHASE=BUILD18_STAGED_FINAL_EVIDENCE_HANDOFF
-NEXT_ACTION=Continue final authenticated new-flow/physical acceptance and cleared assets/video; Apple18 is staged and production8989 verified. Do not repeat release permission or sign-in requests.
+CURRENT_PHASE=LIVE_PORTRAIT_SOURCE_CHECKED_BUILD22_RELEASE_GATE
+NEXT_ACTION=Finish checked native/web PR and current CI/main/web release; after exact cache cleanup, archive/install22 and verify real portrait camera/render/audio on phone and Safari before Apple draft/readback and recording clearance.
 AUDIT_REQUIRED=false
 Branch: codex/ios-release-audio
 Worktree: /private/tmp/pluggd-ios-release-audio
