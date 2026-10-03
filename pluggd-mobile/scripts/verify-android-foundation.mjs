@@ -262,6 +262,22 @@ assert.match(trackPlayerPatch, /private fun launch\(block: suspend \(\) -> Unit\
 assert.match(trackPlayerPatch, /fun play\(callback: Promise\) = launch \{/);
 assert.match(trackPlayerPatch, /fun getPlaybackState\(callback: Promise\) = launch \{/);
 
+// HeadlessJsTaskService's inherited context selects ReactHost for bridgeless
+// RN0.81 and ReactInstanceManager for legacy apps. Both service emitters must
+// use it: a JS-only current-track fallback would leave state/remote events lost.
+for (const name of ['emit', 'emitList']) {
+  const hunk = trackPlayerPatch.match(new RegExp(`private fun ${name}\\(event: String,[\\s\\S]*?\\n     }`));
+  assert.ok(hunk, `TrackPlayer ${name} patch body is present`);
+  const patchedBody = hunk[0].split('\n').filter((line) => !line.startsWith('-')).map((line) => /^[+ ]/.test(line) ? line.slice(1) : line).join('\n');
+  assert.match(patchedBody, /\n        reactContext\n/);
+  assert.doesNotMatch(patchedBody, /reactNativeHost\.reactInstanceManager/);
+  assert.match(patchedBody, /getJSModule\(DeviceEventManagerModule\.RCTDeviceEventEmitter::class\.java\)/);
+  assert.match(patchedBody, name === 'emit' ? /emit\(event, data\?\.let \{ Arguments\.fromBundle\(it\) }\)/ : /emit\(event, payload\)/);
+  if (name === 'emitList') assert.match(patchedBody, /data\.forEach \{ payload\.pushMap\(Arguments\.fromBundle\(it\)\) }/);
+}
+assert.equal((trackPlayerPatch.match(/^-        reactNativeHost\.reactInstanceManager\.currentReactContext$/gm) || []).length, 2);
+assert.doesNotMatch(trackPlayerPatch, /^\+\s*reactNativeHost\.reactInstanceManager\.currentReactContext$/m);
+
 // PLUGGD stops playback when Android kills the app. A sticky TrackPlayer
 // service restart can otherwise promote itself from the background and crash
 // Android 12+ with ForegroundServiceStartNotAllowedException.
