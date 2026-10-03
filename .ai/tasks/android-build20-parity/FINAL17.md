@@ -1,6 +1,6 @@
 # Final Android17 candidate — exact artifact and internal publication
 
-2026-10-03. Static/internal gates passed; final native/commerce/service/wide-device gates remain pending. Public Android13 is unchanged.
+2026-10-03. Static/internal gates passed; actual tablet17 now installed with partial native acceptance in NATIVE17_TABLET.md. A real light-mode Map-preview contrast issue is source-corrected but NOT compiled here; do not promote17 publicly. Final native/commerce/service/wide-device and corrected-candidate gates remain pending. Public Android13 is unchanged.
 
 ## Bound candidate
 
