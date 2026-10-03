@@ -48,7 +48,11 @@ assert.match(androidMapSource, /Map temporarily unavailable/);
 assert.doesNotMatch(androidMapSource, /react-native-maps/);
 
 // Keep the event preview's light text on the same explicit inner dark canvas as iOS.
-// The outer Pressable alone is not sufficient in the light appearance mode.
+// NativeWind drops callback styles on raw native Pressable; reuse the existing
+// resolver while retaining the handler's single selection haptic.
+assert.match(androidMapSource, /from '\.\.\/src\/features\/editorial\/EditorialBits'/);
+assert.match(androidMapSource, /<EdPressable\s+haptic=\{false\}/);
+assert.match(androidMapSource, /<EdPressable[\s\S]*?style=\{\(\{\s*pressed\s*\}\) => \[styles\.preview, pressed && styles\.previewPressed\]\}/);
 const previewMainStyle = (source) => source.match(/previewMain:\s*\{([^}]+)\}/)?.[1];
 assert.ok(previewMainStyle(androidMapSource), 'Android must retain an inner event-preview surface');
 assert.equal(

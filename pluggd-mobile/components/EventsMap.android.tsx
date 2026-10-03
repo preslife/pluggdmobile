@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PluggdImage } from '../src/components/PluggdImage';
 import { selectionHaptic } from '../src/design/haptics';
 import { pluggdFonts } from '../src/design/typography';
+import { EdPressable } from '../src/features/editorial/EditorialBits';
 import { MAPBOX_CONFIG, type EventMapPoint, type MapPoint } from '../src/lib/mapbox';
 
 const EVENT_ARTWORK_FALLBACK = require('../assets/web-parity/events/pluggd-events.jpg');
@@ -171,7 +172,8 @@ export function EventsMap({ points: sourcePoints, count, loading = false, onSele
       </View>
 
       {selected ? (
-        <Pressable
+        <EdPressable
+          haptic={false}
           accessibilityRole="button"
           accessibilityLabel={`View ${selected.title}`}
           onPress={() => {
@@ -204,7 +206,7 @@ export function EventsMap({ points: sourcePoints, count, loading = false, onSele
               </View>
             </View>
           </View>
-        </Pressable>
+        </EdPressable>
       ) : (
         <View style={styles.selectPrompt}>
           <Text style={styles.selectPromptText}>Choose a pin to see the event</Text>
