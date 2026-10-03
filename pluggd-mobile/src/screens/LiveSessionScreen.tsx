@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
+import { LinearGradient } from 'expo-linear-gradient';
 import { pluggdFonts } from '../design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +23,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -29,6 +31,7 @@ import {
   ClientRoleType,
   IRtcEngine,
   RtcSurfaceView,
+  RenderModeType,
   createAgoraRtcEngine,
 } from '../lib/agora';
 import { useAuth } from '../context/AuthProvider';
@@ -55,6 +58,7 @@ import {
   normalizeLiveGiftEvent,
 } from '../features/live/liveGiftPresentation';
 import { useLiveGiftQueue } from '../features/live/useLiveGiftQueue';
+import { configurePortraitLiveVideo } from '../features/live/liveVideoFraming';
 
 const PLUGGD_ORANGE = '#ff6600';
 const REACTION_TTL_MS = 2400;
@@ -194,6 +198,9 @@ export default function LiveSessionScreen() {
   const theme = usePluggdTheme();
   const styles = useLiveSessionStyles();
   const insets = useSafeAreaInsets();
+  const liveViewport = useWindowDimensions();
+  const liveViewportRef = useRef(liveViewport);
+  liveViewportRef.current = liveViewport;
   const { roomId, preview, previewSheet, previewReaction, initialCamera, initialMic, initialFacing, audioRoute } = useLocalSearchParams<{
     roomId?: string;
     preview?: string;
@@ -665,6 +672,7 @@ export default function LiveSessionScreen() {
       if (liveMode === 'audio_room') {
         (engine as any).disableVideo?.();
       } else {
+        if (nextRole !== 'audience') configurePortraitLiveVideo(engine, liveViewportRef.current);
         engine.enableVideo();
         if (nextRole !== 'audience') {
           if (!initialMediaRef.current.frontCamera) {
@@ -1408,12 +1416,12 @@ export default function LiveSessionScreen() {
       return (
         <>
           <RtcSurfaceView
-            canvas={{ uid: isPublisher ? 0 : mainRemoteUid }}
+            canvas={{ uid: isPublisher ? 0 : mainRemoteUid, renderMode: RenderModeType.RenderModeFit }}
             style={styles.videoSurface}
           />
           {isPublisher && mainRemoteUid ? (
             <View style={styles.pictureInPicture}>
-              <RtcSurfaceView canvas={{ uid: mainRemoteUid }} style={styles.videoSurface} />
+              <RtcSurfaceView canvas={{ uid: mainRemoteUid, renderMode: RenderModeType.RenderModeFit }} style={styles.videoSurface} />
             </View>
           ) : null}
         </>
@@ -1474,8 +1482,18 @@ export default function LiveSessionScreen() {
           >
             {renderMedia()}
           </Pressable>
-          <View pointerEvents="none" style={styles.topGradient} />
-          <View pointerEvents="none" style={styles.bottomGradient} />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(0,0,0,0.38)', 'rgba(0,0,0,0.12)', 'transparent']}
+            locations={[0, 0.55, 1]}
+            style={[styles.topGradient, { height: Math.max(insets.top + 104, 148) }]}
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['transparent', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.76)']}
+            locations={[0, 0.45, 1]}
+            style={[styles.bottomGradient, { height: Math.max(insets.bottom + 210, 240) }]}
+          />
 
           <LiveGiftOverlay
             event={activeGift}
@@ -2257,6 +2275,7 @@ function useLiveSessionStyles() {
   },
   videoSurface: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   previewMedia: {
     flex: 1,
@@ -2297,16 +2316,12 @@ function useLiveSessionStyles() {
     top: 0,
     left: 0,
     right: 0,
-    height: 190,
-    backgroundColor: 'rgba(0,0,0,0.48)',
   },
   bottomGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: '58%',
-    backgroundColor: 'rgba(0,0,0,0.68)',
   },
   topOverlay: {
     position: 'absolute',
