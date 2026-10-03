@@ -41,6 +41,12 @@ tags:
     timeout: 60000
 - takeScreenshot: 01-home-real-playback-progress
 - tapOn: Pause media
+# MiniPlayer deliberately yields the canvas by collapsing after pause.
+# Re-open the observed collapsed control before checking the paused label.
+- extendedWaitUntil:
+    visible: Expand mini player
+    timeout: 15000
+- tapOn: Expand mini player
 - assertVisible: Play media
 - assertVisible:
     id: dock-tab-home
