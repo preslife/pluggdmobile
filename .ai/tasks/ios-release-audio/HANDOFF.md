@@ -1,6 +1,20 @@
-CURRENT_PHASE=BUILD22_RELEASE_VERIFIED_AWAITING_FINAL_OWNER_AND_DEVICE_GATES
-NEXT_ACTION=Complete the focused Build 22 post-Live playback and private-draft retention checks once Mirroring is unlocked.
+CURRENT_PHASE=PHONE_CAMERA_FIXED_9_16_BUILD23_IN_PROGRESS
+NEXT_ACTION=Implement and verify fixed 9:16 native camera capture, then release the checked Build 23 replacement under existing authority.
 AUDIT_REQUIRED=false
+
+## Fixed 9:16 local checks — 3 October 2026
+
+Implemented native 720×1280 camera encoding/capture with matching bounded Green Room geometry, retained complete-frame Fit and smooth gradients, and removed the encoding viewport dependency. Build 23 identity is prepared. Six actual-source geometry/configuration/error checks PASS; full native TypeScript PASS. Existing actual web renderer tests PASS 7/7, including decoded 9:16 metadata, landscape, rotation, stream cleanup and studio constraints. The first test invocation was blocked by sandbox Vite temporary-file access; the normal scoped retry passed, with no product failure or source change.
+
+Generated four-corner clips through the unchanged actual web component: 1440×900 desktop 9:16 frame 326.25×580; 390×844 mobile 294.75×524; desktop landscape 1031.109375×579.9921875. Decoded metadata is respectively 720×1280 / 1280×720, objectFit=contain and no horizontal overflow. All four edges/corners remain visible. Proofs: /private/tmp/pluggd-build23-web-desktop-9x16.png, /private/tmp/pluggd-build23-web-mobile-9x16.png, /private/tmp/pluggd-build23-web-desktop-landscape.png and /private/tmp/pluggd-build23-rendered-frame-measurements.json. Generated layout fixtures are not camera transmission proof. Temporary server dependency scanning was confined to this fixture after unrelated app-entry scanning failed against the fixture-only logger stub; no production source fault or web change.
+
+Current native main was fetched; the only affected application/workflow differences are the four owned native framing/test/build-number files. Current CI/PR/main, Build 23 archive/export/upload/official install, current Green Room render and real phone-to-Safari framing/audio/end remain required. Build 22 stays installed/selected as recovery. Other whole-submission owner/acceptance gates remain. No final recording clearance or Submit.
+
+## Fixed phone-camera 9:16 clarification — 3 October 2026
+
+The owner explicitly clarified that regular camera Lives started on a phone must be 9:16; desktop/external-camera broadcasts and landscape-suited formats retain their incoming landscape or other supported aspect. Build 22 follows the phone display ratio (for example 720×1560 on a tall phone), so its actual portrait/audio/end proof remains valid for that earlier implementation but does not prove this fixed 9:16 requirement. Replace only native camera capture/encoding with 720×1280, keep the complete-frame Fit renderer and smooth edge gradients, and keep the Green Room aligned to the same camera aspect. Remove the now-unused encoding viewport plumbing. Preserve all modes, audio rooms, desktop publishing and decoded incoming frame/studio layout support. No new dependency, Pod, privacy category, role, schema, production data write or payment behavior.
+
+Existing scoped release authority covers focused checks/current CI, local checkpoint, native PR/merge, signed replacement Build 23 archive/export/upload/official TestFlight install and matching Apple draft replacement. No additional release permission request. Acceptance: actual-source fixed-ratio/capture/error cases and native TypeScript/current release checks; bounded 9:16 Green Room and full-frame web render with portrait and landscape proof; exact source/signature/JS/privacy identity; official Build 23 phone-to-Safari framing/audio/control/end proof. Existing Build 22 remains installed/selected until the replacement passes the relevant gates. Preserve its archive/IPA/15-item draft and all earlier recovery. Final footage, informed rights acceptance, owner facts and final Submit remain distinct gates. Recovery is the verified Build 22 source/artifacts and a contained native revert; no web product change is planned.
 
 ## Temporary verification cleanup — 3 October 2026
 
