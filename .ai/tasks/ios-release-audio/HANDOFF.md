@@ -1,6 +1,14 @@
-CURRENT_PHASE=BUILD23_APPLE_VALIDATED_OFFICIAL_PHONE_UNLOCK_PENDING
-NEXT_ACTION=After the pending Mirroring unlock, install official TestFlight 23 in place, recheck retained playback/draft/purchases and prepare the owner-started 9:16 phone/Safari acceptance.
+CURRENT_PHASE=SCREEN_FITTING_PORTRAIT_RESTORED_BUILD22_REUSE_CURRENT_CI_NEXT
+NEXT_ACTION=Commit/release the exact Build 22 source restoration with current PR/main checks; reuse the existing signed/installed/selected 22, then resume only outstanding submission acceptance.
 AUDIT_REQUIRED=false
+
+## Owner correction: screen-fitting portrait; reuse verified Build 22 — 3 October 2026
+
+The owner clarified that “9:16” meant portrait filling the phone display, including taller screens, not a fixed 9:16 camera frame. The owner also requested no unnecessary repeated work: finish the build correction before submission forms. Stop the fixed-ratio Build 23 installation/submission path. Restore only the four native framing/caller/check/default-build files exactly from reviewed Build 22 main c08bd827. Preserve full-frame Fit, matching Green Room, smooth gradients, all other release fixes and the unchanged web viewer's decoded portrait/landscape aspect. No new binary is needed: the whole native application and release-workflow diff against c08bd827 is empty after restoration, dependencies/environment are unchanged, and the existing six focused framing checks pass.
+
+Fresh paired-device readback confirms com.pluggd.mobile 1.0.0 (22) is still installed. Retained signed 22 archive/IPA and actual owner-confirmed phone/Safari full portrait framing, no bright strip, clear audio, mic/camera controls and normal end remain applicable to identical source. Do not repeat full TypeScript/build/physical broadcast suites solely for an exact restoration. Required current correction PR/main checks remain the integration gate. Build 23 stays retained as a superseded fixed-ratio artifact, with no installation, expiration or deletion. Apple App Review already remains the preserved 22/15-item draft with exact saved 22 notes; no replacement app item or new archive/upload is required for this correction.
+
+The local native main integration had conflicts only in four owned task records; their newer saved evidence was retained, without changing application source or unrelated records. No new web product/backend/payment/privacy/permission change. Recovery: retained Build 22 artifacts/history and contained reviewed-source restoration. Existing full scoped release approval covers the checked correction commit/PR/current checks/main merge. Final recording, informed rights/territory decisions and Submit remain separate existing gates. The correction receipt is /private/tmp/pluggd-screen-fitting-portrait-reuse22-receipt.json. Earlier Build 23 evidence below is historical and superseded for the intended framing.
 
 ## Current Build 23 release and remaining phone gate — 3 October 2026
 
