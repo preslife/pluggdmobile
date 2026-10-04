@@ -1,5 +1,7 @@
 # Android18 production update — Google submission receipt
 
+COMPLETED PUBLIC: fresh08:10UTC4October readback confirms actual production release3/bundle18(1.0.0) Available on Google Play/100%/178of178countries, released4Oct06:55. Publishing overview Last published4October/App update published/no pending review. See PUBLIC18.md/current screenshot. Earlier quick-check/in-review observations below are retained chronology and superseded, not current blocking gates.
+
 4 October2026, approximately06:35BST. Owner-approved full automatic rollout.
 
 - Exact EAScf1e0da3-b5de-44ff-9026-9cac65da5e2f/sourcef87d9774b6e35489ea377395cf6ea982320c5ef1/code18/app1.0.0; same accepted internal9 artifact, no rebuild/reupload.

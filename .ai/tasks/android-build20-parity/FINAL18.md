@@ -1,5 +1,7 @@
 # Android18 — single combined corrected candidate
 
+FINAL PUBLIC CHECKPOINT: fresh Google readback08:10UTC4October confirms production release3/bundle18(1.0.0) Available on Google Play,100%,178of178countries, released4Oct06:55. Publishing overview Last published4October and App update published notification; no pending review. PUBLIC18.md/screenshot bind actual public status. This supersedes all earlier queued/in-review/public13 statements below without erasing their chronology. Approved update/submission complete; existing follow-up PAUSED/stopped.
+
 Started2026-10-03T23:54:35.599Z; FINISHED2026-10-04T00:15:49.203Z. Exact AAB and actual Play-installed18 base/splits independently inspected/root-verified, internally available release9. Focused final acceptance complete on actual Play Samsung18 and16KB tablet18: free credit grant/consume/retained Restore, creator/platform ACK/renewal/Restore, corrected Maps, media/Back/dock/grids/App Links and actual private Live camera/RTC. NATIVE18_FINAL_DEVICE.md scopes observations and retained harness failures. Production18 plus updated Data Safety submitted once; Google Changes in review with preliminary quick checks running, automatic100%/all targeted countries. SUBMISSION18.md binds actual result. Not yet public; public13 unchanged. No Android19 rebuild.
 
 ## Frozen identity

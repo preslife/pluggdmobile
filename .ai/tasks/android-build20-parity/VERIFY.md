@@ -2,6 +2,8 @@
 
 Mark only current, exact-source evidence as passed.
 
+FINAL PUBLIC RESULT: Google production release3 actual bundle18(1.0.0) Available on Google Play/Production/100%/178of178countries, released4Oct06:55, read back08:10UTC4October. Publishing overview Last published4October/App update published/no pending review. PUBLIC18.md and /private/tmp/pluggd-android18-public100.jpg bind proof. Approved scoped update/submission COMPLETE; old pending table/status entries remain historical, not current results. No post-release crash/ANR/propagation-every-device promise inferred.
+
 ## Authoritative final18 checkpoint — 4 October 2026
 
 SUBMISSION UPDATE: production18 plus updated Data Safety submitted once; Publishing overview Changes in review/Start full rollout, managed publishing off. Saved rollout100%/all targeted countries. Google's preliminary checks running; success forwards automatically. This is not approved/public yet. SUBMISSION18.md/screenshot bind status; do not reuse historical PENDING table below as current submission status.
