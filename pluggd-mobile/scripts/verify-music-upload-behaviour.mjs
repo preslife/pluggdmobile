@@ -93,7 +93,7 @@ await check('an HTTP storage denial is not converted into upload success', async
 });
 
 function musicService(scenario) {
-  const state = { scenario, uploaded: false, uploads: 0, prepares: 0, renders: 0, lists: 0, status: 'pending', checkpoints: [] };
+  const state = { scenario, actorId: 'qa-owner', uploaded: false, uploads: 0, prepares: 0, renders: 0, lists: 0, status: 'pending', checkpoints: [] };
   const uploader = nativeUpload({ upload: async () => {
     state.uploads++;
     if (state.scenario === 'missing') throw new Error('Native transport interrupted');
@@ -102,7 +102,7 @@ function musicService(scenario) {
     return { status: 200, body: '{}' };
   } });
   const supabase = {
-    auth: { getSession: async () => ({ data: { session: { access_token: 'qa-session' } } }) },
+    auth: { getSession: async () => ({ data: { session: { access_token: 'qa-session', user: { id: state.actorId } } } }) },
     rpc: async (name, args) => {
       assert.equal(name, 'prepare_social_music_render');
       assert.equal(args.p_request_id, 'qa-request');
@@ -172,6 +172,18 @@ await check('actual music service persists one upload/job and resumes a finished
   assert.equal(state.uploads, 1);
   assert.equal(state.prepares, 1);
   assert.equal(state.renders, 1);
+});
+
+await check('wrong or missing actor identity prevents upload, render preparation and draft checkpoints', async () => {
+  for (const actorId of ['another-owner', undefined]) {
+    const { service, state, draft, checkpoint } = musicService('ok');
+    state.actorId = actorId;
+    await assert.rejects(service.renderMusicDraft(draft, checkpoint), /Your session changed/);
+    assert.equal(state.uploads, 0);
+    assert.equal(state.prepares, 0);
+    assert.equal(state.renders, 0);
+    assert.equal(state.checkpoints.length, 0);
+  }
 });
 
 await check('actual music service reconciles a lost acknowledgement through the owned object before rendering', async () => {

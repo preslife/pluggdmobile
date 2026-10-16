@@ -21,6 +21,15 @@ export type MusicDraft = {
   content: string; destinations: MobileSocialDestinationInput[];
   sourcePath?: string; jobId?: string; reviewPending?: boolean; updatedAt: number;
 };
+export type MusicPostRouteParams = {
+  draftActorId?: string; releaseId?: string; trackId?: string; content?: string; destinations?: string;
+  mediaUri?: string; mediaKind?: string; mimeType?: string; mediaDuration?: string;
+};
+export function actorMusicRouteParams(params: MusicPostRouteParams, userId?: string): MusicPostRouteParams {
+  // Private in-app continuation belongs to its originating actor, including after a route remount.
+  return userId && params.draftActorId === userId ? params : { releaseId: params.releaseId, trackId: params.trackId };
+}
+
 export const MAX_MUSIC_SECONDS = 30;
 export const MAX_MEDIA_BYTES = 104_857_600;
 export const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));

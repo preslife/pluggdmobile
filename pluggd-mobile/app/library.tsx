@@ -6,10 +6,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { PluggdImage } from '../src/components/PluggdImage';
+import { useAuth } from '../src/context/AuthProvider';
 import { pluggdFonts } from '../src/design/typography';
 import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
 import { DiscoveryHeader } from '../src/features/discovery/DiscoveryHeader';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
+import { libraryHistoryStatus, projectLibraryOwnership } from '../src/features/culture/libraryOwnershipDisplay';
 import { DISCOVERY_DESTINATION_ART } from '../src/features/discovery/publicDestinations';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
@@ -64,18 +66,22 @@ export default function LibraryScreen() {
   const styles = useLibraryStyles();
   const router = useRouter();
   const bottomInset = useBottomChromeInset();
-  const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
-  const saved = library.data?.saved ?? [];
-  const purchases = library.data?.purchases ?? [];
-  const tickets = library.data?.tickets ?? [];
-  const entitlements = library.data?.entitlements ?? [];
+  const { user, loading: authLoading } = useAuth();
+  const library = useQuery({ queryKey: ['culture', 'library', user?.id ?? null], queryFn: loadLibraryBundle, enabled: Boolean(user) && !authLoading });
+  const loading = authLoading || library.isLoading;
+  const canShowRecords = Boolean(user) && !loading && !library.isError;
+  const saved = canShowRecords ? library.data?.saved ?? [] : [];
+  const purchases = canShowRecords ? library.data?.purchases ?? [] : [];
+  const tickets = canShowRecords ? library.data?.tickets ?? [] : [];
+  const now = Date.now();
+  const ownership = projectLibraryOwnership(purchases, now);
   const music = saved.filter((item) => MUSIC_KINDS.has(item.kind));
   const playlists = saved.filter((item) => item.kind === 'playlist');
   const savedEvents = saved.filter((item) => item.kind === 'event');
   const otherSaved = saved.filter((item) => !MUSIC_KINDS.has(item.kind) && item.kind !== 'playlist' && item.kind !== 'event');
   const eventCount = savedEvents.length + tickets.length;
-  const accessCount = purchases.length + entitlements.length;
-  const total = saved.length + accessCount + tickets.length;
+  const accessCount = ownership.owned.length;
+  const total = saved.length + ownership.owned.length + ownership.history.length + tickets.length;
   const [filter, setFilter] = useState<LibraryFilter>('All');
   const toShelfEntry = (item: (typeof saved)[number]): LibraryShelfEntry => ({
     key: `${item.source}-${item.id}`,
@@ -98,7 +104,11 @@ export default function LibraryScreen() {
       onPress: () => router.push(`/events/${ticket.event_id}` as any),
     })),
   ];
-  const purchaseEntries = purchases.map(toShelfEntry);
+  const purchaseEntries = ownership.owned.map(toShelfEntry);
+  const historyEntries = ownership.history.map((item) => ({
+    ...toShelfEntry(item),
+    meta: libraryHistoryStatus(item, now),
+  }));
   const otherEntries = otherSaved.map(toShelfEntry);
 
   return (
@@ -141,7 +151,7 @@ export default function LibraryScreen() {
           ))}
         </ScrollView>
 
-        {library.isLoading ? <ActivityIndicator color={theme.colors.accentText} style={styles.loader} /> : null}
+        {loading ? <ActivityIndicator color={theme.colors.accentText} style={styles.loader} /> : null}
         {library.isError ? (
           <View style={styles.errorState}>
             <MaterialIcons name="cloud-off" size={31} color={theme.colors.accentText} />
@@ -150,7 +160,7 @@ export default function LibraryScreen() {
             <Pressable accessibilityRole="button" accessibilityLabel="Retry Library" onPress={() => void library.refetch()} style={styles.discoverButton}><Text style={styles.discoverButtonText}>Try again</Text></Pressable>
           </View>
         ) : null}
-        {!library.isLoading && !library.isError && total === 0 ? (
+        {canShowRecords && total === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons name="library-music" size={30} color={theme.colors.accentText} />
             <Text style={styles.emptyTitle}>Build a library that brings you back.</Text>
@@ -192,6 +202,7 @@ export default function LibraryScreen() {
           </Pressable>
         ) : null}
         {(filter === 'All' || filter === 'Access') ? <LibraryShelf title="Owned & unlocked" entries={purchaseEntries} /> : null}
+        {(filter === 'All' || filter === 'Access') ? <LibraryShelf title="Purchase history" entries={historyEntries} /> : null}
 
         {filter === 'All' ? <LibraryShelf title="Saved from your scene" entries={otherEntries} /> : null}
 
