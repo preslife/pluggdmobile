@@ -1,3 +1,42 @@
+# iOS App Review repair - current state, 16 October 2026
+
+CURRENT_PHASE=SOURCE_VERIFIED_BUILD24_ARCHIVE_NEXT
+NEXT_ACTION=Checkpoint checked owned source; archive/export distribution-signed24, verify exact identity/entitlements/privacy/source, then proceed through the existing authorised release sequence and physical sandbox/owned-audio/video gates. Do not Submit or send Apple reply without the final gate.
+AUDIT_REQUIRED=false
+CODE_EDIT_ALLOWED=true by owner request16October2026; scope includes Plans/Wallet IAP recovery, observed iPad selector occlusion, clear filled Choose buttons, bounded playback and owned-URL expiry recovery.
+BRANCH=codex/ios-review-repair-20261016
+WORKTREE=/private/tmp/pluggd-ios-review-repair
+BASELINE=96f2dc02315355aaaf1f9731e4c8b24f4016a547 (native origin/main; submitted22 source)
+LATEST_TASK_COMMIT=next local checkpoint
+RELEASE_AUTHORITY=Existing scoped native release authority covers checked PR/main/archive/export/upload/official-install/draft preparation. Final Apple reply/resubmission, charged purchases/legal acceptance/destructive cleanup not newly inferred.
+CLEANUP=Original dirty native/root checkouts, installed physical app and owner media untouched. Task-local dependencies, generated ios24, simulator shell/fixtures and exports retained for integration. External REVIEW_FINDINGS_CLAUDE.md remains author-owned untracked material; do not stage it.
+
+## Verified current facts
+- Safari: rejected22/15items; Paid Apps Agreement Active14Oct2026-11Feb2027, bank/tax Active; six platform products/group Ready for Review. Correct Pro annual SKU ends yearly.v2.
+- Fresh devicectl identifies phone app1.0.0(23), correcting an earlier22 assumption. Real phone storefront displays all6 prices: monthly4.99/12.99/29.99, yearly49.99/129.99/299.00. No price fallback. No purchase made. This is not submitted22/replacement sandbox proof.
+- User confirmed installed23 Still ah Link audible on physical Home Screen. No Apple-ready recording, owned-track longevity or replacement proof yet.
+- Deployed resolve-playback-url ACTIVE33: public4h, owned/private300s and battle exception300s. Extended client preserves expiry metadata and safely renews active authorized URL without changing TTL/access. Public playback is not owned expiry proof.
+- Deployed commerce21/current iOS release_unlock rule: pure deployed resolver + live row deny external Stripe in US/GB; credits allowed. Missing program/version approval flags deny the alternative. No blanket feature removal or backend/policy mutation.
+- Live battle storage SELECT/RLS allows own path/admin/approved version-bound battle entry; restrictive read guard also applies. Client renewal reuses existing authenticated battleAudioUrl only for exact-project already-signed battle URL. Beat masters never signed directly.
+
+## Checked repair
+Plans/provider: shared native controls and static styles;52pt filled Choose controls; bounded15s read/connection/entitlement waits; loading/retry and adjacent/fallback feedback;45s read-only Check purchase status without blindly releasing native request ownership; request-generation guards; shared transaction-keyed verification/finish across returned results, listeners and Restore. Slow native finish keeps ownership after visible timeout.
+Wallet: active retry for empty/failed/blank prices, per-pack feedback, bounded preflight reads, preserved SKU/account binding and pending-payment guard; trusted credits success/finite balance required before manual finish.
+Playback: queue-preserving bounded network retry; server expiry metadata retained; active source renews30s early with10s read bound and expiry error recovery. Only current item replaced; queue, position and newer pause/stop/seek/track intent retained. Background failure deferred to foreground. Physical renewal remains unverified.
+
+## Integration evidence
+- Plans20 + Wallet26 + playback48 actual-source React/JSDOM cases PASS (94 total); focused native source checks, platform plan contract, final full mobile TypeScript PASS. Parent reviewed all lanes; independent payment review found/fixed late-request and Restore/listener races.
+- Final production iOS Hermes export PASS: /private/tmp/pluggd-ios-review-build24-export,12962570bytes SHA256a740fb0fe2899e414a37fdcbc14bb20eb398b3ef99c76e2ec522f833b5602f23. Production env/build24; local fixture markers absent and original imports restored byte-for-byte.
+- Actual iPad Air11M3/26.3 compatibility render found absolute selector covering Starter action. Separate sibling row now reserves space. Real unauthenticated action reached login. Local boundary fixture then showed immediate busy, adjacent deliberate unavailable error, successful retry/current plan; final filled CTA/row/error/success rendered. Owner scrolled; parent observed/tapped actual controls. These use retained native simulator executable + current JS/local auth/StoreKit/server boundaries, not real Apple transactions or a fresh native binary. Success screenshot: /var/folders/q5/g1rtr31x6dj_yt8ddp9mk7000000gn/T/screenshot_optimized_a0f6299e-9e7e-4693-afa7-774f3f6f82ff.jpg. Exact27.0.1 runtime parity unavailable;26.3 is useful compatibility evidence.
+- Exact-lock npm ci + production24 prebuild +131pod install PASS. Existing distribution identity and matching profile are valid, production push/Apple sign-in/domains supported. Generated Release target com.pluggd.mobile/build24/family1 verified. No archive signature claim yet.
+- Existing App Store readiness regex script is stale on unchanged location copy (and, when checked past that assertion, old signup checkbox assertion versus current DOB flow). Temporary test-only wording experiment restored exactly; no unrelated auth/product change or false pass. This is a recorded pre-existing verification limitation, not a new product failure. Mandatory current CI remains required at release.
+
+## Outstanding gates
+Signed24 archive/export and exact artifact checks; current PR/main CI; official physical24 sandbox purchase→verification→finish→entitlement→restore; physical owned/battle track over300s with queue/seek/pause/foreground checks; short physical Home Screen recording and Apple Notes/reply attachment; final owner submission gate. APPLE_IAP_ENVIRONMENT secret value not read back; deployed verifier default supportsBoth, but actual sandbox verification is required. Retained22 archive absent at historical temporary path; preserve available history/source and phone23, no fresh22 signature claim.
+Shared web sync/check refused pre-existing tracked .temp dirt; no reset/reconcile/adoption. No backend/database/web change, push/merge/upload/submit in this repair yet.
+
+---
+
 CURRENT_PHASE=SCREEN_FITTING_PORTRAIT_RESTORED_BUILD22_REUSE_CURRENT_CI_NEXT
 NEXT_ACTION=Commit/release the exact Build 22 source restoration with current PR/main checks; reuse the existing signed/installed/selected 22, then resume only outstanding submission acceptance.
 AUDIT_REQUIRED=false

@@ -1,3 +1,21 @@
+## Bounded audit findings incorporated - 16 October 2026
+
+Owner supplied a read-only audit during the repair. Include Wallet product-loading/empty/error/retry feedback and strict existing credit-response verification before manual finishing, preserving ledger/Apple SKU semantics. Include demonstrated destructive playback-error recovery and the confirmed300s owned/private/battle URL expiry path: retain server TTL metadata, renew authorized active URLs before expiry/on error, preserve queue/position and newer intent, no background Alert or access/TTL expansion. User additionally requested a clearly visible button treatment for Choose; preserve loading/error/success controls with52pt targets. Do not infer that either is Apple's actual observed cause. Include iPad compatibility hit testing and repair the observed billing-selector occlusion without removing the selector.
+
+Read-only production evidence: active Paid Apps Agreement, available native products, public audio TTL4h, and deployed policy denial for external iOS release checkout do not support changing agreements, server TTLs, payment policy rows or unrelated approved purchase features. No backend mutation or new policy migration belongs to this lane. Preserve remaining exact signed candidate/sandbox/physical recording and external-action gates.
+
+## Current repair authority - 16 October 2026
+
+Owner requested fixing the rejection of submission 929f8ccc-6e7a-41a6-b013-01cd33f10f08, version1.0(22). This section controls the current repair scope. Exact fetched native main96f2dc02315355aaaf1f9731e4c8b24f4016a547 is both baseline and submitted source. The old task worktree is absent; resume this same task at /private/tmp/pluggd-ios-review-repair, branch codex/ios-review-repair-20261016. Preserve original dirty native/root checkouts and all submitted22/recovery media.
+
+Outcome1: responsive PLUGGD Plans Choose controls on iPhone and iPad compatibility presentation, correct Apple product/price/cadence, immediate loading and visible errors/retry, no duplicate subscription requests, preserved verified purchase/restore/entitlement boundary. Allowed: plans screen, existing subscription hook/provider if warranted, existing shared pressable reuse and focused tests.
+Outcome2: preserve genuine music background playback, diagnose reported silence, fix demonstrated defects and prepare exact physical Home Screen audio evidence/review instructions. Allowed: playback provider/service/config only if diagnosis supports change. Do not remove an approved music feature to evade review. No unrelated Live/music-editor changes.
+Acceptance: actual-source behavioral regression cases, full native TypeScript and native rendered control/layout evidence; applicable signed candidate/physical sandbox purchase, fulfilment/restore and physical background audible recording before replacement submission readiness. Paid Apps Agreement/product configuration readback. Simulator/harness checks do not establish physical sandbox or audible proof.
+
+Endpoint: checked repair and concrete replacement release preparation, then remaining authorised release sequence under the existing scoped native release approval once relevant gates pass. Current request authorises local code/records/checkpoints and read-only Safari/App Store inspection. Preserve earlier scoped approval; no final Apple reply/resubmission, charged purchases, legal acceptance or destructive cleanup is newly inferred. Ask only for a concrete final action or necessary human/device action. No production database/backend/web changes planned. Recovery: retain22 binaries/source and revert task-only repair commit.
+
+---
+
 # Native release music editor
 
 Goal: bring the released Community music model to the iOS app with an audio workflow matching the supplied TikTok/Instagram references and PLUGGD's established design.

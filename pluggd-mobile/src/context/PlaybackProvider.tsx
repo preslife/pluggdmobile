@@ -29,10 +29,11 @@ import TrackPlayer, {
   AppKilledPlaybackBehavior,
   IOSCategory,
 } from 'react-native-track-player';
-import { Alert, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import { transformedUri } from '../components/PluggdImage';
 import { isConstrainedAndroidRuntime } from '../components/lowMemoryImagePolicy';
-import { resolvePlaybackSource } from '../features/playback/resolvePlaybackSource';
+import { playbackSourceNeedsRefresh, resolvePlaybackTrack, type PlaybackSourceMetadata } from '../features/playback/resolvePlaybackSource';
+import { createPlaybackErrorRecovery } from '../features/playback/playbackErrorRecovery';
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type PluggdTrackKind =
@@ -51,6 +52,7 @@ export type PluggdTrack = Omit<Track, 'type'> & {
   artist: string;
   artwork?: string;
   duration?: number;
+  playbackSource?: PlaybackSourceMetadata;
   // Pluggd-specific metadata
   releaseId?: string;
   /** Canonical release-track identity for per-track waveform and lyrics. */
@@ -209,29 +211,86 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [shuffleMode, setShuffleMode] = useState<ShuffleMode>('off');
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>(RepeatMode.Off);
   const originalQueue = useRef<PluggdTrack[]>([]);
-  const lastPlaybackError = useRef('');
   const playbackRequestRef = useRef(0);
+  const retainedPosition = useRef({ trackId: '', position: 0, seekTarget: null as number | null });
+  const recoveryRef = useRef<ReturnType<typeof createPlaybackErrorRecovery> | null>(null);
+  if (!recoveryRef.current) {
+    recoveryRef.current = createPlaybackErrorRecovery({
+      player: TrackPlayer,
+      isForeground: () => AppState.currentState === 'active',
+      refreshSource: (track) => resolvePlaybackTrack(track as PluggdTrack),
+      needsSourceRefresh: (track) => playbackSourceNeedsRefresh(track as PluggdTrack),
+      onSourceRefreshed: (previous, next, index) => {
+        setQueue((current) => current.map((track, itemIndex) => itemIndex === index && track.id === previous.id && track.url === previous.url
+          ? { ...track, url: next.url, playbackSource: next.playbackSource }
+          : track));
+        originalQueue.current = originalQueue.current.map((track) => track.id === previous.id && track.url === previous.url
+          ? { ...track, url: next.url, playbackSource: next.playbackSource }
+          : track);
+      },
+      reportFailure: () => Alert.alert(
+        'Audio unavailable',
+        'Playback could not recover. Your queue has been kept. Tap play to try again, or choose another track.',
+      ),
+    });
+  }
+  const recovery = recoveryRef.current;
 
   const playbackState = usePlaybackState();
   const progress = useProgress(250); // update every 250ms
   const activeTrack = useActiveTrack();
+  const positionSnapshot = retainedPosition.current;
+  const activeId = String(activeTrack?.id ?? '');
+  if (positionSnapshot.trackId !== activeId) {
+    positionSnapshot.trackId = activeId;
+    positionSnapshot.position = 0;
+    positionSnapshot.seekTarget = null;
+  }
+  if (positionSnapshot.seekTarget !== null) {
+    if (Math.abs(progress.position - positionSnapshot.seekTarget) < 0.5) {
+      positionSnapshot.position = progress.position;
+      positionSnapshot.seekTarget = null;
+    }
+  } else if (Number.isFinite(progress.position) && progress.position > 0) {
+    positionSnapshot.position = progress.position;
+  }
 
   const isPlaying = playbackState.state === State.Playing;
   const isBuffering =
     playbackState.state === State.Buffering ||
     playbackState.state === State.Loading;
 
-  useTrackPlayerEvents([Event.PlaybackError], (event) => {
-    const fingerprint = `${event.code}:${event.message}`;
-    if (lastPlaybackError.current === fingerprint) return;
-    lastPlaybackError.current = fingerprint;
-    console.warn('[PlaybackProvider] playback unavailable:', event.code);
-    void TrackPlayer.reset().finally(() => {
-      setQueue([]);
-      originalQueue.current = [];
-    });
-    Alert.alert('Audio unavailable', 'This upload cannot be reached right now. Please try another track.');
+  useTrackPlayerEvents([
+    Event.PlaybackError, Event.PlaybackState, Event.PlaybackActiveTrackChanged,
+    Event.RemotePlay, Event.RemotePause, Event.RemoteStop,
+    Event.RemoteNext, Event.RemotePrevious, Event.RemoteSeek,
+  ], (event) => {
+    if (event.type === Event.PlaybackError) {
+      console.warn('[PlaybackProvider] playback unavailable:', event.code);
+      recovery.onError(event, activeTrack, retainedPosition.current.position);
+    } else if (event.type === Event.PlaybackState) {
+      recovery.onState(event.state);
+    } else if (event.type === Event.RemotePause || event.type === Event.RemoteStop) {
+      playbackRequestRef.current++;
+      recovery.cancel(false);
+    } else if (event.type === Event.PlaybackActiveTrackChanged) {
+      recovery.onTrackChanged(event);
+    } else {
+      playbackRequestRef.current++;
+      recovery.cancel();
+    }
   });
+
+  useEffect(() => { recovery.watchSource(activeTrack, isPlaying); }, [activeTrack, isPlaying, recovery]);
+
+  useEffect(() => {
+    recovery.activate();
+    const subscription = AppState.addEventListener('change', () => recovery.showPendingFailure());
+    return () => {
+      subscription.remove();
+      recovery.dispose();
+    };
+  }, [recovery]);
 
   // Initialise player
   useEffect(() => {
@@ -258,37 +317,40 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const playTrack = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return null;
+      recovery.cancel();
       const request = ++playbackRequestRef.current;
-      const url = await resolvePlaybackSource(track);
+      retainedPosition.current.position = 0;
+      retainedPosition.current.seekTarget = 0;
+      const playable = await resolvePlaybackTrack(track);
       if (request !== playbackRequestRef.current) return null;
-      const playable = url ? { ...track, url } : null;
       if (!isPlayableTrack(playable)) {
         Alert.alert('Audio unavailable', track.url?.trim()
           ? 'This audio cannot be reached right now. Please try again.'
           : 'This item does not include a playable audio upload.');
         return null;
       }
-      lastPlaybackError.current = '';
       await TrackPlayer.reset();
+      if (request !== playbackRequestRef.current) return null;
       const nativeTrack = trackForNativePlayback(playable);
       await TrackPlayer.add(nativeTrack as any);
+      if (request !== playbackRequestRef.current) return null;
       originalQueue.current = [nativeTrack];
       await TrackPlayer.play();
       await syncQueue();
       return ((await TrackPlayer.getActiveTrack()) as PluggdTrack | undefined) ?? null;
     },
-    [isReady, syncQueue],
+    [isReady, recovery, syncQueue],
   );
 
   const playQueue = useCallback(
     async (tracks: PluggdTrack[], startIndex = 0) => {
       if (!isReady || tracks.length === 0) return null;
+      recovery.cancel();
       const request = ++playbackRequestRef.current;
+      retainedPosition.current.position = 0;
+      retainedPosition.current.seekTarget = 0;
       const requestedTrack = tracks[Math.min(Math.max(startIndex, 0), tracks.length - 1)] ?? null;
-      const resolved = await Promise.all(tracks.map(async (track) => {
-        const url = await resolvePlaybackSource(track);
-        return url ? { ...track, url } : null;
-      }));
+      const resolved = await Promise.all(tracks.map((track) => resolvePlaybackTrack(track)));
       if (request !== playbackRequestRef.current) return null;
       const playableTracks = resolved.filter(isPlayableTrack).map((track) => trackForNativePlayback(track));
       if (playableTracks.length === 0) {
@@ -297,7 +359,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           : 'These items do not include playable audio uploads.');
         return null;
       }
-      lastPlaybackError.current = '';
       const requestedIndex = requestedTrack
         ? playableTracks.findIndex((track) => track.id === requestedTrack.id)
         : -1;
@@ -306,43 +367,60 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         : Math.min(Math.max(startIndex, 0), playableTracks.length - 1);
       originalQueue.current = playableTracks;
       await TrackPlayer.reset();
+      if (request !== playbackRequestRef.current) return null;
       await TrackPlayer.add(playableTracks as any);
+      if (request !== playbackRequestRef.current) return null;
       if (safeStartIndex > 0) {
         await TrackPlayer.skip(safeStartIndex);
       }
+      if (request !== playbackRequestRef.current) return null;
       await TrackPlayer.play();
       await syncQueue();
       const active = ((await TrackPlayer.getActiveTrack()) as PluggdTrack | undefined) ?? null;
       return active;
     },
-    [isReady, syncQueue],
+    [isReady, recovery, syncQueue],
   );
 
   const play = useCallback(async () => {
+    playbackRequestRef.current++;
+    recovery.cancel();
     await TrackPlayer.play();
-  }, []);
+  }, [recovery]);
 
   const pause = useCallback(async () => {
+    playbackRequestRef.current++;
+    recovery.cancel(false);
     await TrackPlayer.pause();
-  }, []);
+  }, [recovery]);
 
   const togglePlayPause = useCallback(async () => {
+    playbackRequestRef.current++;
+    recovery.cancel(!isPlaying);
     if (isPlaying) {
       await TrackPlayer.pause();
     } else {
       await TrackPlayer.play();
     }
-  }, [isPlaying]);
+  }, [isPlaying, recovery]);
 
   const skipToNext = useCallback(async () => {
+    playbackRequestRef.current++;
+    retainedPosition.current.position = 0;
+    retainedPosition.current.seekTarget = 0;
+    recovery.cancel();
     try {
       await TrackPlayer.skipToNext();
     } catch {
       // Already at last track
     }
-  }, []);
+  }, [recovery]);
 
   const skipToPrevious = useCallback(async () => {
+    playbackRequestRef.current++;
+    retainedPosition.current.position = 0;
+    retainedPosition.current.seekTarget = 0;
+    recovery.cancel();
     // If more than 3s in, restart current track instead
     if (progress.position > 3) {
       await TrackPlayer.seekTo(0);
@@ -354,27 +432,34 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         await TrackPlayer.seekTo(0);
       }
     }
-  }, [progress.position]);
+  }, [progress.position, recovery]);
 
   const skipToQueueIndex = useCallback(async (index: number) => {
     if (!Number.isInteger(index) || index < 0) return;
+    playbackRequestRef.current++;
+    retainedPosition.current.position = 0;
+    retainedPosition.current.seekTarget = 0;
+    recovery.cancel();
     try {
       await TrackPlayer.skip(index);
       await TrackPlayer.play();
     } catch {
       // Queue can change between render and selection; retain the current item.
     }
-  }, []);
+  }, [recovery]);
 
   const seekTo = useCallback(async (position: number) => {
+    playbackRequestRef.current++;
+    recovery.cancel();
+    retainedPosition.current.position = position;
+    retainedPosition.current.seekTarget = position;
     await TrackPlayer.seekTo(position);
-  }, []);
+  }, [recovery]);
 
   const addToQueue = useCallback(
     async (track: PluggdTrack) => {
       if (!isReady) return;
-      const url = await resolvePlaybackSource(track);
-      const playable = url ? { ...track, url } : null;
+      const playable = await resolvePlaybackTrack(track);
       if (!isPlayableTrack(playable)) return;
       await TrackPlayer.add(trackForNativePlayback(playable) as any);
       syncQueue();
@@ -383,19 +468,20 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   );
 
   const clearQueue = useCallback(async () => {
+    recovery.cancel(false);
     playbackRequestRef.current += 1;
     await TrackPlayer.reset();
     setQueue([]);
     originalQueue.current = [];
-  }, []);
+  }, [recovery]);
 
   const closePlayer = useCallback(async () => {
+    recovery.cancel(false);
     playbackRequestRef.current += 1;
     await TrackPlayer.reset();
     setQueue([]);
     originalQueue.current = [];
-    lastPlaybackError.current = '';
-  }, []);
+  }, [recovery]);
 
   const toggleRepeat = useCallback(async () => {
     const current = await TrackPlayer.getRepeatMode();
@@ -411,6 +497,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const toggleShuffle = useCallback(async () => {
     if (!isReady) return;
+    recovery.cancel();
     const nextMode = shuffleMode === 'off' ? 'on' : 'off';
     setShuffleMode(nextMode);
 
@@ -436,7 +523,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     await TrackPlayer.skip(nextMode === 'on' ? 0 : Math.max(currentIndex, 0));
     await TrackPlayer.play();
     await syncQueue();
-  }, [isReady, queue, shuffleMode, syncQueue]);
+  }, [isReady, queue, recovery, shuffleMode, syncQueue]);
 
   const currentTrack = (activeTrack as PluggdTrack) ?? null;
   // Some long-form uploads do not expose their duration through AVPlayer until
