@@ -477,13 +477,12 @@ test('slow native finish retains ownership after visible timeout and across Rest
 test('screen resolves real EdPressable styles, preserves 48pt Choose targets and inline feedback', async () => {
   const f = fixture();
   const flatten = (style) => Array.isArray(style) ? Object.assign({}, ...style.map(flatten)) : style || {};
-  let scroll;
   const native = {
     StyleSheet: { create: (styles) => styles, flatten, hairlineWidth: 1 },
-    View: ({ children }) => React.createElement('div', null, children),
+    View: ({ children, accessibilityLabel }) => React.createElement('div', { 'aria-label': accessibilityLabel }, children),
     Text: ({ children, accessibilityLiveRegion }) => React.createElement('span', { 'aria-live': accessibilityLiveRegion }, children),
     ActivityIndicator: () => React.createElement('span', { 'data-spinner': true }),
-    ScrollView: ({ children, onScroll }) => { scroll = onScroll; return React.createElement('div', null, children); },
+    ScrollView: ({ children }) => React.createElement('div', { 'data-scroll-viewport': true }, children),
     Linking: { openURL: async () => undefined },
     Pressable: ({ children, style, accessibilityLabel, accessibilityRole, disabled, onPress, onPressIn, onPressOut }) => {
       assert.notEqual(typeof style, 'function', `Native interop received callback style: ${accessibilityLabel}`);
@@ -539,8 +538,11 @@ test('screen resolves real EdPressable styles, preserves 48pt Choose targets and
     assert.equal(choose.dataset.align, 'center');
     assert.equal(choose.parentElement.querySelector('[aria-live="polite"]').textContent, state.error);
     assert.equal(button('Show monthly plans').dataset.minHeight, '48');
-    await act(async () => { scroll({ nativeEvent: { contentOffset: { y: 500 } } }); });
-    assert.equal(view.container.querySelectorAll('button[aria-label="Show monthly plans"]').length, 2);
+    assert.equal(view.container.querySelectorAll('button[aria-label="Show monthly plans"]').length, 1);
+    assert.equal(button('Show monthly plans').closest('[data-scroll-viewport]'), button('Choose Starter').closest('[data-scroll-viewport]'), 'a single selector belongs to the plans list');
+    await act(async () => button('Show yearly plans and save approximately two months').click());
+    assert.ok(view.container.textContent.includes('per year'), 'single selector changes the displayed billing period');
+    await act(async () => button('Show monthly plans').click());
     state = { ...state, purchasingSku: sku };
     await view.render();
     assert.equal(button('Connecting to App Store').disabled, true);

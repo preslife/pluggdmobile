@@ -1,9 +1,9 @@
 # iOS App Review repair — current state,16October2026
 
-CURRENT_PHASE=OFFICIAL24_BACKGROUND_AUDIO_VERIFIED_RECORDING_AND_CORRECT_ACCOUNT_RESTORE_PENDING
-NEXT_ACTION=Owner records physical Amachill playing→Home Screen with audible continuation, saves in Photos and locks phone (question pending). Inspect/export that exact clip and its audio. Owner also asked to sign into existing app-review-6765738727 after stopping recording and lock phone (question pending; saved login may be needed). Then Restore the original sandbox subscription; verify native finish/entitlement. No second purchase or ownership transfer. Five-minute private-source physical test is unavailable with existing assets: deployed public branch wins even for owners. Prepare accurate local Apple Notes/reply; final Send/Submit remains gated. Reuse signed/processed/installed24; no rebuild or re-audit.
+CURRENT_PHASE=SINGLE_TOP_STICKY_BILLING_VERIFIED_LOCAL_REPLACEMENT25_PREPARATION
+NEXT_ACTION=Checkpoint checked single top-sticky Plans correction, prepare replacement25 using retained native cache/signing, verify production sources/no fixtures/signature/export before the applicable exact release gate. iPad transition, Yearly price change and Choose busy/error native PASS; Plans22/TS/platform contract PASS. Clean Pro sandbox purchase on24 is verified. After25 install finish clean Pro Restore and inspect/export owner-reported physical audio clip. Final Apple Send/Submit remains gated.
 AUDIT_REQUIRED=false
-CODE_EDIT_ALLOWED=true within approved Plans/Wallet recovery, observed iPad selector occlusion, clear actions and protected-audio renewal; no new source change needed.
+CODE_EDIT_ALLOWED=true for owner-requested single original billing selector that sticks below the top header; remove bottom duplicate. Other checked38f8855 source is unchanged.
 BRANCH=codex/ios-review-repair-20261016
 WORKTREE=/private/tmp/pluggd-ios-review-repair
 BASELINE=96f2dc02315355aaaf1f9731e4c8b24f4016a547 (submitted22 source)
@@ -40,6 +40,12 @@ CLEANUP=45 approved targets removed after fresh identity/process/open-file check
 -Physical recording question pending. QuickTime capture chooser offered FaceTime/Continuity iPhoneCamera and microphones, no wired iPhone screen source; unused movie preview closed without recording. Apple documents recording and Mirroring cannot run together. Owner asked to recorddirectlyonphone→Home~20s with continuingmusic,savePhotos,thenlock; exact saved clip/audio must be inspected.
 -Observed StoreKit displayPrice$4.99 vs Apple sandbox sheetGBP4.99; source directly uses product.displayPrice, no fallback or rewrite. No speculative source change.
 -Receipts /private/tmp/pluggd-ios-review-build24/{upload-install-receipt,phone-installed24,physical-checkpoint}.json. Source106/TS/CI/archive/installed identity unchanged. No final Apple reply/submission. Local record checkpoint before this phase118cd86; author-owned audit remains untracked/untouched.
+
+## Current owner correction and fresh sandbox result —21:24–21:35BST
+-Owner observed two billing selectors in official24 and requested the original selector pin to the top when reached, never create another below. Source correction uses the native ScrollView sticky header for the single original selector, with scroll viewport below the64pt global header/safe top. Bottom selector and its bottom chrome margin are removed. This changes the shipped JavaScript and requires replacement25;24 remains retained and its earlier source/transaction/audio evidence is explicitly scoped to24.
+-Fresh Pro Monthly sandbox transaction2000001252719437, original2000001245592485, purchase2026-10-16T20:24:11Z,expiry2026-10-17T20:24:11Z. Live validate-iap returned200 at20:24:13.959Z and logged Activated PLUGGD pro plan for correct review userbf6dac7c. Exact iap_transactions row validated/Sandbox; user_subscriptions pro/active/productpro.monthly/exacttransaction. Phone independently showed Pro CURRENT and Your PLUGGD plan is active after owner password entry. Actual hook awaits nativefinish before active notice. Clean purchase/verification/nativefinish/entitlement PASS for24; Pro Restore remains next.
+-Earlier correct-account Starter Restore displayed restored, but server returned400 for old signed transaction appAccountToken (Ola); client reconciled trusted existing review-account entitlement beforefinish. Do not describe it as clean fresh200 activation. No ownership transfer or agent SQLwrite.
+-Owner reports physical recording saved with audible music in Photos. Exact new evening file not yet inspected/exported; Mac Photos currently shows latest16October09:47 clip, which is not the new evidence. Saved review credentials were not read: automatic approval review rejected private credential probing; owner independently signed correct Apple App Review account, resolving login without extraction.
 
 ---
 

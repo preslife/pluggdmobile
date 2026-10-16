@@ -34,13 +34,11 @@ function renewalDate(value: string | null) {
 function BillingCycleSelector({
   value,
   onChange,
-  compact = false,
   disabled = false,
   theme,
 }: {
   value: PlatformBillingCycle;
   onChange: (cycle: PlatformBillingCycle) => void;
-  compact?: boolean;
   disabled?: boolean;
   theme: ReturnType<typeof usePluggdTheme>;
 }) {
@@ -48,7 +46,6 @@ function BillingCycleSelector({
     <View
       style={[
         styles.billingSelector,
-        compact && styles.billingSelectorCompact,
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
       ]}
     >
@@ -64,7 +61,6 @@ function BillingCycleSelector({
               onPress={() => onChange(cycle)}
               style={[
                 styles.billingOption,
-                compact && styles.billingOptionCompact,
                 {
                   backgroundColor: selected ? theme.colors.accentSoft : 'transparent',
                   borderColor: selected ? theme.colors.accent : 'transparent',
@@ -77,7 +73,7 @@ function BillingCycleSelector({
               </Text>
               {cycle === 'yearly' ? (
                 <Text style={[styles.savingText, { color: theme.colors.accent }]}>
-                  {compact ? 'SAVE' : 'SAVE ~2 MONTHS'}
+                  SAVE ~2 MONTHS
                 </Text>
               ) : null}
             </EdPressable>
@@ -96,7 +92,6 @@ export default function PlansScreen() {
   const { user } = useAuth();
   const plans = usePlatformSubscription();
   const [billingCycle, setBillingCycle] = useState<PlatformBillingCycle>('monthly');
-  const [showStickyBilling, setShowStickyBilling] = useState(false);
   const productsBySku = useMemo(
     () => new Map(plans.products.map((product) => [storeProductId(product), product])),
     [plans.products],
@@ -111,15 +106,12 @@ export default function PlansScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <ScrollView
+        style={[styles.scroll, { marginTop: insets.top + 72 }]}
         showsVerticalScrollIndicator={false}
-        onScroll={({ nativeEvent }) => {
-          const next = nativeEvent.contentOffset.y > 430;
-          setShowStickyBilling((current) => current === next ? current : next);
-        }}
-        scrollEventThrottle={32}
+        stickyHeaderIndices={[4]}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: Math.max(insets.top + 138, 166), paddingBottom: bottomInset + 26 },
+          { paddingBottom: bottomInset + 26 },
         ]}
       >
         <View style={styles.headerRow}>
@@ -192,7 +184,12 @@ export default function PlansScreen() {
           <Text style={[styles.sectionBody, { color: theme.colors.textMuted }]}>Move between plans as your workflow changes.</Text>
         </View>
 
-        <BillingCycleSelector value={billingCycle} onChange={setBillingCycle} disabled={billingBusy} theme={theme} />
+        <View
+          accessibilityLabel="Billing period selector"
+          style={[styles.billingToolbar, { backgroundColor: theme.colors.background }]}
+        >
+          <BillingCycleSelector value={billingCycle} onChange={setBillingCycle} disabled={billingBusy} theme={theme} />
+        </View>
 
         <View style={styles.planStack}>
           {plans.planDefinitions.map((plan) => {
@@ -292,28 +289,6 @@ export default function PlansScreen() {
 
         <PurchaseLegalLinks note="Payment is charged to your Apple ID. Starter, Creator and Pro renew for the selected monthly or yearly period at the App Store price shown unless cancelled at least 24 hours before the current period ends. Manage or cancel in App Store subscriptions." />
       </ScrollView>
-      {showStickyBilling ? (
-        <View
-          accessibilityLabel="Billing period selector"
-          style={[
-            styles.floatingBilling,
-            {
-              marginBottom: bottomInset,
-              backgroundColor: theme.colors.surfaceStrong,
-              borderColor: theme.colors.borderStrong,
-              shadowColor: theme.colors.text,
-            },
-          ]}
-        >
-          <BillingCycleSelector
-            value={billingCycle}
-            onChange={setBillingCycle}
-            compact
-            disabled={billingBusy}
-            theme={theme}
-          />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -457,7 +432,9 @@ function PlanCard({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingHorizontal: 16, gap: 16 },
+  billingToolbar: { paddingBottom: 12 },
+  scroll: { flex: 1 },
+  content: { paddingTop: 16, paddingHorizontal: 16, gap: 16 },
   headerRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12 },
   backButton: { width: 46, height: 46, borderRadius: 23, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   headerCopy: { flex: 1, alignItems: 'center', gap: 1 },
@@ -483,13 +460,10 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: pluggdFonts.displayBold, fontSize: 23, lineHeight: 28 },
   sectionBody: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 17 },
   billingSelector: { alignSelf: 'stretch', width: '100%', minHeight: 58, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 4, flexDirection: 'row', alignItems: 'stretch', gap: 4 },
-  billingSelectorCompact: { minHeight: 52, borderWidth: 0, borderRadius: 16, padding: 3 },
   billingOptionSlot: { flex: 1, minWidth: 0 },
   billingOption: { width: '100%', flex: 1, minHeight: 48, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', gap: 1, paddingHorizontal: 8 },
-  billingOptionCompact: { minHeight: 46, borderRadius: 13 },
   billingOptionText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14.5, lineHeight: 18 },
   savingText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 8, lineHeight: 10.5, letterSpacing: 0.55 },
-  floatingBilling: { marginHorizontal: 28, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth, padding: 3, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 10 },
   planStack: { gap: 12 },
   planCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 14 },
   planTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },

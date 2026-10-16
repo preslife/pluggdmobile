@@ -1,29 +1,20 @@
-# Current rejection repair verification - 16 October 2026
+# Current rejection repair verification —16October2026
 
-Source checkpoint is ready; replacement submission is not complete.
+Replacement24 is uploaded/installed and its fresh purchase is verified. Owner-requested single top-sticky selector is now a checked local change for replacement25; it is not in installed24.
 
-| Gate | Evidence |
+| Gate | Current evidence |
 |---|---|
-| Apple decision/config | Safari rejected22/15items; agreement/bank/tax Active; six platform subscriptions/group Ready for Review |
-| Plans |22 actual-source cases PASS;52pt filled controls; request generations/shared transaction fulfillment/pending and confirmed ownership |
-| Wallet |36 actual-source cases PASS; missing prices/retry/trusted credit verification/account-scoped shared fulfillment and late-callback guards |
-| Playback |48 actual-source cases PASS; expiry metadata/authorized renewal/intent preservation |
-| Assembled types/platform plan contract |PASS final full native TypeScript and platform contract |
-| Production Hermes |PASS final build24 export; fixture marker exclusion and restored source imports |
-| iPad compatibility native UI |26.3 occlusion reproduced/fixed; unauth CTA→login and local paid busy/error/retry/success PASS; exact27.0.1 parity unverified |
-| iPhone changed UI |Pending official replacement physical check |
-| Physical background |Installed23 freshly identified; owner confirms public track audible on Home Screen. Owned expiry/replacement/video still pending |
-| Live backend reads |Audio33 public4h/owned300s/battle300s; commerce21/live iOS row external Stripe deniedUS/GB; battle RLS guarded; no writes |
-| Native prep/signing settings |Exact lock install/prebuild24/131pods PASS; distribution identity/profile valid; com.pluggd.mobile/build24/family1/production push configured |
-| Legacy readiness regex |Pre-existing stale location/DOB assertions; no false pass or unrelated product patch |
-| Signed replacement/current CI/main/upload |Final38f8855 PR13 CI3/3 PASS, run38930273685. Archive failed in ExpoHead Swift compile without source diagnostic at~302MiB free; headroom/retry pending. No signed archive/export/upload/main merge |
-| Replacement sandbox purchase/fulfilment/restore |Pending; source/native boundary fixture cannot substitute |
-| Owned/battle >300s physical + Home Screen recording |Pending; requested evidence must be linked in Apple Notes and attached to reply |
-| Apple reply/resubmit |Not performed; final applicable owner gate required |
+| Single billing selector | Native iPad26.3 compatibility: one original row in content; swipe past threshold pins it directly below global header; swipe back returns it to original position; no duplicate/bottom row. Yearly switches displayed prices/cadence; Choose Starter immediate busy then adjacent local-fixture error. |
+| Changed source checks | Plans22 actual-source cases PASS; full native TypeScript PASS; platform plans contract PASS; fixture export PASS and parent source restored byte-for-byte. |
+| Existing untouched Wallet/playback | Retain prior36+48 cases and unchanged source. Physical24 public Amachill audio continues beyond6:20, return/queue/pause/seek/resume verified. Private300s renewal has no existing test asset and remains physically unverified. |
+| Fresh actual Apple purchase | Official24 Pro Monthly transaction2000001252719437/original2000001245592485, Sandbox, validated; live receipt200 at20:24:13.959Z/Activated pro for correct reviewaccount; exact active subscription row; phone Pro CURRENT/plan active after nativefinish boundary. |
+| Restore | Earlier Starter UI restored through trusted-existing-entitlement fallback after400 appAccountToken mismatch. Clean Pro Restore still pending; do not call first Restore fresh200 activation. |
+| Current Apple24 release | PR13/main ebe7b1d2/CI3 PASS; signed/exported/processed/installed24 as recorded below. These identities do not prove25. |
+| Replacement25 | Single-selector source changed; archive/signature/export/current CI/install pending. No dependency, backend, privacy, capability or tablet-support change. |
+| Physical recording | Owner reports recording with audible music saved in phone Photos; exact evening clip/audio not yet inspected/exported. Mac Photos09:47 clip is not that evidence. |
+| Apple reply/resubmit | Unsent/unsubmitted; final applicable owner gate remains. |
 
-Detailed current evidence and one next action are in PROGRESS.md. Temporary QA artifacts are not production/sandbox transactions. External review file remains its author's untracked material.
-
-Environment readback:32GiB RAM,11.2GiB swap used; no compiler crash report. Preserve native cache and logs, resume after at least10GB free or explicitly selected cleanup. Full current source checks remain reusable.
+Read PROGRESS.md for one next action. Exact24 artifacts and all unrelated work remain preserved. Existing environment/native cache reused; no broad regression suite rerun for unchanged Wallet/audio source.
 
 ---
 
