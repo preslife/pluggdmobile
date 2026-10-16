@@ -1,3 +1,30 @@
+# Current rejection repair verification - 16 October 2026
+
+Source checkpoint is ready; replacement submission is not complete.
+
+| Gate | Evidence |
+|---|---|
+| Apple decision/config | Safari rejected22/15items; agreement/bank/tax Active; six platform subscriptions/group Ready for Review |
+| Plans |22 actual-source cases PASS;52pt filled controls; request generations/shared transaction fulfillment/pending and confirmed ownership |
+| Wallet |36 actual-source cases PASS; missing prices/retry/trusted credit verification/account-scoped shared fulfillment and late-callback guards |
+| Playback |48 actual-source cases PASS; expiry metadata/authorized renewal/intent preservation |
+| Assembled types/platform plan contract |PASS final full native TypeScript and platform contract |
+| Production Hermes |PASS final build24 export; fixture marker exclusion and restored source imports |
+| iPad compatibility native UI |26.3 occlusion reproduced/fixed; unauth CTA→login and local paid busy/error/retry/success PASS; exact27.0.1 parity unverified |
+| iPhone changed UI |Pending official replacement physical check |
+| Physical background |Installed23 freshly identified; owner confirms public track audible on Home Screen. Owned expiry/replacement/video still pending |
+| Live backend reads |Audio33 public4h/owned300s/battle300s; commerce21/live iOS row external Stripe deniedUS/GB; battle RLS guarded; no writes |
+| Native prep/signing settings |Exact lock install/prebuild24/131pods PASS; distribution identity/profile valid; com.pluggd.mobile/build24/family1/production push configured |
+| Legacy readiness regex |Pre-existing stale location/DOB assertions; no false pass or unrelated product patch |
+| Signed replacement/current CI/main/upload |Initial04a PR13 CI3/3 PASS; final ownership checkpoint requires current CI. Native archive compiling provisionally; final exact pin/export pending |
+| Replacement sandbox purchase/fulfilment/restore |Pending; source/native boundary fixture cannot substitute |
+| Owned/battle >300s physical + Home Screen recording |Pending; requested evidence must be linked in Apple Notes and attached to reply |
+| Apple reply/resubmit |Not performed; final applicable owner gate required |
+
+Detailed current evidence and one next action are in PROGRESS.md. Temporary QA artifacts are not production/sandbox transactions. External review file remains its author's untracked material.
+
+---
+
 ## Owner correction: screen-fitting portrait; reuse verified Build 22 — 3 October 2026
 
 The owner clarified that “9:16” meant portrait filling the phone display, including taller screens, not a fixed 9:16 camera frame. The owner also requested no unnecessary repeated work: finish the build correction before submission forms. Stop the fixed-ratio Build 23 installation/submission path. Restore only the four native framing/caller/check/default-build files exactly from reviewed Build 22 main c08bd827. Preserve full-frame Fit, matching Green Room, smooth gradients, all other release fixes and the unchanged web viewer's decoded portrait/landscape aspect. No new binary is needed: the whole native application and release-workflow diff against c08bd827 is empty after restoration, dependencies/environment are unchanged, and the existing six focused framing checks pass.

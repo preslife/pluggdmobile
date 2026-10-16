@@ -1,3 +1,13 @@
+# Current repair handoff -16October2026
+
+Source: /private/tmp/pluggd-ios-review-repair, branch codex/ios-review-repair-20261016, baseline96f2dc02. PROGRESS.md is authoritative for current sequence.
+
+Plans/Wallet purchase recovery, clear52pt filled actions, observed iPad selector occlusion and protected-audio expiry renewal are implemented.106 focused actual-source cases, full native TypeScript, platform contract and final production Hermes export pass. Actual iPad local fixture shows busy, adjacent error and successful retry. Boundary fixtures are not real sandbox proof. Current phone is23, not22; its six prices and audible public background playback do not prove replacement24.
+
+NEXT: checkpoint then signed24 archive/export/current CI, official device sandbox transaction and owned/battle playback beyond300s; physical Home Screen recording; Apple Notes/reply preparation and final owner submission gate. Do not infer final submission/charged purchases/legal acceptance. No new backend or policy mutation. Preserve original checkouts, all recovery and author-owned REVIEW_FINDINGS_CLAUDE.md.
+
+---
+
 CURRENT_PHASE=SCREEN_FITTING_PORTRAIT_RESTORED_BUILD22_REUSE_CURRENT_CI_NEXT
 NEXT_ACTION=Commit/release the exact Build 22 source restoration with current PR/main checks; reuse the existing signed/installed/selected 22, then resume only outstanding submission acceptance.
 AUDIT_REQUIRED=false

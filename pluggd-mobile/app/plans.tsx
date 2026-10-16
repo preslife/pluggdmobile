@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storeProductId, storeProductPrice } from '../src/billing';
 import { PurchaseLegalLinks } from '../src/components/PurchaseLegalLinks';
+import { EdPressable } from '../src/features/editorial/EditorialBits';
 import { useAuth } from '../src/context/AuthProvider';
 import { useBottomChromeInset } from '../src/design/useBottomChromeInset';
 import { pluggdFonts } from '../src/design/typography';
@@ -35,11 +35,13 @@ function BillingCycleSelector({
   value,
   onChange,
   compact = false,
+  disabled = false,
   theme,
 }: {
   value: PlatformBillingCycle;
   onChange: (cycle: PlatformBillingCycle) => void;
   compact?: boolean;
+  disabled?: boolean;
   theme: ReturnType<typeof usePluggdTheme>;
 }) {
   return (
@@ -54,19 +56,20 @@ function BillingCycleSelector({
         const selected = value === cycle;
         return (
           <View key={cycle} style={styles.billingOptionSlot}>
-            <Pressable
+            <EdPressable
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              accessibilityState={{ selected, disabled }}
+              disabled={disabled}
               accessibilityLabel={cycle === 'monthly' ? 'Show monthly plans' : 'Show yearly plans and save approximately two months'}
               onPress={() => onChange(cycle)}
-              style={({ pressed }) => [
+              style={[
                 styles.billingOption,
                 compact && styles.billingOptionCompact,
                 {
                   backgroundColor: selected ? theme.colors.accentSoft : 'transparent',
                   borderColor: selected ? theme.colors.accent : 'transparent',
                 },
-                pressed && styles.pressed,
+
               ]}
             >
               <Text style={[styles.billingOptionText, { color: selected ? theme.colors.accent : theme.colors.textSecondary }]}>
@@ -77,7 +80,7 @@ function BillingCycleSelector({
                   {compact ? 'SAVE' : 'SAVE ~2 MONTHS'}
                 </Text>
               ) : null}
-            </Pressable>
+            </EdPressable>
           </View>
         );
       })}
@@ -98,6 +101,9 @@ export default function PlansScreen() {
     () => new Map(plans.products.map((product) => [storeProductId(product), product])),
     [plans.products],
   );
+  const billingBusy = (Boolean(plans.purchasingSku) && !plans.purchaseTakingLong) || plans.restoring || plans.retryingStore || plans.checkingPurchase;
+  const feedbackFitsCycle = Boolean(plans.feedbackSku && plans.planDefinitions.some((plan) => plan.skus[billingCycle] === plans.feedbackSku));
+  const sharedMessage = plans.globalError || (!feedbackFitsCycle ? plans.error || plans.notice : null);
   const periodDate = renewalDate(plans.entitlement.currentPeriodEnd);
 
   return (
@@ -117,18 +123,18 @@ export default function PlansScreen() {
         ]}
       >
         <View style={styles.headerRow}>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Go back"
             onPress={() => router.back()}
-            style={({ pressed }) => [
+            style={[
               styles.backButton,
               { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-              pressed && styles.pressed,
+
             ]}
           >
             <MaterialIcons name="arrow-back" size={22} color={theme.colors.text} />
-          </Pressable>
+          </EdPressable>
           <View style={styles.headerCopy}>
             <Text style={[styles.eyebrow, { color: theme.colors.accent }]}>CREATOR ACCESS</Text>
             <Text style={[styles.headerTitle, { color: theme.colors.text }]}>PLUGGD Plans</Text>
@@ -186,7 +192,7 @@ export default function PlansScreen() {
           <Text style={[styles.sectionBody, { color: theme.colors.textMuted }]}>Move between plans as your workflow changes.</Text>
         </View>
 
-        <BillingCycleSelector value={billingCycle} onChange={setBillingCycle} theme={theme} />
+        <BillingCycleSelector value={billingCycle} onChange={setBillingCycle} disabled={billingBusy} theme={theme} />
 
         <View style={styles.planStack}>
           {plans.planDefinitions.map((plan) => {
@@ -208,12 +214,23 @@ export default function PlansScreen() {
                 isCurrent={isCurrent}
                 isCurrentTier={isCurrentTier}
                 signedIn={Boolean(user)}
-                unavailable={Boolean(sku) && !plans.loadingProducts && !product}
-                busy={Boolean(sku && plans.purchasingSku === sku)}
+                unavailable={Boolean(sku) && (Boolean(plans.entitlementError) || (!plans.loadingProducts && !product))}
+                loading={Boolean(sku) && (plans.loadingProducts || plans.loading || plans.retryingStore)}
+                loadingLabel={plans.retryingStore ? 'Connecting to App Store' : plans.loading ? 'Checking current plan' : 'Loading App Store prices'}
+                retryLabel={plans.entitlementError ? 'Retry plan details' : 'Retry App Store'}
+                awaitingStore={plans.purchaseTakingLong}
+                checkingPurchase={plans.checkingPurchase}
+                billingBusy={billingBusy}
+                feedback={sku ? plans.globalError || (plans.feedbackSku === sku ? plans.error || plans.notice : sharedMessage) : null}
+                failed={Boolean(plans.error || plans.globalError)}
+                busy={Boolean(sku && plans.purchasingSku === sku && !plans.purchaseTakingLong)}
                 lockedByExternalBilling={plans.entitlement.billingProvider === 'stripe' && plans.entitlement.tier !== 'free'}
                 onChoose={() => {
+                  if (plans.purchaseTakingLong) { void plans.checkPurchaseStatus(); return; }
                   plans.clearMessage();
                   if (!user) router.push('/auth/login' as any);
+                  else if (sku && plans.entitlementError) void plans.refresh();
+                  else if (sku && !product) void plans.retryStore();
                   else if (sku) void plans.subscribe(sku);
                   else router.back();
                 }}
@@ -223,19 +240,19 @@ export default function PlansScreen() {
           })}
         </View>
 
-        {plans.error || plans.notice ? (
+        {sharedMessage ? (
           <View
             accessibilityLiveRegion="polite"
             style={[
               styles.message,
               {
-                backgroundColor: plans.error ? 'rgba(180,35,24,0.10)' : theme.colors.accentSoft,
-                borderColor: plans.error ? theme.colors.danger : theme.colors.borderAccent,
+                backgroundColor: plans.error || plans.globalError ? 'rgba(180,35,24,0.10)' : theme.colors.accentSoft,
+                borderColor: (plans.error || plans.globalError) ? theme.colors.danger : theme.colors.borderAccent,
               },
             ]}
           >
-            <MaterialIcons name={plans.error ? 'error-outline' : 'check-circle-outline'} size={19} color={plans.error ? theme.colors.danger : theme.colors.accent} />
-            <Text style={[styles.messageText, { color: plans.error ? theme.colors.danger : theme.colors.textSecondary }]}>{plans.error || plans.notice}</Text>
+            <MaterialIcons name={plans.error || plans.globalError ? 'error-outline' : 'check-circle-outline'} size={19} color={(plans.error || plans.globalError) ? theme.colors.danger : theme.colors.accent} />
+            <Text style={[styles.messageText, { color: (plans.error || plans.globalError) ? theme.colors.danger : theme.colors.textSecondary }]}>{sharedMessage}</Text>
           </View>
         ) : null}
 
@@ -244,32 +261,33 @@ export default function PlansScreen() {
             <Text style={[styles.restoreTitle, { color: theme.colors.text }]}>Already subscribed?</Text>
             <Text style={[styles.restoreBody, { color: theme.colors.textMuted }]}>Restore a PLUGGD plan bought with this Apple ID.</Text>
           </View>
-          <Pressable
+          <EdPressable
             accessibilityRole="button"
             accessibilityLabel="Restore App Store purchases"
-            disabled={plans.restoring}
-            onPress={() => void plans.restore()}
-            style={({ pressed }) => [
+            disabled={billingBusy}
+            accessibilityState={{ disabled: billingBusy, busy: plans.restoring }}
+            onPress={() => void (plans.purchaseTakingLong ? plans.checkPurchaseStatus() : plans.restore())}
+            style={[
               styles.restoreButton,
               { borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surfaceStrong },
-              pressed && styles.pressed,
+
             ]}
           >
             {plans.restoring ? <ActivityIndicator size="small" color={theme.colors.accent} /> : <MaterialIcons name="restore" size={18} color={theme.colors.accent} />}
-            <Text style={[styles.restoreButtonText, { color: theme.colors.text }]}>{plans.restoring ? 'Restoring' : 'Restore purchases'}</Text>
-          </Pressable>
+            <Text style={[styles.restoreButtonText, { color: theme.colors.text }]}>{plans.restoring ? 'Restoring' : plans.purchaseTakingLong ? 'Check purchase status' : 'Restore purchases'}</Text>
+          </EdPressable>
         </View>
 
         {plans.entitlement.billingProvider === 'apple' && plans.entitlement.tier !== 'free' && plans.managementUrl ? (
-          <Pressable
+          <EdPressable
             accessibilityRole="link"
             accessibilityLabel="Manage App Store subscription"
             onPress={() => void Linking.openURL(plans.managementUrl!)}
-            style={({ pressed }) => [styles.manageLink, pressed && styles.pressed]}
+            style={styles.manageLink}
           >
             <Text style={[styles.manageLinkText, { color: theme.colors.accent }]}>Manage App Store subscription</Text>
             <MaterialIcons name="open-in-new" size={16} color={theme.colors.accent} />
-          </Pressable>
+          </EdPressable>
         ) : null}
 
         <PurchaseLegalLinks note="Payment is charged to your Apple ID. Starter, Creator and Pro renew for the selected monthly or yearly period at the App Store price shown unless cancelled at least 24 hours before the current period ends. Manage or cancel in App Store subscriptions." />
@@ -280,7 +298,7 @@ export default function PlansScreen() {
           style={[
             styles.floatingBilling,
             {
-              bottom: Math.max(bottomInset - 10, insets.bottom + 78),
+              marginBottom: bottomInset,
               backgroundColor: theme.colors.surfaceStrong,
               borderColor: theme.colors.borderStrong,
               shadowColor: theme.colors.text,
@@ -291,6 +309,7 @@ export default function PlansScreen() {
             value={billingCycle}
             onChange={setBillingCycle}
             compact
+            disabled={billingBusy}
             theme={theme}
           />
         </View>
@@ -307,6 +326,14 @@ function PlanCard({
   isCurrentTier,
   signedIn,
   unavailable,
+  loading,
+  loadingLabel,
+  retryLabel,
+  awaitingStore,
+  checkingPurchase,
+  billingBusy,
+  feedback,
+  failed,
   busy,
   lockedByExternalBilling,
   onChoose,
@@ -319,6 +346,14 @@ function PlanCard({
   isCurrentTier: boolean;
   signedIn: boolean;
   unavailable: boolean;
+  loading: boolean;
+  loadingLabel: string;
+  retryLabel: string;
+  awaitingStore: boolean;
+  checkingPurchase: boolean;
+  billingBusy: boolean;
+  feedback: string | null;
+  failed: boolean;
   busy: boolean;
   lockedByExternalBilling: boolean;
   onChoose: () => void;
@@ -326,7 +361,7 @@ function PlanCard({
 }) {
   const paid = Boolean(plan.skus[billingCycle]);
   const disabled = paid
-    ? isCurrent || unavailable || busy || lockedByExternalBilling
+    ? isCurrent || loading || billingBusy || lockedByExternalBilling
     : isCurrent;
   const buttonLabel = !paid
     ? isCurrent ? 'Current plan' : 'Continue on Free'
@@ -334,13 +369,22 @@ function PlanCard({
     ? 'Current plan'
     : lockedByExternalBilling
     ? 'Manage original plan'
+    : checkingPurchase
+    ? 'Checking purchase status'
+    : awaitingStore
+    ? 'Check purchase status'
     : busy
     ? 'Connecting to App Store'
+    : loading
+    ? loadingLabel
     : unavailable
-    ? 'Not available in App Store yet'
+    ? retryLabel
     : signedIn
     ? `Choose ${plan.name}`
     : 'Sign in to choose';
+
+  const filled = paid && (!disabled || busy || loading);
+  const buttonInk = filled ? (theme.scheme === 'light' ? '#FFFFFF' : theme.colors.onAccent) : theme.colors.textMuted;
 
   return (
     <View
@@ -389,17 +433,24 @@ function PlanCard({
         ))}
       </View>
 
-      <Pressable
+      <EdPressable
         accessibilityRole="button"
         accessibilityLabel={buttonLabel}
         disabled={disabled}
+        accessibilityState={{ disabled, busy: busy || loading }}
         onPress={onChoose}
-        style={({ pressed }) => [styles.planButton, pressed && styles.pressed]}
+        style={[styles.planButton, { backgroundColor: filled ? theme.colors.accent : theme.colors.surfaceAlt, borderColor: filled ? theme.colors.accent : theme.colors.border }]}
       >
-        {busy ? <ActivityIndicator size="small" color={theme.colors.accent} /> : null}
-        <Text style={[styles.planButtonText, { color: disabled ? theme.colors.textMuted : theme.colors.text }]} numberOfLines={2}>{buttonLabel}</Text>
-        {!disabled ? <MaterialIcons name="arrow-forward" size={18} color={theme.colors.accent} /> : null}
-      </Pressable>
+        {busy || loading ? <ActivityIndicator size="small" color={buttonInk} /> : null}
+        <Text style={[styles.planButtonText, { color: buttonInk }]} numberOfLines={2}>{buttonLabel}</Text>
+        {!disabled ? <MaterialIcons name="arrow-forward" size={18} color={buttonInk} /> : null}
+      </EdPressable>
+      {feedback ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[styles.planFeedback, { color: failed ? theme.colors.danger : theme.colors.textSecondary }]}
+        >{feedback}</Text>
+      ) : null}
     </View>
   );
 }
@@ -438,7 +489,7 @@ const styles = StyleSheet.create({
   billingOptionCompact: { minHeight: 46, borderRadius: 13 },
   billingOptionText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14.5, lineHeight: 18 },
   savingText: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 8, lineHeight: 10.5, letterSpacing: 0.55 },
-  floatingBilling: { position: 'absolute', left: 28, right: 28, zIndex: 30, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth, padding: 3, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 10 },
+  floatingBilling: { marginHorizontal: 28, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth, padding: 3, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 10 },
   planStack: { gap: 12 },
   planCard: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 14 },
   planTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
@@ -458,7 +509,8 @@ const styles = StyleSheet.create({
   featureList: { gap: 9 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   featureText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12.5, lineHeight: 17 },
-  planButton: { minHeight: 48, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  planFeedback: { paddingHorizontal: 15, paddingBottom: 12, fontFamily: pluggdFonts.satoshiMedium, fontSize: 13, lineHeight: 19 },
+  planButton: { minHeight: 52, alignSelf: 'stretch', borderRadius: 12, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   planButtonText: { flexShrink: 1, fontFamily: pluggdFonts.satoshiBold, fontSize: 13, lineHeight: 17, textAlign: 'center' },
   message: { borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   messageText: { flex: 1, fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 17 },
@@ -470,5 +522,4 @@ const styles = StyleSheet.create({
   restoreButtonText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13 },
   manageLink: { minHeight: 44, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 12 },
   manageLinkText: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5, textDecorationLine: 'underline' },
-  pressed: { opacity: 0.72 },
 });

@@ -46,7 +46,7 @@ const LEDGER_LABELS: Record<string, string> = {
 };
 
 function formatPriceLabel(price: string) {
-  if (!price) return 'Checking…';
+  if (!price) return 'Price unavailable';
   return price.replace(/\.00$/, '');
 }
 
@@ -102,10 +102,18 @@ export default function WalletScreen() {
     purchasing,
     restoring,
     error: iapError,
+    purchaseError,
+    productError,
+    notice,
+    feedbackSku,
+    loadingProducts,
+    retrying,
+    pendingPayment,
     storeName,
     storeAccountName,
     purchaseCredits,
     restorePurchases,
+    retryProducts,
   } = useCredits();
   const [selectedSku, setSelectedSku] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,6 +127,16 @@ export default function WalletScreen() {
       packs[0],
     [packs, selectedSku],
   );
+  const billingBusy = purchasing || restoring;
+  const pricesBusy = loadingProducts || retrying;
+  const canBuy = Boolean(selectedPack?.product && selectedPack.localizedPrice);
+  const purchaseLabel = purchasing
+    ? pendingPayment ? 'Awaiting payment approval' : `Connecting to ${storeName}`
+    : restoring ? 'Checking purchases'
+    : retrying ? `Retrying ${storeName}`
+    : loadingProducts ? `Loading ${storeName} prices`
+    : canBuy ? 'Buy credits' : `Retry ${storeName}`;
+  const storeFeedback = productError || (!feedbackSku ? iapError || notice : null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -127,7 +145,11 @@ export default function WalletScreen() {
   }, [library, refreshBalance, refreshLedger]);
 
   const handlePurchase = () => {
-    if (!selectedPack?.product || !selectedPack.localizedPrice) return;
+    if (billingBusy || pricesBusy) return;
+    if (!selectedPack?.product || !selectedPack.localizedPrice) {
+      void retryProducts();
+      return;
+    }
 
     Alert.alert(
       'Buy credits',
@@ -240,13 +262,6 @@ export default function WalletScreen() {
           </View>
         )}
 
-        {iapError ? (
-          <View style={[styles.errorCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.danger }]}>
-            <MaterialIcons name="error-outline" size={20} color={theme.colors.danger} />
-            <Text style={[styles.errorText, { color: theme.colors.danger }]}>{iapError}</Text>
-          </View>
-        ) : null}
-
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Buy credits</Text>
           <Text style={[styles.balanceValue, { color: theme.colors.textSubtle }]}>
@@ -261,97 +276,109 @@ export default function WalletScreen() {
             const icon = PACK_ICONS[pack.label] ?? 'paid';
 
             return (
-              <Pressable
-                key={pack.sku}
-                accessibilityRole="radio"
-                accessibilityLabel={`${pack.label}, ${pack.credits.toLocaleString()} credits, ${formatPriceLabel(pack.localizedPrice)}${subtext ? `, ${subtext}` : ''}`}
-                accessibilityState={{ selected }}
-                onPress={() => setSelectedSku(pack.sku)}
-                style={[
-                  styles.packCard,
-                  {
-                    backgroundColor: selected ? 'rgba(255,102,0,0.06)' : 'transparent',
-                    borderColor: selected ? theme.colors.accent : theme.colors.border,
-                    shadowColor: theme.colors.shadow,
-                  },
-                ]}
-              >
-                <View style={[styles.packIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
-                  <MaterialIcons
-                    name={icon}
-                    size={24}
-                    color={selected ? theme.colors.accent : theme.colors.textMuted}
-                  />
-                </View>
+              <View key={pack.sku}>
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${pack.label}, ${pack.credits.toLocaleString()} credits, ${pricesBusy ? 'Loading price' : formatPriceLabel(pack.localizedPrice)}${subtext ? `, ${subtext}` : ''}`}
+                  accessibilityState={{ selected, disabled: billingBusy }}
+                  disabled={billingBusy}
+                  onPress={() => setSelectedSku(pack.sku)}
+                  style={[
+                    styles.packCard,
+                    {
+                      backgroundColor: selected ? 'rgba(255,102,0,0.06)' : 'transparent',
+                      borderColor: selected ? theme.colors.accent : theme.colors.border,
+                      shadowColor: theme.colors.shadow,
+                    },
+                  ]}
+                >
+                  <View style={[styles.packIconBox, { backgroundColor: theme.colors.surfaceAlt }]}>
+                    <MaterialIcons
+                      name={icon}
+                      size={24}
+                      color={selected ? theme.colors.accent : theme.colors.textMuted}
+                    />
+                  </View>
 
-                <View style={styles.packTextWrap}>
-                  <View style={styles.packTitleRow}>
-                    <Text
-                      style={[
-                        styles.packName,
-                        { color: selected ? theme.colors.accent : theme.colors.text },
-                      ]}
-                    >
-                      {pack.label}
+                  <View style={styles.packTextWrap}>
+                    <View style={styles.packTitleRow}>
+                      <Text
+                        style={[
+                          styles.packName,
+                          { color: selected ? theme.colors.accent : theme.colors.text },
+                        ]}
+                      >
+                        {pack.label}
+                      </Text>
+
+                      {pack.popular ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Popular</Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <Text style={[styles.packCredits, { color: theme.colors.textMuted }]}>
+                      {pack.credits.toLocaleString()} credits
                     </Text>
 
-                    {pack.popular ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>Popular</Text>
-                      </View>
+                    {subtext ? (
+                      <Text style={[styles.packSubtext, { color: theme.colors.textMuted }]}>
+                        {subtext}
+                      </Text>
                     ) : null}
                   </View>
 
-                  <Text style={[styles.packCredits, { color: theme.colors.textMuted }]}>
-                    {pack.credits.toLocaleString()} credits
-                  </Text>
-
-                  {subtext ? (
-                    <Text style={[styles.packSubtext, { color: theme.colors.textMuted }]}>
-                      {subtext}
+                  <View style={styles.packRight}>
+                    <Text style={[styles.packPrice, !pack.localizedPrice && styles.packPriceUnavailable, { color: theme.colors.text }]}>
+                      {pricesBusy ? 'Loading…' : pack.localizedPrice ? formatPriceLabel(pack.localizedPrice) : 'Unavailable'}
                     </Text>
-                  ) : null}
-                </View>
 
-                <View style={styles.packRight}>
-                  <Text style={[styles.packPrice, { color: theme.colors.text }]}>
-                    {formatPriceLabel(pack.localizedPrice)}
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.selectCircle,
-                      { borderColor: selected ? theme.colors.accent : theme.colors.textSubtle },
-                      selected && styles.selectCircleActive,
-                    ]}
-                  >
-                    {selected ? <MaterialIcons name="check" size={16} color="#0a0806" /> : null}
+                    <View
+                      style={[
+                        styles.selectCircle,
+                        { borderColor: selected ? theme.colors.accent : theme.colors.textSubtle },
+                        selected && styles.selectCircleActive,
+                      ]}
+                    >
+                      {selected ? <MaterialIcons name="check" size={16} color="#0a0806" /> : null}
+                    </View>
                   </View>
-                </View>
-              </Pressable>
+                </Pressable>
+                {feedbackSku === pack.sku && (purchaseError || notice) ? (
+                  <Text accessibilityLiveRegion="polite" style={[styles.packFeedback, { color: purchaseError ? theme.colors.danger : theme.colors.textMuted }]}>
+                    {purchaseError || notice}
+                  </Text>
+                ) : null}
+              </View>
             );
           })}
         </View>
 
+        {storeFeedback ? (
+          <View accessibilityLiveRegion="polite" style={[styles.errorCard, { backgroundColor: theme.colors.surface, borderColor: iapError ? theme.colors.danger : theme.colors.border }]}>
+            <MaterialIcons name={iapError ? 'error-outline' : 'info-outline'} size={20} color={iapError ? theme.colors.danger : theme.colors.accent} />
+            <Text style={[styles.errorText, { color: iapError ? theme.colors.danger : theme.colors.textMuted }]}>{storeFeedback}</Text>
+          </View>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={selectedPack?.product && selectedPack.localizedPrice ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : 'Credit pack price is not yet available'}
-          style={[styles.cta, (!selectedPack?.product || !selectedPack.localizedPrice || purchasing) && styles.ctaDisabled]}
+          accessibilityLabel={!billingBusy && !pricesBusy && canBuy && selectedPack ? `Buy ${selectedPack.credits.toLocaleString()} credits for ${formatPriceLabel(selectedPack.localizedPrice)}` : purchaseLabel}
+          accessibilityState={{ disabled: billingBusy || pricesBusy, busy: pricesBusy || (billingBusy && !pendingPayment) }}
+          style={[styles.cta, (billingBusy || pricesBusy) && styles.ctaDisabled]}
           onPress={handlePurchase}
-          disabled={!selectedPack?.product || !selectedPack.localizedPrice || purchasing}
+          disabled={billingBusy || pricesBusy}
         >
-          {purchasing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.ctaText}>Buy credits</Text>
-          )}
+          {pricesBusy || (billingBusy && !pendingPayment) ? <ActivityIndicator color="#fff" /> : null}
+          <Text style={styles.ctaText}>{purchaseLabel}</Text>
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={restoring ? 'Restoring purchases' : 'Restore purchases'}
           onPress={restorePurchases}
-          disabled={restoring}
+          disabled={billingBusy || pricesBusy}
           style={styles.restoreButton}
         >
           <Text style={[styles.restoreText, { color: theme.colors.textSubtle }]}>
@@ -672,6 +699,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: pluggdFonts.satoshiBold, fontWeight: '800',
   },
+  packPriceUnavailable: {
+    fontSize: 13,
+  },
+  packFeedback: {
+    paddingVertical: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: pluggdFonts.satoshiMedium,
+  },
   selectCircle: {
     width: 22,
     height: 22,
@@ -686,11 +722,14 @@ const styles = StyleSheet.create({
     borderColor: PLUGGD_ORANGE,
   },
   cta: {
-    height: 54,
+    minHeight: 54,
     borderRadius: 5,
     backgroundColor: PLUGGD_ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 12,
     marginTop: 24,
   },
   ctaDisabled: {

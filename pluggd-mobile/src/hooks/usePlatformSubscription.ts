@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { StoreProduct, StorePurchase, StorePurchaseError } from '../billing';
 import { storeProductId } from '../billing';
+import { withStoreTimeout } from '../billing/storeOperation';
 import { useStoreKit } from '../context/StoreKitProvider';
 import { supabase } from '../lib/supabase';
 
@@ -142,13 +143,15 @@ function normalizedEntitlement(row: any): PlatformPlanEntitlement {
 }
 
 export async function loadPlatformPlanEntitlement() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session }, error: sessionError } = await withStoreTimeout(supabase.auth.getSession(), 'Your current plan could not be checked. Tap Retry plan details.');
+  if (sessionError) throw sessionError;
+  const user = session?.user;
   if (!user) return FREE_ENTITLEMENT;
-  const { data, error } = await (supabase as any)
+  const { data, error } = await withStoreTimeout<any>((supabase as any)
     .from('user_subscriptions')
     .select('tier,status,current_period_end,billing_provider,billing_cycle,commission_rate,source,auto_renew_status,apple_product_id,stripe_subscription_id')
     .eq('user_id', user.id)
-    .maybeSingle();
+    .maybeSingle(), 'Your current plan could not be checked. Tap Retry plan details.');
   if (error) throw error;
   return normalizedEntitlement(data);
 }
@@ -185,10 +188,13 @@ export function usePlatformPlanEntitlement() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setEntitlement(await loadPlatformPlanEntitlement());
+      const next = await loadPlatformPlanEntitlement();
+      setEntitlement(next);
       setError(null);
+      return next;
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Your plan could not be loaded.');
+      setError('Your current plan could not be checked. Tap Retry plan details.');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -204,7 +210,7 @@ function wait(delayMs: number) {
 }
 
 export function usePlatformSubscription() {
-  const { adapter, ready, connectionError } = useStoreKit();
+  const { adapter, ready, connectionError, retryConnection } = useStoreKit();
   const entitlementState = usePlatformPlanEntitlement();
   const [planDefinitions, setPlanDefinitions] = useState(PLATFORM_PLANS);
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -213,6 +219,19 @@ export function usePlatformSubscription() {
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [retryingStore, setRetryingStore] = useState(false);
+  const [purchaseTakingLong, setPurchaseTakingLong] = useState(false);
+  const [checkingPurchase, setCheckingPurchase] = useState(false);
+  const [feedbackSku, setFeedbackSku] = useState<string | null>(null);
+  const purchaseInFlight = useRef(false);
+  const activePurchaseSku = useRef<string | null>(null);
+  const nativeRequestSettled = useRef(false);
+  const pendingApproval = useRef(false);
+  const purchaseGeneration = useRef(0);
+  const confirmedGeneration = useRef<number | null>(null);
+  const productRequest = useRef(0);
+  const processingPurchases = useRef(new Map<string, Promise<void>>());
+  const completedPurchases = useRef(new Set<string>());
   const purchaseListener = useRef<{ remove: () => void } | null>(null);
   const errorListener = useRef<{ remove: () => void } | null>(null);
   const knownSkus = useMemo(() => new Set<string>(PLATFORM_PLAN_SKUS), []);
@@ -225,24 +244,56 @@ export function usePlatformSubscription() {
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
+  const reloadProducts = useCallback(async () => {
+    const request = ++productRequest.current;
     if (!adapter || !ready || adapter.provider !== 'apple') {
       setLoadingProducts(Boolean(adapter && adapter.provider === 'apple') && !connectionError);
-      return () => { mounted = false; };
+      return;
     }
     setLoadingProducts(true);
-    adapter.fetchProducts([...PLATFORM_PLAN_SKUS], 'subs')
-      .then((loaded) => {
-        if (mounted) setProducts(loaded.filter((product) => knownSkus.has(storeProductId(product))));
-      })
-      .catch((loadError) => {
-        console.warn('[usePlatformSubscription] product load failed:', loadError);
-        if (mounted) setProducts([]);
-      })
-      .finally(() => { if (mounted) setLoadingProducts(false); });
-    return () => { mounted = false; };
+    setError(null);
+    try {
+      const loaded = await withStoreTimeout(adapter.fetchProducts([...PLATFORM_PLAN_SKUS], 'subs'), 'App Store prices could not be loaded. Tap Retry App Store.');
+      if (request !== productRequest.current) return;
+      setProducts(loaded.filter((product) => knownSkus.has(storeProductId(product))));
+    } catch (loadError) {
+      console.warn('[usePlatformSubscription] product load failed:', loadError);
+      if (request === productRequest.current) {
+        setProducts([]);
+        setError('App Store prices could not be loaded. Tap Retry App Store to try again.');
+      }
+    } finally {
+      if (request === productRequest.current) setLoadingProducts(false);
+    }
   }, [adapter, connectionError, knownSkus, ready]);
+
+  useEffect(() => {
+    void reloadProducts();
+    return () => { productRequest.current++; };
+  }, [reloadProducts]);
+
+  const retryStore = useCallback(async () => {
+    if (purchaseInFlight.current || retryingStore) return;
+    setRetryingStore(true);
+    setError(null);
+    setNotice(null);
+    setFeedbackSku(null);
+    try {
+      if (!ready) await retryConnection();
+      else await reloadProducts();
+    } finally {
+      setRetryingStore(false);
+    }
+  }, [ready, reloadProducts, retryConnection, retryingStore]);
+
+  useEffect(() => {
+    if (!purchasingSku) { setPurchaseTakingLong(false); return; }
+    const timer = setTimeout(() => {
+      setPurchaseTakingLong(true);
+      setNotice('The App Store is taking longer than expected. Check purchase status before trying to subscribe again.');
+    }, 45_000);
+    return () => clearTimeout(timer);
+  }, [purchasingSku]);
 
   const recoverEntitlement = useCallback(async (productId: string) => {
     for (const delay of RECONCILIATION_DELAYS_MS) {
@@ -255,7 +306,7 @@ export function usePlatformSubscription() {
 
   const validate = useCallback(async (purchase: StorePurchase) => {
     if (!adapter || adapter.provider !== 'apple') throw new Error('PLUGGD plans are currently available through the App Store on iPhone.');
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await withStoreTimeout(supabase.auth.getSession(), 'Your purchase is waiting for account verification. Check purchase status before subscribing again.');
     if (!session?.user || !session.access_token) throw new Error('Sign in to manage a PLUGGD plan.');
     if (typeof purchase.purchaseToken !== 'string' || purchase.purchaseToken.split('.').length !== 3) {
       const recovered = await recoverEntitlement(purchase.productId);
@@ -263,10 +314,10 @@ export function usePlatformSubscription() {
       throw new Error('The App Store confirmed this plan and PLUGGD is still syncing it. Do not subscribe again—reopen Plans in a moment.');
     }
     const verification = await adapter.buildVerificationRequest(purchase, 'subscription', session.user.id);
-    const { data, error: validationError } = await supabase.functions.invoke(verification.functionName, {
+    const { data, error: validationError } = await withStoreTimeout(supabase.functions.invoke(verification.functionName, {
       headers: { Authorization: `Bearer ${session.access_token}` },
       body: { ...verification.body, subscription_scope: 'platform' },
-    });
+    }), 'The App Store confirmed this purchase, but verification is taking longer than expected. Restore purchases before subscribing again.');
     if (validationError) {
       const recovered = await recoverEntitlement(purchase.productId);
       if (recovered) return { finishRequired: true };
@@ -279,29 +330,108 @@ export function usePlatformSubscription() {
     return { finishRequired: true };
   }, [adapter, recoverEntitlement]);
 
+  // One transaction owns verification and finishing across listener, direct
+  // StoreKit results and Restore. Native finish is never raced against a timeout:
+  // a slow finish must remain owned until its real promise settles.
+  const fulfillPurchase = useCallback((purchase: StorePurchase) => {
+    const key = `${purchase.productId}:${purchase.transactionId || purchase.purchaseToken}`;
+    if (completedPurchases.current.has(key)) return Promise.resolve();
+    const existing = processingPurchases.current.get(key);
+    if (existing) return existing;
+    const operation = (async () => {
+      const result = await validate(purchase);
+      if (result.finishRequired) await adapter!.finishTransaction(purchase, false);
+      completedPurchases.current.add(key);
+    })();
+    processingPurchases.current.set(key, operation);
+    void operation.finally(() => {
+      if (processingPurchases.current.get(key) === operation) processingPurchases.current.delete(key);
+    }).catch(() => {});
+    return operation;
+  }, [adapter, validate]);
+
+  const handlePurchase = useCallback(async (purchase: StorePurchase) => {
+    if (!adapter || !knownSkus.has(purchase.productId)) return;
+    const generation = purchaseGeneration.current;
+    setFeedbackSku(purchase.productId);
+    if (purchase.purchaseState === 'pending') {
+      if (!activePurchaseSku.current || activePurchaseSku.current === purchase.productId) {
+        pendingApproval.current = true;
+        purchaseInFlight.current = true;
+        activePurchaseSku.current = purchase.productId;
+        setPurchasingSku(purchase.productId);
+        setPurchaseTakingLong(true);
+      }
+      setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
+      return;
+    }
+    if (activePurchaseSku.current === purchase.productId) {
+      confirmedGeneration.current = generation;
+      pendingApproval.current = false;
+    }
+    try {
+      await withStoreTimeout(fulfillPurchase(purchase), 'Your purchase is still syncing. Check purchase status before subscribing again.');
+      const refreshed = await entitlementState.refresh();
+      if (purchaseGeneration.current !== generation) return;
+      setError(null);
+      setNotice(refreshed ? 'Your PLUGGD plan is active.' : 'Your purchase is verified. Reopen Plans to refresh your access.');
+    } catch (purchaseError) {
+      if (purchaseGeneration.current === generation) setError(purchaseError instanceof Error ? purchaseError.message : 'Plan verification failed.');
+    } finally {
+      const key = `${purchase.productId}:${purchase.transactionId || purchase.purchaseToken}`;
+      if (purchaseGeneration.current === generation && activePurchaseSku.current === purchase.productId && !processingPurchases.current.has(key)) {
+        pendingApproval.current = false;
+        purchaseInFlight.current = false;
+        activePurchaseSku.current = null;
+        setPurchasingSku(null);
+      }
+    }
+  }, [adapter, entitlementState.refresh, fulfillPurchase, knownSkus]);
+
+  const checkPurchaseStatus = useCallback(async () => {
+    if (!adapter || checkingPurchase) return;
+    setCheckingPurchase(true);
+    try {
+      const purchases = await withStoreTimeout(adapter.getAvailablePurchases(), 'Purchase status could not be checked. Please try again.');
+      const purchase = purchases.find((item) => item.productId === purchasingSku);
+      if (purchase) await handlePurchase(purchase);
+      else if (nativeRequestSettled.current && !pendingApproval.current && processingPurchases.current.size === 0) {
+        purchaseInFlight.current = false;
+        activePurchaseSku.current = null;
+        setPurchasingSku(null);
+        setError(null);
+        setNotice('No completed purchase was found. You can choose a plan again. If Apple is waiting for payment approval, do not repeat the purchase.');
+      } else {
+        setNotice(pendingApproval.current ? 'The App Store is still waiting for payment approval. Do not subscribe again.' : 'No completed purchase is available yet. Finish or cancel any open App Store sheet, then check again. Do not subscribe again while Apple is processing it.');
+      }
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : 'Purchase status could not be checked. Please try again.');
+    } finally {
+      setCheckingPurchase(false);
+    }
+  }, [adapter, checkingPurchase, handlePurchase, purchasingSku]);
+
   useEffect(() => {
     if (!adapter || adapter.provider !== 'apple') return;
-    purchaseListener.current = adapter.listenForPurchases(async (purchase) => {
-      if (!knownSkus.has(purchase.productId)) return;
-      if (purchase.purchaseState === 'pending') {
-        setPurchasingSku(null);
+    purchaseListener.current = adapter.listenForPurchases(handlePurchase);
+    errorListener.current = adapter.listenForErrors((purchaseError: StorePurchaseError) => {
+      if (purchaseError.productId && (!knownSkus.has(purchaseError.productId) || (activePurchaseSku.current && purchaseError.productId !== activePurchaseSku.current))) return;
+      if (confirmedGeneration.current === purchaseGeneration.current && !pendingApproval.current) return;
+      if (purchaseError.code === 'pending' || purchaseError.code === 'deferred-payment') {
+        const pendingSku = activePurchaseSku.current || purchaseError.productId;
+        if (!pendingSku) return;
+        activePurchaseSku.current = pendingSku;
+        purchaseInFlight.current = true;
+        setPurchasingSku(pendingSku);
+        setFeedbackSku(pendingSku);
+        pendingApproval.current = true;
+        setPurchaseTakingLong(true);
         setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
         return;
       }
-      try {
-        const result = await validate(purchase);
-        if (result.finishRequired) await adapter.finishTransaction(purchase, false);
-        await entitlementState.refresh();
-        setError(null);
-        setNotice('Your PLUGGD plan is active.');
-      } catch (purchaseError) {
-        setError(purchaseError instanceof Error ? purchaseError.message : 'Plan verification failed.');
-      } finally {
-        setPurchasingSku(null);
-      }
-    });
-    errorListener.current = adapter.listenForErrors((purchaseError: StorePurchaseError) => {
-      if (purchaseError.productId && !knownSkus.has(purchaseError.productId)) return;
+      pendingApproval.current = false;
+      activePurchaseSku.current = null;
+      purchaseInFlight.current = false;
       setPurchasingSku(null);
       if (purchaseError.code !== 'user-cancelled') setError(purchaseError.message || 'Plan purchase failed.');
     });
@@ -309,72 +439,119 @@ export function usePlatformSubscription() {
       purchaseListener.current?.remove();
       errorListener.current?.remove();
     };
-  }, [adapter, entitlementState.refresh, knownSkus, validate]);
+  }, [adapter, handlePurchase, knownSkus]);
 
   const subscribe = useCallback(async (sku: string) => {
+    // Guard synchronously: a second tap can precede React's busy render.
+    if (purchaseInFlight.current) return;
+    const generation = ++purchaseGeneration.current;
+    purchaseInFlight.current = true;
+    activePurchaseSku.current = sku;
+    nativeRequestSettled.current = false;
+    pendingApproval.current = false;
+    setPurchasingSku(sku);
+    setFeedbackSku(sku);
+    setPurchaseTakingLong(false);
     setError(null);
     setNotice(null);
-    if (!adapter || !ready || adapter.provider !== 'apple') {
-      setError(connectionError || 'PLUGGD plans are currently available through the App Store on iPhone.');
-      return;
-    }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Sign in to choose a PLUGGD plan.');
-      return;
-    }
-    if (entitlementState.entitlement.billingProvider === 'stripe' && entitlementState.entitlement.tier !== 'free') {
-      setError('This plan was started outside the App Store. Manage it where you originally subscribed.');
-      return;
-    }
-    const product = products.find((candidate) => storeProductId(candidate) === sku);
-    if (!product) {
-      setError('This PLUGGD plan is not currently available from the App Store.');
-      return;
-    }
-    setPurchasingSku(sku);
     try {
-      await adapter.requestSubscription({ sku, accountId: user.id, product });
-    } catch (purchaseError: any) {
+      if (!adapter || !ready || adapter.provider !== 'apple') {
+        throw new Error(connectionError || 'The App Store is not connected. Close Plans and try again.');
+      }
+      // The signed-in session already identifies the account. A network getUser
+      // here delayed the Apple sheet without any visible response to the tap.
+      const { data: { session }, error: sessionError } = await withStoreTimeout(supabase.auth.getSession(), 'Your session could not be checked. Please try again.');
+      if (sessionError || !session?.user) throw new Error('Sign in to choose a PLUGGD plan.');
+      if (entitlementState.loading || entitlementState.error) throw new Error('Your current plan could not be checked. Tap Retry plan details.');
+      if (entitlementState.entitlement.billingProvider === 'stripe' && entitlementState.entitlement.tier !== 'free') {
+        throw new Error('This plan was started outside the App Store. Manage it where you originally subscribed.');
+      }
+      const product = products.find((candidate) => storeProductId(candidate) === sku);
+      if (!product) throw new Error('This PLUGGD plan is not currently available from the App Store. Tap Retry App Store to reload prices.');
+      const result = await adapter.requestSubscription({ sku, accountId: session.user.id, product });
+      if (purchaseGeneration.current === generation) nativeRequestSettled.current = true;
+      // Some StoreKit versions return the purchase before delivering its event.
+      // Share one idempotent handler so neither a dropped nor duplicate event loses it.
+      for (const candidate of Array.isArray(result) ? result : result ? [result] : []) {
+        if (purchaseGeneration.current === generation && candidate && typeof candidate === 'object' && typeof candidate.productId === 'string') {
+          await handlePurchase(candidate as StorePurchase);
+        }
+      }
+      // Missing results remain guarded; the watchdog exposes read-only status recovery.
+    } catch (purchaseError: unknown) {
+      if (purchaseGeneration.current !== generation || activePurchaseSku.current !== sku || confirmedGeneration.current === generation) return;
+      nativeRequestSettled.current = true;
+      const pendingFailure = purchaseError as StorePurchaseError;
+      if (pendingFailure?.code === 'pending' || pendingFailure?.code === 'deferred-payment') {
+        pendingApproval.current = true;
+        setPurchaseTakingLong(true);
+        setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
+        return;
+      }
+      pendingApproval.current = false;
+      activePurchaseSku.current = null;
+      purchaseInFlight.current = false;
       setPurchasingSku(null);
-      if (purchaseError?.code !== 'user-cancelled') setError(purchaseError?.message || 'Plan purchase failed.');
+      const failure = purchaseError as StorePurchaseError;
+      if (failure?.code !== 'user-cancelled') setError(failure?.message || 'Plan purchase failed. Please try again.');
     }
-  }, [adapter, connectionError, entitlementState.entitlement, products, ready]);
+  }, [adapter, connectionError, entitlementState.entitlement, entitlementState.loading, entitlementState.error, handlePurchase, products, ready]);
 
   const restore = useCallback(async () => {
+    if (purchaseInFlight.current) return;
+    purchaseInFlight.current = true;
+    purchaseGeneration.current++;
+    activePurchaseSku.current = null;
+    setFeedbackSku(null);
     setRestoring(true);
     setError(null);
     setNotice(null);
+    let restoreSku: string | null = null;
     try {
       if (!adapter || !ready || adapter.provider !== 'apple') throw new Error('PLUGGD plans are currently available through the App Store on iPhone.');
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session: restoreSession } } = await withStoreTimeout(supabase.auth.getSession(), 'Your session could not be checked. Please try again.');
+      const user = restoreSession?.user;
       if (!user) throw new Error('Sign in before restoring a PLUGGD plan.');
-      const purchases = (await adapter.getAvailablePurchases()).filter((purchase) => knownSkus.has(purchase.productId) && purchase.purchaseState !== 'pending');
+      const purchases = (await withStoreTimeout(adapter.getAvailablePurchases(), 'Purchases could not be loaded. Please try again.')).filter((purchase) => knownSkus.has(purchase.productId) && purchase.purchaseState !== 'pending');
       for (const purchase of purchases) {
-        const result = await validate(purchase);
-        if (result.finishRequired) await adapter.finishTransaction(purchase, false);
+        restoreSku = purchase.productId;
+        await withStoreTimeout(fulfillPurchase(purchase), 'Your purchase is still syncing. Restore purchases to check again.');
       }
-      await entitlementState.refresh();
-      setNotice(purchases.length ? 'Your PLUGGD plan has been restored.' : 'No restorable PLUGGD plan was found for this App Store account.');
+      const refreshed = await entitlementState.refresh();
+      setNotice(!refreshed ? 'Purchases were checked. Reopen Plans to refresh your access.' : purchases.length ? 'Your PLUGGD plan has been restored.' : 'No restorable PLUGGD plan was found for this App Store account.');
     } catch (restoreError) {
       setError(restoreError instanceof Error ? restoreError.message : 'Plan restore failed.');
     } finally {
+      purchaseInFlight.current = processingPurchases.current.size > 0;
+      if (purchaseInFlight.current) {
+        activePurchaseSku.current = restoreSku;
+        setPurchasingSku(restoreSku);
+        nativeRequestSettled.current = true;
+      }
       setRestoring(false);
     }
-  }, [adapter, entitlementState.refresh, knownSkus, ready, validate]);
+  }, [adapter, entitlementState.refresh, fulfillPurchase, knownSkus, ready]);
 
   return {
     ...entitlementState,
     planDefinitions,
     products,
     loadingProducts,
+    retryStore,
+    retryingStore,
+    purchaseTakingLong,
+    checkingPurchase,
+    checkPurchaseStatus,
+    entitlementError: entitlementState.error,
+    feedbackSku,
     purchasingSku,
     restoring,
-    error: error || entitlementState.error || connectionError,
+    error,
+    globalError: entitlementState.error || connectionError,
     notice,
     subscribe,
     restore,
-    clearMessage: () => { setError(null); setNotice(null); },
+    clearMessage: () => { setError(null); setNotice(null); setFeedbackSku(null); },
     storeName: adapter?.storeName ?? 'App Store',
     managementUrl: adapter?.subscriptionManagementUrl() ?? null,
   };
