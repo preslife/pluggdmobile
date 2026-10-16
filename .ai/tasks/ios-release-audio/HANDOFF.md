@@ -1,10 +1,14 @@
-# Current repair handoff -16October2026
+# Current repair handoff —16October2026
 
-Source: /private/tmp/pluggd-ios-review-repair, branch codex/ios-review-repair-20261016, baseline96f2dc02. PROGRESS.md is authoritative for current sequence.
+Source /private/tmp/pluggd-ios-review-repair, branch codex/ios-review-repair-20261016. PROGRESS.md controls sequence.
 
-Plans/Wallet purchase recovery, clear52pt filled actions, observed iPad selector occlusion and protected-audio expiry renewal are implemented.106 focused actual-source cases, full native TypeScript, platform contract and final production Hermes export pass. Actual iPad local fixture shows busy, adjacent error and successful retry. Boundary fixtures are not real sandbox proof. Current phone is23, not22; its six prices and audible public background playback do not prove replacement24.
+PR13 owner-approved/merged main ebe7b1d26013c9042c1437b76b889ea017cb151c; mobile bytes equal checked source38f8855.106 behavioral cases/full native TypeScript/platform contract/main CI3 PASS. Plans/Wallet recovery, filled controls/reserved iPad billing row and protected-audio renewal retained. Actual iPad local fixtures verify Starter error/retry plus Pro/Restore; second reviewer screenshot means overlap alone is not sole proven cause. Local fixture stopped; not real Apple transaction evidence.
 
-NEXT: checkpoint then signed24 archive/export/current CI, official device sandbox transaction and owned/battle playback beyond300s; physical Home Screen recording; Apple Notes/reply preparation and final owner submission gate. Do not infer final submission/charged purchases/legal acceptance. No new backend or policy mutation. Preserve original checkouts, all recovery and author-owned REVIEW_FINDINGS_CLAUDE.md.
+SIGNED24 ARCHIVE AND IPA VERIFIED: /private/tmp/pluggd-ios-review-build24/Pluggd.xcarchive and export/Pluggd.ipa.1.0.0(24),com.pluggd.mobile,family[1],existing ROWSON GROUP LTD certificate/profile/production entitlements,17-category privacy. Exact9 repaired modules in source map; no fixtures. Export signature/entitlements/profile/identity and byte-identical JS/privacy PASS. IPA SHA256524315ddc9cb45dfe4f10065e7a864f98a7c780fc2f8482e6c3fc489cce52371. Receipts archive-verification.json/export-verification.json in output root. Earlier Sentry literal/canonical entry path harness fixes generated-only; no product/dependency patch. Compiler cache/maps/logs retained.
+
+NEXT: exact Build24→App Store Connect/TestFlight upload/install approval question pending. Automatic review blocked Xcode Distribute before execution for missing trusted explicit upload authority; no bypass. Xcode current App Store Connect sheet has verified24 selected. After approval refresh UI, upload/read back actual Apple identity, use existing QA group only and update paired phone in place. Phone remains23. Real sandbox purchase→verification→finish→entitlement→restore, accessible owned/private mix>sixminutes with audio/queue/seek/pause/return and physical Home Screen recording remain required. Apple reply/Notes draft local/unsent; final Send/Submit remains owner gate.
+
+Approved45-target cleanup recovered10.329GiB/preservation PASS; branch/worktree retained as promised. Original dirty checkouts, source/recovery/media/current compiler cache/active tools and author-owned untracked REVIEW_FINDINGS_CLAUDE.md preserved. No backend/database/policy/web mutation, upload or submission. Detailed current evidence in VERIFY.md.
 
 ---
 

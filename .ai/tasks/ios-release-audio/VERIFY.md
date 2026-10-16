@@ -16,12 +16,14 @@ Source checkpoint is ready; replacement submission is not complete.
 | Live backend reads |Audio33 public4h/owned300s/battle300s; commerce21/live iOS row external Stripe deniedUS/GB; battle RLS guarded; no writes |
 | Native prep/signing settings |Exact lock install/prebuild24/131pods PASS; distribution identity/profile valid; com.pluggd.mobile/build24/family1/production push configured |
 | Legacy readiness regex |Pre-existing stale location/DOB assertions; no false pass or unrelated product patch |
-| Signed replacement/current CI/main/upload |Initial04a PR13 CI3/3 PASS; final ownership checkpoint requires current CI. Native archive compiling provisionally; final exact pin/export pending |
+| Signed replacement/current CI/main/upload |Final38f8855 PR13 CI3/3 PASS, run38930273685. Archive failed in ExpoHead Swift compile without source diagnostic at~302MiB free; headroom/retry pending. No signed archive/export/upload/main merge |
 | Replacement sandbox purchase/fulfilment/restore |Pending; source/native boundary fixture cannot substitute |
 | Owned/battle >300s physical + Home Screen recording |Pending; requested evidence must be linked in Apple Notes and attached to reply |
 | Apple reply/resubmit |Not performed; final applicable owner gate required |
 
 Detailed current evidence and one next action are in PROGRESS.md. Temporary QA artifacts are not production/sandbox transactions. External review file remains its author's untracked material.
+
+Environment readback:32GiB RAM,11.2GiB swap used; no compiler crash report. Preserve native cache and logs, resume after at least10GB free or explicitly selected cleanup. Full current source checks remain reusable.
 
 ---
 
@@ -317,3 +319,35 @@ Actual final19JS on retained simulator native executable shows Maps report/block
 
 ## Final creator-contact collection correction
 Native ConnectCard editor and embedded ConnectCardModule actually save optional business/contract phone, company address and private professional nationality/legal details. Manifest now15types addsPhoneNumber/PhysicalAddress linked/nottracking/functionality; existingOtherData coversDOB/nationality/private details. iPhone Contacts.presentFormAsync opens native save form only, no address-book read/upload. Native/web all11locale privacy updated. Full native and affectedweb TypeScript PASS; completed production Hermes export PASS. Earlier19 archive succeeded with13types and is retained as pre-contact evidence only, not the release candidate. Final archive uses/private/tmp/pluggd-ios-final-build19-complete/Pluggd.xcarchive. PR6 merged890f7750; follow-up needed before final19 upload. No19 has been uploaded yet.
+
+
+## Read-only storage gate review —16October2026
+Owner selected review of cleanup candidates, not deletion. Measured10.252655GiB across45 exact targets; manifest /private/tmp/pluggd-ios-review-cleanup-candidates.json and readable list .md. Scoped process/open-file checks completed: preserve active npx Xcode tool99336612077b7094, current27.0.1 symbols and running Claude ShipIt updater. Proposed old26.6.1 symbols, other npx tools, npm content cache and three updater downloads had no open-file users. APFS shared allocation is not guaranteed recovery. Approval pending; nothing deleted. Source/build tests remain unchanged. User selected any accessible owned/private mix for physical playback>300s; no qualifying long release required.
+
+
+## Approved storage recovery and resumed archive —16October2026
+Owner approved the exact45-target list and resume build. Fresh path identity/owner/symlink, full process-reference and open-file checks passed.45 targets removed;10.329376GiB actually recovered,11.543175GiB free immediately after. Preserved active Xcode tool/current27.0.1 symbols/current compilation cache/Claude updater inode identities and final production Hermes SHA256 verified. Receipt /private/tmp/pluggd-ios-review-approved-cleanup-receipt.json; original approved target manifest retained unchanged. Archive attempt3 uses retained DerivedData/jobs1, checked source38f885566ff60ec9afd6796b65ed1a34974668e3, existing manual distribution profile and production24 configuration. Hash-pinned source prerequisites passed; signature/export/physical checks still pending archive completion. No unrelated deletion or product-source change.
+
+
+## Archive environment correction
+Attempt3 completed native compilation (including ExpoHead/Maps/React/Expo), but Bundle React Native phase failed: Sentry disable flag1 is not the literaltrue required by installed sentry-xcode.sh:51. No source compile diagnostic. Attempt4 uses SENTRY_DISABLE_AUTO_UPLOAD=true and explicit shared SOURCEMAP_FILE, same checked source/profile/cache/jobs1. Product tests/CI remain valid and unchanged; archive/signature/export checks pending. Main merge action rejected by automatic approval review before execution; explicit approval question pending.
+
+
+## Approved main integration and second screenshot check
+Owner explicitly approved PR13 ready/merge. Merged ebe7b1d26013c9042c1437b76b889ea017cb151c; fetched main mobile bytes exactly match checked archive source38f8855. Main CI run38938356377 PASS a11y/i18n/music-upload. Branch/worktree retained; original dirty checkout preserved. Earlier auto-review rejection resolved by this explicit approval.
+Second reviewer screenshot shows unobscured Pro action, so selector overlap is not sole proven explanation. Bounded actual iPad26.3 compatibility local-fixture render: filled Pro action visible clear of selector; fresh CUA AX press showed busy then Pro/current/active. Restore section visible clear of selector, full-width action; fresh AX press displayed restored notice. Local simulated StoreKit/server only, not Apple sandbox proof. Semantic runtime scrolling works. Native MCP tap computed phone coordinates without iPad compatibility transform and missed (harness); actual CUA native AX activation worked. Product source unchanged; no new native rebuild/source test invalidation.
+
+Restore rendered completion proof: /var/folders/q5/g1rtr31x6dj_yt8ddp9mk7000000gn/T/screenshot_optimized_e2f58907-457c-4c3c-9187-ee1321cbdeb5.jpg.
+
+Physical-test preparation: Apple documentation confirms TestFlight apps always use sandbox purchases and sandbox transactions do not incur charges. Dedicated Sandbox Apple Account settings are needed for special test controls, not the ordinary TestFlight purchase path. Keep the owner’s existing Apple Account settings; verify official installed24 and sandbox sheet/receipt before any purchase confirmation. Sources: https://developer.apple.com/documentation/StoreKit/testing-in-app-purchases-with-sandbox and https://developer.apple.com/help/app-store-connect/test-a-beta-version/testing-subscriptions-and-in-app-purchases-in-testflight/. This is documentation-based planning, not physical transaction proof.
+The temporary local fixture app com.pluggd.mobile on simulator0FFD7ECC-05E4-483F-8261-BF1DACAFB8DF was stopped after the extra UI checks. Runtime snapshot20 then had6elements/noappactions; paired physical phone untouched.
+
+
+## Canonical entry prerequisite PASS; archive5 pending
+Attempt4 native compilation passed; Sentrytrue confirmed skip. Metro then failed absolute /tmp entry because indexed root is /private/tmp. Alias inode equality checked; generated ignored local env sets canonical ENTRY_FILE/PROJECT_ROOT. Isolated production export:embed PASS:20,551,057-byte JS/3188mapped sources/93assets. Receipt /private/tmp/pluggd-ios-review-build24/bundle-preflight/receipt.json. Archive5 uses the same Xcode command/process environment as4, retained cache, source38f8855/main-equivalent ebe7b1d2; exec3891/PID14742/log archive-attempt5.log. No product source or dependency change; source106/type/export/mainCI evidence retained. Signed archive/export/physical gates still pending.
+
+
+## Signed24 archive and export VERIFIED —16October2026
+Archive5 exit0, correctly used canonical entry and Sentrytrue. Deep/strict code signature PASS; com.pluggd.mobile1.0.0(24)/family[1]/audio mode/production push/Apple sign-in/get-task-allowfalse/beta-reports-active;17-category privacy unchanged. Leaf certificate SHA1 C9694294F46F1BD335979F1734A8B6FB5EB3A857 matches embedded PLUGGD App Store2026 profile3b08cb87-302a-44e0-85fc-eac957e360e2. Actual source map exact9 modified app/source modules from38f8855, no fixture modules/markers. Initial verifier certificate-extraction optional-argument syntax corrected (test harness only), then full verification PASS. No rebuild from verifier syntax.
+Archive receipt /private/tmp/pluggd-ios-review-build24/archive-verification.json. Export exit0; unpacked IPA deep/strict signature/profile/certificate/entitlements/metadata PASS. Bundle/privacy byte-identical to verified archive. IPA /private/tmp/pluggd-ios-review-build24/export/Pluggd.ipa;140296048bytes;SHA256524315ddc9cb45dfe4f10065e7a864f98a7c780fc2f8482e6c3fc489cce52371. JS SHA2564d2f2d8d00650b4195237b3aca5743f6c790f98f24d1d452ebaa9bfac76f90bd; privacy SHA256129fb00d5b02d6996fd1f229aad8372648af60908be46e00bd24766594632529. Export receipt /private/tmp/pluggd-ios-review-build24/export-verification.json.
+Xcode Organizer selected actual24/com.pluggd.mobile/ROWSON GROUP LTD. Distribute→App Store Connect upload click automatically rejected before execution for lack of exact trusted private-binary upload authorisation. Explicit owner upload/TestFlight-in-place question pending. No upload/install/Apple reply/submission inferred. Source106/TS/mainCI evidence unchanged.
