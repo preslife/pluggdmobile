@@ -5,9 +5,10 @@ import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-// Run with the selected installed dependency directory and retained baseline folder.
+// Standalone CLI verification, not a Vitest suite. Pass dependency directory and retained baseline folder.
 // No service, browser, native player or production API is invoked.
-const here = path.dirname(fileURLToPath(import.meta.url));
+const nativeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const here = path.join(nativeRoot, 'src/features/culture');
 const dependencies = path.resolve(process.argv[2]);
 const baseline = path.resolve(process.argv[3]);
 const requireDependency = createRequire(path.join(dependencies, 'react/package.json'));
@@ -15,7 +16,6 @@ const ts = requireDependency('typescript');
 const React = requireDependency('react');
 const RN = requireDependency('react-native-web');
 const { renderToStaticMarkup } = requireDependency('react-dom/server');
-const nativeRoot = path.resolve(here, '../../..');
 const results = [];
 let requests = 0;
 const originalFetch = globalThis.fetch;

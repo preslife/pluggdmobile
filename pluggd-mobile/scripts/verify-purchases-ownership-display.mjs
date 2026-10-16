@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 // Actual Purchases/ContentUI/service source with explicit synthetic query/router/
 // native boundaries. Selected installed modules are test-only; no API or app runs.
-const here = path.dirname(fileURLToPath(import.meta.url));
-const nativeRoot = path.resolve(here, '../../..');
+const nativeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const here = path.join(nativeRoot, 'src/features/culture');
 const dependencies = path.resolve(process.argv[2]);
 const baselineFile = path.join(path.resolve(process.argv[3]), 'baseline-purchases.tsx');
 const dependency = createRequire(path.join(dependencies, 'react/package.json'));

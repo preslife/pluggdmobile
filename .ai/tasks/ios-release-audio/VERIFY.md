@@ -22,6 +22,9 @@ Read PROGRESS.md for one next action. Exact24 artifacts and all unrelated work r
 -First25 archive deliberately SIGINT of exact task xcodebuild59587 after owner added this scope; exit75 superseded by scope change, not a product failure. Cache retained. Signed/installed24 and source38f8855 remain recovery; top-sticky checkpointcc535b8 retained. Final25 pin/archive/export pending.
 -Owner confirms original01MusicDiscovery recording has audio and asks whether prepared final lost it. Do not infer video silence from Apple background-playback wording. Targeted exact final/original media inspection pending; no claim that Apple reviewed a silent video. New recording in phone Photos is Today21:11/1:18 and shows Amachill; iOSHome section/audio/file export not yet established.
 
+## CI harness correction —16October2026
+PR14 atd7e0e6f: i18n and music-upload PASS. Actual web axe cases PASS, but Vitest collected the two newly imported standalone native *.test.mjs scripts and invoked them without required off-Git dependency/baseline arguments. Classified test-runner/discovery failure, not an app accessibility defect. Move these own standalone scripts to native scripts/verify-library-ownership-display.mjs and verify-purchases-ownership-display.mjs, adjusting source-root resolution only; both rerun PASS28/21. Do not weaken web/Vitest configuration or skip mandatory CI. All13 runtime module hashes match d7e0e6f; archive continues unchanged. Current CI rerun required after this checked harness commit.
+
 ---
 
 ## Owner correction: screen-fitting portrait; reuse verified Build 22 — 3 October 2026
