@@ -14,6 +14,7 @@ import {
   type SocialPostItem,
 } from '../../lib/mobileContent';
 import { MOBILE_CAPABILITIES } from './mobileCapabilities';
+import type { LibraryOwnershipDisplayItem } from './libraryOwnershipDisplay';
 import { requireLiveRooms } from '../live/liveRoomLoading';
 import type {
   BackstageCommunity,
@@ -2780,7 +2781,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     safeList<any>((supabase as any).from('community_members').select('id,community_id,status,joined_at,last_active_at').eq('user_id', userId).eq('status', 'active').order('last_active_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('user_follows').select('id,following_id,created_at').eq('follower_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('release_purchases').select('id,release_id,status,amount_paid,purchased_at,paid_at,receipt_pdf_url,download_expires_at').or(`user_id.eq.${userId},purchaser_id.eq.${userId}`).order('purchased_at', { ascending: false }).limit(50)),
-    safeList<any>((supabase as any).from('sample_pack_purchases').select('id,sample_pack_id,amount_paid,purchased_at,download_url').eq('user_id', userId).order('purchased_at', { ascending: false }).limit(50)),
+    safeList<any>((supabase as any).from('sample_pack_purchases').select('id,sample_pack_id,status,amount_paid,purchased_at,download_url').eq('user_id', userId).order('purchased_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('purchases').select('id,beat_id,status,amount,license_type,license_pdf_url,created_at').eq('buyer_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('licensing_contracts').select('id,beat_id,status,license_fee,contract_pdf_url,transaction_id,signed_at,created_at').eq('artist_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('fan_subscriptions').select('id,creator_id,tier_id,apple_sku,status,current_period_end,last_payment_at,created_at,updated_at,membership_tiers(name)').eq('fan_id', userId).order('updated_at', { ascending: false }).limit(50)),
@@ -3055,7 +3056,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   ];
 
   const purchases = [
-    ...releasePurchases.map<SavedContentItem>((purchase) => {
+    ...releasePurchases.map<LibraryOwnershipDisplayItem>((purchase) => {
       const release = releaseById.get(purchase.release_id);
       return {
         id: purchase.id,
@@ -3066,12 +3067,13 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/commerce/order?id=${purchase.id}&kind=release_unlock`,
         source: 'release_purchases',
         status: purchase.status || 'pending',
+        ownershipStatus: purchase.status ?? null,
         acquiredAt: purchase.paid_at || purchase.purchased_at,
         documentAvailable: Boolean(purchase.receipt_pdf_url),
         downloadAvailable: purchase.status === 'completed',
       };
     }),
-    ...samplePackPurchases.map<SavedContentItem>((purchase) => {
+    ...samplePackPurchases.map<LibraryOwnershipDisplayItem>((purchase) => {
       const pack = packById.get(purchase.sample_pack_id);
       return {
         id: purchase.id,
@@ -3082,11 +3084,12 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/sample-pack/${purchase.sample_pack_id}`,
         source: 'sample_pack_purchases',
         status: 'available',
+        ownershipStatus: purchase.status ?? null,
         acquiredAt: purchase.purchased_at,
         downloadAvailable: Boolean(purchase.download_url),
       };
     }),
-    ...beatPurchases.map<SavedContentItem>((purchase) => {
+    ...beatPurchases.map<LibraryOwnershipDisplayItem>((purchase) => {
       const beat = beatById.get(purchase.beat_id);
       const complete = ['completed', 'active', 'paid'].includes(String(purchase.status || 'completed').toLowerCase());
       return {
@@ -3098,6 +3101,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/commerce/order?id=${purchase.id}&kind=beat_license`,
         source: 'purchases',
         status: purchase.status || 'completed',
+        ownershipStatus: purchase.status ?? null,
         acquiredAt: purchase.created_at,
         documentAvailable: Boolean(purchase.license_pdf_url),
         // Professional beat deliverables are consumed off-app and are delivered
@@ -3108,7 +3112,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
     ...licensingContracts.filter((contract) => {
       const complete = ['signed', 'completed', 'active', 'paid'].includes(String(contract.status || '').toLowerCase());
       return !complete || !beatPurchases.some((purchase) => purchase.beat_id === contract.beat_id);
-    }).map<SavedContentItem>((contract) => {
+    }).map<LibraryOwnershipDisplayItem>((contract) => {
       const beat = beatById.get(contract.beat_id);
       const complete = ['signed', 'completed', 'active', 'paid'].includes(String(contract.status || '').toLowerCase());
       return {
@@ -3120,12 +3124,13 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/commerce/order?id=${contract.id}&kind=beat_license`,
         source: 'licensing_contracts',
         status: contract.status || 'pending',
+        ownershipStatus: contract.status ?? null,
         acquiredAt: contract.signed_at || contract.created_at,
         documentAvailable: Boolean(contract.contract_pdf_url),
         downloadAvailable: false,
       };
     }),
-    ...fanSubscriptions.map<SavedContentItem>((subscription) => {
+    ...fanSubscriptions.map<LibraryOwnershipDisplayItem>((subscription) => {
       const creator = profileById.get(subscription.creator_id);
       const tierRelation = Array.isArray(subscription.membership_tiers)
         ? subscription.membership_tiers[0]
@@ -3141,12 +3146,14 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/membership/${subscription.creator_id}`,
         source: 'fan_subscriptions',
         status: subscription.status || 'pending',
+        ownershipStatus: subscription.status ?? null,
+        ownershipExpiresAt: subscription.current_period_end ?? null,
         acquiredAt: subscription.last_payment_at || subscription.created_at,
         documentAvailable: false,
         downloadAvailable: false,
       };
     }),
-    ...merchCheckoutSessions.map<SavedContentItem>((session) => {
+    ...merchCheckoutSessions.map<LibraryOwnershipDisplayItem>((session) => {
       const product = merchProductById.get(session.resource_id);
       return {
         id: session.id,
@@ -3157,12 +3164,13 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/commerce/order?id=${session.id}&kind=physical_merch`,
         source: 'external_checkout_sessions',
         status: session.status || 'pending',
+        ownershipStatus: session.status ?? null,
         acquiredAt: session.completed_at || session.created_at,
         documentAvailable: false,
         downloadAvailable: false,
       };
     }),
-    ...storeOrders.map<SavedContentItem>((order) => {
+    ...storeOrders.map<LibraryOwnershipDisplayItem>((order) => {
       const items = storeOrderItems.filter((item) => item.order_id === order.id);
       const count = items.reduce((total, item) => total + Number(item.quantity || 1), 0);
       const firstRelation = items[0]?.store_products;
@@ -3176,6 +3184,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         route: `/commerce/order?id=${order.id}&kind=store_order`,
         source: 'orders',
         status: order.status || 'pending',
+        ownershipStatus: order.status ?? null,
         acquiredAt: order.paid_at || order.created_at,
         documentAvailable: false,
         downloadAvailable: false,

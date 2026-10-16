@@ -6,9 +6,11 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, ListCard, ScreenShell, SectionTitle } from '../components/ContentUI';
+import { EmptyState, ListCard, RecoveryState, ScreenShell, SectionTitle } from '../components/ContentUI';
 import { PluggdImage } from '../src/components/PluggdImage';
+import { useAuth } from '../src/context/AuthProvider';
 import { loadLibraryBundle } from '../src/features/culture/mobileServices';
+import { libraryHistoryStatus, projectLibraryOwnership } from '../src/features/culture/libraryOwnershipDisplay';
 import { useHomeFeed } from '../src/features/culture/useCultureData';
 import { useStoreBilling } from '../src/context/StoreBillingProvider';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
@@ -19,12 +21,16 @@ export default function PurchasesScreen() {
   const router = useRouter();
   const { adapter } = useStoreBilling();
   const storeName = adapter?.storeName ?? 'store';
-  const library = useQuery({ queryKey: ['culture', 'library'], queryFn: loadLibraryBundle });
+  const { user, loading: authLoading } = useAuth();
+  const library = useQuery({ queryKey: ['culture', 'library', user?.id ?? null], queryFn: loadLibraryBundle, enabled: Boolean(user) && !authLoading });
   const feed = useHomeFeed();
-  const purchases = library.data?.purchases ?? [];
-  const tickets = library.data?.tickets ?? [];
-  const entitlements = library.data?.entitlements ?? [];
-  const isEmpty = !library.isLoading && purchases.length + tickets.length + entitlements.length === 0;
+  const loading = authLoading || library.isLoading;
+  const canShowRecords = Boolean(user) && !loading && !library.isError;
+  const purchases = canShowRecords ? library.data?.purchases ?? [] : [];
+  const tickets = canShowRecords ? library.data?.tickets ?? [] : [];
+  const now = Date.now();
+  const ownership = projectLibraryOwnership(purchases, now);
+  const isEmpty = canShowRecords && ownership.owned.length + ownership.history.length + tickets.length === 0;
   const gateways = [
     {
       label: 'Releases',
@@ -75,10 +81,19 @@ export default function PurchasesScreen() {
       <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
       <Stack.Screen options={{ headerShown: false }} />
 
-      {library.isLoading ? (
+      {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator color={theme.colors.accentFill} />
         </View>
+      ) : null}
+
+      {library.isError ? (
+        <RecoveryState
+          title="Your purchases could not load"
+          body="Try again to refresh your orders and access."
+          primaryLabel="Retry purchases"
+          onPrimary={() => { void library.refetch(); }}
+        />
       ) : null}
 
       {isEmpty ? (
@@ -118,13 +133,14 @@ export default function PurchasesScreen() {
         </>
       ) : null}
 
-      {entitlements.length > 0 ? (
+      {ownership.owned.length > 0 ? (
         <>
           <SectionTitle title="Available now" />
-          {entitlements.map((item) => (
+          {ownership.owned.map((item) => (
             <Pressable
-              key={`${item.kind}-${item.id}`}
+              key={`${item.source}-${item.id}`}
               accessibilityRole="button"
+              accessibilityLabel={`Open ${item.title}`}
               style={styles.entitlementCard}
               onPress={() => router.push((item.route || '/purchases') as any)}
             >
@@ -133,7 +149,7 @@ export default function PurchasesScreen() {
               </View>
               <View style={styles.copy}>
                 <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-                <Text style={styles.meta} numberOfLines={1}>{item.kind.replace(/_/g, ' ')} · {item.status}</Text>
+                <Text style={styles.meta} numberOfLines={1}>{item.kind.replace(/_/g, ' ')} · {String(item.ownershipStatus)}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
             </Pressable>
@@ -141,13 +157,13 @@ export default function PurchasesScreen() {
         </>
       ) : null}
 
-      {purchases.length > 0 ? <SectionTitle title="Purchases" /> : null}
-      {purchases.map((item) => (
+      {ownership.history.length > 0 ? <SectionTitle title="Purchase history" /> : null}
+      {ownership.history.map((item) => (
         <ListCard
           key={`${item.source}-${item.id}`}
           title={item.title}
           subtitle={item.subtitle}
-          meta={item.kind.replace('_', ' ')}
+          meta={`${item.kind.replace(/_/g, ' ')} · ${libraryHistoryStatus(item, now)}`}
           imageUrl={item.imageUrl}
           onPress={() => router.push(item.route as any)}
         />
@@ -159,7 +175,7 @@ export default function PurchasesScreen() {
           key={`${ticket.source}-${ticket.id}`}
           title={ticket.event_title}
           subtitle={ticket.venue || ticket.status}
-          meta="ticket"
+          meta={`ticket${ticket.status ? ` · ${ticket.status}` : ''}`}
           imageUrl={ticket.event_image_url}
           onPress={() => router.push(
             (ticket.source === 'ticket_orders' || ticket.ticket_order_id
@@ -174,7 +190,7 @@ export default function PurchasesScreen() {
 
 function iconForKind(kind: string): keyof typeof MaterialIcons.glyphMap {
   if (kind === 'ticket') return 'confirmation-number';
-  if (kind === 'beat') return 'library-music';
+  if (kind === 'beat' || kind === 'beat_license') return 'library-music';
   if (kind === 'creator_membership') return 'workspace-premium';
   if (kind === 'physical_merch') return 'shopping-bag';
   if (kind === 'sample_pack') return 'graphic-eq';

@@ -16,6 +16,12 @@ Replacement24 is uploaded/installed and its fresh purchase is verified. Owner-re
 
 Read PROGRESS.md for one next action. Exact24 artifacts and all unrelated work remain preserved. Existing environment/native cache reused; no broad regression suite rerun for unchanged Wallet/audio source.
 
+## Integrated Library/Purchases gate —21:52BST
+-Exact hash-verified mobile patches from b2ece639 then fa534b031 applied cleanly; no equivalent prior changes. No old branch merge or inert-facts68b2cbe. Display metadata/sole sample-pack statusSELECT only; no payment/access/backend changes. Additional two-screen account-scoped cache keys and signed-out/session-loading/error cached-card suppression satisfy the handoff no-stale-account condition; AuthProvider unchanged.
+-Integrated28Library+21Purchases actual-source cases PASS (44original+5account/stale guards); native TypeScript PASS after restoring temporary fixture imports. Actual iPad26.3 compatibility native: Library error/retry→1verified item/1ACCESS, one confirmed card and one pending Purchase history card; actual gateway opens Purchases; its loading/error/retry→Available now Confirmed order/Paid once and Pending order/Pending history once, clear of dock. Local query/actor fixtures, not production purchase proof. Native image /private/tmp/pluggd-ios-review-build25/native-purchases-integrated.jpg. Fixture export3186modules PASS; all parent sources byte-restored; local simulator app stopped. Previous Library light/dark static evidence remains accepted; current native render is light.
+-First25 archive deliberately SIGINT of exact task xcodebuild59587 after owner added this scope; exit75 superseded by scope change, not a product failure. Cache retained. Signed/installed24 and source38f8855 remain recovery; top-sticky checkpointcc535b8 retained. Final25 pin/archive/export pending.
+-Owner confirms original01MusicDiscovery recording has audio and asks whether prepared final lost it. Do not infer video silence from Apple background-playback wording. Targeted exact final/original media inspection pending; no claim that Apple reviewed a silent video. New recording in phone Photos is Today21:11/1:18 and shows Amachill; iOSHome section/audio/file export not yet established.
+
 ---
 
 ## Owner correction: screen-fitting portrait; reuse verified Build 22 — 3 October 2026
