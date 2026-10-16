@@ -1,13 +1,13 @@
 # iOS App Review repair - current state, 16 October 2026
 
-CURRENT_PHASE=SOURCE_VERIFIED_BUILD24_ARCHIVE_NEXT
-NEXT_ACTION=Checkpoint checked owned source; archive/export distribution-signed24, verify exact identity/entitlements/privacy/source, then proceed through the existing authorised release sequence and physical sandbox/owned-audio/video gates. Do not Submit or send Apple reply without the final gate.
+CURRENT_PHASE=FINAL_SOURCE_VERIFIED_NATIVE_ARCHIVE_RUNNING
+NEXT_ACTION=Checkpoint/push the final ownership integration; finish native compilation then rebuild the exact24 archive JS from that checked commit, verify/export and current PR13 CI. Continue official TestFlight/device gates before final Apple action. Archive attempt2 is provisional until exact final source/bundle pinning.
 AUDIT_REQUIRED=false
 CODE_EDIT_ALLOWED=true by owner request16October2026; scope includes Plans/Wallet IAP recovery, observed iPad selector occlusion, clear filled Choose buttons, bounded playback and owned-URL expiry recovery.
 BRANCH=codex/ios-review-repair-20261016
 WORKTREE=/private/tmp/pluggd-ios-review-repair
 BASELINE=96f2dc02315355aaaf1f9731e4c8b24f4016a547 (native origin/main; submitted22 source)
-LATEST_TASK_COMMIT=next local checkpoint
+LATEST_TASK_COMMIT=04a294b (18 owned files; source94 cases/full TS/production Hermes checked)
 RELEASE_AUTHORITY=Existing scoped native release authority covers checked PR/main/archive/export/upload/official-install/draft preparation. Final Apple reply/resubmission, charged purchases/legal acceptance/destructive cleanup not newly inferred.
 CLEANUP=Original dirty native/root checkouts, installed physical app and owner media untouched. Task-local dependencies, generated ios24, simulator shell/fixtures and exports retained for integration. External REVIEW_FINDINGS_CLAUDE.md remains author-owned untracked material; do not stage it.
 
@@ -25,8 +25,8 @@ Wallet: active retry for empty/failed/blank prices, per-pack feedback, bounded p
 Playback: queue-preserving bounded network retry; server expiry metadata retained; active source renews30s early with10s read bound and expiry error recovery. Only current item replaced; queue, position and newer pause/stop/seek/track intent retained. Background failure deferred to foreground. Physical renewal remains unverified.
 
 ## Integration evidence
-- Plans20 + Wallet26 + playback48 actual-source React/JSDOM cases PASS (94 total); focused native source checks, platform plan contract, final full mobile TypeScript PASS. Parent reviewed all lanes; independent payment review found/fixed late-request and Restore/listener races.
-- Final production iOS Hermes export PASS: /private/tmp/pluggd-ios-review-build24-export,12962570bytes SHA256a740fb0fe2899e414a37fdcbc14bb20eb398b3ef99c76e2ec522f833b5602f23. Production env/build24; local fixture markers absent and original imports restored byte-for-byte.
+- Plans22 + Wallet36 + playback48 actual-source React/JSDOM cases PASS (106 total); focused native source checks, platform plan contract, final full mobile TypeScript PASS. Parent reviewed all lanes; independent payment review found/fixed late-request and Restore/listener races.
+- Final production iOS Hermes export PASS: /private/tmp/pluggd-ios-review-final24-export,12968770bytes SHA256737083f44d913a2fc234b3dba66c96bdf89d31a041a2442f8c57a6fcbc4387ae. Production env/build24; local fixture markers absent and original imports restored byte-for-byte.
 - Actual iPad Air11M3/26.3 compatibility render found absolute selector covering Starter action. Separate sibling row now reserves space. Real unauthenticated action reached login. Local boundary fixture then showed immediate busy, adjacent deliberate unavailable error, successful retry/current plan; final filled CTA/row/error/success rendered. Owner scrolled; parent observed/tapped actual controls. These use retained native simulator executable + current JS/local auth/StoreKit/server boundaries, not real Apple transactions or a fresh native binary. Success screenshot: /var/folders/q5/g1rtr31x6dj_yt8ddp9mk7000000gn/T/screenshot_optimized_a0f6299e-9e7e-4693-afa7-774f3f6f82ff.jpg. Exact27.0.1 runtime parity unavailable;26.3 is useful compatibility evidence.
 - Exact-lock npm ci + production24 prebuild +131pod install PASS. Existing distribution identity and matching profile are valid, production push/Apple sign-in/domains supported. Generated Release target com.pluggd.mobile/build24/family1 verified. No archive signature claim yet.
 - Existing App Store readiness regex script is stale on unchanged location copy (and, when checked past that assertion, old signup checkbox assertion versus current DOB flow). Temporary test-only wording experiment restored exactly; no unrelated auth/product change or false pass. This is a recorded pre-existing verification limitation, not a new product failure. Mandatory current CI remains required at release.
@@ -34,6 +34,13 @@ Playback: queue-preserving bounded network retry; server expiry metadata retaine
 ## Outstanding gates
 Signed24 archive/export and exact artifact checks; current PR/main CI; official physical24 sandbox purchase→verification→finish→entitlement→restore; physical owned/battle track over300s with queue/seek/pause/foreground checks; short physical Home Screen recording and Apple Notes/reply attachment; final owner submission gate. APPLE_IAP_ENVIRONMENT secret value not read back; deployed verifier default supportsBoth, but actual sandbox verification is required. Retained22 archive absent at historical temporary path; preserve available history/source and phone23, no fresh22 signature claim.
 Shared web sync/check refused pre-existing tracked .temp dirt; no reset/reconcile/adoption. No backend/database/web change, push/merge/upload/submit in this repair yet.
+
+## Release checkpoint16October2026
+Native draft PR13 https://github.com/preslife/pluggdmobile/pull/13 pushed04a294b; a11y/i18n/music-upload checks running. First archive stopped before compilation because manual signing was paired with an Xcode-managed Store profile. Corrected generated-only target to retained manually managed PLUGGD App Store2026 (3b08cb87-302a-44e0-85fc-eac957e360e2), same bundle/team, production push, Apple sign-in/domains, expiry28July2027. Registered identical existing profile bytes in current Xcode profile folder, original retained. Archive attempt2 now compiling; logs /private/tmp/pluggd-ios-review-build24/archive-attempt2.log. No source/permission/access change for signing correction.
+
+Integration finding: current PR13 head04a294b has all3 CI checks SUCCESS (run38928041371). Parent found the proven Plans late-A-response/Restore-listener fulfillment race also applies to Wallet. Bounded worker now owns useCredits/test only to apply equivalent request-generation/shared-transaction ownership, preserving pending and Google/account/SKU rules. New source will require final TS/export/checkpoint/current CI and fresh exact archive bundle. Existing native compilation is reusable; provisional archive is not release proof.
+
+Final integration accepted: Wallet36 cases now cover account-scoped shared fulfillment across listener/returned result/Restore/reconciliation and late generation/SKU callbacks. Plans22 include pending-approval ownership and late native errors during confirmed verification. Final full mobile TypeScript,106 focused cases, platform contract and production Hermes/fixture exclusion PASS. Audio48 unchanged evidence retained. Existing native compilation will be reused; no unpinned provisional archive can be uploaded. APPLE_REVIEW_REPAIR_DRAFT.md is local unsent preparation with explicit physical gates.
 
 ---
 

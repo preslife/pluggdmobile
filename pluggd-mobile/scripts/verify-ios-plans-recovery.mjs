@@ -201,13 +201,36 @@ test('request failure releases the lock and never verifies or finishes', withHoo
   assert.equal(f.calls.request, 2);
 }));
 
-test('pending approval shows notice and does not verify or finish', withHook(async (f) => {
+test('pending approval keeps the purchase guarded and exposes status without another request', withHook(async (f) => {
   await act(async () => f.value.subscribe(sku));
   await f.emitPurchase({ ...purchase, purchaseState: 'pending' });
-  assert.equal(f.value.purchasingSku, null);
+  assert.equal(f.value.purchasingSku, sku);
+  assert.equal(f.value.purchaseTakingLong, true);
+  await act(async () => { await f.value.subscribe(otherSku); await f.value.restore(); await f.value.checkPurchaseStatus(); });
+  assert.equal(f.calls.request, 1);
+  assert.equal(f.value.purchasingSku, sku);
+  assert.equal(f.value.purchaseTakingLong, true);
   assert.match(f.value.notice, /waiting for payment approval/);
   assert.equal(f.calls.finish, 0);
   assert.ok(!f.log.includes('verify'));
+}));
+
+test('pending request/error responses retain the guard until a completed transaction arrives', withHook(async (f) => {
+  f.request = async () => { throw Object.assign(new Error('Awaiting approval'), { code: 'deferred-payment' }); };
+  await act(async () => f.value.subscribe(sku));
+  assert.equal(f.value.purchasingSku, sku);
+  assert.equal(f.value.purchaseTakingLong, true);
+  await f.emitError({ productId: sku, code: 'pending', message: 'Awaiting approval' });
+  await act(async () => f.value.checkPurchaseStatus());
+  await act(async () => f.value.subscribe(otherSku));
+  assert.equal(f.calls.request, 1);
+  assert.equal(f.value.purchasingSku, sku);
+  await f.emitPurchase(purchase);
+  assert.equal(f.value.purchasingSku, null);
+  assert.equal(f.calls.finish, 1);
+  f.request = async () => undefined;
+  await act(async () => f.value.subscribe(otherSku));
+  assert.equal(f.calls.request, 2);
 }));
 
 test('verification failure leaves transaction unfinished and exposes inline target', withHook(async (f) => {
@@ -396,6 +419,24 @@ test('late request resolution cannot mark a newer request settled', withHook(asy
   await act(async () => f.value.checkPurchaseStatus());
   assert.equal(f.value.purchasingSku, otherSku);
   await act(async () => { second.resolve([]); await b; });
+}));
+
+test('late native errors cannot release a store-confirmed purchase during verification', withHook(async (f) => {
+  const native = deferred(); const verification = deferred();
+  f.request = () => native.promise;
+  f.verify = () => verification.promise;
+  let request; let update;
+  await act(async () => { request = f.value.subscribe(sku); });
+  await act(async () => { update = Promise.all([...f.purchaseListeners].map((listener) => listener(purchase))); });
+  await act(async () => { native.reject(Object.assign(new Error('late cancellation'), { code: 'user-cancelled' })); await request; });
+  await f.emitError({ productId: sku, code: 'user-cancelled', message: 'late native error' });
+  await act(async () => f.value.subscribe(otherSku));
+  assert.equal(f.calls.request, 1);
+  assert.equal(f.value.purchasingSku, sku);
+  await act(async () => { verification.resolve(success); await update; });
+  assert.equal(f.calls.finish, 1);
+  assert.equal(f.value.purchasingSku, null);
+  assert.equal(f.value.error, null);
 }));
 
 test('Restore and replayed listener share transaction fulfillment', withHook(async (f) => {

@@ -79,6 +79,7 @@ function fixture() {
     refresh: async () => sessionResult,
     policy: async () => ({ permittedRail: 'apple_iap' }),
     request: async () => undefined,
+    finish: async () => undefined,
     verify: async () => valid,
     available: async () => [],
     ledger: null,
@@ -90,7 +91,7 @@ function fixture() {
     fetchProducts: async (...args) => { f.calls.fetch++; return f.fetch(...args); },
     requestProduct: async (args) => { f.calls.request++; f.requestArgs = args; return f.request(args); },
     getAvailablePurchases: async () => { f.calls.available++; return f.available(); },
-    finishTransaction: async (_purchase, consumable) => { assert.equal(consumable, true); f.calls.finish++; f.log.push('finish'); },
+    finishTransaction: async (_purchase, consumable) => { assert.equal(consumable, true); f.calls.finish++; f.log.push('finish'); await f.finish(); },
     buildVerificationRequest: async (value, kind, accountId) => {
       f.verificationBinding = { value, kind, accountId };
       return { functionName: 'validate-iap-receipt', body: { product_id: value.productId, transaction_id: value.transactionId } };
@@ -439,7 +440,7 @@ test('Google credit consumption still requires verified credit response and cons
   assert.deepEqual(f.log, ['verify', 'wallet', 'finish']);
   f.log.length = 0;
   f.verify = async () => ({ data: { success: true, provider: 'google_play', purchase_kind: 'credit_pack', finish_required: true, finish_mode: 'acknowledge' }, error: null });
-  await f.emitPurchase({ ...purchase, purchaseToken: 'google-token' });
+  await f.emitPurchase({ ...purchase, purchaseToken: 'google-token-2', transactionId: 'google-transaction-2' });
   assert.deepEqual(f.log, ['verify']);
   assert.equal(f.calls.finish, 1);
   assert.match(f.value.purchaseError, /invalid credit completion mode/);
@@ -524,6 +525,138 @@ test('wallet renders loading/retry/pack feedback and only confirms a priced purc
     assert.ok([...view.container.querySelectorAll('button[role="radio"]')].every((item) => item.disabled));
     assert.equal(button('Restore purchases').disabled, true);
   } finally { await view.close(); }
+}));
+
+for (const nextSku of [sku, otherSku]) {
+  for (const outcome of ['reject', 'resolve']) {
+    test(`late request A ${outcome} cannot release newer B ownership (${nextSku})`, withCredits(async (f) => {
+      const requestA = deferred();
+      f.request = () => requestA.promise;
+      let a;
+      await act(async () => { a = f.value.purchaseCredits(sku); });
+      await f.emitPurchase(purchase);
+      assert.equal(f.value.purchasing, false);
+      f.request = async () => undefined;
+      await act(async () => f.value.purchaseCredits(nextSku));
+      assert.equal(f.value.purchasing, true);
+      assert.equal(f.value.feedbackSku, nextSku);
+      await act(async () => {
+        if (outcome === 'reject') requestA.reject(new Error('Late A request failure'));
+        else requestA.resolve(purchase);
+        await a;
+      });
+      assert.equal(f.value.purchasing, true);
+      assert.equal(f.value.feedbackSku, nextSku);
+      assert.equal(f.value.purchaseError, null);
+      assert.equal(f.calls.finish, 1);
+      await act(async () => { await f.value.purchaseCredits(otherSku); await f.value.restorePurchases(); });
+      assert.equal(f.calls.request, 2);
+      await f.emitPurchase({ ...purchase, productId: nextSku, transactionId: 'credit-transaction-b', purchaseToken: 'signed.receipt.b' });
+      assert.equal(f.value.purchasing, false);
+    }));
+  }
+}
+
+test('a late request error cannot unlock a confirmed transaction still verifying', withCredits(async (f) => {
+  const request = deferred();
+  const verification = deferred();
+  f.request = () => request.promise;
+  f.verify = () => verification.promise;
+  let started;
+  let event;
+  await act(async () => { started = f.value.purchaseCredits(sku); });
+  await act(async () => { event = Promise.all([...f.purchaseListeners].map((listener) => listener(purchase))); });
+  await act(async () => { request.reject(new Error('Late request error')); await started; });
+  assert.equal(f.value.purchasing, true);
+  assert.equal(f.value.purchaseError, null);
+  await act(async () => f.value.purchaseCredits(otherSku));
+  assert.equal(f.calls.request, 1);
+  await act(async () => { verification.resolve(valid); await event; });
+  assert.equal(f.calls.finish, 1);
+  assert.equal(f.value.purchasing, false);
+}));
+
+test('returned purchase is fulfilled without a listener event and its later replay is idempotent', withCredits(async (f) => {
+  f.request = async () => [purchase];
+  await act(async () => f.value.purchaseCredits(sku));
+  assert.equal(f.value.purchasing, false);
+  assert.equal(f.calls.finish, 1);
+  assert.deepEqual(f.log, ['verify', 'wallet', 'finish']);
+  await f.emitPurchase(purchase);
+  assert.equal(f.calls.finish, 1);
+  assert.deepEqual(f.log, ['verify', 'wallet', 'finish']);
+}));
+
+test('Restore and listener replay share verification/finish and keep Restore busy until real finish', withCredits(async (f) => {
+  const verification = deferred();
+  const finishing = deferred();
+  f.available = async () => [purchase];
+  f.verify = () => verification.promise;
+  f.finish = () => finishing.promise;
+  let restore;
+  let event;
+  await act(async () => { restore = f.value.restorePurchases(); });
+  await act(async () => { event = Promise.all([...f.purchaseListeners].map((listener) => listener(purchase))); });
+  assert.equal(f.log.filter((item) => item === 'verify').length, 1);
+  await act(async () => { verification.resolve(valid); });
+  assert.equal(f.calls.finish, 1);
+  assert.equal(f.value.restoring, true);
+  await f.expireReads();
+  assert.equal(f.value.restoring, true, 'a real finish is not owned by any read timeout');
+  await act(async () => { await f.value.purchaseCredits(otherSku); });
+  assert.equal(f.calls.request, 0);
+  await act(async () => { finishing.resolve(undefined); await Promise.all([restore, event]); });
+  assert.deepEqual(f.log, ['verify', 'wallet', 'finish']);
+  assert.equal(f.value.restoring, false);
+  await f.emitPurchase(purchase);
+  assert.equal(f.calls.finish, 1);
+}));
+
+test('automatic reconciliation and listener replay share one fulfillment owner', async () => {
+  const f = fixture();
+  const verification = deferred();
+  f.available = async () => [purchase];
+  f.verify = () => verification.promise;
+  await f.mount();
+  try {
+    assert.equal(f.value.purchasing, true);
+    let event;
+    await act(async () => { event = Promise.all([...f.purchaseListeners].map((listener) => listener(purchase))); });
+    assert.equal(f.log.filter((item) => item === 'verify').length, 1);
+    await act(async () => { verification.resolve(valid); await event; });
+    assert.equal(f.calls.finish, 1);
+    assert.deepEqual(f.log, ['verify', 'wallet', 'finish']);
+    assert.equal(f.value.purchasing, false);
+  } finally { await f.view.close(); }
+});
+
+test('shared verification failure reaches Restore and remains retryable without finishing', withCredits(async (f) => {
+  const verification = deferred();
+  f.available = async () => [purchase];
+  f.verify = () => verification.promise;
+  let restore;
+  let event;
+  await act(async () => { restore = f.value.restorePurchases(); });
+  await act(async () => { event = Promise.all([...f.purchaseListeners].map((listener) => listener(purchase))); });
+  await act(async () => { verification.resolve({ data: { success: false }, error: null }); await Promise.all([restore, event]); });
+  assert.equal(f.calls.finish, 0);
+  assert.equal(f.log.filter((item) => item === 'verify').length, 1);
+  assert.match(f.value.purchaseError, /valid credit balance/);
+  f.verify = async () => valid;
+  await act(async () => f.value.restorePurchases());
+  assert.equal(f.calls.finish, 1);
+}));
+
+test('an old completed replay cannot claim the same-SKU newer purchase', withCredits(async (f) => {
+  await f.emitPurchase(purchase);
+  await act(async () => f.value.purchaseCredits(sku));
+  assert.equal(f.value.purchasing, true);
+  await f.emitPurchase(purchase);
+  assert.equal(f.value.purchasing, true);
+  assert.equal(f.calls.finish, 1);
+  assert.equal(f.value.feedbackSku, sku);
+  await act(async () => f.value.purchaseCredits(otherSku));
+  assert.equal(f.calls.request, 1);
 }));
 
 let failures = 0;

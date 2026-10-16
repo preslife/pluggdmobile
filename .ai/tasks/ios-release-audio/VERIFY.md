@@ -5,8 +5,8 @@ Source checkpoint is ready; replacement submission is not complete.
 | Gate | Evidence |
 |---|---|
 | Apple decision/config | Safari rejected22/15items; agreement/bank/tax Active; six platform subscriptions/group Ready for Review |
-| Plans |20 actual-source cases PASS;52pt filled controls; request generations/shared transaction fulfillment |
-| Wallet |26 actual-source cases PASS; missing prices/retry/trusted credit verification |
+| Plans |22 actual-source cases PASS;52pt filled controls; request generations/shared transaction fulfillment/pending and confirmed ownership |
+| Wallet |36 actual-source cases PASS; missing prices/retry/trusted credit verification/account-scoped shared fulfillment and late-callback guards |
 | Playback |48 actual-source cases PASS; expiry metadata/authorized renewal/intent preservation |
 | Assembled types/platform plan contract |PASS final full native TypeScript and platform contract |
 | Production Hermes |PASS final build24 export; fixture marker exclusion and restored source imports |
@@ -16,7 +16,7 @@ Source checkpoint is ready; replacement submission is not complete.
 | Live backend reads |Audio33 public4h/owned300s/battle300s; commerce21/live iOS row external Stripe deniedUS/GB; battle RLS guarded; no writes |
 | Native prep/signing settings |Exact lock install/prebuild24/131pods PASS; distribution identity/profile valid; com.pluggd.mobile/build24/family1/production push configured |
 | Legacy readiness regex |Pre-existing stale location/DOB assertions; no false pass or unrelated product patch |
-| Signed replacement/current CI/main/upload |Pending |
+| Signed replacement/current CI/main/upload |Initial04a PR13 CI3/3 PASS; final ownership checkpoint requires current CI. Native archive compiling provisionally; final exact pin/export pending |
 | Replacement sandbox purchase/fulfilment/restore |Pending; source/native boundary fixture cannot substitute |
 | Owned/battle >300s physical + Home Screen recording |Pending; requested evidence must be linked in Apple Notes and attached to reply |
 | Apple reply/resubmit |Not performed; final applicable owner gate required |

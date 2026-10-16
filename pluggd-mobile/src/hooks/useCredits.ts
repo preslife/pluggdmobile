@@ -296,6 +296,13 @@ function buildCreditPacks(prods: StoreProduct[] = []): CreditPack[] {
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────
+type CreditOperationOwner = {
+  generation: number;
+  kind: 'purchase' | 'restore' | 'reconcile' | 'listener';
+  sku: string | null;
+  confirmed: boolean;
+};
+
 export function useCredits() {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [packs, setPacks] = useState<CreditPack[]>(() => buildCreditPacks());
@@ -317,6 +324,114 @@ export function useCredits() {
   const operationInFlight = useRef(false);
   const retryInFlight = useRef(false);
   const productRequest = useRef(0);
+  const operationGeneration = useRef(0);
+  const activeOwner = useRef<CreditOperationOwner | null>(null);
+  const transactionOwners = useRef(new Map<string, CreditOperationOwner>());
+  const processingPurchases = useRef(new Map<string, Promise<void>>());
+  const completedPurchases = useRef(new Set<string>());
+  const pendingSkus = useRef(new Set<string>());
+
+  function beginOperation(kind: CreditOperationOwner['kind'], sku: string | null = null) {
+    const owner = { generation: ++operationGeneration.current, kind, sku, confirmed: false };
+    activeOwner.current = owner;
+    operationInFlight.current = true;
+    return owner;
+  }
+
+  function ownsOperation(owner: CreditOperationOwner) {
+    return activeOwner.current === owner && operationGeneration.current === owner.generation;
+  }
+
+  function finishOwnedOperation(owner: CreditOperationOwner) {
+    if (!ownsOperation(owner)) return;
+    if (pendingSkus.current.size) {
+      owner.kind = 'listener';
+      owner.sku = pendingSkus.current.values().next().value ?? null;
+      owner.confirmed = true;
+      setPurchasing(true);
+      setPendingPayment(true);
+      setFeedbackSku(owner.sku);
+      setNotice(`${adapter?.storeName ?? 'Store'} is waiting for payment approval. Do not buy again.`);
+    } else {
+      activeOwner.current = null;
+      operationInFlight.current = false;
+      setPurchasing(false);
+      setPendingPayment(false);
+    }
+  }
+
+  function transactionKey(purchase: StorePurchase) {
+    const reference = adapter?.provider === 'google' ? purchase.purchaseToken || purchase.transactionId : purchase.transactionId || purchase.purchaseToken;
+    return typeof reference === 'string' && reference ? `${adapter?.provider}:${purchase.productId}:${reference}` : null;
+  }
+
+  async function fulfillPurchase(purchase: StorePurchase) {
+    const nativeKey = transactionKey(purchase);
+    if (!adapter || !nativeKey) throw new Error('This purchase needs a store transaction reference before it can be verified. Use Restore Purchases to try again.');
+    const session = await requireAuthenticatedSession();
+    const key = `${session.user.id}:${nativeKey}`;
+    if (completedPurchases.current.has(key)) return;
+    const existing = processingPurchases.current.get(key);
+    if (existing) return existing;
+    const operation = (async () => {
+      const verification = await validateReceipt(purchase, session);
+      if (verification.finishRequired) await adapter.finishTransaction(purchase, true);
+      completedPurchases.current.add(key);
+    })();
+    processingPurchases.current.set(key, operation);
+    try {
+      await operation;
+    } finally {
+      // Keep ownership until real verification/finish settles, never a UI timer.
+      if (processingPurchases.current.get(key) === operation) processingPurchases.current.delete(key);
+    }
+  }
+
+  async function handleCreditPurchase(purchase: StorePurchase, requestOwner?: CreditOperationOwner) {
+    if (!adapter || !CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU)) return;
+    const key = transactionKey(purchase);
+    const historicalOwner = requestOwner || (key ? transactionOwners.current.get(key) : undefined);
+    let owner: CreditOperationOwner | null = null;
+    const current = activeOwner.current;
+    if (!current) owner = beginOperation('listener', purchase.productId);
+    else if ((current.kind === 'purchase' || current.kind === 'listener')
+      && (current.sku === purchase.productId || pendingSkus.current.has(purchase.productId))
+      && (!historicalOwner || historicalOwner === current)) owner = current;
+    if (owner) {
+      owner.confirmed = true;
+      if (key) transactionOwners.current.set(key, owner);
+      setPurchasing(true);
+      setFeedbackSku(purchase.productId);
+    }
+    if (purchase.purchaseState === 'pending') {
+      pendingSkus.current.add(purchase.productId);
+      if (owner && ownsOperation(owner)) {
+        setPendingPayment(true);
+        setError(null);
+        setNotice(`${adapter.storeName} is waiting for payment approval. Do not buy again.`);
+      }
+      return;
+    }
+    if (owner && ownsOperation(owner)) {
+      setPendingPayment(false);
+      setError(null);
+      setNotice('Purchase confirmed. Verifying your credits—do not buy again.');
+    }
+    try {
+      await fulfillPurchase(purchase);
+      pendingSkus.current.delete(purchase.productId);
+      if (owner && ownsOperation(owner)) {
+        setError(null);
+        setNotice('Your wallet is up to date.');
+        finishOwnedOperation(owner);
+      }
+    } catch (failure: unknown) {
+      if (owner && ownsOperation(owner)) {
+        setError(failure instanceof Error ? failure.message : 'Receipt validation failed');
+        finishOwnedOperation(owner);
+      }
+    }
+  }
 
   // ── Fetch credit products after the root store connection is ready ──
   const reloadProducts = useCallback(async () => {
@@ -398,57 +513,30 @@ export function useCredits() {
     if (!adapter) return;
 
     purchaseUpdateSub.current = adapter.listenForPurchases(
-      async (purchase: StorePurchase) => {
-        if (!CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU)) return;
-        operationInFlight.current = true;
-        setPurchasing(true);
-        setFeedbackSku(purchase.productId);
-        console.log('[useCredits] purchase update:', purchase.productId);
-        if (purchase.purchaseState === 'pending') {
-          setPendingPayment(true);
-          setError(null);
-          setNotice(`${adapter.storeName} is waiting for payment approval. Do not buy again.`);
-          return;
-        }
-        setPendingPayment(false);
-        setError(null);
-        setNotice('Purchase confirmed. Verifying your credits—do not buy again.');
-        try {
-          // Validate receipt with backend
-          const verification = await validateReceipt(purchase);
-          // On Android this consumes the item; on iOS it finishes StoreKit.
-          if (verification.finishRequired) {
-            await adapter.finishTransaction(purchase, true);
-          }
-          setPurchasing(false);
-          operationInFlight.current = false;
-          setError(null);
-          setNotice('Your wallet is up to date.');
-        } catch (err: any) {
-          console.error('[useCredits] validation failed:', err);
-          setPurchasing(false);
-          operationInFlight.current = false;
-          setError(err?.message ?? 'Receipt validation failed');
-        }
-      },
+      (purchase: StorePurchase) => handleCreditPurchase(purchase),
     );
 
     purchaseErrorSub.current = adapter.listenForErrors(
       (err: StorePurchaseError) => {
         if (err.productId && !CREDIT_PACK_SKUS.includes(err.productId as CreditPackSKU)) return;
+        const owner = activeOwner.current;
+        if (owner && ((owner.kind !== 'purchase' && owner.kind !== 'listener')
+          || (err.productId && owner.sku !== err.productId && !pendingSkus.current.has(err.productId))
+          || (owner.confirmed && !pendingSkus.current.has(err.productId || owner.sku || '')))) return;
         if (err.productId) setFeedbackSku(err.productId);
         logPurchaseError('purchase error', err);
         if (err.code === 'pending' || err.code === 'deferred-payment') {
-          operationInFlight.current = true;
+          const pendingOwner = owner || beginOperation('listener', err.productId || null);
+          pendingOwner.confirmed = true;
+          if (err.productId || pendingOwner.sku) pendingSkus.current.add(err.productId || pendingOwner.sku!);
           setPurchasing(true);
           setPendingPayment(true);
           setError(null);
           setNotice(purchaseErrorMessage(err, adapter.storeName));
           return;
         }
-        operationInFlight.current = false;
-        setPendingPayment(false);
-        setPurchasing(false);
+        if (err.productId || owner?.sku) pendingSkus.current.delete(err.productId || owner!.sku!);
+        if (owner) finishOwnedOperation(owner);
         // User cancelled is not an error we should display
         if (err.code !== 'user-cancelled') {
           setError(purchaseErrorMessage(err, adapter.storeName));
@@ -463,10 +551,10 @@ export function useCredits() {
   }, [adapter]);
 
   // ── Validate receipt with Supabase ──
-  async function validateReceipt(purchase: StorePurchase) {
+  async function validateReceipt(purchase: StorePurchase, authenticatedSession?: Awaited<ReturnType<typeof requireAuthenticatedSession>>) {
     const billing = adapter!;
     if (!billing) throw new Error('Store billing is unavailable on this device.');
-    const session = await requireAuthenticatedSession();
+    const session = authenticatedSession ?? await requireAuthenticatedSession();
     const purchaseToken = purchase.purchaseToken;
 
     async function recoverServerVerifiedPurchase() {
@@ -620,9 +708,10 @@ export function useCredits() {
 
     pendingReconciliationStarted.current = true;
     let cancelled = false;
+    const initialGeneration = operationGeneration.current;
 
     async function reconcilePendingPurchases() {
-      let ownsReconciliation = false;
+      let owner: CreditOperationOwner | null = null;
       let hasPending = false;
       try {
         const purchases = await withStoreTimeout(billing.getAvailablePurchases(), 'Purchases could not be checked. Use Restore Purchases to try again.');
@@ -630,45 +719,41 @@ export function useCredits() {
           CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU),
         );
         if (cancelled || operationInFlight.current || !pendingCredits.length) return;
-        ownsReconciliation = true;
-        operationInFlight.current = true;
+        owner = beginOperation('reconcile');
         setPurchasing(true);
 
         for (const purchase of pendingCredits) {
           setFeedbackSku(purchase.productId);
+          const key = transactionKey(purchase);
+          if (key) transactionOwners.current.set(key, owner);
           if (purchase.purchaseState === 'pending') {
             hasPending = true;
+            pendingSkus.current.add(purchase.productId);
             setPendingPayment(true);
             setNotice(`${billing.storeName} is waiting for payment approval. Do not buy again.`);
             continue;
           }
-          const verification = await validateReceipt(purchase);
-          if (verification.finishRequired) {
-            await billing.finishTransaction(purchase, true);
-          }
+          await fulfillPurchase(purchase);
+          pendingSkus.current.delete(purchase.productId);
         }
 
-        if (!cancelled && pendingCredits.length > 0) {
-          operationInFlight.current = hasPending;
-          setPurchasing(hasPending);
+        if (!cancelled && ownsOperation(owner)) {
           setError(null);
           if (!hasPending) setNotice('Your wallet is up to date.');
+          finishOwnedOperation(owner);
         }
       } catch (reconciliationError) {
         console.error(
           '[useCredits] pending purchase reconciliation failed:',
           reconciliationError,
         );
-        if (!cancelled) {
-          if (ownsReconciliation) {
-            operationInFlight.current = hasPending;
-            setPurchasing(hasPending);
-          }
+        if (!cancelled && (owner ? ownsOperation(owner) : operationGeneration.current === initialGeneration && !operationInFlight.current)) {
           setError(
             reconciliationError instanceof Error
               ? reconciliationError.message
               : `${billing.storeName} confirmed a purchase that is still being verified.`,
           );
+          if (owner) finishOwnedOperation(owner);
         }
       }
     }
@@ -683,7 +768,7 @@ export function useCredits() {
   const purchaseCredits = useCallback(
     async (sku: CreditPackSKU) => {
       if (operationInFlight.current || retryInFlight.current) return;
-      operationInFlight.current = true;
+      const owner = beginOperation('purchase', sku);
       setPurchasing(true);
       setPendingPayment(false);
       setFeedbackSku(sku);
@@ -695,29 +780,39 @@ export function useCredits() {
         const product = products.find((candidate) => storeProductId(candidate) === sku);
         if (!product || !storeProductPrice(product).trim()) throw new Error(`This credit pack price is unavailable. Tap Retry ${adapter.storeName} to reload prices.`);
         const session = await requireAuthenticatedSession(true);
+        if (!ownsOperation(owner) || owner.confirmed) return;
 
         const policy = await withStoreTimeout(resolveCommercePolicy({
           kind: 'credit_pack',
           itemId: sku,
           classification: 'digital',
         }), 'Purchase eligibility took too long to check. Please try again.');
+        if (!ownsOperation(owner) || owner.confirmed) return;
         if (policy.permittedRail !== adapter.creditRail) {
           throw new Error(policy.reason);
         }
 
-        await adapter.requestProduct({
+        const result = await adapter.requestProduct({
           sku,
           accountId: session.user.id,
         });
-        // Purchase listener handles the rest
+        // Some native versions return before delivering their update event.
+        // The shared transaction promise handles returned and replayed receipts.
+        for (const candidate of Array.isArray(result) ? result : result ? [result] : []) {
+          if (candidate && typeof candidate === 'object' && candidate.productId === sku) {
+            await handleCreditPurchase(candidate as StorePurchase, owner);
+          }
+        }
       } catch (err: any) {
+        if (!ownsOperation(owner) || owner.confirmed) return;
         if (err?.code === 'pending' || err?.code === 'deferred-payment') {
+          owner.confirmed = true;
+          pendingSkus.current.add(sku);
           setPendingPayment(true);
           setNotice(purchaseErrorMessage(err, adapter?.storeName ?? 'Store'));
           return;
         }
-        operationInFlight.current = false;
-        setPurchasing(false);
+        finishOwnedOperation(owner);
         if (err?.code !== 'user-cancelled') {
           if (err?.code) {
             logPurchaseError('purchase request failed', err as StorePurchaseError);
@@ -734,7 +829,7 @@ export function useCredits() {
   // ── Restore purchases (consumables don't restore, but needed for compliance) ──
   const restorePurchases = useCallback(async () => {
     if (operationInFlight.current || retryInFlight.current) return;
-    operationInFlight.current = true;
+    const owner = beginOperation('restore');
     setRestoring(true);
     setError(null);
     setNotice(null);
@@ -754,26 +849,29 @@ export function useCredits() {
         if (CREDIT_PACK_SKUS.includes(purchase.productId as CreditPackSKU)) {
           if (purchase.purchaseState === 'pending') {
             hasPending = true;
+            pendingSkus.current.add(purchase.productId);
             setPurchasing(true);
             setPendingPayment(true);
             setFeedbackSku(purchase.productId);
             continue;
           }
-          const verification = await validateReceipt(purchase);
-          if (verification.finishRequired) {
-            await adapter.finishTransaction(purchase, true);
-          }
+          const key = transactionKey(purchase);
+          if (key) transactionOwners.current.set(key, owner);
+          await fulfillPurchase(purchase);
+          pendingSkus.current.delete(purchase.productId);
           checked++;
         }
       }
-      setNotice(hasPending
+      if (ownsOperation(owner)) setNotice(hasPending
         ? `${adapter.storeName} is waiting for payment approval. Do not buy again.`
         : checked ? 'Credit purchases checked. Your wallet is up to date.' : 'No unfinished credit purchases were found. Delivered credits remain in your wallet.');
     } catch (err: any) {
-      setError(err?.message ?? 'Restore failed');
+      if (ownsOperation(owner)) setError(err?.message ?? 'Restore failed');
     } finally {
-      operationInFlight.current = hasPending;
-      setRestoring(false);
+      if (ownsOperation(owner)) {
+        finishOwnedOperation(owner);
+        setRestoring(false);
+      }
     }
   }, [adapter, connected, retryConnection]);
 

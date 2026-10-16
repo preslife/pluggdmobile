@@ -226,7 +226,9 @@ export function usePlatformSubscription() {
   const purchaseInFlight = useRef(false);
   const activePurchaseSku = useRef<string | null>(null);
   const nativeRequestSettled = useRef(false);
+  const pendingApproval = useRef(false);
   const purchaseGeneration = useRef(0);
+  const confirmedGeneration = useRef<number | null>(null);
   const productRequest = useRef(0);
   const processingPurchases = useRef(new Map<string, Promise<void>>());
   const completedPurchases = useRef(new Set<string>());
@@ -353,13 +355,19 @@ export function usePlatformSubscription() {
     const generation = purchaseGeneration.current;
     setFeedbackSku(purchase.productId);
     if (purchase.purchaseState === 'pending') {
-      if (activePurchaseSku.current === purchase.productId) {
-        purchaseInFlight.current = false;
-        activePurchaseSku.current = null;
-        setPurchasingSku(null);
+      if (!activePurchaseSku.current || activePurchaseSku.current === purchase.productId) {
+        pendingApproval.current = true;
+        purchaseInFlight.current = true;
+        activePurchaseSku.current = purchase.productId;
+        setPurchasingSku(purchase.productId);
+        setPurchaseTakingLong(true);
       }
       setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
       return;
+    }
+    if (activePurchaseSku.current === purchase.productId) {
+      confirmedGeneration.current = generation;
+      pendingApproval.current = false;
     }
     try {
       await withStoreTimeout(fulfillPurchase(purchase), 'Your purchase is still syncing. Check purchase status before subscribing again.');
@@ -372,6 +380,7 @@ export function usePlatformSubscription() {
     } finally {
       const key = `${purchase.productId}:${purchase.transactionId || purchase.purchaseToken}`;
       if (purchaseGeneration.current === generation && activePurchaseSku.current === purchase.productId && !processingPurchases.current.has(key)) {
+        pendingApproval.current = false;
         purchaseInFlight.current = false;
         activePurchaseSku.current = null;
         setPurchasingSku(null);
@@ -386,14 +395,14 @@ export function usePlatformSubscription() {
       const purchases = await withStoreTimeout(adapter.getAvailablePurchases(), 'Purchase status could not be checked. Please try again.');
       const purchase = purchases.find((item) => item.productId === purchasingSku);
       if (purchase) await handlePurchase(purchase);
-      else if (nativeRequestSettled.current && processingPurchases.current.size === 0) {
+      else if (nativeRequestSettled.current && !pendingApproval.current && processingPurchases.current.size === 0) {
         purchaseInFlight.current = false;
         activePurchaseSku.current = null;
         setPurchasingSku(null);
         setError(null);
         setNotice('No completed purchase was found. You can choose a plan again. If Apple is waiting for payment approval, do not repeat the purchase.');
       } else {
-        setNotice('No completed purchase is available yet. Finish or cancel any open App Store sheet, then check again. Do not subscribe again while Apple is processing it.');
+        setNotice(pendingApproval.current ? 'The App Store is still waiting for payment approval. Do not subscribe again.' : 'No completed purchase is available yet. Finish or cancel any open App Store sheet, then check again. Do not subscribe again while Apple is processing it.');
       }
     } catch (statusError) {
       setError(statusError instanceof Error ? statusError.message : 'Purchase status could not be checked. Please try again.');
@@ -407,6 +416,20 @@ export function usePlatformSubscription() {
     purchaseListener.current = adapter.listenForPurchases(handlePurchase);
     errorListener.current = adapter.listenForErrors((purchaseError: StorePurchaseError) => {
       if (purchaseError.productId && (!knownSkus.has(purchaseError.productId) || (activePurchaseSku.current && purchaseError.productId !== activePurchaseSku.current))) return;
+      if (confirmedGeneration.current === purchaseGeneration.current && !pendingApproval.current) return;
+      if (purchaseError.code === 'pending' || purchaseError.code === 'deferred-payment') {
+        const pendingSku = activePurchaseSku.current || purchaseError.productId;
+        if (!pendingSku) return;
+        activePurchaseSku.current = pendingSku;
+        purchaseInFlight.current = true;
+        setPurchasingSku(pendingSku);
+        setFeedbackSku(pendingSku);
+        pendingApproval.current = true;
+        setPurchaseTakingLong(true);
+        setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
+        return;
+      }
+      pendingApproval.current = false;
       activePurchaseSku.current = null;
       purchaseInFlight.current = false;
       setPurchasingSku(null);
@@ -425,6 +448,7 @@ export function usePlatformSubscription() {
     purchaseInFlight.current = true;
     activePurchaseSku.current = sku;
     nativeRequestSettled.current = false;
+    pendingApproval.current = false;
     setPurchasingSku(sku);
     setFeedbackSku(sku);
     setPurchaseTakingLong(false);
@@ -455,8 +479,16 @@ export function usePlatformSubscription() {
       }
       // Missing results remain guarded; the watchdog exposes read-only status recovery.
     } catch (purchaseError: unknown) {
-      if (purchaseGeneration.current !== generation) return;
+      if (purchaseGeneration.current !== generation || activePurchaseSku.current !== sku || confirmedGeneration.current === generation) return;
       nativeRequestSettled.current = true;
+      const pendingFailure = purchaseError as StorePurchaseError;
+      if (pendingFailure?.code === 'pending' || pendingFailure?.code === 'deferred-payment') {
+        pendingApproval.current = true;
+        setPurchaseTakingLong(true);
+        setNotice('The App Store is waiting for payment approval. Do not subscribe again.');
+        return;
+      }
+      pendingApproval.current = false;
       activePurchaseSku.current = null;
       purchaseInFlight.current = false;
       setPurchasingSku(null);
