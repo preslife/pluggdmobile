@@ -19,10 +19,9 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import type { MobileSocialDestinationInput } from '../culture/mobileTypes';
 import { MusicButton, MusicSlider, MusicTool, MusicWaveform, SoundArtwork } from './MusicControls';
 import { SoundPickerSheet } from './SoundPickerSheet';
-import { clamp, fitRecipe, formatMusicTime, musicError, type MusicDraft, type MusicRecipe, type MusicTrack } from './model';
-import { clearMusicDraft, keepMusicMedia, loadMusicAudition, musicJobStatus, newMusicDraft, publishMusicDraft, readMusicDraft, readyMusicPreview, rememberMusic, removeMusicMedia, renderMusicDraft, saveMusicDraft, searchMusic, type MusicAudition } from './service';
+import { actorMusicRouteParams, clamp, fitRecipe, formatMusicTime, musicError, type MusicDraft, type MusicRecipe, type MusicTrack, type MusicPostRouteParams } from './model';
+import { EXPIRED_MUSIC_PREVIEW, renewMusicDraft, clearMusicDraft, keepMusicMedia, loadMusicAudition, musicJobStatus, newMusicDraft, publishMusicDraft, readMusicDraft, readyMusicPreview, rememberMusic, removeMusicMedia, renderMusicDraft, saveMusicDraft, searchMusic, type MusicAudition } from './service';
 
-type Params = { releaseId?: string; trackId?: string; content?: string; destinations?: string; mediaUri?: string; mediaKind?: string; mimeType?: string; mediaDuration?: string };
 const DESTINATION_TYPES = new Set(['global_feed', 'user_profile', 'board', 'event', 'release', 'beat', 'mix', 'challenge', 'creator_community']);
 function routeDestinations(raw?: string): MobileSocialDestinationInput[] {
   try {
@@ -45,23 +44,32 @@ function FinishedPreview({ uri, onError }: { uri: string; onError: () => void })
 }
 
 export function MusicPostEditor() {
+  const { user } = useAuth();
+  // Remount actor-owned state and players before another account can see them.
+  return <MusicPostEditorSession key={user?.id ?? 'signed-out'} />;
+}
+
+function MusicPostEditorSession() {
   const { colors } = usePluggdTheme();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { height: viewportHeight } = useWindowDimensions();
   const router = useRouter();
-  const params = useLocalSearchParams<Params>();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const params = actorMusicRouteParams(useLocalSearchParams<MusicPostRouteParams>(), user?.id);
   const { pause: pauseGlobal } = usePlayback();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<MusicDraft | null>(null);
   const draftRef = useRef<MusicDraft | null>(null);
+  const acknowledgedDraft = useRef<MusicDraft | null>(null);
+  const initialSaveFailed = useRef(false);
   const [hydrated, setHydrated] = useState(false);
+  const [hydrationRevision, setHydrationRevision] = useState(0);
   const [soundPicker, setSoundPicker] = useState(false);
   const [segmentSheet, setSegmentSheet] = useState(false);
   const [mixSheet, setMixSheet] = useState(false);
   const stageHeight = useRef(new Animated.Value(430)).current;
-  const [busy, setBusy] = useState<'media' | 'render' | 'publish' | null>(null);
+  const [busy, setBusy] = useState<'media' | 'draft' | 'render' | 'publish' | null>(null);
   const busyRef = useRef(false);
   const [error, setError] = useState('');
   const [readyUri, setReadyUri] = useState<string | null>(null);
@@ -81,6 +89,7 @@ export function MusicPostEditor() {
   const audition = useRef<MusicAudition | null>(null);
   const auditionRequest = useRef(0);
   const auditionAbort = useRef<AbortController | null>(null);
+  const audioReplacement = useRef(Promise.resolve());
   const autoAudition = useRef(false);
   const recipeBeforeSheet = useRef<MusicRecipe | null>(null);
   const trackBeforeSheet = useRef<MusicTrack | null>(null);
@@ -88,14 +97,47 @@ export function MusicPostEditor() {
   const completed = useRef(false);
   const focused = useRef(true);
   const persistQueue = useRef(Promise.resolve());
-  useLayoutEffect(() => () => { mounted.current = false; focused.current = false; }, []);
+  const pendingCheckpoints = useRef(0);
+  const contextRevision = useRef(0);
+  const workAbort = useRef<AbortController | null>(null);
+  const tokenRef = useRef(session?.access_token);
+  const currentOperation = (revision: number) => mounted.current && revision === contextRevision.current;
+  const assertOperation = (revision: number) => {
+    if (!currentOperation(revision)) throw new Error('Your session changed. Please try again.');
+  };
+  useLayoutEffect(() => () => { mounted.current = false; focused.current = false; contextRevision.current++; workAbort.current?.abort(); }, []);
   const update = useCallback((next: MusicDraft) => { draftRef.current = next; setDraft(next); }, []);
   const persist = useCallback(async (next: MusicDraft) => {
-    const write = persistQueue.current.catch(() => undefined).then(() => completed.current ? undefined : saveMusicDraft(next));
+    const revision = contextRevision.current;
+    const write = persistQueue.current.catch(() => undefined).then(async () => {
+      if (!mounted.current || revision !== contextRevision.current) throw new Error('Draft save cancelled.');
+      if (completed.current) return;
+      await saveMusicDraft(next);
+      if (mounted.current) acknowledgedDraft.current = { ...next };
+    });
     persistQueue.current = write;
     await write;
   }, []);
-  const checkpoint = useCallback(async (next: MusicDraft) => { update(next); await persist(next); }, [persist, update]);
+  const checkpoint = useCallback(async (next: MusicDraft) => {
+    if (!mounted.current || next.userId !== user?.id) throw new Error('Draft save cancelled.');
+    const revision = contextRevision.current;
+    pendingCheckpoints.current++;
+    update(next);
+    try { await persist(next); initialSaveFailed.current = false; }
+    catch (error) {
+      // A token refresh cancels remote work, but this actor's local write still
+      // owns its acknowledgement/rollback before its fresh media can be removed.
+      if (mounted.current && draftRef.current === next) {
+        update(acknowledgedDraft.current || { ...next, media: null, sourcePath: undefined, jobId: undefined, reviewPending: false });
+      }
+      throw error;
+    } finally {
+      pendingCheckpoints.current--;
+      if (mounted.current && revision !== contextRevision.current && !pendingCheckpoints.current) {
+        busyRef.current = false; setBusy(null);
+      }
+    }
+  }, [persist, update, user?.id]);
   useEffect(() => {
     const sheetOpen = soundPicker || segmentSheet || mixSheet;
     const height = sheetOpen ? Math.max(120, viewportHeight * (soundPicker ? 0.28 : 0.34) - insets.top - 76) : Math.min(430, viewportHeight * 0.54);
@@ -106,6 +148,22 @@ export function MusicPostEditor() {
     auditionRequest.current++; auditionAbort.current?.abort(); if (mounted.current) audio.pause();
     setAuditionBusy(false); setAuditionId(undefined);
   }, [audio]);
+  useLayoutEffect(() => {
+    if (tokenRef.current === session?.access_token) return;
+    tokenRef.current = session?.access_token;
+    contextRevision.current++; workAbort.current?.abort(); cancelAudition(); stop();
+    const previous = audition.current; audition.current = null;
+    const clearAudio = audioReplacement.current.catch(() => undefined).then(() => audio.replaceAsync(null));
+    audioReplacement.current = clearAudio;
+    void clearAudio.then(() => previous?.dispose(), () => previous?.dispose());
+    setWaveform([]); setTrackDuration(0);
+    setReadyUri(null); setReview(false); setPreviewError(false);
+    setSoundPicker(false); setSegmentSheet(false); setMixSheet(false);
+    setPreviewRevision(value => value + 1);
+    if (!hydrated) setHydrationRevision(value => value + 1);
+    if (!pendingCheckpoints.current) { busyRef.current = false; setBusy(null); }
+    setError('Your session changed. Prepare the preview again to continue.');
+  }, [session?.access_token, cancelAudition, stop]);
   useFocusEffect(useCallback(() => { focused.current = true; return () => { focused.current = false; cancelAudition(); if (mounted.current) video.pause(); }; }, [cancelAudition, video]));
   useEffect(() => {
     mounted.current = true;
@@ -115,50 +173,85 @@ export function MusicPostEditor() {
   useEffect(() => {
     if (!user?.id) { setHydrated(true); return; }
     let active = true;
+    const revision = contextRevision.current;
+    const isCurrent = () => active && currentOperation(revision);
     const initialise = async (restore: MusicDraft | null) => {
+      if (!isCurrent()) return;
+      let copiedMedia: MusicDraft['media'] = null;
+      let acknowledged = false;
+      let saving = false;
+      const previous = acknowledgedDraft.current;
       let next = restore || newMusicDraft(user.id, params.content || '', routeDestinations(params.destinations));
-      if (!restore && params.mediaUri && (params.mediaKind === 'photo' || params.mediaKind === 'video')) {
-        const media = await keepMusicMedia({ uri: params.mediaUri, kind: params.mediaKind, mimeType: params.mimeType || (params.mediaKind === 'photo' ? 'image/jpeg' : 'video/mp4'), duration: clamp(Number(params.mediaDuration) || 15, 1, 30) });
-        next = { ...next, media, recipe: fitRecipe(next.recipe, 30, media.duration) };
-      }
-      if (!restore && params.releaseId) {
-        const tracks = await searchMusic('', params.releaseId);
-        const initial = tracks.find(track => track.track_id === params.trackId) || (tracks.length === 1 ? tracks[0] : null);
-        if (initial) next = { ...next, track: initial, recipe: fitRecipe(next.recipe, initial.duration || 30) };
-      }
-      if (!active) return;
-      await checkpoint(next);
-      setHydrated(true);
-      if (restore?.jobId) {
-        const status = await musicJobStatus(restore.jobId);
-        if (status === 'published') {
-          completed.current = true; await persistQueue.current; await clearMusicDraft(user.id); removeMusicMedia(restore.media);
-          router.replace(`/post/${restore.postId}` as any); return;
+      try {
+        if (!restore && params.mediaUri && (params.mediaKind === 'photo' || params.mediaKind === 'video')) {
+          const media = await keepMusicMedia({ uri: params.mediaUri, kind: params.mediaKind, mimeType: params.mimeType || (params.mediaKind === 'photo' ? 'image/jpeg' : 'video/mp4'), duration: clamp(Number(params.mediaDuration) || 15, 1, 30) });
+          copiedMedia = media;
+          if (!isCurrent()) return;
+          next = { ...next, media, recipe: fitRecipe(next.recipe, 30, media.duration) };
         }
-        if (status === 'ready') { const uri = await readyMusicPreview(user.id, restore.jobId); if (active) { setReadyUri(uri); setReview(true); } }
-      }
+        if (!restore && params.releaseId) {
+          const tracks = await searchMusic('', params.releaseId);
+          const initial = tracks.find(track => track.track_id === params.trackId) || (tracks.length === 1 ? tracks[0] : null);
+          if (initial) next = { ...next, track: initial, recipe: fitRecipe(next.recipe, initial.duration || 30) };
+        }
+        if (!isCurrent()) return;
+        saving = true;
+        await checkpoint(next); acknowledged = true;
+        if (!isCurrent()) return;
+        setHydrated(true);
+        if (restore?.jobId) {
+          const status = await musicJobStatus(restore.jobId);
+          if (!isCurrent()) return;
+          if (status === 'published') {
+            completed.current = true; await persistQueue.current;
+            if (!isCurrent()) return;
+            await clearMusicDraft(user.id); removeMusicMedia(restore.media);
+            if (!isCurrent()) return;
+            router.replace(`/post/${restore.postId}` as any); return;
+          }
+          if (status === 'cancelled') setError(EXPIRED_MUSIC_PREVIEW);
+          if (status === 'ready') { const uri = await readyMusicPreview(user.id, restore.jobId); if (isCurrent()) { setReadyUri(uri); setReview(true); } }
+        }
+      } catch (error) {
+        if (!acknowledged && isCurrent()) {
+          if (saving) initialSaveFailed.current = true;
+          // State can lead the storage acknowledgement. Never autosave a disposed fresh copy.
+          update(previous || { ...next, media: null, sourcePath: undefined, jobId: undefined, reviewPending: false });
+          if (saving) throw new Error(previous
+            ? 'Your new draft could not be saved. Your saved draft is kept. Try again when device storage is available.'
+            : 'Your draft could not be saved. Choose the media again when device storage is available.');
+        }
+        throw error;
+      } finally { if (!acknowledged) removeMusicMedia(copiedMedia); }
     };
     readMusicDraft(user.id).then(saved => {
-      if (!active) return;
+      if (!isCurrent()) return;
       if (saved) {
+        acknowledgedDraft.current = { ...saved };
         Alert.alert('Continue your music post?', 'Your media and audio selection are saved.', [
-          { text: 'Start new', onPress: () => { removeMusicMedia(saved.media); void initialise(null).catch(error => { setError(musicError(error)); setHydrated(true); }); } },
-          { text: 'Continue draft', onPress: () => { void initialise(saved).catch(error => { setError(musicError(error)); setHydrated(true); }); } },
+          { text: 'Start new', onPress: () => { if (!isCurrent()) return; void initialise(null).then(() => { if (isCurrent()) removeMusicMedia(saved.media); }).catch(error => { if (isCurrent()) { setError(musicError(error)); setHydrated(true); } }); } },
+          { text: 'Continue draft', onPress: () => { if (!isCurrent()) return; void initialise(saved).catch(error => { if (isCurrent()) { setError(musicError(error)); setHydrated(true); } }); } },
         ], { cancelable: false });
-      } else void initialise(null).catch(error => { setError(musicError(error)); setHydrated(true); });
-    }).catch(error => { if (active) { setError(musicError(error)); setHydrated(true); } });
+      } else void initialise(null).catch(error => { if (isCurrent()) { setError(musicError(error)); setHydrated(true); } });
+    }).catch(error => { if (isCurrent()) { setError(musicError(error)); setHydrated(true); } });
     return () => { active = false; };
-  }, [user?.id]);
+  }, [user?.id, hydrationRevision]);
   useEffect(() => {
-    if (!draft || !hydrated) return;
-    const timer = setTimeout(() => { void persist(draft).catch(error => { if (mounted.current) setError(`Could not save your draft: ${musicError(error)}`); }); }, 350);
+    // Explicit checkpoints own persistence while media/render work is pending.
+    // A queued autosave must never outlive a failed fresh-file acknowledgement.
+    if (!draft || !hydrated || busy || pendingCheckpoints.current || initialSaveFailed.current) return;
+    const timer = setTimeout(() => {
+      if (busyRef.current || pendingCheckpoints.current) return;
+      void persist(draft).catch(error => { if (mounted.current) setError(`Could not save your draft: ${musicError(error)}`); });
+    }, 350);
     return () => clearTimeout(timer);
-  }, [draft, hydrated, persist]);
+  }, [draft, hydrated, busy, persist]);
   useEffect(() => {
     const media = draft?.media;
     video.pause();
-    if (media?.kind === 'video') void video.replaceAsync(media.uri).catch(() => setError('Could not open this video. Choose it again from your library.'));
-    else void video.replaceAsync(null);
+    const revision = contextRevision.current;
+    if (media?.kind === 'video') void video.replaceAsync(media.uri).catch(() => { if (currentOperation(revision)) setError('Could not open this video. Choose it again from your library.'); });
+    else void video.replaceAsync(null).catch(() => undefined);
   }, [draft?.media?.uri, video]);
   useEffect(() => { audio.volume = draft?.recipe.musicGain ?? 0.8; video.volume = draft?.recipe.originalGain ?? 0.6; }, [audio, video, draft?.recipe.musicGain, draft?.recipe.originalGain]);
   useEffect(() => {
@@ -177,7 +270,11 @@ export function MusicPostEditor() {
     try {
       loaded = await loadMusicAudition(track.track_id, recipe.startSeconds, recipe.durationSeconds, controller.signal);
       if (generation !== auditionRequest.current || !mounted.current) { loaded.dispose(); return; }
-      await audio.replaceAsync(loaded.uri);
+      const replacement = audioReplacement.current.catch(() => undefined).then(() => {
+        if (generation === auditionRequest.current && mounted.current) return audio.replaceAsync(loaded!.uri);
+      });
+      audioReplacement.current = replacement;
+      await replacement;
       if (generation !== auditionRequest.current || !mounted.current) { loaded.dispose(); return; }
       audition.current?.dispose(); audition.current = loaded;
       if (selected) {
@@ -207,6 +304,7 @@ export function MusicPostEditor() {
   const edit = (patch: Partial<MusicDraft>, recipeChange = false) => {
     const current = draftRef.current;
     if (!current || busyRef.current) return;
+    initialSaveFailed.current = false;
     if (recipeChange) { stop(); setReadyUri(null); setPreviewError(false); }
     update({ ...current, ...patch, reviewPending: false, ...(recipeChange ? { requestId: Crypto.randomUUID(), postId: Crypto.randomUUID(), jobId: undefined } : {}) });
   };
@@ -215,26 +313,40 @@ export function MusicPostEditor() {
     edit({ recipe: fitRecipe({ ...draft.recipe, ...patch }, trackDuration || draft.track?.duration || 30) }, true);
   };
   const pickMedia = async (camera = false) => {
-    if (busyRef.current || !draft) return;
+    const current = draftRef.current;
+    if (busyRef.current || !current) return;
+    const revision = contextRevision.current;
+    let copiedMedia: MusicDraft['media'] = null;
+    let acknowledged = false;
     try {
       stop(); setError('');
       const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      assertOperation(revision);
       if (!permission.granted) throw new Error(camera ? 'Allow camera access in Settings to capture a photo or video.' : 'Allow photo library access in Settings to choose media.');
       const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images', 'videos'], quality: 0.9, videoMaxDuration: 30, allowsEditing: false, videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080, preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible };
       const result = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+      assertOperation(revision);
       if (result.canceled || !result.assets[0]) return;
       busyRef.current = true; setBusy('media');
       const asset = result.assets[0];
       const kind = asset.type === 'video' ? 'video' : 'photo';
       const mime = asset.mimeType || (kind === 'photo' ? 'image/jpeg' : 'video/mp4');
       if (!(kind === 'photo' ? ['image/jpeg', 'image/png'] : ['video/mp4', 'video/quicktime']).includes(mime)) throw new Error('Choose a JPEG/PNG photo or an MP4/MOV video.');
-      const rawDuration = kind === 'video' ? Number(asset.duration) / 1000 : draft.recipe.contentDurationSeconds;
+      const rawDuration = kind === 'video' ? Number(asset.duration) / 1000 : current.recipe.contentDurationSeconds;
       if (kind === 'video' && (!Number.isFinite(rawDuration) || rawDuration < 1)) throw new Error('Choose a video at least one second long.');
-      const media = await keepMusicMedia({ uri: asset.uri, kind, mimeType: mime, duration: Math.min(30, rawDuration) });
-      const next = { ...draft, media, uploadId: Crypto.randomUUID(), requestId: Crypto.randomUUID(), postId: Crypto.randomUUID(), sourcePath: undefined, jobId: undefined, recipe: fitRecipe(draft.recipe, trackDuration || 30, media.duration) };
-      await checkpoint(next); removeMusicMedia(draft.media); setReadyUri(null);
+      copiedMedia = await keepMusicMedia({ uri: asset.uri, kind, mimeType: mime, duration: Math.min(30, rawDuration) });
+      assertOperation(revision);
+      const next = { ...current, media: copiedMedia, uploadId: Crypto.randomUUID(), requestId: Crypto.randomUUID(), postId: Crypto.randomUUID(), sourcePath: undefined, jobId: undefined, recipe: fitRecipe(current.recipe, trackDuration || 30, copiedMedia.duration) };
+      await checkpoint(next); acknowledged = true;
+      // An acknowledged file belongs to this actor's persisted draft even if they leave now.
+      removeMusicMedia(current.media);
+      if (!currentOperation(revision)) return;
+      setReadyUri(null);
       if (rawDuration > 30) setError('Your post uses the first 30 seconds of this video.');
-    } catch (error) { setError(musicError(error)); } finally { busyRef.current = false; setBusy(null); }
+    } catch (error) {
+      if (!acknowledged) removeMusicMedia(copiedMedia);
+      if (currentOperation(revision)) { if (copiedMedia && !acknowledged) update(current); setError(musicError(error)); }
+    } finally { if (currentOperation(revision)) { busyRef.current = false; setBusy(null); } }
   };
   const openSegment = () => { if (!draft?.track) { setSoundPicker(true); return; } recipeBeforeSheet.current = draft.recipe; trackBeforeSheet.current = draft.track; setSegmentSheet(true); };
   const selectTrack = (track: MusicTrack) => {
@@ -243,13 +355,15 @@ export function MusicPostEditor() {
     recipeBeforeSheet.current = draft.recipe; trackBeforeSheet.current = draft.track;
     edit({ track, recipe: fitRecipe({ ...draft.recipe, startSeconds: 0 }, track.duration || 30) }, true);
     setSoundPicker(false); setSegmentSheet(true);
-    void rememberMusic(draft.userId, 'recent', track).catch(error => setError(musicError(error)));
+    const revision = contextRevision.current;
+    void rememberMusic(draft.userId, 'recent', track).catch(error => { if (currentOperation(revision)) setError(musicError(error)); });
   };
   const toggleAudition = async () => {
+    const revision = contextRevision.current;
     if (!draft?.track || auditionBusy) return;
     if (audio.playing) { audio.pause(); autoAudition.current = false; return; }
     autoAudition.current = true;
-    if (audition.current && auditionId === draft.track.track_id) { video.pause(); await pauseGlobal(); if (focused.current && AppState.currentState === 'active') audio.play(); }
+    if (audition.current && auditionId === draft.track.track_id) { video.pause(); await pauseGlobal(); if (currentOperation(revision) && focused.current && AppState.currentState === 'active') audio.play(); }
     else void loadAudition(draft.track, draft.recipe, true, true);
   };
   const closeSegment = (cancel: boolean) => {
@@ -262,35 +376,56 @@ export function MusicPostEditor() {
   };
   const finish = async () => {
     if (!draftRef.current?.media || !draftRef.current.track || busyRef.current) return;
+    const revision = contextRevision.current;
+    const controller = new AbortController(); workAbort.current = controller;
     busyRef.current = true; setBusy('render'); setError(''); stop();
     try {
       const current = draftRef.current;
       if (!waveform.length || trackDuration < 1) throw new Error('Load the sound preview before preparing your post.');
-      const result = await renderMusicDraft(current, checkpoint);
-      if (!mounted.current) return;
-      if (result.published) { completed.current = true; await persistQueue.current; await clearMusicDraft(current.userId); removeMusicMedia(current.media); router.replace(`/post/${current.postId}` as any); return; }
+      const result = await renderMusicDraft(current, next => { assertOperation(revision); return checkpoint(next); }, controller.signal);
+      if (!currentOperation(revision)) return;
+      if (result.published) { completed.current = true; await persistQueue.current; assertOperation(revision); await clearMusicDraft(current.userId); removeMusicMedia(current.media); assertOperation(revision); router.replace(`/post/${current.postId}` as any); return; }
       setReadyUri(result.uri); setPreviewError(false); setReview(true);
-    } catch (error) { if (mounted.current) setError(musicError(error)); } finally { busyRef.current = false; if (mounted.current) setBusy(null); }
+    } catch (error) { if (currentOperation(revision)) setError(musicError(error)); } finally { if (currentOperation(revision)) { busyRef.current = false; setBusy(null); } }
   };
   const publish = async () => {
     if (!draftRef.current || !readyUri || previewError || busyRef.current) return;
+    const revision = contextRevision.current;
+    const controller = new AbortController(); workAbort.current = controller;
     busyRef.current = true; setBusy('publish'); setError(''); stop();
     try {
       const current = draftRef.current;
       await checkpoint(current);
-      const result = await publishMusicDraft(current);
+      assertOperation(revision);
+      const result = await publishMusicDraft(current, controller.signal);
+      assertOperation(revision);
       if (result.status === 'pending_review') { await checkpoint({ ...current, reviewPending: true }); return; }
       const postId = result.postId;
-      completed.current = true; await persistQueue.current; await clearMusicDraft(current.userId); removeMusicMedia(current.media);
+      completed.current = true; await persistQueue.current; assertOperation(revision); await clearMusicDraft(current.userId); removeMusicMedia(current.media);
       await Promise.all(['community-feed', 'culture'].map(query => queryClient.invalidateQueries({ queryKey: [query] })));
-      impactHaptic(); if (mounted.current) router.replace(`/post/${postId}` as any);
-    } catch (error) { if (mounted.current) setError(musicError(error)); } finally { busyRef.current = false; if (mounted.current) setBusy(null); }
+      if (currentOperation(revision)) { impactHaptic(); router.replace(`/post/${postId}` as any); }
+    } catch (error) { if (currentOperation(revision)) setError(musicError(error)); } finally { if (currentOperation(revision)) { busyRef.current = false; setBusy(null); } }
+  };
+  const renewPreview = async () => {
+    const current = draftRef.current;
+    if (!current || busyRef.current) return;
+    const revision = contextRevision.current;
+    stop(); busyRef.current = true; setBusy('draft');
+    try {
+      const next = await renewMusicDraft(current);
+      assertOperation(revision);
+      await checkpoint(next);
+      if (currentOperation(revision)) { setReadyUri(null); setReview(false); setPreviewError(false); setError(''); }
+    } catch (error) {
+      if (currentOperation(revision)) { update(current); setError(musicError(error)); }
+    } finally { if (currentOperation(revision)) { busyRef.current = false; setBusy(null); } }
   };
   const leave = () => {
     if (busyRef.current) return;
     stop();
     if (!draft || completed.current) { router.back(); return; }
-    void checkpoint(draft).then(() => router.back()).catch(error => setError(musicError(error)));
+    const revision = contextRevision.current;
+    void checkpoint(draft).then(() => { if (currentOperation(revision)) router.back(); }).catch(error => { if (currentOperation(revision)) setError(musicError(error)); });
   };
   const audience = draft?.destinations.some(destination => destination.destination_type === 'creator_community') ? 'Your community' : draft?.destinations.length ? 'Selected feed' : 'Community feed + profile';
   const track = draft?.track;
@@ -323,13 +458,13 @@ export function MusicPostEditor() {
             <View style={{ flexShrink: 1, gap: 2 }}><Text numberOfLines={1} style={styles.chipTitle}>{track?.track_title || 'Add music'}</Text>{track ? <Text style={styles.chipMeta}>{track.artist} · {formatMusicTime(recipe!.startSeconds)}–{formatMusicTime(recipe!.startSeconds + recipe!.durationSeconds)}</Text> : null}</View>
             <MaterialIcons name="expand-more" size={22} color="#FFFFFF" />
           </Pressable>
-          {draft.media.kind === 'video' ? <Pressable accessibilityRole="button" accessibilityLabel={videoPlaying ? 'Pause original video' : 'Play original video'} style={styles.mediaPlay} onPress={() => { if (video.playing) video.pause(); else { audio.pause(); void pauseGlobal().then(() => video.play()); } }}><MaterialIcons name={videoPlaying ? 'pause' : 'play-arrow'} size={30} color="#FFFFFF" /></Pressable> : null}
+          {draft.media.kind === 'video' ? <Pressable accessibilityRole="button" accessibilityLabel={videoPlaying ? 'Pause original video' : 'Play original video'} style={styles.mediaPlay} onPress={() => { const revision = contextRevision.current; if (video.playing) video.pause(); else { audio.pause(); void pauseGlobal().then(() => { if (currentOperation(revision) && focused.current) video.play(); }); } }}><MaterialIcons name={videoPlaying ? 'pause' : 'play-arrow'} size={30} color="#FFFFFF" /></Pressable> : null}
         </> : <View style={styles.empty}><View style={styles.emptyIcon}><MaterialIcons name="add-photo-alternate" size={42} color={colors.accentText} /></View>
           <Text style={styles.emptyTitle}>Make a moment</Text><Text style={styles.emptyCopy}>Your photo or video.{`\n`}The soundtrack you choose.</Text>
           <MusicButton primary icon="photo-library" label="Choose photo or video" onPress={() => void pickMedia()} /><MusicButton icon="photo-camera" label="Open camera" onPress={() => void pickMedia(true)} />
           <Pressable accessibilityRole="button" accessibilityLabel="Choose music first" onPress={() => setSoundPicker(true)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={styles.accent}>{track ? track.track_title : 'Choose music first'}</Text></Pressable>
         </View>}
-        {previewError ? <View style={styles.previewFailure}><Text style={{ color: '#FFFFFF', textAlign: 'center' }}>Your preview needs to be refreshed.</Text><MusicButton label="Refresh preview" onPress={() => { if (draft.jobId) void readyMusicPreview(draft.userId, draft.jobId).then(uri => { setReadyUri(uri); setPreviewError(false); }).catch(error => setError(musicError(error))); }} /></View> : null}
+        {previewError ? <View style={styles.previewFailure}><Text style={{ color: '#FFFFFF', textAlign: 'center' }}>Your preview needs to be refreshed.</Text><MusicButton label="Refresh preview" onPress={() => { const revision = contextRevision.current; if (draft.jobId) void readyMusicPreview(draft.userId, draft.jobId).then(uri => { if (currentOperation(revision)) { setReadyUri(uri); setPreviewError(false); } }).catch(error => { if (currentOperation(revision)) setError(musicError(error)); }); }} /></View> : null}
       </Animated.View>
       {review ? <View style={styles.reviewCopy}>
         <Text style={styles.label}>Caption</Text><TextInput accessibilityLabel="Music post caption" multiline maxLength={500} value={draft.content} onChangeText={content => edit({ content })} placeholder="Tell the story behind your moment…" placeholderTextColor={colors.textMuted} style={styles.caption} editable={!busy} />
@@ -343,11 +478,11 @@ export function MusicPostEditor() {
       </View> : null}
       {draft.reviewPending ? <Text accessibilityLiveRegion="polite" style={[styles.body, { marginHorizontal: 24, marginBottom: 12, textAlign: 'center' }]}>Your finished post is awaiting review. Your draft is saved. Check again here before publishing. Editing the caption or audience requires a new review. Unfinished previews expire after seven days.</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {review && /expired|new preview/i.test(error) ? <MusicButton label="Prepare a new preview" onPress={() => { edit({}, true); setReview(false); setError(''); }} /> : null}
+      {draft.jobId && /expired|new preview/i.test(error) ? <View style={{ paddingHorizontal: 24, paddingBottom: 12 }}><MusicButton primary label="Prepare a new preview" onPress={() => void renewPreview()} /></View> : null}
       {!review && auditionError ? <Text accessibilityRole="alert" style={styles.error}>{auditionError}</Text> : null}
       <View style={styles.bottom}>
-        {busy ? <View style={styles.processing}><ActivityIndicator color={colors.accentText} /><Text accessibilityLiveRegion="polite" style={styles.body}>{busy === 'render' ? 'Preparing your finished preview…' : busy === 'publish' ? 'Sharing your post…' : 'Preparing your media…'}</Text><Text style={styles.meta}>{busy === 'render' ? 'Keep this screen open. Your draft is saved.' : 'Just a moment.'}</Text></View>
-          : <MusicButton primary icon={review ? 'arrow-upward' : 'play-circle-outline'} label={review ? draft.reviewPending ? 'Check review and publish' : 'Submit for review' : 'Preview post'} onPress={() => void (review ? publish() : finish())} disabled={review ? !readyUri || previewError : !draft.media || !track || auditionBusy || !waveform.length} />}
+        {busy ? <View style={styles.processing}><ActivityIndicator color={colors.accentText} /><Text accessibilityLiveRegion="polite" style={styles.body}>{busy === 'render' ? 'Preparing your finished preview…' : busy === 'publish' ? 'Sharing your post…' : busy === 'draft' ? 'Saving your draft…' : 'Preparing your media…'}</Text><Text style={styles.meta}>{busy === 'render' ? 'Keep this screen open. Your draft is saved.' : 'Just a moment.'}</Text></View>
+          : <MusicButton primary icon={review ? 'arrow-upward' : 'play-circle-outline'} label={review ? draft.reviewPending ? 'Check review and publish' : 'Submit for review' : 'Preview post'} onPress={() => void (review ? publish() : finish())} disabled={review ? !readyUri || previewError : !draft.media || !track || auditionBusy || !waveform.length || Boolean(draft.jobId && /expired|new preview/i.test(error))} />}
         {!review && draft.media ? <Text style={[styles.meta, { textAlign: 'center', marginTop: 10 }]}>Watch the finished mix before sharing.</Text> : null}
       </View>
     </ScrollView>
@@ -403,7 +538,7 @@ function useStyles() {
     chipTitle: { fontFamily: pluggdFonts.satoshiBold, color: '#FFFFFF', fontSize: 14 }, chipMeta: { fontFamily: pluggdFonts.satoshiMedium, color: '#DADADA', fontSize: 11 },
     mediaPlay: { position: 'absolute', bottom: 20, right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center' },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 28 }, emptyIcon: { width: 76, height: 76, borderRadius: 24, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
-    emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 28, color: colors.text }, emptyCopy: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 16, lineHeight: 24, color: colors.textMuted, textAlign: 'center' }, accent: { fontFamily: pluggdFonts.satoshiBold, color: colors.accentText, fontSize: 14 },
+    emptyTitle: { fontFamily: pluggdFonts.satoshiBlack, fontSize: 28, color: colors.text }, emptyCopy: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 16, lineHeight: 24, color: colors.textMuted, textAlign: 'center' }, accent: { fontFamily: pluggdFonts.satoshiBold, color: colors.background === '#FFF8ED' ? '#963200' : colors.accentText, fontSize: 14 },
     tools: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 20 }, bottom: { paddingHorizontal: 24, paddingTop: 8 },
     body: { fontFamily: pluggdFonts.satoshiBold, fontSize: 14, color: colors.text }, meta: { fontFamily: pluggdFonts.satoshiMedium, fontSize: 12, lineHeight: 18, color: colors.textMuted }, label: { fontFamily: pluggdFonts.satoshiBold, fontSize: 13, color: colors.textSecondary },
     between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, processing: { alignItems: 'center', paddingVertical: 16, gap: 10 }, error: { color: colors.danger, fontFamily: pluggdFonts.satoshiMedium, textAlign: 'center', fontSize: 13, lineHeight: 19, marginHorizontal: 24, marginBottom: 12 },

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { PluggdImage } from '../../components/PluggdImage';
 import { pluggdFonts } from '../../design/typography';
@@ -55,6 +55,12 @@ export function MusicSlider({ label, value, min = 0, max = 1, step = 0.01, forma
     <View accessible accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ min, max, now: value, text: format(value) }}
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={event => { onChange(clamp(value + (event.nativeEvent.actionName === 'increment' ? step : -step), min, max)); onCommit?.(); }}
+      {...(Platform.OS === 'web' ? { tabIndex: 0 as const, 'aria-valuemin': min, 'aria-valuemax': max, 'aria-valuenow': value, 'aria-valuetext': format(value),
+        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+          const next = event.key === 'Home' ? min : event.key === 'End' ? max : ['ArrowUp', 'ArrowRight'].includes(event.key) ? value + step : ['ArrowDown', 'ArrowLeft'].includes(event.key) ? value - step : null;
+          if (next === null) return;
+          event.preventDefault(); onChange(clamp(Math.round(next / step) * step, min, max)); onCommit?.();
+        } } : {})}
       style={{ height: 44, justifyContent: 'center', marginHorizontal: 12 }} onLayout={event => setWidth(event.nativeEvent.layout.width)} {...pan.panHandlers}>
       <View pointerEvents="none" style={{ height: 4, borderRadius: 2, backgroundColor: colors.controlBorder }}>
         <View style={{ width: `${fraction * 100}%`, height: 4, borderRadius: 2, backgroundColor: colors.accentFill }} />
@@ -117,8 +123,15 @@ export function MusicWaveform({ peaks, trackDuration, duration, start, progress 
     <View accessible accessibilityRole="adjustable" accessibilityLabel="Audio start in the track" accessibilityValue={{ min: 0, max: Math.max(0, trackDuration - duration), now: start, text: formatMusicTime(start, true) }}
       accessibilityActions={[{ name: 'increment', label: 'One second later' }, { name: 'decrement', label: 'One second earlier' }]}
       onAccessibilityAction={event => { onDrag(); onChange(clamp(start + (event.nativeEvent.actionName === 'increment' ? 1 : -1), 0, trackDuration - duration)); onCommit(); }}
+      {...(Platform.OS === 'web' ? { tabIndex: 0 as const, 'aria-valuemin': 0, 'aria-valuemax': Math.max(0, trackDuration - duration), 'aria-valuenow': start, 'aria-valuetext': formatMusicTime(start, true),
+        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+          const max = Math.max(0, trackDuration - duration);
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? max : ['ArrowUp', 'ArrowRight'].includes(event.key) ? start + 1 : ['ArrowDown', 'ArrowLeft'].includes(event.key) ? start - 1 : null;
+          if (next === null) return;
+          event.preventDefault(); onDrag(); onChange(clamp(next, 0, max)); onCommit();
+        } } : {})}
       style={{ height: 94, overflow: 'hidden' }} onLayout={event => setWidth(event.nativeEvent.layout.width)}>
-      {width > 48 ? <ScrollView ref={scroll} horizontal bounces={false} showsHorizontalScrollIndicator={false} scrollEventThrottle={32}
+      {width > 48 ? <ScrollView ref={scroll} tabIndex={Platform.OS === 'web' ? 0 : undefined} horizontal bounces={false} showsHorizontalScrollIndicator={false} scrollEventThrottle={32}
         contentContainerStyle={{ paddingHorizontal: 24, alignItems: 'center' }}
         onScrollBeginDrag={() => { dragging.current = true; if (timeout.current) clearTimeout(timeout.current); onDrag(); }}
         onMomentumScrollBegin={() => { if (timeout.current) clearTimeout(timeout.current); }}

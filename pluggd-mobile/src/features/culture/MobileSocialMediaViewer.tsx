@@ -1,12 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { pluggdFonts } from '../../design/typography';
 import type { MobileSocialPostPreview } from './mobileTypes';
+import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { musicError, musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
@@ -23,10 +24,21 @@ type MobileSocialMediaViewerProps = {
 };
 
 function FullScreenVideo({ uri }: { uri: string }) {
+  const { user, session } = useAuth();
+  const context = useRef({ actor: user?.id, token: session?.access_token, revision: 0 });
+  if (context.current.actor !== user?.id || context.current.token !== session?.access_token) {
+    context.current = { actor: user?.id, token: session?.access_token, revision: context.current.revision + 1 };
+  }
+  // A session change releases the old native player and its private signed URL.
+  return <SessionVideo key={context.current.revision} uri={uri} />;
+}
+
+function SessionVideo({ uri }: { uri: string }) {
   const { pause } = usePlayback();
   const [source, setSource] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, (instance) => {
     instance.loop = false;
     instance.staysActiveInBackground = false;
@@ -34,21 +46,49 @@ function FullScreenVideo({ uri }: { uri: string }) {
   });
   useEffect(() => {
     let active = true;
-    const controller = new AbortController();
-    setSource(null); setError(''); player.pause();
+    let generation = 0;
+    let controller: AbortController | null = null;
+    let foreground = AppState.currentState === 'active';
+    let sourceReady = false;
     const postId = musicPostId(uri);
-    const load = async () => {
-      const next = postId ? await musicPlayback(postId, controller.signal) : uri;
-      if (!active) return;
-      await player.replaceAsync(next);
-      if (active) setSource(next);
+    // Native replacements cannot be cancelled mid-flight. Order clearing after
+    // any old replacement, and fresh foreground loads after that clearing.
+    const replace = (next: string | null, current: () => boolean = () => true) => {
+      const work = replacement.current.catch(() => undefined).then(async () => {
+        if (current()) await player.replaceAsync(next);
+      });
+      replacement.current = work;
+      return work;
     };
-    void load().catch(error => { if (active) setError(musicError(error)); });
+    const invalidate = () => { generation++; controller?.abort(); sourceReady = false; };
+    const load = () => {
+      invalidate();
+      const request = generation;
+      controller = new AbortController();
+      const signal = controller.signal;
+      const current = () => active && foreground && request === generation;
+      setSource(null); setError(''); player.pause();
+      void (async () => {
+        const next = postId ? await musicPlayback(postId, signal) : uri;
+        if (!current()) return;
+        await replace(next, current);
+        if (current()) { sourceReady = true; setSource(next); }
+      })().catch(error => { if (current()) setError(musicError(error)); });
+    };
+    if (foreground) load();
     const playing = player.addListener('playingChange', event => { if (event.isPlaying) void pause(); });
-    const status = player.addListener('statusChange', event => { if (event.status === 'error' && active) setError('This video could not be played. Please try again.'); });
-    const background = AppState.addEventListener('change', state => { if (state !== 'active') player.pause(); });
+    const status = player.addListener('statusChange', event => { if (event.status === 'error' && active && foreground && sourceReady) setError('This video could not be played. Please try again.'); });
+    const background = AppState.addEventListener('change', state => {
+      foreground = state === 'active';
+      if (!foreground) {
+        invalidate();
+        player.pause();
+        setSource(null);
+        void replace(null).catch(() => undefined);
+      } else if (active) load();
+    });
     // The hook stops/releases its native player on unmount; it may already be released here.
-    return () => { active = false; controller.abort(); playing.remove(); status.remove(); background.remove(); };
+    return () => { active = false; invalidate(); playing.remove(); status.remove(); background.remove(); };
   }, [uri, retry, player, pause]);
   if (error) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }]}>
     <Text accessibilityRole="alert" style={{ color: '#FFFFFF', textAlign: 'center' }}>{error}</Text>
@@ -63,6 +103,9 @@ export function MobileSocialMediaViewer({
   selection,
   onSelectionChange,
 }: MobileSocialMediaViewerProps) {
+  const { user } = useAuth();
+  const actor = useRef(user?.id);
+  const actorChanged = actor.current !== user?.id;
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const [mediaAspectRatio, setMediaAspectRatio] = useState(16 / 9);
@@ -73,14 +116,21 @@ export function MobileSocialMediaViewer({
     ? Math.min(Math.max(selection.index, 0), Math.max(images.length - 1, 0))
     : null;
   const activeImage = imageIndex === null ? null : images[imageIndex] || null;
-  const isVideo = selection?.kind === 'video' && Boolean(post.video);
-  const visible = Boolean(activeImage || isVideo);
+  const isVideo = !actorChanged && selection?.kind === 'video' && Boolean(post.video);
+  const visible = !actorChanged && Boolean(activeImage || isVideo);
   const authorName = post.display_name || post.username || 'Community member';
   const captionMeasured = captionLineCount > 0;
   const captionCanExpand = captionLineCount > 2;
   const desiredMediaHeight = viewportWidth / Math.max(mediaAspectRatio, 0.1);
   const mediaHeight = Math.min(desiredMediaHeight, viewportHeight * (captionExpanded ? 0.48 : 0.62));
   const close = () => onSelectionChange(null);
+
+  useEffect(() => {
+    if (actor.current !== user?.id) {
+      actor.current = user?.id;
+      if (selection) onSelectionChange(null);
+    }
+  }, [user?.id, selection, onSelectionChange]);
 
   useEffect(() => {
     setCaptionExpanded(false);
@@ -95,6 +145,8 @@ export function MobileSocialMediaViewer({
       () => undefined,
     );
   }, [activeImage, isVideo, post.id]);
+
+  if (actorChanged) return null;
 
   const moveImage = (direction: -1 | 1) => {
     if (imageIndex === null || images.length < 2) return;

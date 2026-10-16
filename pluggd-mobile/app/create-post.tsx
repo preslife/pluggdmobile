@@ -459,7 +459,7 @@ export default function CreatePostRoute() {
                 if (media.length > 1 || media[0]?.kind === 'audio') { Alert.alert('One photo or video', 'Music posts use one photo or video. Keep this draft, or choose one visual before adding music.'); return; }
                 const visual = media[0];
                 router.push({ pathname: '/create-music-post', params: {
-                  content, destinations: JSON.stringify(destinations), releaseId: params.releaseId,
+                  draftActorId: user?.id, content, destinations: JSON.stringify(destinations), releaseId: params.releaseId,
                   ...(visual ? { mediaUri: visual.uri, mediaKind: visual.kind === 'image' ? 'photo' : 'video', mimeType: visual.mimeType, mediaDuration: String(visual.durationSeconds || 15) } : {}),
                 } } as any);
               }}><MaterialIcons name="library-music" size={22} color={theme.colors.accentText} /></Pressable> : null}

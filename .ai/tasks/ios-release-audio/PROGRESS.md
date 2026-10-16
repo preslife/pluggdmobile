@@ -1,9 +1,9 @@
 # iOS App Review repair — current checkpoint,16October2026
 
-CURRENT_PHASE=COMBINED25_CI_GREEN_ARCHIVE_RUNNING_NEW_RECORDING_VERIFIED
-NEXT_ACTION=Finish running local25 archive (exec67613), then verify signed/source-map/no-fixture/privacy/export identity. Present exact PR14/new25 release gate once concrete. After authorised upload/install finish cold Pro Restore; final Apple reply/Submit remains owner-gated. No more playback runs: new iPhoneHome recording is checked and ready.
+CURRENT_PHASE=CP15_CHECKED_CHECKPOINT_CURRENT_CI_THEN_COMBINED_ARCHIVE
+NEXT_ACTION=Checkpoint/push checked CP15 and refresh PR14 current CI, then resume combined25 archive using retained native compilation cache. Verify exact signed/exported sources and present concrete external gate. Cold Pro Restore and changed composer/private-preview native acceptance follow install. No more background playback recordings/runs.
 AUDIT_REQUIRED=false
-CODE_EDIT_ALLOWED=true within owner-authorised Plans and six-path Library/Purchases display scope; no payment/entitlement/backend/policy change. Only test-script locations additionally adjusted for correct CI discovery.
+CODE_EDIT_ALLOWED=true within owner-authorised Plans, Library/Purchases and newly authorised CP15 seven-path draft/account/private-preview safety scope; focused regression script and demonstrated async race corrections allowed. No backend/payment/entitlement/privacy programme change.
 BRANCH=codex/ios-review-repair-20261016
 WORKTREE=/private/tmp/pluggd-ios-review-repair
 LATEST_SOURCE_COMMIT=179c869fb4f0f0427c2da568bbd3c8cded389c37
@@ -11,6 +11,10 @@ MAIN=ebe7b1d26013c9042c1437b76b889ea017cb151c (PR13 merged; PR14 draft/new chang
 EDIT_AUTHORITY=One writer; author-owned untracked REVIEW_FINDINGS_CLAUDE.md and original dirty native/web checkouts untouched.
 APPROVED_ACTIONS=Existing scoped repair/release preparation; exact45-target cleanup and PR13 merge completed. Exact24 upload/in-place existingQA install approval completed. PR14 merge/new25 upload-testing require their applicable concrete gate; final Apple Send/Submit remains separate. No charged purchase/legal acceptance/ownership transfer inferred.
 CLEANUP=Approved45 targets removed/preservationPASS/10.329GiB recovered. Retain branch/worktree/all recovery/artifacts/current cache. Both local simulator boundary-fixture app sessions stopped; parent production imports restored byte-for-byte.
+
+## Newly requested CP15 inclusion
+-Exact fa2d0b7→97a6dec mobile-only patch applied after proving seven current files all match saved base. Package/lock byte-identical to accepted saved CP15. Actor/token/abort/service/draft-expiry focused checks PASS; full native TypeScript PASS. Independent bounded review found delayed failed-save/autosave disposal, token-refresh/save and background pending-video replacement races. Actual React regressions reproduced3 failures before first corrections and the additional token variation before its correction. All6 final actual-component scenarios PASS, service/security fixtures PASS, full native TypeScript PASS, diff hygiene PASS; independent review closed findings. Checkpoint ownership survives token refresh, restores acknowledged state before fresh-file cleanup; private native replacements/clearing serialize and foreground revalidates. Native auth/private-preview acceptance remains pending on the replacement; fixtures are not production proof. No old-branch merge, CP23 or event helper.
+-Running pre-CP15 archive deliberately SIGINT97856, exit75 scope change/no compile error; log/receipt/source pin preserved as build25/pre-cp15-interrupted-*. Native compilation cache retained. Earlier PR14 CI PASS is predecessor proof only; current combined CI/archive pending.
 
 ## Checked combined source
 -Top selector: exactly one original native sticky row, scrolling into place beneath global header; no bottom duplicate/reserved blank space. iPad26.3 compatibility normal→pinned→normal, yearly price/cadence and Choose busy/error native PASS. Plans22 actual-source cases PASS.

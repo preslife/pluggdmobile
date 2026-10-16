@@ -1,3 +1,6 @@
+## Current CP15 scope extension —16October2026
+Owner requested saved music-post draft/account safety now. Exact7-path saved base comparison proved fixes absent; fa2d0b7→97a6dec mobile-only patch integrated. No old branch/CP23/event helper. Delayed checkpoint/autosave and token-refresh rollback plus pending background native-video source races corrected after actual-component reproduction.6 final race cases/service security/native full typing PASS; independent review closed findings. Native package/lock unchanged. Existing running25 archive intentionally interrupted PID97856/exit75, native cache retained; pre-CP15 artifacts explicitly superseded. Next: checked checkpoint/current PR14 CI→combined25 archive/export→concrete release gate→native composer/private preview smoke and cold Pro Restore. New Home/audio clip remains ready unchanged; no more6min playback testing. Final Apple Send/Submit remains owner-gated.
+
 # Current repair handoff —16October2026
 
 Source /private/tmp/pluggd-ios-review-repair, branch codex/ios-review-repair-20261016. PROGRESS.md controls sequence.
