@@ -1,6 +1,8 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { googleAuthSessionUrl } from './google-auth-session-url';
 import {
   requireSocialAuthConsent,
   type SocialAuthConsent,
@@ -57,7 +59,8 @@ export async function signInWithGoogle(consent: SocialAuthConsent): Promise<Goog
   if (error) throw error;
   if (!data.url) throw new Error('Google sign-in could not be started.');
 
-  const browserResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+  const sessionUrl = googleAuthSessionUrl(data.url, redirectTo, Platform.OS);
+  const browserResult = await WebBrowser.openAuthSessionAsync(sessionUrl, redirectTo, {
     presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
     preferEphemeralSession: false,
   });
