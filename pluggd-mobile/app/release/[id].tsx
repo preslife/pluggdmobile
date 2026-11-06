@@ -30,6 +30,7 @@ import TipModal from '../../src/components/CommerceTipModal';
 import { openHostedCheckout, reconcileHostedCheckout, useCommercePolicy } from '../../src/commerce/policy';
 import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
+import { releaseShareContent } from '../../src/lib/musicShare';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { ReleaseMusicAction } from '../../src/features/social-music/ReleaseMusicAction';
 
@@ -632,7 +633,11 @@ export default function ReleaseDetailScreen() {
 
   async function handleShare() {
     if (!release) return;
-    await Share.share({ message: `PLUGGD release: ${release.title} by ${release.artist || 'Creator'}` });
+    try {
+      await Share.share(releaseShareContent(release));
+    } catch {
+      Alert.alert('Could not share', 'Please try again.');
+    }
   }
 
   async function handlePostComment() {

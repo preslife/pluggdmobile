@@ -14,6 +14,7 @@ import { PlaybackSeekBar } from '../src/components/PlaybackSeekBar';
 import { useListeningRoomOrientation } from '../src/lib/orientation';
 import { impactHaptic, selectionHaptic } from '../src/design/haptics';
 import { formatDuration } from '../src/lib/mobileContent';
+import { playbackShareContent } from '../src/lib/musicShare';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 import { loadPublicPlaybackMetadata, loadPublishedTrackLyrics, loadReleasePlaybackCollection, playbackIdentity } from '../src/features/playback/publicPlaybackService';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
@@ -221,11 +222,17 @@ export default function PlayerScreen() {
   };
 
   const handleShare = async () => {
+    const content = playbackShareContent(currentTrack);
+    if (!content) {
+      Alert.alert('Link unavailable', 'Open this music from its release or creator page and try again.');
+      return;
+    }
     selectionHaptic();
-    await Share.share({
-      title,
-      message: `Listen to ${title} by ${artist} on PLUGGD.`,
-    });
+    try {
+      await Share.share(content);
+    } catch {
+      Alert.alert('Could not share', 'Please try again.');
+    }
   };
 
   const handleSave = async () => {
