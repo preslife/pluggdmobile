@@ -317,3 +317,73 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
    }
  
    func onIsPlayingChanged(player: AVPlayer, oldIsPlaying: Bool?, newIsPlaying: Bool) {
+diff --git a/node_modules/expo-video/ios/NowPlayingManager.swift b/node_modules/expo-video/ios/NowPlayingManager.swift
+--- a/node_modules/expo-video/ios/NowPlayingManager.swift
++++ b/node_modules/expo-video/ios/NowPlayingManager.swift
+@@ -16,6 +16,8 @@
+   private var timeObserver: Any?
+   private weak var mostRecentInteractionPlayer: AVPlayer?
+   private var players = NSHashTable<VideoPlayer>.weakObjects()
++  // Weak entries may disappear before deinit unregisters their Now Playing ownership.
++  private var registeredPlayerIDs = Set<ObjectIdentifier>()
+   private var artworkDataTask: URLSessionDataTask?
+ 
+   private var playTarget: Any?
+@@ -33,6 +35,7 @@
+   }
+ 
+   func registerPlayer(_ player: VideoPlayer) {
++    guard registeredPlayerIDs.insert(ObjectIdentifier(player)).inserted else { return }
+     players.add(player)
+     player.observer?.registerDelegate(delegate: self)
+ 
+@@ -42,6 +45,8 @@
+   }
+ 
+   func unregisterPlayer(_ player: VideoPlayer) {
++    // Inline previews never register; their setup/teardown must leave music alone.
++    guard registeredPlayerIDs.remove(ObjectIdentifier(player)) != nil else { return }
+     players.remove(player)
+     player.observer?.unregisterDelegate(delegate: self)
+ 
+@@ -50,7 +55,7 @@
+       setMostRecentInteractionPlayer(player: newPlayer?.ref)
+     }
+ 
+-    if players.allObjects.isEmpty {
++    if registeredPlayerIDs.isEmpty {
+       let commandCenter = MPRemoteCommandCenter.shared()
+ 
+       removeNowPlayingTargets(commandCenter: commandCenter)
+@@ -232,11 +237,26 @@
+   private func removeNowPlayingTargets(commandCenter: MPRemoteCommandCenter) {
+     // Use the main queue to avoid race conditions with adding the targets (see comment in `addNowPlayingTargets`)
+     DispatchQueue.main.async { [weak self] in
+-      commandCenter.playCommand.removeTarget(self?.playTarget)
+-      commandCenter.pauseCommand.removeTarget(self?.pauseTarget)
+-      commandCenter.skipForwardCommand.removeTarget(self?.skipForwardTarget)
+-      commandCenter.skipBackwardCommand.removeTarget(self?.skipBackwardTarget)
+-      commandCenter.changePlaybackPositionCommand.removeTarget(self?.playbackPositionTarget)
++      if let target = self?.playTarget {
++        commandCenter.playCommand.removeTarget(target)
++        self?.playTarget = nil
++      }
++      if let target = self?.pauseTarget {
++        commandCenter.pauseCommand.removeTarget(target)
++        self?.pauseTarget = nil
++      }
++      if let target = self?.skipForwardTarget {
++        commandCenter.skipForwardCommand.removeTarget(target)
++        self?.skipForwardTarget = nil
++      }
++      if let target = self?.skipBackwardTarget {
++        commandCenter.skipBackwardCommand.removeTarget(target)
++        self?.skipBackwardTarget = nil
++      }
++      if let target = self?.playbackPositionTarget {
++        commandCenter.changePlaybackPositionCommand.removeTarget(target)
++        self?.playbackPositionTarget = nil
++      }
+     }
+   }
+ 
