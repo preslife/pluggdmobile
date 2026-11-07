@@ -447,6 +447,8 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   return (
     <>
       <Pressable
+      // Keep the video controls individually reachable by VoiceOver.
+      accessible={!post.video}
       accessibilityRole="button"
       accessibilityLabel={`Open post by ${displayName}`}
       style={[styles.row, variant === 'thread' && styles.rowThread]}
